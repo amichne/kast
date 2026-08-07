@@ -76,13 +76,56 @@ pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
 }
 
 fn workspace_data_directory_from(workspaces_root: &Path, root: &Path) -> Result<PathBuf> {
-    if let Some(workspace) = git_workspace(root) {
-        return workspace_data_directory_for_git(workspaces_root, &workspace);
+    let canonical = canonical_workspace_root(root)?;
+    let digest = Sha256::digest(canonical.to_string_lossy().as_bytes());
+    Ok(workspaces_root.join(hex::encode(digest)))
+}
+
+fn canonical_workspace_root(root: &Path) -> Result<PathBuf> {
+    let normalized = normalize(root.to_path_buf());
+    match fs::canonicalize(&normalized) {
+        Ok(canonical) => Ok(canonical),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            let mut ancestor = normalized.as_path();
+            let mut tail = Vec::new();
+            loop {
+                match fs::symlink_metadata(ancestor) {
+                    Ok(_) => {
+                        let mut canonical = fs::canonicalize(ancestor)?;
+                        for component in tail.iter().rev() {
+                            canonical.push(component);
+                        }
+                        return Ok(normalize(canonical));
+                    }
+                    Err(missing) if missing.kind() == std::io::ErrorKind::NotFound => {
+                        let component = ancestor.file_name().ok_or_else(|| {
+                            CliError::new(
+                                "WORKSPACE_PATH_UNAVAILABLE",
+                                format!("Workspace path has no existing ancestor: {}", root.display()),
+                            )
+                        })?;
+                        tail.push(component.to_os_string());
+                        ancestor = ancestor.parent().ok_or_else(|| {
+                            CliError::new(
+                                "WORKSPACE_PATH_UNAVAILABLE",
+                                format!("Workspace path has no existing ancestor: {}", root.display()),
+                            )
+                        })?;
+                    }
+                    Err(failure) => {
+                        return Err(CliError::new(
+                            "WORKSPACE_PATH_UNAVAILABLE",
+                            format!("Cannot resolve workspace path {}: {failure}", root.display()),
+                        ));
+                    }
+                }
+            }
+        }
+        Err(error) => Err(CliError::new(
+            "WORKSPACE_PATH_UNAVAILABLE",
+            format!("Cannot resolve workspace path {}: {error}", root.display()),
+        )),
     }
-    let id = local_workspace_id(workspaces_root, root)?;
-    Ok(workspaces_root
-        .join("local")
-        .join(format!("{}--{id}", sanitized_path(root))))
 }
 
 #[cfg(test)]

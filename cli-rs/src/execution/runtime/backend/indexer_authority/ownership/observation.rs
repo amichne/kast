@@ -117,7 +117,7 @@ fn observe_registered_service(
         || claim
             .as_ref()
             .is_some_and(|claim| claim.process != process.identity)
-        || process.command != registration.launch.command
+        || !process.command_matches(&registration.launch.command)
     {
         return Err(ownership_error(
             "Runtime process UID, start identity, or command does not match its service registration.",
@@ -257,7 +257,7 @@ fn validate_descriptor_process(
     let workspace_argument = format!("--workspace-root={}", descriptor.workspace_root);
     let socket_argument = format!("--socket-path={}", descriptor.socket_path);
     let is_indexer = process.command.iter().any(|argument| {
-        argument == "io.github.amichne.kast.indexer.KastIndexerMainKt"
+        argument == std::ffi::OsStr::new("io.github.amichne.kast.indexer.KastIndexerMainKt")
             || Path::new(argument)
                 .file_name()
                 .is_some_and(|name| name == "kast-indexer")
@@ -265,8 +265,8 @@ fn validate_descriptor_process(
     if descriptor.backend_name != BackendName::Indexer.canonical()
         || descriptor.transport != "uds"
         || !is_indexer
-        || !process.command.contains(&workspace_argument)
-        || !process.command.contains(&socket_argument)
+        || !process.has_argument(&workspace_argument)
+        || !process.has_argument(&socket_argument)
     {
         return Err(ownership_error(
             "Legacy descriptor is not associated with an exact Kast indexer command.",

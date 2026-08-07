@@ -8,6 +8,8 @@ import java.sql.Connection
 
 internal class FileStageInventoryStatements(private val state: SqliteSourceIndexStoreState) {
     fun recomputeModuleProgressInTransaction(conn: Connection) {
+        val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
+        val outcomes = state.readTable(SourceIndexReadTable.FILE_STAGE_OUTCOMES)
         conn.createStatement().use { statement ->
             statement.execute("DELETE FROM module_index_progress")
             statement.execute(
@@ -48,8 +50,8 @@ internal class FileStageInventoryStatements(private val state: SqliteSourceIndex
                                AND outcomes.outcome_status IN ('COMPLETE','LIMITED','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END),
                           COUNT(*),
                           NULL
-                   FROM file_manifest manifest
-                   LEFT JOIN file_stage_outcomes outcomes
+                   FROM $manifest manifest
+                   LEFT JOIN $outcomes outcomes
                      ON outcomes.prefix_id = manifest.prefix_id
                     AND outcomes.filename = manifest.filename
                     AND outcomes.stage = 'RELATIONSHIPS'

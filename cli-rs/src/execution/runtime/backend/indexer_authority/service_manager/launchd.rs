@@ -179,6 +179,14 @@ fn xml_escape(value: &str) -> String {
 mod tests {
     use super::*;
 
+    struct RegisteredLaunchdService(ServiceManagerRegistration);
+
+    impl Drop for RegisteredLaunchdService {
+        fn drop(&mut self) {
+            let _ = unregister(&self.0);
+        }
+    }
+
     #[test]
     fn launchd_print_reports_one_exact_pid() {
         assert_eq!(
@@ -196,5 +204,54 @@ mod tests {
         for output in ["pid = 1\npid = 2\n", "pid = nope\n", "pid = 0\n"] {
             assert!(parse_launchd_observation(output).is_err(), "{output:?}");
         }
+    }
+
+    #[test]
+    fn launchd_owns_runtime_after_start_call_returns() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().expect("launchd fixture");
+        let launcher = temp.path().join("kastctl-fixture");
+        fs::write(&launcher, "#!/bin/sh\nwhile :; do sleep 1; done\n").expect("fixture launcher");
+        let mut permissions = fs::metadata(&launcher)
+            .expect("launcher metadata")
+            .permissions();
+        permissions.set_mode(0o700);
+        fs::set_permissions(&launcher, permissions).expect("executable launcher");
+        let launch = ServiceLaunchRegistration {
+            schema_version: 1,
+            workspace_root: temp.path().display().to_string(),
+            workspace_key: "fixture".to_string(),
+            runtime_instance_id: uuid::Uuid::new_v4(),
+            owner_uid: u64::from(unsafe { libc::geteuid() }),
+            working_directory: temp.path().display().to_string(),
+            command: vec![launcher.display().to_string()],
+            environment: serde_json::from_value(serde_json::json!({})).expect("environment"),
+            log_file: temp.path().join("service.log").display().to_string(),
+            descriptor_directory: temp.path().join("descriptors").display().to_string(),
+            socket_path: temp.path().join("runtime.sock").display().to_string(),
+            launcher_path: launcher.display().to_string(),
+            launcher_sha256: "0".repeat(64),
+            installed_release: None,
+            runtime_config_path: temp.path().join("runtime.json").display().to_string(),
+            runtime_config_sha256: "0".repeat(64),
+        };
+        let manager = registration_for(&launch, temp.path()).expect("launchd registration");
+        let definition = render_definition(&launch, &manager, "0").expect("launchd definition");
+        fs::write(manager.definition_path(), definition).expect("launchd plist");
+
+        register(&manager).expect("register launchd fixture");
+        let cleanup = RegisteredLaunchdService(manager.clone());
+        let started = start(&manager).expect("start launchd fixture");
+        let ServiceManagerObservation::Running(started_pid) = started else {
+            panic!("launchd did not report a running service: {started:?}");
+        };
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        assert_eq!(
+            inspect(&manager).expect("inspect launchd fixture"),
+            ServiceManagerObservation::Running(started_pid),
+        );
+        drop(cleanup);
     }
 }

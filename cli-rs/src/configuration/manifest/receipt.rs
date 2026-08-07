@@ -94,7 +94,8 @@ pub struct BackendComponentState {
     pub name: String,
     pub version: String,
     pub install_dir: String,
-    pub runtime_libs_dir: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_libs_dir: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub idea_home: Option<String>,
 }
@@ -153,7 +154,7 @@ pub struct ResolvedKastPaths {
     pub config_file: PathBuf,
     pub shim_path: PathBuf,
     pub active_binary: PathBuf,
-    pub indexer_runtime_libs_dir: PathBuf,
+    pub indexer_runtime_libs_dir: Option<PathBuf>,
     pub indexer_host_home: Option<PathBuf>,
 }
 
@@ -192,7 +193,11 @@ pub fn default_resolved_paths() -> ResolvedKastPaths {
         config_root,
         shim_path: current.join(CONTROL_CLI_BUNDLE_PATH),
         active_binary: current.join(CONTROL_CLI_BUNDLE_PATH),
-        indexer_runtime_libs_dir: lib_dir.join("backends/indexer/current/runtime-libs"),
+        indexer_runtime_libs_dir: if cfg!(target_os = "macos") {
+            None
+        } else {
+            Some(lib_dir.join("backends/indexer/current/runtime-libs"))
+        },
         indexer_host_home: None,
     }
 }
@@ -253,8 +258,8 @@ pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKas
         shim_path: normalize(PathBuf::from(&manifest.entrypoints.shim)),
         active_binary: normalize(PathBuf::from(&manifest.entrypoints.active_binary)),
         indexer_runtime_libs_dir: indexer
-            .map(|backend| normalize(PathBuf::from(&backend.runtime_libs_dir)))
-            .unwrap_or_else(|| lib_dir.join("backends/indexer/current/runtime-libs")),
+            .and_then(|backend| backend.runtime_libs_dir.as_ref())
+            .map(|path| normalize(PathBuf::from(path))),
         indexer_host_home: indexer
             .and_then(|backend| backend.idea_home.as_ref())
             .map(|path| normalize(PathBuf::from(path))),

@@ -21,6 +21,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 include!("commands.rs");
+include!("check.rs");
 include!("refresh.rs");
 include!("graph.rs");
 include!("discovery.rs");

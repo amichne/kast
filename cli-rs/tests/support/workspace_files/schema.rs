@@ -12,6 +12,15 @@ impl WorkspaceIndexFixture {
                 );
                 INSERT INTO schema_version(version, generation, head_commit)
                     VALUES ({}, 41, 'fixture-head');
+                CREATE TABLE workspace_publication (
+                    singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+                    revision INTEGER NOT NULL CHECK(revision > 0),
+                    identity TEXT NOT NULL CHECK(length(identity) > 0),
+                    source_index_generation INTEGER NOT NULL CHECK(source_index_generation >= 0),
+                    source_index_schema_version INTEGER NOT NULL CHECK(source_index_schema_version > 0),
+                    published_at_epoch_millis INTEGER NOT NULL CHECK(published_at_epoch_millis >= 0),
+                    repository_overlay_file TEXT
+                );
                 CREATE TABLE path_prefixes (
                     prefix_id INTEGER PRIMARY KEY,
                     dir_path TEXT NOT NULL UNIQUE

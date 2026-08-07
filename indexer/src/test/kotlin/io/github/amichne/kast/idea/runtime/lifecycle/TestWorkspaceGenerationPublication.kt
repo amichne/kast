@@ -3,10 +3,14 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthority
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.transition.PreparedWorkspacePublication
+import io.github.amichne.kast.idea.transition.OpenWorkspacePublication
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.indexstore.snapshot.PublicationEpochMillis
+import io.github.amichne.kast.indexstore.snapshot.RepositoryOverlayPublication
 import io.github.amichne.kast.indexstore.snapshot.SourceIndexSchemaVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
@@ -18,27 +22,42 @@ internal class TestWorkspaceGenerationPublication(
     initial: PublishedWorkspaceGenerationManifest? = null,
     private val onCommit: (WorkspaceStateIdentity) -> Unit = {},
 ) : WorkspaceGenerationPublication {
-    private var published = initial
+    private var published: PublishedWorkspaceGenerationState = initial
+        ?.let(PublishedWorkspaceGenerationState::Published)
+        ?: PublishedWorkspaceGenerationState.Unpublished
 
     @Synchronized
-    override fun current(): PublishedWorkspaceGenerationManifest? = published
+    override fun current(): PublishedWorkspaceGenerationState = published
 
     @Synchronized
-    override fun prepare(identity: WorkspaceStateIdentity): PreparedWorkspacePublication =
-        TestPreparedWorkspacePublication(
-            identity = identity,
-            generation = published?.generation?.next() ?: WorkspaceSemanticGeneration(1),
+    override fun begin(): OpenWorkspacePublication =
+        TestOpenWorkspacePublication(
+            generation = when (val current = published) {
+                PublishedWorkspaceGenerationState.Unpublished -> WorkspaceSemanticGeneration(1)
+                is PublishedWorkspaceGenerationState.Published -> current.manifest.generation.next()
+            },
         )
 
     @Synchronized
+    override fun prepare(
+        open: OpenWorkspacePublication,
+        identity: WorkspaceStateIdentity,
+    ): PreparedWorkspacePublication = TestPreparedWorkspacePublication(
+        generation = open.testPublication().generation,
+        identity = identity,
+    )
+
+    @Synchronized
     override fun commit(prepared: PreparedWorkspacePublication): WorkspaceGenerationCommit {
-        val candidate = prepared as? TestPreparedWorkspacePublication
-            ?: error("Prepared workspace generation belongs to another test authority")
-        onCommit(candidate.identity)
-        val generation = testPublishedWorkspaceGeneration(candidate.generation, candidate.identity)
-        published = generation
-        return WorkspaceGenerationCommit.Durable(generation)
+        val candidate = prepared.testPublication()
+        val identity = candidate.identity
+        onCommit(identity)
+        val generation = testPublishedWorkspaceGeneration(candidate.generation, identity)
+        published = PublishedWorkspaceGenerationState.Published(generation)
+        return WorkspaceGenerationCommit(generation)
     }
+
+    override fun discard(open: OpenWorkspacePublication) = Unit
 
     override fun discard(prepared: PreparedWorkspacePublication) = Unit
 }
@@ -95,10 +114,22 @@ internal suspend fun KastIndexerBackend.reconcileSemanticGraphForTest(
 
 private const val TEST_RECONCILIATION_REVISION = 1L
 
-private data class TestPreparedWorkspacePublication(
-    val identity: WorkspaceStateIdentity,
+private class TestOpenWorkspacePublication(
     val generation: WorkspaceSemanticGeneration,
+) : OpenWorkspacePublication
+
+private class TestPreparedWorkspacePublication(
+    val generation: WorkspaceSemanticGeneration,
+    val identity: WorkspaceStateIdentity,
 ) : PreparedWorkspacePublication
+
+private fun OpenWorkspacePublication.testPublication(): TestOpenWorkspacePublication =
+    this as? TestOpenWorkspacePublication
+        ?: error("Open workspace generation belongs to another test authority")
+
+private fun PreparedWorkspacePublication.testPublication(): TestPreparedWorkspacePublication =
+    this as? TestPreparedWorkspacePublication
+        ?: error("Prepared workspace generation belongs to another test authority")
 
 internal fun testPublishedWorkspaceGeneration(
     generation: WorkspaceSemanticGeneration = WorkspaceSemanticGeneration(1),
@@ -108,6 +139,6 @@ internal fun testPublishedWorkspaceGeneration(
     identity = PublishedWorkspaceIdentity(identity.value),
     sourceIndexGeneration = SourceIndexGeneration(generation.value),
     sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
-    databaseFile = "generation-${generation.value}/source-index.db",
-    publishedAtEpochMillis = 1,
+    publishedAt = PublicationEpochMillis.fromClock(1),
+    repositoryOverlay = RepositoryOverlayPublication.ABSENT,
 )

@@ -31,26 +31,10 @@ fn coverage_fixture_with_file_count(
     assert!(git.success(), "initialize fixture Git repository");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let data = default_install_root(&home).join("state/data/workspaces");
-    std::fs::create_dir_all(data.join("local")).expect("workspace data");
-    std::fs::write(
-        data.join("local-workspaces.json"),
-        serde_json::to_vec_pretty(&serde_json::json!({
-            workspace.display().to_string(): "repository-intelligence"
-        }))
-        .expect("workspace registry JSON"),
-    )
-    .expect("workspace registry");
-    let git_dir = workspace.join(".git");
-    let common_hash = hex::encode(Sha256::digest(git_dir.to_string_lossy().as_bytes()));
-    let worktree_hash = hex::encode(Sha256::digest(
-        format!("{}\n{}", workspace.display(), git_dir.display()).as_bytes(),
-    ));
+    let workspace_key = hex::encode(Sha256::digest(workspace.to_string_lossy().as_bytes()));
     let database = data
-        .join("git/local")
-        .join(&common_hash[..12])
-        .join("worktrees")
-        .join(format!("workspace--{}", &worktree_hash[..12]))
-        .join("semantic-generations/generations/test-generation/source-index.db");
+        .join(workspace_key)
+        .join("cache/source-index.db");
     let fixture = WorkspaceIndexFixture::at_database_path(&workspace, &database);
     fixture.seed_high_cardinality_sources(file_count);
     let file_count = i64::try_from(file_count).expect("fixture file count");

@@ -1,30 +1,38 @@
 package io.github.amichne.kast.indexer.gradle.settlement
 
-import java.time.Duration
+import io.github.amichne.kast.api.contract.PositiveInt
 
-data class GradleModelSettlementPolicy(
-    val timeout: Duration,
-    val observationInterval: Duration,
-    val requiredStableObservations: Int,
-    val maxTransitionTraceEntries: Int,
+/**
+ * Construction transition:
+ * `(RuntimeProgressWaitPolicy, PositiveInt, PositiveInt) -> GradleModelSettlementPolicy`.
+ *
+ * Retains the already-proven wait policy, stability threshold, and trace bound
+ * as one settlement capability. Raw policy primitives are admitted only while
+ * constructing the three input proof types.
+ */
+@ConsistentCopyVisibility
+data class GradleModelSettlementPolicy private constructor(
+    val progressWaitPolicy: RuntimeProgressWaitPolicy,
+    val requiredStableObservations: PositiveInt,
+    val maxTransitionTraceEntries: PositiveInt,
 ) {
-    init {
-        require(!timeout.isNegative && !timeout.isZero) { "timeout must be positive" }
-        require(!observationInterval.isNegative && !observationInterval.isZero) {
-            "observationInterval must be positive"
-        }
-        require(requiredStableObservations > 0) { "requiredStableObservations must be positive" }
-        require(maxTransitionTraceEntries > 0) { "maxTransitionTraceEntries must be positive" }
-    }
-
     companion object {
+        fun derive(
+            progressWaitPolicy: RuntimeProgressWaitPolicy,
+            requiredStableObservations: PositiveInt,
+            maxTransitionTraceEntries: PositiveInt,
+        ): GradleModelSettlementPolicy = GradleModelSettlementPolicy(
+            progressWaitPolicy,
+            requiredStableObservations,
+            maxTransitionTraceEntries,
+        )
+
         @JvmStatic
         fun standard(): GradleModelSettlementPolicy =
-            GradleModelSettlementPolicy(
-                timeout = Duration.ofMinutes(5),
-                observationInterval = Duration.ofMillis(100),
-                requiredStableObservations = 10,
-                maxTransitionTraceEntries = 64,
+            derive(
+                progressWaitPolicy = RuntimeProgressWaitPolicy.standard(),
+                requiredStableObservations = PositiveInt(10),
+                maxTransitionTraceEntries = PositiveInt(64),
             )
     }
 }

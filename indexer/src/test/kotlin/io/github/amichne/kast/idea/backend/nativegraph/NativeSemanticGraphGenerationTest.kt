@@ -21,6 +21,7 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -100,6 +101,7 @@ class NativeSemanticGraphGenerationTest {
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
         val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
         val targetPath = SemanticGraphPath.parse(targetFile.virtualFile.path)
+        val indexingProgress = WorkspaceIndexingProgressAuthority()
         fun query(path: SemanticGraphPath) = SemanticGraphQuery(filePaths = listOf(path)).parsed()
         sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
@@ -109,11 +111,18 @@ class NativeSemanticGraphGenerationTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceIndexingProgress = indexingProgress,
                 workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
                 workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 val result = backend.reconcileSemanticGraphForTest(query(sourcePath))
                 assertTrue(result.coverage.omittedExternalTargetCount.value > 0)
+                val observedProgress = indexingProgress.observe()
+                assertTrue(observedProgress is WorkspaceIndexingProgressObservation.Observed)
+                assertEquals(
+                    FileIndexStage.SEMANTIC_GRAPH,
+                    (observedProgress as WorkspaceIndexingProgressObservation.Observed).activity.stage,
+                )
                 val excluded = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
                 assertTrue(excluded.boundarySymbols.none { symbol -> symbol.name.value == "BoundaryTarget" })
                 assertTrue(excluded.relations.none { relation -> relation.targetKey.value.contains("BoundaryTarget") })

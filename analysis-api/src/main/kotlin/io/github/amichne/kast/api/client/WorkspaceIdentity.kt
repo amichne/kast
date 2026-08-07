@@ -21,12 +21,19 @@ data class GradleRootIdentity(
     val settingsFileHash: GradleSettingsFileHash,
 )
 
+sealed interface WorkspaceRepository {
+    data object None : WorkspaceRepository
+
+    @JvmInline
+    value class Git(val dataDirectory: NormalizedPath) : WorkspaceRepository
+}
+
 data class WorkspaceIdentity(
     val workspaceRoot: NormalizedPath,
     val canonicalWorkspaceRoot: NormalizedPath,
     val workspaceId: WorkspaceId,
     val canonicalWorkspaceId: WorkspaceId,
-    val repositoryDataDirectory: NormalizedPath?,
+    val repository: WorkspaceRepository,
     val workspaceDataDirectory: NormalizedPath,
     val workspaceCacheDirectory: NormalizedPath,
     val sourceIndexDatabasePath: NormalizedPath,
@@ -42,9 +49,6 @@ data class WorkspaceIdentity(
 
     val workspaceDataDirectoryPath: Path
         get() = workspaceDataDirectory.toJavaPath()
-
-    val repositoryDataDirectoryPath: Path?
-        get() = repositoryDataDirectory?.toJavaPath()
 
     val workspaceCacheDirectoryPath: Path
         get() = workspaceCacheDirectory.toJavaPath()
@@ -81,7 +85,10 @@ data class WorkspaceIdentity(
         "canonicalWorkspaceId" to canonicalWorkspaceId.value,
         "workspaceRoot" to workspaceRoot.value,
         "canonicalWorkspaceRoot" to canonicalWorkspaceRoot.value,
-        "repositoryDataDirectory" to repositoryDataDirectory?.value,
+        "repositoryDataDirectory" to when (val current = repository) {
+            WorkspaceRepository.None -> null
+            is WorkspaceRepository.Git -> current.dataDirectory.value
+        },
         "workspaceDataDirectory" to workspaceDataDirectory.value,
         "workspaceCacheDirectory" to workspaceCacheDirectory.value,
         "sourceIndexDatabasePath" to sourceIndexDatabasePath.value,
@@ -93,6 +100,14 @@ data class WorkspaceIdentity(
     )
 
     companion object {
+        /**
+         * Proof transition: `Path -> WorkspaceIdentity`.
+         *
+         * Derives canonical workspace identity, flat workspace storage,
+         * closed repository authority, socket/descriptor locations, and
+         * optional Gradle-root evidence from one filesystem root. Raw paths
+         * are exposed only through filesystem adapter properties.
+         */
         fun fromWorkspaceRoot(
             workspaceRoot: Path,
             resolver: WorkspaceDirectoryResolver = WorkspaceDirectoryResolver(),
@@ -108,11 +123,10 @@ data class WorkspaceIdentity(
                 canonicalWorkspaceRoot = canonicalWorkspaceRoot,
                 workspaceId = workspaceId,
                 canonicalWorkspaceId = canonicalWorkspaceId,
-                repositoryDataDirectory = layout.repositoryDataDirectory
-                    ?.let(NormalizedPath::ofAbsolute),
-                workspaceDataDirectory = NormalizedPath.ofAbsolute(layout.workspaceDataDirectory),
-                workspaceCacheDirectory = NormalizedPath.ofAbsolute(layout.workspaceCacheDirectory),
-                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(layout.workspaceDatabasePath),
+                repository = layout.repository,
+                workspaceDataDirectory = layout.workspaceDataDirectory,
+                workspaceCacheDirectory = layout.workspaceCacheDirectory,
+                sourceIndexDatabasePath = layout.workspaceDatabasePath,
                 defaultSocketPath = NormalizedPath.ofAbsolute(defaultSocketPath(canonicalWorkspaceRoot.toJavaPath())),
                 descriptorDirectory = NormalizedPath.ofAbsolute(descriptorDirectory),
                 gradleRoot = gradleRootIdentity(canonicalWorkspaceRoot.toJavaPath()),

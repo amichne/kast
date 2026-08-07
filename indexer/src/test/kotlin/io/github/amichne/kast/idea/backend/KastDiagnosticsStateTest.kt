@@ -4,6 +4,7 @@ import io.github.amichne.kast.idea.diagnostics.*
 
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import io.github.amichne.kast.api.contract.ReferenceCoverageState
 import io.github.amichne.kast.api.contract.AnalysisTransport
@@ -75,7 +76,7 @@ class KastDiagnosticsStateTest {
     }
 
     @Test
-    fun `reference index readiness does not change runtime readiness`() {
+    fun `reference index readiness changes only its layered readiness lane`() {
         val readyBackend = RuntimeStatusResponse(
             state = RuntimeState.READY,
             healthy = true,
@@ -105,27 +106,16 @@ class KastDiagnosticsStateTest {
             ),
         )
 
-        assertEquals(
-            readyBackend.copy(
-                referenceCoverageState = ReferenceCoverageState.QUALIFIED,
-                referenceCoverageLimitations = listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS),
-            ),
-            indexing,
-        )
         assertFalse(indexing.referenceIndexReady)
+        assertTrue(indexing.readiness.runtime is RuntimeReadinessLane.Ready)
+        assertTrue(indexing.readiness.references is RuntimeReadinessLane.InProgress)
         assertEquals(ReferenceCoverageState.QUALIFIED, indexing.referenceCoverageState)
         assertEquals(
             listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS),
             indexing.referenceCoverageLimitations,
         )
-        assertEquals(
-            readyBackend.copy(
-                referenceIndexReady = true,
-                referenceCoverageState = ReferenceCoverageState.COMPLETE,
-            ),
-            ready,
-        )
         assertTrue(ready.referenceIndexReady)
+        assertTrue(ready.readiness.references is RuntimeReadinessLane.Ready)
         assertEquals(ReferenceCoverageState.QUALIFIED, readyWithBoundaries.referenceCoverageState)
         assertEquals(
             listOf(ReferenceCoverageLimitation.NONCRITICAL_STAGE_GAP),

@@ -84,4 +84,92 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn current_check_refreshes_only_typed_workspace_staleness() {
+        let covered = json!({
+            "ok": true,
+            "result": {
+                "semanticOutcome": "COMPLETE",
+                "fileStatuses": [],
+                "fileHashes": []
+            }
+        });
+        let vfs_behind_disk = json!({
+            "ok": true,
+            "result": {
+                "semanticOutcome": "INCOMPLETE",
+                "fileStatuses": [{"state": "PENDING_INDEX"}],
+                "fileHashes": []
+            }
+        });
+        let stale = json!({
+            "ok": false,
+            "result": {
+                "steps": [{
+                    "name": "diagnostics",
+                    "error": {
+                        "code": "CONFLICT",
+                        "details": {
+                            "rpcError": {
+                                "data": {
+                                    "details": {"workspaceState": "Pending(source changed)"}
+                                }
+                            }
+                        }
+                    }
+                }]
+            }
+        });
+        let unrelated = json!({
+            "ok": false,
+            "result": {
+                "steps": [{
+                    "name": "diagnostics",
+                    "error": {"code": "SEMANTIC_ANALYSIS_INVALID"}
+                }]
+            }
+        });
+        let runtime_indexing = json!({
+            "ok": false,
+            "error": {"code": "RUNTIME_NOT_READY"}
+        });
+        let published_movement = json!({
+            "ok": false,
+            "error": {"code": "PUBLISHED_WORKSPACE_MOVED"}
+        });
+        let generic_conflict = json!({
+            "ok": false,
+            "error": {"code": "CONFLICT"}
+        });
+
+        assert_eq!(
+            CurrentCheckAttempt::derive(covered.clone()),
+            CurrentCheckAttempt::Covered(covered)
+        );
+        assert_eq!(
+            CurrentCheckAttempt::derive(vfs_behind_disk),
+            CurrentCheckAttempt::RefreshRequired(WorkspaceStaleness::DiagnosticPublicationPending)
+        );
+        assert_eq!(
+            CurrentCheckAttempt::derive(stale),
+            CurrentCheckAttempt::RefreshRequired(WorkspaceStaleness::SemanticAdmissionMoved)
+        );
+        assert_eq!(
+            CurrentCheckAttempt::derive(runtime_indexing),
+            CurrentCheckAttempt::RefreshRequired(WorkspaceStaleness::RuntimeIndexing)
+        );
+        assert_eq!(
+            CurrentCheckAttempt::derive(published_movement),
+            CurrentCheckAttempt::RefreshRequired(WorkspaceStaleness::PublishedGenerationMoved)
+        );
+        assert!(matches!(
+            CurrentCheckAttempt::derive(unrelated),
+            CurrentCheckAttempt::Rejected(_)
+        ));
+        assert!(matches!(
+            CurrentCheckAttempt::derive(generic_conflict),
+            CurrentCheckAttempt::Rejected(_)
+        ));
+    }
 }

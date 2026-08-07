@@ -15,10 +15,11 @@ flowchart LR
     reuse -- "yes" --> gradle["Use imported Gradle model"]
     reuse -- "no" --> launch["Create isolated indexer"]
     launch --> gradle
-    gradle --> index["Reconcile graph and reference evidence"]
-    index --> prepare["Prepare immutable generation"]
-    prepare --> pointer["Replace current.json"]
-    pointer --> ready["Admit exact manifest"]
+    gradle --> transaction["Begin workspace SQLite transaction"]
+    transaction --> index["Reconcile graph and reference evidence"]
+    index --> verify["Verify exact workspace identity"]
+    verify --> publish["Write publication row and commit"]
+    publish --> ready["Admit exact revision"]
     ready --> kotlin["Lease one READY generation"]
     ready --> rust["Resolve exact published read"]
     ready --> mutation["Acquire mutation permit"]
@@ -37,9 +38,9 @@ flowchart LR
 - [Shutdown](flows/shutdown.md) explains lease, transport, worker, endpoint,
   and store close order.
 - [Event-driven semantic atomicity](event-driven-semantic-atomicity.md)
-  defines invalidation, workspace identity, two-phase immutable publication,
-  `current.json` visibility, exact read leases, mutation permits, restart
-  recovery, cache-only graph reads, and the Rust published-read boundary. Its
+  defines invalidation, workspace identity, single-database atomic publication,
+  SQLite visibility, exact read leases, mutation permits, restart behavior,
+  cache-only graph reads, and the Rust published-read boundary. Its
   [research ledger](research-ledger.md) maps each decision to source, platform
   contracts, or executable proof.
 
@@ -56,17 +57,17 @@ remain a separate current assessment.
    capability evidence.
 3. The imported Gradle model decides Kotlin source coverage.
 4. Only the transition worker can write semantic evidence and publish it.
-5. `current.json` is the default visibility boundary. The mutable writer
-   database is not an external read surface.
+5. The committed `workspace_publication` row and its workspace facts share one
+   SQLite transaction and one `source-index.db` visibility boundary.
 6. READY carries one exact published manifest. Each read lease rejects revision
    or manifest movement.
 7. A mutation permit withdraws READY and waits for active readers. The mutation
    returns only after a different manifest becomes READY.
 8. A public graph request reads cached facts only. Missing facts request a
    worker transition; the public operation does not write them.
-9. Restart recovery rebases the mutable writer from `current.json` before the
-   store opens. It does not accept a partial live database.
-10. Default Rust-local reads validate the published pointer and exact runtime
-    manifest before and after each operation.
+9. Restart opens the same workspace database. SQLite recovers interrupted
+   transactions; a schema mismatch regenerates current state without migration.
+10. Default Rust-local reads validate the database publication row and exact
+    runtime manifest before and after each operation.
 11. Process readiness, graph coverage, and reference coverage are separate.
     Foreground editor state cannot change indexer identity or evidence.

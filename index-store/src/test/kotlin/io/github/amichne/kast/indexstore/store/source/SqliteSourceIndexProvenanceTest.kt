@@ -2,7 +2,6 @@ package io.github.amichne.kast.indexstore
 
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
-import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
@@ -24,6 +23,7 @@ import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.snapshot.SnapshotExportTarget
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -48,8 +48,8 @@ class SqliteSourceIndexProvenanceTest {
 
     @Test
     fun `snapshot export carries complete stable progress and pending evidence`() {
-        val tree = GitObjectId.parse("a".repeat(40))
-        val producer = ProducerVersion.parse("test-producer")
+        val tree = GitObjectId.fromCanonical("a".repeat(40))
+        val producer = ProducerVersion.fromVersion("test-producer")
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             val path = workspaceRoot.resolve("A.kt").toAbsolutePath().normalize().toString()
@@ -71,13 +71,23 @@ class SqliteSourceIndexProvenanceTest {
                 listOf(RelationshipFileStageUpdate(work, work.contentHash, emptyList(), emptyList())),
             )
 
-            val exact = store.exportSnapshotDatabase(workspaceRoot.resolve("exact.db"), tree, producer)
-            assertTrue(exact.proves(key(tree, producer)))
+            val exact = SnapshotExportTarget.allocate(
+                io.github.amichne.kast.api.contract.NormalizedPath.ofAbsolute(workspaceRoot),
+            ).use { target -> store.exportSnapshotDatabase(target, tree, producer) }
+            assertTrue(
+                exact.prove(key(tree, producer)) is
+                    io.github.amichne.kast.indexstore.snapshot.SnapshotPublicationEvidenceResolution.Proven,
+            )
 
             store.appendPendingUpdate("remove_file", workspaceRoot.resolve("A.kt").toString(), null)
-            val pending = store.exportSnapshotDatabase(workspaceRoot.resolve("pending.db"), tree, producer)
-            assertFalse(pending.proves(key(tree, producer)))
-            assertEquals(1, pending.pendingCount)
+            val pending = SnapshotExportTarget.allocate(
+                io.github.amichne.kast.api.contract.NormalizedPath.ofAbsolute(workspaceRoot),
+            ).use { target -> store.exportSnapshotDatabase(target, tree, producer) }
+            assertTrue(
+                pending.prove(key(tree, producer)) is
+                    io.github.amichne.kast.indexstore.snapshot.SnapshotPublicationEvidenceResolution.Rejected,
+            )
+            assertEquals(1, pending.pendingCount.value)
         }
     }
 

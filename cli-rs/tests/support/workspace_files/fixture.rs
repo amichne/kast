@@ -13,7 +13,6 @@ impl WorkspaceIndexFixture {
             database_path: database_path.to_path_buf(),
         };
         fixture.create_schema();
-        publish_database_if_generation(database_path);
         fixture
     }
 
@@ -25,8 +24,11 @@ impl WorkspaceIndexFixture {
         &self.workspace_root
     }
 
-    pub(crate) fn connection(&self) -> Connection {
-        Connection::open(&self.database_path).expect("workspace index database")
+    pub(crate) fn connection(&self) -> WorkspaceFixtureConnection {
+        WorkspaceFixtureConnection {
+            connection: Connection::open(&self.database_path).expect("workspace index database"),
+            database_path: self.database_path.clone(),
+        }
     }
 
     pub(crate) fn seed_high_cardinality_sources(&self, count: usize) {

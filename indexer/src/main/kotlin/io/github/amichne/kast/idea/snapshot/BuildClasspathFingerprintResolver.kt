@@ -6,6 +6,7 @@ import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VfsUtilCore
+import io.github.amichne.kast.api.client.ReadOnlyGitCommand
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.idea.SemanticPathContentIdentity
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
@@ -37,7 +38,7 @@ object BuildClasspathFingerprintResolver {
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(entries.joinToString("\n").toByteArray())
             .joinToString("") { byte -> "%02x".format(byte) }
-        return BuildClasspathFingerprint.parse(digest)
+        return BuildClasspathFingerprint.fromDigest(digest)
     }
 
     fun contentRoots(project: Project): Set<Path> =
@@ -72,7 +73,7 @@ private fun localClasspathRootPath(rootUrl: String): Path? {
 }
 
 internal fun gitWorkspaceScope(workspaceRoot: java.nio.file.Path): String = runCatching {
-    val process = ProcessBuilder("git", "rev-parse", "--show-prefix")
+    val process = ReadOnlyGitCommand.workspacePrefix().processBuilder()
         .directory(workspaceRoot.toFile())
         .redirectError(ProcessBuilder.Redirect.DISCARD)
         .start()

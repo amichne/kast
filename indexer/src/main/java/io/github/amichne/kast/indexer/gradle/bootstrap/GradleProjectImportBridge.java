@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexer.gradle.bootstrap;
 
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
@@ -23,11 +24,21 @@ import com.intellij.util.execution.ParametersListUtil;
 import com.intellij.workspaceModel.ide.JpsProjectLoadingManager;
 import com.intellij.workspaceModel.ide.impl.WorkspaceModelImpl;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleImportObservation;
+import io.github.amichne.kast.indexer.gradle.settlement.GradleModelInventory;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelReadiness;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementAwaiter;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementEvidence;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementException;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementOutcome;
+import io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiter;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressAwaitException;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressAwaitFailure;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressAwaitOutcome;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressDeadlineEvidence;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressObservation;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeWaitCompletion;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeWaitLifecycle;
+import io.github.amichne.kast.api.contract.RuntimeProgressStage;
 import io.github.amichne.kast.indexer.project.IdeaIndexState;
 import io.github.amichne.kast.indexer.project.ProjectLifecycleState;
 import org.jetbrains.plugins.gradle.service.project.open.GradleProjectImportUtil;
@@ -43,11 +54,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class GradleProjectImportBridge {
     private static final String DISABLE_DEPENDENCY_SOURCE_DOWNLOADS =
@@ -112,7 +123,7 @@ public final class GradleProjectImportBridge {
                     GradleProjectImportUtil.createLinkSettings(Path.of(externalProjectPath), project);
                 ExternalSystemUtil.linkExternalProject(linkSettings, importSpec);
             }
-            awaitImport(importFuture, externalProjectPath);
+            awaitImport(importFuture, project);
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while importing Gradle project: " + externalProjectPath, error);
@@ -123,8 +134,6 @@ public final class GradleProjectImportBridge {
                 return;
             }
             throw new IllegalStateException("Gradle project import failed: " + externalProjectPath, cause);
-        } catch (TimeoutException error) {
-            throw new IllegalStateException("Timed out importing Gradle project: " + externalProjectPath, error);
         }
     }
 
@@ -184,9 +193,28 @@ public final class GradleProjectImportBridge {
         return roots.getSdk() != null && everyOrderEntryResolved && jdkResolvable && kotlinRuntimeResolvable;
     }
 
-    private static void awaitImport(CompletableFuture<Void> importFuture, String externalProjectPath)
-        throws InterruptedException, ExecutionException, TimeoutException {
-        importFuture.get(5, TimeUnit.MINUTES);
+    private static void awaitImport(CompletableFuture<Void> importFuture, Project project)
+        throws InterruptedException, ExecutionException {
+        requireCompleted(
+            ProgressAwareFutureAwaiter.standard().await(
+                RuntimeProgressStage.GRADLE_IMPORT,
+                importFuture,
+                () -> RuntimeProgressObservation.capture(inspectGradleImportObservation(project)),
+                () -> project.isDisposed() ? RuntimeWaitLifecycle.Disposed : RuntimeWaitLifecycle.Active
+            )
+        );
+    }
+
+    public static void awaitGradleRefresh(Project project, CompletableFuture<Void> refreshFuture)
+        throws InterruptedException, ExecutionException {
+        requireCompleted(
+            ProgressAwareFutureAwaiter.standard().await(
+                RuntimeProgressStage.GRADLE_IMPORT,
+                refreshFuture,
+                () -> RuntimeProgressObservation.capture(inspectGradleImportObservation(project)),
+                () -> project.isDisposed() ? RuntimeWaitLifecycle.Disposed : RuntimeWaitLifecycle.Active
+            )
+        );
     }
 
     public static GradleModelSettlementEvidence awaitGradleModelSettlement(Project project) {
@@ -197,7 +225,7 @@ public final class GradleProjectImportBridge {
         if (outcome instanceof GradleModelSettlementOutcome.Settled settled) {
             return settled.getEvidence();
         }
-        throw new GradleModelSettlementException(outcome);
+        throw new GradleModelSettlementException((GradleModelSettlementOutcome.Failure) outcome);
     }
 
     static boolean isConcurrentGradleSyncFailure(Throwable failure) {
@@ -218,7 +246,8 @@ public final class GradleProjectImportBridge {
                 GradleReloadState.COMPLETED,
                 GradleResolveState.IDLE,
                 IdeaIndexState.SMART,
-                ProjectLifecycleState.DISPOSED
+                ProjectLifecycleState.DISPOSED,
+                GradleModelInventory.empty()
             );
         }
         ObservableOperationTrace reload = GradleImportingUtil.getGradleProjectReloadOperation(project, project);
@@ -230,24 +259,58 @@ public final class GradleProjectImportBridge {
         };
         boolean resolveActive = ExternalSystemProcessingManager.getInstance()
             .hasTaskOfTypeInProgress(ExternalSystemTaskType.RESOLVE_PROJECT, project);
+        GradleModelInventory inventory = readProjectModelInventory(() -> {
+            Module[] observedModules = ModuleManager.getInstance(project).getModules();
+            int sourceRootCount = Arrays.stream(observedModules)
+                .filter(module -> !module.isDisposed())
+                .mapToInt(module -> ModuleRootManager.getInstance(module).getSourceRoots().length)
+                .sum();
+            return GradleModelInventory.fromIdeaModel(observedModules.length, sourceRootCount);
+        });
         return new GradleImportObservation(
             reloadState,
             resolveActive ? GradleResolveState.IN_PROGRESS : GradleResolveState.IDLE,
             DumbService.getInstance(project).isDumb() ? IdeaIndexState.DUMB : IdeaIndexState.SMART,
-            ProjectLifecycleState.ACTIVE
+            ProjectLifecycleState.ACTIVE,
+            inventory
         );
+    }
+
+    /**
+     * Proof transition: {@code Supplier<GradleModelInventory> -> GradleModelInventory}.
+     *
+     * Evaluates the IDEA project-model observation under read authority. The returned inventory is
+     * derived from a coherent model snapshot, so downstream settlement logic never receives module
+     * or source-root primitives observed outside an IntelliJ read action.
+     */
+    static GradleModelInventory readProjectModelInventory(Supplier<GradleModelInventory> observation) {
+        return ReadAction.compute(observation::get);
     }
 
     private static void awaitStartupActivities(Project project, String externalProjectPath) {
         StartupManager startup = StartupManager.getInstance(project);
-        long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(5);
-        while (!startup.postStartupActivityPassed()) {
-            if (project.isDisposed()) {
-                throw new IllegalStateException(
-                    "Project was disposed before startup activities completed: " + externalProjectPath
-                );
-            }
-            pauseUntilNextObservation(deadlineNanos, "project startup activities for " + externalProjectPath);
+        try {
+            requireCompleted(
+                ProgressAwareFutureAwaiter.standard().awaitCondition(
+                    RuntimeProgressStage.STARTING,
+                    () -> startup.postStartupActivityPassed()
+                        ? RuntimeWaitCompletion.Completed
+                        : RuntimeWaitCompletion.Pending,
+                    () -> RuntimeProgressObservation.capture(startup.postStartupActivityPassed()),
+                    () -> project.isDisposed() ? RuntimeWaitLifecycle.Disposed : RuntimeWaitLifecycle.Active
+                )
+            );
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                "Interrupted while waiting for project startup activities: " + externalProjectPath,
+                error
+            );
+        } catch (ExecutionException error) {
+            throw new IllegalStateException(
+                "Project startup observation failed: " + externalProjectPath,
+                error.getCause() == null ? error : error.getCause()
+            );
         }
         awaitJpsProjectLoad(
             () -> workspaceModelLoadedFromCache(project),
@@ -273,15 +336,47 @@ public final class GradleProjectImportBridge {
         }
         CompletableFuture<Void> projectLoaded = new CompletableFuture<>();
         registerProjectLoadedCallback.accept(() -> projectLoaded.complete(null));
-        long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(5);
-        while (!projectLoaded.isDone()) {
-            if (projectDisposed.getAsBoolean()) {
-                throw new IllegalStateException(
-                    "Project was disposed before the JPS project model loaded: " + externalProjectPath
-                );
-            }
-            pauseUntilNextObservation(deadlineNanos, "JPS project model load for " + externalProjectPath);
+        try {
+            requireCompleted(
+                ProgressAwareFutureAwaiter.standard().await(
+                    RuntimeProgressStage.MODEL_SETTLEMENT,
+                    projectLoaded,
+                    () -> RuntimeProgressObservation.capture(projectLoaded.isDone()),
+                    () -> projectDisposed.getAsBoolean()
+                        ? RuntimeWaitLifecycle.Disposed
+                        : RuntimeWaitLifecycle.Active
+                )
+            );
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                "Interrupted while waiting for the JPS project model: " + externalProjectPath,
+                error
+            );
+        } catch (ExecutionException error) {
+            throw new IllegalStateException(
+                "JPS project model load failed: " + externalProjectPath,
+                error.getCause() == null ? error : error.getCause()
+            );
         }
+    }
+
+    private static RuntimeProgressDeadlineEvidence requireCompleted(RuntimeProgressAwaitOutcome outcome)
+        throws InterruptedException, ExecutionException {
+        if (outcome instanceof RuntimeProgressAwaitOutcome.Completed completed) {
+            return completed.getEvidence();
+        }
+        RuntimeProgressAwaitFailure failure = ((RuntimeProgressAwaitOutcome.Rejected) outcome).getFailure();
+        if (failure instanceof RuntimeProgressAwaitFailure.Interrupted) {
+            throw new InterruptedException("Runtime progress wait was interrupted");
+        }
+        if (failure instanceof RuntimeProgressAwaitFailure.FutureFailed futureFailed) {
+            throw new ExecutionException(futureFailed.getCause());
+        }
+        if (failure instanceof RuntimeProgressAwaitFailure.FutureCancelled) {
+            throw new CancellationException("Runtime progress future was cancelled");
+        }
+        throw new RuntimeProgressAwaitException(failure);
     }
 
     private static boolean workspaceModelLoadedFromCache(Project project) {
@@ -294,15 +389,4 @@ public final class GradleProjectImportBridge {
         );
     }
 
-    private static void pauseUntilNextObservation(long deadlineNanos, String operation) {
-        if (System.nanoTime() >= deadlineNanos) {
-            throw new IllegalStateException("Timed out waiting for " + operation);
-        }
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException error) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for " + operation, error);
-        }
-    }
 }

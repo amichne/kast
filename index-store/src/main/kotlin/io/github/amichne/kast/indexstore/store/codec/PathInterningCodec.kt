@@ -1,15 +1,25 @@
 package io.github.amichne.kast.indexstore.store.codec
 
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.store.AttachedSqliteDatabase
 import java.nio.file.Path
 import java.sql.Connection
+
+internal class SourceIndexReadPath internal constructor(
+    internal val prefixId: Int,
+    internal val filename: String,
+)
+
+internal sealed interface SourceIndexReadPathResolution {
+    data class Resolved(val path: SourceIndexReadPath) : SourceIndexReadPathResolution
+
+    data object PrefixUnavailable : SourceIndexReadPathResolution
+}
 
 internal class PathInterningCodec(
     workspaceRoot: Path,
     private val interning: StringInterningCodec = StringInterningCodec(
-        tableName = "path_prefixes",
-        idColumn = "prefix_id",
-        valueColumn = "dir_path",
+        StringInterningDomain.PATH_PREFIX,
     ),
 ) {
     private val normalizedWorkspaceRoot = NormalizedPath.of(workspaceRoot).toJavaPath()
@@ -66,6 +76,19 @@ internal class PathInterningCodec(
 
     fun reloadPrefixes(conn: Connection) = interning.reloadAll(conn)
 
+    /**
+     * Proof transition:
+     * `(Connection, AttachedSqliteDatabase) -> ReadOnlyInterningAliasResolution`.
+     *
+     * Delegates repository path-prefix admission and preserves its finite
+     * loaded/rejected outcome; raw IDs stay inside the SQLite codec boundary.
+     */
+    fun loadReadOnlyAliases(
+        conn: Connection,
+        database: AttachedSqliteDatabase,
+    ): ReadOnlyInterningAliasResolution =
+        interning.loadReadOnlyAliases(conn, database)
+
     fun resolvePrefix(prefixId: Int): String =
         interning.resolve(prefixId)
 
@@ -87,6 +110,24 @@ internal class PathInterningCodec(
     fun encodeIfInterned(absolutePath: String): Pair<Int, String>? {
         val (relativeDir, filename) = decompose(absolutePath)
         return interning.idFor(relativeDir)?.let { prefixId -> prefixId to filename }
+    }
+
+    /**
+     * Proof transition: `String -> SourceIndexReadPathResolution`.
+     *
+     * A resolved path carries a normalized filename and a prefix interned by
+     * either the workspace database or attached repository read authority.
+     * Missing prefix evidence is explicit [SourceIndexReadPathResolution.PrefixUnavailable].
+     * Raw prefix IDs and filenames are extracted only while binding SQLite.
+     */
+    fun encodeForRead(absolutePath: String): SourceIndexReadPathResolution {
+        val (relativeDir, filename) = decompose(absolutePath)
+        return when (val resolution = interning.idForRead(relativeDir)) {
+            is InternedStringReadIdResolution.Resolved -> SourceIndexReadPathResolution.Resolved(
+                SourceIndexReadPath(resolution.id.value, filename),
+            )
+            InternedStringReadIdResolution.Unavailable -> SourceIndexReadPathResolution.PrefixUnavailable
+        }
     }
 
     fun decode(

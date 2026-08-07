@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.api.client.ReadOnlyGitCommand
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
@@ -202,20 +203,11 @@ private class ResolvedGitWorktreeTransitionGuard(
     }
 
     private fun resolveMarkerPaths(): GitMarkerPathResolution {
-        val command = buildList {
-            add("git")
-            add("rev-parse")
-            add("--path-format=absolute")
-            add("--show-toplevel")
-            add("--absolute-git-dir")
-            add("--git-common-dir")
-            GitWorktreeTransitionMarker.entries.forEach { marker ->
-                add("--git-path")
-                add(marker.gitPath)
-            }
-        }
+        val command = ReadOnlyGitCommand.transitionMarkerPaths(
+            GitWorktreeTransitionMarker.entries.map(GitWorktreeTransitionMarker::gitPath),
+        )
         val process = runCatching {
-            ProcessBuilder(command).also { builder ->
+            command.processBuilder().also { builder ->
                 GitRepositorySelectionEnvironment.entries.forEach { selection ->
                     builder.environment().remove(selection.variable)
                 }

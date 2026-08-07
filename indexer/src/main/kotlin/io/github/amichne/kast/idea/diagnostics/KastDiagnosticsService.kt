@@ -12,7 +12,14 @@ import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import io.github.amichne.kast.api.contract.ReferenceCoverage
+import io.github.amichne.kast.api.contract.RuntimeProgressStage
+import io.github.amichne.kast.api.contract.RuntimeProgressTiming
+import io.github.amichne.kast.api.contract.RuntimeProgressWork
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
+import io.github.amichne.kast.api.contract.RuntimeReadinessProgress
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import java.nio.file.Path
+import java.time.Instant
 
 internal const val KAST_TOOL_WINDOW_ID = "Kast"
 internal const val KAST_STATUS_WIDGET_ID = "io.github.amichne.kast.status"
@@ -252,5 +259,50 @@ internal fun RuntimeStatusResponse.withReferenceIndex(
         KastIndexState.CANCELLED,
         -> ReferenceCoverage.unavailable(limitations)
     }
-    return withReferenceCoverage(coverage)
+    val covered = withReferenceCoverage(coverage)
+    if (covered.readiness.references !is RuntimeReadinessLane.InProgress) return covered
+    val referenceLane = RuntimeReadinessLane.InProgress(
+        RuntimeReadinessProgress.derive(
+            stage = index.runtimeProgressStage(),
+            work = index.runtimeProgressWork(),
+            timing = index.runtimeProgressTiming(Instant.now()),
+        ),
+    )
+    val readiness = covered.readiness.copy(references = referenceLane)
+    return covered.copy(readiness = readiness, ready = readiness.summary.toWireBoolean())
 }
+
+/**
+ * Proof transition: `KastSourceIndexSummary -> RuntimeProgressStage`.
+ *
+ * Maps the closed diagnostics lifecycle to the corresponding public progress
+ * stage; no string or ordinal protocol crosses the status boundary.
+ */
+private fun KastSourceIndexSummary.runtimeProgressStage(): RuntimeProgressStage = when (state) {
+    KastIndexState.WAITING_FOR_IDE -> RuntimeProgressStage.IDE_INDEXING
+    KastIndexState.HYDRATING -> RuntimeProgressStage.MODEL_SETTLEMENT
+    else -> RuntimeProgressStage.REFERENCE_INDEX
+}
+
+/**
+ * Proof transition: `KastSourceIndexSummary -> RuntimeProgressWork`.
+ *
+ * Refines the diagnostics DTO's optional file count at this UI boundary into
+ * closed uncounted or positive-total work before readiness code consumes it.
+ */
+private fun KastSourceIndexSummary.runtimeProgressWork(): RuntimeProgressWork = fileCount
+    ?.let(::NonNegativeInt)
+    ?.let(RuntimeProgressWork::pending)
+    ?: RuntimeProgressWork.Uncounted
+
+/**
+ * Proof transition: `(KastSourceIndexSummary, Instant) -> RuntimeProgressTiming`.
+ *
+ * Refines closed diagnostics timing state into bounded readiness timing. The
+ * current wall-clock observation is accepted only at this status boundary.
+ */
+private fun KastSourceIndexSummary.runtimeProgressTiming(observedAt: Instant): RuntimeProgressTiming =
+    when (val timing = progressTiming) {
+        KastIndexProgressTiming.Unobserved -> RuntimeProgressTiming.unobserved()
+        is KastIndexProgressTiming.Observed -> timing.runtimeTimingAt(observedAt)
+    }

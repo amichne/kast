@@ -76,7 +76,7 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
                 "- Backend {}: `{}` runtime `{}`",
                 backend.name,
                 backend.version,
-                backend.runtime_libs_dir
+                backend.runtime_libs_dir.as_deref().unwrap_or("host-supplied")
             );
         }
     }

@@ -16,8 +16,6 @@ import io.github.amichne.kast.api.client.fields.PathsLogsDir
 import io.github.amichne.kast.api.client.fields.PathsSocketDir
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreAccess
 import java.nio.file.Files
@@ -25,6 +23,7 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -93,7 +92,7 @@ class IndexerServerRuntimeTest {
     }
 
     @Test
-    fun `runtime rebases current published generation before opening the mutable store`() = runBlocking {
+    fun `runtime opens one workspace database without filesystem generations`() = runBlocking {
         val project = projectFixture.get()
         waitUntilIndexesAreReady(project)
         val workspaceRoot = tempDir.resolve("restart-recovery-workspace")
@@ -114,24 +113,7 @@ class IndexerServerRuntimeTest {
             workspaceRoot = workspaceRoot,
             descriptorDirectory = descriptorDirectory,
         ).workspaceIdentity
-        val publicationDirectory = workspaceIdentity.workspaceDataDirectoryPath.resolve("semantic-generations")
-        val mutableDatabase = workspaceIdentity.sourceIndexDatabaseFile
-        val generationStore: WorkspaceGenerationStore
-        val published = SqliteSourceIndexStore(workspaceIdentity).use { seed ->
-            seed.ensureSchema()
-            generationStore = WorkspaceGenerationStore(
-                directory = publicationDirectory,
-                exportDatabase = { target ->
-                    seed.exportVerifiedWorkspaceDatabase(target).copy(moduleProgressCount = 1)
-                },
-            )
-            generationStore.publish(PublishedWorkspaceIdentity("runtime-recovery"))
-        }
-        val pointer = publicationDirectory.resolve("current.json")
-        val pointerBeforeRestart = Files.readAllBytes(pointer)
-        Files.writeString(mutableDatabase, "partial live database")
-        Files.writeString(mutableDatabase.resolveSibling("source-index.db-wal"), "stale wal")
-        Files.writeString(mutableDatabase.resolveSibling("source-index.db-shm"), "stale shm")
+        val database = workspaceIdentity.sourceIndexDatabaseFile
 
         try {
             IndexerServerRuntime.start(
@@ -145,10 +127,10 @@ class IndexerServerRuntimeTest {
             }
 
             SqliteSourceIndexStore(workspaceIdentity, SqliteSourceIndexStoreAccess.READ_ONLY).use { recovered ->
-                assertEquals(published.sourceIndexGeneration, recovered.readGeneration())
+                assertEquals(0, recovered.readGeneration().value)
             }
-            assertEquals(pointerBeforeRestart.toList(), Files.readAllBytes(pointer).toList())
-            assertEquals(published, generationStore.current())
+            assertTrue(Files.isRegularFile(database))
+            assertFalse(Files.exists(workspaceIdentity.workspaceDataDirectoryPath.resolve("semantic-generations")))
         } finally {
             workspaceIdentity.workspaceDataDirectoryPath.toFile().deleteRecursively()
         }

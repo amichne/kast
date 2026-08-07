@@ -74,12 +74,13 @@ fn validate_retired_daemon(descriptor: &ServerInstanceDescriptor) -> Result<Reti
         return Err(indexer_authority::runtime_identity_mismatch());
     }
     indexer_authority::validate_descriptor_owner(descriptor)?;
-    let status = rpc::request_wait_for_close::<RuntimeStatusResponse>(
+    let status = rpc::request_wait_for_close::<RuntimeStatusWireResponse>(
         Path::new(&descriptor.socket_path),
         "runtime/status",
         Value::Object(Default::default()),
         Duration::from_secs(2),
-    )?;
+    )?
+    .into_status()?;
     validate_runtime_status_identity(descriptor, &status)?;
     if descriptor.backend_version != status.backend_version
         || descriptor.schema_version != status.schema_version

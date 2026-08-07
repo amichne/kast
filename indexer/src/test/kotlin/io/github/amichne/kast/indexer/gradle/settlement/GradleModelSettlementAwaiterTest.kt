@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexer.gradle.settlement
 
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleReloadState
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleResolveState
 import io.github.amichne.kast.indexer.project.IdeaIndexState
@@ -50,6 +51,7 @@ class GradleModelSettlementAwaiterTest {
         val timedOut = assertInstanceOf(GradleModelSettlementOutcome.TimedOut::class.java, outcome)
         assertEquals(stalled, timedOut.evidence.lastObservation)
         assertEquals(0, timedOut.evidence.totalTransitions)
+        assertEquals(Duration.ofMillis(3), timedOut.evidence.noProgress)
     }
 
     @Test
@@ -79,12 +81,14 @@ class GradleModelSettlementAwaiterTest {
         val harness = SettlementHarness(listOf(stalled))
         val outcome = harness.awaiter(timeoutMillis = 2).await(harness::observe)
 
-        val error = GradleModelSettlementException(outcome)
+        val failure = assertInstanceOf(GradleModelSettlementOutcome.Failure::class.java, outcome)
+        val error = GradleModelSettlementException(failure)
         val message = error.message.orEmpty()
 
         assertTrue(message.contains("lastObservation=$stalled"))
         assertTrue(message.contains("totalTransitions=0"))
         assertFalse(message.contains("transitionProgress"))
+        assertTrue(message.contains("noProgress="))
     }
 
     @Test
@@ -123,7 +127,7 @@ class GradleModelSettlementAwaiterTest {
         val awaiter =
             GradleModelSettlementAwaiter(
                 policy = policy(),
-                nanoTime = harness::nanoTime,
+                clock = MonotonicClock.fromRaw(harness::nanoTime),
                 pause = { throw InterruptedException("test interruption") },
             )
 
@@ -175,11 +179,14 @@ class GradleModelSettlementAwaiterTest {
         stableObservations: Int = 2,
         maxTransitionTraceEntries: Int = 16,
     ) =
-        GradleModelSettlementPolicy(
-            timeout = Duration.ofMillis(timeoutMillis),
-            observationInterval = Duration.ofMillis(1),
-            requiredStableObservations = stableObservations,
-            maxTransitionTraceEntries = maxTransitionTraceEntries,
+        GradleModelSettlementPolicy.derive(
+            progressWaitPolicy = RuntimeProgressWaitPolicy.derive(
+                noProgressTimeout = Duration.ofMillis(timeoutMillis),
+                maximumWait = Duration.ofMillis(timeoutMillis),
+                observationInterval = Duration.ofMillis(1),
+            ),
+            requiredStableObservations = PositiveInt(stableObservations),
+            maxTransitionTraceEntries = PositiveInt(maxTransitionTraceEntries),
         )
 
     private fun SettlementHarness.awaiter(
@@ -189,7 +196,7 @@ class GradleModelSettlementAwaiterTest {
     ) =
         GradleModelSettlementAwaiter(
             policy = policy(timeoutMillis, stableObservations, maxTransitionTraceEntries),
-            nanoTime = ::nanoTime,
+            clock = MonotonicClock.fromRaw(::nanoTime),
             pause = ::pause,
         )
 

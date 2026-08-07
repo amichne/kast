@@ -107,6 +107,7 @@ fn installed_idea_sidecar_java_command(
             )
         })?;
     }
+    preflight_installed_idea_semantic_runtime(&idea_home, &idea_system)?;
     let payload_plugin = installed_sidecar_plugin(args, config)?;
     let isolated_plugin = plugins.join("kast-indexer");
     ensure_isolated_plugin_link(&payload_plugin, &isolated_plugin)?;

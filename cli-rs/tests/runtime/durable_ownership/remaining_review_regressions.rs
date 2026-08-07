@@ -1,4 +1,5 @@
 use super::*;
+use std::os::unix::ffi::OsStringExt as _;
 use std::path::Path;
 
 #[test]
@@ -122,6 +123,122 @@ fn gone_legacy_descriptor_without_start_identity_remains_repairable_remaining_re
     assert_eq!(repair["actions"].as_array().map(Vec::len), Some(1));
     assert!(!fixture.descriptor_registry.exists(), "descriptor remains");
     assert!(!fixture.socket_path.exists(), "socket remains");
+}
+
+#[test]
+fn unrelated_non_utf8_argv_does_not_block_runtime_discovery_remaining_review_regression() {
+    let temp = tempfile::tempdir().expect("non-UTF8 process discovery fixture");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    let invalid_argument = std::ffi::OsString::from_vec(vec![0xff, 0xfe]);
+    let mut unrelated = Command::new("/bin/sh")
+        .args(["-c", "trap 'exit 0' TERM; read fixture_value"])
+        .arg(invalid_argument)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .expect("unrelated non-UTF8 process");
+
+    let repair = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "runtime",
+            "repair",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("runtime discovery");
+
+    assert_success(&repair, "runtime discovery with unrelated non-UTF8 argv");
+    assert_eq!(output_json(&repair)["state"], "CLEAN");
+    assert!(
+        unrelated.try_wait().expect("unrelated status").is_none(),
+        "discovery terminated an unrelated process"
+    );
+    unrelated.kill().expect("unrelated process cleanup");
+    unrelated.wait().expect("unrelated process exit");
+}
+
+#[test]
+fn partial_live_registration_cannot_be_cleaned_around_remaining_review_regression() {
+    let mut fixture = RuntimeServiceFixture::new();
+    let dead_registration = fixture.add_dead_registration();
+    std::fs::remove_file(fixture.registration.join("receipt.json")).expect("remove live receipt");
+    std::fs::remove_file(
+        fixture
+            .registration
+            .parent()
+            .expect("service workspace")
+            .join("active.json"),
+    )
+    .expect("remove active pointer");
+    std::fs::remove_file(&fixture.descriptor_registry).expect("remove live descriptor");
+    std::fs::remove_file(&fixture.socket_path).expect("remove live socket registration");
+
+    let repair = fixture
+        .repair_command(true)
+        .output()
+        .expect("partial registration repair");
+
+    assert_error(&repair, "RUNTIME_OWNERSHIP_AMBIGUOUS");
+    assert!(
+        dead_registration.exists(),
+        "dead evidence was cleaned around ambiguity"
+    );
+    assert!(
+        fixture
+            .runtime
+            .try_wait()
+            .expect("live runtime status")
+            .is_none(),
+        "repair terminated the hidden live runtime"
+    );
+}
+
+#[test]
+fn missing_live_registration_cannot_be_cleaned_around_remaining_review_regression() {
+    let mut fixture = RuntimeServiceFixture::new();
+    let dead_registration = fixture.add_dead_registration();
+    let active_registration = fixture
+        .registration
+        .parent()
+        .expect("service workspace")
+        .join("active.json");
+    std::fs::remove_dir_all(&fixture.registration).expect("remove live registration");
+    std::fs::remove_file(active_registration).expect("remove active pointer");
+    std::fs::remove_file(&fixture.descriptor_registry).expect("remove live descriptor");
+    std::fs::remove_file(&fixture.socket_path).expect("remove live socket registration");
+
+    let repair = fixture
+        .repair_command(true)
+        .output()
+        .expect("missing registration repair");
+
+    assert_success(&repair, "missing registration repair");
+    let repair = output_json(&repair);
+    assert_eq!(repair["state"], "BLOCKED");
+    assert_eq!(repair["actions"].as_array().map(Vec::len), Some(0));
+    assert!(
+        dead_registration.exists(),
+        "dead evidence was cleaned around an unregistered live runtime"
+    );
+    assert!(
+        fixture
+            .runtime
+            .try_wait()
+            .expect("live runtime status")
+            .is_none(),
+        "repair terminated the unregistered live runtime"
+    );
 }
 
 struct LegacyPidReuseFixture {

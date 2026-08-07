@@ -294,8 +294,8 @@ fn critical_graph_noncritical_stale_file_remains_qualified() {
 fn write_critical_paths(fixture: &WorkspaceIndexFixture, pattern: &str) {
     let config_path = fixture
         .database_path()
-        .ancestors()
-        .nth(4)
+        .parent()
+        .and_then(std::path::Path::parent)
         .expect("workspace data directory")
         .join("config.toml");
     std::fs::write(

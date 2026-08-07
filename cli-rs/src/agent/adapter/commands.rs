@@ -17,14 +17,6 @@ struct UpResult {
     next: Vec<&'static str>,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct EmptyCheckResult {
-    changed_file_count: usize,
-    diagnostic_count: usize,
-    message: &'static str,
-}
-
 pub(crate) fn run_up() -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     let mut args = crate::default_runtime_args();
@@ -230,34 +222,4 @@ pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
             })
         }
     }
-}
-
-pub(crate) fn run_check(args: KastPathsArgs) -> Result<i32> {
-    let workspace_root = config::resolve_workspace_root(None)?;
-    let file_paths = if args.paths.is_empty() {
-        match changed_kotlin_files(&workspace_root)? {
-            Ok(file_paths) => file_paths,
-            Err(envelope) => return print_projected_value(envelope),
-        }
-    } else {
-        args.paths
-            .into_iter()
-            .map(|path| path.display().to_string())
-            .collect()
-    };
-    if file_paths.is_empty() {
-        return print_direct(&EmptyCheckResult {
-            changed_file_count: 0,
-            diagnostic_count: 0,
-            message: "No changed Kotlin files were found.",
-        });
-    }
-    print_projected(AgentCommand::Diagnostics(AgentDiagnosticsArgs {
-        runtime: agent_runtime(workspace_root),
-        file_paths,
-        skip_refresh: false,
-        limit: 500,
-        page_token: None,
-        view: AgentDiagnosticsViewArgs::default(),
-    }))
 }

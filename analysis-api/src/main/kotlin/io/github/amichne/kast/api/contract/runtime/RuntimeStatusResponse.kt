@@ -7,7 +7,7 @@ import io.github.amichne.kast.api.protocol.*
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import java.nio.file.Path
+import kotlinx.serialization.EncodeDefault
 
 @Serializable
 data class RuntimeStatusResponse(
@@ -57,6 +57,27 @@ data class RuntimeStatusResponse(
         defaultValue = "null",
     )
     val publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus? = null,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    @DocField(
+        description = "Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes.",
+        defaultValue = "derived from legacy runtime and reference fields",
+    )
+    val readiness: RuntimeReadiness = RuntimeReadiness.fromLegacy(
+        LegacyRuntimeReadinessFacts(
+            state = state,
+            healthy = healthy,
+            active = active,
+            indexing = indexing,
+            referenceCoverage = ReferenceCoverage.parse(
+                indexReady = referenceIndexReady,
+                state = referenceCoverageState,
+                limitations = referenceCoverageLimitations,
+            ),
+        ),
+    ),
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    @DocField(description = "Compatibility summary. True only when every readiness lane is ready.")
+    val ready: Boolean = readiness.summary.toWireBoolean(),
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 ) {
@@ -67,16 +88,46 @@ data class RuntimeStatusResponse(
         limitations = referenceCoverageLimitations,
     )
 
-    fun withReferenceCoverage(coverage: ReferenceCoverage): RuntimeStatusResponse = copy(
-        referenceIndexReady = coverage.indexReady,
-        referenceCoverageState = coverage.state,
-        referenceCoverageLimitations = coverage.limitations,
-    )
+    @Transient
+    internal val consistency: RuntimeStatusConsistency = when (
+        val resolution = RuntimeStatusConsistency.resolve(readiness, referenceCoverage, ready)
+    ) {
+        is RuntimeStatusConsistencyResolution.Verified -> resolution.proof
+        is RuntimeStatusConsistencyResolution.Rejected -> throw RuntimeStatusConsistencyException(resolution.failure)
+    }
+
+    fun withReferenceCoverage(coverage: ReferenceCoverage): RuntimeStatusResponse {
+        val updatedReadiness = readiness.copy(
+            references = RuntimeReadinessLane.fromReferenceCoverage(coverage),
+        )
+        return copy(
+            referenceIndexReady = coverage.indexReady,
+            referenceCoverageState = coverage.state,
+            referenceCoverageLimitations = coverage.limitations,
+            readiness = updatedReadiness,
+            ready = updatedReadiness.summary.toWireBoolean(),
+        )
+    }
 }
 
+/**
+ * Outer serializer adapter for a finite [RuntimeStatusConsistencyFailure].
+ * Core validation returns [RuntimeStatusConsistencyResolution]; only DTO
+ * construction converts rejected wire evidence to an exception.
+ */
+internal class RuntimeStatusConsistencyException(
+    val failure: RuntimeStatusConsistencyFailure,
+) : IllegalArgumentException(failure.toString())
+
+/**
+ * Wire-boundary transition from serialized primitives to one constrained
+ * published-workspace status. This DTO is the outer protocol boundary where
+ * raw extraction is permitted; core publication code consumes
+ * `PublishedWorkspaceGenerationManifest` instead.
+ */
 @Serializable
 data class PublishedWorkspaceGenerationStatus(
-    @DocField(description = "Positive immutable workspace semantic generation identifier.")
+    @DocField(description = "Positive revision committed in the workspace source-index database.")
     val generation: Long,
     @DocField(description = "Verified workspace-state identity bound to this generation.")
     val identity: String,
@@ -84,7 +135,7 @@ data class PublishedWorkspaceGenerationStatus(
     val sourceIndexGeneration: Long,
     @DocField(description = "Source-index schema version stored in the published database.")
     val sourceIndexSchemaVersion: Int,
-    @DocField(description = "Canonical generation-relative source-index database path.")
+    @DocField(description = "Canonical workspace source-index database filename.")
     val databaseFile: String,
     @DocField(description = "Publication time in Unix epoch milliseconds.")
     val publishedAtEpochMillis: Long,
@@ -96,24 +147,14 @@ data class PublishedWorkspaceGenerationStatus(
         require(identity.isNotBlank()) { "Published workspace identity must not be blank" }
         require(sourceIndexGeneration >= 0) { "Source-index generation must not be negative" }
         require(sourceIndexSchemaVersion > 0) { "Source-index schema version must be positive" }
-        require(isCanonicalGenerationDatabasePath(databaseFile)) {
-            "Published database file must be a canonical generation-relative source-index.db path"
+        require(databaseFile == "source-index.db") {
+            "Published database file must be the single workspace source-index.db"
         }
         require(repositoryOverlayFile == null || repositoryOverlayFile == "repository-overlay.json") {
             "Published repository overlay must be repository-overlay.json"
         }
         require(publishedAtEpochMillis >= 0) { "Publication time must not be negative" }
     }
-}
-
-private fun isCanonicalGenerationDatabasePath(raw: String): Boolean {
-    if (raw.isBlank() || '\\' in raw) return false
-    val path = runCatching { Path.of(raw) }.getOrNull() ?: return false
-    return !path.isAbsolute &&
-        path.nameCount == 2 &&
-        path.normalize().toString() == raw &&
-        path.fileName.toString() == "source-index.db" &&
-        path.none { segment -> segment.toString() == ".." }
 }
 
 class ReferenceCoverage private constructor(
@@ -153,6 +194,15 @@ class ReferenceCoverage private constructor(
             limitations = limitations,
         )
 
+        /**
+         * Construction transition:
+         * `(Boolean, ReferenceCoverageState, List<ReferenceCoverageLimitation>) -> ReferenceCoverage`.
+         *
+         * Establishes a unique, state-compatible limitation set and readiness
+         * relationship. Inputs come from the runtime-status protocol boundary;
+         * invalid combinations are protocol-construction defects and never
+         * flow into the returned core value.
+         */
         fun parse(
             indexReady: Boolean,
             state: ReferenceCoverageState,

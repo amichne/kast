@@ -4,6 +4,8 @@ import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.api.reference.*
+import io.github.amichne.kast.indexstore.snapshot.RepositoryOverlayPublication
+import io.github.amichne.kast.indexstore.store.codec.InternedStringReadIdResolution
 import java.nio.file.Path
 import java.sql.Connection
 
@@ -23,35 +25,25 @@ internal class SourceIndexDeclarationStore(
     fun replaceDeclarationsFromFiles(declarationsBySource: List<Pair<String, List<DeclarationRow>>>) {
         val eligibleDeclarationsBySource = declarationsBySource
             .mapNotNull(::parseDeclarationBatch)
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                mutations.internPathsInTransaction(
-                    conn,
-                    eligibleDeclarationsBySource.map { batch -> batch.sourcePath.toDatabasePath() },
-                )
-                mutations.internFqNamesInTransaction(
-                    conn,
-                    eligibleDeclarationsBySource.flatMapTo(mutableSetOf()) { batch ->
-                        batch.declarations.map { declaration -> declaration.fqName }
-                    },
-                )
-                for (batch in eligibleDeclarationsBySource) {
-                    clearDeclarationsFromFileInTransaction(conn, batch.sourcePath)
-                    batch.declarations.forEach { declaration ->
-                        insertDeclarationInTransaction(conn, batch.sourcePath, declaration)
-                    }
+        state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { conn ->
+            mutations.internPathsInTransaction(
+                conn,
+                eligibleDeclarationsBySource.map { batch -> batch.sourcePath.toDatabasePath() },
+            )
+            mutations.internFqNamesInTransaction(
+                conn,
+                eligibleDeclarationsBySource.flatMapTo(mutableSetOf()) { batch ->
+                    batch.declarations.map { declaration -> declaration.fqName }
+                },
+            )
+            for (batch in eligibleDeclarationsBySource) {
+                clearDeclarationsFromFileInTransaction(conn, batch.sourcePath)
+                batch.declarations.forEach { declaration ->
+                    insertDeclarationInTransaction(conn, batch.sourcePath, declaration)
                 }
-                state.removeIneligibleSourceIndexRows(conn)
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
             }
+            state.removeIneligibleSourceIndexRows(conn)
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
@@ -59,16 +51,22 @@ internal class SourceIndexDeclarationStore(
         synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
-            val supertypeFqId = fqCodec.idFor(supertypeFqName) ?: return emptyList()
+            val supertypeFqId = when (val resolution = fqCodec.idForRead(supertypeFqName)) {
+                is InternedStringReadIdResolution.Resolved -> resolution.id
+                InternedStringReadIdResolution.Unavailable -> return emptyList()
+            }
+            val declarations = state.readTable(SourceIndexReadTable.DECLARATIONS)
+            val supertypes = state.readTable(SourceIndexReadTable.DECLARATION_SUPERTYPES)
+            val fqNames = state.readTable(SourceIndexReadTable.FQ_NAMES)
             return conn.prepareStatement(
                 """SELECT fn_decl.fq_name, d.kind, d.visibility, d.prefix_id, d.filename,
                           d.declaration_offset, d.module_path, d.source_set
-                   FROM declarations d
-                   JOIN declaration_supertypes ds ON ds.declaration_fq_id = d.fq_id
-                   JOIN fq_names fn_decl ON fn_decl.fq_id = d.fq_id
+                   FROM $declarations d
+                   JOIN $supertypes ds ON ds.declaration_fq_id = d.fq_id
+                   JOIN $fqNames fn_decl ON fn_decl.fq_id = d.fq_id
                    WHERE ds.supertype_fq_id = ?""",
             ).use { stmt ->
-                stmt.setInt(1, supertypeFqId)
+                stmt.setInt(1, supertypeFqId.value)
                 val rs = stmt.executeQuery()
                 buildList {
                     while (rs.next()) {
@@ -96,16 +94,23 @@ internal class SourceIndexDeclarationStore(
         val conn = state.connection()
         state.loadInterningTables(conn)
         val query = pattern.value.trim()
-        val searchClause = if (query.length >= 3) {
-            "fq_names_fts MATCH ?"
-        } else {
-            "instr(lower(names.fq_name), lower(?)) > 0"
+        val fqNames = state.readTable(SourceIndexReadTable.FQ_NAMES)
+        val declarations = state.readTable(SourceIndexReadTable.DECLARATIONS)
+        val searchAuthority = when {
+            query.length < 3 -> DeclarationSearchAuthority.EFFECTIVE_RELATION_SCAN
+            state.repositoryOverlayPublication == RepositoryOverlayPublication.ABSENT ->
+                DeclarationSearchAuthority.PRIMARY_FULL_TEXT_INDEX
+            else -> DeclarationSearchAuthority.EFFECTIVE_RELATION_SCAN
         }
-        val source = if (query.length >= 3) {
-            """fq_names_fts
-               JOIN fq_names names ON names.fq_id = fq_names_fts.rowid"""
-        } else {
-            "fq_names names"
+        val searchClause = when (searchAuthority) {
+            DeclarationSearchAuthority.PRIMARY_FULL_TEXT_INDEX -> "fq_names_fts MATCH ?"
+            DeclarationSearchAuthority.EFFECTIVE_RELATION_SCAN -> "instr(lower(names.fq_name), lower(?)) > 0"
+        }
+        val source = when (searchAuthority) {
+            DeclarationSearchAuthority.PRIMARY_FULL_TEXT_INDEX ->
+                """fq_names_fts
+                   JOIN $fqNames names ON names.fq_id = fq_names_fts.rowid"""
+            DeclarationSearchAuthority.EFFECTIVE_RELATION_SCAN -> "$fqNames names"
         }
         conn.prepareStatement(
             """SELECT names.fq_name, declarations.kind, declarations.visibility,
@@ -113,17 +118,17 @@ internal class SourceIndexDeclarationStore(
                       declarations.declaration_offset, declarations.module_path,
                       declarations.source_set
                FROM $source
-               JOIN declarations ON declarations.fq_id = names.fq_id
+               JOIN $declarations declarations ON declarations.fq_id = names.fq_id
                WHERE $searchClause
                ORDER BY names.fq_name, declarations.prefix_id, declarations.filename
                LIMIT ?""",
         ).use { statement ->
             statement.setString(
                 1,
-                if (query.length >= 3) {
-                    "\"${query.replace("\"", "\"\"")}\""
-                } else {
-                    query
+                when (searchAuthority) {
+                    DeclarationSearchAuthority.PRIMARY_FULL_TEXT_INDEX ->
+                        "\"${query.replace("\"", "\"\"")}\""
+                    DeclarationSearchAuthority.EFFECTIVE_RELATION_SCAN -> query
                 },
             )
             statement.setInt(2, maxResults.value)
@@ -225,4 +230,9 @@ internal class SourceIndexDeclarationStore(
         val sourcePath: WorkspaceSourcePath,
         val declarations: List<DeclarationRow>,
     )
+}
+
+private enum class DeclarationSearchAuthority {
+    PRIMARY_FULL_TEXT_INDEX,
+    EFFECTIVE_RELATION_SCAN,
 }

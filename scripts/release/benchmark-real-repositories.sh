@@ -493,27 +493,45 @@ PY
   fi
 }
 
-find_published_workspace_pointer() {
-  run_supervised_command "$(role_command_deadline)" publication-pointer \
+find_published_workspace_database() {
+  run_supervised_command "$(role_command_deadline)" publication-database \
     "$BENCHMARK_PYTHON_BIN" - "$@" <<'PY'
+import sqlite3
 import sys
 from pathlib import Path
 
-pointers = set()
+databases = set()
 for raw_root in sys.argv[1:]:
     root = Path(raw_root)
     if not root.is_dir():
         continue
-    for candidate in root.rglob("current.json"):
-        if candidate.parent.name == "semantic-generations" and candidate.is_file():
-            pointers.add(candidate.resolve())
-if len(pointers) != 1:
+    for candidate in root.rglob("source-index.db"):
+        workspace_directory = candidate.parent.parent
+        if (
+            candidate.parent.name != "cache"
+            or workspace_directory.parent.name != "workspaces"
+            or len(workspace_directory.name) != 64
+            or any(character not in "0123456789abcdef" for character in workspace_directory.name)
+            or not candidate.is_file()
+        ):
+            continue
+        try:
+            connection = sqlite3.connect(f"file:{candidate.resolve()}?mode=ro", uri=True)
+            published = connection.execute(
+                "SELECT 1 FROM workspace_publication WHERE singleton = 1"
+            ).fetchone()
+            connection.close()
+        except sqlite3.Error:
+            continue
+        if published == (1,):
+            databases.add(candidate.resolve())
+if len(databases) != 1:
     print(
-        f"error: expected one published workspace pointer, found {len(pointers)}",
+        f"error: expected one published workspace database, found {len(databases)}",
         file=sys.stderr,
     )
     raise SystemExit(1)
-print(next(iter(pointers)))
+print(next(iter(databases)))
 PY
 }
 
@@ -562,11 +580,11 @@ run_generation_bound_graph_refresh() {
 
 verify_benchmark_evidence() {
   local workspace_output="$1" refresh_output="$2" graph_output="$3" expected_graph_path="$4"
-  local workspace_root="$5" workspace_pages_directory="$6" published_pointer="$7"
+  local workspace_root="$5" workspace_pages_directory="$6" published_database="$7"
   local deadline_monotonic_ms="$8" correctness_output="$9"
   run_supervised_command "$deadline_monotonic_ms" semantic-identity "$BENCHMARK_PYTHON_BIN" - \
     "$workspace_output" "$refresh_output" "$graph_output" "$expected_graph_path" \
-    "$workspace_root" "$workspace_pages_directory" "$published_pointer" \
+    "$workspace_root" "$workspace_pages_directory" "$published_database" \
     "$deadline_monotonic_ms" "$correctness_output" <<'PY'
 import hashlib
 import json
@@ -584,7 +602,7 @@ from pathlib import Path, PurePosixPath
     expected_graph_path,
     workspace_root,
     workspace_pages_directory,
-    published_pointer,
+    published_database,
     deadline_monotonic_ms,
     correctness_output,
 ) = sys.argv[1:]
@@ -723,39 +741,20 @@ if (
     raise SystemExit("semantic refresh and summary omitted exact source-index generations")
 
 require_budget()
-pointer_path = Path(published_pointer).resolve()
-if pointer_path.name != "current.json" or pointer_path.parent.name != "semantic-generations":
-    raise SystemExit("published workspace pointer is not canonical")
-pointer_before = pointer_path.read_bytes()
-manifest = json.loads(pointer_before)
-manifest_generation = manifest.get("sourceIndexGeneration")
+database_path = Path(published_database).resolve()
+workspace_directory = database_path.parent.parent
 if (
-    not isinstance(manifest_generation, int)
-    or isinstance(manifest_generation, bool)
-    or manifest_generation < 0
-    or len({refresh_generation, graph_generation, manifest_generation}) != 1
-):
-    raise SystemExit("semantic evidence does not belong to one source-index generation")
-database_file = manifest.get("databaseFile")
-database_relative = PurePosixPath(database_file) if isinstance(database_file, str) else None
-if (
-    database_relative is None
-    or database_relative.is_absolute()
-    or len(database_relative.parts) != 2
-    or database_relative.parts[1] != "source-index.db"
-    or any(part in {"", ".", ".."} for part in database_relative.parts)
+    database_path.name != "source-index.db"
+    or database_path.parent.name != "cache"
+    or workspace_directory.parent.name != "workspaces"
+    or len(workspace_directory.name) != 64
+    or any(character not in "0123456789abcdef" for character in workspace_directory.name)
 ):
     raise SystemExit("published workspace database path is not canonical")
-generations_directory = (pointer_path.parent / "generations").resolve()
-database_path = (generations_directory / Path(*database_relative.parts)).resolve()
-try:
-    database_path.relative_to(generations_directory)
-except ValueError as error:
-    raise SystemExit("published workspace database escapes its generation directory") from error
-if not database_path.is_file():
+if not database_path.is_file() or database_path.is_symlink():
     raise SystemExit("published workspace database is unavailable")
 
-database_uri = "file:" + urllib.parse.quote(str(database_path)) + "?mode=ro&immutable=1"
+database_uri = "file:" + urllib.parse.quote(str(database_path)) + "?mode=ro"
 connection = sqlite3.connect(database_uri, uri=True)
 connection.execute("PRAGMA query_only = ON")
 connection.set_progress_handler(lambda: time.monotonic() >= deadline_monotonic, 1000)
@@ -771,19 +770,43 @@ def require_columns(schema, table, required):
 
 try:
     connection.execute("BEGIN")
+    publication_before = connection.execute(
+        "SELECT revision, identity, source_index_generation, source_index_schema_version, "
+        "       published_at_epoch_millis, repository_overlay_file "
+        "FROM workspace_publication WHERE singleton = 1"
+    ).fetchone()
+    if publication_before is None:
+        raise SystemExit("workspace database has no committed publication")
+    (
+        publication_revision,
+        publication_identity,
+        manifest_generation,
+        expected_schema,
+        published_at_epoch_millis,
+        overlay_file,
+    ) = publication_before
+    if (
+        not isinstance(publication_revision, int)
+        or publication_revision <= 0
+        or not isinstance(publication_identity, str)
+        or not publication_identity.strip()
+        or not isinstance(published_at_epoch_millis, int)
+        or published_at_epoch_millis < 0
+        or not isinstance(manifest_generation, int)
+        or manifest_generation < 0
+    ):
+        raise SystemExit("workspace publication identity is invalid")
+    if len({refresh_generation, graph_generation, manifest_generation}) != 1:
+        raise SystemExit("semantic evidence does not belong to one source-index generation")
     schema_row = connection.execute(
         "SELECT version, generation FROM schema_version LIMIT 1"
     ).fetchone()
-    expected_schema = manifest.get("sourceIndexSchemaVersion")
-    expected_generation = manifest.get("sourceIndexGeneration")
     if (
         not isinstance(expected_schema, int)
         or isinstance(expected_schema, bool)
-        or not isinstance(expected_generation, int)
-        or isinstance(expected_generation, bool)
-        or schema_row != (expected_schema, expected_generation)
+        or schema_row != (expected_schema, manifest_generation)
     ):
-        raise SystemExit("published workspace manifest disagrees with the database identity")
+        raise SystemExit("workspace publication disagrees with the database identity")
     if schema_row[1] != refresh_generation:
         raise SystemExit("semantic evidence does not belong to one source-index generation")
     require_columns("main", "semantic_files", {"id", "path"})
@@ -797,7 +820,6 @@ try:
         },
     )
 
-    overlay_file = manifest.get("repositoryOverlayFile")
     if overlay_file is None:
         node_rows = connection.execute(
             "SELECT symbols.stable_key, symbols.kind, symbols.name, files.path "
@@ -822,14 +844,14 @@ try:
     else:
         if overlay_file != "repository-overlay.json":
             raise SystemExit("published repository overlay path is not canonical")
-        generation_directory = database_path.parent
-        descriptor_path = generation_directory / overlay_file
+        cache_directory = database_path.parent
+        descriptor_path = cache_directory / overlay_file
         descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
         base_database = descriptor.get("baseDatabase")
-        expected_base = (generation_directory / "repository-base.db").resolve()
-        if not isinstance(base_database, str) or Path(base_database).resolve() != expected_base:
-            raise SystemExit("published repository base path is not canonical")
-        if not expected_base.is_file():
+        if not isinstance(base_database, str) or not Path(base_database).is_absolute():
+            raise SystemExit("published repository base path is not absolute")
+        expected_base = Path(base_database).resolve()
+        if not expected_base.is_file() or expected_base.is_symlink():
             raise SystemExit("published repository base database is unavailable")
         base_uri = "file:" + urllib.parse.quote(str(expected_base)) + "?mode=ro&immutable=1"
         connection.execute("ATTACH DATABASE ? AS repository_base", (base_uri,))
@@ -939,8 +961,17 @@ finally:
     connection.close()
 
 require_budget()
-if pointer_path.read_bytes() != pointer_before:
-    raise SystemExit("published workspace pointer moved during semantic identity capture")
+recheck = sqlite3.connect(database_uri, uri=True)
+try:
+    publication_after = recheck.execute(
+        "SELECT revision, identity, source_index_generation, source_index_schema_version, "
+        "       published_at_epoch_millis, repository_overlay_file "
+        "FROM workspace_publication WHERE singleton = 1"
+    ).fetchone()
+finally:
+    recheck.close()
+if publication_after != publication_before:
+    raise SystemExit("workspace publication moved during semantic identity capture")
 
 node_identities = [
     {
@@ -2430,7 +2461,7 @@ run_bundle_benchmark() {
   local admission_epoch='' admission_monotonic='' admission_recorded=false
   local workspace_finished_epoch workspace_finished_monotonic
   local runtime_command_pid runtime_result=0
-  local now_monotonic poll_seconds identity_timeout_ms identity_deadline published_pointer
+  local now_monotonic poll_seconds identity_timeout_ms identity_deadline published_database
 
   benchmark_run_dir="$scratch/runs/$benchmark_role"
   benchmark_repository_worktree="$benchmark_run_dir/repository"
@@ -2629,8 +2660,8 @@ run_bundle_benchmark() {
   phase_started_epoch="$(epoch_millis)"
   phase_started_monotonic="$(monotonic_millis)"
   identity_deadline=$((phase_started_monotonic + identity_timeout_ms))
-  published_pointer="$(benchmark_command_deadline_override="$identity_deadline" \
-    find_published_workspace_pointer "$benchmark_kast_home" "$benchmark_cache_dir")"
+  published_database="$(benchmark_command_deadline_override="$identity_deadline" \
+    find_published_workspace_database "$benchmark_kast_home" "$benchmark_cache_dir")"
   verify_benchmark_evidence \
     "$benchmark_run_dir/workspace-files.json" \
     "$benchmark_run_dir/graph-refresh.json" \
@@ -2638,7 +2669,7 @@ run_bundle_benchmark() {
     "$scoped_graph_file" \
     "$workspace" \
     "$benchmark_workspace_identity_pages" \
-    "$published_pointer" \
+    "$published_database" \
     "$identity_deadline" \
     "$benchmark_correctness_file"
   record_phase semanticIdentity "$phase_started_epoch" "$phase_started_monotonic"

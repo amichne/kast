@@ -46,7 +46,7 @@ fn demo_uses_a_ready_backend_for_the_published_source_index() {
 }
 
 #[test]
-fn demo_rejects_a_ready_backend_without_a_published_workspace_generation() {
+fn demo_rejects_a_ready_backend_without_a_published_workspace_database() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -72,8 +72,8 @@ fn demo_rejects_a_ready_backend_without_a_published_workspace_generation() {
     assert!(
         response["message"]
             .as_str()
-            .is_some_and(|message| message.contains("Published workspace pointer")),
-        "the demo must reject an unpublished semantic generation: {response:#}"
+            .is_some_and(|message| message.contains("Published workspace database")),
+        "the demo must reject an unpublished workspace database: {response:#}"
     );
 }
 

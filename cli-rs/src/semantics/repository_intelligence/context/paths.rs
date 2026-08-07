@@ -48,7 +48,7 @@ fn repository_context_paths(
 }
 
 fn repository_context_inventory(workspace_root: &WorkspaceRoot) -> Result<BTreeSet<PathBuf>> {
-    let output = std::process::Command::new("git")
+    let output = ReadOnlyGitCommand::new()
         .args([
             "ls-files",
             "--cached",
@@ -178,3 +178,4 @@ fn same_repository_context_file(admitted: &std::fs::Metadata, opened: &std::fs::
         && admitted.len() == opened.len()
         && admitted.modified().ok() == opened.modified().ok()
 }
+use crate::git::ReadOnlyGitCommand;

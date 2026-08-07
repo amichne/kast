@@ -14,6 +14,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -109,7 +110,10 @@ class WorkspaceEventDrivenIntegrationTest {
             }
             assertEquals(sourceIdentity(source), edited)
             assertNotEquals(initial, edited)
-            assertEquals(WorkspaceSemanticGeneration(2), publication.current()?.generation)
+            assertEquals(
+                WorkspaceSemanticGeneration(2),
+                (publication.current() as PublishedWorkspaceGenerationState.Published).manifest.generation,
+            )
             assertTrue(awaitReady(admission), "edited generation did not open READY")
         } finally {
             releaseEditedPass.countDown()
@@ -235,7 +239,10 @@ class WorkspaceEventDrivenIntegrationTest {
             Thread.sleep(500)
             assertTrue(publications.isEmpty(), "checkout published more than one final generation")
             assertEquals(listOf(initialTree, finalTree), committed)
-            assertEquals(WorkspaceSemanticGeneration(2), publication.current()?.generation)
+            assertEquals(
+                WorkspaceSemanticGeneration(2),
+                (publication.current() as PublishedWorkspaceGenerationState.Published).manifest.generation,
+            )
             assertTrue(awaitReady(admission), "checkout generation did not open READY")
             assertEquals(1, refreshPasses.size, "checkout event storm must conflate into one final pass")
         } finally {
@@ -374,23 +381,14 @@ cat
     }
 
     private fun git(directory: Path, vararg arguments: String) {
-        val process = gitProcess(directory, *arguments)
-        val output = process.inputStream.use { it.readAllBytes().toString(Charsets.UTF_8) }
-        assertEquals(0, process.waitFor(), "git ${arguments.joinToString(" ")} failed: $output")
+        runGitCommand(directory, *arguments)
     }
 
-    private fun gitOutput(directory: Path, vararg arguments: String): String {
-        val process = gitProcess(directory, *arguments)
-        val output = process.inputStream.use { it.readAllBytes().toString(Charsets.UTF_8) }
-        assertEquals(0, process.waitFor(), "git ${arguments.joinToString(" ")} failed: $output")
-        return output.trim()
-    }
+    private fun gitOutput(directory: Path, vararg arguments: String): String =
+        readGitOutput(directory, *arguments)
 
     private fun gitProcess(directory: Path, vararg arguments: String): Process =
-        ProcessBuilder("git", *arguments)
-            .directory(directory.toFile())
-            .redirectErrorStream(true)
-            .start()
+        startGitProcess(directory, *arguments)
 
     private fun shellQuote(path: Path): String = "'${path.toAbsolutePath().toString().replace("'", "'\\''")}'"
 }

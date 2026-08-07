@@ -12,6 +12,10 @@ mod launchd;
 #[path = "service_manager/systemd.rs"]
 mod systemd;
 
+#[path = "service_manager/discovery.rs"]
+mod discovery;
+pub(super) use discovery::{RegisteredRuntimeIdentities, discover_unregistered};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ServiceManagerObservation {
     Absent,

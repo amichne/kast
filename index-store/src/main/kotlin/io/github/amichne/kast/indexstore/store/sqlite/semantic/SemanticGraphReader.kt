@@ -18,35 +18,17 @@ internal class SemanticGraphReader(
             val generation = state.readGenerationInTransaction(conn)
             prepareSemanticGraphScope(conn, filePaths)
             val files = readSemanticGraphFiles(conn)
+            val symbolsTable = state.readTable(SourceIndexReadTable.SEMANTIC_SYMBOLS)
+            val filesTable = state.readTable(SourceIndexReadTable.SEMANTIC_FILES)
+            val edgesTable = state.readTable(SourceIndexReadTable.SEMANTIC_EDGE_OCCURRENCES)
             val symbols = conn.prepareStatement(
-                semanticSymbolSelect(
-                    """FROM requested_semantic_file_ids requested
-                       JOIN semantic_symbols symbols INDEXED BY idx_semantic_symbols_file_id_id
-                         ON symbols.file_id = requested.id
-                       JOIN semantic_files files ON files.id = symbols.file_id
-                       LEFT JOIN semantic_symbols owner ON owner.id = symbols.owner_id""",
-                    "WHERE files.refresh_status != 'UNKNOWN' ORDER BY symbols.id",
-                ),
+                semanticSymbolSelect(SemanticSymbolReadScope.REQUESTED_FILES).sql,
             ).use { statement ->
                 val rows = statement.executeQuery()
                 buildList { while (rows.next()) add(readSemanticSymbol(rows)) }
             }
             val boundarySymbols = conn.prepareStatement(
-                semanticSymbolSelect(
-                    """FROM semantic_symbols symbols
-                       JOIN semantic_files files ON files.id = symbols.file_id
-                       LEFT JOIN semantic_symbols owner ON owner.id = symbols.owner_id""",
-                    """WHERE symbols.id IN (
-                           SELECT edges.target_id
-                           FROM semantic_edge_occurrences edges INDEXED BY idx_semantic_edges_source_file_id_id
-                           WHERE edges.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
-                       )
-                       AND (
-                           symbols.file_id NOT IN (SELECT id FROM requested_semantic_file_ids)
-                           OR files.refresh_status = 'UNKNOWN'
-                       )
-                       ORDER BY symbols.id""",
-                ),
+                semanticSymbolSelect(SemanticSymbolReadScope.BOUNDARY_TARGETS).sql,
             ).use { statement ->
                 val rows = statement.executeQuery()
                 buildList { while (rows.next()) add(readSemanticSymbol(rows)) }
@@ -55,11 +37,11 @@ internal class SemanticGraphReader(
                 """SELECT source.stable_key, target.stable_key, resolved.stable_key,
                           edges.kind, edges.context, files.path,
                           edges.start_offset, edges.end_offset, edges.line
-                   FROM semantic_edge_occurrences edges INDEXED BY idx_semantic_edges_source_file_id_id
-                   JOIN semantic_symbols source ON source.id = edges.source_id
-                   JOIN semantic_symbols target ON target.id = edges.target_id
-                   LEFT JOIN semantic_symbols resolved ON resolved.id = edges.resolved_target_id
-                   JOIN semantic_files files ON files.id = edges.source_file_id
+                   FROM $edgesTable edges
+                   JOIN $symbolsTable source ON source.id = edges.source_id
+                   JOIN $symbolsTable target ON target.id = edges.target_id
+                   LEFT JOIN $symbolsTable resolved ON resolved.id = edges.resolved_target_id
+                   JOIN $filesTable files ON files.id = edges.source_file_id
                    WHERE edges.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
                    ORDER BY edges.id""",
             ).use { statement ->
@@ -93,8 +75,8 @@ internal class SemanticGraphReader(
             SemanticGraphIndexSummary(
                 generation = state.readGenerationInTransaction(conn),
                 files = readSemanticGraphFiles(conn),
-                symbolCount = countRequestedSemanticSymbols(conn),
-                edgeOccurrenceCount = countRequestedRows(conn, "semantic_edge_occurrences", "source_file_id"),
+                symbolCount = countRequestedSemanticSymbols(conn).value,
+                edgeOccurrenceCount = countRequestedEdgeOccurrences(conn).value,
             )
         }
 
@@ -103,7 +85,7 @@ internal class SemanticGraphReader(
             """SELECT files.path, files.content_hash, files.refresh_status, files.diagnostics_json,
                       files.boundary_failure_id, files.boundary_failure_code
                FROM requested_semantic_file_ids requested
-               JOIN semantic_files files ON files.id = requested.id
+               JOIN ${state.readTable(SourceIndexReadTable.SEMANTIC_FILES)} files ON files.id = requested.id
                ORDER BY files.path""",
         ).use { statement ->
             val rows = statement.executeQuery()
@@ -127,26 +109,29 @@ internal class SemanticGraphReader(
             }
         }
 
-    private fun countRequestedSemanticSymbols(conn: Connection): Int =
+    /** Derives a non-negative symbol count from the requested SQLite scope. */
+    private fun countRequestedSemanticSymbols(conn: Connection): NonNegativeInt =
         conn.prepareStatement(
             """SELECT COUNT(*)
-               FROM semantic_symbols symbols
-               JOIN semantic_files files ON files.id = symbols.file_id
+               FROM ${state.readTable(SourceIndexReadTable.SEMANTIC_SYMBOLS)} symbols
+               JOIN ${state.readTable(SourceIndexReadTable.SEMANTIC_FILES)} files ON files.id = symbols.file_id
                WHERE symbols.file_id IN (SELECT id FROM requested_semantic_file_ids)
                  AND files.refresh_status != 'UNKNOWN'""",
         ).use { statement ->
             val rows = statement.executeQuery()
             check(rows.next())
-            rows.getInt(1)
+            NonNegativeInt(rows.getInt(1))
         }
 
-    private fun countRequestedRows(conn: Connection, table: String, fileColumn: String): Int =
+    /** Derives a non-negative edge count from the requested SQLite scope. */
+    private fun countRequestedEdgeOccurrences(conn: Connection): NonNegativeInt =
         conn.prepareStatement(
-            "SELECT COUNT(*) FROM $table WHERE $fileColumn IN (SELECT id FROM requested_semantic_file_ids)",
+            "SELECT COUNT(*) FROM ${state.readTable(SourceIndexReadTable.SEMANTIC_EDGE_OCCURRENCES)} " +
+                "WHERE source_file_id IN (SELECT id FROM requested_semantic_file_ids)",
         ).use { statement ->
             val rows = statement.executeQuery()
             check(rows.next())
-            rows.getInt(1)
+            NonNegativeInt(rows.getInt(1))
         }
 
     private fun prepareSemanticGraphScope(conn: Connection, filePaths: Collection<SemanticGraphSourcePath>) {
@@ -158,7 +143,7 @@ internal class SemanticGraphReader(
         }
         conn.prepareStatement(
             """INSERT OR IGNORE INTO requested_semantic_file_ids(id)
-               SELECT id FROM semantic_files WHERE path = ?""",
+               SELECT id FROM ${state.readTable(SourceIndexReadTable.SEMANTIC_FILES)} WHERE path = ?""",
         ).use { statement ->
             filePaths.distinct().sorted().forEach { path ->
                 statement.setString(1, path.value)
@@ -168,22 +153,57 @@ internal class SemanticGraphReader(
         }
     }
 
-    private fun semanticSymbolSelect(from: String, tail: String): String =
-        """SELECT symbols.stable_key, symbols.kind, symbols.name, symbols.fq_name, symbols.signature,
+    /**
+     * Derivation transition: `SemanticSymbolReadScope -> SemanticSymbolSelect`.
+     *
+     * Produces one scope-exhaustive repository-owned query; raw SQL is exposed
+     * only to JDBC statement preparation.
+     */
+    private fun semanticSymbolSelect(scope: SemanticSymbolReadScope): SemanticSymbolSelect {
+        val symbols = state.readTable(SourceIndexReadTable.SEMANTIC_SYMBOLS)
+        val files = state.readTable(SourceIndexReadTable.SEMANTIC_FILES)
+        val edges = state.readTable(SourceIndexReadTable.SEMANTIC_EDGE_OCCURRENCES)
+        val source = when (scope) {
+            SemanticSymbolReadScope.REQUESTED_FILES ->
+                """FROM requested_semantic_file_ids requested
+                   JOIN $symbols symbols ON symbols.file_id = requested.id
+                   JOIN $files files ON files.id = symbols.file_id
+                   LEFT JOIN $symbols owner ON owner.id = symbols.owner_id"""
+            SemanticSymbolReadScope.BOUNDARY_TARGETS ->
+                """FROM $symbols symbols
+                   JOIN $files files ON files.id = symbols.file_id
+                   LEFT JOIN $symbols owner ON owner.id = symbols.owner_id"""
+        }
+        val predicate = when (scope) {
+            SemanticSymbolReadScope.REQUESTED_FILES -> "WHERE files.refresh_status != 'UNKNOWN'"
+            SemanticSymbolReadScope.BOUNDARY_TARGETS ->
+                """WHERE symbols.id IN (
+                       SELECT boundary.target_id
+                       FROM $edges boundary
+                       WHERE boundary.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
+                   )
+                   AND (
+                       symbols.file_id NOT IN (SELECT id FROM requested_semantic_file_ids)
+                       OR files.refresh_status = 'UNKNOWN'
+                   )"""
+        }
+        return SemanticSymbolSelect("""SELECT symbols.stable_key, symbols.kind, symbols.name, symbols.fq_name, symbols.signature,
                   owner.stable_key, symbols.visibility, symbols.modality, symbols.origin,
                   symbols.is_expect, symbols.is_actual, symbols.is_override, symbols.is_sealed,
                   symbols.is_delegated, declared.stable_key, receiver.stable_key, returned.stable_key,
                   files.path, symbols.start_offset, symbols.end_offset, symbols.line,
                   COALESCE((
                       SELECT json_group_array(annotation_name)
-                      FROM semantic_symbol_annotations annotations
+                      FROM ${state.readTable(SourceIndexReadTable.SEMANTIC_SYMBOL_ANNOTATIONS)} annotations
                       WHERE annotations.symbol_id = symbols.id
                   ), '[]')
-           $from
-           LEFT JOIN semantic_types declared ON declared.id = symbols.declared_type_id
-           LEFT JOIN semantic_types receiver ON receiver.id = symbols.receiver_type_id
-           LEFT JOIN semantic_types returned ON returned.id = symbols.return_type_id
-           $tail"""
+           $source
+           LEFT JOIN ${state.readTable(SourceIndexReadTable.SEMANTIC_TYPES)} declared ON declared.id = symbols.declared_type_id
+           LEFT JOIN ${state.readTable(SourceIndexReadTable.SEMANTIC_TYPES)} receiver ON receiver.id = symbols.receiver_type_id
+           LEFT JOIN ${state.readTable(SourceIndexReadTable.SEMANTIC_TYPES)} returned ON returned.id = symbols.return_type_id
+           $predicate
+           ORDER BY symbols.id""")
+    }
 
     private fun readSemanticSymbol(rows: java.sql.ResultSet): SemanticGraphSymbol =
         SemanticGraphSymbol(
@@ -215,7 +235,7 @@ internal class SemanticGraphReader(
 
     fun semanticGraphSymbolKeys(): Set<SemanticGraphSymbolKey> = synchronized(state.writeLock) {
         state.connection().prepareStatement(
-            "SELECT stable_key FROM semantic_symbols ORDER BY stable_key",
+            "SELECT stable_key FROM ${state.readTable(SourceIndexReadTable.SEMANTIC_SYMBOLS)} ORDER BY stable_key",
         ).use { statement ->
             val rows = statement.executeQuery()
             buildSet {
@@ -236,24 +256,8 @@ internal class SemanticGraphReader(
     }
 
     private fun readSemanticGraphSourcePaths(connection: Connection): Set<SemanticGraphSourcePath> {
-        val sql = if (state.repositoryBasePath == null) {
-            "SELECT path FROM semantic_files WHERE refresh_status != 'CACHED' ORDER BY path"
-        } else {
-            """SELECT path FROM semantic_files WHERE refresh_status != 'CACHED'
-               UNION
-               SELECT base.path
-               FROM repository_base.semantic_files base
-               WHERE base.refresh_status != 'CACHED'
-                 AND NOT EXISTS (
-                     SELECT 1 FROM repository_overlay_tombstones tombstones
-                     WHERE tombstones.path = base.path
-                 )
-                 AND NOT EXISTS (
-                     SELECT 1 FROM semantic_files overlay
-                     WHERE overlay.path = base.path
-                 )
-               ORDER BY path"""
-        }
+        val sql = "SELECT path FROM ${state.readTable(SourceIndexReadTable.SEMANTIC_FILES)} " +
+            "WHERE refresh_status != 'CACHED' ORDER BY path"
         return connection.prepareStatement(sql).use { statement ->
             val rows = statement.executeQuery()
             buildSet {
@@ -262,3 +266,11 @@ internal class SemanticGraphReader(
         }
     }
 }
+
+private enum class SemanticSymbolReadScope {
+    REQUESTED_FILES,
+    BOUNDARY_TARGETS,
+}
+
+@JvmInline
+private value class SemanticSymbolSelect(val sql: String)

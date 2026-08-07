@@ -54,7 +54,7 @@ class RecoveryAuditAdmissionTest {
         admission.await { false }
         val token = admission.beginReconciliation("test generation is verified")
         check(
-            admission.publishReady(token) { WorkspaceGenerationCommit.Durable(generation) } is
+            admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
                 IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
         )
     }

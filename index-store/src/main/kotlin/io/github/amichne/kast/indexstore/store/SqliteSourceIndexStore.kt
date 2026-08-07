@@ -2,6 +2,7 @@ package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
@@ -88,6 +89,28 @@ class SqliteSourceIndexStore private constructor(
     override fun close() = state.close()
 
     fun ensureSchema(): Boolean = schema.ensureSchema()
+
+    fun beginWorkspaceWrite(): WorkspaceWriteSession = state.beginWorkspaceWrite()
+
+    fun discardWorkspaceWrite(session: WorkspaceWriteSession) = state.discardWorkspaceWrite(session)
+
+    fun readWorkspacePublication(): PublishedWorkspaceGenerationState =
+        snapshots.readWorkspacePublication()
+
+    fun prepareWorkspacePublication(
+        session: WorkspaceWriteSession,
+        identity: PublishedWorkspaceIdentity,
+        publishedAt: PublicationEpochMillis,
+    ): PublishedWorkspaceGenerationManifest = snapshots.prepareWorkspacePublication(
+        session = session,
+        identity = identity,
+        publishedAt = publishedAt,
+    )
+
+    fun commitWorkspacePublication(
+        session: WorkspaceWriteSession,
+        manifest: PublishedWorkspaceGenerationManifest,
+    ): PublishedWorkspaceGenerationManifest = snapshots.commitWorkspacePublication(session, manifest)
 
     fun saveFullIndex(
         updates: List<FileIndexUpdate>,
@@ -339,14 +362,19 @@ class SqliteSourceIndexStore private constructor(
 
     fun readGeneration(): SourceIndexGeneration = snapshots.readGeneration()
 
+    /**
+     * Proof transition:
+     * `(SnapshotExportTarget, GitObjectId, ProducerVersion) -> PublicationEvidence`.
+     *
+     * Delegates the capability-bound SQLite export and returns the evidence
+     * required by repository snapshot publication; no raw destination path is
+     * accepted at this core boundary.
+     */
     fun exportSnapshotDatabase(
-        target: Path,
+        target: SnapshotExportTarget,
         treeOid: GitObjectId,
         producerVersion: ProducerVersion,
     ): PublicationEvidence = snapshots.exportSnapshotDatabase(target, treeOid, producerVersion)
-
-    fun exportVerifiedWorkspaceDatabase(target: Path): WorkspaceDatabaseExportEvidence =
-        snapshots.exportVerifiedWorkspaceDatabase(target)
 
     fun readHeadCommit(): String? = snapshots.readHeadCommit()
 

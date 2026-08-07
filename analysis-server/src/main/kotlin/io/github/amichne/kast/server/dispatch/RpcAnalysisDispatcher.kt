@@ -14,6 +14,8 @@ import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.server.dispatch.RpcMethodRouter
+import io.github.amichne.kast.server.dispatch.RpcMethodResult
+import io.github.amichne.kast.server.dispatch.RpcRequestWaitPolicy
 import io.github.amichne.kast.server.dispatch.UnknownRpcMethodException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -75,18 +77,26 @@ class RpcAnalysisDispatcher(
         }
 
         return try {
-            val routed = withTimeout(config.effectiveRequestTimeoutMillis) {
-                methodRouter.dispatch(request.method, request.params)
-            }
-            RpcDispatchResult(
-                response = json.encodeToString(
-                    JsonRpcSuccessResponse(
-                        id = request.id,
-                        result = routed.result,
+            when (val routed = dispatchRouted(request)) {
+                is RpcRoutedDispatch.Completed -> RpcDispatchResult(
+                    response = json.encodeToString(
+                        JsonRpcSuccessResponse(
+                            id = request.id,
+                            result = routed.result.result,
+                        ),
                     ),
-                ),
-                afterResponseAction = routed.afterResponseAction,
-            )
+                    afterResponseAction = routed.result.afterResponseAction,
+                )
+
+                is RpcRoutedDispatch.DeadlineExceeded -> RpcDispatchResult(
+                    response = json.encodeToString(
+                        JsonRpcErrorResponse(
+                            id = request.id,
+                            error = timeoutJsonRpcError(request, routed.deadline.timeoutMillis),
+                        ),
+                    ),
+                )
+            }
         } catch (exception: AnalysisException) {
             RpcDispatchResult(
                 response = json.encodeToString(
@@ -105,15 +115,6 @@ class RpcAnalysisDispatcher(
                             code = JSON_RPC_METHOD_NOT_FOUND,
                             message = exception.message ?: "Unknown JSON-RPC method",
                         ),
-                    ),
-                ),
-            )
-        } catch (_: TimeoutCancellationException) {
-            RpcDispatchResult(
-                response = json.encodeToString(
-                    JsonRpcErrorResponse(
-                        id = request.id,
-                        error = timeoutJsonRpcError(request, config.effectiveRequestTimeoutMillis),
                     ),
                 ),
             )
@@ -147,6 +148,29 @@ class RpcAnalysisDispatcher(
             )
         }
     }
+
+    /**
+     * Effect transition: `JsonRpcRequest -> RpcRoutedDispatch`.
+     *
+     * Ordinary methods convert coroutine timeout into finite deadline data.
+     * Workspace refresh delegates waiting to the backend's progress policy and
+     * therefore cannot be cancelled by the unrelated ordinary RPC budget.
+     */
+    private suspend fun dispatchRouted(request: JsonRpcRequest): RpcRoutedDispatch =
+        when (val policy = RpcRequestWaitPolicy.derive(request.method, config)) {
+            RpcRequestWaitPolicy.BackendProgressDeadline ->
+                RpcRoutedDispatch.Completed(methodRouter.dispatch(request.method, request.params))
+
+            is RpcRequestWaitPolicy.ServerDeadline -> try {
+                RpcRoutedDispatch.Completed(
+                    withTimeout(policy.timeoutMillis) {
+                        methodRouter.dispatch(request.method, request.params)
+                    },
+                )
+            } catch (_: TimeoutCancellationException) {
+                RpcRoutedDispatch.DeadlineExceeded(policy)
+            }
+        }
 
     suspend fun dispatchRaw(requestText: String): String = dispatchRawForTransport(requestText).response
 
@@ -206,6 +230,14 @@ class RpcAnalysisDispatcher(
             }
         }
     }
+}
+
+private sealed interface RpcRoutedDispatch {
+    data class Completed(val result: RpcMethodResult) : RpcRoutedDispatch
+
+    data class DeadlineExceeded(
+        val deadline: RpcRequestWaitPolicy.ServerDeadline,
+    ) : RpcRoutedDispatch
 }
 
 internal class RpcDispatchResult(

@@ -83,7 +83,7 @@ fn path_sha256(path: &Path) -> Result<String> {
 }
 
 fn build_commit(repo_root: &Path) -> String {
-    ProcessCommand::new("git")
+    crate::git::ReadOnlyGitCommand::from_command(ProcessCommand::new("git"))
         .arg("-C")
         .arg(repo_root)
         .args(["rev-parse", "HEAD"])

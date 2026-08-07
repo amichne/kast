@@ -115,9 +115,13 @@ internal class KastDiagnosticsState(
         title = "Kast index waiting for IDEA",
         detail = "IDE indexes must settle before the source index runs",
     ) {
+        val observedAt = now()
         it.copy(
             backendState = it.backendState.indexingIfReady(),
-            indexSummary = KastSourceIndexSummary(state = KastIndexState.WAITING_FOR_IDE),
+            indexSummary = KastSourceIndexSummary(
+                state = KastIndexState.WAITING_FOR_IDE,
+                progressTiming = KastIndexProgressTiming.startedAt(observedAt),
+            ),
         )
     }
 
@@ -126,9 +130,13 @@ internal class KastDiagnosticsState(
         kind = KastActivityKind.INDEX,
         title = "Kast source index hydrating",
     ) {
+        val observedAt = now()
         it.copy(
             backendState = it.backendState.indexingIfReady(),
-            indexSummary = KastSourceIndexSummary(state = KastIndexState.HYDRATING),
+            indexSummary = KastSourceIndexSummary(
+                state = KastIndexState.HYDRATING,
+                progressTiming = KastIndexProgressTiming.startedAt(observedAt),
+            ),
         )
     }
 
@@ -137,9 +145,13 @@ internal class KastDiagnosticsState(
         kind = KastActivityKind.INDEX,
         title = "Kast source index started",
     ) {
+        val observedAt = now()
         it.copy(
             backendState = it.backendState.indexingIfReady(),
-            indexSummary = KastSourceIndexSummary(state = KastIndexState.INDEXING),
+            indexSummary = KastSourceIndexSummary(
+                state = KastIndexState.INDEXING,
+                progressTiming = KastIndexProgressTiming.startedAt(observedAt),
+            ),
         )
     }
 
@@ -156,6 +168,11 @@ internal class KastDiagnosticsState(
         ) {
             "Completed index summary must be ready, degraded, or failed"
         }
+        val observedAt = now()
+        val progressTiming = when (val currentProgress = it.indexSummary.progressTiming) {
+            KastIndexProgressTiming.Unobserved -> KastIndexProgressTiming.startedAt(observedAt)
+            is KastIndexProgressTiming.Observed -> currentProgress.progressedAt(observedAt)
+        }
         it.copy(
             backendState = if (it.backendState == KastBackendUiState.INDEXING) {
                 if (summary.state == KastIndexState.READY) {
@@ -166,7 +183,9 @@ internal class KastDiagnosticsState(
             } else {
                 it.backendState
             },
-            indexSummary = summary,
+            indexSummary = summary.copy(
+                progressTiming = progressTiming,
+            ),
         )
     }
 
@@ -300,6 +319,7 @@ internal data class KastSourceIndexSummary(
     val importCount: Int? = null,
     val message: String? = null,
     val referenceCoverageLimitations: List<ReferenceCoverageLimitation> = emptyList(),
+    val progressTiming: KastIndexProgressTiming = KastIndexProgressTiming.Unobserved,
 ) {
     fun displayText(): String {
         message?.let { return it }

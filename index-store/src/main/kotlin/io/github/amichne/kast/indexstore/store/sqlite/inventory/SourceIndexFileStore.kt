@@ -1,6 +1,7 @@
 package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.indexstore.api.index.*
+import io.github.amichne.kast.indexstore.store.codec.SourceIndexReadPathResolution
 import java.nio.file.Path
 
 internal class SourceIndexFileStore(
@@ -23,67 +24,47 @@ internal class SourceIndexFileStore(
                     ?.let { path -> put(path, lastModifiedMillis) }
             }
         }
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                mutations.internPathsInTransaction(
-                    conn,
-                    eligibleUpdates.map { it.path.toDatabasePath() } +
-                        eligibleManifest.keys.map(WorkspaceSourcePath::toDatabasePath),
-                )
-                mutations.internFqNamesInTransaction(conn, eligibleUpdates.flatMapTo(mutableSetOf()) { update ->
-                    buildList {
-                        mutations.packageFqName(update.update)?.let(::add)
-                        addAll(update.update.imports)
-                        addAll(update.update.wildcardImports)
-                    }
-                })
-                conn.createStatement().use { stmt ->
-                    stmt.execute("DELETE FROM file_wildcard_imports")
-                    stmt.execute("DELETE FROM file_imports")
-                    stmt.execute("DELETE FROM identifier_paths")
-                    stmt.execute("DELETE FROM file_gradle_source_sets")
-                    stmt.execute("DELETE FROM file_gradle_projects")
-                    stmt.execute("DELETE FROM file_metadata")
-                    stmt.execute("DELETE FROM file_manifest")
+        state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { conn ->
+            mutations.internPathsInTransaction(
+                conn,
+                eligibleUpdates.map { it.path.toDatabasePath() } +
+                    eligibleManifest.keys.map(WorkspaceSourcePath::toDatabasePath),
+            )
+            mutations.internFqNamesInTransaction(conn, eligibleUpdates.flatMapTo(mutableSetOf()) { update ->
+                buildList {
+                    mutations.packageFqName(update.update)?.let(::add)
+                    addAll(update.update.imports)
+                    addAll(update.update.wildcardImports)
                 }
-                for (update in eligibleUpdates) {
-                    mutations.insertFileDataInTransaction(conn, update.toDatabaseUpdate())
-                }
-                val databaseManifest = eligibleManifest.mapKeys { (path, _) -> path.toDatabasePath() }
-                mutations.insertManifestInTransaction(conn, databaseManifest)
-                mutations.pruneReferencesOutsideManifestInTransaction(conn, databaseManifest.keys)
-                state.removeIneligibleSourceIndexRows(conn)
-                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM pending_updates") }
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
+            })
+            conn.createStatement().use { stmt ->
+                stmt.execute("DELETE FROM file_wildcard_imports")
+                stmt.execute("DELETE FROM file_imports")
+                stmt.execute("DELETE FROM identifier_paths")
+                stmt.execute("DELETE FROM file_gradle_source_sets")
+                stmt.execute("DELETE FROM file_gradle_projects")
+                stmt.execute("DELETE FROM file_metadata")
+                stmt.execute("DELETE FROM file_manifest")
             }
+            for (update in eligibleUpdates) {
+                mutations.insertFileDataInTransaction(conn, update.toDatabaseUpdate())
+            }
+            val databaseManifest = eligibleManifest.mapKeys { (path, _) -> path.toDatabasePath() }
+            mutations.insertManifestInTransaction(conn, databaseManifest)
+            mutations.pruneReferencesOutsideManifestInTransaction(conn, databaseManifest.keys)
+            state.removeIneligibleSourceIndexRows(conn)
+            conn.createStatement().use { stmt -> stmt.execute("DELETE FROM pending_updates") }
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
     fun saveFileIndex(update: FileIndexUpdate) {
         val parsedUpdate = parseUpdate(update) ?: return
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                mutations.internPathsInTransaction(conn, listOf(parsedUpdate.path.toDatabasePath()))
-                mutations.internFqNamesInTransaction(conn, mutations.fqNamesFor(update))
-                mutations.insertFileDataInTransaction(conn, parsedUpdate.toDatabaseUpdate())
-                state.incrementGenerationInTransaction(conn)
-                conn.commit()
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
-            }
+        state.writeTransaction { conn ->
+            mutations.internPathsInTransaction(conn, listOf(parsedUpdate.path.toDatabasePath()))
+            mutations.internFqNamesInTransaction(conn, mutations.fqNamesFor(update))
+            mutations.insertFileDataInTransaction(conn, parsedUpdate.toDatabaseUpdate())
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
@@ -93,16 +74,9 @@ internal class SourceIndexFileStore(
             val conn = state.connection()
             state.loadInterningTables(conn)
             val encodedPath = pathCodec.encodeIfInterned(sourcePath.toDatabasePath()) ?: return
-            conn.autoCommit = false
-            try {
-                mutations.deleteFileRowsInTransaction(conn, encodedPath.first, encodedPath.second)
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
-            } finally {
-                conn.autoCommit = true
+            state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { transaction ->
+                mutations.deleteFileRowsInTransaction(transaction, encodedPath.first, encodedPath.second)
+                state.incrementGenerationInTransaction(transaction)
             }
         }
     }
@@ -111,9 +85,11 @@ internal class SourceIndexFileStore(
         synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
+            val identifierPaths = state.readTable(SourceIndexReadTable.IDENTIFIER_PATHS)
+            val fileMetadata = state.readTable(SourceIndexReadTable.FILE_METADATA)
             val candidatePathsByIdentifier = mutableMapOf<String, MutableList<WorkspaceSourcePath>>()
             conn.createStatement().use { stmt ->
-                val rs = stmt.executeQuery("SELECT identifier, prefix_id, filename FROM identifier_paths")
+                val rs = stmt.executeQuery("SELECT identifier, prefix_id, filename FROM $identifierPaths")
                 while (rs.next()) {
                     candidatePathsByIdentifier
                         .getOrPut(rs.getString(1)) { mutableListOf() }
@@ -129,7 +105,7 @@ internal class SourceIndexFileStore(
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
 
-                    "SELECT prefix_id, filename, package_fq_id, module_path, source_set FROM file_metadata",
+                    "SELECT prefix_id, filename, package_fq_id, module_path, source_set FROM $fileMetadata",
                 )
                 while (rs.next()) {
                     val path = decodeWorkspaceSourcePath(rs.getInt(1), rs.getString(2))
@@ -143,8 +119,8 @@ internal class SourceIndexFileStore(
                 }
             }
 
-            mutations.loadFileFqNames(conn, "file_imports", importsByPath)
-            mutations.loadFileFqNames(conn, "file_wildcard_imports", wildcardImportPackagesByPath)
+            mutations.loadFileFqNames(conn, FileFqTable.IMPORTS, importsByPath)
+            mutations.loadFileFqNames(conn, FileFqTable.WILDCARD_IMPORTS, wildcardImportPackagesByPath)
 
             return SourceIndexSnapshot(
                 candidatePathsByIdentifier = candidatePathsByIdentifier,
@@ -160,15 +136,19 @@ internal class SourceIndexFileStore(
         synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
-            val (prefixId, filename) = pathCodec.encodeIfInterned(path) ?: return emptySet()
+            val encoded = when (val resolution = pathCodec.encodeForRead(path)) {
+                is SourceIndexReadPathResolution.Resolved -> resolution.path
+                SourceIndexReadPathResolution.PrefixUnavailable -> return emptySet()
+            }
+            val projects = state.readTable(SourceIndexReadTable.FILE_GRADLE_PROJECTS)
             return conn.prepareStatement(
                 """SELECT build_root, project_path
-                   FROM file_gradle_projects
+                   FROM $projects
                    WHERE prefix_id = ? AND filename = ?
                    ORDER BY build_root, project_path""",
             ).use { stmt ->
-                stmt.setInt(1, prefixId)
-                stmt.setString(2, filename)
+                stmt.setInt(1, encoded.prefixId)
+                stmt.setString(2, encoded.filename)
                 val rs = stmt.executeQuery()
                 buildSet {
                     while (rs.next()) {
@@ -188,12 +168,17 @@ internal class SourceIndexFileStore(
         synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
-            val (prefixId, filename) = pathCodec.encodeIfInterned(path) ?: return emptySet()
+            val encoded = when (val resolution = pathCodec.encodeForRead(path)) {
+                is SourceIndexReadPathResolution.Resolved -> resolution.path
+                SourceIndexReadPathResolution.PrefixUnavailable -> return emptySet()
+            }
+            val sourceSets = state.readTable(SourceIndexReadTable.FILE_GRADLE_SOURCE_SETS)
+            val projects = state.readTable(SourceIndexReadTable.FILE_GRADLE_PROJECTS)
             return conn.prepareStatement(
                 """SELECT source_sets.build_root, source_sets.project_path, source_sets.source_set_name,
                           projects.build_root AS owner_build_root
-                   FROM file_gradle_source_sets source_sets
-                   LEFT JOIN file_gradle_projects projects
+                   FROM $sourceSets source_sets
+                   LEFT JOIN $projects projects
                      ON projects.prefix_id = source_sets.prefix_id
                     AND projects.filename = source_sets.filename
                     AND projects.build_root = source_sets.build_root
@@ -201,8 +186,8 @@ internal class SourceIndexFileStore(
                    WHERE source_sets.prefix_id = ? AND source_sets.filename = ?
                    ORDER BY source_sets.build_root, source_sets.project_path, source_sets.source_set_name""",
             ).use { stmt ->
-                stmt.setInt(1, prefixId)
-                stmt.setString(2, filename)
+                stmt.setInt(1, encoded.prefixId)
+                stmt.setString(2, encoded.filename)
                 val rs = stmt.executeQuery()
                 buildSet {
                     while (rs.next()) {
@@ -228,16 +213,21 @@ internal class SourceIndexFileStore(
         synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
-            val (prefixId, filename) = pathCodec.encodeIfInterned(path) ?: return null
+            val encoded = when (val resolution = pathCodec.encodeForRead(path)) {
+                is SourceIndexReadPathResolution.Resolved -> resolution.path
+                SourceIndexReadPathResolution.PrefixUnavailable -> return null
+            }
+            val metadata = state.readTable(SourceIndexReadTable.FILE_METADATA)
+            val fqNames = state.readTable(SourceIndexReadTable.FQ_NAMES)
             return conn.prepareStatement(
                 """SELECT metadata.package_state, metadata.package_unproven_reason,
                           metadata.package_fq_id, packages.fq_name
-                   FROM file_metadata metadata
-                   LEFT JOIN fq_names packages ON packages.fq_id = metadata.package_fq_id
+                   FROM $metadata metadata
+                   LEFT JOIN $fqNames packages ON packages.fq_id = metadata.package_fq_id
                    WHERE metadata.prefix_id = ? AND metadata.filename = ?""",
             ).use { stmt ->
-                stmt.setInt(1, prefixId)
-                stmt.setString(2, filename)
+                stmt.setInt(1, encoded.prefixId)
+                stmt.setString(2, encoded.filename)
                 val rs = stmt.executeQuery()
                 if (!rs.next()) return@use null
                 mutations.decodePackageEvidence(rs)

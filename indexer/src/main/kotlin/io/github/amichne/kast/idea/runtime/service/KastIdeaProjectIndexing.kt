@@ -8,7 +8,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.idea.diagnostics.*
-import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPreparation
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
 import io.github.amichne.kast.idea.transition.IdeaGradleWorkspaceModelIdentityResolver
 import io.github.amichne.kast.idea.transition.IdeaCompilerVisibleSourceIdentityResolver
@@ -26,7 +26,6 @@ import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -39,11 +38,12 @@ internal class KastIdeaProjectIndexing(
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
     private val gitWorktreeRegistrationProof: GitWorktreeRegistrationProof? = null,
+    private val indexingProgress: WorkspaceIndexingProgressAuthority = WorkspaceIndexingProgressAuthority(),
     private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(
-        semanticAdmission,
-        TimeUnit.MINUTES.toMillis(5),
+        semanticAdmission = semanticAdmission,
+        indexingProgress = indexingProgress,
     ),
-    private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
+    private val snapshotPreparation: RepositorySnapshotPreparation = RepositorySnapshotPreparation.Unmanaged,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
     private val semanticGraphIndexer:
         (IndexedSourceIdentifiers, GraphIndexingBatchSize, IdeaIndexSemanticAdmission.ReconciliationToken) -> Unit =
@@ -88,7 +88,6 @@ internal class KastIdeaProjectIndexing(
         project = project,
         workspaceIdentity = workspaceIdentity,
         diagnostics = diagnostics,
-        snapshotCoordinator = snapshotCoordinator,
         indexStore = indexStore,
         isCancelled = ::isCancelled,
     )
@@ -249,6 +248,7 @@ internal class KastIdeaProjectIndexing(
             store = indexStore,
             cancelled = ::isCancelled,
             workspaceIdentity = workspaceIdentity.workspaceIdentity,
+            indexingProgress = indexingProgress,
             scopeCache = scopeCache,
         )
         val reconciliationIndexer = WorkspaceReconciliationIndexer(
@@ -272,8 +272,13 @@ internal class KastIdeaProjectIndexing(
             refreshWorkspace = { signals -> refreshWorkspace(project, gradleBuildRoot, signals) },
             loadLiveConfig = { lastValid -> liveConfigLoader(workspaceRoot, lastValid) },
             captureCandidate = { liveConfig, buildSemanticInputIdentity ->
+                val snapshotPublication = snapshotPreparation.capturePublication()
                 resolveWorkspaceStateIdentity?.let { injected ->
-                    WorkspaceReconciliationCandidate(injected(), indexingCandidate = null)
+                    WorkspaceReconciliationCandidate(
+                        identity = injected(),
+                        indexingCandidate = null,
+                        snapshotPublication = snapshotPublication,
+                    )
                 } ?: projectIndexer.captureCandidate(liveConfig.indexing).let { candidate ->
                     WorkspaceReconciliationCandidate(
                         identity = productionWorkspaceStateIdentity(
@@ -287,6 +292,7 @@ internal class KastIdeaProjectIndexing(
                             isCancelled = ::isCancelled,
                         ),
                         indexingCandidate = candidate,
+                        snapshotPublication = snapshotPublication,
                     )
                 }
             },

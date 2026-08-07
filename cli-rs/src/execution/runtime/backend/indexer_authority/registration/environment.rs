@@ -37,6 +37,9 @@ impl ServiceLaunchEnvironment {
         environment
             .variables
             .insert(OsString::from("KAST_INDEXER"), OsString::from("true"));
+        environment
+            .variables
+            .insert(OsString::from("GIT_OPTIONAL_LOCKS"), OsString::from("0"));
         Ok(environment)
     }
 
@@ -232,6 +235,10 @@ mod tests {
         assert_eq!(
             environment.value(OsStr::new("KAST_INDEXER")),
             Some(OsStr::new("true"))
+        );
+        assert_eq!(
+            environment.value(OsStr::new("GIT_OPTIONAL_LOCKS")),
+            Some(OsStr::new("0"))
         );
         assert_eq!(
             round_trip.value(OsStr::from_bytes(&[b'R', b'A', b'W', 0x80])),

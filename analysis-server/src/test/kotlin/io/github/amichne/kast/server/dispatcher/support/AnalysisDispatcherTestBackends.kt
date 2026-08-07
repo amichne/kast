@@ -10,6 +10,7 @@ import kotlinx.coroutines.withTimeout
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
+import kotlin.time.Duration
 
 internal class DispatcherTimeoutHealthBackend(
     private val delegate: AnalysisBackend,
@@ -25,6 +26,16 @@ internal class DispatcherCancellationHealthBackend(
     private val delegate: AnalysisBackend,
 ) : AnalysisBackend by delegate {
     override suspend fun health() = throw CancellationException("backend cancelled")
+}
+
+internal class DispatcherProgressBoundRefreshBackend(
+    private val delegate: AnalysisBackend,
+    private val delay: Duration,
+) : AnalysisBackend by delegate {
+    override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
+        delay(delay)
+        return delegate.refresh(query)
+    }
 }
 
 internal enum class RelationshipInterruptionMode {

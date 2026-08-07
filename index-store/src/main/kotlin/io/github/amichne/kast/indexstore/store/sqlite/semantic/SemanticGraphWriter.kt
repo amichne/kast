@@ -11,8 +11,6 @@ import java.sql.Connection
 internal class SemanticGraphWriter(
     private val state: SqliteSourceIndexStoreState,
 ) {
-    private val repositoryBasePath get() = state.repositoryBasePath
-
     fun replaceSemanticGraphFiles(
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath> = emptyList(),
@@ -40,80 +38,69 @@ internal class SemanticGraphWriter(
         require(updates.isNotEmpty() || removedPaths.isNotEmpty()) {
             "Semantic graph replacement requires an updated or removed file"
         }
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            return try {
-                val actualGeneration = state.readGenerationInTransaction(conn)
-                if (expectedGeneration != null && expectedGeneration != actualGeneration) {
-                    conn.rollback()
-                    return SemanticGraphCommitResult.GenerationChanged(
-                        expectedGeneration = expectedGeneration,
-                        actualGeneration = actualGeneration,
-                    )
-                }
-                removedPaths
-                    .distinct()
-                    .sorted()
-                    .forEach { path -> deleteSemanticGraphFile(conn, path.value) }
-                updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
-                    prepareSemanticGraphFileUpdate(conn, update)
-                }
-
-                updates.asSequence()
-                    .flatMap { update -> update.boundarySymbols.asSequence() }
-                    .distinctBy { symbol -> symbol.path }
-                    .sortedBy(SemanticGraphSymbol::path)
-                    .forEach { symbol -> insertBoundarySemanticFile(conn, symbol.path) }
-                updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
-                    insertSemanticFile(conn, update)
-                }
-                updates.asSequence()
-                    .flatMap { update -> update.types.asSequence() }
-                    .distinctBy { type -> type.stableKey }
-                    .sortedBy { type -> type.stableKey.value }
-                    .forEach { type -> insertSemanticType(conn, type) }
-                updates.asSequence()
-                    .flatMap { update -> update.types.asSequence() }
-                    .distinctBy { type -> type.stableKey }
-                    .sortedBy { type -> type.stableKey.value }
-                    .forEach { type -> replaceSemanticTypeEdges(conn, type) }
-                updates.asSequence()
-                    .flatMap { update -> update.boundarySymbols.asSequence() }
-                    .distinctBy(SemanticGraphSymbol::canonicalKey)
-                    .sortedBy(SemanticGraphSymbol::canonicalKey)
-                    .forEach { symbol -> insertSemanticSymbol(conn, symbol, authoritative = false) }
-                updates.asSequence()
-                    .flatMap { update -> update.symbols.asSequence() }
-                    .distinctBy(SemanticGraphSymbol::canonicalKey)
-                    .sortedBy(SemanticGraphSymbol::canonicalKey)
-                    .forEach { symbol -> insertSemanticSymbol(conn, symbol, authoritative = true) }
-                updates.asSequence()
-                    .flatMap { update -> (update.boundarySymbols + update.symbols).asSequence() }
-                    .distinctBy(SemanticGraphSymbol::canonicalKey)
-                    .sortedBy(SemanticGraphSymbol::canonicalKey)
-                    .forEach { symbol -> updateSemanticSymbolOwner(conn, symbol) }
-                updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
-                    insertSemanticEdges(conn, update)
-                }
-                commitStageState(conn)
-                state.incrementGenerationInTransaction(conn)
-                val generation = state.readGenerationInTransaction(conn)
-                conn.commit()
-                SemanticGraphCommitResult.Committed(
-                    SemanticGraphWriteResult(
-                        generation = generation,
-                        fileCount = updates.size,
-                        symbolCount = updates.sumOf { update -> update.symbols.size },
-                        edgeOccurrenceCount = updates.sumOf { update -> update.relations.size },
-                    ),
+        return state.writeTransaction { conn ->
+            val actualGeneration = state.readGenerationInTransaction(conn)
+            if (expectedGeneration != null && expectedGeneration != actualGeneration) {
+                return@writeTransaction SemanticGraphCommitResult.GenerationChanged(
+                    expectedGeneration = expectedGeneration,
+                    actualGeneration = actualGeneration,
                 )
-            } catch (failure: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw failure
-            } finally {
-                conn.autoCommit = true
             }
+            removedPaths
+                .distinct()
+                .sorted()
+                .forEach { path -> deleteSemanticGraphFile(conn, path) }
+            updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
+                prepareSemanticGraphFileUpdate(conn, update)
+            }
+
+            updates.asSequence()
+                .flatMap { update -> update.boundarySymbols.asSequence() }
+                .distinctBy { symbol -> symbol.path }
+                .sortedBy(SemanticGraphSymbol::path)
+                .forEach { symbol -> insertBoundarySemanticFile(conn, symbol.path) }
+            updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
+                insertSemanticFile(conn, update)
+            }
+            updates.asSequence()
+                .flatMap { update -> update.types.asSequence() }
+                .distinctBy { type -> type.stableKey }
+                .sortedBy { type -> type.stableKey.value }
+                .forEach { type -> insertSemanticType(conn, type) }
+            updates.asSequence()
+                .flatMap { update -> update.types.asSequence() }
+                .distinctBy { type -> type.stableKey }
+                .sortedBy { type -> type.stableKey.value }
+                .forEach { type -> replaceSemanticTypeEdges(conn, type) }
+            updates.asSequence()
+                .flatMap { update -> update.boundarySymbols.asSequence() }
+                .distinctBy(SemanticGraphSymbol::canonicalKey)
+                .sortedBy(SemanticGraphSymbol::canonicalKey)
+                .forEach { symbol -> insertSemanticSymbol(conn, symbol, authoritative = false) }
+            updates.asSequence()
+                .flatMap { update -> update.symbols.asSequence() }
+                .distinctBy(SemanticGraphSymbol::canonicalKey)
+                .sortedBy(SemanticGraphSymbol::canonicalKey)
+                .forEach { symbol -> insertSemanticSymbol(conn, symbol, authoritative = true) }
+            updates.asSequence()
+                .flatMap { update -> (update.boundarySymbols + update.symbols).asSequence() }
+                .distinctBy(SemanticGraphSymbol::canonicalKey)
+                .sortedBy(SemanticGraphSymbol::canonicalKey)
+                .forEach { symbol -> updateSemanticSymbolOwner(conn, symbol) }
+            updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
+                insertSemanticEdges(conn, update)
+            }
+            commitStageState(conn)
+            state.incrementGenerationInTransaction(conn)
+            val generation = state.readGenerationInTransaction(conn)
+            SemanticGraphCommitResult.Committed(
+                SemanticGraphWriteResult(
+                    generation = generation,
+                    fileCount = updates.size,
+                    symbolCount = updates.sumOf { update -> update.symbols.size },
+                    edgeOccurrenceCount = updates.sumOf { update -> update.relations.size },
+                ),
+            )
         }
     }
     private fun insertBoundarySemanticFile(conn: Connection, path: SemanticGraphSourcePath) {
@@ -165,7 +152,7 @@ internal class SemanticGraphWriter(
         }
     }
     private fun insertSemanticFile(conn: Connection, update: SemanticGraphFileIndexUpdate) {
-        clearRepositoryOverlayTombstone(conn, update.path.value)
+        state.clearRepositoryOverlayTombstone(conn, update.path)
         conn.prepareStatement(
             """INSERT INTO semantic_files(
                    path, package_name, module_name, content_hash, refresh_status, diagnostics_json,
@@ -246,7 +233,7 @@ internal class SemanticGraphWriter(
         }
     }
     private fun insertSemanticEdges(conn: Connection, update: SemanticGraphFileIndexUpdate) {
-        val sourceFileId = semanticFileId(conn, update.path.value)
+        val sourceFileId = semanticFileId(conn, update.path)
         conn.prepareStatement(
             """INSERT INTO semantic_edge_occurrences(
                    source_id, target_id, source_file_id, kind, context, resolved_target_id,
@@ -264,7 +251,7 @@ internal class SemanticGraphWriter(
             ).forEach { relation ->
                 statement.setLong(1, semanticSymbolId(conn, relation.sourceKey.value))
                 statement.setLong(2, semanticSymbolId(conn, relation.targetKey.value))
-                statement.setLong(3, sourceFileId)
+                statement.setLong(3, sourceFileId.value)
                 statement.setString(4, relation.kind.name)
                 statement.setString(5, relation.context.name)
                 statement.setObject(
@@ -279,31 +266,29 @@ internal class SemanticGraphWriter(
             statement.executeBatch()
         }
     }
-    private fun semanticFileId(conn: Connection, path: String): Long =
-        requiredSemanticId(conn, "SELECT id FROM semantic_files WHERE path = ?", path)
-    private fun deleteSemanticGraphFile(conn: Connection, path: String) {
+
+    /**
+     * Derivation transition: `SemanticGraphSourcePath -> SemanticFileId`.
+     *
+     * Carries the SQLite identity proven to exist by the preceding file upsert;
+     * raw extraction is confined to semantic-edge statement binding.
+     */
+    private fun semanticFileId(conn: Connection, path: SemanticGraphSourcePath): SemanticFileId =
+        SemanticFileId(requiredSemanticId(conn, "SELECT id FROM semantic_files WHERE path = ?", path.value))
+
+    private fun deleteSemanticGraphFile(conn: Connection, path: SemanticGraphSourcePath) {
         conn.prepareStatement("DELETE FROM semantic_files WHERE path = ?").use { statement ->
-            statement.setString(1, path)
+            statement.setString(1, path.value)
             statement.executeUpdate()
         }
-        if (repositoryBasePath != null) {
-            conn.prepareStatement(
-                "INSERT OR IGNORE INTO repository_overlay_tombstones(path) VALUES (?)",
-            ).use { statement ->
-                statement.setString(1, path)
-                statement.executeUpdate()
-            }
-        }
+        state.recordRepositoryOverlayTombstone(conn, path)
     }
 
     internal fun deleteSemanticGraphFileInTransaction(
         conn: Connection,
         path: SemanticGraphSourcePath,
-    ) = deleteSemanticGraphFile(conn, path.value)
-    private fun clearRepositoryOverlayTombstone(conn: Connection, path: String) {
-        conn.prepareStatement("DELETE FROM repository_overlay_tombstones WHERE path = ?").use { statement ->
-            statement.setString(1, path)
-            statement.executeUpdate()
-        }
-    }
+    ) = deleteSemanticGraphFile(conn, path)
 }
+
+@JvmInline
+private value class SemanticFileId(val value: Long)

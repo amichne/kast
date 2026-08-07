@@ -132,42 +132,27 @@ internal class FileStageBatchStore(
 
     fun externalizeFileStageFailure(
         failureId: FileStageFailureId,
-    ): FileStageFailureExternalizationResult = synchronized(state.writeLock) {
-        val conn = state.connection()
+    ): FileStageFailureExternalizationResult = state.writeTransaction { conn ->
         state.loadInterningTables(conn)
-        conn.autoCommit = false
-        try {
-            val current = failureStore.currentFailureByIdInTransaction(conn, failureId)
-            val result = when (current?.status) {
-                null -> FileStageFailureExternalizationResult.NOT_FOUND
-                FileStageOutcomeStatus.EXTERNAL_BOUNDARY ->
-                    FileStageFailureExternalizationResult.ALREADY_EXTERNAL
-                FileStageOutcomeStatus.FAILED -> {
-                    check(current.stage == FileIndexStage.RELATIONSHIPS) {
-                        "Only relationship-stage failures are currently externalizable"
-                    }
-                    references.clearReferencesFromFileInTransaction(conn, current.path)
-                    declarations.clearDeclarationsFromFileInTransaction(conn, current.path)
-                    failureStore.markFailureExternalInTransaction(conn, failureId)
-                    stages.recomputeModuleProgressInTransaction(conn)
-                    state.incrementGenerationInTransaction(conn)
-                    FileStageFailureExternalizationResult.EXTERNALIZED
+        val current = failureStore.currentFailureByIdInTransaction(conn, failureId)
+        when (current?.status) {
+            null -> FileStageFailureExternalizationResult.NOT_FOUND
+            FileStageOutcomeStatus.EXTERNAL_BOUNDARY ->
+                FileStageFailureExternalizationResult.ALREADY_EXTERNAL
+            FileStageOutcomeStatus.FAILED -> {
+                check(current.stage == FileIndexStage.RELATIONSHIPS) {
+                    "Only relationship-stage failures are currently externalizable"
                 }
-                FileStageOutcomeStatus.COMPLETE,
-                FileStageOutcomeStatus.LIMITED,
-                -> error("Failure identity points to a non-failure outcome")
+                references.clearReferencesFromFileInTransaction(conn, current.path)
+                declarations.clearDeclarationsFromFileInTransaction(conn, current.path)
+                failureStore.markFailureExternalInTransaction(conn, failureId)
+                stages.recomputeModuleProgressInTransaction(conn)
+                state.incrementGenerationInTransaction(conn)
+                FileStageFailureExternalizationResult.EXTERNALIZED
             }
-            if (result == FileStageFailureExternalizationResult.EXTERNALIZED) {
-                conn.commit()
-            } else {
-                conn.rollback()
-            }
-            result
-        } catch (failure: Exception) {
-            state.rollbackAndReloadPrefixes(conn)
-            throw failure
-        } finally {
-            conn.autoCommit = true
+            FileStageOutcomeStatus.COMPLETE,
+            FileStageOutcomeStatus.LIMITED,
+            -> error("Failure identity points to a non-failure outcome")
         }
     }
 
@@ -213,20 +198,10 @@ internal class FileStageBatchStore(
     }
 
     private fun transaction(write: (Connection) -> Unit) {
-        synchronized(state.writeLock) {
-            val conn = state.connection()
+        state.writeTransaction { conn ->
             state.loadInterningTables(conn)
-            conn.autoCommit = false
-            try {
-                write(conn)
-                state.incrementGenerationInTransaction(conn)
-                conn.commit()
-            } catch (failure: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw failure
-            } finally {
-                conn.autoCommit = true
-            }
+            write(conn)
+            state.incrementGenerationInTransaction(conn)
         }
     }
 

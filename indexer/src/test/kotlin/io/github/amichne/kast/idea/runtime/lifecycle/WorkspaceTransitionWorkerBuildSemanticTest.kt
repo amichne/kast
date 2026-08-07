@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
@@ -60,10 +61,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             refreshWorkspace = {},
             loadLiveConfig = { it },
             captureCandidate = { _, _ ->
-                WorkspaceReconciliationCandidate(
-                    identity = WorkspaceStateIdentity("workspace-without-linked-git-directory"),
-                    indexingCandidate = null,
-                )
+                unmanagedCandidate(WorkspaceStateIdentity("workspace-without-linked-git-directory"))
             },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
@@ -106,10 +104,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             refreshWorkspace = {},
             loadLiveConfig = { it },
             captureCandidate = { _, _ ->
-                WorkspaceReconciliationCandidate(
-                    identity = WorkspaceStateIdentity("unavailable-git-directory"),
-                    indexingCandidate = null,
-                )
+                unmanagedCandidate(WorkspaceStateIdentity("unavailable-git-directory"))
             },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
@@ -156,12 +151,22 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val publication = object : WorkspaceGenerationPublication {
             override fun current() = delegate.current()
 
-            override fun prepare(identity: WorkspaceStateIdentity) = delegate.prepare(identity).also {
+            override fun begin() = delegate.begin()
+
+            override fun prepare(
+                open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication,
+                identity: WorkspaceStateIdentity,
+            ) = delegate.prepare(open, identity).also {
                 if (preparations.incrementAndGet() == 1) transition.set(inProgress)
             }
 
             override fun commit(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) =
                 delegate.commit(prepared)
+
+            override fun discard(open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication) {
+                discards.incrementAndGet()
+                delegate.discard(open)
+            }
 
             override fun discard(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) {
                 discards.incrementAndGet()
@@ -179,10 +184,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             refreshWorkspace = {},
             loadLiveConfig = { it },
             captureCandidate = { _, _ ->
-                WorkspaceReconciliationCandidate(
-                    identity = WorkspaceStateIdentity("final-checkout-state"),
-                    indexingCandidate = null,
-                )
+                unmanagedCandidate(WorkspaceStateIdentity("final-checkout-state"))
             },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
             workspaceGenerationPublication = publication,
@@ -252,10 +254,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             refreshWorkspace = refreshedSignals::add,
             loadLiveConfig = { it },
             captureCandidate = { _, _ ->
-                WorkspaceReconciliationCandidate(
-                    identity = WorkspaceStateIdentity("final-checkout-state"),
-                    indexingCandidate = null,
-                )
+                unmanagedCandidate(WorkspaceStateIdentity("final-checkout-state"))
             },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
@@ -329,10 +328,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             refreshWorkspace = refreshedSignals::add,
             loadLiveConfig = { it },
             captureCandidate = { _, buildInputs ->
-                WorkspaceReconciliationCandidate(
-                    identity = WorkspaceStateIdentity("state-${buildInputs.value}"),
-                    indexingCandidate = null,
-                )
+                unmanagedCandidate(WorkspaceStateIdentity("state-${buildInputs.value}"))
             },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
@@ -354,6 +350,11 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         assertEquals(listOf(WorkspaceStateIdentity("state-changed-build-inputs")), publications)
     }
 
+    @Test
+    fun `completion carries the snapshot capability captured for the reconciled candidate`() {
+        WorkspaceTransitionSnapshotPublicationScenario.verify()
+    }
+
     private fun committedRepository(): Path {
         val repository = tempDir.resolve("repository").also(Files::createDirectories)
         git(repository, "init")
@@ -366,18 +367,17 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
     }
 
     private fun git(directory: Path, vararg arguments: String) {
-        gitOutput(directory, *arguments)
+        runGitCommand(directory, *arguments)
     }
 
-    private fun gitOutput(directory: Path, vararg arguments: String): String {
-        val process = ProcessBuilder("git", *arguments)
-            .directory(directory.toFile())
-            .redirectErrorStream(true)
-            .start()
-        val output = process.inputStream.use { input -> input.readAllBytes().toString(Charsets.UTF_8) }
-        assertTrue(process.waitFor() == 0, "git ${arguments.joinToString(" ")} failed: $output")
-        return output.trim()
-    }
+    private fun gitOutput(directory: Path, vararg arguments: String): String =
+        readGitOutput(directory, *arguments)
+
+    private fun unmanagedCandidate(identity: WorkspaceStateIdentity) = WorkspaceReconciliationCandidate(
+        identity = identity,
+        indexingCandidate = null,
+        snapshotPublication = RepositorySnapshotPublication.Unmanaged,
+    )
 
     private fun projectStub(): Project = Proxy.newProxyInstance(
         Project::class.java.classLoader,

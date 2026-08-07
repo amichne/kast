@@ -2,12 +2,14 @@ package io.github.amichne.kast.idea.transition
 
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
+import io.github.amichne.kast.indexstore.snapshot.PublicationEpochMillis
+import io.github.amichne.kast.indexstore.snapshot.RepositoryOverlayPublication
 import io.github.amichne.kast.indexstore.snapshot.SourceIndexSchemaVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
-import java.io.IOException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -17,6 +19,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
+import kotlin.properties.Delegates
 
 class WorkspaceTransitionCoordinatorTest {
     @Test
@@ -63,12 +66,15 @@ class WorkspaceTransitionCoordinatorTest {
         assertEquals(checkoutSignals.toSet(), coordinator.snapshot().pendingSignals)
         assertEquals(TransitionRun.Published, coordinator.reconcilePending())
         assertEquals(1, operations.reconciliations.get())
-        assertEquals(WorkspaceSemanticGeneration(1), coordinator.snapshot().published?.generation)
+        assertEquals(
+            WorkspaceSemanticGeneration(1),
+            (coordinator.snapshot().published as PublishedWorkspaceGenerationState.Published).manifest.generation,
+        )
     }
 
     @Test
     fun `event during reconciliation discards candidate and schedules another cycle`() {
-        lateinit var coordinator: WorkspaceTransitionCoordinator
+        var coordinator: WorkspaceTransitionCoordinator by Delegates.notNull()
         val operations = RecordingOperations(
             reconcile = {
                 coordinator.observe(WorkspaceSignal.GitWorktree)
@@ -116,7 +122,7 @@ class WorkspaceTransitionCoordinatorTest {
             },
             onCommit = { manifest ->
                 commitCalls.incrementAndGet()
-                GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest))
+                GenerationPublication.Published(WorkspaceGenerationCommit(manifest))
             },
         )
         val coordinator = WorkspaceTransitionCoordinator(operations)
@@ -144,36 +150,33 @@ class WorkspaceTransitionCoordinatorTest {
     fun `build refresh failure blocks and preserves published generation`() {
         val previous = publishedManifest(7, "previous")
         val operations = RecordingOperations(refreshFailure = IllegalStateException("Gradle model unavailable"))
-        val coordinator = WorkspaceTransitionCoordinator(operations, previous)
+        val coordinator = WorkspaceTransitionCoordinator(
+            operations,
+            PublishedWorkspaceGenerationState.Published(previous),
+        )
         coordinator.observe(WorkspaceSignal.BuildSemantic)
 
         assertEquals(TransitionRun.Blocked, coordinator.reconcilePending())
         val snapshot = coordinator.snapshot()
         assertEquals(WorkspaceLifecycle.Blocked, snapshot.lifecycle)
-        assertEquals(previous, snapshot.published)
+        assertEquals(PublishedWorkspaceGenerationState.Published(previous), snapshot.published)
         assertEquals("Gradle model unavailable", snapshot.blocker?.detail)
     }
 
     @Test
-    fun `committed generation with uncertain pointer durability becomes ready`() {
-        val syncFailure = IOException("simulated directory sync failure")
-        val operations = RecordingOperations(
-            onCommit = { manifest ->
-                GenerationPublication.Published(
-                    WorkspaceGenerationCommit.DurabilityUncertain(manifest, syncFailure),
-                )
-            },
-        )
+    fun `committed database publication becomes ready`() {
+        val operations = RecordingOperations()
         val coordinator = WorkspaceTransitionCoordinator(operations)
         coordinator.observe(WorkspaceSignal.Source)
 
         assertEquals(TransitionRun.Published, coordinator.reconcilePending())
         val snapshot = coordinator.snapshot()
         assertEquals(WorkspaceLifecycle.Ready, snapshot.lifecycle)
-        assertEquals(WorkspaceSemanticGeneration(1), snapshot.published?.generation)
+        assertEquals(
+            WorkspaceSemanticGeneration(1),
+            (snapshot.published as PublishedWorkspaceGenerationState.Published).manifest.generation,
+        )
         assertEquals(null, snapshot.blocker)
-        assertEquals(syncFailure, snapshot.publicationWarning?.cause)
-        assertEquals(snapshot.published, snapshot.publicationWarning?.manifest)
     }
 
     @Test
@@ -189,7 +192,7 @@ class WorkspaceTransitionCoordinatorTest {
             },
             onCommit = { manifest ->
                 commitCalls.incrementAndGet()
-                GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest))
+                GenerationPublication.Published(WorkspaceGenerationCommit(manifest))
             },
         )
         val coordinator = WorkspaceTransitionCoordinator(operations)
@@ -228,10 +231,13 @@ class WorkspaceTransitionCoordinatorTest {
             onCommit = { manifest ->
                 commitStarted.countDown()
                 releaseCommit.await()
-                GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest))
+                GenerationPublication.Published(WorkspaceGenerationCommit(manifest))
             },
         )
-        val coordinator = WorkspaceTransitionCoordinator(operations, previous)
+        val coordinator = WorkspaceTransitionCoordinator(
+            operations,
+            PublishedWorkspaceGenerationState.Published(previous),
+        )
         coordinator.observe(WorkspaceSignal.Source)
         val transitionResult = AtomicReference<TransitionRun>()
         val transition = thread { transitionResult.set(coordinator.reconcilePending()) }
@@ -254,7 +260,10 @@ class WorkspaceTransitionCoordinatorTest {
 
         assertEquals(TransitionRun.Invalidated, transitionResult.get())
         assertEquals(WorkspaceLifecycle.Dirty, coordinator.snapshot().lifecycle)
-        assertEquals(previous, coordinator.snapshot().published)
+        assertEquals(
+            PublishedWorkspaceGenerationState.Published(previous),
+            coordinator.snapshot().published,
+        )
     }
 }
 
@@ -264,7 +273,7 @@ private class RecordingOperations(
     private val refreshFailure: Throwable? = null,
     private val onPrepare: (WorkspaceStateIdentity) -> Unit = {},
     private val onCommit: (PublishedWorkspaceGenerationManifest) -> GenerationPublication =
-        { manifest -> GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest)) },
+        { manifest -> GenerationPublication.Published(WorkspaceGenerationCommit(manifest)) },
 ) : WorkspaceTransitionOperations {
     val reconciliations = AtomicInteger()
     val published = mutableListOf<WorkspaceStateIdentity>()
@@ -286,7 +295,13 @@ private class RecordingOperations(
         return candidate
     }
 
-    override fun preparePublication(identity: WorkspaceStateIdentity): PreparedWorkspacePublication {
+    override fun beginPublication(): OpenWorkspacePublication = RecordingOpenWorkspacePublication
+
+    override fun preparePublication(
+        open: OpenWorkspacePublication,
+        identity: WorkspaceStateIdentity,
+    ): PreparedWorkspacePublication {
+        check(open === RecordingOpenWorkspacePublication)
         onPrepare(identity)
         return RecordingPreparedWorkspacePublication(identity)
     }
@@ -299,12 +314,18 @@ private class RecordingOperations(
         }
     }
 
+    override fun discardPublication(open: OpenWorkspacePublication) {
+        discards.incrementAndGet()
+    }
+
     override fun discardPublication(prepared: PreparedWorkspacePublication) {
         discards.incrementAndGet()
     }
 }
 
-private data class RecordingPreparedWorkspacePublication(
+private data object RecordingOpenWorkspacePublication : OpenWorkspacePublication
+
+private class RecordingPreparedWorkspacePublication(
     val identity: WorkspaceStateIdentity,
 ) : PreparedWorkspacePublication
 
@@ -316,6 +337,6 @@ private fun publishedManifest(
     identity = PublishedWorkspaceIdentity(identity),
     sourceIndexGeneration = SourceIndexGeneration(generation),
     sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
-    databaseFile = "generation-$generation/source-index.db",
-    publishedAtEpochMillis = 1,
+    publishedAt = PublicationEpochMillis.fromClock(1),
+    repositoryOverlay = RepositoryOverlayPublication.ABSENT,
 )

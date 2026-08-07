@@ -14,6 +14,13 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     // System responses
     registry.register("HealthResponse", HealthResponse.serializer())
     registry.register("RuntimeStatusResponse", RuntimeStatusResponse.serializer())
+    registry.register("RuntimeReadiness", RuntimeReadiness.serializer())
+    registry.register("RuntimeReadinessLane", RuntimeReadinessLane.serializer())
+    registry.register("RuntimeReadinessLane.Ready", RuntimeReadinessLane.Ready.serializer())
+    registry.register("RuntimeReadinessLane.InProgress", RuntimeReadinessLane.InProgress.serializer())
+    registry.register("RuntimeReadinessLane.Blocked", RuntimeReadinessLane.Blocked.serializer())
+    registry.register("RuntimeReadinessProgress", RuntimeReadinessProgress.serializer())
+    registry.register("RuntimeProgressStage", RuntimeProgressStage.serializer())
     registry.register("PublishedWorkspaceGenerationStatus", PublishedWorkspaceGenerationStatus.serializer())
     registry.register("RuntimeLifecycleResponse", RuntimeLifecycleResponse.serializer())
     registry.register("BackendCapabilities", BackendCapabilities.serializer())

@@ -263,7 +263,8 @@ fn activation_target_paths(
         config_root,
         shim_path: current_link.join(&bundle.cli_relative),
         active_binary: current_link.join(&bundle.cli_relative),
-        indexer_runtime_libs_dir: indexer_current_dir.join("runtime-libs"),
+        indexer_runtime_libs_dir: (!is_macos_indexer(&bundle.manifest))
+            .then(|| indexer_current_dir.join("runtime-libs")),
         indexer_host_home: Some(indexer_current_dir.join("idea-home")),
     };
     Ok(ActivationTargetPaths {

@@ -1,18 +1,63 @@
 package io.github.amichne.kast.indexstore.store.codec
 
+import io.github.amichne.kast.indexstore.store.AttachedSqliteDatabase
 import java.sql.Connection
 import java.util.concurrent.ConcurrentHashMap
 
-internal class StringInterningCodec(
-    private val tableName: String,
-    private val idColumn: String,
-    private val valueColumn: String,
+internal enum class StringInterningDomain(
+    internal val tableName: String,
+    internal val idColumn: String,
+    internal val valueColumn: String,
 ) {
+    PATH_PREFIX("path_prefixes", "prefix_id", "dir_path"),
+    FQ_NAME("fq_names", "fq_id", "fq_name"),
+}
+
+internal class InternedStringReadId internal constructor(internal val value: Int)
+
+internal sealed interface InternedStringReadIdResolution {
+    data class Resolved(val id: InternedStringReadId) : InternedStringReadIdResolution
+
+    data object Unavailable : InternedStringReadIdResolution
+}
+
+internal sealed interface ReadOnlyInterningAliasFailure {
+    data class NonPositiveSourceId(
+        val domain: StringInterningDomain,
+        val value: Int,
+    ) : ReadOnlyInterningAliasFailure
+
+    data class MissingSourceValue(
+        val domain: StringInterningDomain,
+        val sourceId: Int,
+    ) : ReadOnlyInterningAliasFailure
+}
+
+internal sealed interface ReadOnlyInterningAliasResolution {
+    data object Loaded : ReadOnlyInterningAliasResolution
+
+    data class Rejected(
+        val failure: ReadOnlyInterningAliasFailure,
+    ) : ReadOnlyInterningAliasResolution
+}
+
+internal class StringInterningCodec(
+    private val domain: StringInterningDomain,
+) {
+    private val tableName = domain.tableName
+    private val idColumn = domain.idColumn
+    private val valueColumn = domain.valueColumn
     @Volatile
     private var valueToId = ConcurrentHashMap<String, Int>()
 
     @Volatile
     private var idToValue = ConcurrentHashMap<Int, String>()
+
+    @Volatile
+    private var readValueToId = ConcurrentHashMap<String, Int>()
+
+    @Volatile
+    private var readIdToValue = ConcurrentHashMap<Int, String>()
 
     @Volatile
     private var loaded = false
@@ -54,7 +99,52 @@ internal class StringInterningCodec(
         }
         valueToId = loadedValues
         idToValue = loadedIds
+        readValueToId = ConcurrentHashMap(loadedValues)
+        readIdToValue = ConcurrentHashMap(loadedIds)
         loaded = true
+    }
+
+    /**
+     * Proof transition:
+     * `(Connection, AttachedSqliteDatabase) -> ReadOnlyInterningAliasResolution`.
+     *
+     * Loaded proves every attached positive source ID has a value and has been
+     * mapped into the effective negative read namespace without mutating the
+     * writable namespace. Corrupt rows are finite
+     * [ReadOnlyInterningAliasFailure] data. Raw columns are read only at the
+     * SQLite boundary.
+     */
+    fun loadReadOnlyAliases(
+        conn: Connection,
+        database: AttachedSqliteDatabase,
+    ): ReadOnlyInterningAliasResolution {
+        ensureLoaded(conn)
+        val values = ConcurrentHashMap(readValueToId)
+        val ids = ConcurrentHashMap(readIdToValue)
+        conn.createStatement().use { statement ->
+            statement.executeQuery("SELECT $idColumn, $valueColumn FROM $database.$tableName").use { rows ->
+                while (rows.next()) {
+                    val sourceId = rows.getInt(1)
+                    if (sourceId <= 0) {
+                        return ReadOnlyInterningAliasResolution.Rejected(
+                            ReadOnlyInterningAliasFailure.NonPositiveSourceId(domain, sourceId),
+                        )
+                    }
+                    val value = rows.getString(2)
+                        ?: return ReadOnlyInterningAliasResolution.Rejected(
+                            ReadOnlyInterningAliasFailure.MissingSourceValue(domain, sourceId),
+                        )
+                    if (!values.containsKey(value)) {
+                        val effectiveId = Math.negateExact(sourceId)
+                        values[value] = effectiveId
+                        ids[effectiveId] = value
+                    }
+                }
+            }
+        }
+        readValueToId = values
+        readIdToValue = ids
+        return ReadOnlyInterningAliasResolution.Loaded
     }
 
     fun getOrCreate(
@@ -70,6 +160,8 @@ internal class StringInterningCodec(
         val id = selectId(conn, value)
         valueToId[value] = id
         idToValue[id] = value
+        readValueToId[value] = id
+        readIdToValue[id] = value
         return id
     }
 
@@ -92,11 +184,21 @@ internal class StringInterningCodec(
     }
 
     fun resolve(id: Int): String =
-        idToValue[id] ?: throw IllegalStateException("Missing interned string in $tableName for $idColumn=$id")
-
-    fun resolveOrNull(id: Int): String? = idToValue[id]
+        readIdToValue[id] ?: throw IllegalStateException("Missing interned string in $tableName for $idColumn=$id")
 
     fun idFor(value: String): Int? = valueToId[value]
+
+    /**
+     * Proof transition: `String -> InternedStringReadIdResolution`.
+     *
+     * A resolved ID proves that the value is interned by the workspace or its
+     * attached repository read authority. Absence is explicit; the raw SQLite
+     * ID is extracted only while constructing or binding a query.
+     */
+    fun idForRead(value: String): InternedStringReadIdResolution = readValueToId[value]
+        ?.let(::InternedStringReadId)
+        ?.let(InternedStringReadIdResolution::Resolved)
+        ?: InternedStringReadIdResolution.Unavailable
 
     private fun ensureLoaded(conn: Connection) {
         if (!loaded) loadAll(conn)
@@ -121,6 +223,8 @@ internal class StringInterningCodec(
                         val value = rs.getString(2)
                         valueToId[value] = id
                         idToValue[id] = value
+                        readValueToId[value] = id
+                        readIdToValue[id] = value
                     }
                 }
             }

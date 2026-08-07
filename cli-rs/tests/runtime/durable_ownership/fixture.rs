@@ -33,7 +33,9 @@ impl RuntimeServiceFixture {
         std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
         let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
         let listener = UnixListener::bind(&socket_path).expect("unservable endpoint");
-        let runtime_command = registered_test_command(&socket_path);
+        let runtime_instance_id = uuid::Uuid::new_v4();
+        let runtime_command =
+            registered_test_command(&workspace, &socket_path, runtime_instance_id);
         let runtime = Command::new(&runtime_command[0])
             .args(&runtime_command[1..])
             .stdin(std::process::Stdio::piped())
@@ -41,7 +43,6 @@ impl RuntimeServiceFixture {
             .stderr(std::process::Stdio::null())
             .spawn()
             .expect("registered process");
-        let runtime_instance_id = uuid::Uuid::new_v4();
         let install_root = default_install_root(&home);
         let runtime_dir = install_root.join("state/runtime");
         let descriptor_directory = if use_alternate_directory {
@@ -154,6 +155,12 @@ impl RuntimeServiceFixture {
             serde_json::to_vec(&serde_json::json!({"pid": 0})).expect("manager state JSON"),
         )
         .expect("orphaned manager state");
+    }
+
+    pub(super) fn remove_registration_and_descriptor(&self) {
+        std::fs::remove_dir_all(self.registration.parent().expect("service workspace"))
+            .expect("remove service registration");
+        std::fs::remove_file(&self.descriptor_registry).expect("remove runtime descriptor");
     }
 
     pub(super) fn replace_registered_process_claim_with_reused_pid(&self) {
@@ -275,7 +282,7 @@ fn write_registration(
         "runtimeInstanceId": id,
         "ownerUid": u64::from(unsafe { libc::geteuid() }),
         "workingDirectory": workspace.display().to_string(),
-        "command": registered_test_command(socket_path),
+        "command": registered_test_command(workspace, socket_path, id),
         "environment": {},
         "logFile": temp.join("runtime.log").display().to_string(),
         "descriptorDirectory": descriptor_directory.display().to_string(),
@@ -317,13 +324,19 @@ fn write_registration(
     );
 }
 
-fn registered_test_command(socket_path: &Path) -> Vec<String> {
+fn registered_test_command(
+    workspace: &Path,
+    socket_path: &Path,
+    runtime_instance_id: uuid::Uuid,
+) -> Vec<String> {
     vec![
         "/bin/sh".to_string(),
         "-c".to_string(),
         "trap 'exit 0' TERM; read fixture_value".to_string(),
-        "kast-runtime-fixture".to_string(),
+        "kast-indexer".to_string(),
+        format!("--workspace-root={}", workspace.display()),
         format!("--socket-path={}", socket_path.display()),
+        format!("--runtime-instance-id={runtime_instance_id}"),
     ]
 }
 

@@ -112,7 +112,8 @@ fn project_install_manifest(
             name: "indexer".to_string(),
             version: bundle.manifest.activation.backend.version.clone(),
             install_dir: indexer_root.display().to_string(),
-            runtime_libs_dir: indexer_root.join("runtime-libs").display().to_string(),
+            runtime_libs_dir: (!bundle.manifest.platform.starts_with("macos-"))
+                .then(|| indexer_root.join("runtime-libs").display().to_string()),
             idea_home: Some(indexer_root.join("idea-home").display().to_string()),
         }],
         managed_paths: bundle
@@ -148,11 +149,18 @@ fn verify_activated_bundle(
     }
     require_directory(&targets.version_dir, "installed bundle version")?;
     if !is_macos_indexer(&bundle.manifest) {
+        let runtime_libs_dir = targets
+            .resolved
+            .indexer_runtime_libs_dir
+            .as_ref()
+            .ok_or_else(|| {
+                CliError::new(
+                    "BUNDLE_INSTALL_MISMATCH",
+                    "Installed non-macOS indexer does not declare runtime libraries.",
+                )
+            })?;
         require_file(
-            &targets
-                .resolved
-                .indexer_runtime_libs_dir
-                .join("classpath.txt"),
+            &runtime_libs_dir.join("classpath.txt"),
             "installed runtime classpath",
         )?;
         if let Some(idea_home) = &targets.resolved.indexer_host_home {

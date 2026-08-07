@@ -21,6 +21,8 @@ mod daemon;
 mod demo;
 #[path = "configuration/error.rs"]
 mod error;
+#[path = "execution/git.rs"]
+mod git;
 #[path = "operations/install.rs"]
 mod install;
 #[path = "configuration/manifest.rs"]

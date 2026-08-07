@@ -7,11 +7,10 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridge
 import java.nio.file.Path
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 
-internal const val RECOVERY_AUDIT_MILLIS = 300_000L
-private const val GRADLE_REFRESH_TIMEOUT_MINUTES = 5L
+internal val RECOVERY_AUDIT_DELAY: Duration = Duration.ofMinutes(5)
 
 internal enum class WorkspaceModelRefreshRequirement {
     VfsOnly,
@@ -39,16 +38,40 @@ internal fun refreshWorkspaceModels(
     if (workspaceModelRefreshRequirement(signals) == WorkspaceModelRefreshRequirement.Gradle) {
         val refresh = CompletableFuture<Void>()
         IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, gradleBuildRoot, refresh)
-        refresh.get(GRADLE_REFRESH_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+        GradleProjectImportBridge.awaitGradleRefresh(project, refresh)
     }
     GradleProjectImportBridge.awaitGradleModelSettlement(project)
 }
 
-internal fun indexingRetryDelayMillis(consecutiveFailures: Int): Long = when (consecutiveFailures) {
-    1 -> 250L
-    2 -> 500L
-    3 -> 1_000L
-    else -> RECOVERY_AUDIT_MILLIS
+@JvmInline
+internal value class ConsecutiveIndexingFailures private constructor(
+    private val count: Int,
+) {
+    fun afterFailure(): ConsecutiveIndexingFailures = if (count == Int.MAX_VALUE) {
+        this
+    } else {
+        ConsecutiveIndexingFailures(count + 1)
+    }
+
+    val retryDelay: Duration
+        get() = when (count) {
+            0, 1 -> Duration.ofMillis(250)
+            2 -> Duration.ofMillis(500)
+            3 -> Duration.ofSeconds(1)
+            4 -> Duration.ofSeconds(2)
+            else -> Duration.ofSeconds(5)
+        }
+
+    companion object {
+        /**
+         * Proof transition: `Unit -> ConsecutiveIndexingFailures`.
+         *
+         * Establishes the closed zero-failure retry state. Subsequent failures
+         * advance only through [afterFailure], and callers consume the typed
+         * [retryDelay] rather than interpreting a primitive counter.
+         */
+        fun none(): ConsecutiveIndexingFailures = ConsecutiveIndexingFailures(0)
+    }
 }
 
 internal fun loadLiveIndexingConfig(

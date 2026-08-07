@@ -17,6 +17,7 @@ import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleIdentity
 import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
+import io.github.amichne.kast.indexstore.store.codec.SourceIndexReadPathResolution
 import kotlinx.serialization.decodeFromString
 import java.sql.Connection
 
@@ -62,12 +63,13 @@ internal class FileStageStateReader(
 
     internal fun readInventoryInTransaction(conn: Connection): Map<WorkspaceSourcePath, PersistedFileInventory> {
         state.loadInterningTables(conn)
+        val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
         return conn.createStatement().use { statement ->
             val rows = statement.executeQuery(
                 """SELECT prefix_id, filename, last_modified_millis, content_hash,
                           desired_source_version, desired_relationships_version, desired_semantic_graph_version,
                           module_name, source_set
-                   FROM file_manifest""",
+                   FROM $manifest""",
             )
             buildMap {
                 while (rows.next()) {
@@ -93,15 +95,19 @@ internal class FileStageStateReader(
         stage: FileIndexStage,
     ): FileStageOutcome? {
         state.loadInterningTables(conn)
-        val encoded = pathCodec.encodeIfInterned(path.toDatabasePath()) ?: return null
+        val encoded = when (val resolution = pathCodec.encodeForRead(path.toDatabasePath())) {
+            is SourceIndexReadPathResolution.Resolved -> resolution.path
+            SourceIndexReadPathResolution.PrefixUnavailable -> return null
+        }
+        val outcomes = state.readTable(SourceIndexReadTable.FILE_STAGE_OUTCOMES)
         return conn.prepareStatement(
             """SELECT content_hash, stage_version, stage_input_fingerprint, outcome_status, limitations_json,
                       failure_id, failure_code, failure_message, failure_attempt_count
-               FROM file_stage_outcomes
+               FROM $outcomes
                WHERE prefix_id = ? AND filename = ? AND stage = ?""",
         ).use { statement ->
-            statement.setInt(1, encoded.first)
-            statement.setString(2, encoded.second)
+            statement.setInt(1, encoded.prefixId)
+            statement.setString(2, encoded.filename)
             statement.setString(3, stage.name)
             val rows = statement.executeQuery()
             if (!rows.next()) return@use null
@@ -130,21 +136,25 @@ internal class FileStageStateReader(
         path: WorkspaceSourcePath,
     ): PersistedFileInventory? {
         state.loadInterningTables(conn)
-        val encoded = pathCodec.encodeIfInterned(path.toDatabasePath()) ?: return null
+        val encoded = when (val resolution = pathCodec.encodeForRead(path.toDatabasePath())) {
+            is SourceIndexReadPathResolution.Resolved -> resolution.path
+            SourceIndexReadPathResolution.PrefixUnavailable -> return null
+        }
+        val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
         return conn.prepareStatement(
             """SELECT last_modified_millis, content_hash,
                       desired_source_version, desired_relationships_version, desired_semantic_graph_version,
                       module_name, source_set
-               FROM file_manifest
+               FROM $manifest
                WHERE prefix_id = ? AND filename = ?""",
         ).use { statement ->
-            statement.setInt(1, encoded.first)
-            statement.setString(2, encoded.second)
+            statement.setInt(1, encoded.prefixId)
+            statement.setString(2, encoded.filename)
             val rows = statement.executeQuery()
             if (!rows.next()) return@use null
             PersistedFileInventory(
-                prefixId = encoded.first,
-                filename = encoded.second,
+                prefixId = encoded.prefixId,
+                filename = encoded.filename,
                 lastModifiedMillis = rows.getLong(1),
                 contentHash = rows.getString(2),
                 sourceVersion = rows.getString(3),

@@ -59,6 +59,32 @@ pub struct RuntimeStatusResponse {
     pub schema_version: u32,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeStatusWireResponse {
+    #[serde(flatten)]
+    status: RuntimeStatusResponse,
+    #[serde(default)]
+    readiness: Option<Value>,
+    #[serde(default)]
+    ready: Option<bool>,
+}
+
+impl RuntimeStatusWireResponse {
+    fn into_status(mut self) -> Result<RuntimeStatusResponse> {
+        if self.ready.is_some() != self.readiness.is_some() {
+            return Err(CliError::new(
+                "RUNTIME_STATUS_INVALID",
+                "Runtime status must publish readiness lanes and their aggregate together.",
+            ));
+        }
+        if self.ready == Some(false) {
+            self.status.indexing = true;
+        }
+        Ok(self.status)
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ReferenceCoverageState {

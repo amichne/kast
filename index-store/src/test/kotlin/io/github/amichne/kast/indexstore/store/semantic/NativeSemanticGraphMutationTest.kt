@@ -21,6 +21,7 @@ import io.github.amichne.kast.indexstore.snapshot.ExtractionShardKey
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
 import io.github.amichne.kast.indexstore.snapshot.OverlayManifest
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.snapshot.RepositoryRelativePath
 import io.github.amichne.kast.indexstore.snapshot.SnapshotKey
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -205,12 +206,14 @@ class NativeSemanticGraphMutationTest {
     fun `reopening an overlay keeps refreshed shard tombstones cleared`() {
         val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
         val target = snapshotKey('b')
-        val overlay = OverlayManifest(
+        val overlay = repositoryOverlay(
+            workspaceRoot = workspaceRoot,
             base = snapshotKey('a'),
             target = target,
             tombstones = emptySet(),
             shards = mapOf(
-                sourcePath.value to ExtractionShardKey(target.compatibility, gitObjectId('c')),
+                RepositoryRelativePath.fromCanonical(sourcePath.value) to
+                    ExtractionShardKey(target.compatibility, gitObjectId('c')),
             ),
         )
         val database = sourceIndexDatabasePath(workspaceRoot)
@@ -220,13 +223,13 @@ class NativeSemanticGraphMutationTest {
             Json.encodeToString(overlay),
         )
 
-        SqliteSourceIndexStore(workspaceRoot).use { store ->
+        SqliteSourceIndexStore(overlayWorkspaceIdentity(workspaceRoot, overlay)).use { store ->
             store.ensureSchema()
             store.replaceSemanticGraphFiles(
                 listOf(semanticUpdate(sourcePath, "a", listOf(semanticSymbol("a#source", "source", sourcePath)))),
             )
         }
-        SqliteSourceIndexStore(workspaceRoot).use { store -> store.readGeneration() }
+        SqliteSourceIndexStore(overlayWorkspaceIdentity(workspaceRoot, overlay)).use { store -> store.readGeneration() }
 
         DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
             assertEquals(
@@ -249,20 +252,21 @@ class NativeSemanticGraphMutationTest {
             ).generation
         }
         val database = sourceIndexDatabasePath(workspaceRoot)
+        val overlay = repositoryOverlay(
+            workspaceRoot = workspaceRoot,
+            base = snapshotKey('a'),
+            target = snapshotKey('b'),
+            tombstones = setOf(RepositoryRelativePath.fromCanonical(sourcePath.value)),
+            shards = emptyMap(),
+        )
         Files.writeString(
             database.resolveSibling("repository-overlay.json"),
-            Json.encodeToString(
-                OverlayManifest(
-                    base = snapshotKey('a'),
-                    target = snapshotKey('b'),
-                    tombstones = setOf(sourcePath.value),
-                    shards = emptyMap(),
-                ),
-            ),
+            Json.encodeToString(overlay),
         )
 
-        val seededGeneration = SqliteSourceIndexStore(workspaceRoot).use { store -> store.readGeneration() }
-        val reopenedGeneration = SqliteSourceIndexStore(workspaceRoot).use { store -> store.readGeneration() }
+        val identity = overlayWorkspaceIdentity(workspaceRoot, overlay)
+        val seededGeneration = SqliteSourceIndexStore(identity).use { store -> store.readGeneration() }
+        val reopenedGeneration = SqliteSourceIndexStore(identity).use { store -> store.readGeneration() }
 
         assertEquals(
             listOf(baseGeneration.value + 1, baseGeneration.value + 1),
@@ -276,18 +280,19 @@ class NativeSemanticGraphMutationTest {
         val target = snapshotKey('b')
         val database = sourceIndexDatabasePath(workspaceRoot)
         Files.createDirectories(database.parent)
+        val overlay = repositoryOverlay(
+            workspaceRoot = workspaceRoot,
+            base = snapshotKey('a'),
+            target = target,
+            tombstones = emptySet(),
+            shards = mapOf(
+                RepositoryRelativePath.fromCanonical(sourcePath.value) to
+                    ExtractionShardKey(target.compatibility, gitObjectId('c')),
+            ),
+        )
         Files.writeString(
             database.resolveSibling("repository-overlay.json"),
-            Json.encodeToString(
-                OverlayManifest(
-                    base = snapshotKey('a'),
-                    target = target,
-                    tombstones = emptySet(),
-                    shards = mapOf(
-                        sourcePath.value to ExtractionShardKey(target.compatibility, gitObjectId('c')),
-                    ),
-                ),
-            ),
+            Json.encodeToString(overlay),
         )
         DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
             connection.createStatement().use { statement ->
@@ -300,7 +305,7 @@ class NativeSemanticGraphMutationTest {
             }
         }
 
-        SqliteSourceIndexStore(workspaceRoot).use { store ->
+        SqliteSourceIndexStore(overlayWorkspaceIdentity(workspaceRoot, overlay)).use { store ->
             assertFalse(store.ensureSchema())
         }
 

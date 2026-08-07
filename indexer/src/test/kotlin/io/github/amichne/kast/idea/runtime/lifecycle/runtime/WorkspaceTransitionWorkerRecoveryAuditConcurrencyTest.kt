@@ -4,11 +4,13 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -50,7 +52,13 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
                 }
             },
             loadLiveConfig = { it },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(WorkspaceStateIdentity("missed-change"), null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(
+                    WorkspaceStateIdentity("missed-change"),
+                    null,
+                    RepositorySnapshotPublication.Unmanaged,
+                )
+            },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), null) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(initial, publications::add),
             waitForNextPass = { waitCount++ == 0 },
@@ -103,7 +111,9 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
                 if (signals == setOf(WorkspaceSignal.RecoveryProbe)) cancelled.set(true)
             },
             loadLiveConfig = { it },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(identity, null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(identity, null, RepositorySnapshotPublication.Unmanaged)
+            },
             runIndexingPass = { _, _, _ -> error("cancelled audit must not index") },
             workspaceGenerationPublication = publication,
             waitForNextPass = { false },
@@ -117,14 +127,14 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
         assertThrows(ProcessCanceledException::class.java, worker::requestRecoveryAudit)
 
         assertTrue(admission.status() is IdeaIndexSemanticAdmission.Status.Pending)
-        assertEquals(initial, publication.current())
+        assertEquals(PublishedWorkspaceGenerationState.Published(initial), publication.current())
     }
 
     private fun readyAdmission(generation: PublishedWorkspaceGenerationManifest) =
         IdeaIndexSemanticAdmission(projectStub()).also { admission ->
             val token = admission.beginReconciliation("test generation")
             check(
-                admission.publishReady(token) { WorkspaceGenerationCommit.Durable(generation) } is
+                admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
                     IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
             )
         }

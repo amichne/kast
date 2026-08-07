@@ -88,6 +88,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE when referenceIndexReady is true; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
             | `#!kotlin referenceCoverageLimitations: List<ReferenceCoverageLimitation>` :material-information-outline:{ title="Default: emptyList()" } | Typed limitations that qualify or prevent persisted reference evidence. |
             | `#!kotlin publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus?` :material-information-outline:{ title="Default: null" } | Exact immutable workspace generation admitted for semantic reads, or null outside generation-backed READY. |
+            | `#!kotlin readiness: RuntimeReadiness` :material-information-outline:{ title="Default: derived from legacy runtime and reference fields" } | Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes. |
+            | `#!kotlin ready: Boolean?` | Compatibility summary. True only when every readiness lane is ready. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
@@ -122,6 +124,24 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "referenceIndexReady": false,
                     "referenceCoverageState": "UNAVAILABLE",
                     "referenceCoverageLimitations": [],
+                    "readiness": {
+                        "runtime": {
+                            "type": "READY"
+                        },
+                        "model": {
+                            "type": "READY"
+                        },
+                        "references": {
+                            "type": "BLOCKED"
+                        },
+                        "semanticGraph": {
+                            "type": "READY"
+                        },
+                        "mutation": {
+                            "type": "READY"
+                        }
+                    },
+                    "ready": false,
                     "schemaVersion": 6
                 },
                 "id": 1,

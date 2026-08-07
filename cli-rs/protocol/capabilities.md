@@ -55,6 +55,8 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE when referenceIndexReady is true; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
             | `#!kotlin referenceCoverageLimitations: List<ReferenceCoverageLimitation>` :material-information-outline:{ title="Default: emptyList()" } | Typed limitations that qualify or prevent persisted reference evidence. |
             | `#!kotlin publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus?` :material-information-outline:{ title="Default: null" } | Exact immutable workspace generation admitted for semantic reads, or null outside generation-backed READY. |
+            | `#!kotlin readiness: RuntimeReadiness` :material-information-outline:{ title="Default: derived from legacy runtime and reference fields" } | Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes. |
+            | `#!kotlin ready: Boolean?` | Compatibility summary. True only when every readiness lane is ready. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "runtime/shutdown — Request runtime host shutdown after the response is flushed"

@@ -152,7 +152,7 @@ unsafe extern "C" {
 #[derive(Debug, PartialEq, Eq)]
 enum MacosArguments {
     Gone,
-    Exact(Vec<String>),
+    Exact(Vec<OsString>),
 }
 
 #[cfg(target_os = "macos")]
@@ -205,7 +205,7 @@ fn macos_process_identity(pid: u64) -> Result<Option<ManagedProcessIdentity>> {
     };
     if read == 0 {
         let error = std::io::Error::last_os_error();
-        return if matches!(error.raw_os_error(), Some(libc::ESRCH)) {
+        return if matches!(error.raw_os_error(), Some(libc::ESRCH) | Some(libc::ENOENT)) {
             Ok(None)
         } else {
             Err(process_io_error(pid, "BSD process info", error))
@@ -273,13 +273,17 @@ fn macos_process_arguments(pid: libc::c_int) -> Result<MacosArguments> {
 fn classify_macos_arguments(pid: u64, read: std::io::Result<Vec<u8>>) -> Result<MacosArguments> {
     match read {
         Ok(bytes) => parse_macos_arguments(&bytes).map(MacosArguments::Exact),
-        Err(error) if error.raw_os_error() == Some(libc::ESRCH) => Ok(MacosArguments::Gone),
+        Err(error)
+            if matches!(error.raw_os_error(), Some(libc::ESRCH) | Some(libc::ENOENT)) =>
+        {
+            Ok(MacosArguments::Gone)
+        }
         Err(error) => Err(process_io_error(pid, "command arguments", error)),
     }
 }
 
 #[cfg(any(target_os = "macos", test))]
-fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<String>> {
+fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<OsString>> {
     if bytes.len() < std::mem::size_of::<libc::c_int>() {
         return Err(process_error("macOS process arguments are truncated."));
     }
@@ -301,10 +305,7 @@ fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<String>> {
             .position(|byte| *byte == 0)
             .map(|offset| cursor + offset)
             .ok_or_else(|| process_error("macOS process argument is unterminated."))?;
-        arguments.push(
-            String::from_utf8(bytes[cursor..end].to_vec())
-                .map_err(|_| process_error("macOS process argument is not UTF-8."))?,
-        );
+        arguments.push(OsString::from_vec(bytes[cursor..end].to_vec()));
         cursor = end + 1;
     }
     Ok(arguments)
@@ -320,17 +321,14 @@ fn skip_c_string(bytes: &[u8], cursor: usize) -> Result<usize> {
 }
 
 #[cfg(target_os = "linux")]
-fn parse_nul_command(bytes: &[u8]) -> Result<Vec<String>> {
+fn parse_nul_command(bytes: &[u8]) -> Result<Vec<OsString>> {
     if bytes.last() != Some(&0) {
         return Err(process_error("Linux process command line is truncated."));
     }
     let arguments = bytes[..bytes.len().saturating_sub(1)]
         .split(|byte| *byte == 0)
-        .map(|value| {
-            String::from_utf8(value.to_vec())
-                .map_err(|_| process_error("Linux process argument is not UTF-8."))
-        })
-        .collect::<Result<Vec<_>>>()?;
+        .map(|value| OsString::from_vec(value.to_vec()))
+        .collect::<Vec<_>>();
     if arguments.is_empty() || arguments[0].is_empty() {
         Err(process_error("Linux process command line is empty."))
     } else {
@@ -353,9 +351,7 @@ fn linux_live_stat_retains_start_identity_review_regression() {
 #[test]
 fn linux_dead_states_are_terminated_review_regression() {
     for state in ["Z", "X", "x"] {
-        let stat = format!(
-            "42 (kast indexer) {state} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 123"
-        );
+        let stat = format!("42 (x) {state} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 123");
         assert_eq!(
             parse_linux_process_stat(&stat).expect("Linux process stat"),
             LinuxProcessStat::Terminated { start_ticks: 123 },
@@ -373,8 +369,7 @@ fn linux_zombie_is_gone_review_regression() {
     let pid = u64::from(child.id());
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
     loop {
-        let stat =
-            fs::read_to_string(format!("/proc/{pid}/stat")).expect("unreaped process stat");
+        let stat = fs::read_to_string(format!("/proc/{pid}/stat")).expect("process stat");
         if matches!(
             parse_linux_process_stat(&stat).expect("Linux process stat"),
             LinuxProcessStat::Terminated { .. }

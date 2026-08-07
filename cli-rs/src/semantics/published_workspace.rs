@@ -1,13 +1,17 @@
 use crate::error::{CliError, Result};
+use rusqlite::{OptionalExtension, TransactionBehavior};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
-#[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
-const PUBLICATION_DIRECTORY: &str = "semantic-generations";
-const GENERATIONS_DIRECTORY: &str = "generations";
-const CURRENT_POINTER: &str = "current.json";
+#[cfg(test)]
+use sha2::{Digest, Sha256};
+
+const WORKSPACE_CACHE_DIRECTORY: &str = "cache";
+const WORKSPACE_DATABASE_FILE: &str = "source-index.db";
+
+#[path = "published_workspace/overlay.rs"]
+mod overlay;
+use overlay::resolve_repository_overlay;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -28,7 +32,7 @@ pub(crate) struct PublishedWorkspaceDatabase {
     pub(crate) database: PathBuf,
     pub(crate) repository_overlay: Option<PathBuf>,
     pub(crate) repository_base_database: Option<PathBuf>,
-    current_pointer: PathBuf,
+    workspace_data: PathBuf,
 }
 
 include!("published_workspace/database.rs");
@@ -43,16 +47,13 @@ pub(crate) fn resolve_published_workspace_database(
 fn resolve_published_workspace_database_from(
     workspace_data: &Path,
 ) -> Result<PublishedWorkspaceDatabase> {
-    let publication_directory = workspace_data.join(PUBLICATION_DIRECTORY);
-    let current_pointer = publication_directory.join(CURRENT_POINTER);
-    let manifest = read_manifest(&current_pointer)?;
+    let workspace_data = workspace_data.to_path_buf();
+    let database = resolve_workspace_database(&workspace_data)?;
+    let manifest = read_database_publication(&database)?;
     validate_manifest_fields(&manifest)?;
-
-    let generations = publication_directory.join(GENERATIONS_DIRECTORY);
-    let database = generation_database(&generations, &manifest.database_file)?;
-    validate_source_database(&database, &manifest)?;
     let (repository_overlay, repository_base_database) = resolve_repository_overlay(
         &database,
+        &workspace_data,
         manifest.repository_overlay_file.as_deref(),
         manifest.source_index_schema_version,
     )?;
@@ -62,79 +63,150 @@ fn resolve_published_workspace_database_from(
         database,
         repository_overlay,
         repository_base_database,
-        current_pointer,
+        workspace_data,
     })
 }
 
-fn read_manifest(current_pointer: &Path) -> Result<PublishedWorkspaceGenerationManifest> {
-    let metadata = std::fs::symlink_metadata(current_pointer).map_err(|_| {
+fn resolve_workspace_database(workspace_data: &Path) -> Result<PathBuf> {
+    let database = workspace_data
+        .join(WORKSPACE_CACHE_DIRECTORY)
+        .join(WORKSPACE_DATABASE_FILE);
+    let metadata = std::fs::symlink_metadata(&database).map_err(|_| {
         CliError::new(
             "PUBLISHED_WORKSPACE_UNAVAILABLE",
             format!(
-                "Published workspace pointer is unavailable: {}",
-                current_pointer.display()
+                "Published workspace database is unavailable: {}",
+                database.display()
             ),
         )
     })?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(invalid_publication(
-            "Published workspace pointer must be a regular non-symlink file",
+            "Published workspace database must be a regular non-symlink file",
         ));
     }
-    let mut options = std::fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(unix)]
-    options.custom_flags(libc::O_NOFOLLOW);
-    let mut pointer = options.open(current_pointer).map_err(|error| {
-        CliError::new(
-            "PUBLISHED_WORKSPACE_UNAVAILABLE",
-            format!(
-                "Cannot read published workspace pointer {}: {error}",
-                current_pointer.display()
-            ),
-        )
-    })?;
-    if !pointer
-        .metadata()
+    let canonical_cache = std::fs::canonicalize(workspace_data.join(WORKSPACE_CACHE_DIRECTORY))
         .map_err(|error| {
             invalid_publication(format!(
-                "Cannot inspect published workspace pointer {}: {error}",
-                current_pointer.display()
+                "Cannot resolve workspace cache directory {}: {error}",
+                workspace_data.join(WORKSPACE_CACHE_DIRECTORY).display()
             ))
-        })?
-        .is_file()
-    {
+        })?;
+    let canonical_database = std::fs::canonicalize(&database).map_err(|error| {
+        invalid_publication(format!(
+            "Cannot resolve published workspace database {}: {error}",
+            database.display()
+        ))
+    })?;
+    if canonical_database.parent() != Some(canonical_cache.as_path()) {
         return Err(invalid_publication(
-            "Published workspace pointer must remain a regular file",
+            "Published workspace database escaped its workspace cache directory",
         ));
     }
-    let mut bytes = Vec::new();
-    pointer.read_to_end(&mut bytes).map_err(|error| {
-        CliError::new(
-            "PUBLISHED_WORKSPACE_UNAVAILABLE",
-            format!(
-                "Cannot read published workspace pointer {}: {error}",
-                current_pointer.display()
-            ),
-        )
-    })?;
-    serde_json::from_slice(&bytes).map_err(|error| {
+    Ok(canonical_database)
+}
+
+fn read_database_publication(database: &Path) -> Result<PublishedWorkspaceGenerationManifest> {
+    let mut connection = rusqlite::Connection::open_with_flags(
+        database,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
+            | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
+            | rusqlite::OpenFlags::SQLITE_OPEN_URI,
+    )
+    .map_err(|error| {
         invalid_publication(format!(
-            "Cannot decode published workspace pointer {}: {error}",
-            current_pointer.display()
+            "Cannot open published workspace database {}: {error}",
+            database.display()
         ))
+    })?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Deferred)
+        .map_err(|error| invalid_publication(format!("Cannot begin publication read: {error}")))?;
+    let row = transaction
+        .query_row(
+            "SELECT publication.revision, publication.identity,
+                    publication.source_index_generation,
+                    publication.source_index_schema_version,
+                    publication.published_at_epoch_millis,
+                    publication.repository_overlay_file,
+                    schema.version, schema.generation
+             FROM workspace_publication publication
+             CROSS JOIN schema_version schema
+             WHERE publication.singleton = 1
+             LIMIT 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, Option<String>>(5)?,
+                    row.get::<_, i64>(6)?,
+                    row.get::<_, i64>(7)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| {
+            invalid_publication(format!(
+                "Cannot read workspace publication from {}: {error}",
+                database.display()
+            ))
+        })?
+        .ok_or_else(|| {
+            CliError::new(
+                "PUBLISHED_WORKSPACE_UNAVAILABLE",
+                "The workspace database has no committed publication.",
+            )
+        })?;
+    transaction
+        .commit()
+        .map_err(|error| invalid_publication(format!("Cannot finish publication read: {error}")))?;
+
+    let revision = non_negative_u64(row.0, "workspace publication revision")?;
+    if revision == 0 {
+        return Err(invalid_publication(
+            "Published workspace revision must be positive",
+        ));
+    }
+    let source_index_generation = non_negative_u64(row.2, "source-index generation")?;
+    let published_at_epoch_millis = non_negative_u64(row.4, "publication time")?;
+    if row.3 != row.6 || source_index_generation != non_negative_u64(row.7, "schema generation")? {
+        return Err(CliError::new(
+            "PUBLISHED_WORKSPACE_MISMATCH",
+            format!(
+                "Workspace publication identity {}:{} does not match database identity {}:{}.",
+                row.3, source_index_generation, row.6, row.7
+            ),
+        ));
+    }
+    Ok(PublishedWorkspaceGenerationManifest {
+        generation: revision,
+        identity: row.1,
+        source_index_generation,
+        source_index_schema_version: row.3,
+        database_file: WORKSPACE_DATABASE_FILE.to_string(),
+        published_at_epoch_millis,
+        repository_overlay_file: row.5,
     })
 }
 
+fn non_negative_u64(value: i64, description: &str) -> Result<u64> {
+    u64::try_from(value)
+        .map_err(|_| invalid_publication(format!("Published {description} is negative")))
+}
+
 fn validate_manifest_fields(manifest: &PublishedWorkspaceGenerationManifest) -> Result<()> {
-    if manifest.generation == 0 {
-        return Err(invalid_publication(
-            "Published workspace generation must be positive",
-        ));
-    }
     if manifest.identity.trim().is_empty() {
         return Err(invalid_publication(
             "Published workspace identity must not be blank",
+        ));
+    }
+    if manifest.database_file != WORKSPACE_DATABASE_FILE {
+        return Err(invalid_publication(
+            "Published database must be the single workspace source-index.db",
         ));
     }
     if manifest.source_index_schema_version
@@ -150,217 +222,6 @@ fn validate_manifest_fields(manifest: &PublishedWorkspaceGenerationManifest) -> 
         ));
     }
     Ok(())
-}
-
-fn generation_database(generations: &Path, database_file: &str) -> Result<PathBuf> {
-    let relative = Path::new(database_file);
-    let components = relative.components().collect::<Vec<_>>();
-    if components.len() != 2
-        || !components
-            .iter()
-            .all(|component| matches!(component, Component::Normal(_)))
-        || relative.file_name().and_then(|name| name.to_str()) != Some("source-index.db")
-    {
-        return Err(invalid_publication(
-            "Published database file must be source-index.db inside one generation directory",
-        ));
-    }
-    let database = generations.join(relative);
-    let metadata = std::fs::symlink_metadata(&database).map_err(|error| {
-        invalid_publication(format!(
-            "Published workspace database is unavailable at {}: {error}",
-            database.display()
-        ))
-    })?;
-    if metadata.file_type().is_symlink() || !metadata.is_file() {
-        return Err(invalid_publication(
-            "Published workspace database must be a regular non-symlink file",
-        ));
-    }
-    let canonical_generations = std::fs::canonicalize(generations).map_err(|error| {
-        invalid_publication(format!(
-            "Cannot resolve published generations directory {}: {error}",
-            generations.display()
-        ))
-    })?;
-    let canonical_database = std::fs::canonicalize(&database).map_err(|error| {
-        invalid_publication(format!(
-            "Cannot resolve published workspace database {}: {error}",
-            database.display()
-        ))
-    })?;
-    if canonical_database.parent().and_then(Path::parent) != Some(canonical_generations.as_path()) {
-        return Err(invalid_publication(
-            "Published workspace database escaped its generations directory",
-        ));
-    }
-    Ok(canonical_database)
-}
-
-fn validate_source_database(
-    database: &Path,
-    manifest: &PublishedWorkspaceGenerationManifest,
-) -> Result<()> {
-    let (schema_version, source_generation) = database_identity(database)?;
-    if schema_version != manifest.source_index_schema_version
-        || source_generation != manifest.source_index_generation
-    {
-        return Err(CliError::new(
-            "PUBLISHED_WORKSPACE_MISMATCH",
-            format!(
-                "Published database identity {schema_version}:{source_generation} does not match manifest identity {}:{}.",
-                manifest.source_index_schema_version, manifest.source_index_generation,
-            ),
-        ));
-    }
-    Ok(())
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PublishedRepositoryOverlayDescriptor {
-    base_database: Option<PathBuf>,
-}
-
-fn resolve_repository_overlay(
-    database: &Path,
-    repository_overlay_file: Option<&str>,
-    expected_schema: i64,
-) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
-    let Some(file) = repository_overlay_file else {
-        return Ok((None, None));
-    };
-    if file != "repository-overlay.json" {
-        return Err(invalid_publication(
-            "Published repository overlay must be repository-overlay.json",
-        ));
-    }
-    let descriptor = database.with_file_name(file);
-    let metadata = std::fs::symlink_metadata(&descriptor).map_err(|error| {
-        invalid_publication(format!(
-            "Published repository overlay is unavailable at {}: {error}",
-            descriptor.display()
-        ))
-    })?;
-    if metadata.file_type().is_symlink() || !metadata.is_file() {
-        return Err(invalid_publication(
-            "Published repository overlay must be a regular non-symlink file",
-        ));
-    }
-    let descriptor = std::fs::canonicalize(&descriptor).map_err(|error| {
-        invalid_publication(format!(
-            "Cannot resolve published repository overlay {}: {error}",
-            descriptor.display()
-        ))
-    })?;
-    if descriptor.parent() != database.parent() {
-        return Err(invalid_publication(
-            "Published repository overlay escaped its generation directory",
-        ));
-    }
-    let overlay: PublishedRepositoryOverlayDescriptor =
-        serde_json::from_slice(&std::fs::read(&descriptor).map_err(|error| {
-            invalid_publication(format!(
-                "Cannot read published repository overlay {}: {error}",
-                descriptor.display()
-            ))
-        })?)
-        .map_err(|error| {
-            invalid_publication(format!(
-                "Cannot decode published repository overlay {}: {error}",
-                descriptor.display()
-            ))
-        })?;
-    let base = overlay
-        .base_database
-        .as_deref()
-        .ok_or_else(|| invalid_publication("Published repository overlay has no base database"))?;
-    Ok((
-        Some(descriptor),
-        Some(validate_repository_base(database, base, expected_schema)?),
-    ))
-}
-
-fn validate_repository_base(
-    published_database: &Path,
-    repository_base: &Path,
-    expected_schema: i64,
-) -> Result<PathBuf> {
-    if !repository_base.is_absolute() {
-        return Err(invalid_publication(
-            "Published repository base database must be absolute",
-        ));
-    }
-    let expected_base = published_database.with_file_name("repository-base.db");
-    let metadata = std::fs::symlink_metadata(repository_base).map_err(|error| {
-        invalid_publication(format!(
-            "Published repository base is unavailable at {}: {error}",
-            repository_base.display()
-        ))
-    })?;
-    if metadata.file_type().is_symlink() || !metadata.is_file() {
-        return Err(invalid_publication(
-            "Published repository base must be a regular non-symlink file",
-        ));
-    }
-    let canonical = std::fs::canonicalize(repository_base).map_err(|error| {
-        invalid_publication(format!(
-            "Cannot resolve published repository base {}: {error}",
-            repository_base.display()
-        ))
-    })?;
-    let canonical_expected_base = std::fs::canonicalize(&expected_base).map_err(|error| {
-        invalid_publication(format!(
-            "Published repository base is unavailable at {}: {error}",
-            expected_base.display()
-        ))
-    })?;
-    if canonical != canonical_expected_base || canonical.parent() != published_database.parent() {
-        return Err(invalid_publication(
-            "Published repository base must be the repository-base.db sibling in the immutable generation directory",
-        ));
-    }
-    let (schema_version, _) = database_identity(&canonical)?;
-    if schema_version != expected_schema {
-        return Err(CliError::new(
-            "PUBLISHED_WORKSPACE_MISMATCH",
-            format!(
-                "Published repository base schema {schema_version} does not match manifest schema {expected_schema}.",
-            ),
-        ));
-    }
-    Ok(canonical)
-}
-
-fn database_identity(database: &Path) -> Result<(i64, u64)> {
-    let connection = rusqlite::Connection::open_with_flags(
-        database,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
-            | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
-            | rusqlite::OpenFlags::SQLITE_OPEN_URI,
-    )
-    .map_err(|error| {
-        invalid_publication(format!(
-            "Cannot open published workspace database {}: {error}",
-            database.display()
-        ))
-    })?;
-    let (schema_version, generation): (i64, i64) = connection
-        .query_row(
-            "SELECT version, generation FROM schema_version LIMIT 1",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(|error| {
-            invalid_publication(format!(
-                "Cannot read published workspace database identity from {}: {error}",
-                database.display()
-            ))
-        })?;
-    let generation = u64::try_from(generation).map_err(|_| {
-        invalid_publication("Published source-index generation must not be negative")
-    })?;
-    Ok((schema_version, generation))
 }
 
 fn invalid_publication(message: impl Into<String>) -> CliError {

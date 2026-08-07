@@ -80,7 +80,7 @@ pub(crate) fn spawn_sequenced_indexer_backend(
 }
 
 #[cfg(target_os = "macos")]
-pub(super) fn default_socket_path_for_test(workspace: &Path) -> PathBuf {
+pub(crate) fn default_socket_path_for_test(workspace: &Path) -> PathBuf {
     use sha2::{Digest, Sha256};
 
     let normalized: PathBuf = workspace.components().collect();

@@ -2,11 +2,13 @@ package io.github.amichne.kast.indexstore.store.codec
 
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.indexstore.store.SourceIndexPageReadObserver
+import io.github.amichne.kast.indexstore.store.AttachedSqliteDatabase
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.lang.reflect.Proxy
@@ -26,14 +28,14 @@ class StringInterningCodecTest {
         Class.forName("org.sqlite.JDBC")
         DriverManager.getConnection("jdbc:sqlite::memory:").use { delegate ->
             delegate.createStatement().use { statement ->
-                statement.execute("CREATE TABLE strings (id INTEGER PRIMARY KEY, value TEXT NOT NULL UNIQUE)")
-                statement.execute("INSERT INTO strings(value) VALUES ('alpha')")
+                statement.execute("CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE)")
+                statement.execute("INSERT INTO fq_names(fq_name) VALUES ('alpha')")
             }
             val fullLoads = AtomicInteger(0)
             val connection = interceptedConnection(delegate) { query ->
-                if (query == "SELECT id, value FROM strings") fullLoads.incrementAndGet()
+                if (query == "SELECT fq_id, fq_name FROM fq_names") fullLoads.incrementAndGet()
             }
-            val codec = StringInterningCodec("strings", "id", "value")
+            val codec = StringInterningCodec(StringInterningDomain.FQ_NAME)
 
             codec.loadAll(connection)
             codec.batchEnsure(connection, setOf("beta"))
@@ -51,10 +53,10 @@ class StringInterningCodecTest {
         Class.forName("org.sqlite.JDBC")
         DriverManager.getConnection("jdbc:sqlite::memory:").use { delegate ->
             delegate.createStatement().use { statement ->
-                statement.execute("CREATE TABLE strings (id INTEGER PRIMARY KEY, value TEXT NOT NULL UNIQUE)")
-                statement.execute("INSERT INTO strings(value) VALUES ('alpha')")
+                statement.execute("CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE)")
+                statement.execute("INSERT INTO fq_names(fq_name) VALUES ('alpha')")
             }
-            val codec = StringInterningCodec("strings", "id", "value")
+            val codec = StringInterningCodec(StringInterningDomain.FQ_NAME)
             codec.loadAll(delegate)
 
             delegate.autoCommit = false
@@ -62,7 +64,7 @@ class StringInterningCodecTest {
             delegate.rollback()
 
             val failingConnection = interceptedConnection(delegate) { query ->
-                if (query == "SELECT id, value FROM strings") {
+                if (query == "SELECT fq_id, fq_name FROM fq_names") {
                     throw SQLException("simulated reload failure")
                 }
             }
@@ -101,6 +103,30 @@ class StringInterningCodecTest {
 
             state.loadInterningTables(connection)
             assertNull(state.pathCodec.encodeIfInterned(stalePath))
+        }
+    }
+
+    @Test
+    fun `repository aliases reject non-positive source identities as finite data`() {
+        Class.forName("org.sqlite.JDBC")
+        val base = workspaceRoot.resolve("repository-base.db")
+        DriverManager.getConnection("jdbc:sqlite:$base").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE)")
+                statement.execute("INSERT INTO fq_names(fq_id, fq_name) VALUES (-1, 'invalid')")
+            }
+        }
+        DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE)")
+                statement.execute("ATTACH DATABASE '${base.toAbsolutePath()}' AS repository_base")
+            }
+            val resolution = StringInterningCodec(StringInterningDomain.FQ_NAME).loadReadOnlyAliases(
+                connection,
+                AttachedSqliteDatabase.REPOSITORY_BASE,
+            )
+
+            assertTrue(resolution is ReadOnlyInterningAliasResolution.Rejected)
         }
     }
 

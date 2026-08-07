@@ -3,20 +3,26 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
-import io.github.amichne.kast.indexstore.snapshot.OverlayManifest
 import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
 import io.github.amichne.kast.indexstore.store.codec.StringInterningCodec
+import io.github.amichne.kast.indexstore.store.codec.StringInterningDomain
 import io.github.amichne.kast.indexstore.store.jdbc.SqliteJdbcDriverBootstrap
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
+
+private sealed interface WorkspaceWriteAuthority {
+    data object Idle : WorkspaceWriteAuthority
+
+    data class Active(val session: WorkspaceWriteSession) : WorkspaceWriteAuthority
+}
 
 internal class SqliteSourceIndexStoreState(
     workspaceIdentity: WorkspaceIdentity,
@@ -27,19 +33,18 @@ internal class SqliteSourceIndexStoreState(
     internal val normalizedWorkspaceRoot: NormalizedPath = NormalizedPath.of(workspaceRoot)
     internal val sourceFilePolicy = SourceIndexFilePolicy.forWorkspace(workspaceRoot)
     internal val dbPath: Path = workspaceIdentity.sourceIndexDatabaseFile
-    internal val repositoryOverlayManifest: OverlayManifest? = dbPath.resolveSibling(REPOSITORY_OVERLAY_FILE)
-        .takeIf(Files::isRegularFile)
-        ?.let { path -> Json.decodeFromString(Files.readString(path)) }
-    internal val repositoryBasePath: Path? = repositoryOverlayManifest?.baseDatabase
-        ?.let(Path::of)
-        ?.toAbsolutePath()
-        ?.normalize()
+    private val repositoryOverlay = when (
+        val resolution = RepositoryOverlayState.resolve(
+            databasePath = workspaceIdentity.sourceIndexDatabasePath,
+            repository = workspaceIdentity.repository,
+        )
+    ) {
+        is RepositoryOverlayStateResolution.Resolved -> resolution.state
+        is RepositoryOverlayStateResolution.Rejected -> throw RepositoryOverlayAuthorityException(resolution.failure)
+    }
+    internal val repositoryOverlayPublication get() = repositoryOverlay.publication
     internal val pathCodec = PathInterningCodec(normalizedWorkspaceRoot.toJavaPath())
-    internal val fqCodec = StringInterningCodec(
-        tableName = "fq_names",
-        idColumn = "fq_id",
-        valueColumn = "fq_name",
-    )
+    internal val fqCodec = StringInterningCodec(StringInterningDomain.FQ_NAME)
     internal val connectionLock = Any()
     internal val writeLock = Any()
     internal val schema: SqliteSourceIndexSchema by lazy { SqliteSourceIndexSchema(this) }
@@ -48,14 +53,12 @@ internal class SqliteSourceIndexStoreState(
 
     @Volatile
     private var cachedConnection: Connection? = null
-
     @Volatile
     private var validatedSchemaConnection: Connection? = null
-
     @Volatile
     private var loadedInterningDataVersion: Long? = null
-
     private val committedManifestFileCount = AtomicReference(NonNegativeInt(0))
+    private var workspaceWriteAuthority: WorkspaceWriteAuthority = WorkspaceWriteAuthority.Idle
 
     internal fun dbExists(): Boolean = Files.isRegularFile(dbPath)
 
@@ -67,6 +70,96 @@ internal class SqliteSourceIndexStoreState(
     }
 
     internal fun committedManifestFileCount(): NonNegativeInt = committedManifestFileCount.get()
+
+    internal fun beginWorkspaceWrite(): WorkspaceWriteSession = synchronized(writeLock) {
+        check(access == SqliteSourceIndexStoreAccess.READ_WRITE) {
+            "Read-only source index cannot begin a workspace write"
+        }
+        check(workspaceWriteAuthority == WorkspaceWriteAuthority.Idle) { "A workspace write is already active" }
+        val conn = connection()
+        check(conn.autoCommit) { "Workspace write requires an idle SQLite connection" }
+        conn.autoCommit = false
+        WorkspaceWriteSession(UUID.randomUUID()).also { session ->
+            workspaceWriteAuthority = WorkspaceWriteAuthority.Active(session)
+        }
+    }
+
+    internal fun <T> inspectWorkspaceWrite(
+        session: WorkspaceWriteSession,
+        inspect: (Connection) -> T,
+    ): T = synchronized(writeLock) {
+        requireActiveWorkspaceWrite(session)
+        inspect(connection())
+    }
+
+    internal fun <T> commitWorkspaceWrite(
+        session: WorkspaceWriteSession,
+        publish: (Connection) -> T,
+    ): T = synchronized(writeLock) {
+        requireActiveWorkspaceWrite(session)
+        val conn = connection()
+        try {
+            val result = publish(conn)
+            val committedCount = readManifestFileCount(conn)
+            conn.commit()
+            workspaceWriteAuthority = WorkspaceWriteAuthority.Idle
+            committedManifestFileCount.set(committedCount)
+            loadedInterningDataVersion = null
+            result
+        } catch (failure: Throwable) {
+            rollbackWorkspaceWrite(conn, session)
+            throw failure
+        } finally {
+            conn.autoCommit = true
+        }
+    }
+
+    internal fun discardWorkspaceWrite(session: WorkspaceWriteSession) = synchronized(writeLock) {
+        requireActiveWorkspaceWrite(session)
+        val conn = connection()
+        try {
+            rollbackWorkspaceWrite(conn, session)
+        } finally {
+            conn.autoCommit = true
+        }
+    }
+
+    internal fun <T> writeTransaction(
+        impact: SourceIndexMutationImpact = SourceIndexMutationImpact.CONTENT_ONLY,
+        write: (Connection) -> T,
+    ): T = synchronized(writeLock) {
+        val conn = connection()
+        when (val authority = workspaceWriteAuthority) {
+            is WorkspaceWriteAuthority.Active -> {
+                requireActiveWorkspaceWrite(authority.session)
+                val savepoint = conn.setSavepoint()
+                try {
+                    write(conn).also { conn.releaseSavepoint(savepoint) }
+                } catch (failure: Throwable) {
+                    conn.rollback(savepoint)
+                    runCatching { reloadInterningTables(conn) }
+                    throw failure
+                }
+            }
+
+            WorkspaceWriteAuthority.Idle -> {
+                check(conn.autoCommit) { "SQLite write transaction requires an idle connection" }
+                conn.autoCommit = false
+                try {
+                    val result = write(conn)
+                    conn.commit()
+                    if (impact == SourceIndexMutationImpact.MANIFEST) refreshManifestFileCount(conn)
+                    result
+                } catch (failure: Throwable) {
+                    conn.rollback()
+                    runCatching { reloadInterningTables(conn) }
+                    throw failure
+                } finally {
+                    conn.autoCommit = true
+                }
+            }
+        }
+    }
 
     internal fun connection(requireCurrentSchema: Boolean = true): Connection {
         cachedConnection?.let { conn ->
@@ -116,11 +209,12 @@ internal class SqliteSourceIndexStoreState(
                     stmt.execute("PRAGMA mmap_size=268435456")
                     stmt.execute("PRAGMA temp_store=MEMORY")
                     stmt.execute("PRAGMA foreign_keys=ON")
-                    if (access == SqliteSourceIndexStoreAccess.READ_ONLY) {
-                        stmt.execute("PRAGMA query_only=ON")
-                    }
                 }
-                attachRepositoryBase(conn)
+                when (val attachment = repositoryOverlay.attachBase(conn)) {
+                    RepositoryBaseAttachmentResolution.Attached -> Unit
+                    is RepositoryBaseAttachmentResolution.Rejected ->
+                        throw RepositoryOverlayAuthorityException(attachment.failure)
+                }
                 if (schema.readSchemaVersion(conn) == null) {
                     check(access == SqliteSourceIndexStoreAccess.READ_WRITE) {
                         "Read-only source index has no schema: $dbPath"
@@ -132,9 +226,16 @@ internal class SqliteSourceIndexStoreState(
                 }
                 if (requireCurrentSchema) {
                     schema.validateCurrentSchema(conn)
-                    if (access == SqliteSourceIndexStoreAccess.READ_WRITE) initializeRepositoryOverlay(conn)
+                    if (access == SqliteSourceIndexStoreAccess.READ_WRITE) {
+                        initializeRepositoryOverlay(conn)
+                    } else {
+                        repositoryOverlay.installReadAuthority(conn)
+                    }
                     reloadInterningTables(conn)
                     refreshManifestFileCount(conn)
+                    if (access == SqliteSourceIndexStoreAccess.READ_ONLY) {
+                        conn.createStatement().use { statement -> statement.execute("PRAGMA query_only=ON") }
+                    }
                 }
                 cachedConnection = conn
                 validatedSchemaConnection = conn.takeIf { requireCurrentSchema }
@@ -149,61 +250,18 @@ internal class SqliteSourceIndexStoreState(
         }
     }
 
-    private fun attachRepositoryBase(conn: Connection) {
-        val base = repositoryBasePath ?: return
-        check(Files.isRegularFile(base)) { "Repository snapshot base is unavailable: $base" }
-        val uri = "${base.toUri().toASCIIString()}?mode=ro&immutable=1".replace("'", "''")
-        conn.createStatement().use { statement ->
-            statement.execute("ATTACH DATABASE '$uri' AS repository_base")
-            val rows = statement.executeQuery("SELECT version FROM repository_base.schema_version LIMIT 1")
-            check(rows.next() && rows.getInt(1) == SOURCE_INDEX_SCHEMA_VERSION) {
-                "Repository snapshot base schema does not match $SOURCE_INDEX_SCHEMA_VERSION"
-            }
+    internal fun initializeRepositoryOverlay(conn: Connection) =
+        repositoryOverlay.initialize(conn, ::incrementGenerationInTransaction).also {
+            repositoryOverlay.installReadAuthority(conn)
         }
-    }
 
-    internal fun initializeRepositoryOverlay(conn: Connection) {
-        val manifest = repositoryOverlayManifest ?: return
-        conn.createStatement().use { statement ->
-            statement.execute(
-                """CREATE TABLE IF NOT EXISTS repository_overlay_state (
-                    target_snapshot TEXT PRIMARY KEY
-                ) WITHOUT ROWID""",
-            )
-        }
-        val previousAutoCommit = conn.autoCommit
-        conn.autoCommit = false
-        try {
-            val shouldSeed = conn.prepareStatement(
-                "INSERT OR IGNORE INTO repository_overlay_state(target_snapshot) VALUES (?)",
-            ).use { statement ->
-                statement.setString(1, manifest.target.directoryName)
-                statement.executeUpdate() == 1
-            }
-            val seededGraphState = if (shouldSeed) {
-                conn.prepareStatement(
-                    "INSERT OR IGNORE INTO repository_overlay_tombstones(path) VALUES (?)",
-                ).use { statement ->
-                    (manifest.tombstones + manifest.shards.keys).sorted().forEach { path ->
-                        statement.setString(1, path)
-                        statement.addBatch()
-                    }
-                    statement.executeBatch().any { updateCount -> updateCount != 0 }
-                }
-            } else {
-                false
-            }
-            if (seededGraphState) {
-                incrementGenerationInTransaction(conn)
-            }
-            conn.commit()
-        } catch (error: Exception) {
-            conn.rollback()
-            throw error
-        } finally {
-            conn.autoCommit = previousAutoCommit
-        }
-    }
+    internal fun readTable(table: SourceIndexReadTable): SqlReadRelation = repositoryOverlay.readTable(table)
+
+    internal fun clearRepositoryOverlayTombstone(conn: Connection, path: SemanticGraphSourcePath) =
+        repositoryOverlay.clearTombstone(conn, path)
+
+    internal fun recordRepositoryOverlayTombstone(conn: Connection, path: SemanticGraphSourcePath) =
+        repositoryOverlay.recordTombstone(conn, path)
 
     internal fun markSchemaValidated(conn: Connection) {
         validatedSchemaConnection = conn
@@ -215,6 +273,11 @@ internal class SqliteSourceIndexStoreState(
         try {
             synchronized(connectionLock) {
                 cachedConnection?.let { conn ->
+                    when (val authority = workspaceWriteAuthority) {
+                        is WorkspaceWriteAuthority.Active ->
+                            runCatching { rollbackWorkspaceWrite(conn, authority.session) }
+                        WorkspaceWriteAuthority.Idle -> Unit
+                    }
                     runCatching { conn.close() }
                     cachedConnection = null
                     validatedSchemaConnection = null
@@ -224,6 +287,19 @@ internal class SqliteSourceIndexStoreState(
         } finally {
             writerLease?.close()
         }
+    }
+
+    private fun requireActiveWorkspaceWrite(session: WorkspaceWriteSession) {
+        require(workspaceWriteAuthority == WorkspaceWriteAuthority.Active(session)) {
+            "Workspace write session is not active"
+        }
+    }
+
+    private fun rollbackWorkspaceWrite(conn: Connection, session: WorkspaceWriteSession) {
+        conn.rollback()
+        workspaceWriteAuthority = WorkspaceWriteAuthority.Idle
+        runCatching { reloadInterningTables(conn) }
+        refreshManifestFileCount(conn)
     }
 
     internal fun readGenerationInTransaction(conn: Connection): SourceIndexGeneration =
@@ -254,19 +330,13 @@ internal class SqliteSourceIndexStoreState(
         }
     }
 
-    internal fun commitManifestMutation(conn: Connection) {
-        val committedCount = readManifestFileCount(conn)
-        conn.commit()
-        committedManifestFileCount.set(committedCount)
-    }
-
     internal fun refreshManifestFileCount(conn: Connection) {
         committedManifestFileCount.set(readManifestFileCount(conn))
     }
 
     private fun readManifestFileCount(conn: Connection): NonNegativeInt =
         conn.createStatement().use { stmt ->
-            stmt.executeQuery("SELECT COUNT(*) FROM file_manifest").use { rows ->
+            stmt.executeQuery("SELECT COUNT(*) FROM ${readTable(SourceIndexReadTable.FILE_MANIFEST)}").use { rows ->
                 check(rows.next()) { "SQLite did not return a manifest file count" }
                 NonNegativeInt(rows.getInt(1))
             }
@@ -291,12 +361,13 @@ internal class SqliteSourceIndexStoreState(
         } finally {
             fqCodec.reloadAll(conn)
         }
+        when (val resolution = repositoryOverlay.loadInterningAliases(conn, pathCodec, fqCodec)) {
+            RepositoryInterningAliasResolution.Loaded -> Unit
+            is RepositoryInterningAliasResolution.Rejected -> throw RepositoryOverlayAuthorityException(
+                RepositoryOverlayAuthorityFailure.InterningAliasesRejected(resolution.failure),
+            )
+        }
         loadedInterningDataVersion = dataVersion
-    }
-
-    internal fun rollbackAndReloadPrefixes(conn: Connection) {
-        conn.rollback()
-        runCatching { reloadInterningTables(conn) }
     }
 
     internal fun decodeNullablePath(
@@ -319,40 +390,9 @@ internal class SqliteSourceIndexStoreState(
             }
         }
 
-    internal fun removeIneligibleSourceIndexRows(conn: Connection) {
-        conn.createStatement().use { stmt ->
-            stmt.execute(
-                """DELETE FROM symbol_references
-                   WHERE src_filename NOT GLOB '*.kt'""",
-            )
-            stmt.execute(
-                """UPDATE symbol_references
-                   SET tgt_prefix_id = NULL,
-                       tgt_filename = NULL,
-                       target_offset = NULL
-                   WHERE tgt_filename IS NOT NULL
-                     AND tgt_filename NOT GLOB '*.kt'""",
-            )
-            for (table in listOf(
-                "declarations",
-                "identifier_paths",
-                "file_gradle_source_sets",
-                "file_gradle_projects",
-                "file_metadata",
-                "file_imports",
-                "file_wildcard_imports",
-                "file_manifest",
-                "pending_updates",
-            )) {
-                stmt.execute("DELETE FROM $table WHERE filename NOT GLOB '*.kt'")
-            }
-        }
-    }
-
     internal companion object {
         const val PENDING_UPDATE_RETENTION_MS = 7L * 24 * 60 * 60 * 1_000
         const val absolutePathPrefix = "__kast_abs__/"
         const val sourceRootProbeFileName = ".kast-source-root-probe.kt"
-        private const val REPOSITORY_OVERLAY_FILE = "repository-overlay.json"
     }
 }

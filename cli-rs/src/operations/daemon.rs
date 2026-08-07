@@ -82,6 +82,7 @@ fn linux_indexer_java_command(args: &DaemonStartArgs, config: &KastConfig) -> Re
     Ok(command)
 }
 
+include!("parts/daemon/installed_idea_preflight.rs");
 include!("parts/daemon/installed_idea.rs");
 
 fn write_runtime_config_file(

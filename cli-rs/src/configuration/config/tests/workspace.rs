@@ -7,4 +7,3 @@
 
     include!("workspace/local.rs");
     include!("workspace/git.rs");
-    include!("workspace/migration.rs");

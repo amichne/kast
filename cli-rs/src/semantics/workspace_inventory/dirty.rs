@@ -1,7 +1,8 @@
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+
+use crate::git::ReadOnlyGitCommand;
 
 use super::model::{
     DirtyWorkspaceRead, DirtyWorkspaceSnapshot, DirtyWorkspaceStamp, WorkspaceFilePath,
@@ -21,7 +22,7 @@ pub(super) fn read_dirty_workspace(root: &WorkspaceRoot) -> DirtyWorkspaceRead {
             ));
         }
     };
-    let output = match Command::new("git")
+    let output = match ReadOnlyGitCommand::new()
         .args(["-c", "status.relativePaths=false", "status"])
         .args(["--porcelain=v2", "-z", "--untracked-files=all", "--", "."])
         .current_dir(root.as_path())
@@ -49,7 +50,7 @@ pub(super) fn read_dirty_workspace(root: &WorkspaceRoot) -> DirtyWorkspaceRead {
 }
 
 fn git_top_level(workspace_root: &Path) -> Result<PathBuf, WorkspaceLaneUnavailableReason> {
-    let output = Command::new("git")
+    let output = ReadOnlyGitCommand::new()
         .args(["rev-parse", "--show-toplevel"])
         .current_dir(workspace_root)
         .output()
