@@ -41,9 +41,12 @@ fn help_exposes_only_the_agent_contract() {
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8(output.stdout).expect("utf-8 help");
 
-    assert!(stdout.contains("Usage: kast [COMMAND]"), "{stdout}");
+    assert!(
+        stdout.contains("Usage: kast [OPTIONS] [COMMAND]"),
+        "{stdout}"
+    );
     for command in [
-        "up", "refresh", "files", "symbol", "graph", "check", "change", "apply",
+        "up", "refresh", "files", "symbol", "relation", "graph", "check", "change", "apply",
     ] {
         assert!(stdout.contains(command), "missing {command}: {stdout}");
     }
@@ -53,9 +56,8 @@ fn help_exposes_only_the_agent_contract() {
             "leaked private command {private_command}: {stdout}"
         );
     }
-    for legacy in ["--output", "schemaVersion"] {
-        assert!(!stdout.contains(legacy), "leaked {legacy}: {stdout}");
-    }
+    assert!(stdout.contains("--output <OUTPUT>"), "{stdout}");
+    assert!(!stdout.contains("schemaVersion"), "{stdout}");
     assert!(stdout.contains("developerOperations"), "{stdout}");
     assert!(stdout.contains("/kast:developer"), "{stdout}");
 
@@ -74,7 +76,6 @@ fn help_exposes_only_the_agent_contract() {
 fn public_pageable_commands_use_one_page_flag() {
     for args in [
         &["files", "--help"][..],
-        &["symbol", "refs", "--help"][..],
         &["symbol", "callers", "--help"][..],
         &["symbol", "callees", "--help"][..],
         &["symbol", "implementations", "--help"][..],
@@ -102,20 +103,31 @@ fn public_pageable_commands_use_one_page_flag() {
             );
         }
     }
+
+    let references = named("kast")
+        .args(["relation", "references", "--help"])
+        .output()
+        .expect("run relation references help");
+    assert!(references.status.success(), "{references:?}");
+    let references = String::from_utf8(references.stdout).expect("UTF-8 references help");
+    assert!(
+        references.contains("--continuation <CONTINUATION>"),
+        "{references}"
+    );
+    assert!(!references.contains("--page"), "{references}");
 }
 
 #[test]
-fn removed_output_flag_is_a_usage_error() {
+fn public_output_flag_selects_json() {
     let output = named("kast")
         .args(["--output", "json"])
         .output()
-        .expect("run invalid kast flag");
+        .expect("run kast with JSON output");
 
-    assert_eq!(output.status.code(), Some(2), "{output:?}");
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("error:"), "{stdout}");
-    assert!(stdout.contains("--output"), "{stdout}");
-    assert!(stdout.contains("next:"), "{stdout}");
+    assert!(output.status.success(), "{output:?}");
+    let value: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("public JSON output");
+    assert_eq!(value["bin"], "kast", "{value:#}");
     assert!(output.stderr.is_empty(), "{output:?}");
 }
 
@@ -362,3 +374,4 @@ fn graph_summary_ignores_current_reference_external_boundaries() {
 }
 
 include!("surface/graph_fixture_and_dispatch.rs");
+include!("surface/typed_protocol.rs");

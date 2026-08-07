@@ -77,31 +77,21 @@ pub(crate) fn run_files(
     print_projected(AgentCommand::WorkspaceFiles(args))
 }
 
-pub(crate) fn run_symbol(args: KastSymbolArgs) -> Result<i32> {
+pub(crate) fn run_symbol(args: KastSymbolArgs, output_format: OutputFormat) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     match args.command {
-        KastSymbolCommand::Find { query } => print_projected(symbol_lookup(
-            workspace_root,
-            query,
-            AgentSymbolMode::Discovery,
-        )),
-        KastSymbolCommand::Show { symbol } => print_projected(symbol_lookup(
-            workspace_root,
-            symbol,
-            AgentSymbolMode::Exact,
-        )),
-        KastSymbolCommand::Refs { symbol, page } => {
-            run_symbol_relation(workspace_root, symbol, |runtime, selector| {
-                AgentCommand::References(AgentReferencesArgs {
-                    runtime,
-                    selector,
-                    include_declaration: false,
-                    limit: maximum_relation_limit(),
-                    page_token: page,
-                    view: AgentRelationViewArgs::default(),
-                })
-            })
-        }
+        KastSymbolCommand::Search { query } => print_protocol(
+            agent::public_protocol::symbol_search(workspace_root, query),
+            output_format,
+        ),
+        KastSymbolCommand::Resolve { query } => print_protocol(
+            agent::public_protocol::symbol_resolve(workspace_root, query),
+            output_format,
+        ),
+        KastSymbolCommand::Show { selector } => print_protocol(
+            agent::public_protocol::symbol_show(workspace_root, selector),
+            output_format,
+        ),
         KastSymbolCommand::Callers { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Callers(AgentCallsArgs {
@@ -163,6 +153,23 @@ pub(crate) fn run_symbol(args: KastSymbolArgs) -> Result<i32> {
                 })
             })
         }
+    }
+}
+
+pub(crate) fn run_relation(args: KastRelationArgs, output_format: OutputFormat) -> Result<i32> {
+    let workspace_root = config::resolve_workspace_root(None)?;
+    match args.command {
+        KastRelationCommand::References {
+            selector,
+            continuation,
+        } => print_protocol(
+            agent::public_protocol::relation_references(
+                workspace_root,
+                selector,
+                continuation,
+            ),
+            output_format,
+        ),
     }
 }
 

@@ -65,7 +65,7 @@ class KastResolveResponseTest {
               "ok":true,
               "source":"compiler",
               "query":{"workspaceRoot":"/workspace","symbol":"parse"},
-              "candidates":[$symbolJson,$symbolJson],
+              "candidates":[$selectableSymbolJson,$selectableSymbolJson],
               "logFile":"/tmp/kast.log"
             }
             """.trimIndent(),
@@ -75,6 +75,7 @@ class KastResolveResponseTest {
         val typedAmbiguous = assertInstanceOf(KastResolveAmbiguousResponse::class.java, ambiguous)
         assertEquals(KastResolveResponse.Source.COMPILER, typedNotFound.source)
         assertEquals(2, typedAmbiguous.candidates.size)
+        assertEquals("ksh1.test-candidate", typedAmbiguous.candidates.first().selectorHandle)
     }
 
     private companion object {
@@ -91,6 +92,13 @@ class KastResolveResponseTest {
                 "startColumn":1,
                 "preview":"class Parser"
               }
+            }
+            """.trimIndent()
+        val selectableSymbolJson =
+            """
+            {
+              "symbol":$symbolJson,
+              "selectorHandle":"ksh1.test-candidate"
             }
             """.trimIndent()
     }

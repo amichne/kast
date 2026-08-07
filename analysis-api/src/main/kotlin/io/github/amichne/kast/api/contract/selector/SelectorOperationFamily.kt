@@ -12,4 +12,5 @@ enum class SelectorOperationFamily(internal val wireBit: Int) {
     IMPACT(1 shl 5),
     RENAME(1 shl 6),
     REPLACE_DECLARATION(1 shl 7),
+    IDENTITY(1 shl 8),
 }

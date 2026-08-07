@@ -54,6 +54,7 @@ include!("agent/projection.rs");
 include!("agent/core/input.rs");
 include!("agent/core/response.rs");
 include!("agent/core/symbol_lookup/mod.rs");
+pub(crate) mod public_protocol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LeasedRawOperation {

@@ -133,6 +133,27 @@ class AnalysisDispatcherSymbolResolutionTest : AnalysisDispatcherTestSupport() {
 
         val ambiguous = assertInstanceOf(KastResolveAmbiguousResponse::class.java, result)
         assertEquals(2, ambiguous.candidates.size)
+        assertEquals(listOf(10, 40), ambiguous.candidates.map { it.symbol.location.startOffset })
+        assertEquals(2, ambiguous.candidates.map { it.selectorHandle }.distinct().size)
+        val authenticatedOffsets = ambiguous.candidates.map { candidate ->
+            val identity = dispatchSuccessWithBackend<KastSelectorIdentityResponse>(
+                backend = backend,
+                method = "selector/identity",
+                params = json.encodeToJsonElement(
+                    KastSelectorIdentityRequest.serializer(),
+                    KastSelectorIdentityRequest(
+                        workspaceRoot = tempDir.toString(),
+                        selectorHandle = candidate.selectorHandle,
+                        family = SelectorOperationFamily.IDENTITY,
+                    ),
+                ),
+            )
+            assertInstanceOf(KastSelectorIdentityAvailableResponse::class.java, identity)
+                .identity
+                .declarationStartOffset
+                .value
+        }
+        assertEquals(listOf(10, 40), authenticatedOffsets)
     }
 
     @Test
@@ -264,8 +285,10 @@ class AnalysisDispatcherSymbolResolutionTest : AnalysisDispatcherTestSupport() {
     @Test
     fun `symbol discover ranks contextual candidates and returns resolve requests`() {
         val file = sampleTypeFile()
+        val backend = FakeAnalysisBackend.sample(tempDir)
 
-        val result = dispatchSuccess<KastDiscoverResponse>(
+        val result = dispatchSuccessWithBackend<KastDiscoverResponse>(
+            backend = backend,
             method = "symbol/discover",
             params = json.encodeToJsonElement(
                 KastDiscoverRequest.serializer(),
@@ -290,6 +313,22 @@ class AnalysisDispatcherSymbolResolutionTest : AnalysisDispatcherTestSupport() {
         assertEquals(WrapperNamedSymbolKind.CLASS, success.candidates.first().resolveParams.kind)
         assertEquals(file.toString(), success.candidates.first().resolveParams.fileHint)
         assertEquals(true, success.page?.truncated)
+        val selected = success.candidates.first()
+        val identity = dispatchSuccessWithBackend<KastSelectorIdentityResponse>(
+            backend = backend,
+            method = "selector/identity",
+            params = json.encodeToJsonElement(
+                KastSelectorIdentityRequest.serializer(),
+                KastSelectorIdentityRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selectorHandle = selected.selectorHandle,
+                    family = SelectorOperationFamily.IDENTITY,
+                ),
+            ),
+        )
+        val available = assertInstanceOf(KastSelectorIdentityAvailableResponse::class.java, identity)
+        assertEquals(selected.symbol.fqName, available.identity.fqName)
+        assertEquals(selected.symbol.location.startOffset, available.identity.declarationStartOffset.value)
     }
 
     @Test

@@ -48,6 +48,15 @@ fn print_direct(value: &impl Serialize) -> Result<i32> {
     Ok(0)
 }
 
+fn print_protocol(
+    envelope: agent::public_protocol::ProtocolEnvelope,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    let exit_code = envelope.exit_code();
+    output::print_structured(&envelope, output_format)?;
+    Ok(exit_code)
+}
+
 fn sanitize_agent_result(value: Value, root: bool) -> Value {
     match value {
         Value::Object(fields) => {

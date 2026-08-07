@@ -7,6 +7,9 @@
     after_help = "Developer operations: run `kast` to read `developerOperations`, then invoke `/kast:developer`."
 )]
 pub struct KastCli {
+    /// Select compact TOON or JSON with the same canonical protocol schema.
+    #[arg(long, value_enum, global = true, default_value_t = KastOutputFormat::Toon)]
+    pub output: KastOutputFormat,
     #[command(subcommand)]
     pub command: Option<KastCommand>,
 }
@@ -29,6 +32,8 @@ pub enum KastCommand {
     },
     /// Find symbols and traverse compiler-backed relationships.
     Symbol(KastSymbolArgs),
+    /// Traverse compiler-backed relationships from an exact selector.
+    Relation(KastRelationArgs),
     /// Inspect persisted topology and graph statistics.
     Graph(KastGraphArgs),
     /// Check compiler diagnostics for changed or selected files.
@@ -84,6 +89,21 @@ pub enum KastHarness {
     Copilot,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum KastOutputFormat {
+    Json,
+    Toon,
+}
+
+impl From<KastOutputFormat> for OutputFormat {
+    fn from(value: KastOutputFormat) -> Self {
+        match value {
+            KastOutputFormat::Json => Self::Json,
+            KastOutputFormat::Toon => Self::Toon,
+        }
+    }
+}
+
 #[derive(Debug, Args)]
 #[command(
     args_conflicts_with_subcommands = true,
@@ -123,14 +143,19 @@ pub struct KastSymbolArgs {
 #[derive(Debug, Subcommand)]
 pub enum KastSymbolCommand {
     /// Find symbols by name, signature, or fully-qualified name.
-    Find { query: String },
-    /// Show one symbol selected by query.
-    Show { symbol: String },
-    /// Find references to one symbol.
-    Refs {
-        symbol: String,
-        #[arg(long, value_name = "PAGE")]
-        page: Option<AgentRelationPageToken>,
+    Search {
+        #[arg(long)]
+        query: String,
+    },
+    /// Resolve query text to one exact compiler-backed symbol selector.
+    Resolve {
+        #[arg(long)]
+        query: String,
+    },
+    /// Show one symbol selected by an opaque Kast-issued selector.
+    Show {
+        #[arg(long)]
+        selector: String,
     },
     /// Find incoming callers.
     Callers {
@@ -161,6 +186,24 @@ pub enum KastSymbolCommand {
         symbol: String,
         #[arg(long, value_name = "PAGE")]
         page: Option<AgentRelationPageToken>,
+    },
+}
+
+#[derive(Debug, Args)]
+pub struct KastRelationArgs {
+    #[command(subcommand)]
+    pub command: KastRelationCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum KastRelationCommand {
+    /// Find references to one exact compiler-backed symbol.
+    References {
+        #[arg(long)]
+        selector: String,
+        /// Opaque resumption value returned by this operation.
+        #[arg(long)]
+        continuation: Option<String>,
     },
 }
 

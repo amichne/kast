@@ -41,12 +41,18 @@ data class KastResolveNotFoundResponse(
 ) : KastResolveResponse
 
 @Serializable
+data class KastResolveCandidate(
+    val symbol: Symbol,
+    val selectorHandle: String,
+)
+
+@Serializable
 @SerialName("RESOLVE_AMBIGUOUS")
 data class KastResolveAmbiguousResponse(
     val ok: Boolean = true,
     val source: KastResolveResponse.Source = KastResolveResponse.Source.COMPILER,
     val query: KastResolveQuery,
-    val candidates: List<Symbol>,
+    val candidates: List<KastResolveCandidate>,
     val logFile: String,
 ) : KastResolveResponse
 

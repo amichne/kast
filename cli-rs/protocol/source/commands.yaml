@@ -1485,6 +1485,7 @@ commands:
           - IMPACT
           - RENAME
           - REPLACE_DECLARATION
+          - IDENTITY
           sample: IMPACT
           type: string
         selectorHandle:
