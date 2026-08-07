@@ -43,20 +43,6 @@ pub(super) fn run_with_stdin(mut command: Command, stdin: &str) -> Output {
     child.wait_with_output().expect("wait for kast")
 }
 
-pub(super) fn decode(output: &Output) -> Value {
-    toon_format::decode_default(
-        std::str::from_utf8(&output.stdout)
-            .expect("UTF-8 output")
-            .trim(),
-    )
-    .unwrap_or_else(|error| {
-        panic!(
-            "valid TOON: {error}; stdout={}",
-            String::from_utf8_lossy(&output.stdout)
-        )
-    })
-}
-
 pub(super) fn plan_add_file(
     binary: &Path,
     home: &Path,
@@ -100,7 +86,9 @@ pub(super) fn plan_add_declaration(
     let mut change = installed_public_kast(binary, home, config_home, workspace);
     change.args([
         "change",
+        "plan",
         "add-declaration",
+        "--file",
         target.to_str().expect("target"),
     ]);
     let change = run_with_stdin(change, declaration);
@@ -133,7 +121,7 @@ pub(super) fn change_add_file(
         )],
     );
     let mut change = installed_public_kast(binary, home, config_home, workspace);
-    change.args(["change", "add-file", relative_path]);
+    change.args(["change", "plan", "add-file", "--file", relative_path]);
     let change = run_with_stdin(change, content);
     backend.join().expect("add-file planner backend");
     change
@@ -389,8 +377,11 @@ pub(super) fn independent_diagnostics(
     result
 }
 
+#[path = "support/output.rs"]
+mod output;
 #[path = "support/verification_failure.rs"]
 mod verification_failure;
+pub(super) use output::{assert_selector_forwarding, decode};
 pub(super) use verification_failure::{
     assert_independent_verification_failure_rolls_back, successful_verified_add_file_script,
 };

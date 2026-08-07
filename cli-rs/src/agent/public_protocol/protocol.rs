@@ -2,6 +2,8 @@ use super::domain::{
     IssuedSymbolSelector, ReferenceOccurrence, SelectableSymbol, SymbolIdentity, SymbolMatch,
     SymbolQuery,
 };
+use super::impact::{ImpactConfidence, ImpactNode};
+use super::traversal_types::RelationRecord;
 use serde::Serialize;
 
 pub(super) const PUBLIC_PROTOCOL_SCHEMA_VERSION: u32 = 2;
@@ -16,6 +18,42 @@ pub(crate) enum OperationId {
     SymbolShow,
     #[serde(rename = "relation.references")]
     RelationReferences,
+    #[serde(rename = "relation.calls.incoming")]
+    RelationCallsIncoming,
+    #[serde(rename = "relation.calls.outgoing")]
+    RelationCallsOutgoing,
+    #[serde(rename = "relation.implementations")]
+    RelationImplementations,
+    #[serde(rename = "relation.hierarchy.supertypes")]
+    RelationHierarchySupertypes,
+    #[serde(rename = "relation.hierarchy.subtypes")]
+    RelationHierarchySubtypes,
+    #[serde(rename = "graph.nodes")]
+    GraphNodes,
+    #[serde(rename = "graph.neighbors")]
+    GraphNeighbors,
+    #[serde(rename = "graph.summary")]
+    GraphSummary,
+    #[serde(rename = "graph.topology")]
+    GraphTopology,
+    #[serde(rename = "graph.communities")]
+    GraphCommunities,
+    #[serde(rename = "graph.derive")]
+    GraphDerive,
+    #[serde(rename = "graph.impact")]
+    GraphImpact,
+    #[serde(rename = "change.plan.rename")]
+    ChangePlanRename,
+    #[serde(rename = "change.plan.add-file")]
+    ChangePlanAddFile,
+    #[serde(rename = "change.plan.add-declaration")]
+    ChangePlanAddDeclaration,
+    #[serde(rename = "change.plan.replace")]
+    ChangePlanReplace,
+    #[serde(rename = "change.apply")]
+    ChangeApply,
+    #[serde(rename = "change.recover")]
+    ChangeRecover,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -32,27 +70,51 @@ pub(crate) struct ProtocolEnvelope {
     schema_version: u32,
     operation: OperationId,
     status: OperationStatus,
-    result: ProtocolResult,
+    result: EnvelopeResult,
 }
 
 impl ProtocolEnvelope {
     pub(super) fn complete(operation: OperationId, result: ProtocolResult) -> Self {
-        Self::new(operation, OperationStatus::Complete, result)
+        Self::new(
+            operation,
+            OperationStatus::Complete,
+            EnvelopeResult::Typed(result),
+        )
     }
 
     pub(super) fn qualified(operation: OperationId, result: ProtocolResult) -> Self {
-        Self::new(operation, OperationStatus::Qualified, result)
+        Self::new(
+            operation,
+            OperationStatus::Qualified,
+            EnvelopeResult::Typed(result),
+        )
     }
 
     pub(super) fn rejected(operation: OperationId, failure: ProtocolFailure) -> Self {
         Self::new(
             operation,
             OperationStatus::Rejected,
-            ProtocolResult::Rejected { failure },
+            EnvelopeResult::Typed(ProtocolResult::Rejected { failure }),
         )
     }
 
-    fn new(operation: OperationId, status: OperationStatus, result: ProtocolResult) -> Self {
+    pub(crate) fn projected(
+        operation: OperationId,
+        status: OperationStatus,
+        result_type: &'static str,
+        fields: serde_json::Map<String, serde_json::Value>,
+    ) -> Self {
+        Self::new(
+            operation,
+            status,
+            EnvelopeResult::Projected(ProjectedResult {
+                result_type,
+                fields,
+            }),
+        )
+    }
+
+    fn new(operation: OperationId, status: OperationStatus, result: EnvelopeResult) -> Self {
         Self {
             schema_version: PUBLIC_PROTOCOL_SCHEMA_VERSION,
             operation,
@@ -64,6 +126,22 @@ impl ProtocolEnvelope {
     pub(crate) fn exit_code(&self) -> i32 {
         i32::from(self.status == OperationStatus::Rejected)
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+enum EnvelopeResult {
+    Typed(ProtocolResult),
+    Projected(ProjectedResult),
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectedResult {
+    #[serde(rename = "type")]
+    result_type: &'static str,
+    #[serde(flatten)]
+    fields: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -96,6 +174,25 @@ pub(super) enum ProtocolResult {
         subject: SymbolIdentity,
         references: Vec<ReferenceOccurrence>,
         page: ProtocolPage,
+        limitations: Vec<ProtocolLimitation>,
+    },
+    Relations {
+        selector: IssuedSymbolSelector,
+        subject: SymbolIdentity,
+        records: Vec<RelationRecord>,
+        page: ProtocolPage,
+        limitations: Vec<ProtocolLimitation>,
+    },
+    Impact {
+        selector: IssuedSymbolSelector,
+        subject: SymbolIdentity,
+        nodes: Vec<ImpactNode>,
+        page: ProtocolPage,
+        confidence: ImpactConfidence,
+        limitations: Vec<ProtocolLimitation>,
+    },
+    ImpactQualified {
+        selector: IssuedSymbolSelector,
         limitations: Vec<ProtocolLimitation>,
     },
     Rejected {
@@ -215,6 +312,7 @@ pub(super) enum ProtocolLimitation {
     TimedOut,
     Cancelled,
     GenerationChanged,
+    SourceImageUnproven,
     ContinuationExpired,
     ContinuationInvalid,
 }

@@ -57,17 +57,6 @@ fn workspace_files_args(workspace_root: PathBuf) -> AgentWorkspaceFilesArgs {
     }
 }
 
-fn maximum_relation_limit() -> AgentRelationLimit {
-    "200"
-        .parse()
-        .expect("the typed maximum relationship limit is valid")
-}
-
-fn maximum_relation_depth() -> AgentRelationDepth {
-    "8".parse()
-        .expect("the typed maximum relationship depth is valid")
-}
-
 fn ready_result(workspace_root: &Path, status: Option<&RuntimeStatusResponse>) -> Option<UpResult> {
     let status = status?;
     semantic_status_ready(workspace_root, status).then(|| UpResult {

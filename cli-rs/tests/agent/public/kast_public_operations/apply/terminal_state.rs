@@ -37,7 +37,7 @@ fn public_apply_and_recover_share_one_exclusive_plan_lock() {
     );
 
     let first = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -67,7 +67,7 @@ fn public_apply_and_recover_share_one_exclusive_plan_lock() {
     );
     let journal_before = std::fs::read(&journal_path).expect("prepared journal");
     let concurrent = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("concurrent recover");
     assert_eq!(concurrent.status.code(), Some(1), "{concurrent:?}");
@@ -99,7 +99,7 @@ fn public_apply_and_recover_share_one_exclusive_plan_lock() {
     );
 
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal recover replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -140,7 +140,7 @@ fn public_apply_classifies_exact_source_drift_before_semantic_revalidation() {
         vec![("raw/plan-add-file", changed_authority)],
     );
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("drifted apply");
     assert_eq!(apply.status.code(), Some(1), "{apply:?}");
@@ -196,7 +196,7 @@ fn public_apply_persists_stable_rejected_and_conflicted_outcomes() {
         vec![("raw/plan-add-file", changed_authority)],
     );
     let rejected = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &rejected_plan])
+        .args(["change", "apply", "--plan-id", &rejected_plan])
         .output()
         .expect("rejected apply");
     assert_eq!(rejected.status.code(), Some(1), "{rejected:?}");
@@ -220,7 +220,7 @@ fn public_apply_persists_stable_rejected_and_conflicted_outcomes() {
         0,
     );
     let rejected_replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &rejected_plan])
+        .args(["change", "apply", "--plan-id", &rejected_plan])
         .output()
         .expect("rejected replay");
     assert_eq!(
@@ -251,7 +251,7 @@ fn public_apply_persists_stable_rejected_and_conflicted_outcomes() {
         &conflicted_shutdown,
     );
     let conflicted = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &conflicted_plan])
+        .args(["change", "apply", "--plan-id", &conflicted_plan])
         .output()
         .expect("conflicted apply");
     assert_eq!(conflicted.status.code(), Some(1), "{conflicted:?}");
@@ -279,7 +279,7 @@ fn public_apply_persists_stable_rejected_and_conflicted_outcomes() {
         0,
     );
     let conflicted_replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &conflicted_plan])
+        .args(["change", "recover", "--recovery-id", &conflicted_plan])
         .output()
         .expect("conflicted replay");
     assert_eq!(
@@ -334,7 +334,7 @@ fn prejournal_failures_retain_a_simultaneous_lease_release_failure() {
         let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
             .env("KAST_TEST_MUTATION_FAILURE_POINT", failure_point)
             .env("KAST_TEST_MUTATION_LEASE_RELEASE_FAILURE", "1")
-            .args(["apply", &plan_id])
+            .args(["change", "apply", "--plan-id", &plan_id])
             .output()
             .expect("prejournal dual failure");
         std::fs::write(&shutdown, "stop\n").expect("stop prejournal backend");

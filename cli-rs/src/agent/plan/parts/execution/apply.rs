@@ -1,8 +1,12 @@
-pub(crate) fn run_apply(raw_plan_id: String) -> Result<i32> {
+pub(crate) fn run_apply(raw_plan_id: String, output_format: OutputFormat) -> Result<i32> {
     let plan_id = parse_plan_id(&raw_plan_id)?;
     let paths = PlanPaths::new(plan_id);
     let _operation_lock = PlanOperationLock::acquire(&paths.lock)?;
     let mut plan = read_plan(&paths.plan, plan_id)?;
+    plan.set_runtime_output(
+        output_format,
+        crate::agent::public_protocol::OperationId::ChangeApply,
+    );
     let workspace_root = require_current_workspace(&plan, plan_id)?;
     if let StoredPlanState::Terminal { receipt } = &plan.state {
         return replay_terminal_receipt(&paths, &plan, receipt);

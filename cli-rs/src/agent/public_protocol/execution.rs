@@ -25,6 +25,31 @@ pub(super) fn execute(workspace_root: PathBuf, operation: PublicOperation) -> Pr
         PublicOperation::RelationReferences(input) => {
             relation_references(&runtime, input.selector, input.continuation)
         }
+        PublicOperation::RelationCallsIncoming(input) => super::traversal::execute(
+            &runtime,
+            input,
+            super::traversal::TraversalOperation::CallsIncoming,
+        ),
+        PublicOperation::RelationCallsOutgoing(input) => super::traversal::execute(
+            &runtime,
+            input,
+            super::traversal::TraversalOperation::CallsOutgoing,
+        ),
+        PublicOperation::RelationImplementations(input) => super::traversal::execute(
+            &runtime,
+            input,
+            super::traversal::TraversalOperation::Implementations,
+        ),
+        PublicOperation::RelationHierarchySupertypes(input) => super::traversal::execute(
+            &runtime,
+            input,
+            super::traversal::TraversalOperation::HierarchySupertypes,
+        ),
+        PublicOperation::RelationHierarchySubtypes(input) => super::traversal::execute(
+            &runtime,
+            input,
+            super::traversal::TraversalOperation::HierarchySubtypes,
+        ),
     }
 }
 
@@ -234,7 +259,7 @@ fn references_result(
     ))
 }
 
-fn authenticate_selector(
+pub(super) fn authenticate_selector(
     runtime: &AgentRuntimeArgs,
     input: UntrustedSymbolSelector,
     family: &'static str,

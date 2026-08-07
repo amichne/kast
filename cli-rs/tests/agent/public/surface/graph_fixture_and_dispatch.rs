@@ -27,6 +27,7 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
                  file_id INTEGER NOT NULL
              );
              CREATE TABLE semantic_edge_occurrences(
+                 id INTEGER PRIMARY KEY,
                  source_id INTEGER NOT NULL,
                  target_id INTEGER NOT NULL,
                  source_file_id INTEGER NOT NULL,
@@ -49,8 +50,8 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
                  (1, 'class:sample.Source', 'CLASS', 'Source', 1),
                  (2, 'class:sample.Target', 'CLASS', 'Target', 1);
              INSERT INTO semantic_edge_occurrences VALUES
-                 (1, 2, 1, 'REFERENCE', 'TYPE'),
-                 (1, 2, 1, 'REFERENCE', 'TYPE');",
+                 (1, 1, 2, 1, 'REFERENCE', 'TYPE'),
+                 (2, 1, 2, 1, 'REFERENCE', 'TYPE');",
         )
         .expect("native graph schema");
     connection
@@ -84,10 +85,28 @@ fn public_graph_exposes_read_only_topology() {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let _index = seed_public_graph(&workspace, false);
 
-    for (operation, scope, expected) in [
-        ("summary", "symbol", "SYMBOL"),
-        ("topology", "package", "PACKAGE"),
-        ("communities", "module", "MODULE"),
+    for (operation, scope, expected, operation_id, result_type) in [
+        (
+            "summary",
+            "symbol",
+            "SYMBOL",
+            "graph.summary",
+            "graph-summary",
+        ),
+        (
+            "topology",
+            "package",
+            "PACKAGE",
+            "graph.topology",
+            "graph-topology",
+        ),
+        (
+            "communities",
+            "module",
+            "MODULE",
+            "graph.communities",
+            "graph-communities",
+        ),
     ] {
         let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
             .current_dir(&workspace)
@@ -106,7 +125,11 @@ fn public_graph_exposes_read_only_topology() {
                 .trim(),
         )
         .expect("graph projection is valid TOON");
-        assert_eq!(decoded["scope"], expected, "{decoded:#}");
+        assert_eq!(decoded["schemaVersion"], 2, "{decoded:#}");
+        assert_eq!(decoded["operation"], operation_id, "{decoded:#}");
+        assert_eq!(decoded["status"], "complete", "{decoded:#}");
+        assert_eq!(decoded["result"]["type"], result_type, "{decoded:#}");
+        assert_eq!(decoded["result"]["scope"], expected, "{decoded:#}");
     }
 
     let help = named("kast")
@@ -135,23 +158,67 @@ fn public_read_commands_delegate_to_typed_operations() {
     std::fs::create_dir_all(&workspace).expect("workspace");
 
     for args in [
-        &["up"][..],
-        &["files"][..],
-        &["files", "src/**/*.kt"][..],
-        &["symbol", "find", "Widget"][..],
-        &["symbol", "show", "sample.Widget"][..],
-        &["symbol", "refs", "sample.Widget"][..],
-        &["symbol", "callers", "sample.Widget.run"][..],
-        &["symbol", "callees", "sample.Widget.run"][..],
-        &["symbol", "implementations", "sample.Widget"][..],
-        &["symbol", "supertypes", "sample.Widget"][..],
-        &["symbol", "subtypes", "sample.Widget"][..],
+        &["workspace", "ensure"][..],
+        &["file", "list"][..],
+        &["file", "list", "--match", "src/**/*.kt"][..],
+        &["symbol", "search", "--query", "Widget"][..],
+        &["symbol", "show", "--selector", "sample.Widget"][..],
+        &[
+            "relation",
+            "references",
+            "--selector",
+            "sample.Widget",
+        ][..],
+        &[
+            "relation",
+            "calls",
+            "incoming",
+            "--selector",
+            "sample.Widget.run",
+        ][..],
+        &[
+            "relation",
+            "calls",
+            "outgoing",
+            "--selector",
+            "sample.Widget.run",
+        ][..],
+        &[
+            "relation",
+            "implementations",
+            "--selector",
+            "sample.Widget",
+        ][..],
+        &[
+            "relation",
+            "hierarchy",
+            "supertypes",
+            "--selector",
+            "sample.Widget",
+        ][..],
+        &[
+            "relation",
+            "hierarchy",
+            "subtypes",
+            "--selector",
+            "sample.Widget",
+        ][..],
         &["graph", "nodes"][..],
-        &["graph", "neighbors", "class:sample.Widget"][..],
+        &[
+            "graph",
+            "neighbors",
+            "--node-selector",
+            "class:sample.Widget",
+        ][..],
         &["graph", "topology"][..],
         &["graph", "communities"][..],
-        &["graph", "impact", "sample.Widget"][..],
-        &["check", "src/main/kotlin/App.kt"][..],
+        &["graph", "impact", "--selector", "sample.Widget"][..],
+        &[
+            "diagnostic",
+            "check",
+            "--file",
+            "src/main/kotlin/App.kt",
+        ][..],
     ] {
         let output = named("kast")
             .current_dir(&workspace)
@@ -168,7 +235,7 @@ fn public_read_commands_delegate_to_typed_operations() {
             "`kast {}` did not delegate:\n{stdout}",
             args.join(" ")
         );
-        for cruft in ["schemaVersion", "method:", "ok:"] {
+        for cruft in ["method:", "ok:"] {
             assert!(
                 !stdout.contains(cruft),
                 "`kast {}` leaked {cruft}:\n{stdout}",

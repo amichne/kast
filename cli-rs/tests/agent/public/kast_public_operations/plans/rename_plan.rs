@@ -21,6 +21,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
     let declaration_file = workspace.join("Keywords.kt");
     let reference_file = workspace.join("Usage.kt");
     let original_symbol = "io.example.OrderService.process";
+    let selector = "ksh1.issued-rename-selector";
     let new_name = "processSafely";
     let declaration_text =
         std::str::from_utf8(&declaration_preimage).expect("UTF-8 declaration source");
@@ -142,24 +143,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         }
     ]);
 
-    let resolve_response = json!({
-        "type": "RESOLVE_SUCCESS",
-        "ok": true,
-        "source": "compiler",
-        "symbol": {
-            "fqName": original_symbol,
-            "kind": "FUNCTION",
-            "containingType": "io.example.OrderService",
-            "location": {
-                "filePath": declaration_file,
-                "startOffset": declaration_start,
-                "endOffset": declaration_start + original_name_length,
-                "startLine": 3,
-                "startColumn": 9,
-                "preview": "fun process()"
-            }
-        }
-    });
+    let selector_identity = json!({"type": "AVAILABLE", "identity": target});
     let rename_preview = json!({
         "edits": edits,
         "fileHashes": [
@@ -184,13 +168,22 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         &workspace,
         &socket,
         vec![
-            ("symbol/resolve", resolve_response.clone()),
+            ("selector/identity", selector_identity.clone()),
+            ("selector/identity", selector_identity.clone()),
             ("raw/rename", rename_preview.clone()),
         ],
     );
     let binary = write_active_kast_for_test(&home, &config_home);
     let change = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["change", "rename", original_symbol, new_name])
+        .args([
+            "change",
+            "plan",
+            "rename",
+            "--selector",
+            selector,
+            "--name",
+            new_name,
+        ])
         .output()
         .expect("persist rename plan");
     assert!(
@@ -203,9 +196,11 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         !String::from_utf8_lossy(&change.stdout).contains("contentBase64"),
         "public rename plan must redact exact image bytes"
     );
-    backend.join().expect("rename planning backend");
+    let planning_requests = backend.join().expect("rename planning backend");
+    assert_selector_forwarding(&planning_requests, selector, "RENAME");
 
     let public = decode(&change);
+    assert_eq!(public["selector"], selector, "{public:#}");
     assert_eq!(
         public["plan"]["preview"]["proof"]["occurrences"][0]["reference"]["containingSymbol"]["type"],
         "TOP_LEVEL",
@@ -258,7 +253,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         vec![("raw/rename", rename_preview.clone())],
     );
     let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("verified rename apply");
     assert!(applied.status.success(), "{applied:?}");
@@ -285,7 +280,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         "rename must write both exact transitions once"
     );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("verified rename replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -299,12 +294,21 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         &workspace,
         &fixture.path().join("rename-restart-plan.sock"),
         vec![
-            ("symbol/resolve", resolve_response),
+            ("selector/identity", selector_identity.clone()),
+            ("selector/identity", selector_identity),
             ("raw/rename", rename_preview.clone()),
         ],
     );
     let restart_change = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["change", "rename", original_symbol, new_name])
+        .args([
+            "change",
+            "plan",
+            "rename",
+            "--selector",
+            selector,
+            "--name",
+            new_name,
+        ])
         .output()
         .expect("persist restart rename plan");
     assert!(restart_change.status.success(), "{restart_change:?}");
@@ -323,7 +327,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
     );
     let interrupted = installed_public_kast(&binary, &home, &config_home, &workspace)
         .env("KAST_TEST_MUTATION_FAILURE_POINT", "AFTER_WRITE_1")
-        .args(["apply", &restart_plan_id])
+        .args(["change", "apply", "--plan-id", &restart_plan_id])
         .output()
         .expect("interrupt multi-file rename");
     assert_eq!(interrupted.status.code(), Some(1), "{interrupted:?}");
@@ -349,7 +353,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         &recovery_shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &restart_plan_id])
+        .args(["change", "recover", "--recovery-id", &restart_plan_id])
         .output()
         .expect("restart mixed rename recovery");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
@@ -379,7 +383,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         "mixed recovery must reverse only the written transition"
     );
     let rollback_replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &restart_plan_id])
+        .args(["change", "apply", "--plan-id", &restart_plan_id])
         .output()
         .expect("rolled-back rename replay");
     assert_eq!(

@@ -71,7 +71,7 @@ fn finish_terminal_receipt(
         }
         return Err(error);
     }
-    print_terminal_receipt(&receipt)
+    print_terminal_receipt(plan, &receipt)
 }
 
 fn replay_terminal_receipt(
@@ -83,7 +83,7 @@ fn replay_terminal_receipt(
         let journal = read_recovery(&paths.recovery, plan.plan_id, plan)?;
         journal.validate_verified_terminal_evidence(receipt)?;
     }
-    print_terminal_receipt(receipt)
+    print_terminal_receipt(plan, receipt)
 }
 
 fn terminal_receipt_persistence_failure_active() -> bool {
@@ -92,16 +92,28 @@ fn terminal_receipt_persistence_failure_active() -> bool {
             .is_ok_and(|value| value == "TERMINAL_RECEIPT_PERSISTENCE")
 }
 
-fn print_terminal_receipt(receipt: &TerminalMutationReceipt) -> Result<i32> {
-    output::print_structured(
+fn print_terminal_receipt(plan: &StoredPlan, receipt: &TerminalMutationReceipt) -> Result<i32> {
+    let status = if matches!(receipt, TerminalMutationReceipt::Verified { .. }) {
+        crate::agent::public_protocol::OperationStatus::Complete
+    } else {
+        crate::agent::public_protocol::OperationStatus::Rejected
+    };
+    print_plan_protocol(
+        plan.runtime_output()?,
+        "mutation-receipt",
+        status,
         &PublicTerminalMutationReceipt::from(receipt),
-        crate::cli::OutputFormat::Toon,
     )?;
     Ok(receipt.exit_code())
 }
 
 fn print_recovery_required(plan: &StoredPlan, reason: impl Into<String>) -> Result<i32> {
     let receipt = RecoveryRequiredReceipt::new(plan, reason);
-    output::print_structured(&receipt, crate::cli::OutputFormat::Toon)?;
+    print_plan_protocol(
+        plan.runtime_output()?,
+        "mutation-receipt",
+        crate::agent::public_protocol::OperationStatus::Rejected,
+        &receipt,
+    )?;
     Ok(1)
 }

@@ -79,7 +79,7 @@ fn public_apply_requires_complete_independent_diagnostics() {
     );
 
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("independently verified apply");
     assert!(

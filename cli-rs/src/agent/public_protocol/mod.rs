@@ -1,14 +1,25 @@
 mod backend;
 mod domain;
 mod execution;
+mod graph;
+mod impact;
 mod protocol;
+mod traversal;
+mod traversal_types;
 
+pub(crate) use graph::{
+    UntrustedGraphNodeSelector, authenticate_graph_node_selector, graph_workspace_fingerprint,
+    issue_graph_node_selector,
+};
+
+pub(crate) use domain::SymbolSelector;
 use domain::{
-    PublicOperation, RelationReferencesInput, SymbolQuery, SymbolResolveRequest,
-    SymbolSearchRequest, SymbolShowInput, UntrustedSymbolSelector,
+    ExactSymbolRequest, PublicOperation, RelationReferencesInput, SymbolQuery,
+    SymbolResolveRequest, SymbolSearchRequest, SymbolShowInput, UntrustedSymbolSelector,
 };
 pub(crate) use protocol::ProtocolEnvelope;
-use protocol::{OperationId, ProtocolFailure};
+use protocol::ProtocolFailure;
+pub(crate) use protocol::{OperationId, OperationStatus};
 use std::path::PathBuf;
 
 pub(crate) fn symbol_search(workspace_root: PathBuf, query: String) -> ProtocolEnvelope {
@@ -58,6 +69,131 @@ pub(crate) fn relation_references(
     execution::execute(
         workspace_root,
         PublicOperation::RelationReferences(RelationReferencesInput {
+            selector,
+            continuation,
+        }),
+    )
+}
+
+pub(crate) fn relation_calls_incoming(
+    workspace_root: PathBuf,
+    selector: String,
+    continuation: Option<String>,
+) -> ProtocolEnvelope {
+    exact_operation(
+        workspace_root,
+        selector,
+        continuation,
+        OperationId::RelationCallsIncoming,
+        PublicOperation::RelationCallsIncoming,
+    )
+}
+
+pub(crate) fn relation_calls_outgoing(
+    workspace_root: PathBuf,
+    selector: String,
+    continuation: Option<String>,
+) -> ProtocolEnvelope {
+    exact_operation(
+        workspace_root,
+        selector,
+        continuation,
+        OperationId::RelationCallsOutgoing,
+        PublicOperation::RelationCallsOutgoing,
+    )
+}
+
+pub(crate) fn relation_implementations(
+    workspace_root: PathBuf,
+    selector: String,
+    continuation: Option<String>,
+) -> ProtocolEnvelope {
+    exact_operation(
+        workspace_root,
+        selector,
+        continuation,
+        OperationId::RelationImplementations,
+        PublicOperation::RelationImplementations,
+    )
+}
+
+pub(crate) fn relation_hierarchy_supertypes(
+    workspace_root: PathBuf,
+    selector: String,
+    continuation: Option<String>,
+) -> ProtocolEnvelope {
+    exact_operation(
+        workspace_root,
+        selector,
+        continuation,
+        OperationId::RelationHierarchySupertypes,
+        PublicOperation::RelationHierarchySupertypes,
+    )
+}
+
+pub(crate) fn relation_hierarchy_subtypes(
+    workspace_root: PathBuf,
+    selector: String,
+    continuation: Option<String>,
+) -> ProtocolEnvelope {
+    exact_operation(
+        workspace_root,
+        selector,
+        continuation,
+        OperationId::RelationHierarchySubtypes,
+        PublicOperation::RelationHierarchySubtypes,
+    )
+}
+
+pub(crate) fn graph_impact(
+    workspace_root: PathBuf,
+    selector: String,
+    continuation: Option<String>,
+) -> ProtocolEnvelope {
+    impact::execute(workspace_root, selector, continuation)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum MutationSelectorFamily {
+    Rename,
+    ReplaceDeclaration,
+}
+
+pub(crate) fn authenticate_mutation_selector(
+    workspace_root: PathBuf,
+    selector: String,
+    family: MutationSelectorFamily,
+) -> Result<SymbolSelector, Box<ProtocolEnvelope>> {
+    let (operation, family) = match family {
+        MutationSelectorFamily::Rename => (OperationId::ChangePlanRename, "RENAME"),
+        MutationSelectorFamily::ReplaceDeclaration => {
+            (OperationId::ChangePlanReplace, "REPLACE_DECLARATION")
+        }
+    };
+    let selector = UntrustedSymbolSelector::parse(selector)
+        .map_err(|reason| Box::new(invalid_input(operation, "selector", reason)))?;
+    let runtime = crate::cli::AgentRuntimeArgs {
+        workspace_root: Some(workspace_root),
+        ..Default::default()
+    };
+    execution::authenticate_selector(&runtime, selector, family)
+        .map_err(|failure| Box::new(ProtocolEnvelope::rejected(operation, failure)))
+}
+
+fn exact_operation(
+    workspace_root: PathBuf,
+    selector: String,
+    continuation: Option<String>,
+    operation: OperationId,
+    request: impl FnOnce(ExactSymbolRequest) -> PublicOperation,
+) -> ProtocolEnvelope {
+    let selector = match UntrustedSymbolSelector::parse(selector) {
+        Ok(selector) => selector,
+        Err(reason) => return invalid_input(operation, "selector", reason),
+    };
+    execution::execute(
+        workspace_root,
+        request(ExactSymbolRequest {
             selector,
             continuation,
         }),

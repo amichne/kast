@@ -4,7 +4,6 @@ struct PlanPaths {
     content: PathBuf,
     recovery: PathBuf,
     lock: PathBuf,
-    preview_content: PathBuf,
 }
 
 impl PlanPaths {
@@ -16,7 +15,6 @@ impl PlanPaths {
             content: directory.join(format!("{id}.content")),
             recovery: directory.join(format!("{id}.recovery.json")),
             lock: directory.join(format!("{id}.lock")),
-            preview_content: directory.join(format!(".{id}.preview-{}.content", Uuid::new_v4())),
             directory,
         }
     }

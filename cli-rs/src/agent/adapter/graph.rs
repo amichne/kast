@@ -5,6 +5,7 @@ pub(crate) fn print_projected(command: AgentCommand) -> Result<i32> {
 fn print_derived_topology(
     workspace_root: PathBuf,
     args: crate::cli::KastDerivedTopologyArgs,
+    output_format: OutputFormat,
 ) -> Result<i32> {
     if !args.experimental_derived_topology {
         return Err(CliError::new(
@@ -14,17 +15,36 @@ fn print_derived_topology(
     }
     let receipt =
         agent::write_reference_derived_topology(&workspace_root, &args.out, args.prior.as_deref())?;
-    print_direct(&receipt)
+    let fields = serde_json::to_value(receipt)?
+        .as_object()
+        .cloned()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "The derived topology receipt was not an object.",
+            )
+        })?;
+    print_protocol(
+        agent::public_protocol::ProtocolEnvelope::projected(
+            agent::public_protocol::OperationId::GraphDerive,
+            agent::public_protocol::OperationStatus::Complete,
+            "derived-topology",
+            fields,
+        ),
+        output_format,
+    )
 }
 
 fn print_native_graph(
     workspace_root: PathBuf,
     operation: NativeGraphOperation,
     scope: Option<NativeGraphScope>,
-    symbol: Option<String>,
+    node_selector: Option<agent::public_protocol::UntrustedGraphNodeSelector>,
     page: Option<KastGraphNodesPageToken>,
+    output_format: OutputFormat,
 ) -> Result<i32> {
-    let workspace_fingerprint = graph_nodes_workspace_fingerprint(&workspace_root);
+    let workspace_fingerprint =
+        agent::public_protocol::graph_workspace_fingerprint(&workspace_root);
     if page
         .as_ref()
         .is_some_and(|page| page.workspace_fingerprint() != workspace_fingerprint)
@@ -63,12 +83,33 @@ fn print_native_graph(
             "kast graph nodes",
         );
     }
+    let selected_node = match node_selector
+        .map(|selector| {
+            agent::public_protocol::authenticate_graph_node_selector(
+                &workspace_root,
+                admission.generation(),
+                selector,
+            )
+        })
+        .transpose()
+    {
+        Ok(selector) => selector,
+        Err(failure) => {
+            return print_actionable_failure(
+                failure.code(),
+                failure.message(),
+                "kast graph nodes",
+            );
+        }
+    };
     let after_id = page.as_ref().map(KastGraphNodesPageToken::after_id);
     let envelope = projected_value(native_graph_command(
-        workspace_root,
+        workspace_root.clone(),
         operation,
         scope,
-        symbol,
+        selected_node
+            .as_ref()
+            .map(|selector| selector.stable_key().to_string()),
         NativeGraphFileChanges::default(),
         Some(admission.generation()),
         after_id,
@@ -96,13 +137,68 @@ fn print_native_graph(
         serde_json::to_value(admission.coverage())?,
     );
     if operation == NativeGraphOperation::Nodes {
-        let next_after_id = fields.get("nextAfterId").ok_or_else(|| {
+        let generation = fields
+            .get("generation")
+            .and_then(Value::as_u64)
+            .filter(|generation| *generation == admission.generation())
+            .ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned the wrong generation.",
+                )
+            })?;
+        let nodes = fields
+            .get_mut("nodes")
+            .and_then(Value::as_array_mut)
+            .ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned no node collection.",
+                )
+            })?;
+        for node in nodes {
+            let node_fields = node.as_object_mut().ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned a non-object node.",
+                )
+            })?;
+            let node_id = node_fields.get("id").and_then(Value::as_u64).ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned a node without a numeric identity.",
+                )
+            })?;
+            let stable_key = node_fields
+                .get("stableKey")
+                .and_then(Value::as_str)
+                .ok_or_else(|| {
+                    CliError::new(
+                        "KAST_INVALID_AGENT_RESULT",
+                        "The native graph node page returned a node without a stable key.",
+                    )
+                })?;
+            let selector = agent::public_protocol::issue_graph_node_selector(
+                &workspace_root,
+                generation,
+                node_id,
+                stable_key,
+            )
+            .map_err(|failure| CliError::new(failure.code(), failure.message()))?;
+            node_fields.insert(
+                "nodeSelector".to_string(),
+                Value::String(selector.as_str().to_string()),
+            );
+        }
+        let next_after_id = fields.remove("nextAfterId").ok_or_else(|| {
             CliError::new(
                 "KAST_INVALID_AGENT_RESULT",
                 "The native graph node page returned no continuation evidence.",
             )
         })?;
-        if !next_after_id.is_null() {
+        let truncated = !next_after_id.is_null();
+        fields.insert("truncated".to_string(), Value::Bool(truncated));
+        if truncated {
             let next_after_id = next_after_id.as_u64().ok_or_else(|| {
                 CliError::new(
                     "KAST_INVALID_AGENT_RESULT",
@@ -120,10 +216,64 @@ fn print_native_graph(
                     "The native graph node page returned a zero continuation.",
                 )
             })?;
-            fields.insert("nextPageToken".to_string(), json!(next_page.canonical()));
+            fields.insert("continuation".to_string(), json!(next_page.canonical()));
         }
     }
-    print_direct(&sanitize_agent_result(result, true))
+    if let Some(selected_node) = selected_node
+        && fields.get("key").and_then(Value::as_str) != Some(selected_node.stable_key())
+    {
+        return Err(CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            format!(
+                "Graph neighbor evidence did not match authenticated node {}.",
+                selected_node.node_id()
+            ),
+        ));
+    }
+    let result = sanitize_agent_result(result, true);
+    let status = if result.get("qualification").and_then(Value::as_str) == Some("QUALIFIED") {
+        agent::public_protocol::OperationStatus::Qualified
+    } else {
+        agent::public_protocol::OperationStatus::Complete
+    };
+    let fields = result.as_object().cloned().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "The native graph operation did not produce an object result.",
+        )
+    })?;
+    let (operation, result_type) = match operation {
+        NativeGraphOperation::Summary => (
+            agent::public_protocol::OperationId::GraphSummary,
+            "graph-summary",
+        ),
+        NativeGraphOperation::Nodes => (
+            agent::public_protocol::OperationId::GraphNodes,
+            "graph-nodes",
+        ),
+        NativeGraphOperation::Neighbors => (
+            agent::public_protocol::OperationId::GraphNeighbors,
+            "graph-neighbors",
+        ),
+        NativeGraphOperation::Topology => (
+            agent::public_protocol::OperationId::GraphTopology,
+            "graph-topology",
+        ),
+        NativeGraphOperation::Communities => (
+            agent::public_protocol::OperationId::GraphCommunities,
+            "graph-communities",
+        ),
+        NativeGraphOperation::Refresh => unreachable!("public graph refresh uses workspace.refresh"),
+    };
+    print_protocol(
+        agent::public_protocol::ProtocolEnvelope::projected(
+            operation,
+            status,
+            result_type,
+            fields,
+        ),
+        output_format,
+    )
 }
 
 fn native_graph_command(
@@ -159,73 +309,6 @@ struct NativeGraphFileChanges {
     removed_file_paths: Vec<String>,
 }
 
-fn run_symbol_relation(
-    workspace_root: PathBuf,
-    symbol: String,
-    command: impl FnOnce(AgentRuntimeArgs, AgentReusableSymbolSelectorArgs) -> AgentCommand,
-) -> Result<i32> {
-    let selector = match resolve_selector(&workspace_root, symbol)? {
-        Ok(selector) => selector,
-        Err(envelope) => return print_projected_value(envelope),
-    };
-    print_projected(command(
-        agent_runtime(workspace_root),
-        selector_args(selector),
-    ))
-}
-
-fn resolve_selector(
-    workspace_root: &Path,
-    symbol: String,
-) -> Result<std::result::Result<AgentSelectorHandle, Value>> {
-    if symbol.starts_with("ksh1.") {
-        return symbol
-            .parse()
-            .map(Ok)
-            .map_err(|message| CliError::new("CLI_USAGE", message));
-    }
-    let envelope = projected_value(symbol_lookup(
-        workspace_root.to_path_buf(),
-        symbol,
-        AgentSymbolMode::Exact,
-    ))?;
-    let selector = envelope
-        .get("result")
-        .and_then(|result| result.get("selectorHandle"))
-        .and_then(Value::as_str);
-    match selector {
-        Some(selector) => selector
-            .parse()
-            .map(Ok)
-            .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message)),
-        None => Ok(Err(envelope)),
-    }
-}
-
-fn symbol_lookup(workspace_root: PathBuf, query: String, mode: AgentSymbolMode) -> AgentCommand {
-    AgentCommand::Symbol(AgentSymbolArgs {
-        runtime: agent_runtime(workspace_root),
-        query,
-        mode,
-        kind: None,
-        file_hint: None,
-        containing_type: None,
-        limit: 10,
-        view: AgentSymbolViewArgs::default(),
-    })
-}
-
-fn selector_args(selector_handle: AgentSelectorHandle) -> AgentReusableSymbolSelectorArgs {
-    AgentReusableSymbolSelectorArgs {
-        symbol: None,
-        declaration_file: None,
-        declaration_start_offset: None,
-        kind: None,
-        containing_type: None,
-        selector_handle: Some(selector_handle),
-    }
-}
-
 fn normalize_planned_paths(runtime: &AgentRuntimeArgs, paths: &[String]) -> Result<Vec<String>> {
     agent::normalize_public_file_paths(runtime, paths).map_err(|error| {
         CliError::new(
@@ -233,8 +316,4 @@ fn normalize_planned_paths(runtime: &AgentRuntimeArgs, paths: &[String]) -> Resu
             format!("{}: {}", error.code, error.message),
         )
     })
-}
-
-fn graph_nodes_workspace_fingerprint(workspace_root: &Path) -> String {
-    crate::manifest::sha256_bytes(workspace_root.as_os_str().as_encoded_bytes())[..24].to_string()
 }

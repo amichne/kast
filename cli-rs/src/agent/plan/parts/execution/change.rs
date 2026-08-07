@@ -1,69 +1,55 @@
-pub(crate) fn run_change(args: KastChangeArgs) -> Result<i32> {
+pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) -> Result<i32> {
     let workspace_root = canonical_workspace_root()?;
     let requested = RequestedOperation::from(args.command);
-    let content = requested.requires_content().then(read_stdin).transpose()?;
+    let operation = requested.operation_id();
+    let prepared = match requested.prepare(workspace_root.clone()) {
+        Ok(prepared) => prepared,
+        Err(envelope) => {
+            let exit_code = envelope.exit_code();
+            output::print_structured(envelope.as_ref(), output_format)?;
+            return Ok(exit_code);
+        }
+    };
+    let selector = prepared.selector().map(str::to_string);
+    let content = prepared.requires_content().then(read_stdin).transpose()?;
     let plan_id = Uuid::new_v4();
     let paths = PlanPaths::new(plan_id);
-    ensure_private_directory(&paths.directory)?;
-
-    let preview_content_path = match content.as_deref() {
-        Some(content) => {
-            write_private_file(&paths.preview_content, content)?;
-            Some(paths.preview_content.as_path())
-        }
-        None => None,
-    };
-    let preview = match agent_adapter::projected_value(requested.command(
+    let preview_content = content
+        .as_deref()
+        .map(TemporaryPreviewContent::create)
+        .transpose()?;
+    let preview = agent_adapter::projected_value(prepared.command(
         workspace_root.clone(),
-        preview_content_path,
+        preview_content.as_ref().map(TemporaryPreviewContent::path),
         false,
         None,
         None,
-    )?) {
-        Ok(preview) => preview,
-        Err(error) => {
-            remove_if_exists(&paths.preview_content);
-            return Err(error);
-        }
-    };
+    )?)?;
     if preview.get("ok") != Some(&Value::Bool(true)) {
-        remove_if_exists(&paths.preview_content);
         return agent_adapter::print_projected_value(preview);
     }
-    let preview_result = match projected_result(&preview) {
-        Ok(result) => result,
-        Err(error) => {
-            remove_if_exists(&paths.preview_content);
-            return Err(error);
-        }
-    };
-    let operation = match requested.into_stored(preview_result) {
-        Ok(operation) => operation,
-        Err(error) => {
-            remove_if_exists(&paths.preview_content);
-            return Err(error);
-        }
-    };
+    let preview_result = projected_result(&preview)?;
+    let stored_operation = prepared.into_stored(preview_result)?;
     let public_plan = public_plan(preview_result);
     let content_sha256 = content.as_deref().map(manifest::sha256_bytes);
-    if let Err(message) = operation.validate_content_sha256(content_sha256.as_deref()) {
-        remove_if_exists(&paths.preview_content);
+    if let Err(message) = stored_operation.validate_content_sha256(content_sha256.as_deref()) {
         return Err(CliError::new("KAST_INVALID_AGENT_RESULT", message));
     }
 
-    if content.is_some()
-        && let Err(error) = rename_private_file(&paths.preview_content, &paths.content)
+    ensure_private_directory(&paths.directory)?;
+    if let Some(content) = content.as_deref()
+        && let Err(error) = write_private_file(&paths.content, content)
     {
-        remove_if_exists(&paths.preview_content);
         return Err(error);
     }
     let stored = StoredPlan {
         schema_version: PLAN_SCHEMA_VERSION,
         plan_id,
         workspace_root: workspace_root.display().to_string(),
-        operation,
+        operation: stored_operation,
         content_sha256,
         state: StoredPlanState::Planned,
+        runtime_output: None,
     };
     if let Err(error) = write_plan(&paths.plan, &stored) {
         remove_if_exists(&paths.content);
@@ -73,9 +59,40 @@ pub(crate) fn run_change(args: KastChangeArgs) -> Result<i32> {
     let result = ChangeResult {
         plan_id: plan_id.hyphenated().to_string(),
         operation: stored.operation.name(),
+        selector,
         plan: public_plan,
-        next: format!("kast apply {}", plan_id.hyphenated()),
+        next: format!("kast change apply --plan-id {}", plan_id.hyphenated()),
     };
-    output::print_structured(&result, crate::cli::OutputFormat::Toon)?;
+    print_plan_protocol(
+        plan_output_context(output_format, operation),
+        "change-plan",
+        crate::agent::public_protocol::OperationStatus::Complete,
+        &result,
+    )?;
     Ok(0)
+}
+
+struct TemporaryPreviewContent {
+    path: PathBuf,
+}
+
+impl TemporaryPreviewContent {
+    fn create(content: &[u8]) -> Result<Self> {
+        let path = std::env::temp_dir().join(format!(
+            "kast-change-preview-{}.content",
+            Uuid::new_v4().hyphenated()
+        ));
+        write_private_file(&path, content)?;
+        Ok(Self { path })
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TemporaryPreviewContent {
+    fn drop(&mut self) {
+        remove_if_exists(&self.path);
+    }
 }
