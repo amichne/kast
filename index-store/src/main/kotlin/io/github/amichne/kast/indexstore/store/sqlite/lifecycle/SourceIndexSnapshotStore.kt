@@ -62,7 +62,6 @@ internal class SourceIndexSnapshotStore(
         treeOid: GitObjectId,
         producerVersion: ProducerVersion,
     ): PublicationEvidence = synchronized(state.writeLock) {
-        val targetPath = target.database.toJavaPath()
         val conn = state.connection()
         val generationBefore = state.readGenerationInTransaction(conn)
         val (moduleProgressCount, incompleteModuleCount) = conn.createStatement().use { statement ->

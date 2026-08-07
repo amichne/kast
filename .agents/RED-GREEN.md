@@ -2,6 +2,21 @@
 
 ## RED
 
+### Changed production Kotlin semantic audit
+
+Command:
+
+```shell
+changed_files=(); while IFS= read -r file; do [[ -f "$file" ]] && changed_files+=("$file"); done < <(git diff --name-only "$(git merge-base HEAD origin/main)"..HEAD -- '*/src/main/**/*.kt'); kast check "${changed_files[@]}"
+```
+
+Expected failure: every changed production Kotlin file is compiler-clean with
+no discarded primitive boundary derivations.
+
+Observed failure: FAILED as expected. Exact installed-head analysis completed
+all 77 files but reported `UNUSED_VARIABLE` for the unconsumed raw `targetPath`
+derivation in `SourceIndexSnapshotStore.exportSnapshotDatabase`.
+
 ### Repository overlay replacement authority
 
 Command:
@@ -87,6 +102,8 @@ yet exist.
 Commands:
 
 ```shell
+kast refresh index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/lifecycle/SourceIndexSnapshotStore.kt
+changed_files=(); while IFS= read -r file; do [[ -f "$file" ]] && changed_files+=("$file"); done < <(git diff --name-only "$(git merge-base HEAD origin/main)" -- '*/src/main/**/*.kt'); kast check "${changed_files[@]}"
 ./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReplacementAuthorityTest --tests io.github.amichne.kast.indexstore.RepositoryOverlayUnchangedFileTest --no-daemon --console=plain
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test runtime_durable_ownership_smoke
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.backend.KastRuntimeReadinessTest --tests io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridgeReadActionTest --no-daemon --console=plain
@@ -100,4 +117,6 @@ Observed result: PASSED. Overlay replacement and unchanged-file authority tests
 passed; all 19 durable-ownership tests passed; both readiness/read-action tests
 passed; the host-supplied backend regression passed; and the transition timeout,
 server mutation deadline, ingress freshness, diagnostic completeness, and typed
-content-authority regressions passed.
+content-authority regressions passed. Exact installed-head semantic analysis also
+completed all 77 changed production Kotlin files with zero errors, warnings,
+infos, or skipped files.
