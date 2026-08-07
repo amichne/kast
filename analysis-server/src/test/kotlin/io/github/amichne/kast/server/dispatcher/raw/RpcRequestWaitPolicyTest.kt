@@ -10,6 +10,7 @@ class RpcRequestWaitPolicyTest {
         val config = AnalysisServerConfig(requestTimeoutMillis = 1)
 
         listOf(
+            "raw/semantic-graph",
             "raw/workspace-refresh",
             "raw/apply-edits",
             "raw/exact-file-image-cas",

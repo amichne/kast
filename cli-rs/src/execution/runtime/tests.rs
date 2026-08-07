@@ -65,6 +65,7 @@ mod runtime_status_wire_tests {
         let diagnostics = serde_json::json!({"method": "raw/diagnostics"}).to_string();
 
         for method in [
+            "raw/semantic-graph",
             "raw/workspace-refresh",
             "raw/apply-edits",
             "raw/exact-file-image-cas",
