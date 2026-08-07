@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PositiveInt
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
@@ -52,6 +53,12 @@ class RepositoryOverlayReadAuthorityTest {
             "unchanged-base",
             unchangedGraphPath,
         ).copy(annotations = listOf(NonBlankString("sample.AuthoritativeAnnotation")))
+        val newBoundaryPath = SemanticGraphSourcePath.parse("src/NewBoundary.kt")
+        val newBoundarySymbol = semanticSymbol(
+            "new-boundary#symbol",
+            "new-boundary",
+            newBoundaryPath,
+        )
         listOf(unchanged, changed, deleted).forEach { path ->
             Files.createDirectories(path.parent)
             Files.writeString(path, "class ${path.fileName.toString().removeSuffix(".kt")}")
@@ -182,7 +189,7 @@ class RepositoryOverlayReadAuthorityTest {
                         changedGraphPath,
                         "a",
                         listOf(changedGraphSymbol),
-                        boundarySymbols = listOf(unchangedGraphSymbol),
+                        boundarySymbols = listOf(unchangedGraphSymbol, newBoundarySymbol),
                         relations = listOf(boundaryRelation),
                     ),
                 ),
@@ -219,6 +226,18 @@ class RepositoryOverlayReadAuthorityTest {
                 changedGraph.boundarySymbols.single { symbol ->
                     symbol.canonicalKey == unchangedGraphSymbol.canonicalKey
                 }.annotations,
+            )
+            val coverage = store.readSemanticGraphSummary(
+                listOf(unchangedGraphPath, changedGraphPath, newBoundaryPath),
+            ).files
+            assertEquals(coverage.size, coverage.map { file -> file.path }.toSet().size)
+            assertEquals(
+                SemanticGraphFileStatus.REFRESHED,
+                coverage.single { file -> file.path == unchangedGraphPath }.status,
+            )
+            assertEquals(
+                SemanticGraphFileStatus.CACHED,
+                coverage.single { file -> file.path == newBoundaryPath }.status,
             )
             assertEquals(
                 mapOf(NormalizedPath.of(unchanged).value to 1L, NormalizedPath.of(changed).value to 2L),

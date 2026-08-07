@@ -2,6 +2,22 @@
 
 ## RED
 
+### Effective semantic-file path authority
+
+Command:
+
+```shell
+./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReadAuthorityTest --no-daemon --console=plain
+```
+
+Expected failure: a cached main boundary row and its authoritative base file
+both survive `effective_semantic_files`, so one requested path has two coverage
+rows and an `associateBy(path)` consumer can retain the synthetic null-hash row.
+
+Observed failure: FAILED as expected. Four effective coverage rows were
+returned for only three requested paths; the unchanged base path appeared as
+both its refreshed base row and the cached main boundary row.
+
 ### Strict committed-tree manifest decoding
 
 Command:
@@ -277,6 +293,7 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.KastProjectOpenSourceIndexingTest --tests io.github.amichne.kast.idea.NativeSemanticGraphGenerationTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.CommittedGitTreeManifestTest --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
+./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReadAuthorityTest --no-daemon --console=plain
 base_commit=$(git merge-base HEAD origin/main)
 changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <({ git diff --name-only "$base_commit" -- '*.kt'; git ls-files --others --exclude-standard -- '*.kt'; } | sort -u)
 kast check "${changed_kotlin[@]}"
@@ -303,7 +320,10 @@ graph file-stage work now advances the ingress progress observation while its
 transition snapshot remains unchanged; all three focused production-wiring
 fixtures passed. Invalid UTF-8 in a committed-tree manifest now returns typed
 `InvalidGitOutput` evidence before path parsing; the strict-decoding regression
-and all repository snapshot integration tests passed. The full Gradle check and repository-shape
+and all repository snapshot integration tests passed. Effective semantic-file
+authority now selects exactly one row per path: refreshed base coverage
+supersedes a cached main boundary, while a cached main boundary with no base
+row remains visible. The focused overlay regression passed. The full Gradle check and repository-shape
 contract passed. Exact installed-head semantic analysis also completed all 77
 changed production Kotlin files with zero errors, warnings, infos, or skipped
 files. The final working-tree audit completed all 128 changed Kotlin production

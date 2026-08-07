@@ -10,17 +10,22 @@ internal object RepositoryOverlaySemanticViews {
     }
 
     private val semanticViews = OverlayViewDefinition.schemaOwnedAll(
-        """CREATE TEMP VIEW IF NOT EXISTS effective_semantic_files AS
-           SELECT files.*
+        """CREATE TEMP VIEW IF NOT EXISTS effective_semantic_file_authority AS
+           SELECT files.path, files.id AS effective_id
            FROM main.semantic_files files
            WHERE NOT EXISTS (
                SELECT 1 FROM main.repository_overlay_tombstones tombstone
                WHERE tombstone.path = files.path
            )
+             AND (
+                   files.refresh_status != 'CACHED'
+                   OR NOT EXISTS (
+                       SELECT 1 FROM repository_base.semantic_files base
+                       WHERE base.path = files.path
+                   )
+               )
            UNION ALL
-           SELECT -files.id, files.path, files.package_name, files.module_name,
-                  files.content_hash, files.refresh_status, files.diagnostics_json,
-                  files.boundary_failure_id, files.boundary_failure_code
+           SELECT files.path, -files.id
            FROM repository_base.semantic_files files
            WHERE NOT EXISTS (
                    SELECT 1 FROM main.repository_overlay_tombstones tombstone
@@ -30,6 +35,20 @@ internal object RepositoryOverlaySemanticViews {
                    SELECT 1 FROM main.semantic_files overlay
                    WHERE overlay.path = files.path AND overlay.refresh_status != 'CACHED'
                )""",
+        """CREATE TEMP VIEW IF NOT EXISTS effective_semantic_files AS
+           SELECT authority.effective_id AS id, files.path, files.package_name, files.module_name,
+                  files.content_hash, files.refresh_status, files.diagnostics_json,
+                  files.boundary_failure_id, files.boundary_failure_code
+           FROM effective_semantic_file_authority authority
+           JOIN main.semantic_files files
+             ON files.id = authority.effective_id
+           UNION ALL
+           SELECT authority.effective_id, files.path, files.package_name, files.module_name,
+                  files.content_hash, files.refresh_status, files.diagnostics_json,
+                  files.boundary_failure_id, files.boundary_failure_code
+           FROM effective_semantic_file_authority authority
+           JOIN repository_base.semantic_files files
+             ON -files.id = authority.effective_id""",
         """CREATE TEMP VIEW IF NOT EXISTS effective_semantic_types AS
            SELECT types.* FROM main.semantic_types types
            UNION ALL
