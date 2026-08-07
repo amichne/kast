@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexer.gradle.bootstrap;
 
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
@@ -57,6 +58,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class GradleProjectImportBridge {
     private static final String DISABLE_DEPENDENCY_SOURCE_DOWNLOADS =
@@ -257,18 +259,32 @@ public final class GradleProjectImportBridge {
         };
         boolean resolveActive = ExternalSystemProcessingManager.getInstance()
             .hasTaskOfTypeInProgress(ExternalSystemTaskType.RESOLVE_PROJECT, project);
-        Module[] observedModules = ModuleManager.getInstance(project).getModules();
-        int sourceRootCount = Arrays.stream(observedModules)
-            .filter(module -> !module.isDisposed())
-            .mapToInt(module -> ModuleRootManager.getInstance(module).getSourceRoots().length)
-            .sum();
+        GradleModelInventory inventory = readProjectModelInventory(() -> {
+            Module[] observedModules = ModuleManager.getInstance(project).getModules();
+            int sourceRootCount = Arrays.stream(observedModules)
+                .filter(module -> !module.isDisposed())
+                .mapToInt(module -> ModuleRootManager.getInstance(module).getSourceRoots().length)
+                .sum();
+            return GradleModelInventory.fromIdeaModel(observedModules.length, sourceRootCount);
+        });
         return new GradleImportObservation(
             reloadState,
             resolveActive ? GradleResolveState.IN_PROGRESS : GradleResolveState.IDLE,
             DumbService.getInstance(project).isDumb() ? IdeaIndexState.DUMB : IdeaIndexState.SMART,
             ProjectLifecycleState.ACTIVE,
-            GradleModelInventory.fromIdeaModel(observedModules.length, sourceRootCount)
+            inventory
         );
+    }
+
+    /**
+     * Proof transition: {@code Supplier<GradleModelInventory> -> GradleModelInventory}.
+     *
+     * Evaluates the IDEA project-model observation under read authority. The returned inventory is
+     * derived from a coherent model snapshot, so downstream settlement logic never receives module
+     * or source-root primitives observed outside an IntelliJ read action.
+     */
+    static GradleModelInventory readProjectModelInventory(Supplier<GradleModelInventory> observation) {
+        return ReadAction.compute(observation::get);
     }
 
     private static void awaitStartupActivities(Project project, String externalProjectPath) {

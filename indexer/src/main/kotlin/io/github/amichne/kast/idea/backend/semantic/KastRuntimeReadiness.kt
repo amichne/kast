@@ -49,9 +49,10 @@ internal data class KastRuntimeReadinessObservation(
 /**
  * Proof transition: `KastRuntimeReadinessObservation -> RuntimeReadiness`.
  *
- * Derives independent runtime, model, reference, graph, and mutation lanes from
- * closed IDEA admission and model observations. Raw IntelliJ state is admitted
- * only while constructing [KastRuntimeReadinessObservation].
+ * Derives runtime, model, reference, and graph lanes from closed IDEA admission
+ * and model observations, then constrains mutation readiness by both model and
+ * graph authority. Raw IntelliJ state is admitted only while constructing
+ * [KastRuntimeReadinessObservation].
  */
 internal fun kastRuntimeReadiness(
     observation: KastRuntimeReadinessObservation,
@@ -80,6 +81,10 @@ internal fun kastRuntimeReadiness(
         model = model,
         references = RuntimeReadinessLane.Blocked,
         semanticGraph = graph,
-        mutation = graph,
+        mutation = when (model) {
+            RuntimeReadinessLane.Ready -> graph
+            RuntimeReadinessLane.Blocked -> RuntimeReadinessLane.Blocked
+            is RuntimeReadinessLane.InProgress -> model
+        },
     )
 }
