@@ -38,7 +38,11 @@ internal class KastIdeaProjectIndexing(
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
     private val gitWorktreeRegistrationProof: GitWorktreeRegistrationProof? = null,
-    private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(semanticAdmission),
+    private val indexingProgress: WorkspaceIndexingProgressAuthority = WorkspaceIndexingProgressAuthority(),
+    private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(
+        semanticAdmission = semanticAdmission,
+        indexingProgress = indexingProgress,
+    ),
     private val snapshotPreparation: RepositorySnapshotPreparation = RepositorySnapshotPreparation.Unmanaged,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
     private val semanticGraphIndexer:
@@ -244,6 +248,7 @@ internal class KastIdeaProjectIndexing(
             store = indexStore,
             cancelled = ::isCancelled,
             workspaceIdentity = workspaceIdentity.workspaceIdentity,
+            indexingProgress = indexingProgress,
             scopeCache = scopeCache,
         )
         val reconciliationIndexer = WorkspaceReconciliationIndexer(

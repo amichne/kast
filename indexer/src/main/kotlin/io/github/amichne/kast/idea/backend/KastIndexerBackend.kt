@@ -111,6 +111,7 @@ internal class KastIndexerBackend(
     internal val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     internal val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
     @Volatile internal var semanticGraphBatchSize: GraphIndexingBatchSize = GraphIndexingBatchSize(32),
+    internal val workspaceIndexingProgress: WorkspaceIndexingProgressSink = WorkspaceIndexingProgressAuthority(),
     internal val workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority,
     internal val workspaceTransitionRequester: WorkspaceTransitionRequester,
     internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
@@ -394,7 +395,6 @@ internal class KastIndexerBackend(
         internal val INDEXER_MUTATION_CAPABILITIES: Set<MutationCapability> = MutationCapability.entries.toSet()
         internal const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384
         internal val INDEXER_VERSION = readIndexerVersion()
-
         internal fun readIndexerVersion(): String = loadIndexerVersion()
     }
 }

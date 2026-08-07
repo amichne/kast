@@ -6,6 +6,11 @@ import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.index.PendingFileStage
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
@@ -20,6 +25,7 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.lang.reflect.Proxy
+import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -135,6 +141,42 @@ class WorkspaceTransitionIngressTest {
         }
         ingress = WorkspaceTransitionIngress(admission, awaiter)
         ingress.bind {}
+
+        val published = runBlocking { ingress.reconcile(WorkspaceSignal.Source) }
+
+        assertEquals(next, published)
+    }
+
+    @Test
+    fun `active indexing progress extends the deadline while the transition snapshot is unchanged`() {
+        val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(9))
+        val next = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(10))
+        val admission = readyAdmission(initial)
+        val indexingProgress = WorkspaceIndexingProgressAuthority()
+        val activity = WorkspaceIndexingActivity.derive(testPendingSourceWork())
+        var ingress: WorkspaceTransitionIngress by Delegates.notNull()
+        val awaiter = testAwaiter { elapsed ->
+            if (elapsed < Duration.ofMillis(5)) {
+                indexingProgress.record(activity)
+            } else {
+                publish(admission, next)
+                ingress.observe(readySnapshot(next))
+            }
+        }
+        ingress = WorkspaceTransitionIngress(
+            semanticAdmission = admission,
+            transitionAwaiter = awaiter,
+            indexingProgress = indexingProgress,
+        )
+        ingress.bind {}
+        admission.dirty("active indexing pass")
+        ingress.observe(
+            activeSnapshot(
+                generation = initial,
+                lifecycle = WorkspaceLifecycle.Reconciling,
+                observedEventCount = TestTransitionEventCount.derive(1),
+            ),
+        )
 
         val published = runBlocking { ingress.reconcile(WorkspaceSignal.Source) }
 
@@ -285,6 +327,19 @@ class WorkspaceTransitionIngressTest {
                 elapsed = elapsed.plus(duration)
                 onPause(elapsed)
             },
+        )
+    }
+
+    private fun testPendingSourceWork(): PendingFileStage {
+        val root = Path.of("/workspace")
+        val path = requireNotNull(
+            SourceIndexFilePolicy.forWorkspace(root).sourcePath(root.resolve("src/Active.kt")),
+        )
+        return PendingFileStage(
+            path = path,
+            contentHash = FileContentHash.parse("a".repeat(64)),
+            stage = FileIndexStage.SOURCE,
+            version = FileStageVersions.CURRENT.source,
         )
     }
 

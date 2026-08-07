@@ -2,6 +2,24 @@
 
 ## RED
 
+### Active indexing progress authority
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --no-daemon --console=plain
+```
+
+Expected failure: a reconciliation waiter observes only the unchanged
+`WorkspaceTransitionSnapshot` while `runIndexingPass` continues through typed
+file-stage work, so the no-progress deadline rejects active indexing before the
+larger maximum wait can apply.
+
+Observed failure: FAILED as expected during `:indexer:compileTestKotlin`.
+`WorkspaceIndexingProgressAuthority`, `WorkspaceIndexingActivity`, and the
+ingress `indexingProgress` authority were all absent, so an unchanged
+transition snapshot had no typed indexing-progress input.
+
 ### Fully unregistered live runtime ownership
 
 Command:
@@ -240,6 +258,10 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_readiness_smo
 cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy
 ./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --tests io.github.amichne.kast.server.dispatcher.raw.AnalysisDispatcherRawMutationRecoveryTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.KastProjectOpenSourceIndexingTest --tests io.github.amichne.kast.idea.NativeSemanticGraphGenerationTest --no-daemon --console=plain
+base_commit=$(git merge-base HEAD origin/main)
+changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <({ git diff --name-only "$base_commit" -- '*.kt'; git ls-files --others --exclude-standard -- '*.kt'; } | sort -u)
+kast check "${changed_kotlin[@]}"
 ```
 
 Observed result: PASSED. Fully missing live registration now produces a
@@ -258,7 +280,12 @@ terminal wait-authority tests passed; all 19 durable-ownership tests passed;
 both readiness/read-action tests
 passed; the host-supplied backend regression passed; and the transition timeout,
 server mutation deadline, ingress freshness, diagnostic completeness, and typed
-content-authority regressions passed. The full Gradle check and repository-shape
+content-authority regressions passed. Active source, relationship, and semantic
+graph file-stage work now advances the ingress progress observation while its
+transition snapshot remains unchanged; all three focused production-wiring
+fixtures passed. The full Gradle check and repository-shape
 contract passed. Exact installed-head semantic analysis also completed all 77
 changed production Kotlin files with zero errors, warnings, infos, or skipped
-files.
+files. The final working-tree audit completed all 127 changed Kotlin production
+and test files, including the new progress authority, with zero errors,
+warnings, infos, or skipped files.

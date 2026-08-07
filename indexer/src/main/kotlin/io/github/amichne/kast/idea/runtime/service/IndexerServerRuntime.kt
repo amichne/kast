@@ -161,7 +161,11 @@ object IndexerServerRuntime {
         }
         val manifestFileCountProvider = sourceIndexStore.prepareManifestFileCountProvider()
         val semanticAdmission = IdeaIndexSemanticAdmission(project)
-        val transitionIngress = WorkspaceTransitionIngress(semanticAdmission)
+        val indexingProgress = WorkspaceIndexingProgressAuthority()
+        val transitionIngress = WorkspaceTransitionIngress(
+            semanticAdmission = semanticAdmission,
+            indexingProgress = indexingProgress,
+        )
         if (indexAdmission is IndexerAdmission.Failed) {
             semanticAdmission.fail(indexAdmission.error.indexAdmissionFailureDetail())
         }
@@ -176,6 +180,7 @@ object IndexerServerRuntime {
                 referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
                 semanticGraphStore = sourceIndexStore,
                 semanticGraphBatchSize = config.indexing.graph.batchSize,
+                workspaceIndexingProgress = indexingProgress,
                 initialIndexingConfig = config.indexing,
                 indexingConfigLoader = {
                     try {
@@ -254,6 +259,7 @@ object IndexerServerRuntime {
                     indexStore = sourceIndexStore,
                     semanticAdmission = semanticAdmission,
                     gitWorktreeRegistrationProof = registrationProof,
+                    indexingProgress = indexingProgress,
                     transitionIngress = transitionIngress,
                     snapshotPreparation = snapshotPreparation,
                     scopeCache = indexingScopeCache,

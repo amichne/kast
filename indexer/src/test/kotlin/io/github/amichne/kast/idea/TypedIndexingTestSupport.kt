@@ -1,5 +1,9 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiDocumentManager
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
@@ -55,3 +59,17 @@ internal fun SqliteSourceIndexStore.fileStageOutcome(
     checkNotNull(sourcePath(Path.of(path))) { "Test source path is outside the store workspace root: $path" },
     stage,
 )
+
+/**
+ * Test effect transition: `(Project, Document, String) -> committed PSI document state`.
+ *
+ * Owns the write action and PSI commit required after a test replaces the
+ * document image; callers cannot accidentally observe an uncommitted edit.
+ */
+internal fun replaceProjectDocument(project: Project, document: Document, content: String) {
+    val application = ApplicationManager.getApplication()
+    application.invokeAndWait {
+        application.runWriteAction { document.setText(content) }
+        PsiDocumentManager.getInstance(project).commitDocument(document)
+    }
+}

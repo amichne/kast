@@ -22,6 +22,7 @@ import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.idea.IdeaReadEpochKind
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
+import io.github.amichne.kast.idea.WorkspaceIndexingActivity
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.diagnostics.analyzeDiagnosticsFileInReadEpoch
 import io.github.amichne.kast.idea.runIdeaReadAction
@@ -129,6 +130,9 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(
             checkSemanticGraphCancellation()
             val batchPsiGeneration = runIdeaReadAction { psiGeneration() }
             val refreshedBatch = batch.map { file ->
+                workspaceIndexingProgress.record(
+                    WorkspaceIndexingActivity.derive(requireNotNull(file.work)),
+                )
                 val refresh = runIdeaReadAction {
                     readEpochObserver.entered(IdeaReadEpochKind.SEMANTIC_GRAPH)
                     val currentPsiGeneration = psiGeneration()

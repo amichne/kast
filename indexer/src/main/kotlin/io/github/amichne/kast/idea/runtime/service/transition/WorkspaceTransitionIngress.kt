@@ -54,6 +54,7 @@ internal fun routeWorkspaceSignal(
 internal class WorkspaceTransitionIngress(
     private val semanticAdmission: IdeaIndexSemanticAdmission,
     private val transitionAwaiter: ProgressAwareFutureAwaiter = ProgressAwareFutureAwaiter.standard(),
+    private val indexingProgress: WorkspaceIndexingProgressProbe = WorkspaceIndexingProgressAuthority(),
 ) : WorkspaceTransitionRequester, AutoCloseable {
     private val lock = Any()
     private val waiters = linkedSetOf<TransitionWaiter>()
@@ -242,7 +243,12 @@ internal class WorkspaceTransitionIngress(
                 stage = RuntimeProgressStage.SOURCE_INDEX,
                 completion = RuntimeWaitCompletionProbe(waiter::completion),
                 observation = RuntimeProgressProbe {
-                    RuntimeProgressObservation.capture(synchronized(lock) { observation })
+                    RuntimeProgressObservation.capture(
+                        WorkspaceTransitionProgressObservation.derive(
+                            transition = synchronized(lock) { observation },
+                            indexing = indexingProgress.observe(),
+                        ),
+                    )
                 },
                 lifecycle = RuntimeWaitLifecycleProbe {
                     when (synchronized(lock) { binding }) {

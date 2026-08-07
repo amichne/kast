@@ -44,6 +44,7 @@ internal class IdeaProjectIndexer(
     private val readGradleWorkspaceModel: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
         IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
     },
+    private val indexingProgress: WorkspaceIndexingProgressSink = WorkspaceIndexingProgressAuthority(),
     private val onSourceFileScan: (String) -> Unit = {},
     private val onRelationshipFileScan: (String) -> Unit = {},
     private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
@@ -162,6 +163,7 @@ internal class IdeaProjectIndexer(
         )
         val updates = pendingWork.mapNotNull { work ->
             requireActive()
+            indexingProgress.record(WorkspaceIndexingActivity.derive(work))
             val absolutePath = work.path.absolute.value.value
             onSourceFileScan(absolutePath)
             val result = scanner.scanFile(absolutePath)
@@ -253,6 +255,7 @@ internal class IdeaProjectIndexer(
         for (batch in orderedPendingPaths.map(workByPath::getValue).chunked(SOURCE_INDEX_BATCH_SIZE)) {
             requireActive()
             val updates = batch.mapNotNull { work ->
+                indexingProgress.record(WorkspaceIndexingActivity.derive(work))
                 val absolutePath = work.path.absolute.value.value
                 onSourceFileScan(absolutePath)
                 scanner.scanFile(absolutePath)?.let { result ->
@@ -333,6 +336,7 @@ internal class IdeaProjectIndexer(
         ).indexPendingSymbolRelationships(
             work = orderedFilePaths.map(workByPath::getValue),
             scanner = { path ->
+                indexingProgress.record(WorkspaceIndexingActivity.derive(workByPath.getValue(path)))
                 val absolutePath = path.absolute.value.value
                 onRelationshipFileScan(absolutePath)
                 when (val result = scanner.scanFileRelationships(absolutePath)) {

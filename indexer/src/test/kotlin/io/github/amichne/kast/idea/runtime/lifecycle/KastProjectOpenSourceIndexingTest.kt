@@ -3,7 +3,6 @@ package io.github.amichne.kast.idea
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -101,6 +100,7 @@ class KastProjectOpenSourceIndexingTest {
         val sourceScans = mutableListOf<String>()
         val relationshipScans = mutableListOf<String>()
         val pipelineEvents = mutableListOf<String>()
+        val indexingProgress = WorkspaceIndexingProgressAuthority()
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             val indexer = IdeaProjectIndexer(
@@ -109,6 +109,7 @@ class KastProjectOpenSourceIndexingTest {
                 store = store,
                 cancelled = { false },
                 readGradleWorkspaceModel = { completeGradleModel },
+                indexingProgress = indexingProgress,
                 onSourceFileScan = sourceScans::add,
                 onRelationshipFileScan = { path ->
                     relationshipScans.add(path)
@@ -122,6 +123,12 @@ class KastProjectOpenSourceIndexingTest {
             assertTrue(sourceScans.isNotEmpty())
             assertTrue(relationshipScans.isNotEmpty())
             assertTrue(pipelineEvents.indexOf("graph") < pipelineEvents.indexOf("reference"))
+            val observedProgress = indexingProgress.observe()
+            assertTrue(observedProgress is WorkspaceIndexingProgressObservation.Observed)
+            assertEquals(
+                FileIndexStage.RELATIONSHIPS,
+                (observedProgress as WorkspaceIndexingProgressObservation.Observed).activity.stage,
+            )
 
             val snapshot = store.loadSourceIndexSnapshot()
             val callerSourcePath = workspaceSourcePath(workspaceRoot, callerPath)
@@ -356,11 +363,11 @@ class KastProjectOpenSourceIndexingTest {
         val changeCaller: (String) -> Unit = { path ->
             if (!changed && path == callerPath) {
                 changed = true
-                replaceDocument(project, document, callerSource.replace("caller", "changedCaller"))
+                replaceProjectDocument(project, document, callerSource.replace("caller", "changedCaller"))
             }
         }
 
-        replaceDocument(project, document, callerSource)
+        replaceProjectDocument(project, document, callerSource)
         try {
             SqliteSourceIndexStore(workspaceIdentity).use { store ->
                 IdeaProjectIndexer(
@@ -382,19 +389,7 @@ class KastProjectOpenSourceIndexingTest {
                 )
             }
         } finally {
-            replaceDocument(project, document, callerSource)
-        }
-    }
-
-    private fun replaceDocument(
-        project: Project,
-        document: com.intellij.openapi.editor.Document,
-        content: String,
-    ) {
-        val application = ApplicationManager.getApplication()
-        application.invokeAndWait {
-            application.runWriteAction { document.setText(content) }
-            PsiDocumentManager.getInstance(project).commitDocument(document)
+            replaceProjectDocument(project, document, callerSource)
         }
     }
 }
