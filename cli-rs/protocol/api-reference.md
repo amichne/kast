@@ -125,11 +125,21 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "referenceCoverageState": "UNAVAILABLE",
                     "referenceCoverageLimitations": [],
                     "readiness": {
-                        "runtime": { "type": "READY" },
-                        "model": { "type": "READY" },
-                        "references": { "type": "BLOCKED" },
-                        "semanticGraph": { "type": "READY" },
-                        "mutation": { "type": "READY" }
+                        "runtime": {
+                            "type": "READY"
+                        },
+                        "model": {
+                            "type": "READY"
+                        },
+                        "references": {
+                            "type": "BLOCKED"
+                        },
+                        "semanticGraph": {
+                            "type": "READY"
+                        },
+                        "mutation": {
+                            "type": "READY"
+                        }
                     },
                     "ready": false,
                     "schemaVersion": 6
