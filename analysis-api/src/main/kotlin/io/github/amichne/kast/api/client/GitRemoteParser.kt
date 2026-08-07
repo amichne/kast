@@ -4,18 +4,58 @@ import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.validation.FileHashing
 import java.nio.file.Path
 
+internal class ReadOnlyGitProcessEnvironment private constructor(
+    private val variables: Map<String, String>,
+) {
+    internal fun applyTo(builder: ProcessBuilder): ProcessBuilder = builder.also {
+        builder.environment().clear()
+        builder.environment().putAll(variables)
+    }
+
+    companion object {
+        private const val OPTIONAL_LOCKS = "GIT_OPTIONAL_LOCKS"
+        private val REPOSITORY_SELECTORS = setOf(
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_COMMON_DIR",
+            "GIT_INDEX_FILE",
+            "GIT_OBJECT_DIRECTORY",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            "GIT_CEILING_DIRECTORIES",
+            "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+        )
+
+        /**
+         * Proof transition: `Map<String, String> -> ReadOnlyGitProcessEnvironment`.
+         *
+         * Removes every inherited repository-selection variable before a Git
+         * child process can observe it and disables optional Git locks. The
+         * returned environment therefore cannot redirect a read away from the
+         * caller-selected working directory. Raw environment entries are
+         * accepted only from the JVM process boundary and extracted only into
+         * [ProcessBuilder] at the operating-system boundary.
+         */
+        fun fromInherited(inherited: Map<String, String>): ReadOnlyGitProcessEnvironment =
+            ReadOnlyGitProcessEnvironment(
+                inherited
+                    .filterKeys { variable -> variable !in REPOSITORY_SELECTORS }
+                    .plus(OPTIONAL_LOCKS to "0"),
+            )
+    }
+}
+
 class ReadOnlyGitCommand private constructor(
     private val arguments: List<String>,
 ) {
     /** Raw command extraction is confined to the operating-system process boundary. */
-    fun processBuilder(): ProcessBuilder =
-        ProcessBuilder(listOf("git") + arguments).also { builder ->
-            builder.environment()[OPTIONAL_LOCKS_ENVIRONMENT] = "0"
-        }
+    fun processBuilder(): ProcessBuilder = processBuilder(
+        ReadOnlyGitProcessEnvironment.fromInherited(System.getenv()),
+    )
+
+    internal fun processBuilder(environment: ReadOnlyGitProcessEnvironment): ProcessBuilder =
+        environment.applyTo(ProcessBuilder(listOf("git") + arguments))
 
     companion object {
-        private const val OPTIONAL_LOCKS_ENVIRONMENT = "GIT_OPTIONAL_LOCKS"
-
         fun originRemote(): ReadOnlyGitCommand = command("config", "--get", "remote.origin.url")
 
         fun workspaceTopLevel(): ReadOnlyGitCommand = command("rev-parse", "--show-toplevel")
