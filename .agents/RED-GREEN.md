@@ -2,6 +2,21 @@
 
 ## RED
 
+### Terminal progress-wait authority
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --no-daemon --console=plain
+```
+
+Expected failure: a future or condition that completes during the polling pause
+is accepted without rechecking typed project-disposal and deadline evidence.
+
+Observed failure: FAILED as expected. All four deterministic races returned
+`RuntimeProgressAwaitOutcome.Completed`: future and condition completion each
+outran both project disposal and the no-progress deadline reached during pause.
+
 ### Changed production Kotlin semantic audit
 
 Command:
@@ -102,6 +117,10 @@ yet exist.
 Commands:
 
 ```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --no-daemon --console=plain
+python3 .github/scripts/check-repository-shape.py --root .
+./gradlew check --no-daemon --console=plain
+kast refresh indexer/src/main/kotlin/io/github/amichne/kast/indexer/gradle/settlement/ProgressAwareFutureAwaiter.kt
 kast refresh index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/lifecycle/SourceIndexSnapshotStore.kt
 changed_files=(); while IFS= read -r file; do [[ -f "$file" ]] && changed_files+=("$file"); done < <(git diff --name-only "$(git merge-base HEAD origin/main)" -- '*/src/main/**/*.kt'); kast check "${changed_files[@]}"
 ./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReplacementAuthorityTest --tests io.github.amichne.kast.indexstore.RepositoryOverlayUnchangedFileTest --no-daemon --console=plain
@@ -114,9 +133,11 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ```
 
 Observed result: PASSED. Overlay replacement and unchanged-file authority tests
-passed; all 19 durable-ownership tests passed; both readiness/read-action tests
+passed; all seven terminal wait-authority tests passed; all 19 durable-ownership
+tests passed; both readiness/read-action tests
 passed; the host-supplied backend regression passed; and the transition timeout,
 server mutation deadline, ingress freshness, diagnostic completeness, and typed
-content-authority regressions passed. Exact installed-head semantic analysis also
-completed all 77 changed production Kotlin files with zero errors, warnings,
-infos, or skipped files.
+content-authority regressions passed. The full Gradle check and repository-shape
+contract passed. Exact installed-head semantic analysis also completed all 77
+changed production Kotlin files with zero errors, warnings, infos, or skipped
+files.

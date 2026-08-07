@@ -255,7 +255,10 @@ class ProgressAwareFutureAwaiter internal constructor(
                 return rejected(RuntimeProgressAwaitFailure.Interrupted(evidence(stage, startedAt, lastProgressAt)))
             }
         }
-        val completedEvidence = evidence(stage, startedAt, lastProgressAt)
+        val completedEvidence = when (val authority = terminalAuthority(stage, startedAt, lastProgressAt, lifecycle)) {
+            is RuntimeProgressTerminalAuthority.Admitted -> authority.evidence
+            is RuntimeProgressTerminalAuthority.Rejected -> return authority.outcome
+        }
         return try {
             future.get()
             RuntimeProgressAwaitOutcome.Completed(completedEvidence)
@@ -309,7 +312,29 @@ class ProgressAwareFutureAwaiter internal constructor(
                 return rejected(RuntimeProgressAwaitFailure.Interrupted(evidence(stage, startedAt, lastProgressAt)))
             }
         }
-        return RuntimeProgressAwaitOutcome.Completed(evidence(stage, startedAt, lastProgressAt))
+        return when (val authority = terminalAuthority(stage, startedAt, lastProgressAt, lifecycle)) {
+            is RuntimeProgressTerminalAuthority.Admitted -> RuntimeProgressAwaitOutcome.Completed(authority.evidence)
+            is RuntimeProgressTerminalAuthority.Rejected -> authority.outcome
+        }
+    }
+
+    /** Proof transition: `(RuntimeProgressStage, MonotonicInstant, MonotonicInstant, RuntimeWaitLifecycleProbe) -> RuntimeProgressTerminalAuthority`. */
+    private fun terminalAuthority(
+        stage: RuntimeProgressStage,
+        startedAt: MonotonicInstant,
+        lastProgressAt: MonotonicInstant,
+        lifecycle: RuntimeWaitLifecycleProbe,
+    ): RuntimeProgressTerminalAuthority {
+        val evidence = evidence(stage, startedAt, lastProgressAt)
+        if (lifecycle.observe() == RuntimeWaitLifecycle.Disposed) {
+            return RuntimeProgressTerminalAuthority.Rejected(
+                rejected(RuntimeProgressAwaitFailure.ProjectDisposed(evidence)),
+            )
+        }
+        return when (val deadline = deadlineStatus(evidence)) {
+            RuntimeProgressDeadlineStatus.WithinDeadline -> RuntimeProgressTerminalAuthority.Admitted(evidence)
+            is RuntimeProgressDeadlineStatus.Exceeded -> RuntimeProgressTerminalAuthority.Rejected(rejected(deadline.failure))
+        }
     }
 
     private fun evidence(
@@ -367,4 +392,9 @@ private sealed interface PreviousProgressObservation {
     data class Observed(
         val observation: RuntimeProgressObservation,
     ) : PreviousProgressObservation
+}
+
+private sealed interface RuntimeProgressTerminalAuthority {
+    data class Admitted(val evidence: RuntimeProgressDeadlineEvidence) : RuntimeProgressTerminalAuthority
+    data class Rejected(val outcome: RuntimeProgressAwaitOutcome.Rejected) : RuntimeProgressTerminalAuthority
 }

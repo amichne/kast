@@ -29,6 +29,102 @@ class ProgressAwareFutureAwaiterTest {
     }
 
     @Test
+    fun `future completion during pause cannot outrun project disposal`() {
+        val future = CompletableFuture<Void>()
+        var lifecycle = RuntimeWaitLifecycle.Active
+        val awaiter = ProgressAwareFutureAwaiter(
+            policy = policy(),
+            clock = MonotonicClock.fromRaw { 0L },
+            pause = {
+                lifecycle = RuntimeWaitLifecycle.Disposed
+                future.complete(null)
+            },
+        )
+
+        val outcome = awaiter.await(
+            RuntimeProgressStage.GRADLE_IMPORT,
+            future,
+            RuntimeProgressProbe { RuntimeProgressObservation.capture("complete") },
+            RuntimeWaitLifecycleProbe { lifecycle },
+        )
+        val rejected = assertInstanceOf(RuntimeProgressAwaitOutcome.Rejected::class.java, outcome)
+
+        assertInstanceOf(RuntimeProgressAwaitFailure.ProjectDisposed::class.java, rejected.failure)
+    }
+
+    @Test
+    fun `future completion during pause cannot outrun its deadline`() {
+        var now = 0L
+        val future = CompletableFuture<Void>()
+        val awaiter = ProgressAwareFutureAwaiter(
+            policy = policy(),
+            clock = MonotonicClock.fromRaw { now * 1_000_000 },
+            pause = {
+                now = 2L
+                future.complete(null)
+            },
+        )
+
+        val outcome = awaiter.await(
+            RuntimeProgressStage.GRADLE_IMPORT,
+            future,
+            RuntimeProgressProbe { RuntimeProgressObservation.capture("complete") },
+            RuntimeWaitLifecycleProbe { RuntimeWaitLifecycle.Active },
+        )
+        val rejected = assertInstanceOf(RuntimeProgressAwaitOutcome.Rejected::class.java, outcome)
+
+        assertInstanceOf(RuntimeProgressAwaitFailure.DeadlineExceeded::class.java, rejected.failure)
+    }
+
+    @Test
+    fun `condition completion during pause cannot outrun project disposal`() {
+        var completion = RuntimeWaitCompletion.Pending
+        var lifecycle = RuntimeWaitLifecycle.Active
+        val awaiter = ProgressAwareFutureAwaiter(
+            policy = policy(),
+            clock = MonotonicClock.fromRaw { 0L },
+            pause = {
+                lifecycle = RuntimeWaitLifecycle.Disposed
+                completion = RuntimeWaitCompletion.Completed
+            },
+        )
+
+        val outcome = awaiter.awaitCondition(
+            RuntimeProgressStage.MODEL_SETTLEMENT,
+            RuntimeWaitCompletionProbe { completion },
+            RuntimeProgressProbe { RuntimeProgressObservation.capture("complete") },
+            RuntimeWaitLifecycleProbe { lifecycle },
+        )
+        val rejected = assertInstanceOf(RuntimeProgressAwaitOutcome.Rejected::class.java, outcome)
+
+        assertInstanceOf(RuntimeProgressAwaitFailure.ProjectDisposed::class.java, rejected.failure)
+    }
+
+    @Test
+    fun `condition completion during pause cannot outrun its deadline`() {
+        var now = 0L
+        var completion = RuntimeWaitCompletion.Pending
+        val awaiter = ProgressAwareFutureAwaiter(
+            policy = policy(),
+            clock = MonotonicClock.fromRaw { now * 1_000_000 },
+            pause = {
+                now = 2L
+                completion = RuntimeWaitCompletion.Completed
+            },
+        )
+
+        val outcome = awaiter.awaitCondition(
+            RuntimeProgressStage.MODEL_SETTLEMENT,
+            RuntimeWaitCompletionProbe { completion },
+            RuntimeProgressProbe { RuntimeProgressObservation.capture("complete") },
+            RuntimeWaitLifecycleProbe { RuntimeWaitLifecycle.Active },
+        )
+        val rejected = assertInstanceOf(RuntimeProgressAwaitOutcome.Rejected::class.java, outcome)
+
+        assertInstanceOf(RuntimeProgressAwaitFailure.DeadlineExceeded::class.java, rejected.failure)
+    }
+
+    @Test
     fun `changing progress may exceed the no-progress window`() {
         var now = 0L
         var observation = 0
