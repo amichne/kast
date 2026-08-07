@@ -20,13 +20,11 @@ import io.github.amichne.kast.indexstore.snapshot.RepositoryContentShardPublicat
 import io.github.amichne.kast.indexstore.snapshot.RepositorySnapshotMetadataFailure
 import io.github.amichne.kast.indexstore.snapshot.SnapshotKey
 import io.github.amichne.kast.indexstore.snapshot.SnapshotCreationEpochMillis
-import io.github.amichne.kast.indexstore.snapshot.SnapshotExportTarget
 import io.github.amichne.kast.indexstore.snapshot.SnapshotManifest
 import io.github.amichne.kast.indexstore.snapshot.SnapshotPublicationResult
 import io.github.amichne.kast.indexstore.snapshot.RepositorySnapshotSelection
 import io.github.amichne.kast.indexstore.snapshot.SourceIndexSchemaVersion
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
-import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
@@ -120,88 +118,32 @@ sealed interface RepositoryBranch {
 sealed interface RepositorySnapshotPreparation {
     val overlaySeed: WorktreeOverlaySeed
 
-    fun publishCompletedIndex(store: SqliteSourceIndexStore): RepositorySnapshotPublicationOutcome
+    /**
+     * Proof transition:
+     * `RepositorySnapshotPreparation -> RepositorySnapshotPublication`.
+     *
+     * Captures the repository publication capability for one workspace
+     * reconciliation. Managed full-index preparation refines the current Git
+     * state into an exact clean-tree capability or a capability retaining the
+     * finite [CommittedGitTreeFailure]. Raw Git extraction remains confined to
+     * [CommittedGitTreeResolver].
+     */
+    fun capturePublication(): RepositorySnapshotPublication
 
     data object Unmanaged : RepositorySnapshotPreparation {
         override val overlaySeed = WorktreeOverlaySeed.None(WorktreeOverlayAbsence.UnmanagedWorkspace)
 
-        override fun publishCompletedIndex(store: SqliteSourceIndexStore) =
-            RepositorySnapshotPublicationOutcome.UnmanagedWorkspace
+        override fun capturePublication(): RepositorySnapshotPublication =
+            RepositorySnapshotPublication.Unmanaged
     }
 
     class Managed internal constructor(
         override val overlaySeed: WorktreeOverlaySeed,
-        private val publisher: RepositorySnapshotPublisher,
+        private val publicationAuthority: RepositorySnapshotPublicationAuthority,
     ) : RepositorySnapshotPreparation {
-        override fun publishCompletedIndex(store: SqliteSourceIndexStore) = publisher.publish(store)
+        override fun capturePublication(): RepositorySnapshotPublication = publicationAuthority.capture()
     }
 }
-
-internal sealed interface RepositorySnapshotPublisher {
-    fun publish(store: SqliteSourceIndexStore): RepositorySnapshotPublicationOutcome
-
-    data object Suppressed : RepositorySnapshotPublisher {
-        override fun publish(store: SqliteSourceIndexStore) =
-            RepositorySnapshotPublicationOutcome.SuppressedForWorktreeOverlay
-    }
-
-    class Eligible(
-        private val context: RepositorySnapshotContext,
-    ) : RepositorySnapshotPublisher {
-        override fun publish(store: SqliteSourceIndexStore): RepositorySnapshotPublicationOutcome {
-            val branch = RepositorySnapshotCoordinator.currentBranch(context.workspaceRoot)
-            if (branch != RepositoryBranch.Main) {
-                return RepositorySnapshotPublicationOutcome.Skipped(
-                    RepositorySnapshotPublicationSkip.BranchNotMain(branch),
-                )
-            }
-            val before = when (val resolution = CommittedGitTreeResolver.resolve(context.workspaceRoot)) {
-                is CommittedGitTreeResolution.Resolved -> resolution.tree
-                is CommittedGitTreeResolution.Unavailable -> return RepositorySnapshotPublicationOutcome.Skipped(
-                    RepositorySnapshotPublicationSkip.CommittedTreeUnavailable(resolution.failure),
-                )
-            }
-            val key = SnapshotKey(
-                treeOid = before.treeOid,
-                buildClasspathFingerprint = context.buildClasspathFingerprint,
-                indexSchema = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
-                producerVersion = context.producerVersion,
-            )
-            return SnapshotExportTarget.allocate(context.repositoryDirectory).use { target ->
-                val evidence = store.exportSnapshotDatabase(
-                    target,
-                    before.treeOid,
-                    context.producerVersion,
-                )
-                val after = CommittedGitTreeResolver.resolve(context.workspaceRoot)
-                if (after != CommittedGitTreeResolution.Resolved(before)) {
-                    return RepositorySnapshotPublicationOutcome.Skipped(
-                        RepositorySnapshotPublicationSkip.CommittedTreeMoved(before, after),
-                    )
-                }
-                RepositorySnapshotPublicationOutcome.Completed(
-                    RepositorySnapshotStore(context.repositoryDirectory.toJavaPath()).publishMain(
-                        manifest = SnapshotManifest(
-                            key,
-                            before.files,
-                            SnapshotCreationEpochMillis.fromClock(System.currentTimeMillis()),
-                        ),
-                        sourceDatabase = target.database,
-                        evidence = evidence,
-                    ),
-                )
-            }
-        }
-    }
-}
-
-internal data class RepositorySnapshotContext(
-    val workspaceRoot: NormalizedPath,
-    val repositoryDirectory: NormalizedPath,
-    val workspaceDatabase: NormalizedPath,
-    val buildClasspathFingerprint: BuildClasspathFingerprint,
-    val producerVersion: ProducerVersion,
-)
 
 private sealed interface GitBlobResolution {
     data class Resolved(val content: ByteArray) : GitBlobResolution
@@ -221,7 +163,10 @@ object RepositorySnapshotCoordinator {
      * optimization misses are retained as closed [WorktreeOverlayAbsence]
      * states rather than booleans or nulls. Invalid retained authorities,
      * content proofs, and shard publications are finite
-     * [RepositorySnapshotPreparationFailure] rejection. Raw paths are
+     * [RepositorySnapshotPreparationFailure] rejection. The returned
+     * preparation derives a publication capability for each reconciliation;
+     * that capability retains its exact [CommittedGitTree], so completion
+     * cannot relabel the reconciled database with a later tree. Raw paths are
      * extracted only at Git and filesystem boundaries.
      */
     fun prepare(
@@ -234,22 +179,21 @@ object RepositorySnapshotCoordinator {
         val context = RepositorySnapshotContext(
             workspaceRoot,
             repositoryDirectory,
-            workspaceDatabase,
             buildClasspathFingerprint,
             producerVersion,
         )
         val databasePath = workspaceDatabase.toJavaPath()
         val overlayPath = databasePath.resolveSibling(OVERLAY_FILE)
         if (Files.exists(databasePath, LinkOption.NOFOLLOW_LINKS)) {
-            val publisher = if (Files.exists(overlayPath, LinkOption.NOFOLLOW_LINKS)) {
-                RepositorySnapshotPublisher.Suppressed
+            val publicationAuthority = if (Files.exists(overlayPath, LinkOption.NOFOLLOW_LINKS)) {
+                RepositorySnapshotPublicationAuthority.Suppressed
             } else {
-                RepositorySnapshotPublisher.Eligible(context)
+                RepositorySnapshotPublicationAuthority.Eligible(context)
             }
             return RepositorySnapshotPreparationResolution.Resolved(
                 RepositorySnapshotPreparation.Managed(
                     WorktreeOverlaySeed.None(WorktreeOverlayAbsence.ExistingWorkspaceDatabase),
-                    publisher,
+                    publicationAuthority,
                 ),
             )
         }
@@ -332,18 +276,27 @@ object RepositorySnapshotCoordinator {
         return RepositorySnapshotPreparationResolution.Resolved(
             RepositorySnapshotPreparation.Managed(
                 WorktreeOverlaySeed.Prepared(overlay),
-                RepositorySnapshotPublisher.Suppressed,
+                RepositorySnapshotPublicationAuthority.Suppressed,
             ),
         )
     }
 
+    /**
+     * Proof transition:
+     * `(RepositorySnapshotContext, WorktreeOverlayAbsence)`
+     * `-> RepositorySnapshotPreparationResolution.Resolved`.
+     *
+     * Derives a full-index preparation whose authority captures a fresh,
+     * reconciliation-scoped [RepositorySnapshotPublication]. No raw path or
+     * Git value is extracted here.
+     */
     private fun fullIndex(
         context: RepositorySnapshotContext,
         reason: WorktreeOverlayAbsence,
     ): RepositorySnapshotPreparationResolution = RepositorySnapshotPreparationResolution.Resolved(
         RepositorySnapshotPreparation.Managed(
             WorktreeOverlaySeed.None(reason),
-            RepositorySnapshotPublisher.Eligible(context),
+            RepositorySnapshotPublicationAuthority.Eligible(context),
         ),
     )
 

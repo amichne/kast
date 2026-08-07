@@ -4,6 +4,7 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
@@ -51,7 +52,13 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
                 }
             },
             loadLiveConfig = { it },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(WorkspaceStateIdentity("missed-change"), null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(
+                    WorkspaceStateIdentity("missed-change"),
+                    null,
+                    RepositorySnapshotPublication.Unmanaged,
+                )
+            },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), null) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(initial, publications::add),
             waitForNextPass = { waitCount++ == 0 },
@@ -104,7 +111,9 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
                 if (signals == setOf(WorkspaceSignal.RecoveryProbe)) cancelled.set(true)
             },
             loadLiveConfig = { it },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(identity, null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(identity, null, RepositorySnapshotPublication.Unmanaged)
+            },
             runIndexingPass = { _, _, _ -> error("cancelled audit must not index") },
             workspaceGenerationPublication = publication,
             waitForNextPass = { false },

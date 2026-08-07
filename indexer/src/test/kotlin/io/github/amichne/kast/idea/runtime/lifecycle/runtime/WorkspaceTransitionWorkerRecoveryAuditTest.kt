@@ -3,6 +3,7 @@ package io.github.amichne.kast.idea
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
@@ -60,7 +61,9 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             eventWakeup = WorkspaceEventWakeup(),
             refreshWorkspace = refreshedSignals::add,
             loadLiveConfig = { it },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(identity, null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(identity, null, RepositorySnapshotPublication.Unmanaged)
+            },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), null) },
             workspaceGenerationPublication = publication,
             waitForNextPass = { waitCount++ == 0 },
@@ -99,7 +102,9 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             eventWakeup = WorkspaceEventWakeup(),
             refreshWorkspace = refreshedSignals::add,
             loadLiveConfig = { it },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(identity, null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(identity, null, RepositorySnapshotPublication.Unmanaged)
+            },
             runIndexingPass = { _, _, _ ->
                 indexingPasses.incrementAndGet()
                 IndexingPassResult(KastSourceIndexSummary(), null)
@@ -141,7 +146,13 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             eventWakeup = WorkspaceEventWakeup(),
             refreshWorkspace = refreshedSignals::add,
             loadLiveConfig = { it },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(WorkspaceStateIdentity("missed-change"), null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(
+                    WorkspaceStateIdentity("missed-change"),
+                    null,
+                    RepositorySnapshotPublication.Unmanaged,
+                )
+            },
             runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), null) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(initial, publications::add),
             waitForNextPass = { waitCount++ == 0 },
@@ -182,7 +193,9 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             eventWakeup = WorkspaceEventWakeup(),
             refreshWorkspace = {},
             loadLiveConfig = { throw CancellationException("cancelled recovery audit") },
-            captureCandidate = { _, _ -> WorkspaceReconciliationCandidate(identity, null) },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(identity, null, RepositorySnapshotPublication.Unmanaged)
+            },
             runIndexingPass = { _, _, _ -> error("cancelled audit must not index") },
             workspaceGenerationPublication = publication,
             waitForNextPass = { waitCount++ == 0 },

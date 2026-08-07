@@ -2,56 +2,32 @@
 
 ## RED
 
-### Git repository-selector isolation
-
-Command:
-
-```shell
-./gradlew :analysis-api:test --tests io.github.amichne.kast.api.client.ReadOnlyGitCommandTest --no-daemon --console=plain
-```
-
-Expected failure: a read-only Git process retains inherited repository-selection variables instead of deriving a selector-free process environment.
-
-Observed failure: `:analysis-api:compileTestKotlin` failed because
-`ReadOnlyGitProcessEnvironment` was unresolved and `processBuilder` accepted no
-proof-bearing environment argument. The focused command exited 1 after 20s,
-mechanically proving the selector-free environment transition was absent.
-
-### Snapshot tree binding
-
 Command:
 
 ```shell
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 ```
 
-Expected failure: a preparation captured for one clean Git tree exports the already-indexed database under a later clean tree when the workspace moves before completion publication.
+Expected failure: a reconciliation captured for clean Git tree A exports the already-indexed database under later clean Git tree B when the workspace moves after READY but before completion publication.
 
-Observed failure: pending.
+Observed failure: `RepositorySnapshotIntegrationTest` failed because preparation captured tree `b3a87c7d`, the workspace moved to clean tree `21bbc365`, and publication returned `Completed` under `21bbc365` instead of `Skipped(CommittedTreeMoved(b3a87c7d, 21bbc365))`. The focused command exited 1 after 1m5s (7 tests, 1 failed), proving export was not bound to the tree that the completed source index reconciled.
 
 ## GREEN
 
-### Git repository-selector isolation
-
 Command:
 
 ```shell
-./gradlew :analysis-api:test --tests io.github.amichne.kast.api.client.ReadOnlyGitCommandTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --tests io.github.amichne.kast.idea.WorkspaceTransitionWorkerBuildSemanticTest --no-daemon --console=plain
 ```
 
-Observed result: the same focused test passed (`BUILD SUCCESSFUL in 19s`).
-Kast then reported `semanticOutcome: COMPLETE` for both changed files with
-2/2 analyzed and zero diagnostics after the refreshed generation reached
-READY. The commit-gate rerun was also successful (`BUILD SUCCESSFUL in 3s`,
-all focused tasks up to date), and repository-shape validation reported zero
-violations.
-
-### Snapshot tree binding
-
-Command:
-
-```shell
-./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
-```
-
-Observed result: pending.
+Observed result: the exact focused suite passed (`BUILD SUCCESSFUL in 21s`).
+The snapshot race test proved tree A capability rejects later tree B, then the
+same preparation captured a new tree B capability that published after the B
+index reconciliation. The worker test proved READY completion receives the
+same snapshot capability carried by its reconciled candidate. Repository-shape
+validation reported zero violations. The complete `:indexer:test` suite then
+passed (`BUILD SUCCESSFUL in 1m10s`). After replacing nullable completion
+control with a closed pending-completion state, the focused suite passed again
+in 29s. Kast compiler-backed analysis completed for all 5 changed production
+Kotlin files with 5/5 analyzed and zero diagnostics. The final complete
+`:indexer:test` rerun passed (`BUILD SUCCESSFUL in 1m8s`, 523 tests).

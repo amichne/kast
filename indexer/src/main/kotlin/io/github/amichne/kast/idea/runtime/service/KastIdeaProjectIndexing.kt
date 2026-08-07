@@ -88,7 +88,6 @@ internal class KastIdeaProjectIndexing(
         project = project,
         workspaceIdentity = workspaceIdentity,
         diagnostics = diagnostics,
-        snapshotPreparation = snapshotPreparation,
         indexStore = indexStore,
         isCancelled = ::isCancelled,
     )
@@ -272,8 +271,13 @@ internal class KastIdeaProjectIndexing(
             refreshWorkspace = { signals -> refreshWorkspace(project, gradleBuildRoot, signals) },
             loadLiveConfig = { lastValid -> liveConfigLoader(workspaceRoot, lastValid) },
             captureCandidate = { liveConfig, buildSemanticInputIdentity ->
+                val snapshotPublication = snapshotPreparation.capturePublication()
                 resolveWorkspaceStateIdentity?.let { injected ->
-                    WorkspaceReconciliationCandidate(injected(), indexingCandidate = null)
+                    WorkspaceReconciliationCandidate(
+                        identity = injected(),
+                        indexingCandidate = null,
+                        snapshotPublication = snapshotPublication,
+                    )
                 } ?: projectIndexer.captureCandidate(liveConfig.indexing).let { candidate ->
                     WorkspaceReconciliationCandidate(
                         identity = productionWorkspaceStateIdentity(
@@ -287,6 +291,7 @@ internal class KastIdeaProjectIndexing(
                             isCancelled = ::isCancelled,
                         ),
                         indexingCandidate = candidate,
+                        snapshotPublication = snapshotPublication,
                     )
                 }
             },

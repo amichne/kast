@@ -148,7 +148,7 @@ class RepositorySnapshotIntegrationTest {
                 database = WorkspaceIdentity.fromWorkspaceRoot(workspace).sourceIndexDatabaseFile,
                 fingerprint = BuildClasspathFingerprint.fromDigest("8".repeat(64)),
                 producer = ProducerVersion.fromVersion("test-producer"),
-            ).publishCompletedIndex(store)
+            ).capturePublication().publish(store)
 
             assertTrue(result is RepositorySnapshotPublicationOutcome.Completed)
             assertEquals(
@@ -157,6 +157,11 @@ class RepositorySnapshotIntegrationTest {
                     .manifest.key.treeOid,
             )
         }
+    }
+
+    @Test
+    fun `prepared tree cannot be replaced before completed index publication`() {
+        RepositorySnapshotTreeBindingScenario.verify(workspace)
     }
 
     @Test
@@ -268,7 +273,7 @@ class RepositorySnapshotIntegrationTest {
         SqliteSourceIndexStore(workspace).use { store ->
             assertEquals(
                 RepositorySnapshotPublicationOutcome.SuppressedForWorktreeOverlay,
-                restarted.publishCompletedIndex(store),
+                restarted.capturePublication().publish(store),
             )
         }
     }

@@ -40,7 +40,7 @@ internal class WorkspaceTransitionWorker(
     private val waitForNextPass: ((Long) -> Boolean)?,
     private val isCancelled: () -> Boolean,
     private val onConfigFallback: (Throwable) -> Unit,
-    private val onCompleted: (KastSourceIndexSummary) -> Unit,
+    private val onCompleted: (CompletedWorkspaceReconciliation) -> Unit,
     private val onFailure: (Throwable) -> Unit,
     onTransition: (WorkspaceTransitionSnapshot) -> Unit,
 ) {
@@ -49,7 +49,8 @@ internal class WorkspaceTransitionWorker(
     private var cycleCandidate: WorkspaceReconciliationCandidate? = null
     private var cycleResult: IndexingPassResult? = null
     private var reconciliationToken: IdeaIndexSemanticAdmission.ReconciliationToken? = null
-    private var publishedSummary: KastSourceIndexSummary? = null
+    private var publishedReconciliation: PendingCompletedWorkspaceReconciliation =
+        PendingCompletedWorkspaceReconciliation.Absent
     private var consecutiveFailures = ConsecutiveIndexingFailures.none()
     private var modelBuildSemanticIdentity = initialModelBuildSemanticIdentity
 
@@ -68,6 +69,7 @@ internal class WorkspaceTransitionWorker(
                 cycleCandidate = null
                 cycleResult = null
                 reconciliationToken = null
+                publishedReconciliation = PendingCompletedWorkspaceReconciliation.Absent
                 val buildInputsBeforeRefresh = resolveBuildSemanticInputIdentity()
                 val requiresGradleRefresh = WorkspaceSignal.BuildSemantic in signals ||
                     WorkspaceSignal.RecoveryAudit in signals ||
@@ -152,7 +154,12 @@ internal class WorkspaceTransitionWorker(
                 }) {
                     is IdeaIndexSemanticAdmission.ReadyPublication.Admitted -> {
                         lastValidConfig = cycleConfig
-                        publishedSummary = result.summary
+                        publishedReconciliation = PendingCompletedWorkspaceReconciliation.Available(
+                            CompletedWorkspaceReconciliation(
+                                summary = result.summary,
+                                snapshotPublication = checkNotNull(cycleCandidate).snapshotPublication,
+                            ),
+                        )
                         GenerationPublication.Published(publication.commit)
                     }
 
@@ -220,8 +227,8 @@ internal class WorkspaceTransitionWorker(
 
                 TransitionRun.Published -> {
                     consecutiveFailures = ConsecutiveIndexingFailures.none()
-                    onCompleted(checkNotNull(publishedSummary))
-                    publishedSummary = null
+                    onCompleted(publishedReconciliation.requireCompletion())
+                    publishedReconciliation = PendingCompletedWorkspaceReconciliation.Absent
                     if (awaitWork(RECOVERY_AUDIT_DELAY) == WorkspaceWorkerWaitOutcome.Interrupted) return
                 }
 
@@ -365,11 +372,6 @@ internal class BuildSemanticModelStaleException(
     val imported: BuildSemanticInputIdentity,
     val current: BuildSemanticInputIdentity,
 ) : IllegalStateException("Build-semantic inputs do not match the imported Gradle model")
-
-internal data class WorkspaceReconciliationCandidate(
-    val identity: WorkspaceStateIdentity,
-    val indexingCandidate: WorkspaceIndexingCandidate?,
-)
 
 private sealed interface RecoveryAuditOutcome {
     data object Current : RecoveryAuditOutcome
