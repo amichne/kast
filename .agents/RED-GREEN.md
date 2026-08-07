@@ -2,6 +2,26 @@
 
 ## RED
 
+### Closed deadline authority and layered semantic-graph budget
+
+Commands:
+
+```shell
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy_covers_reconciliation_methods
+if rg -n 'resolve\(method: String\): .*\?|resolve\(method\) != null' analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcRequestWaitPolicy.kt; then exit 1; fi
+```
+
+Expected failure: method classification still uses nullable values as control
+state, the server allocates only five seconds around a one-hour reconciliation
+instead of budgeting both semantic-graph passes, and the client has no deadline
+layer strictly outside the complete server dispatch.
+
+Observed failure: FAILED as expected in all three checks. Kotlin derived
+3,605,000ms instead of the complete 3,600,002ms dispatch budget; Rust derived
+3,605s instead of the expected 3,675s client budget; and the static authority
+check found both nullable `resolve` returns and both `!= null` control branches.
+
 ### Finite semantic-graph outer deadline
 
 Command:
@@ -350,6 +370,7 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :index-store:test --no-daemon --console=plain
 ./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --no-daemon --console=plain
 cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy_covers_reconciliation_methods
+if rg -n 'resolve\(method: String\): .*\?|resolve\(method\) != null' analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcRequestWaitPolicy.kt; then exit 1; fi
 cargo test --manifest-path cli-rs/Cargo.toml --locked
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
@@ -388,10 +409,14 @@ changed production Kotlin files with zero errors, warnings, infos, or skipped
 files. The final working-tree audit completed all 128 changed Kotlin production
 and test files, including the new progress authority and strict manifest
 decoder, with zero errors, warnings, infos, or skipped files. Semantic-graph
-recovery now receives a finite 3,605-second transition-aware outer deadline
-from both the Kotlin server and Rust client, while mutation operations retain
-backend-owned progress deadlines; both focused cross-language regressions
-passed. The complete Rust test suite, all-target/all-feature Clippy gate with
+recovery now receives a finite server deadline equal to the one-hour
+reconciliation maximum plus two ordinary graph-pass budgets; the Rust client
+derives the same complete-dispatch budget plus a distinct five-second
+response-completion reserve. Deadline classification returns one closed,
+exhaustive authority rather than nullable control state, while mutation
+operations retain backend-owned progress deadlines. Both focused
+cross-language regressions and the nullable-authority audit passed. The
+complete Rust test suite, all-target/all-feature Clippy gate with
 warnings denied, Rust formatting check, and the final full Gradle check all
 passed. Persisted overlay membership is now revalidated against the exact
 repository store before an existing workspace database can suppress full-index
@@ -399,4 +424,10 @@ publication; the repository-replacement regression proved typed authority
 change, descriptor revocation, and eligible publication, and both focused
 fallback tests passed. The current full Gradle and index-store suites passed;
 the follow-up PR semantic audit completed all 9 changed Kotlin files with zero
-errors, warnings, infos, or skips.
+errors, warnings, infos, or skips. The layered-deadline fast-follow also passed
+the full Gradle gate, repository-shape gate, Rust Clippy with warnings denied,
+Rust formatting, and the exact nine-file semantic audit. Two unrelated macOS
+I/O races interrupted separate full Rust attempts (`EWOULDBLOCK` in the demo
+socket fixture and `EIO` while reading spawned-process arguments); each exact
+fixture passed immediately without a source change. Exact-head CI remains the
+authority for the uninterrupted complete Rust suite.

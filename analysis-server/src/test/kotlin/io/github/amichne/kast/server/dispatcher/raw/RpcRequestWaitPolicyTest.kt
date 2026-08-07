@@ -25,7 +25,7 @@ class RpcRequestWaitPolicyTest {
     }
 
     @Test
-    fun `semantic graph receives a finite transition aware server deadline`() {
+    fun `semantic graph deadline budgets both graph passes around reconciliation`() {
         val policy = RpcRequestWaitPolicy.derive(
             "raw/semantic-graph",
             AnalysisServerConfig(requestTimeoutMillis = 1),
@@ -35,6 +35,31 @@ class RpcRequestWaitPolicyTest {
             RpcRequestWaitPolicy.ServerDeadline.WorkspaceTransition::class.java,
             policy,
         )
-        assertEquals(3_605_000L, deadline.timeoutMillis)
+        assertEquals(3_600_002L, deadline.timeoutMillis)
+    }
+
+    @Test
+    fun `semantic graph deadline scales both ordinary graph passes`() {
+        val policy = RpcRequestWaitPolicy.derive(
+            "raw/semantic-graph",
+            AnalysisServerConfig(requestTimeoutMillis = 35_000),
+        )
+
+        val deadline = assertInstanceOf(
+            RpcRequestWaitPolicy.ServerDeadline.WorkspaceTransition::class.java,
+            policy,
+        )
+        assertEquals(3_670_000L, deadline.timeoutMillis)
+    }
+
+    @Test
+    fun `unrelated methods retain an ordinary server deadline`() {
+        assertEquals(
+            RpcRequestWaitPolicy.ServerDeadline.Ordinary.derive(17),
+            RpcRequestWaitPolicy.derive(
+                "raw/diagnostics",
+                AnalysisServerConfig(requestTimeoutMillis = 17),
+            ),
+        )
     }
 }
