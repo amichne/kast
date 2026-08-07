@@ -1,8 +1,6 @@
 package io.github.amichne.kast.idea.transition
 
-import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
-import java.util.concurrent.CancellationException
 
 /**
  * Owns workspace freshness. Signals only invalidate and conflate work. Reconciliation and
@@ -16,6 +14,8 @@ internal class WorkspaceTransitionCoordinator(
 ) {
     private val lock = Any()
     private val pendingSignals = linkedSetOf<WorkspaceSignal>()
+    private var pendingSourceFreshness: WorkspaceSourceFreshness = WorkspaceSourceFreshness.Absent
+    private var activeSourceFreshness: WorkspaceSourceFreshness = WorkspaceSourceFreshness.Absent
     private var lifecycle = when (initialPublished) {
         PublishedWorkspaceGenerationState.Unpublished -> WorkspaceLifecycle.Dirty
         is PublishedWorkspaceGenerationState.Published -> WorkspaceLifecycle.Ready
@@ -24,12 +24,20 @@ internal class WorkspaceTransitionCoordinator(
     private var blocker: TransitionBlocker? = null
     private var observedEventCount = 0L
 
-    fun observe(signal: WorkspaceSignal) {
+    fun observe(signal: WorkspaceSignal) = observe(WorkspaceTransitionRequest.Unkeyed(signal))
+
+    fun observe(request: WorkspaceTransitionRequest) {
         val changed = synchronized(lock) {
             observedEventCount = Math.addExact(observedEventCount, 1)
-            pendingSignals += signal
+            pendingSignals += request.signal
+            pendingSourceFreshness = pendingSourceFreshness.followedBy(
+                WorkspaceSourceFreshness.from(request),
+            )
             blocker = null
-            if (lifecycle != WorkspaceLifecycle.Settling) lifecycle = WorkspaceLifecycle.Dirty
+            if (lifecycle != WorkspaceLifecycle.Settling) {
+                lifecycle = WorkspaceLifecycle.Dirty
+                activeSourceFreshness = WorkspaceSourceFreshness.Absent
+            }
             snapshotLocked()
         }
         emit(changed)
@@ -44,31 +52,34 @@ internal class WorkspaceTransitionCoordinator(
             pendingSignals.toSet() to snapshotLocked()
         }
         emit(settling.second)
-        runPhase(TransitionPhase.Settling) { operations.settle(settling.first) }
+        runTransitionEffect { operations.settle(settling.first) }
             .onFailure { return block(TransitionPhase.Settling, it) }
 
         val cycleAndState = synchronized(lock) {
             val cycle = TransitionCycle(
                 signals = pendingSignals.toSet(),
                 observedEventCount = observedEventCount,
+                sourceFreshness = pendingSourceFreshness,
             )
             pendingSignals.clear()
+            pendingSourceFreshness = WorkspaceSourceFreshness.Absent
+            activeSourceFreshness = cycle.sourceFreshness
             lifecycle = WorkspaceLifecycle.Refreshing
             cycle to snapshotLocked()
         }
         val cycle = cycleAndState.first
         emit(cycleAndState.second)
 
-        runPhase(TransitionPhase.Refreshing) { operations.refresh(cycle.signals) }
+        runTransitionEffect { operations.refresh(cycle.signals) }
             .onFailure { return block(TransitionPhase.Refreshing, it, cycle) }
         if (!advance(cycle, WorkspaceLifecycle.Reconciling)) return TransitionRun.Invalidated
 
-        val candidate = runPhase(TransitionPhase.Reconciling, operations::captureIdentity)
+        val candidate = runTransitionEffect(operations::captureIdentity)
             .getOrElse { return block(TransitionPhase.Reconciling, it, cycle) }
-        val open = runPhase(TransitionPhase.Publishing, operations::beginPublication)
+        val open = runTransitionEffect(operations::beginPublication)
             .getOrElse { return block(TransitionPhase.Publishing, it, cycle) }
         try {
-            val reconciliation = runPhase(TransitionPhase.Reconciling) { operations.reconcile(candidate) }
+            val reconciliation = runTransitionEffect { operations.reconcile(candidate) }
             val reconciliationFailure = reconciliation.exceptionOrNull()
             if (reconciliationFailure != null) {
                 return discardThenBlock(open, TransitionPhase.Reconciling, reconciliationFailure, cycle)
@@ -78,14 +89,14 @@ internal class WorkspaceTransitionCoordinator(
                 return discardThenInvalidate(open, cycle)
             }
 
-            val verification = runPhase(TransitionPhase.Verifying, operations::captureIdentity)
+            val verification = runTransitionEffect(operations::captureIdentity)
             val verificationFailure = verification.exceptionOrNull()
             if (verificationFailure != null) {
                 return discardThenBlock(open, TransitionPhase.Verifying, verificationFailure, cycle)
             }
             val verified = verification.getOrThrow()
             if (reconciledCandidate != verified) {
-                val discarded = runPhase(TransitionPhase.Publishing) {
+                val discarded = runTransitionEffect {
                     operations.discardPublication(open)
                 }
                 discarded.exceptionOrNull()?.let { failure ->
@@ -109,7 +120,7 @@ internal class WorkspaceTransitionCoordinator(
         verified: WorkspaceStateIdentity,
         open: OpenWorkspacePublication,
     ): TransitionRun {
-        val preparation = runPhase(TransitionPhase.Publishing) {
+        val preparation = runTransitionEffect {
             operations.preparePublication(open, verified)
         }
         val preparationFailure = preparation.exceptionOrNull()
@@ -117,10 +128,10 @@ internal class WorkspaceTransitionCoordinator(
             return discardThenBlock(open, TransitionPhase.Publishing, preparationFailure, cycle)
         }
         val prepared = preparation.getOrThrow()
-        val identityAfterPreparation = runPhase(TransitionPhase.Verifying, operations::captureIdentity)
+        val identityAfterPreparation = runTransitionEffect(operations::captureIdentity)
         val identityCaptureFailure = identityAfterPreparation.exceptionOrNull()
         if (identityCaptureFailure != null) {
-            val discardFailure = runPhase(TransitionPhase.Publishing) {
+            val discardFailure = runTransitionEffect {
                 operations.discardPublication(prepared)
             }.exceptionOrNull()
             if (discardFailure != null) {
@@ -130,7 +141,7 @@ internal class WorkspaceTransitionCoordinator(
             return block(TransitionPhase.Verifying, identityCaptureFailure, cycle)
         }
         if (identityAfterPreparation.getOrThrow() != verified) {
-            val discardFailure = runPhase(TransitionPhase.Publishing) {
+            val discardFailure = runTransitionEffect {
                 operations.discardPublication(prepared)
             }.exceptionOrNull()
             if (discardFailure != null) return block(TransitionPhase.Publishing, discardFailure, cycle)
@@ -146,7 +157,7 @@ internal class WorkspaceTransitionCoordinator(
             }
         }
         if (!commitAllowed) {
-            val discardFailure = runPhase(TransitionPhase.Publishing) {
+            val discardFailure = runTransitionEffect {
                 operations.discardPublication(prepared)
             }.exceptionOrNull()
             if (discardFailure != null) return block(TransitionPhase.Publishing, discardFailure, cycle)
@@ -154,12 +165,12 @@ internal class WorkspaceTransitionCoordinator(
             return TransitionRun.Invalidated
         }
 
-        val publicationAttempt = runPhase(TransitionPhase.Publishing) {
+        val publicationAttempt = runTransitionEffect {
             operations.commitPublication(prepared)
         }
         val retryFailure = publicationAttempt.exceptionOrNull() as? WorkspaceTransitionRetryException
         if (retryFailure != null) {
-            val discardFailure = runPhase(TransitionPhase.Publishing) {
+            val discardFailure = runTransitionEffect {
                 operations.discardPublication(prepared)
             }.exceptionOrNull()
             if (discardFailure != null) {
@@ -186,6 +197,7 @@ internal class WorkspaceTransitionCoordinator(
                             published = PublishedWorkspaceGenerationState.Published(publication.manifest)
                             blocker = null
                             lifecycle = WorkspaceLifecycle.Ready
+                            activeSourceFreshness = WorkspaceSourceFreshness.Absent
                             TransitionRun.Published
                         } else {
                             retainForRetry(cycle, includeAudit = false)
@@ -208,7 +220,7 @@ internal class WorkspaceTransitionCoordinator(
             }
         }
         if (discard) {
-            runPhase(TransitionPhase.Publishing) {
+            runTransitionEffect {
                 operations.discardPublication(prepared)
             }.onFailure { discardFailure ->
                 if (failure == null) {
@@ -257,7 +269,7 @@ internal class WorkspaceTransitionCoordinator(
         rethrowCancellation(failure)
         if (failure is WorkspaceTransitionRetryException) return retry(phase, failure, cycle)
         val blockerAndState = synchronized(lock) {
-            cycle?.let { pendingSignals += it.signals }
+            cycle?.let { retainForRetry(it, includeAudit = false) }
             val currentBlocker = blockLocked(phase, failure)
             currentBlocker to snapshotLocked()
         }
@@ -272,7 +284,7 @@ internal class WorkspaceTransitionCoordinator(
         cycle: TransitionCycle?,
     ): TransitionRun {
         val changed = synchronized(lock) {
-            cycle?.let { pendingSignals += it.signals }
+            cycle?.let { retainForRetry(it, includeAudit = false) }
             blocker = TransitionBlocker(
                 phase = phase,
                 detail = failure.message?.takeIf(String::isNotBlank) ?: failure::class.qualifiedName.orEmpty(),
@@ -291,13 +303,16 @@ internal class WorkspaceTransitionCoordinator(
         )
         blocker = currentBlocker
         lifecycle = WorkspaceLifecycle.Blocked
+        activeSourceFreshness = WorkspaceSourceFreshness.Absent
         return currentBlocker
     }
 
     private fun retainForRetry(cycle: TransitionCycle, includeAudit: Boolean) {
         pendingSignals += cycle.signals
+        pendingSourceFreshness = cycle.sourceFreshness.followedBy(pendingSourceFreshness)
         if (includeAudit) pendingSignals += WorkspaceSignal.RecoveryAudit
         lifecycle = WorkspaceLifecycle.Dirty
+        activeSourceFreshness = WorkspaceSourceFreshness.Absent
     }
 
     private fun isCurrent(cycle: TransitionCycle): Boolean =
@@ -309,6 +324,7 @@ internal class WorkspaceTransitionCoordinator(
         published = published,
         blocker = blocker,
         observedEventCount = observedEventCount,
+        activeSourceFreshness = activeSourceFreshness,
     )
 
     private fun discardThenBlock(
@@ -317,7 +333,7 @@ internal class WorkspaceTransitionCoordinator(
         failure: Throwable,
         cycle: TransitionCycle,
     ): TransitionRun {
-        val discardFailure = runPhase(TransitionPhase.Publishing) {
+        val discardFailure = runTransitionEffect {
             operations.discardPublication(open)
         }.exceptionOrNull()
         if (discardFailure != null) failure.addSuppressed(discardFailure)
@@ -330,7 +346,7 @@ internal class WorkspaceTransitionCoordinator(
         failure: Throwable,
         cycle: TransitionCycle,
     ): TransitionRun {
-        val discardFailure = runPhase(TransitionPhase.Publishing) {
+        val discardFailure = runTransitionEffect {
             operations.discardPublication(prepared)
         }.exceptionOrNull()
         if (discardFailure != null) failure.addSuppressed(discardFailure)
@@ -341,7 +357,7 @@ internal class WorkspaceTransitionCoordinator(
         open: OpenWorkspacePublication,
         cycle: TransitionCycle,
     ): TransitionRun {
-        val discardFailure = runPhase(TransitionPhase.Publishing) {
+        val discardFailure = runTransitionEffect {
             operations.discardPublication(open)
         }.exceptionOrNull()
         if (discardFailure != null) return block(TransitionPhase.Publishing, discardFailure, cycle)
@@ -353,7 +369,7 @@ internal class WorkspaceTransitionCoordinator(
         prepared: PreparedWorkspacePublication,
         cycle: TransitionCycle,
     ): TransitionRun {
-        val discardFailure = runPhase(TransitionPhase.Publishing) {
+        val discardFailure = runTransitionEffect {
             operations.discardPublication(prepared)
         }.exceptionOrNull()
         if (discardFailure != null) return block(TransitionPhase.Publishing, discardFailure, cycle)
@@ -369,28 +385,4 @@ internal class WorkspaceTransitionCoordinator(
         runCatching { onBlocked(blocker, failure) }
     }
 
-    private fun <T> runPhase(phase: TransitionPhase, operation: () -> T): Result<T> = try {
-        Result.success(operation())
-    } catch (failure: Throwable) {
-        rethrowCancellation(failure)
-        Result.failure(failure)
-    }
-
-    private fun rethrowCancellation(failure: Throwable) {
-        when (failure) {
-            is InterruptedException -> {
-                Thread.currentThread().interrupt()
-                throw failure
-            }
-
-            is CancellationException,
-            is ProcessCanceledException,
-            -> throw failure
-        }
-    }
-
-    private data class TransitionCycle(
-        val signals: Set<WorkspaceSignal>,
-        val observedEventCount: Long,
-    )
 }

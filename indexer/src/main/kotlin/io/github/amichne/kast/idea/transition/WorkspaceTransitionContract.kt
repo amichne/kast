@@ -56,12 +56,20 @@ internal data class TransitionBlocker(
     }
 }
 
+/**
+ * Observation transition:
+ * `WorkspaceTransitionCoordinator state -> WorkspaceTransitionSnapshot`.
+ *
+ * [activeSourceFreshness] is exact only during refresh, reconciliation, or
+ * verification; every inactive lifecycle carries [WorkspaceSourceFreshness.Absent].
+ */
 internal data class WorkspaceTransitionSnapshot(
     val lifecycle: WorkspaceLifecycle,
     val pendingSignals: Set<WorkspaceSignal>,
     val published: PublishedWorkspaceGenerationState,
     val blocker: TransitionBlocker?,
     val observedEventCount: Long,
+    val activeSourceFreshness: WorkspaceSourceFreshness,
 ) {
     val isReady: Boolean
         get() = lifecycle == WorkspaceLifecycle.Ready && published is PublishedWorkspaceGenerationState.Published
