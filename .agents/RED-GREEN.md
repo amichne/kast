@@ -2,6 +2,23 @@
 
 ## RED
 
+### Full-index overlay revocation
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.RepositorySnapshotFallbackTest --no-daemon --console=plain
+```
+
+Expected failure: when an interrupted overlay preparation leaves
+`repository-overlay.json` but no workspace database, a later dirty-tree
+fallback returns full-index authority without first revoking the stale overlay
+descriptor.
+
+Observed failure: FAILED as expected. Preparation returned the typed dirty-tree
+full-index seed, but `repository-overlay.json` still existed; the focused class
+ran one test and failed only the descriptor-revocation assertion.
+
 ### Reference progress-stage consistency
 
 Command:
@@ -168,6 +185,7 @@ yet exist.
 Commands:
 
 ```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.RepositorySnapshotFallbackTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --no-daemon --console=plain
 python3 .github/scripts/check-repository-shape.py --root .
@@ -187,7 +205,9 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ```
 
-Observed result: PASSED. The full analysis-api suite and all nine runtime-status
+Observed result: PASSED. The focused full-index fallback test proved that a
+dirty-tree preparation revokes the interrupted overlay descriptor before
+returning typed standalone-index authority. The full analysis-api suite and all nine runtime-status
 consistency tests passed, including exact reference progress-stage rejection;
 the full index-store suite
 passed; the overlay boundary target retained its authoritative base annotation and the changed-file relation;

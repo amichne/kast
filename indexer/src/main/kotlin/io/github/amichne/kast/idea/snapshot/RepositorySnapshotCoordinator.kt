@@ -29,6 +29,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
 sealed interface WorktreeOverlaySeed {
@@ -151,6 +152,44 @@ private sealed interface GitBlobResolution {
     data object Unavailable : GitBlobResolution
 }
 
+@JvmInline
+private value class WorktreeOverlayDescriptor private constructor(val path: Path) {
+    companion object {
+        /**
+         * Proof transition:
+         * `NormalizedPath(workspace database) -> WorktreeOverlayDescriptor`.
+         *
+         * Derives the one descriptor authority adjacent to the normalized
+         * workspace database. The raw [Path] is retained only for filesystem
+         * effects owned by this coordinator.
+         */
+        fun beside(workspaceDatabase: NormalizedPath): WorktreeOverlayDescriptor =
+            WorktreeOverlayDescriptor(workspaceDatabase.toJavaPath().resolveSibling(OVERLAY_FILE))
+    }
+}
+
+private class FullIndexOverlayAuthority private constructor(
+    val absence: WorktreeOverlayAbsence,
+) {
+    companion object {
+        /**
+         * Proof transition:
+         * `(WorktreeOverlayDescriptor, WorktreeOverlayAbsence) -> FullIndexOverlayAuthority`.
+         *
+         * Revokes any previously published overlay descriptor before deriving
+         * the constrained authority to open a standalone full index. The
+         * result retains the reason, not the descriptor input.
+         */
+        fun revoke(
+            descriptor: WorktreeOverlayDescriptor,
+            absence: WorktreeOverlayAbsence,
+        ): FullIndexOverlayAuthority {
+            Files.deleteIfExists(descriptor.path)
+            return FullIndexOverlayAuthority(absence)
+        }
+    }
+}
+
 object RepositorySnapshotCoordinator {
     /**
      * Proof transition:
@@ -183,7 +222,8 @@ object RepositorySnapshotCoordinator {
             producerVersion,
         )
         val databasePath = workspaceDatabase.toJavaPath()
-        val overlayPath = databasePath.resolveSibling(OVERLAY_FILE)
+        val overlayDescriptor = WorktreeOverlayDescriptor.beside(workspaceDatabase)
+        val overlayPath = overlayDescriptor.path
         if (Files.exists(databasePath, LinkOption.NOFOLLOW_LINKS)) {
             val publicationAuthority = if (Files.exists(overlayPath, LinkOption.NOFOLLOW_LINKS)) {
                 RepositorySnapshotPublicationAuthority.Suppressed
@@ -201,6 +241,7 @@ object RepositorySnapshotCoordinator {
             is CommittedGitTreeResolution.Resolved -> resolution.tree
             is CommittedGitTreeResolution.Unavailable -> return fullIndex(
                 context,
+                overlayDescriptor,
                 WorktreeOverlayAbsence.CommittedTreeUnavailable(resolution.failure),
             )
         }
@@ -224,6 +265,7 @@ object RepositorySnapshotCoordinator {
         val base = when (val selection = RepositorySnapshotSelector.choose(target, retained)) {
             RepositorySnapshotSelection.NoCompatibleSnapshot -> return fullIndex(
                 context,
+                overlayDescriptor,
                 WorktreeOverlayAbsence.NoCompatibleRepositorySnapshot,
             )
             is RepositorySnapshotSelection.Selected -> selection.manifest
@@ -248,6 +290,7 @@ object RepositorySnapshotCoordinator {
                 }
                 GitBlobResolution.Unavailable -> return fullIndex(
                     context,
+                    overlayDescriptor,
                     WorktreeOverlayAbsence.BlobUnavailable(shard.blobOid),
                 )
             }
@@ -283,22 +326,27 @@ object RepositorySnapshotCoordinator {
 
     /**
      * Proof transition:
-     * `(RepositorySnapshotContext, WorktreeOverlayAbsence)`
+     * `(RepositorySnapshotContext, WorktreeOverlayDescriptor, WorktreeOverlayAbsence)`
      * `-> RepositorySnapshotPreparationResolution.Resolved`.
      *
-     * Derives a full-index preparation whose authority captures a fresh,
-     * reconciliation-scoped [RepositorySnapshotPublication]. No raw path or
-     * Git value is extracted here.
+     * Revokes the descriptor before deriving a full-index preparation whose
+     * authority captures a fresh, reconciliation-scoped
+     * [RepositorySnapshotPublication]. No raw path or Git value escapes this
+     * filesystem transition.
      */
     private fun fullIndex(
         context: RepositorySnapshotContext,
+        descriptor: WorktreeOverlayDescriptor,
         reason: WorktreeOverlayAbsence,
-    ): RepositorySnapshotPreparationResolution = RepositorySnapshotPreparationResolution.Resolved(
-        RepositorySnapshotPreparation.Managed(
-            WorktreeOverlaySeed.None(reason),
-            RepositorySnapshotPublicationAuthority.Eligible(context),
-        ),
-    )
+    ): RepositorySnapshotPreparationResolution {
+        val authority = FullIndexOverlayAuthority.revoke(descriptor, reason)
+        return RepositorySnapshotPreparationResolution.Resolved(
+            RepositorySnapshotPreparation.Managed(
+                WorktreeOverlaySeed.None(authority.absence),
+                RepositorySnapshotPublicationAuthority.Eligible(context),
+            ),
+        )
+    }
 
     internal fun currentBranch(workspaceRoot: NormalizedPath): RepositoryBranch = runCatching {
         val process = ReadOnlyGitCommand.currentBranch().processBuilder()
@@ -324,6 +372,7 @@ object RepositorySnapshotCoordinator {
         if (process.waitFor() == 0) GitBlobResolution.Resolved(content) else GitBlobResolution.Unavailable
     }.getOrDefault(GitBlobResolution.Unavailable)
 
-    private const val OVERLAY_FILE = "repository-overlay.json"
     private val JSON = Json { prettyPrint = true }
 }
+
+private const val OVERLAY_FILE = "repository-overlay.json"
