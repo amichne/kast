@@ -152,9 +152,9 @@ class RpcAnalysisDispatcher(
     /**
      * Effect transition: `JsonRpcRequest -> RpcRoutedDispatch`.
      *
-     * Ordinary methods convert coroutine timeout into finite deadline data.
-     * Workspace refresh delegates waiting to the backend's progress policy and
-     * therefore cannot be cancelled by the unrelated ordinary RPC budget.
+     * Ordinary and transition-aware methods convert coroutine timeout into
+     * finite deadline data. Operations whose complete dispatch is governed by
+     * backend progress cannot be cancelled by the unrelated ordinary budget.
      */
     private suspend fun dispatchRouted(request: JsonRpcRequest): RpcRoutedDispatch =
         when (val policy = RpcRequestWaitPolicy.derive(request.method, config)) {
