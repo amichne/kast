@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import kotlin.io.path.readText
+import kotlin.time.Duration.Companion.milliseconds
 
 class AnalysisDispatcherRawMutationTest : AnalysisDispatcherTestSupport() {
     @Test
@@ -142,5 +143,24 @@ class AnalysisDispatcherRawMutationTest : AnalysisDispatcherTestSupport() {
         assertEquals(listOf(file.toString()), result.refreshedFiles)
         assertTrue(result.removedFiles.isEmpty())
         assertEquals(false, result.fullRefresh)
+    }
+
+    @Test
+    fun `workspace refresh delegates its deadline to backend progress`() {
+        val file = sampleFile()
+        val result = dispatchSuccessWithBackend<RefreshResult>(
+            backend = DispatcherProgressBoundRefreshBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                delay = 25.milliseconds,
+            ),
+            config = AnalysisServerConfig(requestTimeoutMillis = 1),
+            method = "raw/workspace-refresh",
+            params = json.encodeToJsonElement(
+                RefreshQuery.serializer(),
+                RefreshQuery(filePaths = listOf(file.toString())),
+            ),
+        )
+
+        assertEquals(listOf(file.toString()), result.refreshedFiles)
     }
 }

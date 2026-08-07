@@ -161,7 +161,7 @@ object IndexerServerRuntime {
         }
         val manifestFileCountProvider = sourceIndexStore.prepareManifestFileCountProvider()
         val semanticAdmission = IdeaIndexSemanticAdmission(project)
-        val transitionIngress = WorkspaceTransitionIngress(semanticAdmission, limits.requestTimeoutMillis)
+        val transitionIngress = WorkspaceTransitionIngress(semanticAdmission)
         if (indexAdmission is IndexerAdmission.Failed) {
             semanticAdmission.fail(indexAdmission.error.indexAdmissionFailureDetail())
         }

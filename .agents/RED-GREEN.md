@@ -2,32 +2,84 @@
 
 ## RED
 
+### Current-generation check fast path
+
 Command:
 
 ```shell
-./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked check
 ```
 
-Expected failure: a reconciliation captured for clean Git tree A exports the already-indexed database under later clean Git tree B when the workspace moves after READY but before completion publication.
+Expected failure: public `kast check` still emits a mandatory workspace refresh before diagnostics even when the requested file hashes are already covered by the current READY publication.
 
-Observed failure: `RepositorySnapshotIntegrationTest` failed because preparation captured tree `b3a87c7d`, the workspace moved to clean tree `21bbc365`, and publication returned `Completed` under `21bbc365` instead of `Skipped(CommittedTreeMoved(b3a87c7d, 21bbc365))`. The focused command exited 1 after 1m5s (7 tests, 1 failed), proving export was not bound to the tree that the completed source index reconciled.
+Observed failure: FAILED as expected. The focused Rust regression did not compile because
+`CurrentCheckAttempt` and `WorkspaceStaleness` do not yet exist, proving there is no typed
+current-generation decision that distinguishes covered evidence from refreshable staleness.
+
+### Joinable progress-aware transition wait
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --no-daemon --console=plain
+```
+
+Expected failure: a compatible request arriving during INDEXING is rejected instead of joining, and a progressing reconciliation remains bound to the ordinary request deadline.
+
+Observed failure: FAILED as expected. The focused Kotlin regressions did not compile because
+`WorkspaceTransitionIngress` accepts only a raw `Long` timeout and rejects the typed
+`ProgressAwareFutureAwaiter`; the in-flight join and progress-aware wait contract is absent.
+
+### Backend-owned workspace-refresh deadline
+
+Command:
+
+```shell
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisDispatcherRawMutationTest --no-daemon --console=plain
+```
+
+Expected failure: the outer RPC dispatcher still cancels `raw/workspace-refresh` at the
+ordinary request deadline instead of allowing the backend's finite progress policy to finish.
+
+Observed failure: FAILED as expected. The 25 ms backend refresh was cancelled by the
+1 ms ordinary dispatcher deadline and returned a JSON-RPC `TIMEOUT` error instead of
+the expected successful `RefreshResult`.
+
+### Failed admission outranks stale transition activity
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests 'io.github.amichne.kast.idea.WorkspaceTransitionIngressTest.failed semantic admission outranks a stale active transition observation' --no-daemon --console=plain
+```
+
+Expected failure: a failed semantic-admission proof must reject reconciliation even if the
+last transition observation still reports an active lifecycle.
+
+Observed failure: FAILED as expected. `WorkspaceTransitionRoute.derive` returned `Join`
+instead of `Rejected`, proving the stale lifecycle observation outranked the newer failure.
 
 ## GREEN
 
-Command:
+Commands:
 
 ```shell
-./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --tests io.github.amichne.kast.idea.WorkspaceTransitionWorkerBuildSemanticTest --no-daemon --console=plain
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisDispatcherRawMutationTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --no-daemon --console=plain
+cargo fmt --manifest-path cli-rs/Cargo.toml -- --check
+cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
+cargo test --manifest-path cli-rs/Cargo.toml --locked
+./gradlew check --no-daemon --console=plain
+python3 .github/scripts/check-repository-shape.py
+kast check analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcRequestWaitPolicy.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/IndexerServerRuntime.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/KastIdeaProjectIndexing.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/transition/WorkspaceTransitionIngress.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/transition/WorkspaceTransitionRouting.kt
 ```
 
-Observed result: the exact focused suite passed (`BUILD SUCCESSFUL in 21s`).
-The snapshot race test proved tree A capability rejects later tree B, then the
-same preparation captured a new tree B capability that published after the B
-index reconciliation. The worker test proved READY completion receives the
-same snapshot capability carried by its reconciled candidate. Repository-shape
-validation reported zero violations. The complete `:indexer:test` suite then
-passed (`BUILD SUCCESSFUL in 1m10s`). After replacing nullable completion
-control with a closed pending-completion state, the focused suite passed again
-in 29s. Kast compiler-backed analysis completed for all 5 changed production
-Kotlin files with 5/5 analyzed and zero diagnostics. The final complete
-`:indexer:test` rerun passed (`BUILD SUCCESSFUL in 1m8s`, 523 tests).
+Observed result: GREEN. Both focused Kotlin suites passed. Rust formatting and clippy
+passed, the complete Rust test suite passed, and a clean second Gradle `check` passed.
+Repository shape reported zero file and directory violations. Installed-candidate
+diagnostics covered all six changed production Kotlin files with exact hashes and zero
+diagnostics in 0.46 seconds; the publication remained semantic generation 22 and source
+generation 689 before and after the check. A concurrent live refresh and check against a
+temporarily drifted file both completed successfully after approximately 100 seconds,
+crossing the former 30-second conflict boundary without conflict and publishing the same
+exact file hash.

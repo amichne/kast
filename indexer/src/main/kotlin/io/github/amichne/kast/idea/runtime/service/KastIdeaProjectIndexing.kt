@@ -26,7 +26,6 @@ import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -39,10 +38,7 @@ internal class KastIdeaProjectIndexing(
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
     private val gitWorktreeRegistrationProof: GitWorktreeRegistrationProof? = null,
-    private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(
-        semanticAdmission,
-        TimeUnit.MINUTES.toMillis(5),
-    ),
+    private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(semanticAdmission),
     private val snapshotPreparation: RepositorySnapshotPreparation = RepositorySnapshotPreparation.Unmanaged,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
     private val semanticGraphIndexer:

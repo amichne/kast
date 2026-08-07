@@ -58,4 +58,20 @@ mod runtime_status_wire_tests {
 
         assert!(!wire.into_status().expect("legacy status").indexing);
     }
+
+    #[test]
+    fn workspace_refresh_uses_the_indexing_response_timeout() {
+        let policy = RpcResponseTimeoutPolicy::derive(Duration::from_secs(35));
+        let refresh = serde_json::json!({"method": "raw/workspace-refresh"}).to_string();
+        let diagnostics = serde_json::json!({"method": "raw/diagnostics"}).to_string();
+
+        assert_eq!(
+            policy.for_request(&refresh).expect("refresh policy"),
+            WORKSPACE_TRANSITION_RESPONSE_TIMEOUT
+        );
+        assert_eq!(
+            policy.for_request(&diagnostics).expect("diagnostics policy"),
+            Duration::from_secs(35)
+        );
+    }
 }

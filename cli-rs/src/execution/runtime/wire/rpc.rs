@@ -10,8 +10,47 @@ pub fn raw_request_passthrough(
 pub struct RawRpcSession {
     admission: AdmittedIndexerRuntime,
     socket_path: PathBuf,
-    response_timeout: Duration,
+    response_timeouts: RpcResponseTimeoutPolicy,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RpcResponseTimeoutPolicy {
+    ordinary: Duration,
+    workspace_transition: Duration,
+}
+
+impl RpcResponseTimeoutPolicy {
+    /// Proof transition: `Duration -> RpcResponseTimeoutPolicy`.
+    ///
+    /// Retains the configured ordinary request timeout while deriving a
+    /// separate finite response allowance for workspace reconciliation. The
+    /// latter covers the backend's one-hour maximum progress wait plus a small
+    /// transport reserve and can never shorten the ordinary allowance.
+    fn derive(ordinary: Duration) -> Self {
+        Self {
+            ordinary,
+            workspace_transition: ordinary.max(WORKSPACE_TRANSITION_RESPONSE_TIMEOUT),
+        }
+    }
+
+    fn ordinary(self) -> Duration {
+        self.ordinary
+    }
+
+    /// Boundary transition: `JSON-RPC request -> Duration`.
+    ///
+    /// Extracts the protocol method only to select the already-typed timeout
+    /// policy consumed by the Unix socket read boundary.
+    fn for_request(self, raw_request: &str) -> Result<Duration> {
+        let request: Value = serde_json::from_str(raw_request)?;
+        Ok(match request.get("method").and_then(Value::as_str) {
+            Some("raw/workspace-refresh") => self.workspace_transition,
+            _ => self.ordinary,
+        })
+    }
+}
+
+const WORKSPACE_TRANSITION_RESPONSE_TIMEOUT: Duration = Duration::from_secs(60 * 60 + 5);
 
 #[derive(Debug, Clone)]
 pub(crate) struct SemanticWorkspaceRead {
@@ -37,7 +76,7 @@ impl SemanticWorkspaceRead {
             Path::new(&self.session.socket_path),
             "runtime/status",
             Value::Object(Default::default()),
-            self.session.response_timeout,
+            self.session.response_timeouts.ordinary(),
         )?
         .into_status()?;
         validate_runtime_status_identity(&self.session.admission.candidate().descriptor, &status)?;
@@ -110,7 +149,7 @@ pub(crate) fn raw_rpc_session_for_admission(
         .unwrap_or(0);
     RawRpcSession {
         socket_path: PathBuf::from(&admission.candidate().descriptor.socket_path),
-        response_timeout: Duration::from_millis(
+        response_timeouts: RpcResponseTimeoutPolicy::derive(Duration::from_millis(
             admission
                 .config()
                 .server
@@ -118,7 +157,7 @@ pub(crate) fn raw_rpc_session_for_admission(
                 .max(advertised_timeout_millis)
                 .saturating_add(5_000)
                 .max(1),
-        ),
+        )),
         admission,
     }
 }
@@ -148,7 +187,7 @@ pub fn raw_request_passthrough_in_session(
     rpc::raw_wait_for_close(
         Path::new(&session.socket_path),
         &raw_request,
-        session.response_timeout,
+        session.response_timeouts.for_request(&raw_request)?,
     )
 }
 

@@ -252,12 +252,122 @@ pub(crate) fn run_check(args: KastPathsArgs) -> Result<i32> {
             message: "No changed Kotlin files were found.",
         });
     }
-    print_projected(AgentCommand::Diagnostics(AgentDiagnosticsArgs {
-        runtime: agent_runtime(workspace_root),
-        file_paths,
-        skip_refresh: false,
+    let current = projected_value(check_diagnostics_command(
+        &workspace_root,
+        &file_paths,
+        CheckDiagnosticsRead::CurrentPublication,
+    ))?;
+    match CurrentCheckAttempt::derive(current) {
+        CurrentCheckAttempt::Covered(envelope) => print_projected_value(envelope),
+        CurrentCheckAttempt::RefreshRequired(_) => print_projected(check_diagnostics_command(
+            &workspace_root,
+            &file_paths,
+            CheckDiagnosticsRead::ReconciledPublication,
+        )),
+        CurrentCheckAttempt::Rejected(envelope) => print_projected_value(envelope),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CheckDiagnosticsRead {
+    CurrentPublication,
+    ReconciledPublication,
+}
+
+/// Boundary transition:
+/// `(Path, [String], CheckDiagnosticsRead) -> AgentCommand::Diagnostics`.
+///
+/// Converts the typed public-check read policy to the legacy `skip_refresh`
+/// CLI flag only at command construction. The decision itself never travels
+/// through a Boolean inside the check workflow.
+fn check_diagnostics_command(
+    workspace_root: &Path,
+    file_paths: &[String],
+    read: CheckDiagnosticsRead,
+) -> AgentCommand {
+    let skip_refresh = match read {
+        CheckDiagnosticsRead::CurrentPublication => true,
+        CheckDiagnosticsRead::ReconciledPublication => false,
+    };
+    AgentCommand::Diagnostics(AgentDiagnosticsArgs {
+        runtime: agent_runtime(workspace_root.to_path_buf()),
+        file_paths: file_paths.to_vec(),
+        skip_refresh,
         limit: 500,
         page_token: None,
         view: AgentDiagnosticsViewArgs::default(),
-    }))
+    })
+}
+
+#[derive(Debug, PartialEq)]
+enum CurrentCheckAttempt {
+    Covered(Value),
+    RefreshRequired(WorkspaceStaleness),
+    Rejected(Value),
+}
+
+impl CurrentCheckAttempt {
+    /// Proof transition: `JSON AgentEnvelope -> CurrentCheckAttempt`.
+    ///
+    /// A successful projected diagnostic result already carries exact hashes
+    /// for every analyzed file and therefore covers the current publication.
+    /// Only closed workspace-movement evidence authorizes a refresh retry;
+    /// malformed and unrelated failures remain rejected with their original
+    /// envelope intact.
+    fn derive(envelope: Value) -> Self {
+        if envelope.get("ok").and_then(Value::as_bool) == Some(true) {
+            return Self::Covered(envelope);
+        }
+        match WorkspaceStalenessEvidence::derive(&envelope) {
+            WorkspaceStalenessEvidence::Proven(staleness) => {
+                Self::RefreshRequired(staleness)
+            }
+            WorkspaceStalenessEvidence::Absent => Self::Rejected(envelope),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WorkspaceStaleness {
+    SemanticAdmissionMoved,
+    PublishedGenerationMoved,
+    RuntimeIndexing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WorkspaceStalenessEvidence {
+    Proven(WorkspaceStaleness),
+    Absent,
+}
+
+impl WorkspaceStalenessEvidence {
+    /// Proof transition: `JSON AgentEnvelope -> WorkspaceStalenessEvidence`.
+    ///
+    /// Refines only explicit runtime, publication, or semantic-admission
+    /// movement into retry authority. A generic conflict without typed
+    /// workspace-state details is deliberately not refreshable.
+    fn derive(envelope: &Value) -> Self {
+        let error = envelope
+            .get("error")
+            .or_else(|| envelope.pointer("/result/steps/0/error"));
+        let Some(error) = error else {
+            return Self::Absent;
+        };
+        match error.get("code").and_then(Value::as_str) {
+            Some("RUNTIME_NOT_READY") => Self::Proven(WorkspaceStaleness::RuntimeIndexing),
+            Some(
+                "PUBLISHED_WORKSPACE_MOVED"
+                | "PUBLISHED_WORKSPACE_MISMATCH"
+                | "PUBLISHED_WORKSPACE_UNAVAILABLE",
+            ) => Self::Proven(WorkspaceStaleness::PublishedGenerationMoved),
+            Some("CONFLICT")
+                if error
+                    .pointer("/details/rpcError/data/details/workspaceState")
+                    .is_some() =>
+            {
+                Self::Proven(WorkspaceStaleness::SemanticAdmissionMoved)
+            }
+            _ => Self::Absent,
+        }
+    }
 }
