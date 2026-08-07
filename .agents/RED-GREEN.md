@@ -2,84 +2,102 @@
 
 ## RED
 
-### Current-generation check fast path
+### Repository overlay replacement authority
 
 Command:
 
 ```shell
-cargo test --manifest-path cli-rs/Cargo.toml --locked check
+./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReplacementAuthorityTest --no-daemon --console=plain
 ```
 
-Expected failure: public `kast check` still emits a mandatory workspace refresh before diagnostics even when the requested file hashes are already covered by the current READY publication.
+Expected failure: replacing a file or declaration in the main overlay still retains the base symbol annotation, base edge occurrence, and base declaration-supertype edge.
 
-Observed failure: FAILED as expected. The focused Rust regression did not compile because
-`CurrentCheckAttempt` and `WorkspaceStaleness` do not yet exist, proving there is no typed
-current-generation decision that distinguishes covered evidence from refreshable staleness.
+Observed failure: FAILED as expected. The replacement graph returned both
+`sample.NewAnnotation` and `sample.OldAnnotation`; the assertion stopped before
+the same fixture could accept the stale base relation and old supertype.
 
-### Joinable progress-aware transition wait
+### Runtime ownership discovery totality
 
 Command:
 
 ```shell
-./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test runtime_durable_ownership_smoke remaining_review_regression
 ```
 
-Expected failure: a compatible request arriving during INDEXING is rejected instead of joining, and a progressing reconciliation remains bound to the ordinary request deadline.
+Expected failure: an unrelated same-UID process with non-UTF8 argv aborts orphan discovery, and an incomplete live registration plus a dead registration can be reported CLEAN.
 
-Observed failure: FAILED as expected. The focused Kotlin regressions did not compile because
-`WorkspaceTransitionIngress` accepts only a raw `Long` timeout and rejects the typed
-`ProgressAwareFutureAwaiter`; the in-flight join and progress-aware wait contract is absent.
+Observed failure: FAILED as expected. With an unrelated non-UTF8 process alive,
+runtime discovery returned `RUNTIME_PROCESS_EVIDENCE_UNAVAILABLE: macOS process
+argument is not UTF-8`. In the isolated partial-registration fixture, executable
+repair removed the dead evidence and returned `CLEAN` while the hidden runtime
+remained alive.
 
-### Backend-owned workspace-refresh deadline
+### IDEA readiness and project-model read authority
 
 Command:
 
 ```shell
-./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisDispatcherRawMutationTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.backend.KastRuntimeReadinessTest --tests io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridgeReadActionTest --no-daemon --console=plain
 ```
 
-Expected failure: the outer RPC dispatcher still cancels `raw/workspace-refresh` at the
-ordinary request deadline instead of allowing the backend's finite progress policy to finish.
+Expected failure: mutation readiness remains READY during IDEA indexing, and Gradle progress observation does not provide a read-action-owned project-model observation seam.
 
-Observed failure: FAILED as expected. The 25 ms backend refresh was cancelled by the
-1 ms ordinary dispatcher deadline and returned a JSON-RPC `TIMEOUT` error instead of
-the expected successful `RefreshResult`.
+Observed failure: FAILED as expected. Mutation readiness was `READY` while the
+model lane was `IN_PROGRESS`, and the project-model observation seam was absent
+(`NoSuchMethodException: readProjectModelInventory(Supplier)`).
 
-### Failed admission outranks stale transition activity
+### macOS doctor backend projection
 
 Command:
 
 ```shell
-./gradlew :indexer:test --tests 'io.github.amichne.kast.idea.WorkspaceTransitionIngressTest.failed semantic admission outranks a stale active transition observation' --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_readiness_smoke doctor_retains_host_supplied_macos_backend
 ```
 
-Expected failure: a failed semantic-admission proof must reject reconciliation even if the
-last transition observation still reports an active lifecycle.
+Expected failure: a valid macOS backend with no runtime-libs directory is absent from human doctor output.
 
-Observed failure: FAILED as expected. `WorkspaceTransitionRoute.derive` returned `Join`
-instead of `Rejected`, proving the stale lifecycle observation outranked the newer failure.
+Observed failure: FAILED as expected. Human release readiness contained the
+flattened receipt but no `Backend indexer` installed-version line because the
+doctor projection discarded the backend whose runtime-libs path was absent.
+
+### Transition freshness and transport deadlines
+
+Commands:
+
+```shell
+cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
+```
+
+Expected failure: post-mutation RPCs retain the ordinary deadline, a source request after cycle refresh is joined without enqueueing its freshness signal, and stale cached PSI is certified with a new disk hash.
+
+Observed failure: FAILED as expected. Rust gave `raw/apply-edits` 35 seconds
+instead of the 3,605-second transition allowance; the server derived
+`ServerDeadline(1)` instead of `BackendProgressDeadline`. The active-cycle
+source request did not invoke its bound enqueue callback. The Rust check
+classifier returned `Covered` for a successful but `INCOMPLETE` result whose
+file state was `PENDING_INDEX`. The deterministic Kotlin content-authority
+regression did not compile because the typed observation and authority do not
+yet exist.
 
 ## GREEN
 
 Commands:
 
 ```shell
-./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisDispatcherRawMutationTest --no-daemon --console=plain
-./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --no-daemon --console=plain
-cargo fmt --manifest-path cli-rs/Cargo.toml -- --check
-cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
-cargo test --manifest-path cli-rs/Cargo.toml --locked
-./gradlew check --no-daemon --console=plain
-python3 .github/scripts/check-repository-shape.py
-kast check analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcRequestWaitPolicy.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/IndexerServerRuntime.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/KastIdeaProjectIndexing.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/transition/WorkspaceTransitionIngress.kt indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service/transition/WorkspaceTransitionRouting.kt
+./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReplacementAuthorityTest --tests io.github.amichne.kast.indexstore.RepositoryOverlayUnchangedFileTest --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test runtime_durable_ownership_smoke
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.backend.KastRuntimeReadinessTest --tests io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridgeReadActionTest --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_readiness_smoke doctor_retains_host_supplied_macos_backend
+cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --tests io.github.amichne.kast.server.dispatcher.raw.AnalysisDispatcherRawMutationRecoveryTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ```
 
-Observed result: GREEN. Both focused Kotlin suites passed. Rust formatting and clippy
-passed, the complete Rust test suite passed, and a clean second Gradle `check` passed.
-Repository shape reported zero file and directory violations. Installed-candidate
-diagnostics covered all six changed production Kotlin files with exact hashes and zero
-diagnostics in 0.46 seconds; the publication remained semantic generation 22 and source
-generation 689 before and after the check. A concurrent live refresh and check against a
-temporarily drifted file both completed successfully after approximately 100 seconds,
-crossing the former 30-second conflict boundary without conflict and publishing the same
-exact file hash.
+Observed result: PASSED. Overlay replacement and unchanged-file authority tests
+passed; all 19 durable-ownership tests passed; both readiness/read-action tests
+passed; the host-supplied backend regression passed; and the transition timeout,
+server mutation deadline, ingress freshness, diagnostic completeness, and typed
+content-authority regressions passed.
