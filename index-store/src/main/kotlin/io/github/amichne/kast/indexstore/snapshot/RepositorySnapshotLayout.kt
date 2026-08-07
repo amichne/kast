@@ -97,6 +97,11 @@ internal class RepositorySnapshotLayout private constructor(
      * this exact repository, explicit authority for another repository, or a
      * finite rejection when the declared path targets this repository but its
      * snapshot evidence is invalid.
+     *
+     * Raw path extraction from
+     * [RepositorySnapshotDatabase] is permitted only at filesystem, SQLite,
+     * or serialization adapters; all other callers must retain the returned
+     * repository proof.
      */
     fun resolveOverlayBase(overlay: OverlayManifest): RepositoryOverlayBaseResolution {
         val expected = databasePath(overlay.base)
