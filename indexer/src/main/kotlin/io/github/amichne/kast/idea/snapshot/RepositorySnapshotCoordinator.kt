@@ -29,7 +29,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.LinkOption
-import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
 sealed interface WorktreeOverlaySeed {
@@ -42,6 +41,8 @@ sealed interface WorktreeOverlayAbsence {
     data object UnmanagedWorkspace : WorktreeOverlayAbsence
 
     data object ExistingWorkspaceDatabase : WorktreeOverlayAbsence
+
+    data object RepositoryAuthorityChanged : WorktreeOverlayAbsence
 
     data class CommittedTreeUnavailable(val failure: CommittedGitTreeFailure) : WorktreeOverlayAbsence
 
@@ -68,6 +69,10 @@ sealed interface RepositorySnapshotPreparationFailure {
     data class ShardPublicationRejected(
         val oid: GitObjectId,
         val failure: RepositoryContentShardFailure,
+    ) : RepositorySnapshotPreparationFailure
+
+    data class PersistedOverlayRejected(
+        val failure: PersistedWorktreeOverlayFailure,
     ) : RepositorySnapshotPreparationFailure
 }
 
@@ -152,22 +157,6 @@ private sealed interface GitBlobResolution {
     data object Unavailable : GitBlobResolution
 }
 
-@JvmInline
-private value class WorktreeOverlayDescriptor private constructor(val path: Path) {
-    companion object {
-        /**
-         * Proof transition:
-         * `NormalizedPath(workspace database) -> WorktreeOverlayDescriptor`.
-         *
-         * Derives the one descriptor authority adjacent to the normalized
-         * workspace database. The raw [Path] is retained only for filesystem
-         * effects owned by this coordinator.
-         */
-        fun beside(workspaceDatabase: NormalizedPath): WorktreeOverlayDescriptor =
-            WorktreeOverlayDescriptor(workspaceDatabase.toJavaPath().resolveSibling(OVERLAY_FILE))
-    }
-}
-
 private class FullIndexOverlayAuthority private constructor(
     val absence: WorktreeOverlayAbsence,
 ) {
@@ -184,7 +173,7 @@ private class FullIndexOverlayAuthority private constructor(
             descriptor: WorktreeOverlayDescriptor,
             absence: WorktreeOverlayAbsence,
         ): FullIndexOverlayAuthority {
-            Files.deleteIfExists(descriptor.path)
+            Files.deleteIfExists(descriptor.path.toJavaPath())
             return FullIndexOverlayAuthority(absence)
         }
     }
@@ -223,19 +212,25 @@ object RepositorySnapshotCoordinator {
         )
         val databasePath = workspaceDatabase.toJavaPath()
         val overlayDescriptor = WorktreeOverlayDescriptor.beside(workspaceDatabase)
-        val overlayPath = overlayDescriptor.path
+        val overlayPath = overlayDescriptor.path.toJavaPath()
+        val snapshots = RepositorySnapshotStore(repositoryDirectory.toJavaPath())
         if (Files.exists(databasePath, LinkOption.NOFOLLOW_LINKS)) {
-            val publicationAuthority = if (Files.exists(overlayPath, LinkOption.NOFOLLOW_LINKS)) {
-                RepositorySnapshotPublicationAuthority.Suppressed
-            } else {
-                RepositorySnapshotPublicationAuthority.Eligible(context)
+            return when (val overlay = overlayDescriptor.resolve(snapshots)) {
+                PersistedWorktreeOverlayResolution.Absent -> existingDatabase(
+                    RepositorySnapshotPublicationAuthority.Eligible(context),
+                )
+                PersistedWorktreeOverlayResolution.CurrentRepository -> existingDatabase(
+                    RepositorySnapshotPublicationAuthority.Suppressed,
+                )
+                PersistedWorktreeOverlayResolution.OtherRepository -> fullIndex(
+                    context,
+                    overlayDescriptor,
+                    WorktreeOverlayAbsence.RepositoryAuthorityChanged,
+                )
+                is PersistedWorktreeOverlayResolution.Rejected -> RepositorySnapshotPreparationResolution.Rejected(
+                    RepositorySnapshotPreparationFailure.PersistedOverlayRejected(overlay.failure),
+                )
             }
-            return RepositorySnapshotPreparationResolution.Resolved(
-                RepositorySnapshotPreparation.Managed(
-                    WorktreeOverlaySeed.None(WorktreeOverlayAbsence.ExistingWorkspaceDatabase),
-                    publicationAuthority,
-                ),
-            )
         }
         val committedTree = when (val resolution = CommittedGitTreeResolver.resolve(workspaceRoot)) {
             is CommittedGitTreeResolution.Resolved -> resolution.tree
@@ -255,7 +250,6 @@ object RepositorySnapshotCoordinator {
             files = committedTree.files,
             createdAt = SnapshotCreationEpochMillis.fromClock(System.currentTimeMillis()),
         )
-        val snapshots = RepositorySnapshotStore(repositoryDirectory.toJavaPath())
         val retained = when (val resolution = snapshots.retainedManifests()) {
             is RepositorySnapshotInventoryResolution.Resolved -> resolution.manifests
             is RepositorySnapshotInventoryResolution.Rejected -> return RepositorySnapshotPreparationResolution.Rejected(
@@ -324,6 +318,15 @@ object RepositorySnapshotCoordinator {
         )
     }
 
+    private fun existingDatabase(
+        publicationAuthority: RepositorySnapshotPublicationAuthority,
+    ): RepositorySnapshotPreparationResolution.Resolved = RepositorySnapshotPreparationResolution.Resolved(
+        RepositorySnapshotPreparation.Managed(
+            WorktreeOverlaySeed.None(WorktreeOverlayAbsence.ExistingWorkspaceDatabase),
+            publicationAuthority,
+        ),
+    )
+
     /**
      * Proof transition:
      * `(RepositorySnapshotContext, WorktreeOverlayDescriptor, WorktreeOverlayAbsence)`
@@ -374,5 +377,3 @@ object RepositorySnapshotCoordinator {
 
     private val JSON = Json { prettyPrint = true }
 }
-
-private const val OVERLAY_FILE = "repository-overlay.json"

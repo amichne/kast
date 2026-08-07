@@ -46,6 +46,14 @@ sealed interface RepositorySnapshotDatabaseResolution {
     data class Rejected(val failure: RepositorySnapshotDatabaseFailure) : RepositorySnapshotDatabaseResolution
 }
 
+sealed interface RepositoryOverlayBaseResolution {
+    data class CurrentRepository(val database: RepositorySnapshotDatabase) : RepositoryOverlayBaseResolution
+
+    data object OtherRepository : RepositoryOverlayBaseResolution
+
+    data class Rejected(val failure: RepositorySnapshotDatabaseFailure) : RepositoryOverlayBaseResolution
+}
+
 class RepositorySnapshotAuthorityException(
     val failure: RepositorySnapshotDatabaseFailure,
 ) : IllegalStateException(failure.toString())
@@ -80,6 +88,38 @@ internal class RepositorySnapshotLayout private constructor(
 
     fun databasePath(key: SnapshotKey): RepositorySnapshotDatabasePath =
         RepositorySnapshotDatabasePath.from(snapshotDirectory(key).resolve(DATABASE_FILE))
+
+    /**
+     * Proof transition:
+     * `OverlayManifest -> RepositoryOverlayBaseResolution`.
+     *
+     * Refines a persisted overlay base into a database proven to belong to
+     * this exact repository, explicit authority for another repository, or a
+     * finite rejection when the declared path targets this repository but its
+     * snapshot evidence is invalid.
+     */
+    fun resolveOverlayBase(overlay: OverlayManifest): RepositoryOverlayBaseResolution {
+        val expected = databasePath(overlay.base)
+        if (overlay.baseDatabase != expected) {
+            return if (overlay.baseDatabase.toJavaPath().startsWith(repositoryDirectory.toJavaPath())) {
+                RepositoryOverlayBaseResolution.Rejected(
+                    RepositorySnapshotDatabaseFailure.PathMismatch(expected, overlay.baseDatabase),
+                )
+            } else {
+                RepositoryOverlayBaseResolution.OtherRepository
+            }
+        }
+        return when (
+            val resolution = resolveDatabase(
+                RepositorySnapshotDatabaseCandidate(overlay.base, overlay.baseDatabase),
+            )
+        ) {
+            is RepositorySnapshotDatabaseResolution.Resolved ->
+                RepositoryOverlayBaseResolution.CurrentRepository(resolution.database)
+            is RepositorySnapshotDatabaseResolution.Rejected ->
+                RepositoryOverlayBaseResolution.Rejected(resolution.failure)
+        }
+    }
 
     /**
      * Proof transition:
