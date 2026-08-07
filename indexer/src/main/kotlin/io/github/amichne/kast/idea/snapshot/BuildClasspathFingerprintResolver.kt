@@ -73,7 +73,7 @@ private fun localClasspathRootPath(rootUrl: String): Path? {
 }
 
 internal fun gitWorkspaceScope(workspaceRoot: java.nio.file.Path): String = runCatching {
-    val process = ReadOnlyGitCommand.processBuilder("rev-parse", "--show-prefix")
+    val process = ReadOnlyGitCommand.workspacePrefix().processBuilder()
         .directory(workspaceRoot.toFile())
         .redirectError(ProcessBuilder.Redirect.DISCARD)
         .start()

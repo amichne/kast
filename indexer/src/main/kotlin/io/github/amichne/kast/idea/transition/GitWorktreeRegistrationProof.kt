@@ -75,16 +75,9 @@ internal class GitWorktreeRegistrationProof private constructor(
         }
 
         private fun resolveRegisteredWorktree(workspaceRoot: Path): ResolvedGitWorktreeRegistration? {
-            val command = listOf(
-                "git",
-                "rev-parse",
-                "--path-format=absolute",
-                "--show-toplevel",
-                "--absolute-git-dir",
-                "--git-common-dir",
-            )
+            val command = ReadOnlyGitCommand.linkedWorktreeRegistration()
             val process = runCatching {
-                ReadOnlyGitCommand.processBuilder(command).also { builder ->
+                command.processBuilder().also { builder ->
                     GIT_REPOSITORY_SELECTION_ENVIRONMENT.forEach(builder.environment()::remove)
                 }.directory(workspaceRoot.toFile()).redirectErrorStream(true).start()
             }.getOrNull() ?: return null

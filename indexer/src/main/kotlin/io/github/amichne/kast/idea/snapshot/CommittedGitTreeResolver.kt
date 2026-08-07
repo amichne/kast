@@ -168,17 +168,19 @@ object CommittedGitTreeResolver {
         workspaceRoot: NormalizedPath,
         request: GitTreeReadRequest,
     ): GitReadResult = runCatching {
-        val arguments = when (request) {
+        val command = when (request) {
             GitTreeReadRequest.Status ->
-                listOf("status", "--porcelain", "--untracked-files=normal")
+                ReadOnlyGitCommand.workspaceStatus()
             GitTreeReadRequest.IgnoredKotlinSources ->
-                listOf("ls-files", "--others", "--ignored", "--exclude-standard", "-z", "--", "*.kt")
-            GitTreeReadRequest.WorkspacePrefix -> listOf("rev-parse", "--show-prefix")
-            is GitTreeReadRequest.TreeOid -> listOf("rev-parse", request.expression.value)
+                ReadOnlyGitCommand.ignoredKotlinSources()
+            GitTreeReadRequest.WorkspacePrefix ->
+                ReadOnlyGitCommand.workspacePrefix()
+            is GitTreeReadRequest.TreeOid ->
+                ReadOnlyGitCommand.resolveTree(request.expression)
             is GitTreeReadRequest.TreeManifest ->
-                listOf("ls-tree", "--full-tree", "-r", "-z", request.oid.value)
+                ReadOnlyGitCommand.treeManifest(request.oid.value)
         }
-        val process = ReadOnlyGitCommand.processBuilder(*arguments.toTypedArray())
+        val process = command.processBuilder()
             .directory(workspaceRoot.toJavaPath().toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()

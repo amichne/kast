@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -256,12 +257,13 @@ class KastIdeaProjectIndexingRuntimeTest {
 
     @Test
     fun `indexing retry is bounded before recovery audit`() {
-        assertEquals(250, indexingRetryDelayMillis(1))
-        assertEquals(500, indexingRetryDelayMillis(2))
-        assertEquals(1_000, indexingRetryDelayMillis(3))
-        assertEquals(2_000, indexingRetryDelayMillis(4))
-        assertEquals(5_000, indexingRetryDelayMillis(5))
-        assertEquals(5_000, indexingRetryDelayMillis(100))
+        var failures = ConsecutiveIndexingFailures.none()
+        listOf(250L, 500L, 1_000L, 2_000L, 5_000L).forEach { expectedMillis ->
+            failures = failures.afterFailure()
+            assertEquals(Duration.ofMillis(expectedMillis), failures.retryDelay)
+        }
+        repeat(95) { failures = failures.afterFailure() }
+        assertEquals(Duration.ofSeconds(5), failures.retryDelay)
     }
 
     @Test

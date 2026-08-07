@@ -66,11 +66,22 @@ Expected failure: benchmark evidence fixtures still publish generation-relative 
 
 Observed failure: the contract reached its publication-path assertion and exited 1 with `published workspace database path is not canonical`, matching exact-head CI job `92799028502`.
 
+Full-Kotlin semantic-ratchet command:
+
+```shell
+./gradlew :analysis-api:test --tests io.github.amichne.kast.api.client.ReadOnlyGitCommandTest --tests io.github.amichne.kast.api.contract.RuntimeStatusResponseTest :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --tests io.github.amichne.kast.idea.KastIdeaProjectIndexingRuntimeTest --no-daemon --console=plain
+```
+
+Expected failure: the full PR still exposes arbitrary Git command lists, Boolean/Int readiness inputs, nullable progress timestamps, raw retry counters, and exception-based expected progress failures instead of proof-carrying transitions.
+
+Observed failure: test compilation failed on the absent `ReadOnlyGitOperation`, `RuntimeReadinessSummary`, `RuntimeProgressWork`, `RuntimeProgressTiming`, `ConsecutiveIndexingFailures`, `RuntimeProgressWaitPolicy`, `MonotonicClock`, and closed `RuntimeProgressAwaitOutcome` contracts. This proves the remaining 18 production Kotlin files had not yet crossed the requested semantic boundary.
+
 ## GREEN
 
 Commands:
 
 ```shell
+./gradlew :analysis-api:test --tests io.github.amichne.kast.api.client.ReadOnlyGitCommandTest --tests io.github.amichne.kast.api.contract.RuntimeStatusResponseTest :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --tests io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementAwaiterTest --tests io.github.amichne.kast.idea.KastIdeaProjectIndexingRuntimeTest --tests io.github.amichne.kast.idea.snapshot.ReadOnlyGitCommandIntegrationTest --no-daemon --console=plain
 ./gradlew :analysis-api:test --tests io.github.amichne.kast.api.client.WorkspacePathLayoutTest --no-daemon
 ./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStoreTest :indexer:test --tests io.github.amichne.kast.idea.transition.WorkspaceTransitionCoordinatorTest --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --tests io.github.amichne.kast.idea.IndexerServerRuntimeTest --no-daemon
 ./gradlew test --no-daemon
@@ -82,4 +93,4 @@ bash -n scripts/release/benchmark-real-repositories.sh
 ./.github/scripts/test-release-indexing-benchmark-contract.sh
 ```
 
-Observed result: flat-routing, atomic-publication, overlay-read, typed-alias, and pre-decode manifest-boundary tests passed; the complete Gradle test graph passed; every locked Cargo unit and integration target passed; strict Clippy passed with warnings denied; Rust formatting and benchmark shell syntax passed; repository shape reported `ok: true` with zero file, directory, missing-path, or retired-surface violations. The release indexing benchmark contract passed against flat schema-15 workspace-publication fixtures. The 51 changed production Kotlin files were audited with zero newly added nullable or primitive control protocols.
+Observed result: the focused proof-carrying Git, readiness, progress, Gradle-settlement, retry, and integration suite passed; flat-routing, atomic-publication, overlay-read, typed-alias, and pre-decode manifest-boundary tests passed; the complete Gradle test graph passed in 1m21s; every locked Cargo unit and integration target passed; strict Clippy passed with warnings denied; Rust formatting and benchmark shell syntax passed; repository shape reported `ok: true` with zero file, directory, missing-path, or retired-surface violations. The release indexing benchmark contract passed against flat schema-15 workspace-publication fixtures. All 71 current changed production Kotlin files were reviewed with zero newly introduced primitive, nullable-control, string, discarded-validation, or arbitrary-exception result protocols outside explicit process, serializer, Java, or IntelliJ boundaries.

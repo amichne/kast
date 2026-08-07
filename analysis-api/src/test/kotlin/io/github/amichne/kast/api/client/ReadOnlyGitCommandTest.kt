@@ -1,29 +1,28 @@
 package io.github.amichne.kast.api.client
 
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
+import io.github.amichne.kast.api.contract.NonBlankString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 
 class ReadOnlyGitCommandTest {
-    @TempDir
-    lateinit var temporaryDirectory: Path
-
     @Test
-    fun `fake Git observes optional locks disabled`() {
-        val fakeGit = fakeGit("printf '%s' \"\${GIT_OPTIONAL_LOCKS-unset}\"")
+    fun `typed Git read command extracts only at the process boundary`() {
+        val command = ReadOnlyGitCommand.workspacePrefix()
+        val builder = command.processBuilder()
 
-        val process = ReadOnlyGitCommand.processBuilder(listOf(fakeGit.toString())).start()
-        val observed = process.inputStream.bufferedReader().use { it.readText() }
-
-        assertEquals(0, process.waitFor())
-        assertEquals("0", observed)
+        assertEquals(listOf("git", "rev-parse", "--show-prefix"), builder.command())
+        assertEquals("0", builder.environment()["GIT_OPTIONAL_LOCKS"])
     }
 
-    private fun fakeGit(body: String): Path = temporaryDirectory.resolve("git").also { executable ->
-        Files.writeString(executable, "#!/bin/sh\n$body\n")
-        Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
+    @Test
+    fun `dynamic operands cannot be parsed as Git options`() {
+        assertEquals(
+            listOf("git", "rev-parse", "--verify", "--end-of-options", "--help"),
+            ReadOnlyGitCommand.resolveTree(NonBlankString("--help")).processBuilder().command(),
+        )
+        assertEquals(
+            listOf("git", "cat-file", "blob", "--end-of-options", "--batch"),
+            ReadOnlyGitCommand.blob("--batch").processBuilder().command(),
+        )
     }
 }

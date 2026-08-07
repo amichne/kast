@@ -2,6 +2,16 @@ package io.github.amichne.kast.indexer.gradle.settlement
 
 import java.time.Duration
 
+/**
+ * Construction transition:
+ * `(GradleImportObservation, List<GradleImportTransition>, Duration, Long, Long, Int, Duration)`
+ * `-> GradleModelSettlementEvidence`.
+ *
+ * Establishes a non-empty trace ending at [lastObservation], non-negative
+ * observation and transition counts, and bounded timing with
+ * `noProgress <= elapsed`. Inputs are produced only by the settlement state
+ * machine; consumers retain this aggregate instead of revalidating its fields.
+ */
 data class GradleModelSettlementEvidence(
     val lastObservation: GradleImportObservation,
     val recentTransitions: List<GradleImportTransition>,

@@ -3,10 +3,8 @@ package io.github.amichne.kast.indexer.gradle.settlement
 import io.github.amichne.kast.api.contract.RuntimeProgressStage
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import java.util.function.BooleanSupplier
-import java.util.function.Supplier
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class ProgressAwareFutureAwaiterTest {
@@ -14,19 +12,18 @@ class ProgressAwareFutureAwaiterTest {
     fun `completed future samples elapsed and no-progress at one instant`() {
         var now = 0L
         val awaiter = ProgressAwareFutureAwaiter(
-            noProgressTimeout = Duration.ofMillis(2),
-            maximumWait = Duration.ofMillis(6),
-            observationInterval = Duration.ofMillis(1),
-            nanoTime = { ++now },
+            policy = policy(),
+            clock = MonotonicClock.fromRaw { ++now },
             pause = {},
         )
 
-        val evidence = awaiter.await(
+        val outcome = awaiter.await(
             RuntimeProgressStage.GRADLE_IMPORT,
             CompletableFuture.completedFuture(null),
-            Supplier { "complete" },
-            BooleanSupplier { false },
+            RuntimeProgressProbe { RuntimeProgressObservation.capture("complete") },
+            RuntimeWaitLifecycleProbe { RuntimeWaitLifecycle.Active },
         )
+        val evidence = assertInstanceOf(RuntimeProgressAwaitOutcome.Completed::class.java, outcome).evidence
 
         assertEquals(evidence.elapsed, evidence.noProgress)
     }
@@ -37,10 +34,8 @@ class ProgressAwareFutureAwaiterTest {
         var observation = 0
         val future = CompletableFuture<Void>()
         val awaiter = ProgressAwareFutureAwaiter(
-            noProgressTimeout = Duration.ofMillis(2),
-            maximumWait = Duration.ofMillis(6),
-            observationInterval = Duration.ofMillis(1),
-            nanoTime = { now * 1_000_000 },
+            policy = policy(),
+            clock = MonotonicClock.fromRaw { now * 1_000_000 },
             pause = {
                 now += it.toMillis()
                 observation += 1
@@ -48,12 +43,13 @@ class ProgressAwareFutureAwaiterTest {
             },
         )
 
-        val evidence = awaiter.await(
+        val outcome = awaiter.await(
             RuntimeProgressStage.GRADLE_IMPORT,
             future,
-            Supplier { observation },
-            BooleanSupplier { false },
+            RuntimeProgressProbe { RuntimeProgressObservation.capture(observation) },
+            RuntimeWaitLifecycleProbe { RuntimeWaitLifecycle.Active },
         )
+        val evidence = assertInstanceOf(RuntimeProgressAwaitOutcome.Completed::class.java, outcome).evidence
 
         assertEquals(Duration.ofMillis(5), evidence.elapsed)
     }
@@ -62,22 +58,26 @@ class ProgressAwareFutureAwaiterTest {
     fun `stalled progress fails at the no-progress deadline with typed evidence`() {
         var now = 0L
         val awaiter = ProgressAwareFutureAwaiter(
-            noProgressTimeout = Duration.ofMillis(2),
-            maximumWait = Duration.ofMillis(6),
-            observationInterval = Duration.ofMillis(1),
-            nanoTime = { now * 1_000_000 },
+            policy = policy(),
+            clock = MonotonicClock.fromRaw { now * 1_000_000 },
             pause = { now += it.toMillis() },
         )
 
-        val error = assertThrows(RuntimeProgressDeadlineExceeded::class.java) {
-            awaiter.await(
-                RuntimeProgressStage.MODEL_SETTLEMENT,
-                CompletableFuture(),
-                Supplier { "unchanged" },
-                BooleanSupplier { false },
-            )
-        }
+        val outcome = awaiter.await(
+            RuntimeProgressStage.MODEL_SETTLEMENT,
+            CompletableFuture(),
+            RuntimeProgressProbe { RuntimeProgressObservation.capture("unchanged") },
+            RuntimeWaitLifecycleProbe { RuntimeWaitLifecycle.Active },
+        )
+        val rejected = assertInstanceOf(RuntimeProgressAwaitOutcome.Rejected::class.java, outcome)
+        val failure = assertInstanceOf(RuntimeProgressAwaitFailure.DeadlineExceeded::class.java, rejected.failure)
 
-        assertEquals(Duration.ofMillis(2), error.evidence.noProgress)
+        assertEquals(Duration.ofMillis(2), failure.evidence.noProgress)
     }
+
+    private fun policy(): RuntimeProgressWaitPolicy = RuntimeProgressWaitPolicy.derive(
+        noProgressTimeout = Duration.ofMillis(2),
+        maximumWait = Duration.ofMillis(6),
+        observationInterval = Duration.ofMillis(1),
+    )
 }

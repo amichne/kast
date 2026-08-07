@@ -7,11 +7,11 @@ import java.util.concurrent.TimeUnit
 
 class GradleModelSettlementAwaiter internal constructor(
     private val policy: GradleModelSettlementPolicy,
-    private val nanoTime: () -> Long,
+    private val clock: MonotonicClock,
     private val pause: (Duration) -> Unit,
 ) {
     fun await(observer: () -> GradleImportObservation): GradleModelSettlementOutcome {
-        val startedAt = nanoTime()
+        val startedAt = clock.now()
         var lastProgressAt = startedAt
         val transitions = ArrayDeque<GradleImportTransition>()
         var lastObservation: GradleImportObservation? = null
@@ -20,8 +20,8 @@ class GradleModelSettlementAwaiter internal constructor(
         var stableObservations = 0
 
         while (true) {
-            val observedAt = nanoTime()
-            val elapsed = durationBetween(startedAt, observedAt)
+            val observedAt = clock.now()
+            val elapsed = observedAt.elapsedSince(startedAt)
             val observation = observer()
             totalObservations += 1
 
@@ -40,7 +40,7 @@ class GradleModelSettlementAwaiter internal constructor(
                         occurrenceCount = 1,
                     ),
                 )
-                if (transitions.size > policy.maxTransitionTraceEntries) {
+                if (transitions.size > policy.maxTransitionTraceEntries.value) {
                     transitions.removeFirst()
                 }
                 lastObservation = observation
@@ -50,7 +50,7 @@ class GradleModelSettlementAwaiter internal constructor(
             if (observation.isSettlementCandidate) {
                 lastProgressAt = observedAt
             }
-            val noProgress = durationBetween(lastProgressAt, observedAt)
+            val noProgress = observedAt.elapsedSince(lastProgressAt)
             val evidence =
                 GradleModelSettlementEvidence(
                     lastObservation = observation,
@@ -65,15 +65,18 @@ class GradleModelSettlementAwaiter internal constructor(
             if (observation.lifecycle == ProjectLifecycleState.DISPOSED) {
                 return GradleModelSettlementOutcome.ProjectDisposed(evidence)
             }
-            if (stableObservations >= policy.requiredStableObservations) {
+            if (stableObservations >= policy.requiredStableObservations.value) {
                 return GradleModelSettlementOutcome.Settled(evidence)
             }
-            if (noProgress >= policy.noProgressTimeout || elapsed >= policy.maximumWait) {
+            if (
+                noProgress >= policy.progressWaitPolicy.noProgressTimeout ||
+                elapsed >= policy.progressWaitPolicy.maximumWait
+            ) {
                 return GradleModelSettlementOutcome.TimedOut(evidence)
             }
 
             try {
-                pause(policy.observationInterval)
+                pause(policy.progressWaitPolicy.observationInterval)
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 return GradleModelSettlementOutcome.Interrupted(evidence)
@@ -81,15 +84,12 @@ class GradleModelSettlementAwaiter internal constructor(
         }
     }
 
-    private fun durationBetween(startedAt: Long, observedAt: Long): Duration =
-        Duration.ofNanos((observedAt - startedAt).coerceAtLeast(0))
-
     companion object {
         @JvmStatic
         fun standard(): GradleModelSettlementAwaiter =
             GradleModelSettlementAwaiter(
                 policy = GradleModelSettlementPolicy.standard(),
-                nanoTime = System::nanoTime,
+                clock = MonotonicClock.system(),
                 pause = { duration -> TimeUnit.NANOSECONDS.sleep(duration.toNanos()) },
             )
     }

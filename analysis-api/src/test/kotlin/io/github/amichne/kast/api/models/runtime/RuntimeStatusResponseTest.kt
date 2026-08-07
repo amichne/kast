@@ -5,6 +5,7 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.time.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -100,29 +101,57 @@ class RuntimeStatusResponseTest {
         assertTrue(response.readiness.model is RuntimeReadinessLane.Ready)
         assertTrue(response.readiness.semanticGraph is RuntimeReadinessLane.Ready)
         assertTrue(response.readiness.references is RuntimeReadinessLane.Blocked)
+        assertEquals(RuntimeReadinessSummary.NotReady, response.readiness.summary)
         assertFalse(response.ready)
     }
 
     @Test
-    fun `typed progress rejects elapsed or work contradictions`() {
-        assertThrows<IllegalArgumentException> {
-            RuntimeReadinessProgress(
-                stage = RuntimeProgressStage.GRADLE_IMPORT,
-                completedUnits = 2,
-                totalUnits = 1,
-                elapsedMillis = 10,
-                noProgressMillis = 0,
+    fun `runtime status rejects a legacy ready bit that contradicts layered readiness`() {
+        val readiness = RuntimeReadiness(
+            runtime = RuntimeReadinessLane.Ready,
+            model = RuntimeReadinessLane.Ready,
+            references = RuntimeReadinessLane.Ready,
+            semanticGraph = RuntimeReadinessLane.Ready,
+            mutation = RuntimeReadinessLane.Ready,
+        )
+
+        val failure = assertThrows<RuntimeStatusConsistencyException> {
+            RuntimeStatusResponse(
+                state = RuntimeState.READY,
+                healthy = true,
+                active = true,
+                indexing = false,
+                backendName = "indexer",
+                backendVersion = "test",
+                workspaceRoot = "/workspace",
+                referenceIndexReady = true,
+                readiness = readiness,
+                ready = false,
             )
-        }
-        assertThrows<IllegalArgumentException> {
-            RuntimeReadinessProgress(
-                stage = RuntimeProgressStage.MODEL_SETTLEMENT,
-                completedUnits = 0,
-                totalUnits = 0,
-                elapsedMillis = 10,
-                noProgressMillis = 11,
-            )
-        }
+        }.failure
+
+        assertEquals(
+            RuntimeStatusConsistencyFailure.ReadySummaryMismatch(RuntimeReadinessSummary.Ready, false),
+            failure,
+        )
+    }
+
+    @Test
+    fun `typed progress is derived from closed work and timing evidence`() {
+        val progress = RuntimeReadinessProgress.derive(
+            stage = RuntimeProgressStage.GRADLE_IMPORT,
+            work = RuntimeProgressWork.pending(NonNegativeInt(2)),
+            timing = RuntimeProgressTiming.between(
+                stageStartedAt = Instant.ofEpochMilli(0),
+                lastProgressAt = Instant.ofEpochMilli(7),
+                observedAt = Instant.ofEpochMilli(10),
+            ),
+        )
+
+        assertEquals(0, progress.completedUnits)
+        assertEquals(2, progress.totalUnits)
+        assertEquals(10, progress.elapsedMillis)
+        assertEquals(3, progress.noProgressMillis)
     }
 
     @Test

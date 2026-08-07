@@ -22,6 +22,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceWakeup
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import java.util.concurrent.CancellationException
+import java.time.Duration
 
 internal class WorkspaceTransitionWorker(
     initialConfig: KastConfig,
@@ -49,7 +50,7 @@ internal class WorkspaceTransitionWorker(
     private var cycleResult: IndexingPassResult? = null
     private var reconciliationToken: IdeaIndexSemanticAdmission.ReconciliationToken? = null
     private var publishedSummary: KastSourceIndexSummary? = null
-    private var consecutiveFailures = 0
+    private var consecutiveFailures = ConsecutiveIndexingFailures.none()
     private var modelBuildSemanticIdentity = initialModelBuildSemanticIdentity
 
     private val coordinator = WorkspaceTransitionCoordinator(
@@ -214,25 +215,25 @@ internal class WorkspaceTransitionWorker(
         while (!isCancelled()) {
             when (coordinator.reconcilePending()) {
                 TransitionRun.NoWork -> {
-                    if (!awaitWork(RECOVERY_AUDIT_MILLIS)) return
+                    if (awaitWork(RECOVERY_AUDIT_DELAY) == WorkspaceWorkerWaitOutcome.Interrupted) return
                 }
 
                 TransitionRun.Published -> {
-                    consecutiveFailures = 0
+                    consecutiveFailures = ConsecutiveIndexingFailures.none()
                     onCompleted(checkNotNull(publishedSummary))
                     publishedSummary = null
-                    if (!awaitWork(RECOVERY_AUDIT_MILLIS)) return
+                    if (awaitWork(RECOVERY_AUDIT_DELAY) == WorkspaceWorkerWaitOutcome.Interrupted) return
                 }
 
                 TransitionRun.Invalidated -> Unit
 
                 TransitionRun.Retry -> {
-                    if (!awaitWork(GIT_TRANSITION_RETRY_MILLIS)) return
+                    if (awaitWork(GIT_TRANSITION_RETRY_DELAY) == WorkspaceWorkerWaitOutcome.Interrupted) return
                 }
 
                 TransitionRun.Blocked -> {
-                    consecutiveFailures += 1
-                    if (!awaitWork(indexingRetryDelayMillis(consecutiveFailures))) return
+                    consecutiveFailures = consecutiveFailures.afterFailure()
+                    if (awaitWork(consecutiveFailures.retryDelay) == WorkspaceWorkerWaitOutcome.Interrupted) return
                 }
             }
         }
@@ -297,20 +298,28 @@ internal class WorkspaceTransitionWorker(
         }
     }
 
-    private fun awaitWork(delayMillis: Long): Boolean {
+    /**
+     * Proof transition: `Duration -> WorkspaceWorkerWaitOutcome`.
+     *
+     * Maps the injected test waiter or production wakeup capability into one
+     * closed worker-lifecycle state. The legacy Boolean test seam and raw
+     * millisecond timeout are consumed only inside this effect boundary.
+     */
+    private fun awaitWork(delay: Duration): WorkspaceWorkerWaitOutcome {
+        val delayMillis = delay.toMillis()
         waitForNextPass?.let { wait ->
-            if (!wait(delayMillis)) return false
+            if (!wait(delayMillis)) return WorkspaceWorkerWaitOutcome.Interrupted
             if (coordinator.snapshot().pendingSignals.isEmpty()) requestRecoveryAudit()
-            return true
+            return WorkspaceWorkerWaitOutcome.Continue
         }
         return when (eventWakeup.awaitWakeup(delayMillis)) {
-            WorkspaceWakeup.Signal -> true
+            WorkspaceWakeup.Signal -> WorkspaceWorkerWaitOutcome.Continue
             WorkspaceWakeup.RecoveryAudit -> {
                 if (coordinator.snapshot().pendingSignals.isEmpty()) requestRecoveryAudit()
-                true
+                WorkspaceWorkerWaitOutcome.Continue
             }
 
-            WorkspaceWakeup.Interrupted -> false
+            WorkspaceWakeup.Interrupted -> WorkspaceWorkerWaitOutcome.Interrupted
         }
     }
 
@@ -340,6 +349,11 @@ internal class WorkspaceTransitionWorker(
         }
         return current
     }
+}
+
+private enum class WorkspaceWorkerWaitOutcome {
+    Continue,
+    Interrupted,
 }
 
 internal class BuildSemanticInputsMovedDuringRefreshException(
@@ -377,4 +391,4 @@ private sealed interface RecoveryAuditOutcome {
 }
 
 private const val EVENT_QUIESCENCE_MILLIS = 250L
-private const val GIT_TRANSITION_RETRY_MILLIS = 250L
+private val GIT_TRANSITION_RETRY_DELAY: Duration = Duration.ofMillis(250)

@@ -1,19 +1,126 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.validation.FileHashing
 import java.nio.file.Path
 
-object ReadOnlyGitCommand {
-    private const val OPTIONAL_LOCKS_ENVIRONMENT = "GIT_OPTIONAL_LOCKS"
-
-    fun processBuilder(vararg arguments: String): ProcessBuilder =
-        processBuilder(listOf("git", *arguments))
-
-    fun processBuilder(command: List<String>): ProcessBuilder {
-        require(command.isNotEmpty()) { "Git command must not be empty" }
-        return ProcessBuilder(command).also { builder ->
+class ReadOnlyGitCommand private constructor(
+    private val arguments: List<String>,
+) {
+    /** Raw command extraction is confined to the operating-system process boundary. */
+    fun processBuilder(): ProcessBuilder =
+        ProcessBuilder(listOf("git") + arguments).also { builder ->
             builder.environment()[OPTIONAL_LOCKS_ENVIRONMENT] = "0"
         }
+
+    companion object {
+        private const val OPTIONAL_LOCKS_ENVIRONMENT = "GIT_OPTIONAL_LOCKS"
+
+        fun originRemote(): ReadOnlyGitCommand = command("config", "--get", "remote.origin.url")
+
+        fun workspaceTopLevel(): ReadOnlyGitCommand = command("rev-parse", "--show-toplevel")
+
+        fun commonGitDirectory(): ReadOnlyGitCommand = command("rev-parse", "--git-common-dir")
+
+        fun exactGitDirectory(): ReadOnlyGitCommand = command("rev-parse", "--git-dir")
+
+        fun workspacePrefix(): ReadOnlyGitCommand = command("rev-parse", "--show-prefix")
+
+        fun linkedWorktreeRegistration(): ReadOnlyGitCommand = command(
+            "rev-parse",
+            "--path-format=absolute",
+            "--show-toplevel",
+            "--absolute-git-dir",
+            "--git-common-dir",
+        )
+
+        /**
+         * Proof transition: `List<String> -> ReadOnlyGitCommand`.
+         *
+         * Places each opaque marker path only as the operand of `--git-path`
+         * inside a fixed `rev-parse` query. The returned command cannot select
+         * a mutating Git operation; raw arguments are extracted only by
+         * [processBuilder] at the operating-system boundary.
+         */
+        fun transitionMarkerPaths(markerPaths: List<String>): ReadOnlyGitCommand = command(
+            "rev-parse",
+            "--path-format=absolute",
+            "--show-toplevel",
+            "--absolute-git-dir",
+            "--git-common-dir",
+            *markerPaths.flatMap { path -> listOf("--git-path", path) }.toTypedArray(),
+        )
+
+        fun workspaceStatus(): ReadOnlyGitCommand = command(
+            "status",
+            "--porcelain",
+            "--untracked-files=normal",
+        )
+
+        fun ignoredKotlinSources(): ReadOnlyGitCommand = command(
+            "ls-files",
+            "--others",
+            "--ignored",
+            "--exclude-standard",
+            "-z",
+            "--",
+            "*.kt",
+        )
+
+        /**
+         * Proof transition: `NonBlankString -> ReadOnlyGitCommand`.
+         *
+         * Places the already-typed revision expression after
+         * `--end-of-options` in a fixed `rev-parse --verify` query. The output
+         * is therefore a read-only command even when the operand begins with a
+         * dash; raw extraction is confined to [processBuilder].
+         */
+        fun resolveTree(expression: NonBlankString): ReadOnlyGitCommand = command(
+            "rev-parse",
+            "--verify",
+            "--end-of-options",
+            expression.value,
+        )
+
+        /**
+         * Proof transition: `String -> ReadOnlyGitCommand`.
+         *
+         * Places the caller's already-proven object name after
+         * `--end-of-options` in a fixed recursive tree read. The string is
+         * extracted from its owning domain type only at this Git boundary.
+         */
+        fun treeManifest(objectName: String): ReadOnlyGitCommand = command(
+            "ls-tree",
+            "--full-tree",
+            "-r",
+            "-z",
+            "--end-of-options",
+            objectName,
+        )
+
+        fun currentBranch(): ReadOnlyGitCommand = command(
+            "symbolic-ref",
+            "--quiet",
+            "--short",
+            "HEAD",
+        )
+
+        /**
+         * Proof transition: `String -> ReadOnlyGitCommand`.
+         *
+         * Places the caller's already-proven object ID in the object operand
+         * of a fixed blob read. The raw string exists only at this Git process
+         * boundary and cannot choose an operation or option.
+         */
+        fun blob(objectId: String): ReadOnlyGitCommand = command(
+            "cat-file",
+            "blob",
+            "--end-of-options",
+            objectId,
+        )
+
+        private fun command(vararg arguments: String): ReadOnlyGitCommand =
+            ReadOnlyGitCommand(arguments.toList())
     }
 }
 
@@ -47,7 +154,7 @@ object GitRemoteParser {
         .firstOrNull()
 
     fun origin(workspaceRoot: Path): GitRemote? = runCatching {
-        val process = ReadOnlyGitCommand.processBuilder("config", "--get", "remote.origin.url")
+        val process = ReadOnlyGitCommand.originRemote().processBuilder()
             .directory(workspaceRoot.toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
@@ -59,9 +166,9 @@ object GitRemoteParser {
 object GitWorkspaceResolver {
     fun discover(workspaceRoot: Path): GitWorkspace? = runCatching {
         val normalizedRoot = workspaceRoot.toAbsolutePath().normalize()
-        val toplevel = gitPath(normalizedRoot, "rev-parse", "--show-toplevel") ?: return null
-        val commonDir = gitPath(normalizedRoot, "rev-parse", "--git-common-dir") ?: return null
-        val gitDir = gitPath(normalizedRoot, "rev-parse", "--git-dir") ?: return null
+        val toplevel = gitPath(normalizedRoot, ReadOnlyGitCommand.workspaceTopLevel()) ?: return null
+        val commonDir = gitPath(normalizedRoot, ReadOnlyGitCommand.commonGitDirectory()) ?: return null
+        val gitDir = gitPath(normalizedRoot, ReadOnlyGitCommand.exactGitDirectory()) ?: return null
         GitWorkspace(
             toplevel = toplevel,
             commonDir = commonDir,
@@ -70,8 +177,8 @@ object GitWorkspaceResolver {
         )
     }.getOrNull()
 
-    private fun gitPath(workspaceRoot: Path, vararg args: String): Path? =
-        gitOutput(workspaceRoot, *args)
+    private fun gitPath(workspaceRoot: Path, command: ReadOnlyGitCommand): Path? =
+        gitOutput(workspaceRoot, command)
             ?.let(Path::of)
             ?.let { path ->
                 if (path.isAbsolute) path else workspaceRoot.resolve(path)
@@ -79,8 +186,8 @@ object GitWorkspaceResolver {
             ?.toAbsolutePath()
             ?.normalize()
 
-    private fun gitOutput(workspaceRoot: Path, vararg args: String): String? = runCatching {
-        val process = ReadOnlyGitCommand.processBuilder(*args)
+    private fun gitOutput(workspaceRoot: Path, command: ReadOnlyGitCommand): String? = runCatching {
+        val process = command.processBuilder()
             .directory(workspaceRoot.toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()

@@ -348,7 +348,7 @@ object RepositorySnapshotCoordinator {
     )
 
     internal fun currentBranch(workspaceRoot: NormalizedPath): RepositoryBranch = runCatching {
-        val process = ReadOnlyGitCommand.processBuilder("symbolic-ref", "--quiet", "--short", "HEAD")
+        val process = ReadOnlyGitCommand.currentBranch().processBuilder()
             .directory(workspaceRoot.toJavaPath().toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
@@ -363,7 +363,7 @@ object RepositorySnapshotCoordinator {
     }.getOrDefault(RepositoryBranch.Unavailable)
 
     private fun gitBlob(workspaceRoot: NormalizedPath, oid: GitObjectId): GitBlobResolution = runCatching {
-        val process = ReadOnlyGitCommand.processBuilder("cat-file", "blob", oid.value)
+        val process = ReadOnlyGitCommand.blob(oid.value).processBuilder()
             .directory(workspaceRoot.toJavaPath().toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()

@@ -9,3 +9,13 @@
 - Proof: flat-routing fixtures; `WorkspaceGenerationStoreTest`; `WorkspaceWriteTransactionTest`; `RepositorySnapshotIntegrationTest`; Rust `published_workspace` tests; full Gradle, Cargo, formatting, lint, and repository-shape gates.
 - Introduced by: PR #564.
 - Compatibility: none. Existing workspace state is neither moved nor read; schema 15 regenerates it at the new canonical path.
+
+## 2026-08-07 — Proof-carrying runtime progress and Git reads
+
+- Removal: arbitrary `ReadOnlyGitCommand.processBuilder` argument lists, Boolean readiness summaries and wait results, nullable progress timestamps, raw retry counters, primitive Gradle inventory and settlement-policy fields, and exception-only progress-wait outcomes.
+- Replacement: fixed read-only Git command factories; closed readiness, consistency, deadline, lifecycle, completion, and wait outcomes; typed progress timing and work; typed Gradle inventory and policy bounds; and finite failures adapted to exceptions only at Java, IntelliJ, or serialization boundaries.
+- Reason: every fact established by changed Kotlin must survive as a more constrained derivation instead of being discarded into primitives, nullability, call order, or arbitrary exceptions.
+- Paths: `AGENTS.md`, `analysis-api/src/main`, `indexer/src/main`, and their focused tests.
+- Proof: `ReadOnlyGitCommandTest`, `RuntimeStatusResponseTest`, `ProgressAwareFutureAwaiterTest`, `GradleModelSettlementAwaiterTest`, `KastIdeaProjectIndexingRuntimeTest`, the full Gradle test graph, and the repository-shape gate.
+- Introduced by: PR #564.
+- Compatibility: none. Callers must construct and consume the typed contracts directly.

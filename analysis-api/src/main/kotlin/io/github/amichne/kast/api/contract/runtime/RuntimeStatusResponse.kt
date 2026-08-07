@@ -63,19 +63,21 @@ data class RuntimeStatusResponse(
         defaultValue = "derived from legacy runtime and reference fields",
     )
     val readiness: RuntimeReadiness = RuntimeReadiness.fromLegacy(
-        state = state,
-        healthy = healthy,
-        active = active,
-        indexing = indexing,
-        referenceCoverage = ReferenceCoverage.parse(
-            indexReady = referenceIndexReady,
-            state = referenceCoverageState,
-            limitations = referenceCoverageLimitations,
+        LegacyRuntimeReadinessFacts(
+            state = state,
+            healthy = healthy,
+            active = active,
+            indexing = indexing,
+            referenceCoverage = ReferenceCoverage.parse(
+                indexReady = referenceIndexReady,
+                state = referenceCoverageState,
+                limitations = referenceCoverageLimitations,
+            ),
         ),
     ),
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     @DocField(description = "Compatibility summary. True only when every readiness lane is ready.")
-    val ready: Boolean = readiness.readySummary,
+    val ready: Boolean = readiness.summary.toWireBoolean(),
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 ) {
@@ -86,13 +88,12 @@ data class RuntimeStatusResponse(
         limitations = referenceCoverageLimitations,
     )
 
-    init {
-        require(ready == readiness.readySummary) {
-            "Compatibility readiness must equal the layered readiness summary"
-        }
-        require(RuntimeReadinessLane.matchesReferenceCoverage(readiness.references, referenceCoverage)) {
-            "Reference readiness must match reference coverage evidence"
-        }
+    @Transient
+    internal val consistency: RuntimeStatusConsistency = when (
+        val resolution = RuntimeStatusConsistency.resolve(readiness, referenceCoverage, ready)
+    ) {
+        is RuntimeStatusConsistencyResolution.Verified -> resolution.proof
+        is RuntimeStatusConsistencyResolution.Rejected -> throw RuntimeStatusConsistencyException(resolution.failure)
     }
 
     fun withReferenceCoverage(coverage: ReferenceCoverage): RuntimeStatusResponse {
@@ -104,10 +105,19 @@ data class RuntimeStatusResponse(
             referenceCoverageState = coverage.state,
             referenceCoverageLimitations = coverage.limitations,
             readiness = updatedReadiness,
-            ready = updatedReadiness.readySummary,
+            ready = updatedReadiness.summary.toWireBoolean(),
         )
     }
 }
+
+/**
+ * Outer serializer adapter for a finite [RuntimeStatusConsistencyFailure].
+ * Core validation returns [RuntimeStatusConsistencyResolution]; only DTO
+ * construction converts rejected wire evidence to an exception.
+ */
+internal class RuntimeStatusConsistencyException(
+    val failure: RuntimeStatusConsistencyFailure,
+) : IllegalArgumentException(failure.toString())
 
 /**
  * Wire-boundary transition from serialized primitives to one constrained

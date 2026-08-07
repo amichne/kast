@@ -23,12 +23,20 @@ import com.intellij.util.execution.ParametersListUtil;
 import com.intellij.workspaceModel.ide.JpsProjectLoadingManager;
 import com.intellij.workspaceModel.ide.impl.WorkspaceModelImpl;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleImportObservation;
+import io.github.amichne.kast.indexer.gradle.settlement.GradleModelInventory;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelReadiness;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementAwaiter;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementEvidence;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementException;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementOutcome;
 import io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiter;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressAwaitException;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressAwaitFailure;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressAwaitOutcome;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressDeadlineEvidence;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressObservation;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeWaitCompletion;
+import io.github.amichne.kast.indexer.gradle.settlement.RuntimeWaitLifecycle;
 import io.github.amichne.kast.api.contract.RuntimeProgressStage;
 import io.github.amichne.kast.indexer.project.IdeaIndexState;
 import io.github.amichne.kast.indexer.project.ProjectLifecycleState;
@@ -45,6 +53,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -184,21 +193,25 @@ public final class GradleProjectImportBridge {
 
     private static void awaitImport(CompletableFuture<Void> importFuture, Project project)
         throws InterruptedException, ExecutionException {
-        ProgressAwareFutureAwaiter.standard().await(
-            RuntimeProgressStage.GRADLE_IMPORT,
-            importFuture,
-            () -> inspectGradleImportObservation(project),
-            project::isDisposed
+        requireCompleted(
+            ProgressAwareFutureAwaiter.standard().await(
+                RuntimeProgressStage.GRADLE_IMPORT,
+                importFuture,
+                () -> RuntimeProgressObservation.capture(inspectGradleImportObservation(project)),
+                () -> project.isDisposed() ? RuntimeWaitLifecycle.Disposed : RuntimeWaitLifecycle.Active
+            )
         );
     }
 
     public static void awaitGradleRefresh(Project project, CompletableFuture<Void> refreshFuture)
         throws InterruptedException, ExecutionException {
-        ProgressAwareFutureAwaiter.standard().await(
-            RuntimeProgressStage.GRADLE_IMPORT,
-            refreshFuture,
-            () -> inspectGradleImportObservation(project),
-            project::isDisposed
+        requireCompleted(
+            ProgressAwareFutureAwaiter.standard().await(
+                RuntimeProgressStage.GRADLE_IMPORT,
+                refreshFuture,
+                () -> RuntimeProgressObservation.capture(inspectGradleImportObservation(project)),
+                () -> project.isDisposed() ? RuntimeWaitLifecycle.Disposed : RuntimeWaitLifecycle.Active
+            )
         );
     }
 
@@ -210,7 +223,7 @@ public final class GradleProjectImportBridge {
         if (outcome instanceof GradleModelSettlementOutcome.Settled settled) {
             return settled.getEvidence();
         }
-        throw new GradleModelSettlementException(outcome);
+        throw new GradleModelSettlementException((GradleModelSettlementOutcome.Failure) outcome);
     }
 
     static boolean isConcurrentGradleSyncFailure(Throwable failure) {
@@ -231,7 +244,8 @@ public final class GradleProjectImportBridge {
                 GradleReloadState.COMPLETED,
                 GradleResolveState.IDLE,
                 IdeaIndexState.SMART,
-                ProjectLifecycleState.DISPOSED
+                ProjectLifecycleState.DISPOSED,
+                GradleModelInventory.empty()
             );
         }
         ObservableOperationTrace reload = GradleImportingUtil.getGradleProjectReloadOperation(project, project);
@@ -253,25 +267,33 @@ public final class GradleProjectImportBridge {
             resolveActive ? GradleResolveState.IN_PROGRESS : GradleResolveState.IDLE,
             DumbService.getInstance(project).isDumb() ? IdeaIndexState.DUMB : IdeaIndexState.SMART,
             ProjectLifecycleState.ACTIVE,
-            observedModules.length,
-            sourceRootCount
+            GradleModelInventory.fromIdeaModel(observedModules.length, sourceRootCount)
         );
     }
 
     private static void awaitStartupActivities(Project project, String externalProjectPath) {
         StartupManager startup = StartupManager.getInstance(project);
         try {
-            ProgressAwareFutureAwaiter.standard().awaitCondition(
-                RuntimeProgressStage.STARTING,
-                startup::postStartupActivityPassed,
-                startup::postStartupActivityPassed,
-                project::isDisposed
+            requireCompleted(
+                ProgressAwareFutureAwaiter.standard().awaitCondition(
+                    RuntimeProgressStage.STARTING,
+                    () -> startup.postStartupActivityPassed()
+                        ? RuntimeWaitCompletion.Completed
+                        : RuntimeWaitCompletion.Pending,
+                    () -> RuntimeProgressObservation.capture(startup.postStartupActivityPassed()),
+                    () -> project.isDisposed() ? RuntimeWaitLifecycle.Disposed : RuntimeWaitLifecycle.Active
+                )
             );
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(
                 "Interrupted while waiting for project startup activities: " + externalProjectPath,
                 error
+            );
+        } catch (ExecutionException error) {
+            throw new IllegalStateException(
+                "Project startup observation failed: " + externalProjectPath,
+                error.getCause() == null ? error : error.getCause()
             );
         }
         awaitJpsProjectLoad(
@@ -299,11 +321,15 @@ public final class GradleProjectImportBridge {
         CompletableFuture<Void> projectLoaded = new CompletableFuture<>();
         registerProjectLoadedCallback.accept(() -> projectLoaded.complete(null));
         try {
-            ProgressAwareFutureAwaiter.standard().await(
-                RuntimeProgressStage.MODEL_SETTLEMENT,
-                projectLoaded,
-                projectLoaded::isDone,
-                projectDisposed
+            requireCompleted(
+                ProgressAwareFutureAwaiter.standard().await(
+                    RuntimeProgressStage.MODEL_SETTLEMENT,
+                    projectLoaded,
+                    () -> RuntimeProgressObservation.capture(projectLoaded.isDone()),
+                    () -> projectDisposed.getAsBoolean()
+                        ? RuntimeWaitLifecycle.Disposed
+                        : RuntimeWaitLifecycle.Active
+                )
             );
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
@@ -317,6 +343,24 @@ public final class GradleProjectImportBridge {
                 error.getCause() == null ? error : error.getCause()
             );
         }
+    }
+
+    private static RuntimeProgressDeadlineEvidence requireCompleted(RuntimeProgressAwaitOutcome outcome)
+        throws InterruptedException, ExecutionException {
+        if (outcome instanceof RuntimeProgressAwaitOutcome.Completed completed) {
+            return completed.getEvidence();
+        }
+        RuntimeProgressAwaitFailure failure = ((RuntimeProgressAwaitOutcome.Rejected) outcome).getFailure();
+        if (failure instanceof RuntimeProgressAwaitFailure.Interrupted) {
+            throw new InterruptedException("Runtime progress wait was interrupted");
+        }
+        if (failure instanceof RuntimeProgressAwaitFailure.FutureFailed futureFailed) {
+            throw new ExecutionException(futureFailed.getCause());
+        }
+        if (failure instanceof RuntimeProgressAwaitFailure.FutureCancelled) {
+            throw new CancellationException("Runtime progress future was cancelled");
+        }
+        throw new RuntimeProgressAwaitException(failure);
     }
 
     private static boolean workspaceModelLoadedFromCache(Project project) {
