@@ -56,6 +56,7 @@ impl RpcResponseTimeoutPolicy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WorkspaceTransitionRpcMethod {
+    SemanticGraph,
     WorkspaceRefresh,
     ApplyEdits,
     ExactFileImageCas,
@@ -70,6 +71,7 @@ impl WorkspaceTransitionRpcMethod {
     /// absent or unrelated method has no transition-timeout authority.
     fn derive(method: Option<&str>) -> Option<Self> {
         match method {
+            Some("raw/semantic-graph") => Some(Self::SemanticGraph),
             Some("raw/workspace-refresh") => Some(Self::WorkspaceRefresh),
             Some("raw/apply-edits") => Some(Self::ApplyEdits),
             Some("raw/exact-file-image-cas") => Some(Self::ExactFileImageCas),
