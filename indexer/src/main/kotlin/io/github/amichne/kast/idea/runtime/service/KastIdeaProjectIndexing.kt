@@ -21,6 +21,7 @@ import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
 import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -95,7 +96,7 @@ internal class KastIdeaProjectIndexing(
     private val indexingTerminated = CountDownLatch(1)
     private val lifecycleLock = Any()
     private val transitionWorkerLock = Any()
-    private val bufferedWorkspaceSignals = linkedSetOf<WorkspaceSignal>()
+    private val bufferedWorkspaceRequests = linkedSetOf<WorkspaceTransitionRequest>()
 
     @Volatile
     private var indexingThread: Thread? = null
@@ -107,7 +108,7 @@ internal class KastIdeaProjectIndexing(
     private var transitionWorker: WorkspaceTransitionWorker? = null
 
     init {
-        transitionIngress.bind(::observeWorkspaceSignal)
+        transitionIngress.bindRequest(::observeWorkspaceRequest)
     }
 
     fun start() {
@@ -309,8 +310,8 @@ internal class KastIdeaProjectIndexing(
             },
         )
         synchronized(transitionWorkerLock) {
-            bufferedWorkspaceSignals.forEach(worker::observe)
-            bufferedWorkspaceSignals.clear()
+            bufferedWorkspaceRequests.forEach(worker::observe)
+            bufferedWorkspaceRequests.clear()
             transitionWorker = worker
         }
         worker.requestInitialReconciliation()
@@ -324,12 +325,16 @@ internal class KastIdeaProjectIndexing(
     }
 
     private fun observeWorkspaceSignal(signal: WorkspaceSignal) {
-        semanticAdmission.dirty("workspace event requires reconciliation: ${signal.name}")
-        routeWorkspaceSignal(
+        observeWorkspaceRequest(WorkspaceTransitionRequest.Unkeyed(signal))
+    }
+
+    private fun observeWorkspaceRequest(request: WorkspaceTransitionRequest) {
+        semanticAdmission.dirty("workspace event requires reconciliation: ${request.signal.name}")
+        routeWorkspaceRequest(
             lock = transitionWorkerLock,
-            signal = signal,
+            request = request,
             enqueue = { observed ->
-                transitionWorker?.observe(observed) ?: run { bufferedWorkspaceSignals += observed }
+                transitionWorker?.observe(observed) ?: run { bufferedWorkspaceRequests += observed }
             },
             wake = eventWakeup::signal,
         )

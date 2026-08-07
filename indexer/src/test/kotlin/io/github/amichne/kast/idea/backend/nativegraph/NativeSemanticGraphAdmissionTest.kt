@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 
 @TestApplication
 class NativeSemanticGraphAdmissionTest {
@@ -58,8 +59,8 @@ class NativeSemanticGraphAdmissionTest {
 
         sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
-            lateinit var backend: KastIndexerBackend
-            backend = KastIndexerBackend(
+            val backendAuthority = CompletableFuture<KastIndexerBackend>()
+            val backend = KastIndexerBackend(
                 project = project,
                 workspaceRoot = workspaceRoot,
                 limits = limits(),
@@ -67,13 +68,14 @@ class NativeSemanticGraphAdmissionTest {
                 psiGeneration = { 1L },
                 workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority { admission },
                 workspaceTransitionRequester = TestWorkspaceTransitionRequester(
-                    onReconcile = { signal ->
-                        transitionSignals += signal
-                        backend.reconcileSemanticGraphForTest(query)
+                    onReconcile = { request ->
+                        transitionSignals += request.signal
+                        backendAuthority.join().reconcileSemanticGraphForTest(query)
                         testPublishedWorkspaceGeneration()
                     },
                 ),
             )
+            check(backendAuthority.complete(backend))
             backend.use { backend ->
                 repeat(3) {
                     assertThrows(ConflictException::class.java) {
@@ -130,7 +132,7 @@ class NativeSemanticGraphAdmissionTest {
                             )
                         }
                     }
-                    assertTrue(error.message.orEmpty().contains("persisted-index scope"))
+                    assertTrue(error.message.contains("persisted-index scope"))
                 }
             }
         } finally {

@@ -2,6 +2,23 @@
 
 ## RED
 
+### Path-keyed source transition coalescing
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionFreshnessTest --no-daemon --console=plain
+```
+
+Expected failure: focused refresh requests carry only the unkeyed
+`WorkspaceSignal.Source`, so a same-path, same-content request arriving during
+an active cycle cannot prove that the cycle subsumes it and unnecessarily
+invalidates the publication.
+
+Observed failure: FAILED as expected during `:indexer:compileTestKotlin`.
+`WorkspaceTransitionRequest`, `WorkspaceSourceFreshness`, and the request-aware
+route derivation do not exist, so the focused coalescing contract cannot compile.
+
 ### Overlay-base raw extraction boundary
 
 Command:
@@ -373,6 +390,14 @@ yet exist.
 Commands:
 
 ```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionFreshnessTest --tests io.github.amichne.kast.idea.transition.WorkspaceTransitionCoordinatorTest --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.KastSemanticAdmissionRefreshTest --tests io.github.amichne.kast.idea.backend.nativegraph.NativeSemanticGraphAdmissionTest --tests io.github.amichne.kast.idea.backend.contract.mutation.ExactFileImageCasTest --no-daemon --console=plain
+./gradlew :indexer:test --no-daemon --console=plain
+base_commit=$(git merge-base HEAD origin/main)
+changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <({ git diff --name-only "$base_commit" -- '*.kt'; git ls-files --others --exclude-standard -- '*.kt'; } | sort -u)
+kast refresh "${changed_kotlin[@]}"
+kast check "${changed_kotlin[@]}"
+./gradlew check --no-daemon --console=plain
+python3 .github/scripts/check-repository-shape.py --root .
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test runtime_durable_ownership_smoke missing_live_registration_cannot_be_cleaned_around_remaining_review_regression
 base_commit=$(git merge-base HEAD origin/main)
 changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <(git diff --name-only "$base_commit" -- '*.kt' | sort -u)
@@ -474,4 +499,12 @@ repository-shape gate, and exact nine-file compiler audit passed with zero
 diagnostics or skipped files. The overlay-base KDoc now confines raw validated
 database-path extraction to filesystem, SQLite, and serialization adapters;
 the executable KDoc audit, index-store compilation, and exact-file semantic
-analysis all passed with zero diagnostics or skips.
+analysis all passed with zero diagnostics or skips. Focused refresh requests
+now retain canonical path-to-hash or path-to-tombstone claims; the closed route
+joins exact claims already covered by an active cycle and enqueues changed,
+disjoint, or unkeyed work. The focused six-class contract, all 543 indexer
+tests, repository-wide Gradle gate, and repository-shape gate passed. Exact
+compiler-backed analysis completed all 18 changed Kotlin files with zero
+errors, warnings, infos, or skips. One unrelated first-pass macOS filesystem
+failure interrupted the thousand-file Git fixture; its exact rerun and the
+subsequent complete Gradle gate passed without a source change.

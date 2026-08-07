@@ -1,5 +1,15 @@
 # Pre-1.0 Breaking Changes
 
+## 2026-08-07 — Path-keyed source transition requests
+
+- Removal: the unkeyed `WorkspaceTransitionRequester.reconcile(WorkspaceSignal)` operation and the assumption that every focused source request must invalidate an active publication cycle.
+- Replacement: `WorkspaceTransitionRequest`, exact canonical path-to-content-hash or path-to-tombstone claims, and the closed `Join`, `Enqueue`, or `Rejected` route.
+- Reason: concurrent refresh and diagnostics requests for the same unchanged files must share one safe publication cycle, while changed, disjoint, ambiguous, and unkeyed work must still fail closed into the pending overlay/tombstone lane.
+- Paths: `indexer/src/main/kotlin/io/github/amichne/kast/idea/transition`, `indexer/src/main/kotlin/io/github/amichne/kast/idea/runtime/service`, `indexer/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic`, and focused tests.
+- Proof: `WorkspaceTransitionFreshnessTest`, `WorkspaceTransitionCoordinatorTest`, `WorkspaceTransitionIngressTest`, `KastSemanticAdmissionRefreshTest`, the complete indexer suite, exact changed-Kotlin compiler analysis, full Gradle checks, and the repository-shape gate.
+- Introduced by: PR #566 fast-follow.
+- Compatibility: none. Internal callers must submit a typed transition request; no signal-only reconciliation adapter remains.
+
 ## 2026-08-07 — Flat workspace index and SQLite publication
 
 - Removal: hierarchical Git/local workspace directories, local workspace registries, per-workspace `semantic-generations` directories, immutable generation copies, `current.json` pointers, restart copy-back, and pointer-durability result variants.
