@@ -9,6 +9,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -117,14 +118,14 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
         assertThrows(ProcessCanceledException::class.java, worker::requestRecoveryAudit)
 
         assertTrue(admission.status() is IdeaIndexSemanticAdmission.Status.Pending)
-        assertEquals(initial, publication.current())
+        assertEquals(PublishedWorkspaceGenerationState.Published(initial), publication.current())
     }
 
     private fun readyAdmission(generation: PublishedWorkspaceGenerationManifest) =
         IdeaIndexSemanticAdmission(projectStub()).also { admission ->
             val token = admission.beginReconciliation("test generation")
             check(
-                admission.publishReady(token) { WorkspaceGenerationCommit.Durable(generation) } is
+                admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
                     IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
             )
         }

@@ -9,6 +9,7 @@ import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInProgressExc
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.idea.transition.OpenWorkspacePublication
 import io.github.amichne.kast.idea.transition.PreparedWorkspacePublication
 import io.github.amichne.kast.idea.transition.TransitionRun
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
@@ -19,6 +20,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceTransitionOperations
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.idea.transition.WorkspaceWakeup
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import java.util.concurrent.CancellationException
 
 internal class WorkspaceTransitionWorker(
@@ -125,9 +127,17 @@ internal class WorkspaceTransitionWorker(
                 return reconciledIdentity
             }
 
-            override fun preparePublication(identity: WorkspaceStateIdentity): PreparedWorkspacePublication {
+            override fun beginPublication(): OpenWorkspacePublication {
                 requireActive()
-                return workspaceGenerationPublication.prepare(identity)
+                return workspaceGenerationPublication.begin()
+            }
+
+            override fun preparePublication(
+                open: OpenWorkspacePublication,
+                identity: WorkspaceStateIdentity,
+            ): PreparedWorkspacePublication {
+                requireActive()
+                return workspaceGenerationPublication.prepare(open, identity)
             }
 
             override fun commitPublication(prepared: PreparedWorkspacePublication): GenerationPublication {
@@ -151,6 +161,10 @@ internal class WorkspaceTransitionWorker(
                     is IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedAfterCommit ->
                         GenerationPublication.InvalidatedAfterCommit(publication.commit)
                 }
+            }
+
+            override fun discardPublication(open: OpenWorkspacePublication) {
+                workspaceGenerationPublication.discard(open)
             }
 
             override fun discardPublication(prepared: PreparedWorkspacePublication) {
@@ -229,8 +243,10 @@ internal class WorkspaceTransitionWorker(
     ): RecoveryAuditOutcome {
         return try {
             requireActive()
-            val published = workspaceGenerationPublication.current()
-                ?: return RecoveryAuditOutcome.WorkspaceDrift
+            val published = when (val current = workspaceGenerationPublication.current()) {
+                PublishedWorkspaceGenerationState.Unpublished -> return RecoveryAuditOutcome.WorkspaceDrift
+                is PublishedWorkspaceGenerationState.Published -> current.manifest
+            }
             if (published != expectedPublished) return RecoveryAuditOutcome.WorkspaceDrift
             requireStableGitWorktreeTransition()
             refreshWorkspace(setOf(WorkspaceSignal.RecoveryProbe))
@@ -250,7 +266,7 @@ internal class WorkspaceTransitionWorker(
                 requireStableGitWorktreeTransition()
                 if (
                     currentIdentity.value == published.identity.value &&
-                    workspaceGenerationPublication.current() == published
+                    workspaceGenerationPublication.current() == PublishedWorkspaceGenerationState.Published(published)
                 ) {
                     RecoveryAuditOutcome.Current
                 } else {

@@ -7,6 +7,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import kotlinx.coroutines.runBlocking
@@ -151,7 +152,7 @@ class WorkspaceTransitionIngressTest {
     ): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(projectStub()).also { admission ->
         val token = admission.beginReconciliation("test generation")
         check(
-            admission.publishReady(token) { WorkspaceGenerationCommit.Durable(generation) } is
+            admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
                 IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
         )
     }
@@ -163,7 +164,7 @@ class WorkspaceTransitionIngressTest {
         admission.dirty("test transition")
         val token = admission.beginReconciliation("test reconciliation")
         check(
-            admission.publishReady(token) { WorkspaceGenerationCommit.Durable(generation) } is
+            admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
                 IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
         )
     }
@@ -173,7 +174,7 @@ class WorkspaceTransitionIngressTest {
     ): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
         lifecycle = WorkspaceLifecycle.Ready,
         pendingSignals = emptySet(),
-        published = generation,
+        published = PublishedWorkspaceGenerationState.Published(generation),
         blocker = null,
         observedEventCount = generation.generation.value,
     )

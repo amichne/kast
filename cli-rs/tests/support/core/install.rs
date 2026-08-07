@@ -242,23 +242,49 @@ pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Pat
 pub(crate) fn workspace_database_path_for_test(workspace: &Path) -> PathBuf {
     std::fs::create_dir_all(workspace).expect("workspace fixture root");
     workspace_data_directory_for_test(workspace)
-        .join("semantic-generations/generations/test-generation/source-index.db")
+        .join("cache/source-index.db")
 }
 
 pub(crate) fn publish_workspace_database_for_test(workspace: &Path) -> serde_json::Value {
-    workspace_files::publish_database_if_generation(&workspace_database_path_for_test(workspace))
-        .expect("published workspace generation fixture")
+    workspace_files::publish_workspace_database(&workspace_database_path_for_test(workspace))
+        .expect("published workspace database fixture")
 }
 
 pub(crate) fn published_workspace_generation_for_test(
     workspace: &Path,
 ) -> Option<serde_json::Value> {
-    let pointer = workspace_data_directory_for_test(workspace)
-        .join("semantic-generations/current.json");
-    pointer.is_file().then(|| {
-        serde_json::from_slice(&std::fs::read(&pointer).expect("published workspace pointer"))
-            .expect("published workspace pointer JSON")
-    })
+    let database = workspace_database_path_for_test(workspace);
+    if !database.is_file() {
+        return None;
+    }
+    let connection = rusqlite::Connection::open_with_flags(
+        database,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .ok()?;
+    connection
+        .query_row(
+            "SELECT revision, identity, source_index_generation, source_index_schema_version,
+                    published_at_epoch_millis, repository_overlay_file
+             FROM workspace_publication WHERE singleton = 1",
+            [],
+            |row| {
+                let overlay: Option<String> = row.get(5)?;
+                let mut manifest = serde_json::json!({
+                    "generation": row.get::<_, i64>(0)?,
+                    "identity": row.get::<_, String>(1)?,
+                    "sourceIndexGeneration": row.get::<_, i64>(2)?,
+                    "sourceIndexSchemaVersion": row.get::<_, i64>(3)?,
+                    "databaseFile": "source-index.db",
+                    "publishedAtEpochMillis": row.get::<_, i64>(4)?,
+                });
+                if let Some(overlay) = overlay {
+                    manifest["repositoryOverlayFile"] = serde_json::json!(overlay);
+                }
+                Ok(manifest)
+            },
+        )
+        .ok()
 }
 
 fn workspace_data_directory_for_test(workspace: &Path) -> PathBuf {
@@ -280,100 +306,15 @@ fn inferred_fixture_home(workspace: &Path) -> PathBuf {
 }
 
 fn workspace_data_directory_for_test_at_home(workspace: &Path, home: &Path) -> PathBuf {
-    let workspace: PathBuf = workspace.components().collect();
+    let workspace = std::fs::canonicalize(workspace)
+        .unwrap_or_else(|_| workspace.components().collect());
     let install_root = default_install_root(home);
     let data_root = if install_root.join("current/receipt.json").is_file() {
         install_root.join("state")
     } else {
         install_root.join("state/data")
     };
-    let workspaces_root = data_root.join("workspaces");
-    if let (Some(toplevel), Some(common_dir), Some(git_dir)) = (
-        git_path_for_test(&workspace, &["rev-parse", "--show-toplevel"]),
-        git_path_for_test(&workspace, &["rev-parse", "--git-common-dir"]),
-        git_path_for_test(&workspace, &["rev-parse", "--git-dir"]),
-    ) {
-        use sha2::{Digest, Sha256};
-        let common_hash = hex::encode(Sha256::digest(common_dir.to_string_lossy().as_bytes()));
-        let worktree_hash = hex::encode(Sha256::digest(
-            format!("{}\n{}", toplevel.display(), git_dir.display()).as_bytes(),
-        ));
-        let slug = sanitized_workspace_segment(
-            toplevel
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("workspace"),
-        );
-        let repository_root = workspaces_root.join("git/local").join(&common_hash[..12]);
-        return repository_root
-            .join("worktrees")
-            .join(format!("{slug}--{}", &worktree_hash[..12]));
-    }
-    let registry_path = workspaces_root.join("local-workspaces.json");
-    let registry: std::collections::BTreeMap<String, String> = if registry_path.is_file() {
-        serde_json::from_slice(&std::fs::read(&registry_path).expect("workspace registry"))
-            .unwrap_or_default()
-    } else {
-        std::collections::BTreeMap::new()
-    };
-    let key = workspace.display().to_string();
-    let id = registry.get(&key).cloned().unwrap_or_else(|| {
-        use sha2::{Digest, Sha256};
-        hex::encode(Sha256::digest(key.as_bytes()))[..12].to_string()
-    });
-    let sanitized = sanitized_workspace_segment(&workspace.display().to_string());
-    workspaces_root
-        .join("local")
-        .join(format!("{sanitized}--{id}"))
-}
-
-fn git_path_for_test(workspace: &Path, args: &[&str]) -> Option<PathBuf> {
-    let raw = git_output_for_test(workspace, args)?;
-    let path = PathBuf::from(raw);
-    Some(
-        if path.is_absolute() {
-            path
-        } else {
-            workspace.join(path)
-        }
-        .components()
-        .collect(),
-    )
-}
-
-fn git_output_for_test(workspace: &Path, args: &[&str]) -> Option<String> {
-    let output = std::process::Command::new("git")
-        .args(args)
-        .current_dir(workspace)
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if raw.is_empty() {
-        return None;
-    }
-    Some(raw)
-}
-
-fn sanitized_workspace_segment(value: &str) -> String {
-    let mut sanitized = String::new();
-    for character in value.chars() {
-        if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
-            sanitized.push(character);
-        } else if !sanitized.ends_with('-') {
-            sanitized.push('-');
-        }
-    }
-    let sanitized = sanitized
-        .trim_matches('-')
-        .chars()
-        .take(80)
-        .collect::<String>();
-    if sanitized.is_empty() || matches!(sanitized.as_str(), "." | "..") {
-        "workspace".to_string()
-    } else {
-        sanitized
-    }
+    use sha2::{Digest, Sha256};
+    let digest = hex::encode(Sha256::digest(workspace.to_string_lossy().as_bytes()));
+    data_root.join("workspaces").join(digest)
 }

@@ -3,7 +3,6 @@ use super::*;
 impl ReferenceFixture {
     fn install_repository_base(&self) -> PathBuf {
         let database = self.database();
-        let base = database.with_file_name("repository-base.db");
         self.index
             .connection()
             .execute(
@@ -12,7 +11,9 @@ impl ReferenceFixture {
                 [],
             )
             .expect("base reference to changed target");
-        std::fs::copy(&database, &base).expect("repository base database");
+        install_repository_overlay_fixture(&database, |base| {
+            std::fs::copy(&database, base).expect("repository base database");
+        });
         self.index
             .connection()
             .execute_batch(
@@ -21,12 +22,6 @@ impl ReferenceFixture {
                  ) WITHOUT ROWID;",
             )
             .expect("repository overlay tables");
-        std::fs::write(
-            database.with_file_name("repository-overlay.json"),
-            serde_json::to_vec(&serde_json::json!({ "baseDatabase": base }))
-                .expect("repository overlay descriptor"),
-        )
-        .expect("repository overlay descriptor");
         database
     }
 

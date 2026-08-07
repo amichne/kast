@@ -69,7 +69,7 @@ class RuntimeStatusResponseTest {
             identity = "workspace-state",
             sourceIndexGeneration = 19,
             sourceIndexSchemaVersion = 3,
-            databaseFile = "generation-7-deadbeef/source-index.db",
+            databaseFile = "source-index.db",
             repositoryOverlayFile = "repository-overlay.json",
             publishedAtEpochMillis = 42,
         )

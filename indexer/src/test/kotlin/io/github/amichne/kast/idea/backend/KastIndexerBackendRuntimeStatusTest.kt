@@ -51,7 +51,7 @@ class KastIndexerBackendRuntimeStatusTest {
 
                 assertEquals(7, readyStatus.publishedWorkspaceGeneration?.generation)
                 assertEquals("verified-workspace", readyStatus.publishedWorkspaceGeneration?.identity)
-                assertEquals(published.databaseFile, readyStatus.publishedWorkspaceGeneration?.databaseFile)
+                assertEquals("source-index.db", readyStatus.publishedWorkspaceGeneration?.databaseFile)
                 assertNull(pendingStatus.publishedWorkspaceGeneration)
             }
         }

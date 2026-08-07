@@ -54,10 +54,12 @@ internal fun fileUpdate(path: String, identifier: String): FileIndexUpdate =
 internal fun key(tree: GitObjectId, producer: ProducerVersion) =
     io.github.amichne.kast.indexstore.snapshot.SnapshotKey(
         treeOid = tree,
-        buildClasspathFingerprint = io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint.parse(
+        buildClasspathFingerprint = io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint.fromDigest(
             "8".repeat(64),
         ),
-        indexSchema = SOURCE_INDEX_SCHEMA_VERSION,
+        indexSchema = io.github.amichne.kast.indexstore.snapshot.SourceIndexSchemaVersion(
+            SOURCE_INDEX_SCHEMA_VERSION,
+        ),
         producerVersion = producer,
     )
 

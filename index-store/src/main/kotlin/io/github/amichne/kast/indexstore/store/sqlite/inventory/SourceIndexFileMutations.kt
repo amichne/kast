@@ -3,6 +3,33 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.indexstore.api.index.*
 import java.sql.Connection
 
+internal enum class FileFqTable(
+    private val persistedName: String,
+    val readTable: SourceIndexReadTable,
+) {
+    IMPORTS("file_imports", SourceIndexReadTable.FILE_IMPORTS),
+    WILDCARD_IMPORTS("file_wildcard_imports", SourceIndexReadTable.FILE_WILDCARD_IMPORTS),
+    ;
+
+    /** Raw extraction is confined to SQLite mutation statements. */
+    override fun toString(): String = persistedName
+}
+
+private enum class FileOwnedWriteTable(private val persistedName: String) {
+    DECLARATIONS("declarations"),
+    IDENTIFIER_PATHS("identifier_paths"),
+    GRADLE_SOURCE_SETS("file_gradle_source_sets"),
+    GRADLE_PROJECTS("file_gradle_projects"),
+    METADATA("file_metadata"),
+    IMPORTS("file_imports"),
+    WILDCARD_IMPORTS("file_wildcard_imports"),
+    MANIFEST("file_manifest"),
+    ;
+
+    /** Raw extraction is confined to SQLite mutation statements. */
+    override fun toString(): String = persistedName
+}
+
 internal class SourceIndexFileMutations(
     private val state: SqliteSourceIndexStoreState,
 ) {
@@ -24,7 +51,7 @@ internal class SourceIndexFileMutations(
             stmt.setString(2, filename)
             stmt.executeUpdate()
         }
-        for (table in listOf("file_imports", "file_wildcard_imports")) {
+        for (table in FileFqTable.entries) {
             conn.prepareStatement("DELETE FROM $table WHERE prefix_id = ? AND filename = ?").use { stmt ->
                 stmt.setInt(1, prefixId)
                 stmt.setString(2, filename)
@@ -84,10 +111,10 @@ internal class SourceIndexFileMutations(
         }
         insertGradleProjectsInTransaction(conn, prefixId, filename, update.gradleProjects)
         insertGradleSourceSetsInTransaction(conn, prefixId, filename, update.gradleSourceSets)
-        insertFileFqNamesInTransaction(conn, tableName = "file_imports", prefixId, filename, update.imports)
+        insertFileFqNamesInTransaction(conn, FileFqTable.IMPORTS, prefixId, filename, update.imports)
         insertFileFqNamesInTransaction(
             conn,
-            tableName = "file_wildcard_imports",
+            table = FileFqTable.WILDCARD_IMPORTS,
             prefixId,
             filename,
             update.wildcardImports
@@ -267,12 +294,13 @@ internal class SourceIndexFileMutations(
 
     internal fun loadFileFqNames(
         conn: Connection,
-        tableName: String,
+        table: FileFqTable,
         target: MutableMap<WorkspaceSourcePath, List<String>>,
     ) {
         val byPath = mutableMapOf<WorkspaceSourcePath, MutableList<String>>()
+        val sourceTable = state.readTable(table.readTable)
         conn.createStatement().use { stmt ->
-            val rs = stmt.executeQuery("SELECT prefix_id, filename, fq_id FROM $tableName")
+            val rs = stmt.executeQuery("SELECT prefix_id, filename, fq_id FROM $sourceTable")
             while (rs.next()) {
                 val path = state.requireWorkspaceSourcePath(pathCodec.decode(rs.getInt(1), rs.getString(2)))
                 val fqName = fqCodec.resolve(rs.getInt(3))
@@ -286,14 +314,14 @@ internal class SourceIndexFileMutations(
 
     private fun insertFileFqNamesInTransaction(
         conn: Connection,
-        tableName: String,
+        table: FileFqTable,
         prefixId: Int,
         filename: String,
         fqNames: Set<String>,
     ) {
         if (fqNames.isEmpty()) return
         fqCodec.batchEnsure(conn, fqNames)
-        conn.prepareStatement("INSERT OR IGNORE INTO $tableName (prefix_id, filename, fq_id) VALUES (?, ?, ?)")
+        conn.prepareStatement("INSERT OR IGNORE INTO $table (prefix_id, filename, fq_id) VALUES (?, ?, ?)")
             .use { stmt ->
                 fqNames.sorted().forEach { fqName ->
                     stmt.setInt(1, prefixId)
@@ -311,16 +339,7 @@ internal class SourceIndexFileMutations(
         filename: String,
     ) {
         deleteDeclarationSupertypesInTransaction(conn, prefixId, filename)
-        for (table in listOf(
-            "declarations",
-            "identifier_paths",
-            "file_gradle_source_sets",
-            "file_gradle_projects",
-            "file_metadata",
-            "file_imports",
-            "file_wildcard_imports",
-            "file_manifest"
-        )) {
+        for (table in FileOwnedWriteTable.entries) {
             conn.prepareStatement("DELETE FROM $table WHERE prefix_id = ? AND filename = ?").use { stmt ->
                 stmt.setInt(1, prefixId)
                 stmt.setString(2, filename)
@@ -346,15 +365,7 @@ internal class SourceIndexFileMutations(
         filename: String,
     ) {
         deleteDeclarationSupertypesInTransaction(conn, prefixId, filename)
-        for (table in listOf(
-            "declarations",
-            "identifier_paths",
-            "file_gradle_source_sets",
-            "file_gradle_projects",
-            "file_metadata",
-            "file_imports",
-            "file_wildcard_imports",
-        )) {
+        for (table in FileOwnedWriteTable.entries.filterNot { it == FileOwnedWriteTable.MANIFEST }) {
             conn.prepareStatement("DELETE FROM $table WHERE prefix_id = ? AND filename = ?").use { stmt ->
                 stmt.setInt(1, prefixId)
                 stmt.setString(2, filename)

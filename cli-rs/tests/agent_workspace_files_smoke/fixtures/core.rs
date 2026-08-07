@@ -58,34 +58,15 @@ fn create_workspace_index(
     workspace_id: &str,
     source_count: usize,
 ) -> workspace_files::WorkspaceIndexFixture {
+    use sha2::{Digest, Sha256};
+
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let workspaces_data = default_install_root(home).join("state/data/workspaces");
-    std::fs::create_dir_all(workspaces_data.join("local")).expect("local workspace data");
-    std::fs::write(
-        workspaces_data.join("local-workspaces.json"),
-        serde_json::to_vec_pretty(&serde_json::json!({
-            workspace.display().to_string(): workspace_id
-        }))
-        .expect("workspace registry JSON"),
-    )
-    .expect("workspace registry");
-    let mut sanitized_workspace = String::new();
-    for character in workspace.display().to_string().chars() {
-        if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
-            sanitized_workspace.push(character);
-        } else if !sanitized_workspace.ends_with('-') {
-            sanitized_workspace.push('-');
-        }
-    }
-    let sanitized_workspace = sanitized_workspace
-        .trim_matches('-')
-        .chars()
-        .take(80)
-        .collect::<String>();
+    let workspace_key = hex::encode(Sha256::digest(workspace.to_string_lossy().as_bytes()));
+    let _ = workspace_id;
     let database_path = workspaces_data
-        .join("local")
-        .join(format!("{sanitized_workspace}--{workspace_id}"))
-        .join("semantic-generations/generations/test-generation/source-index.db");
+        .join(workspace_key)
+        .join("cache/source-index.db");
     let index =
         workspace_files::WorkspaceIndexFixture::at_database_path(&workspace, &database_path);
     index.seed_high_cardinality_sources(source_count);

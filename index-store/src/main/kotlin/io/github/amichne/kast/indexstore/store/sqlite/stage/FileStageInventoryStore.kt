@@ -51,38 +51,35 @@ internal class FileStageInventoryStore(
                 current[path]?.contentHash != entry.contentHash.value
             }
 
-            conn.autoCommit = false
-            try {
+            state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { transaction ->
                 mutations.internPathsInTransaction(conn, desired.keys.map(WorkspaceSourcePath::toDatabasePath))
-                if (resolutionInputsChanged) statements.invalidateLimitedRelationshipOutcomesInTransaction(conn)
+                if (resolutionInputsChanged) statements.invalidateLimitedRelationshipOutcomesInTransaction(transaction)
                 current.keys.minus(desired.keys).forEach { removedPath ->
-                    removeInventoryInTransaction(conn, removedPath, current.getValue(removedPath))
+                    removeInventoryInTransaction(transaction, removedPath, current.getValue(removedPath))
                 }
                 desired.toSortedMap().forEach { (path, entry) ->
                     current[path]?.let { previous ->
                         if (previous.contentHash != entry.contentHash.value) {
-                            deleteOutcomeRowsInTransaction(conn, path)
-                            deleteSemanticGraphFileInTransaction(conn, path)
+                            deleteOutcomeRowsInTransaction(transaction, path)
+                            deleteSemanticGraphFileInTransaction(transaction, path)
                             inboundReferences.detachAndInvalidateInTransaction(
-                                conn,
+                                transaction,
                                 previous.prefixId,
                                 previous.filename,
                             )
-                            mutations.deleteFileContentInTransaction(conn, previous.prefixId, previous.filename)
+                            mutations.deleteFileContentInTransaction(
+                                transaction,
+                                previous.prefixId,
+                                previous.filename,
+                            )
                         } else if (previous.module != entry.module) {
-                            deleteOutcomeRowsInTransaction(conn, path)
+                            deleteOutcomeRowsInTransaction(transaction, path)
                         }
                     }
-                    statements.upsertInventoryInTransaction(conn, entry, versions)
+                    statements.upsertInventoryInTransaction(transaction, entry, versions)
                 }
-                recomputeModuleProgressInTransaction(conn)
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (failure: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw failure
-            } finally {
-                conn.autoCommit = true
+                recomputeModuleProgressInTransaction(transaction)
+                state.incrementGenerationInTransaction(transaction)
             }
         }
     }
@@ -96,17 +93,10 @@ internal class FileStageInventoryStore(
                 reader.inventoryScopeInTransaction(conn, path)?.let { row -> path to row }
             }
             if (current.isEmpty()) return@synchronized
-            conn.autoCommit = false
-            try {
-                current.forEach { (path, row) -> removeInventoryInTransaction(conn, path, row) }
-                recomputeModuleProgressInTransaction(conn)
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (failure: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw failure
-            } finally {
-                conn.autoCommit = true
+            state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { transaction ->
+                current.forEach { (path, row) -> removeInventoryInTransaction(transaction, path, row) }
+                recomputeModuleProgressInTransaction(transaction)
+                state.incrementGenerationInTransaction(transaction)
             }
         }
     }
@@ -116,10 +106,12 @@ internal class FileStageInventoryStore(
             val conn = state.connection()
             state.loadInterningTables(conn)
             val versionColumn = statements.desiredVersionColumn(stage)
+            val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
+            val outcomes = state.readTable(SourceIndexReadTable.FILE_STAGE_OUTCOMES)
             conn.prepareStatement(
                 """SELECT manifest.prefix_id, manifest.filename, manifest.content_hash, manifest.$versionColumn
-                   FROM file_manifest manifest
-                   LEFT JOIN file_stage_outcomes outcomes
+                   FROM $manifest manifest
+                   LEFT JOIN $outcomes outcomes
                      ON outcomes.prefix_id = manifest.prefix_id
                     AND outcomes.filename = manifest.filename
                     AND outcomes.stage = ?
@@ -163,11 +155,13 @@ internal class FileStageInventoryStore(
             val conn = state.connection()
             state.loadInterningTables(conn)
             val versionColumn = statements.desiredVersionColumn(stage)
+            val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
+            val outcomes = state.readTable(SourceIndexReadTable.FILE_STAGE_OUTCOMES)
             conn.prepareStatement(
                 """SELECT manifest.prefix_id, manifest.filename, manifest.content_hash,
                           manifest.$versionColumn, outcomes.stage_input_fingerprint, outcomes.limitations_json
-                   FROM file_manifest manifest
-                   JOIN file_stage_outcomes outcomes
+                   FROM $manifest manifest
+                   JOIN $outcomes outcomes
                      ON outcomes.prefix_id = manifest.prefix_id
                     AND outcomes.filename = manifest.filename
                     AND outcomes.stage = ?

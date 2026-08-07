@@ -9,14 +9,8 @@
         {
             let fields = fixture.split('\t').collect::<Vec<_>>();
             assert_eq!(fields.len(), 4, "invalid fixture: {fixture}");
-            let workspace = GitWorkspace {
-                toplevel: PathBuf::from(fields[0]),
-                common_dir: PathBuf::from(fields[1]),
-                git_dir: PathBuf::from(fields[2]),
-            };
-
             assert_eq!(
-                workspace_data_directory_for_git(&workspaces_root, &workspace)
+                workspace_data_directory_from(&workspaces_root, Path::new(fields[0]))
                     .expect("workspace"),
                 workspaces_root.join(fields[3]),
             );
@@ -24,61 +18,38 @@
     }
 
     #[test]
-    fn git_workspace_data_directory_uses_stable_common_directory_path() {
+    fn git_workspace_data_directory_uses_the_full_workspace_path_digest() {
         let workspaces_root = PathBuf::from("/home/alex/.local/share/kast/state/workspaces");
-        let workspace = GitWorkspace {
-            toplevel: PathBuf::from("/work/kast"),
-            common_dir: PathBuf::from("/work/kast/.git"),
-            git_dir: PathBuf::from("/work/kast/.git"),
-        };
+        let workspace = PathBuf::from("/work/kast");
+        let digest = hex::encode(Sha256::digest(workspace.to_string_lossy().as_bytes()));
 
         assert_eq!(
-            workspace_data_directory_for_git(&workspaces_root, &workspace).expect("workspace"),
-            workspaces_root.join(format!(
-                "git/local/{}/worktrees/kast--{}",
-                git_common_dir_hash(&workspace.common_dir),
-                git_worktree_hash(&workspace.toplevel, &workspace.git_dir)
-            )),
+            workspace_data_directory_from(&workspaces_root, &workspace).expect("workspace"),
+            workspaces_root.join(digest),
         );
     }
 
     #[test]
     fn git_workspace_data_directory_isolates_sibling_worktrees() {
         let workspaces_root = PathBuf::from("/home/alex/.local/share/kast/state/workspaces");
-        let common_dir = PathBuf::from("/work/kast/.git");
-        let first = GitWorkspace {
-            toplevel: PathBuf::from("/work/kast"),
-            common_dir: common_dir.clone(),
-            git_dir: common_dir.clone(),
-        };
-        let second = GitWorkspace {
-            toplevel: PathBuf::from("/work/kast-feature"),
-            common_dir,
-            git_dir: PathBuf::from("/work/kast/.git/worktrees/kast-feature"),
-        };
+        let first = PathBuf::from("/work/kast");
+        let second = PathBuf::from("/work/kast-feature");
 
         assert_ne!(
-            workspace_data_directory_for_git(&workspaces_root, &first).expect("first"),
-            workspace_data_directory_for_git(&workspaces_root, &second).expect("second"),
+            workspace_data_directory_from(&workspaces_root, &first).expect("first"),
+            workspace_data_directory_from(&workspaces_root, &second).expect("second"),
         );
     }
 
     #[test]
     fn git_workspace_data_directory_supports_git_without_origin() {
         let workspaces_root = PathBuf::from("/home/alex/.local/share/kast/state/workspaces");
-        let workspace = GitWorkspace {
-            toplevel: PathBuf::from("/work/private"),
-            common_dir: PathBuf::from("/work/private/.git"),
-            git_dir: PathBuf::from("/work/private/.git/worktrees/private"),
-        };
+        let workspace = PathBuf::from("/work/private");
+        let digest = hex::encode(Sha256::digest(workspace.to_string_lossy().as_bytes()));
 
         assert_eq!(
-            workspace_data_directory_for_git(&workspaces_root, &workspace).expect("workspace"),
-            workspaces_root.join(format!(
-                "git/local/{}/worktrees/private--{}",
-                git_common_dir_hash(&workspace.common_dir),
-                git_worktree_hash(&workspace.toplevel, &workspace.git_dir)
-            )),
+            workspace_data_directory_from(&workspaces_root, &workspace).expect("workspace"),
+            workspaces_root.join(digest),
         );
     }
 

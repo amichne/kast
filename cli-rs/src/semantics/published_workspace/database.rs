@@ -14,7 +14,7 @@ impl PublishedWorkspaceDatabase {
         if &self.manifest != expected {
             return Err(CliError::new(
                 "PUBLISHED_WORKSPACE_MISMATCH",
-                "The published workspace pointer does not match the generation admitted by the indexer runtime.",
+                "The workspace publication row does not match the revision admitted by the indexer runtime.",
             ));
         }
         Ok(())
@@ -30,18 +30,11 @@ impl PublishedWorkspaceDatabase {
     }
 
     pub(crate) fn revalidate(&self) -> Result<()> {
-        let workspace_data = self
-            .current_pointer
-            .parent()
-            .and_then(Path::parent)
-            .ok_or_else(|| {
-                invalid_publication("Published pointer has no workspace data directory")
-            })?;
-        let current = resolve_published_workspace_database_from(workspace_data)?;
+        let current = resolve_published_workspace_database_from(&self.workspace_data)?;
         if current != *self {
             return Err(CliError::new(
                 "PUBLISHED_WORKSPACE_MOVED",
-                "The published workspace generation changed during the semantic read.",
+                "The published workspace revision changed during the semantic read.",
             ));
         }
         Ok(())

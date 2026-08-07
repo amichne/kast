@@ -6,6 +6,15 @@ import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleName
 import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import java.nio.file.Path
 import java.sql.ResultSet
+import java.util.UUID
+
+/** Opaque proof that this store owns one active workspace SQLite transaction. */
+class WorkspaceWriteSession internal constructor(internal val owner: UUID)
+
+internal enum class SourceIndexMutationImpact {
+    CONTENT_ONLY,
+    MANIFEST,
+}
 
 internal fun ResultSet.getNullableInt(column: Int): Int? =
     getObject(column)?.let { (it as Number).toInt() }

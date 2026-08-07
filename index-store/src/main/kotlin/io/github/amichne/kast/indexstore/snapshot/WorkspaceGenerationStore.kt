@@ -1,26 +1,83 @@
 package io.github.amichne.kast.indexstore.snapshot
 
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
-import java.nio.channels.FileChannel
-import java.nio.file.Files
-import java.nio.file.LinkOption
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.nio.file.StandardOpenOption
-import java.nio.file.attribute.PosixFilePermission
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.WorkspaceWriteSession
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
-internal const val WORKSPACE_GENERATIONS_DIRECTORY = "generations"
-internal const val WORKSPACE_CURRENT_POINTER_FILE = "current.json"
 internal const val WORKSPACE_DATABASE_FILE = "source-index.db"
 internal const val WORKSPACE_REPOSITORY_OVERLAY_FILE = "repository-overlay.json"
-internal const val WORKSPACE_REPOSITORY_BASE_FILE = "repository-base.db"
 
+@Serializable
+enum class RepositoryOverlayPublication {
+    ABSENT,
+    ATTACHED,
+    ;
+
+    /** Raw nullable extraction is confined to SQLite and runtime-status serialization. */
+    fun serializedFileName(): String? = when (this) {
+        ABSENT -> null
+        ATTACHED -> WORKSPACE_REPOSITORY_OVERLAY_FILE
+    }
+
+    companion object {
+        /**
+         * Proof transition: `String? -> RepositoryOverlayPublicationResolution`.
+         *
+         * Derives the closed overlay-publication state from SQLite storage.
+         * Only absence and the canonical `repository-overlay.json` filename are
+         * valid. Rejection is finite [RepositoryOverlayPublicationFailure]
+         * data. Raw nullable data is accepted only at the SQLite boundary.
+         */
+        fun fromSerializedFileName(raw: String?): RepositoryOverlayPublicationResolution = when (raw) {
+            null -> RepositoryOverlayPublicationResolution.Resolved(ABSENT)
+            WORKSPACE_REPOSITORY_OVERLAY_FILE -> RepositoryOverlayPublicationResolution.Resolved(ATTACHED)
+            else -> RepositoryOverlayPublicationResolution.Rejected(
+                RepositoryOverlayPublicationFailure.UnknownFile(raw),
+            )
+        }
+    }
+}
+
+sealed interface RepositoryOverlayPublicationFailure {
+    data class UnknownFile(val value: String) : RepositoryOverlayPublicationFailure
+}
+
+sealed interface RepositoryOverlayPublicationResolution {
+    data class Resolved(
+        val publication: RepositoryOverlayPublication,
+    ) : RepositoryOverlayPublicationResolution
+
+    data class Rejected(
+        val failure: RepositoryOverlayPublicationFailure,
+    ) : RepositoryOverlayPublicationResolution
+}
+
+@Serializable
+@JvmInline
+value class PublicationEpochMillis private constructor(val value: Long) {
+    companion object {
+        /**
+         * Proof transition: `Long -> PublicationEpochMillis`.
+         *
+         * Establishes a non-negative Unix epoch millisecond value. The raw
+         * number may be extracted only at clock, SQLite, or serialization
+         * boundaries.
+         */
+        fun fromClock(value: Long): PublicationEpochMillis {
+            require(value >= 0) { "Publication time must not be negative" }
+            return PublicationEpochMillis(value)
+        }
+    }
+}
+
+/**
+ * Construction transition: `String -> PublishedWorkspaceIdentity`.
+ *
+ * Establishes one non-blank verified workspace-state identity. Raw extraction
+ * is permitted only at identity capture, SQLite, and serialization boundaries.
+ */
 @Serializable
 @JvmInline
 value class PublishedWorkspaceIdentity(val value: String) {
@@ -29,6 +86,12 @@ value class PublishedWorkspaceIdentity(val value: String) {
     }
 }
 
+/**
+ * Construction transition: `Long -> WorkspaceSemanticGeneration`.
+ *
+ * Establishes a positive publication revision. Raw extraction is permitted
+ * only at SQLite, status serialization, and checked successor derivation.
+ */
 @Serializable
 @JvmInline
 value class WorkspaceSemanticGeneration(val value: Long) {
@@ -39,28 +102,13 @@ value class WorkspaceSemanticGeneration(val value: Long) {
     fun next(): WorkspaceSemanticGeneration = WorkspaceSemanticGeneration(Math.addExact(value, 1))
 }
 
-data class WorkspaceDatabaseExportEvidence(
-    val generationBefore: SourceIndexGeneration,
-    val generationAfter: SourceIndexGeneration,
-    val moduleProgressCount: Int,
-    val incompleteModuleCount: Int,
-    val pendingUpdateCount: Int,
-    val sourceIndexSchemaVersion: SourceIndexSchemaVersion,
-    val repositoryOverlay: OverlayManifest? = null,
-) {
-    init {
-        require(moduleProgressCount >= 0) { "Module progress count must not be negative" }
-        require(incompleteModuleCount >= 0) { "Incomplete module count must not be negative" }
-        require(pendingUpdateCount >= 0) { "Pending update count must not be negative" }
-    }
-
-    val provesCompleteStableDatabase: Boolean
-        get() = generationBefore == generationAfter &&
-            moduleProgressCount > 0 &&
-            incompleteModuleCount == 0 &&
-            pendingUpdateCount == 0
-}
-
+/**
+ * Construction transition: `Int -> SourceIndexSchemaVersion`.
+ *
+ * Establishes a positive generated source-index schema identity. Raw
+ * extraction is permitted only at schema, SQLite, and serialization
+ * boundaries.
+ */
 @Serializable
 @JvmInline
 value class SourceIndexSchemaVersion(val value: Int) {
@@ -75,304 +123,254 @@ data class PublishedWorkspaceGenerationManifest(
     val identity: PublishedWorkspaceIdentity,
     val sourceIndexGeneration: SourceIndexGeneration,
     val sourceIndexSchemaVersion: SourceIndexSchemaVersion,
-    val databaseFile: String,
-    val publishedAtEpochMillis: Long,
-    val repositoryOverlayFile: String? = null,
+    val publishedAt: PublicationEpochMillis,
+    val repositoryOverlay: RepositoryOverlayPublication,
 ) {
-    init {
-        require(isCanonicalGenerationDatabasePath(databaseFile)) {
-            "Published database file must be a canonical generation-relative source-index.db path"
-        }
-        repositoryOverlayFile?.let { file ->
-            require(isCanonicalLeaf(file) && file == WORKSPACE_REPOSITORY_OVERLAY_FILE) {
-                "Published repository overlay must be the contained repository-overlay.json file"
+    companion object {
+        /**
+         * Proof transition:
+         * `SerializedWorkspacePublication -> WorkspacePublicationRecordResolution`.
+         *
+         * A resolved manifest carries a positive revision, non-blank identity,
+         * non-negative source-index generation and publication time, positive
+         * schema version, and closed overlay state. Rejection is finite
+         * [WorkspacePublicationRecordFailure] data. Raw primitives are accepted
+         * only from the SQLite publication-row boundary.
+         */
+        internal fun resolve(
+            record: SerializedWorkspacePublication,
+        ): WorkspacePublicationRecordResolution {
+            if (record.generation <= 0) {
+                return rejected(WorkspacePublicationRecordFailure.InvalidGeneration(record.generation))
             }
+            if (record.identity.isBlank()) {
+                return rejected(WorkspacePublicationRecordFailure.BlankIdentity(record.identity))
+            }
+            if (record.sourceIndexGeneration < 0) {
+                return rejected(
+                    WorkspacePublicationRecordFailure.NegativeSourceIndexGeneration(record.sourceIndexGeneration),
+                )
+            }
+            if (record.sourceIndexSchemaVersion <= 0) {
+                return rejected(
+                    WorkspacePublicationRecordFailure.InvalidSchemaVersion(record.sourceIndexSchemaVersion),
+                )
+            }
+            if (record.publishedAtEpochMillis < 0) {
+                return rejected(
+                    WorkspacePublicationRecordFailure.NegativePublicationTime(record.publishedAtEpochMillis),
+                )
+            }
+            val overlay = when (
+                val resolution = RepositoryOverlayPublication.fromSerializedFileName(record.repositoryOverlayFile)
+            ) {
+                is RepositoryOverlayPublicationResolution.Resolved -> resolution.publication
+                is RepositoryOverlayPublicationResolution.Rejected -> return rejected(
+                    WorkspacePublicationRecordFailure.InvalidRepositoryOverlay(resolution.failure),
+                )
+            }
+            return WorkspacePublicationRecordResolution.Resolved(
+                PublishedWorkspaceGenerationManifest(
+                    generation = WorkspaceSemanticGeneration(record.generation),
+                    identity = PublishedWorkspaceIdentity(record.identity),
+                    sourceIndexGeneration = SourceIndexGeneration(record.sourceIndexGeneration),
+                    sourceIndexSchemaVersion = SourceIndexSchemaVersion(record.sourceIndexSchemaVersion),
+                    publishedAt = PublicationEpochMillis.fromClock(record.publishedAtEpochMillis),
+                    repositoryOverlay = overlay,
+                ),
+            )
         }
-        require(publishedAtEpochMillis >= 0) { "Publication time must not be negative" }
+
+        private fun rejected(failure: WorkspacePublicationRecordFailure) =
+            WorkspacePublicationRecordResolution.Rejected(failure)
     }
 }
 
-class InvalidPublishedWorkspaceGenerationException(
-    message: String,
-    cause: Throwable? = null,
-) : IllegalStateException(message, cause)
+internal data class SerializedWorkspacePublication(
+    val generation: Long,
+    val identity: String,
+    val sourceIndexGeneration: Long,
+    val sourceIndexSchemaVersion: Int,
+    val publishedAtEpochMillis: Long,
+    val repositoryOverlayFile: String?,
+)
 
-class StaleWorkspaceGenerationCommitException(
-    val expectedCurrent: PublishedWorkspaceGenerationManifest?,
-    val actualCurrent: PublishedWorkspaceGenerationManifest?,
-) : IllegalStateException(
-    "Workspace generation commit expected ${expectedCurrent?.generation?.value ?: "no current generation"} " +
-        "but found ${actualCurrent?.generation?.value ?: "no current generation"}",
+sealed interface WorkspacePublicationRecordFailure {
+    data class InvalidGeneration(val value: Long) : WorkspacePublicationRecordFailure
+
+    data class BlankIdentity(val value: String) : WorkspacePublicationRecordFailure
+
+    data class NegativeSourceIndexGeneration(val value: Long) : WorkspacePublicationRecordFailure
+
+    data class InvalidSchemaVersion(val value: Int) : WorkspacePublicationRecordFailure
+
+    data class NegativePublicationTime(val value: Long) : WorkspacePublicationRecordFailure
+
+    data class InvalidRepositoryOverlay(
+        val failure: RepositoryOverlayPublicationFailure,
+    ) : WorkspacePublicationRecordFailure
+}
+
+internal sealed interface WorkspacePublicationRecordResolution {
+    data class Resolved(
+        val manifest: PublishedWorkspaceGenerationManifest,
+    ) : WorkspacePublicationRecordResolution
+
+    data class Rejected(
+        val failure: WorkspacePublicationRecordFailure,
+    ) : WorkspacePublicationRecordResolution
+}
+
+class InvalidWorkspacePublicationRecordException(
+    val failure: WorkspacePublicationRecordFailure,
+) : IllegalStateException(failure.toString())
+
+internal data class WorkspacePublicationReadiness(
+    val sourceIndexGeneration: SourceIndexGeneration,
+)
+
+sealed interface WorkspacePublicationReadinessFailure {
+    data object ModuleProgressAbsent : WorkspacePublicationReadinessFailure
+
+    data class ModulesIncomplete(val count: NonNegativeInt) : WorkspacePublicationReadinessFailure
+
+    data class PendingUpdates(val count: NonNegativeInt) : WorkspacePublicationReadinessFailure
+}
+
+internal sealed interface WorkspacePublicationReadinessResolution {
+    data class Ready(val proof: WorkspacePublicationReadiness) : WorkspacePublicationReadinessResolution
+
+    data class Rejected(
+        val failure: WorkspacePublicationReadinessFailure,
+    ) : WorkspacePublicationReadinessResolution
+}
+
+class WorkspacePublicationRejectedException(
+    val failure: WorkspacePublicationReadinessFailure,
+) : IllegalStateException(failure.toString())
+
+internal data class WorkspacePublicationCommitProof(
+    val manifest: PublishedWorkspaceGenerationManifest,
+)
+
+sealed interface WorkspacePublicationCommitFailure {
+    data class SchemaMismatch(
+        val expected: SourceIndexSchemaVersion,
+        val actual: SourceIndexSchemaVersion,
+    ) : WorkspacePublicationCommitFailure
+
+    data class SourceIndexGenerationMoved(
+        val expected: SourceIndexGeneration,
+        val actual: SourceIndexGeneration,
+    ) : WorkspacePublicationCommitFailure
+
+    data class RevisionMoved(
+        val expected: WorkspaceSemanticGeneration,
+        val actual: WorkspaceSemanticGeneration,
+    ) : WorkspacePublicationCommitFailure
+}
+
+internal sealed interface WorkspacePublicationCommitResolution {
+    data class Proven(val proof: WorkspacePublicationCommitProof) : WorkspacePublicationCommitResolution
+
+    data class Rejected(val failure: WorkspacePublicationCommitFailure) : WorkspacePublicationCommitResolution
+}
+
+class WorkspacePublicationCommitRejectedException(
+    val failure: WorkspacePublicationCommitFailure,
+) : IllegalStateException(failure.toString())
+
+data class WorkspaceGenerationCommit(
+    val manifest: PublishedWorkspaceGenerationManifest,
+)
+
+sealed interface PublishedWorkspaceGenerationState {
+    data object Unpublished : PublishedWorkspaceGenerationState
+
+    data class Published(
+        val manifest: PublishedWorkspaceGenerationManifest,
+    ) : PublishedWorkspaceGenerationState
+}
+
+internal class WorkspaceGenerationOwner
+
+/** Opaque capability for an active, unprepared workspace publication transaction. */
+class OpenWorkspaceGeneration internal constructor(
+    internal val write: WorkspaceWriteSession,
+    internal val owner: WorkspaceGenerationOwner,
 )
 
 /**
- * A validated generation whose current pointer crossed the atomic visibility boundary.
+ * Proof transition: `OpenWorkspaceGeneration -> PreparedWorkspaceGeneration`.
  *
- * [DurabilityUncertain] means live readers can use [manifest], but the directory entry might
- * resolve to either this generation or the prior valid generation after a process or machine
- * crash. Both immutable generations remain recoverable.
- */
-sealed interface WorkspaceGenerationCommit {
-    val manifest: PublishedWorkspaceGenerationManifest
-
-    data class Durable(
-        override val manifest: PublishedWorkspaceGenerationManifest,
-    ) : WorkspaceGenerationCommit
-
-    data class DurabilityUncertain(
-        override val manifest: PublishedWorkspaceGenerationManifest,
-        val cause: Exception,
-    ) : WorkspaceGenerationCommit
-}
-
-/**
- * An immutable database generation that has passed export validation but is not visible to readers.
+ * Carries the manifest proven complete against the still-open SQLite
+ * transaction. Only [WorkspaceGenerationStore.prepare] can derive this
+ * commit capability; raw SQLite state is not exposed.
  */
 class PreparedWorkspaceGeneration internal constructor(
+    internal val write: WorkspaceWriteSession,
+    internal val owner: WorkspaceGenerationOwner,
     val manifest: PublishedWorkspaceGenerationManifest,
-    val expectedCurrent: PublishedWorkspaceGenerationManifest?,
-    internal val owner: UUID,
-    internal val generationDirectory: Path,
-) {
-    internal var state: PreparedWorkspaceGenerationState = PreparedWorkspaceGenerationState.PREPARED
-}
-
-internal enum class PreparedWorkspaceGenerationState {
-    PREPARED,
-    COMMITTED,
-    DISCARDED,
-}
+)
 
 /**
- * Prepares immutable workspace databases and publishes one only through an atomic current pointer.
- * A prepared generation is invisible through [current] until [commit] succeeds.
+ * Owns the one long-lived SQLite transaction that turns a complete workspace reconciliation
+ * into the next published revision. No filesystem generation or pointer is created.
  */
 class WorkspaceGenerationStore(
-    private val directory: Path,
-    private val exportDatabase: (Path) -> WorkspaceDatabaseExportEvidence,
-    private val beforePointerCommit: () -> Unit = {},
-    private val nowEpochMillis: () -> Long = System::currentTimeMillis,
-    private val directorySync: (Path) -> Unit = ::forceDirectory,
-    private val deleteGenerationDirectory: (Path) -> Boolean = ::deleteDirectoryRecursively,
+    private val store: SqliteSourceIndexStore,
+    private val publicationClock: () -> PublicationEpochMillis = {
+        PublicationEpochMillis.fromClock(System.currentTimeMillis())
+    },
 ) {
-    private val lock = Any()
-    private val owner = UUID.randomUUID()
-    private val normalizedDirectory = directory.toAbsolutePath().normalize()
-    private val generationsDirectory = normalizedDirectory.resolve(WORKSPACE_GENERATIONS_DIRECTORY)
-    private val currentPointer = normalizedDirectory.resolve(WORKSPACE_CURRENT_POINTER_FILE)
-    private val commitLock = COMMIT_LOCKS.computeIfAbsent(normalizedDirectory) { Any() }
-    private val validator = PublishedWorkspaceGenerationValidator(generationsDirectory, JSON)
-    private val databaseRecovery = WorkspaceDatabaseRecoveryOperator(validator, directorySync)
+    private val owner = WorkspaceGenerationOwner()
 
-    fun prepare(identity: PublishedWorkspaceIdentity): PreparedWorkspaceGeneration = synchronized(lock) {
-        Files.createDirectories(generationsDirectory)
-        val expectedCurrent = readCurrent()
-        val generation = expectedCurrent?.generation?.next() ?: WorkspaceSemanticGeneration(1)
-        val generationName = "generation-${generation.value}-${UUID.randomUUID()}"
-        val stagingDirectory = generationsDirectory.resolve(".$generationName.preparing")
-        val generationDirectory = generationsDirectory.resolve(generationName)
-        var moved = false
-        try {
-            Files.createDirectory(stagingDirectory)
-            val candidateDatabase = stagingDirectory.resolve(WORKSPACE_DATABASE_FILE)
-            val evidence = exportDatabase(candidateDatabase)
-            require(evidence.provesCompleteStableDatabase) {
-                "Workspace database export is incomplete or moved during preparation"
-            }
-            require(Files.isRegularFile(candidateDatabase, LinkOption.NOFOLLOW_LINKS)) {
-                "Workspace database exporter did not create a database"
-            }
-            validator.validateDatabase(
-                database = candidateDatabase,
-                expectedSchema = evidence.sourceIndexSchemaVersion,
-                expectedGeneration = evidence.generationAfter,
-            )
-            sync(candidateDatabase)
+    fun current(): PublishedWorkspaceGenerationState = store.readWorkspacePublication()
 
-            val repositoryOverlayFile = evidence.repositoryOverlay?.let { overlay ->
-                val externalBase = validator.validateRepositoryOverlay(overlay, evidence.sourceIndexSchemaVersion)
-                val publishedBase = stagingDirectory.resolve(WORKSPACE_REPOSITORY_BASE_FILE)
-                Files.copy(externalBase, publishedBase)
-                sync(publishedBase)
-                makeImmutable(publishedBase)
-                val containedOverlay = overlay.copy(
-                    baseDatabase = generationDirectory.resolve(WORKSPACE_REPOSITORY_BASE_FILE)
-                        .toAbsolutePath()
-                        .normalize()
-                        .toString(),
-                )
-                val descriptor = stagingDirectory.resolve(WORKSPACE_REPOSITORY_OVERLAY_FILE)
-                Files.writeString(descriptor, JSON.encodeToString(containedOverlay))
-                sync(descriptor)
-                makeImmutable(descriptor)
-                WORKSPACE_REPOSITORY_OVERLAY_FILE
-            }
-            makeImmutable(candidateDatabase)
-            directorySync(stagingDirectory)
+    fun begin(): OpenWorkspaceGeneration = OpenWorkspaceGeneration(
+        write = store.beginWorkspaceWrite(),
+        owner = owner,
+    )
 
-            Files.move(stagingDirectory, generationDirectory, StandardCopyOption.ATOMIC_MOVE)
-            moved = true
-            directorySync(generationsDirectory)
-
-            val manifest = PublishedWorkspaceGenerationManifest(
-                generation = generation,
-                identity = identity,
-                sourceIndexGeneration = evidence.generationAfter,
-                sourceIndexSchemaVersion = evidence.sourceIndexSchemaVersion,
-                databaseFile = "$generationName/$WORKSPACE_DATABASE_FILE",
-                publishedAtEpochMillis = nowEpochMillis(),
-                repositoryOverlayFile = repositoryOverlayFile,
-            )
-            validator.validateManifestFiles(manifest)
-            PreparedWorkspaceGeneration(
-                manifest = manifest,
-                expectedCurrent = expectedCurrent,
-                owner = owner,
-                generationDirectory = generationDirectory,
-            )
-        } catch (failure: Throwable) {
-            val failedDirectory = if (moved) generationDirectory else stagingDirectory
-            if (!deleteDirectoryRecursively(failedDirectory) && Files.exists(failedDirectory, LinkOption.NOFOLLOW_LINKS)) {
-                failure.addSuppressed(
-                    IllegalStateException("Failed workspace generation could not be deleted: $failedDirectory"),
-                )
-            }
-            throw failure
-        }
+    /**
+     * Proof transition:
+     * `(OpenWorkspaceGeneration, PublishedWorkspaceIdentity) -> PreparedWorkspaceGeneration`.
+     *
+     * Establishes that all module progress is complete, no pending update
+     * remains, and the returned manifest is bound to the active source-index
+     * generation. Raw clock time is refined to [PublicationEpochMillis] at
+     * this boundary.
+     */
+    fun prepare(
+        candidate: OpenWorkspaceGeneration,
+        identity: PublishedWorkspaceIdentity,
+    ): PreparedWorkspaceGeneration {
+        requireOwned(candidate.owner)
+        val manifest = store.prepareWorkspacePublication(
+            session = candidate.write,
+            identity = identity,
+            publishedAt = publicationClock(),
+        )
+        return PreparedWorkspaceGeneration(candidate.write, candidate.owner, manifest)
     }
 
-    fun commit(prepared: PreparedWorkspaceGeneration): WorkspaceGenerationCommit = synchronized(prepared) {
-        requireOwnedPreparedGeneration(prepared)
-        synchronized(commitLock) {
-            synchronized(lock) {
-                val actualCurrent = readCurrent()
-                if (actualCurrent != prepared.expectedCurrent) {
-                    throw StaleWorkspaceGenerationCommitException(prepared.expectedCurrent, actualCurrent)
-                }
-                validator.validateManifestFiles(prepared.manifest)
-                beforePointerCommit()
-                publishPointer(prepared.manifest) {
-                    prepared.state = PreparedWorkspaceGenerationState.COMMITTED
-                }
-            }
-        }
+    fun commit(candidate: PreparedWorkspaceGeneration): WorkspaceGenerationCommit {
+        requireOwned(candidate.owner)
+        val committed = store.commitWorkspacePublication(candidate.write, candidate.manifest)
+        return WorkspaceGenerationCommit(committed)
     }
 
-    fun discard(prepared: PreparedWorkspaceGeneration) = synchronized(prepared) {
-        require(prepared.owner == owner) { "Prepared workspace generation belongs to another store" }
-        when (prepared.state) {
-            PreparedWorkspaceGenerationState.PREPARED -> {
-                check(
-                    deleteGenerationDirectory(prepared.generationDirectory) ||
-                        !Files.exists(prepared.generationDirectory, LinkOption.NOFOLLOW_LINKS),
-                ) {
-                    "Prepared workspace generation could not be discarded: ${prepared.generationDirectory}"
-                }
-                prepared.state = PreparedWorkspaceGenerationState.DISCARDED
-            }
-            PreparedWorkspaceGenerationState.DISCARDED -> Unit
-            PreparedWorkspaceGenerationState.COMMITTED -> {
-                error("A committed workspace generation cannot be discarded")
-            }
-        }
+    fun discard(candidate: OpenWorkspaceGeneration) {
+        requireOwned(candidate.owner)
+        store.discardWorkspaceWrite(candidate.write)
     }
 
-    fun publish(identity: PublishedWorkspaceIdentity): PublishedWorkspaceGenerationManifest =
-        commit(prepare(identity)).manifest
-
-    fun current(): PublishedWorkspaceGenerationManifest? = synchronized(lock) { readCurrent() }
-
-    /** Restores the mutable database before any [io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore] opens it. */
-    fun recoverMutableWorkspaceDatabase(database: Path): WorkspaceDatabaseRecovery = synchronized(commitLock) {
-        synchronized(lock) {
-            databaseRecovery.recover(database, ::readCurrent)
-        }
+    fun discard(candidate: PreparedWorkspaceGeneration) {
+        requireOwned(candidate.owner)
+        store.discardWorkspaceWrite(candidate.write)
     }
 
-    fun database(manifest: PublishedWorkspaceGenerationManifest): Path =
-        validator.database(manifest)
-
-    fun repositoryOverlay(manifest: PublishedWorkspaceGenerationManifest): Path? =
-        validator.repositoryOverlay(manifest)
-
-    private fun readCurrent(): PublishedWorkspaceGenerationManifest? {
-        if (!Files.exists(currentPointer)) return null
-        return try {
-            require(Files.isRegularFile(currentPointer, LinkOption.NOFOLLOW_LINKS)) {
-                "Workspace generation pointer is not a regular file"
-            }
-            val manifest = JSON.decodeFromString<PublishedWorkspaceGenerationManifest>(Files.readString(currentPointer))
-            validator.validateManifestFiles(manifest)
-            manifest
-        } catch (failure: InvalidPublishedWorkspaceGenerationException) {
-            throw failure
-        } catch (failure: Throwable) {
-            throw InvalidPublishedWorkspaceGenerationException(
-                "Published workspace generation pointer is invalid",
-                failure,
-            )
-        }
-    }
-
-    private fun requireOwnedPreparedGeneration(prepared: PreparedWorkspaceGeneration) {
-        require(prepared.owner == owner) { "Prepared workspace generation belongs to another store" }
-        require(prepared.state == PreparedWorkspaceGenerationState.PREPARED) {
-            "Prepared workspace generation is already ${prepared.state.name.lowercase()}"
-        }
-    }
-
-    private fun publishPointer(
-        manifest: PublishedWorkspaceGenerationManifest,
-        pointerReplaced: () -> Unit,
-    ): WorkspaceGenerationCommit {
-        Files.createDirectories(normalizedDirectory)
-        val temporary = normalizedDirectory.resolve(".$WORKSPACE_CURRENT_POINTER_FILE.${UUID.randomUUID()}.tmp")
-        var pointerIsCurrent = false
-        try {
-            Files.writeString(temporary, JSON.encodeToString(manifest))
-            sync(temporary)
-            Files.move(
-                temporary,
-                currentPointer,
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING,
-            )
-            pointerIsCurrent = true
-            pointerReplaced()
-            return try {
-                directorySync(normalizedDirectory)
-                WorkspaceGenerationCommit.Durable(manifest)
-            } catch (failure: Exception) {
-                WorkspaceGenerationCommit.DurabilityUncertain(manifest, failure)
-            }
-        } finally {
-            if (!pointerIsCurrent) Files.deleteIfExists(temporary)
-        }
-    }
-
-    private fun sync(path: Path) {
-        FileChannel.open(path, StandardOpenOption.WRITE).use { channel -> channel.force(true) }
-    }
-
-    private fun makeImmutable(path: Path) {
-        runCatching {
-            Files.setPosixFilePermissions(
-                path,
-                setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ),
-            )
-        }.getOrElse {
-            check(path.toFile().setReadOnly()) { "Published workspace generation file could not be made immutable" }
-        }
-    }
-
-    private companion object {
-        val COMMIT_LOCKS = ConcurrentHashMap<Path, Any>()
-        val JSON = Json { encodeDefaults = true }
+    private fun requireOwned(candidateOwner: WorkspaceGenerationOwner) {
+        require(candidateOwner === owner) { "Workspace publication belongs to another store" }
     }
 }
-
-private fun forceDirectory(path: Path) {
-    FileChannel.open(path, StandardOpenOption.READ).use { channel -> channel.force(true) }
-}
-
-private fun deleteDirectoryRecursively(path: Path): Boolean = path.toFile().deleteRecursively()

@@ -82,6 +82,56 @@ Command:
 - None
 ````
 
+## Kotlin proof-carrying validation transitions
+
+Apply this section to every changed production Kotlin source file with zero
+exceptions.
+
+1. Treat validation as a type transition `f: T -> S`, where `T` is the weaker
+   boundary representation and `S` is any more constrained derivation of `T`
+   that carries every invariant established by `f`. `S` does not need to
+   contain or wrap `T`; it may be a distinct value, state, capability, or
+   aggregate derived from it.
+2. When validation has an expected failure, use the closed transition
+   `f: T -> Result<S, E>`, where `E` is a finite typed failure. Do not return
+   `Boolean`, `Unit`, `null`, the original `T`, or an arbitrary exception as the
+   validation protocol.
+3. Keep primitive input at the boundary. After parsing, normalization,
+   validation, lookup, authorization, or state admission succeeds, pass the
+   stronger type or capability inward. Do not unpack it and make downstream
+   callers repeat or remember the proof.
+4. Model absence and lifecycle with closed states or state-specific
+   capabilities. Do not use nullable fields, boolean flags, strings, or call
+   order as domain state.
+5. Restrict construction of the stronger representation to the transition
+   owner. A type alias, comment, naming convention, or validator that returns
+   the original primitive does not preserve proof.
+6. Every validating or parsing Kotlin API must have KDoc that states:
+   - the proof transition using the concrete types, such as
+     `Path -> RepositorySnapshotDatabase`;
+   - the invariant gained by the output type;
+   - the closed expected failure type, when applicable;
+   - the outer boundary where raw extraction is permitted.
+7. Callers must consume the returned stronger type. Calling a validator and
+   discarding its result is prohibited.
+8. Before completion, review every changed production Kotlin file and reject
+   every newly introduced primitive contract, repeated validation, nullable
+   control state, string protocol, or discarded proof. There are no local
+   exceptions to this audit.
+
+Example:
+
+```kotlin
+/**
+ * Proof transition: `Path -> RepositorySnapshotDatabase`.
+ *
+ * Establishes that the path is canonical, repository-bound, regular,
+ * non-symlinked, and backed by a matching snapshot manifest. The returned
+ * capability may expose a JDBC URI only at the SQLite attachment boundary.
+ */
+fun requireRepositorySnapshotDatabase(path: Path): RepositorySnapshotDatabase
+```
+
 ## macOS indexer pathway
 
 On a macOS developer workstation, explicit semantic demand is the normal

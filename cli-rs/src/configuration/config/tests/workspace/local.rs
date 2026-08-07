@@ -10,43 +10,46 @@
         let temp = tempfile::tempdir().expect("tempdir");
         let workspaces_root = temp.path().join("global-data/workspaces");
         let workspace_root = temp.path().join("workspace");
+        std::fs::create_dir_all(&workspace_root).expect("workspace root");
 
         let resolved =
             workspace_data_directory_from(&workspaces_root, &workspace_root).expect("workspace data");
+        let digest = hex::encode(Sha256::digest(
+            std::fs::canonicalize(&workspace_root)
+                .expect("canonical workspace root")
+                .to_string_lossy()
+                .as_bytes(),
+        ));
 
-        assert_eq!(
-            resolved,
-            workspaces_root.join(format!(
-                "local/{}--{}",
-                sanitized_path(&workspace_root),
-                workspace_hash(&workspace_root),
-            )),
-        );
+        assert_eq!(resolved, workspaces_root.join(digest));
         assert!(!workspaces_root.join("local-workspaces.json").exists());
         assert_ne!(resolved, workspace_root.join(".gradle/kast"));
     }
 
+    #[cfg(unix)]
     #[test]
-    fn local_workspace_data_honors_an_existing_registry_mapping_without_rewriting_it() {
+    fn missing_workspace_leaf_resolves_through_its_canonical_existing_ancestor() {
+        use std::os::unix::fs::symlink;
+
         let temp = tempfile::tempdir().expect("tempdir");
         let workspaces_root = temp.path().join("global-data/workspaces");
-        let workspace_root = temp.path().join("workspace");
-        fs::create_dir_all(&workspaces_root).expect("workspaces root");
-        let registry_path = workspaces_root.join("local-workspaces.json");
-        let original = serde_json::json!({
-            normalize(workspace_root.clone()).display().to_string(): "existing-workspace-id",
-        })
-        .to_string();
-        fs::write(&registry_path, &original).expect("registry");
+        let canonical_parent = temp.path().join("canonical");
+        std::fs::create_dir_all(&canonical_parent).expect("canonical parent");
+        let alias = temp.path().join("alias");
+        symlink(&canonical_parent, &alias).expect("workspace alias");
+        let missing_workspace = alias.join("future-workspace");
+        let expected_path = std::fs::canonicalize(&canonical_parent)
+            .expect("canonical parent path")
+            .join("future-workspace");
+        let expected_key = hex::encode(Sha256::digest(
+            expected_path.to_string_lossy().as_bytes(),
+        ));
 
-        let resolved =
-            workspace_data_directory_from(&workspaces_root, &workspace_root).expect("workspace data");
-
-        assert!(resolved.ends_with(format!(
-            "{}--existing-workspace-id",
-            sanitized_path(&workspace_root),
-        )));
-        assert_eq!(fs::read_to_string(registry_path).expect("registry"), original);
+        assert_eq!(
+            workspace_data_directory_from(&workspaces_root, &missing_workspace)
+                .expect("workspace data"),
+            workspaces_root.join(expected_key),
+        );
     }
 
     #[test]

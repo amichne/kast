@@ -1,8 +1,16 @@
 package io.github.amichne.kast.idea.transition
 
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 
+/**
+ * Construction transition: `String -> WorkspaceStateIdentity`.
+ *
+ * Establishes a non-blank identity for the exact inputs observed around one
+ * reconciliation. Raw extraction is permitted only when refining it to the
+ * persisted [io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity].
+ */
 @JvmInline
 internal value class WorkspaceStateIdentity(val value: String) {
     init {
@@ -51,13 +59,12 @@ internal data class TransitionBlocker(
 internal data class WorkspaceTransitionSnapshot(
     val lifecycle: WorkspaceLifecycle,
     val pendingSignals: Set<WorkspaceSignal>,
-    val published: PublishedWorkspaceGenerationManifest?,
+    val published: PublishedWorkspaceGenerationState,
     val blocker: TransitionBlocker?,
     val observedEventCount: Long,
-    val publicationWarning: WorkspaceGenerationCommit.DurabilityUncertain? = null,
 ) {
     val isReady: Boolean
-        get() = lifecycle == WorkspaceLifecycle.Ready && published != null
+        get() = lifecycle == WorkspaceLifecycle.Ready && published is PublishedWorkspaceGenerationState.Published
 }
 
 internal enum class TransitionRun {
@@ -86,7 +93,10 @@ internal sealed interface GenerationPublication {
     }
 }
 
-/** Opaque evidence that one immutable generation is prepared but not published. */
+/** Opaque ownership of an active workspace transaction before publication validation. */
+internal interface OpenWorkspacePublication
+
+/** Opaque proof that the active workspace transaction passed publication validation. */
 internal interface PreparedWorkspacePublication
 
 internal interface WorkspaceTransitionOperations {
@@ -99,12 +109,28 @@ internal interface WorkspaceTransitionOperations {
     /** Returns the identity of the inputs that were actually reconciled. */
     fun reconcile(candidate: WorkspaceStateIdentity): WorkspaceStateIdentity
 
-    /** Performs the slow immutable export without changing the current pointer. */
-    fun preparePublication(identity: WorkspaceStateIdentity): PreparedWorkspacePublication
+    /** Begins the SQLite transaction before reconciliation writes occur. */
+    fun beginPublication(): OpenWorkspacePublication
 
-    /** Performs the bounded current-pointer commit. */
+    /**
+     * Proof transition:
+     * `(OpenWorkspacePublication, WorkspaceStateIdentity) -> PreparedWorkspacePublication`.
+     *
+     * Verifies completeness and binds the reconciled identity without
+     * committing the transaction. The returned capability is the only input
+     * accepted by [commitPublication].
+     */
+    fun preparePublication(
+        open: OpenWorkspacePublication,
+        identity: WorkspaceStateIdentity,
+    ): PreparedWorkspacePublication
+
+    /** Commits the workspace facts and publication row in one SQLite transaction. */
     fun commitPublication(prepared: PreparedWorkspacePublication): GenerationPublication
 
-    /** Removes an unpublished immutable candidate. */
+    /** Rolls back an uncommitted workspace transaction. */
+    fun discardPublication(open: OpenWorkspacePublication)
+
+    /** Rolls back a validated but uncommitted workspace transaction. */
     fun discardPublication(prepared: PreparedWorkspacePublication)
 }

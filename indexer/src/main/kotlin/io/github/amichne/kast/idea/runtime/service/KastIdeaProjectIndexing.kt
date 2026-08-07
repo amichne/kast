@@ -8,7 +8,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.idea.diagnostics.*
-import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPreparation
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
 import io.github.amichne.kast.idea.transition.IdeaGradleWorkspaceModelIdentityResolver
 import io.github.amichne.kast.idea.transition.IdeaCompilerVisibleSourceIdentityResolver
@@ -43,7 +43,7 @@ internal class KastIdeaProjectIndexing(
         semanticAdmission,
         TimeUnit.MINUTES.toMillis(5),
     ),
-    private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
+    private val snapshotPreparation: RepositorySnapshotPreparation = RepositorySnapshotPreparation.Unmanaged,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
     private val semanticGraphIndexer:
         (IndexedSourceIdentifiers, GraphIndexingBatchSize, IdeaIndexSemanticAdmission.ReconciliationToken) -> Unit =
@@ -88,7 +88,7 @@ internal class KastIdeaProjectIndexing(
         project = project,
         workspaceIdentity = workspaceIdentity,
         diagnostics = diagnostics,
-        snapshotCoordinator = snapshotCoordinator,
+        snapshotPreparation = snapshotPreparation,
         indexStore = indexStore,
         isCancelled = ::isCancelled,
     )

@@ -3,22 +3,21 @@ use rusqlite::Connection;
 use tempfile::TempDir;
 
 #[test]
-fn native_graph_uses_published_database_not_live_candidate() {
+fn resolves_publication_from_the_single_workspace_database() {
     let fixture = Fixture::new();
-    std::fs::write(fixture.live_database(), b"unpublished candidate").unwrap();
-    let published = fixture.publish("generation-1", 11, None);
+    let database = fixture.publish(1, 11, None);
 
     let resolved = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap();
 
-    assert_eq!(std::fs::canonicalize(published).unwrap(), resolved.database);
-    assert_ne!(fixture.live_database(), resolved.database);
+    assert_eq!(std::fs::canonicalize(database).unwrap(), resolved.database);
+    assert_eq!("source-index.db", resolved.manifest.database_file);
+    assert!(!fixture.workspace_data().join("semantic-generations").exists());
     resolved.revalidate().unwrap();
 }
 
 #[test]
-fn missing_current_pointer_rejects_live_candidate() {
+fn missing_workspace_database_is_unavailable() {
     let fixture = Fixture::new();
-    std::fs::write(fixture.live_database(), b"unpublished candidate").unwrap();
 
     let failure = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap_err();
 
@@ -26,11 +25,9 @@ fn missing_current_pointer_rejects_live_candidate() {
 }
 
 #[test]
-fn published_manifest_rejects_database_escape() {
+fn database_without_a_committed_publication_is_unavailable() {
     let fixture = Fixture::new();
-    let outside = fixture.workspace_data().join("outside.db");
-    write_source_database(&outside, 13);
-    fixture.write_manifest("../outside.db", 13, None);
+    write_source_database(&fixture.database(), 7);
 
     let failure = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap_err();
 
@@ -38,10 +35,16 @@ fn published_manifest_rejects_database_escape() {
 }
 
 #[test]
-fn published_manifest_rejects_schema_or_source_generation_mismatch() {
+fn publication_rejects_schema_or_source_generation_mismatch() {
     let fixture = Fixture::new();
-    fixture.publish("generation-1", 17, None);
-    fixture.write_manifest("generation-1/source-index.db", 18, None);
+    fixture.publish(1, 17, None);
+    Connection::open(fixture.database())
+        .unwrap()
+        .execute(
+            "UPDATE workspace_publication SET source_index_generation = 18 WHERE singleton = 1",
+            [],
+        )
+        .unwrap();
 
     let failure = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap_err();
 
@@ -49,14 +52,10 @@ fn published_manifest_rejects_schema_or_source_generation_mismatch() {
 }
 
 #[test]
-fn worktree_generation_resolves_bound_repository_base() {
+fn worktree_publication_resolves_shared_repository_base() {
     let fixture = Fixture::new();
-    let repository_base = fixture
-        .generation_directory("generation-1")
-        .join("repository-base.db");
-    std::fs::create_dir_all(repository_base.parent().unwrap()).unwrap();
-    write_source_database(&repository_base, 7);
-    fixture.publish("generation-1", 19, Some(repository_base.clone()));
+    let repository_base = fixture.write_repository_base(7);
+    fixture.publish(1, 19, Some(repository_base.clone()));
 
     let resolved = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap();
 
@@ -65,24 +64,19 @@ fn worktree_generation_resolves_bound_repository_base() {
         resolved.repository_base_database,
     );
     assert_eq!(
-        Some(
-            std::fs::canonicalize(
-                fixture
-                    .workspace_data()
-                    .join("semantic-generations/generations/generation-1/repository-overlay.json"),
-            )
-            .unwrap(),
-        ),
+        Some(std::fs::canonicalize(fixture.overlay()).unwrap()),
         resolved.repository_overlay,
     );
 }
 
 #[test]
-fn published_overlay_rejects_external_same_schema_base() {
+fn publication_rejects_an_unavailable_repository_base() {
     let fixture = Fixture::new();
-    let external_base = fixture.root.path().join("repository-base.db");
-    write_source_database(&external_base, 7);
-    fixture.publish("generation-1", 19, Some(external_base));
+    fixture.publish(
+        1,
+        19,
+        Some(fixture.repository_base_path()),
+    );
 
     let failure = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap_err();
 
@@ -90,14 +84,14 @@ fn published_overlay_rejects_external_same_schema_base() {
 }
 
 #[test]
-fn completed_read_rejects_a_moved_current_pointer() {
+fn completed_read_rejects_a_moved_database_publication() {
     let fixture = Fixture::new();
-    fixture.publish("generation-1", 23, None);
+    fixture.publish(1, 23, None);
     let published = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap();
 
     let failure = published
         .read(|_| {
-            fixture.publish("generation-2", 24, None);
+            fixture.publish(2, 24, None);
             Ok(())
         })
         .unwrap_err();
@@ -105,34 +99,16 @@ fn completed_read_rejects_a_moved_current_pointer() {
     assert_eq!("PUBLISHED_WORKSPACE_MOVED", failure.code);
 }
 
-#[test]
-fn invalid_current_pointer_rejects_a_live_candidate() {
-    let fixture = Fixture::new();
-    std::fs::write(fixture.live_database(), b"unpublished candidate").unwrap();
-    std::fs::write(
-        fixture.workspace_data().join("semantic-generations/current.json"),
-        b"not-json",
-    )
-    .unwrap();
-
-    let failure = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap_err();
-
-    assert_eq!("PUBLISHED_WORKSPACE_INVALID", failure.code);
-}
-
 #[cfg(unix)]
 #[test]
-fn symlinked_current_pointer_is_not_publication_authority() {
+fn symlinked_workspace_database_is_not_publication_authority() {
     use std::os::unix::fs::symlink;
 
     let fixture = Fixture::new();
-    fixture.publish("generation-1", 31, None);
-    let current = fixture
-        .workspace_data()
-        .join("semantic-generations/current.json");
-    let target = fixture.root.path().join("mutable-current.json");
-    std::fs::rename(&current, &target).unwrap();
-    symlink(&target, &current).unwrap();
+    let database = fixture.publish(1, 31, None);
+    let target = fixture.root.path().join("mutable-source-index.db");
+    std::fs::rename(&database, &target).unwrap();
+    symlink(&target, &database).unwrap();
 
     let failure = resolve_published_workspace_database_from(fixture.workspace_data()).unwrap_err();
 
@@ -147,9 +123,11 @@ struct Fixture {
 impl Fixture {
     fn new() -> Self {
         let root = TempDir::new().unwrap();
-        let workspace_data = root.path().join("workspace-data");
+        let workspace_data = root
+            .path()
+            .join("data/workspaces")
+            .join("2".repeat(64));
         std::fs::create_dir_all(workspace_data.join("cache")).unwrap();
-        std::fs::create_dir_all(workspace_data.join("semantic-generations/generations")).unwrap();
         Self {
             root,
             workspace_data,
@@ -160,64 +138,117 @@ impl Fixture {
         &self.workspace_data
     }
 
-    fn live_database(&self) -> PathBuf {
+    fn database(&self) -> PathBuf {
         self.workspace_data.join("cache/source-index.db")
     }
 
-    fn generation_directory(&self, generation: &str) -> PathBuf {
-        self.workspace_data
-            .join("semantic-generations/generations")
-            .join(generation)
+    fn overlay(&self) -> PathBuf {
+        self.workspace_data.join("cache/repository-overlay.json")
+    }
+
+    fn repository_base_path(&self) -> PathBuf {
+        self.root
+            .path()
+            .join("data/repositories")
+            .join("1".repeat(64))
+            .join("snapshots")
+            .join(snapshot_directory_name())
+            .join("source-index.db")
+    }
+
+    fn write_repository_base(&self, generation: u64) -> PathBuf {
+        let database = self.repository_base_path();
+        std::fs::create_dir_all(database.parent().unwrap()).unwrap();
+        write_source_database(&database, generation);
+        std::fs::write(
+            database.with_file_name("manifest.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "key": snapshot_key(),
+                "files": {},
+                "createdAt": 1
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        database
     }
 
     fn publish(
         &self,
-        generation_directory: &str,
+        revision: u64,
         source_generation: u64,
         repository_base_database: Option<PathBuf>,
     ) -> PathBuf {
-        let database = self
-            .generation_directory(generation_directory)
-            .join("source-index.db");
-        std::fs::create_dir_all(database.parent().unwrap()).unwrap();
-        write_source_database(&database, source_generation);
+        let database = self.database();
+        if !database.exists() {
+            write_source_database(&database, source_generation);
+        } else {
+            Connection::open(&database)
+                .unwrap()
+                .execute(
+                    "UPDATE schema_version SET generation = ?1",
+                    [i64::try_from(source_generation).unwrap()],
+                )
+                .unwrap();
+        }
         if let Some(base) = &repository_base_database {
             std::fs::write(
-                database.with_file_name("repository-overlay.json"),
-                serde_json::to_vec(&serde_json::json!({ "baseDatabase": base })).unwrap(),
+                self.overlay(),
+                serde_json::to_vec(&serde_json::json!({
+                    "base": snapshot_key(),
+                    "target": snapshot_key(),
+                    "tombstones": [],
+                    "shards": {},
+                    "baseDatabase": base
+                }))
+                .unwrap(),
             )
             .unwrap();
+        } else {
+            let _ = std::fs::remove_file(self.overlay());
         }
-        self.write_manifest(
-            &format!("{generation_directory}/source-index.db"),
-            source_generation,
-            repository_base_database,
-        );
+        let connection = Connection::open(&database).unwrap();
+        connection.execute_batch(PUBLICATION_SCHEMA).unwrap();
+        connection
+            .execute(
+                "INSERT INTO workspace_publication(
+                     singleton, revision, identity, source_index_generation,
+                     source_index_schema_version, published_at_epoch_millis, repository_overlay_file
+                 ) VALUES (1, ?1, 'workspace-state-one', ?2, ?3, 1, ?4)
+                 ON CONFLICT(singleton) DO UPDATE SET
+                     revision = excluded.revision,
+                     source_index_generation = excluded.source_index_generation,
+                     repository_overlay_file = excluded.repository_overlay_file",
+                rusqlite::params![
+                    i64::try_from(revision).unwrap(),
+                    i64::try_from(source_generation).unwrap(),
+                    SOURCE_INDEX_SCHEMA_VERSION,
+                    repository_base_database.map(|_| "repository-overlay.json"),
+                ],
+            )
+            .unwrap();
         database
     }
+}
 
-    fn write_manifest(
-        &self,
-        database_file: &str,
-        source_generation: u64,
-        repository_base_database: Option<PathBuf>,
-    ) {
-        let manifest = PublishedWorkspaceGenerationManifest {
-            generation: 1,
-            identity: "workspace-state-one".to_string(),
-            source_index_generation: source_generation,
-            source_index_schema_version: SOURCE_INDEX_SCHEMA_VERSION,
-            database_file: database_file.to_string(),
-            published_at_epoch_millis: 1,
-            repository_overlay_file: repository_base_database
-                .map(|_| "repository-overlay.json".to_string()),
-        };
-        std::fs::write(
-            self.workspace_data.join("semantic-generations/current.json"),
-            serde_json::to_vec(&manifest).unwrap(),
-        )
-        .unwrap();
-    }
+fn snapshot_key() -> serde_json::Value {
+    serde_json::json!({
+        "treeOid": "a".repeat(40),
+        "buildClasspathFingerprint": "b".repeat(64),
+        "indexSchema": SOURCE_INDEX_SCHEMA_VERSION,
+        "producerVersion": "test"
+    })
+}
+
+fn snapshot_directory_name() -> String {
+    let value = format!(
+        "{}\n{}\n{}\n{}",
+        "a".repeat(40),
+        "b".repeat(64),
+        SOURCE_INDEX_SCHEMA_VERSION,
+        "test"
+    );
+    hex::encode(Sha256::digest(value.as_bytes()))
 }
 
 fn write_source_database(path: &Path, generation: u64) {
@@ -237,3 +268,14 @@ fn write_source_database(path: &Path, generation: u64) {
         )
         .unwrap();
 }
+
+const PUBLICATION_SCHEMA: &str =
+    "CREATE TABLE IF NOT EXISTS workspace_publication(
+         singleton INTEGER PRIMARY KEY,
+         revision INTEGER NOT NULL,
+         identity TEXT NOT NULL,
+         source_index_generation INTEGER NOT NULL,
+         source_index_schema_version INTEGER NOT NULL,
+         published_at_epoch_millis INTEGER NOT NULL,
+         repository_overlay_file TEXT
+     );";

@@ -27,33 +27,23 @@ internal class SourceIndexReferenceStore(
             return
         }
         val parsedTargetPath = targetPath?.let { path -> state.sourceFilePolicy.sourcePath(Path.of(path)) }
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                mutations.internPathsInTransaction(
-                    conn,
-                    listOfNotNull(parsedSourcePath.toDatabasePath(), parsedTargetPath?.toDatabasePath()),
-                )
-                mutations.internFqNamesInTransaction(conn, listOfNotNull(targetFqName, sourceFqName).toSet())
-                upsertSymbolReferenceInTransaction(
-                    conn = conn,
-                    sourcePath = parsedSourcePath,
-                    sourceOffset = sourceOffset,
-                    sourceFqName = sourceFqName,
-                    targetFqName = targetFqName,
-                    targetPath = parsedTargetPath,
-                    targetOffset = parsedTargetPath?.let { targetOffset },
-                    edgeKind = edgeKind,
-                )
-                state.incrementGenerationInTransaction(conn)
-                conn.commit()
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
-            }
+        state.writeTransaction { conn ->
+            mutations.internPathsInTransaction(
+                conn,
+                listOfNotNull(parsedSourcePath.toDatabasePath(), parsedTargetPath?.toDatabasePath()),
+            )
+            mutations.internFqNamesInTransaction(conn, listOfNotNull(targetFqName, sourceFqName).toSet())
+            upsertSymbolReferenceInTransaction(
+                conn = conn,
+                sourcePath = parsedSourcePath,
+                sourceOffset = sourceOffset,
+                sourceFqName = sourceFqName,
+                targetFqName = targetFqName,
+                targetPath = parsedTargetPath,
+                targetOffset = parsedTargetPath?.let { targetOffset },
+                edgeKind = edgeKind,
+            )
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
@@ -75,7 +65,8 @@ internal class SourceIndexReferenceStore(
         val targetFqId = fqCodec.getOrCreate(conn, targetFqName)
         conn.prepareStatement(
             """INSERT OR REPLACE INTO symbol_references
-               (src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id, tgt_prefix_id, tgt_filename, target_offset, edge_kind)
+               (src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id,
+                tgt_prefix_id, tgt_filename, target_offset, edge_kind)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         ).use { stmt ->
             stmt.setInt(1, sourcePrefixId)
@@ -98,19 +89,9 @@ internal class SourceIndexReferenceStore(
 
     fun clearReferencesFromFile(sourcePath: String) {
         val parsedSourcePath = state.sourceFilePolicy.sourcePath(Path.of(sourcePath)) ?: return
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                clearReferencesFromFileInTransaction(conn, parsedSourcePath)
-                state.incrementGenerationInTransaction(conn)
-                conn.commit()
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
-            }
+        state.writeTransaction { conn ->
+            clearReferencesFromFileInTransaction(conn, parsedSourcePath)
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
@@ -135,117 +116,97 @@ internal class SourceIndexReferenceStore(
                 "Retained reference source must be an eligible exact-root Kotlin file: $sourcePath"
             }
         }
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                if (parsedSourcePaths.isEmpty()) {
+        state.writeTransaction { conn ->
+            if (parsedSourcePaths.isEmpty()) {
+                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
+            } else {
+                state.loadInterningTables(conn)
+                val encodedSources = parsedSourcePaths
+                    .mapNotNull { path -> pathCodec.encodeIfInterned(path.toDatabasePath()) }
+                    .toSet()
+                if (encodedSources.isEmpty()) {
                     conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
                 } else {
-                    state.loadInterningTables(conn)
-                    val encodedSources = parsedSourcePaths
-                        .mapNotNull { path -> pathCodec.encodeIfInterned(path.toDatabasePath()) }
-                        .toSet()
-                    if (encodedSources.isEmpty()) {
-                        conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
-                    } else {
+                    conn.createStatement().use { stmt ->
+                        stmt.execute(
+                            """CREATE TEMP TABLE IF NOT EXISTS temp_valid_sources (
+                                prefix_id INTEGER NOT NULL,
+                                filename TEXT NOT NULL,
+                                PRIMARY KEY (prefix_id, filename)
+                            )""",
+                        )
+                        stmt.execute("DELETE FROM temp_valid_sources")
+                    }
+                    try {
+                        conn.prepareStatement(
+                            "INSERT OR IGNORE INTO temp_valid_sources (prefix_id, filename) VALUES (?, ?)",
+                        ).use { stmt ->
+                            for ((prefixId, filename) in encodedSources) {
+                                stmt.setInt(1, prefixId)
+                                stmt.setString(2, filename)
+                                stmt.addBatch()
+                            }
+                            stmt.executeBatch()
+                        }
                         conn.createStatement().use { stmt ->
                             stmt.execute(
-                                """CREATE TEMP TABLE IF NOT EXISTS temp_valid_sources (
-                                    prefix_id INTEGER NOT NULL,
-                                    filename TEXT NOT NULL,
-                                    PRIMARY KEY (prefix_id, filename)
-                                )""",
+                                """DELETE FROM symbol_references
+                                   WHERE NOT EXISTS (
+                                       SELECT 1
+                                       FROM temp_valid_sources valid
+                                       WHERE valid.prefix_id = symbol_references.src_prefix_id
+                                         AND valid.filename = symbol_references.src_filename
+                                   )""",
                             )
-                            stmt.execute("DELETE FROM temp_valid_sources")
                         }
-                        try {
-                            conn.prepareStatement(
-                                "INSERT OR IGNORE INTO temp_valid_sources (prefix_id, filename) VALUES (?, ?)",
-                            ).use { stmt ->
-                                for ((prefixId, filename) in encodedSources) {
-                                    stmt.setInt(1, prefixId)
-                                    stmt.setString(2, filename)
-                                    stmt.addBatch()
-                                }
-                                stmt.executeBatch()
-                            }
-                            conn.createStatement().use { stmt ->
-                                stmt.execute(
-                                    """DELETE FROM symbol_references
-                                       WHERE NOT EXISTS (
-                                           SELECT 1
-                                           FROM temp_valid_sources valid
-                                           WHERE valid.prefix_id = symbol_references.src_prefix_id
-                                             AND valid.filename = symbol_references.src_filename
-                                       )""",
-                                )
-                            }
-                        } finally {
-                            conn.createStatement().use { stmt -> stmt.execute("DROP TABLE IF EXISTS temp_valid_sources") }
-                        }
+                    } finally {
+                        conn.createStatement().use { stmt -> stmt.execute("DROP TABLE IF EXISTS temp_valid_sources") }
                     }
                 }
-                state.incrementGenerationInTransaction(conn)
-                conn.commit()
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
             }
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
     fun replaceReferencesFromFiles(referencesBySource: List<Pair<String, List<SymbolReferenceRow>>>) {
         val eligibleReferencesBySource = referencesBySource
             .mapNotNull(::parseReferenceBatch)
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                val pathsToIntern = eligibleReferencesBySource.flatMap { batch ->
-                    buildList {
-                        add(batch.sourcePath.toDatabasePath())
-                        batch.references.forEach { reference ->
-                            reference.targetPath?.toDatabasePath()?.let(::add)
-                        }
-                    }
-                }
-                mutations.internPathsInTransaction(conn, pathsToIntern)
-                mutations.internFqNamesInTransaction(
-                    conn,
-                    eligibleReferencesBySource.flatMapTo(mutableSetOf()) { batch ->
-                        batch.references.flatMap { reference ->
-                            listOfNotNull(reference.row.targetFqName, reference.row.sourceFqName)
-                        }
-                    },
-                )
-                for (batch in eligibleReferencesBySource) {
-                    clearReferencesFromFileInTransaction(conn, batch.sourcePath)
+        state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { conn ->
+            val pathsToIntern = eligibleReferencesBySource.flatMap { batch ->
+                buildList {
+                    add(batch.sourcePath.toDatabasePath())
                     batch.references.forEach { reference ->
-                        val row = reference.row
-                        upsertSymbolReferenceInTransaction(
-                            conn = conn,
-                            sourcePath = batch.sourcePath,
-                            sourceOffset = row.sourceOffset,
-                            sourceFqName = row.sourceFqName,
-                            targetFqName = row.targetFqName,
-                            targetPath = reference.targetPath,
-                            targetOffset = reference.targetPath?.let { row.targetOffset },
-                            edgeKind = row.edgeKind,
-                        )
+                        reference.targetPath?.toDatabasePath()?.let(::add)
                     }
                 }
-                state.removeIneligibleSourceIndexRows(conn)
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
             }
+            mutations.internPathsInTransaction(conn, pathsToIntern)
+            mutations.internFqNamesInTransaction(
+                conn,
+                eligibleReferencesBySource.flatMapTo(mutableSetOf()) { batch ->
+                    batch.references.flatMap { reference ->
+                        listOfNotNull(reference.row.targetFqName, reference.row.sourceFqName)
+                    }
+                },
+            )
+            for (batch in eligibleReferencesBySource) {
+                clearReferencesFromFileInTransaction(conn, batch.sourcePath)
+                batch.references.forEach { reference ->
+                    val row = reference.row
+                    upsertSymbolReferenceInTransaction(
+                        conn = conn,
+                        sourcePath = batch.sourcePath,
+                        sourceOffset = row.sourceOffset,
+                        sourceFqName = row.sourceFqName,
+                        targetFqName = row.targetFqName,
+                        targetPath = reference.targetPath,
+                        targetOffset = reference.targetPath?.let { row.targetOffset },
+                        edgeKind = row.edgeKind,
+                    )
+                }
+            }
+            state.removeIneligibleSourceIndexRows(conn)
+            state.incrementGenerationInTransaction(conn)
         }
     }
 

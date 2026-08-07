@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore
 import io.github.amichne.kast.api.contract.ByteOffset
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
@@ -16,8 +17,19 @@ import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ExtractionShardKey
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
 import io.github.amichne.kast.indexstore.snapshot.OverlayManifest
+import io.github.amichne.kast.indexstore.snapshot.PublicationEvidence
+import io.github.amichne.kast.indexstore.snapshot.RepositorySnapshotStore
+import io.github.amichne.kast.indexstore.snapshot.RepositoryRelativePath
+import io.github.amichne.kast.indexstore.snapshot.RepositorySnapshotDatabaseResolution
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.snapshot.SnapshotCreationEpochMillis
 import io.github.amichne.kast.indexstore.snapshot.SnapshotKey
+import io.github.amichne.kast.indexstore.snapshot.SnapshotManifest
+import io.github.amichne.kast.indexstore.snapshot.SourceIndexSchemaVersion
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
+import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.client.WorkspaceRepository
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
@@ -119,12 +131,68 @@ internal fun semanticUpdate(
 
 internal fun snapshotKey(character: Char) = SnapshotKey(
     treeOid = gitObjectId(character),
-    buildClasspathFingerprint = BuildClasspathFingerprint.parse("d".repeat(64)),
-    indexSchema = SOURCE_INDEX_SCHEMA_VERSION,
-    producerVersion = ProducerVersion.parse("test"),
+    buildClasspathFingerprint = BuildClasspathFingerprint.fromDigest("d".repeat(64)),
+    indexSchema = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
+    producerVersion = ProducerVersion.fromVersion("test"),
 )
 
-internal fun gitObjectId(character: Char) = GitObjectId.parse(character.toString().repeat(40))
+internal fun gitObjectId(character: Char) = GitObjectId.fromCanonical(character.toString().repeat(40))
+
+internal fun repositoryOverlay(
+    workspaceRoot: Path,
+    base: SnapshotKey,
+    target: SnapshotKey,
+    tombstones: Set<RepositoryRelativePath>,
+    shards: Map<RepositoryRelativePath, ExtractionShardKey>,
+): OverlayManifest {
+    val repositoryDirectory = workspaceRoot.resolveSibling(
+        "${workspaceRoot.fileName}-repository-${base.directoryName.value}",
+    )
+    val stagingDatabase = repositoryDirectory.resolveSibling("${repositoryDirectory.fileName}-staging.db")
+    val identity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+        workspaceDataDirectory = NormalizedPath.ofAbsolute(stagingDatabase.parent),
+        workspaceCacheDirectory = NormalizedPath.ofAbsolute(stagingDatabase.parent),
+        sourceIndexDatabasePath = NormalizedPath.ofAbsolute(stagingDatabase),
+    )
+    SqliteSourceIndexStore(identity).use { store -> store.ensureSchema() }
+    val snapshots = RepositorySnapshotStore(repositoryDirectory)
+    snapshots.publishMain(
+        SnapshotManifest(base, emptyMap(), SnapshotCreationEpochMillis.fromClock(1)),
+        NormalizedPath.ofAbsolute(stagingDatabase),
+        PublicationEvidence(
+            SourceIndexGeneration(1),
+            SourceIndexGeneration(1),
+            NonNegativeInt(1),
+            NonNegativeInt(0),
+            NonNegativeInt(0),
+            base.treeOid,
+            base.indexSchema,
+            base.producerVersion,
+        ),
+    )
+    val baseDatabase = when (val resolution = snapshots.resolveSnapshotDatabase(base)) {
+        is RepositorySnapshotDatabaseResolution.Resolved -> resolution.database.path
+        is RepositorySnapshotDatabaseResolution.Rejected -> error(resolution.failure)
+    }
+    return OverlayManifest(
+        base = base,
+        target = target,
+        tombstones = tombstones,
+        shards = shards,
+        baseDatabase = baseDatabase,
+    )
+}
+
+internal fun overlayWorkspaceIdentity(
+    workspaceRoot: Path,
+    overlay: OverlayManifest,
+): WorkspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+    repository = WorkspaceRepository.Git(
+        NormalizedPath.ofAbsolute(
+            checkNotNull(overlay.baseDatabase.toJavaPath().parent?.parent?.parent),
+        ),
+    ),
+)
 
 internal const val SCALE_FILE_COUNT = 200
 internal const val SCALE_SYMBOL_COUNT = 10_000

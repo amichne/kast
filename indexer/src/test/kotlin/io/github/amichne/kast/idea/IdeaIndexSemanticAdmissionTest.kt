@@ -381,5 +381,5 @@ class IdeaIndexSemanticAdmissionTest {
 
     private fun durableCommit(
         generation: PublishedWorkspaceGenerationManifest,
-    ): WorkspaceGenerationCommit = WorkspaceGenerationCommit.Durable(generation)
+    ): WorkspaceGenerationCommit = WorkspaceGenerationCommit(generation)
 }

@@ -18,23 +18,13 @@ internal class SourceIndexInventoryStore(
                     ?.let { path -> put(path, lastModifiedMillis) }
             }
         }
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                val databaseEntries = eligibleEntries.mapKeys { (path, _) -> path.toDatabasePath() }
-                mutations.internPathsInTransaction(conn, databaseEntries.keys)
-                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
-                mutations.insertManifestInTransaction(conn, databaseEntries)
-                state.removeIneligibleSourceIndexRows(conn)
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
-            }
+        state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { conn ->
+            val databaseEntries = eligibleEntries.mapKeys { (path, _) -> path.toDatabasePath() }
+            mutations.internPathsInTransaction(conn, databaseEntries.keys)
+            conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
+            mutations.insertManifestInTransaction(conn, databaseEntries)
+            state.removeIneligibleSourceIndexRows(conn)
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
@@ -43,30 +33,20 @@ internal class SourceIndexInventoryStore(
         lastModifiedMillis: Long,
     ) {
         val sourcePath = state.sourceFilePolicy.sourcePath(Path.of(path)) ?: return
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                val databasePath = sourcePath.toDatabasePath()
-                mutations.internPathsInTransaction(conn, listOf(databasePath))
-                val (prefixId, filename) = pathCodec.encode(databasePath)
-                conn.prepareStatement(
-                    """INSERT OR REPLACE INTO file_manifest (prefix_id, filename, last_modified_millis)
-                       VALUES (?, ?, ?)""",
-                ).use { stmt ->
-                    stmt.setInt(1, prefixId)
-                    stmt.setString(2, filename)
-                    stmt.setLong(3, lastModifiedMillis)
-                    stmt.executeUpdate()
-                }
-                state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
+        state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { conn ->
+            val databasePath = sourcePath.toDatabasePath()
+            mutations.internPathsInTransaction(conn, listOf(databasePath))
+            val (prefixId, filename) = pathCodec.encode(databasePath)
+            conn.prepareStatement(
+                """INSERT OR REPLACE INTO file_manifest (prefix_id, filename, last_modified_millis)
+                   VALUES (?, ?, ?)""",
+            ).use { stmt ->
+                stmt.setInt(1, prefixId)
+                stmt.setString(2, filename)
+                stmt.setLong(3, lastModifiedMillis)
+                stmt.executeUpdate()
             }
+            state.incrementGenerationInTransaction(conn)
         }
     }
 
@@ -76,9 +56,10 @@ internal class SourceIndexInventoryStore(
             try {
                 val conn = state.connection()
                 state.loadInterningTables(conn)
+                val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
                 buildMap {
                     conn.createStatement().use { stmt ->
-                        val rs = stmt.executeQuery("SELECT prefix_id, filename, last_modified_millis FROM file_manifest")
+                        val rs = stmt.executeQuery("SELECT prefix_id, filename, last_modified_millis FROM $manifest")
                         while (rs.next()) put(pathCodec.decode(rs.getInt(1), rs.getString(2)), rs.getLong(3))
                     }
                 }
@@ -92,8 +73,9 @@ internal class SourceIndexInventoryStore(
         if (!state.dbExists()) return null
         return synchronized(state.writeLock) {
             try {
+                val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
                 state.connection().createStatement().use { stmt ->
-                    stmt.executeQuery("SELECT COUNT(*) FROM file_manifest").use { rows ->
+                    stmt.executeQuery("SELECT COUNT(*) FROM $manifest").use { rows ->
                         if (rows.next()) rows.getInt(1) else 0
                     }
                 }
@@ -108,8 +90,9 @@ internal class SourceIndexInventoryStore(
         return synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
+            val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
             conn.createStatement().use { stmt ->
-                val rs = stmt.executeQuery("SELECT prefix_id, filename FROM file_manifest")
+                val rs = stmt.executeQuery("SELECT prefix_id, filename FROM $manifest")
                 buildList {
                     while (rs.next()) {
                         val path = Path.of(pathCodec.decode(rs.getInt(1), rs.getString(2)))
@@ -132,10 +115,12 @@ internal class SourceIndexInventoryStore(
         return synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
+            val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
+            val prefixes = state.readTable(SourceIndexReadTable.PATH_PREFIXES)
             val countsByDir = conn.prepareStatement(
                 """SELECT prefixes.dir_path, COUNT(*) AS file_count
-                   FROM file_manifest manifest
-                   JOIN path_prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
+                   FROM $manifest manifest
+                   JOIN $prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
                    GROUP BY prefixes.dir_path""",
             ).use { stmt ->
                 val rs = stmt.executeQuery()
@@ -191,8 +176,9 @@ internal class SourceIndexInventoryStore(
 
     fun moduleIndexStatus(moduleName: String): RelationshipIndexStatus? =
         synchronized(state.writeLock) {
+            val progress = state.readTable(SourceIndexReadTable.MODULE_INDEX_PROGRESS)
             state.connection().prepareStatement(
-                "SELECT relationship_index_status FROM module_index_progress WHERE module_name = ?",
+                "SELECT relationship_index_status FROM $progress WHERE module_name = ?",
             ).use { stmt ->
                 stmt.setString(1, moduleName)
                 val rs = stmt.executeQuery()
@@ -202,9 +188,10 @@ internal class SourceIndexInventoryStore(
 
     fun moduleIndexStatuses(): Map<String, RelationshipIndexStatus> =
         synchronized(state.writeLock) {
+            val progress = state.readTable(SourceIndexReadTable.MODULE_INDEX_PROGRESS)
             state.connection().createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    "SELECT module_name, relationship_index_status FROM module_index_progress ORDER BY module_name",
+                    "SELECT module_name, relationship_index_status FROM $progress ORDER BY module_name",
                 )
                 buildMap {
                     while (rs.next()) {
@@ -216,10 +203,11 @@ internal class SourceIndexInventoryStore(
 
     fun completedModules(): Set<String> =
         synchronized(state.writeLock) {
+            val progress = state.readTable(SourceIndexReadTable.MODULE_INDEX_PROGRESS)
             state.connection().createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
                     """SELECT module_name
-                       FROM module_index_progress
+                       FROM $progress
                        WHERE relationship_index_status IN ('COMPLETE','DEGRADED')""",
                 )
                 buildSet {
@@ -258,9 +246,11 @@ internal class SourceIndexInventoryStore(
             "(prefixes.dir_path = ? OR prefixes.dir_path LIKE ?)"
         }
         val limitClause = if (limitPerRoot == null) "" else " LIMIT ?"
+        val manifest = state.readTable(SourceIndexReadTable.FILE_MANIFEST)
+        val prefixes = state.readTable(SourceIndexReadTable.PATH_PREFIXES)
         return """SELECT manifest.prefix_id, manifest.filename
-                  FROM file_manifest manifest
-                  JOIN path_prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
+                  FROM $manifest manifest
+                  JOIN $prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
                   WHERE $rootClause
                   ORDER BY prefixes.dir_path, manifest.filename$limitClause"""
     }

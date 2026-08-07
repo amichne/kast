@@ -2,7 +2,7 @@ mod support;
 
 use rusqlite::params;
 use sha2::{Digest, Sha256};
-use support::workspace_files::WorkspaceIndexFixture;
+use support::workspace_files::{WorkspaceIndexFixture, install_repository_overlay_fixture};
 use support::*;
 
 include!("repository_intelligence_smoke/fixtures/core.rs");

@@ -156,12 +156,22 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val publication = object : WorkspaceGenerationPublication {
             override fun current() = delegate.current()
 
-            override fun prepare(identity: WorkspaceStateIdentity) = delegate.prepare(identity).also {
+            override fun begin() = delegate.begin()
+
+            override fun prepare(
+                open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication,
+                identity: WorkspaceStateIdentity,
+            ) = delegate.prepare(open, identity).also {
                 if (preparations.incrementAndGet() == 1) transition.set(inProgress)
             }
 
             override fun commit(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) =
                 delegate.commit(prepared)
+
+            override fun discard(open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication) {
+                discards.incrementAndGet()
+                delegate.discard(open)
+            }
 
             override fun discard(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) {
                 discards.incrementAndGet()
@@ -366,18 +376,11 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
     }
 
     private fun git(directory: Path, vararg arguments: String) {
-        gitOutput(directory, *arguments)
+        runGitCommand(directory, *arguments)
     }
 
-    private fun gitOutput(directory: Path, vararg arguments: String): String {
-        val process = ProcessBuilder("git", *arguments)
-            .directory(directory.toFile())
-            .redirectErrorStream(true)
-            .start()
-        val output = process.inputStream.use { input -> input.readAllBytes().toString(Charsets.UTF_8) }
-        assertTrue(process.waitFor() == 0, "git ${arguments.joinToString(" ")} failed: $output")
-        return output.trim()
-    }
+    private fun gitOutput(directory: Path, vararg arguments: String): String =
+        readGitOutput(directory, *arguments)
 
     private fun projectStub(): Project = Proxy.newProxyInstance(
         Project::class.java.classLoader,

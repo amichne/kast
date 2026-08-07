@@ -1,6 +1,8 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.protocol.AnalysisException
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.validation.FileHashing
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -187,7 +189,7 @@ class WorkspacePathsTest {
     }
 
     @Test
-    fun `workspace data directory uses stable common directory identity for git remotes`() {
+    fun `workspace data directory uses canonical workspace identity for git remotes`() {
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val commonDir = tempDir.resolve("main.git")
@@ -203,11 +205,9 @@ class WorkspacePathsTest {
                 )
             },
         )
-        val worktreeHash = gitWorktreeHash(workspaceRoot, gitDir)
-
         assertEquals(
             installRoot.resolve(
-                "state/data/workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/workspace--$worktreeHash",
+                "state/data/workspaces/${FileHashing.sha256(NormalizedPath.of(workspaceRoot).value)}",
             ),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
@@ -244,61 +244,12 @@ class WorkspacePathsTest {
             dataRoot = { dataRoot },
             gitWorkspaceResolver = { null },
         )
-        val expectedSegment = workspaceRoot
-            .toAbsolutePath()
-            .normalize()
-            .toString()
-            .replace(Regex("[^A-Za-z0-9._-]+"), "-")
-            .trim('-')
-            .take(80)
-
         assertEquals(
-            dataRoot.resolve("workspaces/local/$expectedSegment--${resolver.workspaceHash(workspaceRoot)}"),
+            dataRoot.resolve("workspaces/${FileHashing.sha256(NormalizedPath.of(workspaceRoot).value)}"),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
         assertTrue(!Files.exists(dataRoot.resolve("workspaces/local-workspaces.json")))
         assertTrue(!Files.exists(workspaceRoot.resolve(".gradle/kast")))
-    }
-
-    @Test
-    fun `local workspace data honors an existing registry mapping without rewriting it`() {
-        val dataRoot = tempDir.resolve("global-data")
-        val workspaceRoot = tempDir.resolve("workspace").toAbsolutePath().normalize()
-        val registry = dataRoot.resolve("workspaces/local-workspaces.json")
-        Files.createDirectories(registry.parent)
-        val original = """{"$workspaceRoot":"existing-workspace-id"}"""
-        Files.writeString(registry, original)
-        val resolver = WorkspaceDirectoryResolver(
-            dataRoot = { dataRoot },
-            gitWorkspaceResolver = { null },
-        )
-
-        assertTrue(
-            resolver.workspaceDataDirectory(workspaceRoot)
-                .endsWith("$expectedLocalSegment--existing-workspace-id"),
-        )
-        assertEquals(original, Files.readString(registry))
-    }
-
-    @Test
-    fun `local workspace registry ignores unrelated structured entries`() {
-        val dataRoot = tempDir.resolve("global-data")
-        val workspaceRoot = tempDir.resolve("workspace").toAbsolutePath().normalize()
-        val registry = dataRoot.resolve("workspaces/local-workspaces.json")
-        Files.createDirectories(registry.parent)
-        Files.writeString(
-            registry,
-            """{"unrelated":{"owner":"user"},"$workspaceRoot":"existing-workspace-id"}""",
-        )
-        val resolver = WorkspaceDirectoryResolver(
-            dataRoot = { dataRoot },
-            gitWorkspaceResolver = { null },
-        )
-
-        assertTrue(
-            resolver.workspaceDataDirectory(workspaceRoot)
-                .endsWith("$expectedLocalSegment--existing-workspace-id"),
-        )
     }
 
     @Test
@@ -320,31 +271,32 @@ class WorkspacePathsTest {
             },
         )
         val expectedRepository = dataRoot
-            .resolve("workspaces/git/local/${gitCommonDirHash(commonDir)}")
+            .resolve(
+                "repositories/${RepositoryPathKey.fromCommonDirectory(NormalizedPath.of(commonDir)).value}",
+            )
             .toAbsolutePath()
             .normalize()
 
-        assertEquals(expectedRepository, resolver.repositoryDataDirectory(workspaceRoot))
+        assertEquals(
+            WorkspaceRepository.Git(NormalizedPath.ofAbsolute(expectedRepository)),
+            resolver.repository(workspaceRoot),
+        )
         val initialWorkspace = resolver.workspaceDataDirectory(workspaceRoot)
 
         remote = GitRemote(host = "git.example.com", owner = "fork", repo = "renamed")
-        assertEquals(expectedRepository, resolver.repositoryDataDirectory(workspaceRoot))
+        assertEquals(
+            WorkspaceRepository.Git(NormalizedPath.ofAbsolute(expectedRepository)),
+            resolver.repository(workspaceRoot),
+        )
         assertEquals(initialWorkspace, resolver.workspaceDataDirectory(workspaceRoot))
 
         remote = null
-        assertEquals(expectedRepository, resolver.repositoryDataDirectory(workspaceRoot))
+        assertEquals(
+            WorkspaceRepository.Git(NormalizedPath.ofAbsolute(expectedRepository)),
+            resolver.repository(workspaceRoot),
+        )
         assertEquals(initialWorkspace, resolver.workspaceDataDirectory(workspaceRoot))
     }
-
-    private val expectedLocalSegment: String
-        get() = tempDir.resolve("workspace")
-            .toAbsolutePath()
-            .normalize()
-            .toString()
-            .replace(Regex("[^A-Za-z0-9._-]+"), "-")
-            .trim('-')
-            .take(80)
-
 
     private companion object {
         val kastConfigHomeEnv: String = env("KAST", "CONFIG", "HOME")

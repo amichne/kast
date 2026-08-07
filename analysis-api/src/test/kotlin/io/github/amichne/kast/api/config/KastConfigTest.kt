@@ -1,6 +1,8 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.validation.FileHashing
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -164,7 +166,7 @@ class KastConfigTest {
     }
 
     @Test
-    fun `workspace directory resolver uses stable common directory hierarchy when origin is parseable`() {
+    fun `workspace directory resolver uses flat path key when origin is parseable`() {
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val commonDir = tempDir.resolve("main.git")
@@ -185,8 +187,7 @@ class KastConfigTest {
 
         assertEquals(
             installRoot.resolve(
-                "state/data/workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/" +
-                    "workspace--${gitWorktreeHash(workspaceRoot, gitDir)}",
+                "state/data/workspaces/${FileHashing.sha256(NormalizedPath.of(workspaceRoot).value)}",
             ),
             dataDirectory,
         )
@@ -207,7 +208,7 @@ class KastConfigTest {
         val second = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(first, second)
-        assertTrue(first.startsWith(installRoot.resolve("state/data/workspaces/local")))
+        assertTrue(first.startsWith(installRoot.resolve("state/data/workspaces")))
         assertTrue(!installRoot.resolve("state/data/workspaces/local-workspaces.json").toFile().exists())
     }
 

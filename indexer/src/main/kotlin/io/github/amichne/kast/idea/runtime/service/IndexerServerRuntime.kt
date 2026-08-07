@@ -4,23 +4,26 @@ import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPreparation
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPreparationException
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPreparationResolution
+import io.github.amichne.kast.idea.snapshot.WorktreeOverlaySeed
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RuntimeInstanceId
+import io.github.amichne.kast.api.client.WorkspaceRepository
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceDatabaseExportEvidence
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RuntimeLifecycleController
 import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 
 object IndexerServerRuntime {
@@ -124,34 +127,36 @@ object IndexerServerRuntime {
         val indexingScopeCache = WorkspaceIndexingScopeCache { error ->
             diagnostics.recordConfigFallback(workspaceIdentity.workspaceRootPath.resolve(".kastignore"), error)
         }
-        val snapshotCoordinator = workspaceIdentity.workspaceIdentity.repositoryDataDirectoryPath
-            ?.let { repositoryDirectory ->
-            RepositorySnapshotCoordinator(
-                workspaceRoot = workspaceIdentity.workspaceRootPath,
-                repositoryDirectory = repositoryDirectory,
-                buildClasspathFingerprint = BuildClasspathFingerprintResolver.resolve(
-                    project,
-                    workspaceIdentity.workspaceIdentity,
-                ),
-                producerVersion = ProducerVersion.parse(KastIndexerBackend.INDEXER_VERSION),
-            )
+        val snapshotPreparation = when (val repository = workspaceIdentity.workspaceIdentity.repository) {
+            WorkspaceRepository.None -> RepositorySnapshotPreparation.Unmanaged
+            is WorkspaceRepository.Git -> when (
+                val resolution = RepositorySnapshotCoordinator.prepare(
+                    workspaceRoot = workspaceIdentity.workspaceIdentity.canonicalWorkspaceRoot,
+                    repositoryDirectory = repository.dataDirectory,
+                    workspaceDatabase = workspaceIdentity.workspaceIdentity.sourceIndexDatabasePath,
+                    buildClasspathFingerprint = BuildClasspathFingerprintResolver.resolve(
+                        project,
+                        workspaceIdentity.workspaceIdentity,
+                    ),
+                    producerVersion = ProducerVersion.fromVersion(KastIndexerBackend.INDEXER_VERSION),
+                )
+            ) {
+                is RepositorySnapshotPreparationResolution.Resolved -> resolution.preparation
+                is RepositorySnapshotPreparationResolution.Rejected ->
+                    throw RepositorySnapshotPreparationException(resolution.failure)
+            }
         }
-        val workspaceDatabaseExporter = LateBoundWorkspaceDatabaseExporter()
-        val workspaceGenerationStore = WorkspaceGenerationStore(
-            directory = workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("semantic-generations"),
-            exportDatabase = workspaceDatabaseExporter::export,
-        )
-        workspaceGenerationStore.recoverMutableWorkspaceDatabase(
-            workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
-        )
-        val preparedOverlay = snapshotCoordinator?.prepareWorktreeDatabase(
-            workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
-        )
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
-        workspaceDatabaseExporter.bind(sourceIndexStore::exportVerifiedWorkspaceDatabase)
-        preparedOverlay?.let { overlay ->
-            (overlay.tombstones + overlay.shards.keys).forEach { relativePath ->
-                sourceIndexStore.removeFile(workspaceIdentity.workspaceRootPath.resolve(relativePath).toString())
+        sourceIndexStore.ensureSchema()
+        val workspaceGenerationStore = WorkspaceGenerationStore(sourceIndexStore)
+        when (val overlay = snapshotPreparation.overlaySeed) {
+            is WorktreeOverlaySeed.None -> Unit
+            is WorktreeOverlaySeed.Prepared -> {
+                (overlay.manifest.tombstones + overlay.manifest.shards.keys).forEach { relativePath ->
+                    sourceIndexStore.removeFile(
+                        workspaceIdentity.workspaceRootPath.resolve(relativePath.value).toString(),
+                    )
+                }
             }
         }
         val manifestFileCountProvider = sourceIndexStore.prepareManifestFileCountProvider()
@@ -250,7 +255,7 @@ object IndexerServerRuntime {
                     semanticAdmission = semanticAdmission,
                     gitWorktreeRegistrationProof = registrationProof,
                     transitionIngress = transitionIngress,
-                    snapshotCoordinator = snapshotCoordinator,
+                    snapshotPreparation = snapshotPreparation,
                     scopeCache = indexingScopeCache,
                     semanticGraphIndexer = { scope, batchSize, reconciliationToken ->
                         if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
@@ -310,16 +315,3 @@ object IndexerServerRuntime {
 
 private fun Throwable.indexAdmissionFailureDetail(): String =
     message?.takeIf(String::isNotBlank) ?: this::class.qualifiedName.orEmpty()
-
-private class LateBoundWorkspaceDatabaseExporter {
-    private val delegate = AtomicReference<((Path) -> WorkspaceDatabaseExportEvidence)?>(null)
-
-    fun bind(exportDatabase: (Path) -> WorkspaceDatabaseExportEvidence) {
-        check(delegate.compareAndSet(null, exportDatabase)) {
-            "Workspace database exporter is already bound"
-        }
-    }
-
-    fun export(target: Path): WorkspaceDatabaseExportEvidence =
-        checkNotNull(delegate.get()) { "Workspace database exporter is not bound" }(target)
-}

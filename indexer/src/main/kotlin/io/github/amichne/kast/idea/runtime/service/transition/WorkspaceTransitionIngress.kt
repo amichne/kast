@@ -5,6 +5,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -58,10 +59,13 @@ internal class WorkspaceTransitionIngress(
     fun observe(snapshot: WorkspaceTransitionSnapshot) {
         val completions = synchronized(lock) {
             when {
-                snapshot.lifecycle == WorkspaceLifecycle.Ready && snapshot.published != null ->
-                    waiters.filter { waiter -> waiter.baseline != snapshot.published }
+                snapshot.lifecycle == WorkspaceLifecycle.Ready &&
+                    snapshot.published is PublishedWorkspaceGenerationState.Published -> {
+                    val manifest = snapshot.published.manifest
+                    waiters.filter { waiter -> waiter.baseline != manifest }
                         .onEach(waiters::remove)
-                        .map { waiter -> waiter to Result.success(snapshot.published) }
+                        .map { waiter -> waiter to Result.success(manifest) }
+                }
 
                 snapshot.lifecycle == WorkspaceLifecycle.Blocked && snapshot.blocker != null ->
                     waiters.toList().onEach(waiters::remove).map { waiter ->

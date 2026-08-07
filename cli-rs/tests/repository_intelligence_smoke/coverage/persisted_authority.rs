@@ -2,12 +2,10 @@
 fn repository_cached_overlay_base_facts_fail_closed() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     seed_repository_graph(&fixture);
-    let base_database = fixture
-        .database_path()
-        .with_file_name("repository-base.db");
-    rusqlite::Connection::open(&base_database)
-        .expect("repository base")
-        .execute_batch(&format!(
+    install_repository_overlay_fixture(fixture.database_path(), |base_database| {
+        rusqlite::Connection::open(base_database)
+            .expect("repository base")
+            .execute_batch(&format!(
             "CREATE TABLE schema_version(
                  version INTEGER NOT NULL,
                  generation INTEGER NOT NULL
@@ -41,9 +39,10 @@ fn repository_cached_overlay_base_facts_fail_closed() {
              );
              INSERT INTO semantic_symbols(id, stable_key, kind, name, file_id)
              VALUES (1, 'callable:baseOnly', 'FUNCTION', 'baseOnly', 1);",
-            env!("KAST_SOURCE_INDEX_SCHEMA_VERSION")
-        ))
-        .expect("repository base schema");
+                env!("KAST_SOURCE_INDEX_SCHEMA_VERSION")
+            ))
+            .expect("repository base schema");
+    });
     fixture
         .connection()
         .execute_batch(
@@ -55,17 +54,6 @@ fn repository_cached_overlay_base_facts_fail_closed() {
              );",
         )
         .expect("cached overlay boundary");
-    std::fs::write(
-        fixture
-            .database_path()
-            .with_file_name("repository-overlay.json"),
-        serde_json::to_vec(&serde_json::json!({
-            "baseDatabase": base_database
-        }))
-        .expect("overlay descriptor JSON"),
-    )
-    .expect("overlay descriptor");
-
     let (status, response) = rpc(
         &home,
         &config_home,

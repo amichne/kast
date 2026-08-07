@@ -51,26 +51,16 @@ internal class SourceIndexPendingUpdateStore(
     }
 
     fun reconcilePendingUpdates(): Int {
-        synchronized(state.writeLock) {
-            val conn = state.connection()
+        return state.writeTransaction(impact = SourceIndexMutationImpact.MANIFEST) { conn ->
             state.loadInterningTables(conn)
-            conn.autoCommit = false
-            return try {
-                val pending = readLatestPendingUpdates(conn)
-                for (update in pending) {
-                    applyPendingUpdate(conn, update)
-                }
-                markPendingUpdatesApplied(conn, pending)
-                cleanupAppliedPendingUpdates(conn)
-                if (pending.isNotEmpty()) state.incrementGenerationInTransaction(conn)
-                state.commitManifestMutation(conn)
-                pending.size
-            } catch (e: Exception) {
-                state.rollbackAndReloadPrefixes(conn)
-                throw e
-            } finally {
-                conn.autoCommit = true
+            val pending = readLatestPendingUpdates(conn)
+            for (update in pending) {
+                applyPendingUpdate(conn, update)
             }
+            markPendingUpdatesApplied(conn, pending)
+            cleanupAppliedPendingUpdates(conn)
+            if (pending.isNotEmpty()) state.incrementGenerationInTransaction(conn)
+            pending.size
         }
     }
 

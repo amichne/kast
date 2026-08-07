@@ -28,9 +28,10 @@ The transition phases have these responsibilities:
 4. **RECONCILING** is the only phase that writes candidate semantic evidence.
 5. **VERIFYING** computes the workspace-state identity (WSID) again. A changed
    WSID or a new event invalidates the pass.
-6. **PREPARE** exports and validates one immutable generation. It does not make
-   that generation visible.
-7. **COMMIT** replaces `current.json` and admits that exact manifest as READY.
+6. **PREPARE** verifies completeness and binds the next logical revision while
+   the workspace SQLite transaction remains uncommitted.
+7. **COMMIT** writes the publication row and workspace facts in one transaction,
+   then admits that exact revision as READY.
 8. **BLOCKED** records a typed phase and reason. It does not replace the current
    published generation.
 
@@ -113,54 +114,39 @@ admitted source changes the WSID. An IntelliJ SDK presentation label is also
 excluded when the resolved SDK semantics are unchanged. SDK identity has
 distinct absent, resolved, and unresolved states.
 
-## Two-phase immutable publication
+## Single-database atomic publication
 
-`WorkspaceGenerationStore.prepare` performs the slow phase. The source-index
-writer stays closed to external reads while `VACUUM INTO` creates a consistent
-database image. Preparation requires all of these facts:
+Each canonical workspace owns one `cache/source-index.db`. Before reconciliation,
+`WorkspaceGenerationStore.begin` starts one SQLite write transaction. All source,
+reference, semantic-graph, progress, and metadata mutations join that transaction;
+their existing batch boundaries use savepoints rather than independent commits.
+SQLite readers continue to see the prior committed snapshot while reconciliation
+is in progress.
 
-- the source-index generation is the same before and after export;
+`WorkspaceGenerationStore.prepare` checks the uncommitted candidate before it can
+become visible:
+
 - at least one module has progress evidence;
 - no module is incomplete;
 - no unapplied update remains;
-- the database schema and source-index generation match the export evidence.
+- the source-index schema and generation are current;
+- the verified WSID is bound to the next positive logical revision.
 
-If repository overlay evidence exists, preparation copies its base database
-into the same generation directory. It rewrites the overlay descriptor to that
-contained base. Kast syncs the database, optional base, descriptor, and staging
-directory. It then makes the files immutable and atomically moves the staging
-directory to a unique generation directory.
+The coordinator then captures WSID once more. A changed identity, new event,
+failed phase, or cancellation discards the transaction. No candidate facts or
+publication row become visible.
 
-The prepared value carries its expected `current.json` manifest. It is not
-visible to readers. The coordinator checks its event counter after preparation.
-If the workspace moved, it discards the prepared directory.
+`WorkspaceGenerationStore.commit` rechecks the source-index generation and
+expected revision, writes the singleton `workspace_publication` row, and commits
+the transaction. The row binds logical revision, WSID, source-index generation,
+schema version, publication time, and the optional overlay descriptor. This one
+SQLite commit is the visibility boundary; Kast creates no workspace-generation
+directory, immutable database copy, or pointer manifest.
 
-`WorkspaceGenerationStore.commit` performs the short visibility phase. It
-revalidates the prepared files and compares the expected manifest with the
-current manifest. A stale compare fails. A successful commit then:
-
-1. writes the new manifest to a temporary pointer file;
-2. syncs the temporary file;
-3. atomically replaces `current.json`;
-4. syncs the publication directory.
-
-A failure before pointer replacement is a failed commit. A directory-sync
-failure after pointer replacement is different: the new manifest is already
-the visible generation. Commit returns a typed durability-warning result and
-the runtime keeps that committed manifest. It never reports the prior manifest
-as current and never discards the visible generation. READY status and
-transition evidence retain the warning cause.
-
-`current.json` is the visibility boundary. Its manifest binds the workspace
-semantic generation, WSID, source-index generation, schema version, database
-path, publication time, and optional overlay descriptor. The database path must
-name `source-index.db` inside one generation directory. The overlay and its base
-must remain inside that same directory.
-
-Admission checks its reconciliation revision before and after pointer commit.
-An event before commit prevents pointer replacement. An event during pointer
-commit can leave a valid newer pointer, but Kast does not open READY for it. The
-worker schedules another pass. Previous immutable generations remain intact.
+Admission checks its reconciliation revision around commit. An event before
+commit causes rollback. An event concurrent with a completed commit keeps READY
+closed and schedules another pass; the committed database revision remains valid
+and is the only current publication.
 
 ## Exact READY manifest and read leases
 
@@ -210,43 +196,34 @@ and does not change graph state.
 
 ## Restart recovery
 
-`IndexerServerRuntime` recovers the mutable database before it constructs
-`SqliteSourceIndexStore`. Recovery first removes the mutable database, overlay,
-staging files, and stale `-wal` and `-shm` files. It then validates
-`current.json` and every file that the manifest names.
+`IndexerServerRuntime` opens the canonical `cache/source-index.db` directly.
+SQLite journal recovery discards an interrupted transaction, so restart exposes
+either the prior committed revision or the complete newer revision. Kast does
+not copy a published database back into a mutable location.
 
-If no pointer exists, recovery returns `NoPublishedGeneration`. The mutable
-location stays empty, so repository snapshot preparation or normal empty-store
-initialization can proceed.
-
-If a valid pointer exists, recovery copies the exact published database and
-optional overlay to staging files. It compares the copies byte for byte, checks
-the database schema and source-index generation, and makes the database
-writable. It checks `current.json` again, installs the overlay first, and uses
-the database move as the commit point. It then syncs the mutable directory.
-
-Recovery never changes `current.json` or its semantic generation. Any recovery
-failure removes the mutable artifacts. Runtime startup therefore cannot fall
-back to a partial live database. A bind-once exporter connects the generation
-store to `SqliteSourceIndexStore` only after recovery and store construction.
+If the database is absent, normal empty-store initialization or repository-base
+overlay preparation proceeds. If its schema version is not current, Kast drops
+and recreates owned tables, advances the source-index generation, and rebuilds
+semantic state. It does not move, import, or serve the prior layout.
 
 ## Rust published-read boundary
 
-Rust-local semantic readers resolve `semantic-generations/current.json` for the
-admitted exact root. They reject a missing or invalid pointer. They do not fall
-back to the mutable `source-index.db`.
+Rust-local semantic readers resolve the exact root's one
+`cache/source-index.db`. They reject a missing, symbolic, malformed, unpublished,
+or schema-mismatched database.
 
-The resolver checks the manifest shape, schema, database generation,
-containment, regular-file status, and optional contained overlay base. The
-READY runtime status must advertise the same manifest. Local graph coverage,
-repository queries, metrics, symbol queries, workspace inventory, and default
-native-graph reads receive this resolved database value.
+The resolver reads `workspace_publication` and `schema_version` in one SQLite
+transaction and requires their schema and source-index generations to agree. An
+optional `repository-overlay.json` stays beside the workspace database and may
+reference one absolute, immutable shared repository-base database. Local graph
+coverage, repository queries, metrics, symbol queries, workspace inventory, and
+default native-graph reads receive this resolved authority.
 
-After a local semantic read, Rust resolves the pointer again, validates the
-runtime descriptor, requests fresh runtime status, and compares the manifest
-again. Pointer movement, runtime movement, or READY withdrawal rejects the
-result. An explicit native-graph `--database` path remains a diagnostic override
-and does not replace the default published-read contract.
+After a local semantic read, Rust resolves the publication row again, validates
+the runtime descriptor, requests fresh runtime status, and compares the exact
+logical manifest again. Database revision movement, runtime movement, or READY
+withdrawal rejects the result. An explicit native-graph `--database` path remains
+a diagnostic override and does not replace the default published-read contract.
 
 ## Executable guarantees
 
@@ -259,9 +236,9 @@ invariance, resolved and unresolved SDK identity sensitivity, Git-independent
 identity, dirty and untracked identity, Java and Kotlin compiler identity,
 cache-backed JPS reconciliation, fresh-cache bypass, late project-load
 registration, exact Gradle-link admission, read-lease draining, mutation
-exclusion, prepared-generation invisibility, pointer-last publication,
-post-rename durability uncertainty, restart recovery, cache-only public graph
-coordination, runtime-manifest identity, and Rust pointer revalidation.
+exclusion, uncommitted-write invisibility, one-transaction publication,
+rollback on invalidation, restart behavior, cache-only public graph coordination,
+runtime-manifest identity, and Rust publication-row revalidation.
 
 The [research ledger](research-ledger.md) maps each decision to repository
 source, platform contracts, and executable proof.

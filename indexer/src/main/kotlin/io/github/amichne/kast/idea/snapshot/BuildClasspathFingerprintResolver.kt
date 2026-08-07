@@ -38,7 +38,7 @@ object BuildClasspathFingerprintResolver {
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(entries.joinToString("\n").toByteArray())
             .joinToString("") { byte -> "%02x".format(byte) }
-        return BuildClasspathFingerprint.parse(digest)
+        return BuildClasspathFingerprint.fromDigest(digest)
     }
 
     fun contentRoots(project: Project): Set<Path> =

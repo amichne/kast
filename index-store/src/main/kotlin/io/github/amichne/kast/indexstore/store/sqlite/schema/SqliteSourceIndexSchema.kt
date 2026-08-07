@@ -20,17 +20,18 @@ internal class SqliteSourceIndexSchema(
                 } else {
                     state.loadInterningTables(conn)
                 }
-                state.refreshManifestFileCount(conn)
+                if (conn.autoCommit) state.refreshManifestFileCount(conn)
                 state.markSchemaValidated(conn)
                 return true
             }
+            check(conn.autoCommit) { "Source-index schema cannot regenerate during a workspace write" }
             val previousGeneration = state.readGenerationOrNullInTransaction(conn) ?: SourceIndexGeneration(0)
             conn.autoCommit = false
             try {
                 dropAllTables(conn)
                 createAllTables(conn)
                 state.writeGenerationInTransaction(conn, SourceIndexGeneration(Math.addExact(previousGeneration.value, 1L)))
-                state.commitManifestMutation(conn)
+                conn.commit()
             } catch (e: Exception) {
                 conn.rollback()
                 throw e
@@ -40,6 +41,7 @@ internal class SqliteSourceIndexSchema(
             validateCurrentSchema(conn)
             state.initializeRepositoryOverlay(conn)
             state.reloadInterningTables(conn)
+            state.refreshManifestFileCount(conn)
             state.markSchemaValidated(conn)
             return false
         }
@@ -108,6 +110,15 @@ internal class SqliteSourceIndexSchema(
             ),
             "module_index_progress" to mapOf(
                 "relationship_index_status" to true,
+            ),
+            "workspace_publication" to mapOf(
+                "singleton" to false,
+                "revision" to true,
+                "identity" to true,
+                "source_index_generation" to true,
+                "source_index_schema_version" to true,
+                "published_at_epoch_millis" to true,
+                "repository_overlay_file" to false,
             ),
             "semantic_files" to mapOf(
                 "id" to false,
@@ -201,6 +212,7 @@ internal class SqliteSourceIndexSchema(
             ),
             "file_manifest" to listOf("prefix_id", "filename"),
             "file_stage_outcomes" to listOf("prefix_id", "filename", "stage"),
+            "workspace_publication" to listOf("singleton"),
             "semantic_files" to listOf("id"),
             "semantic_types" to listOf("id"),
             "semantic_type_edges" to listOf("id"),
@@ -261,71 +273,55 @@ internal class SqliteSourceIndexSchema(
     private fun dropAllTables(conn: Connection) {
         conn.createStatement().use { stmt ->
             dropSourceIndexTables(stmt)
-            stmt.execute("DROP TABLE IF EXISTS schema_version")
-            stmt.execute("DROP TABLE IF EXISTS workspace_discovery")
+            WorkspaceMetadataSchema.dropTables(stmt)
         }
     }
 
     private fun dropSourceIndexTables(stmt: java.sql.Statement) {
-        stmt.execute("DROP VIEW IF EXISTS semantic_module_quotient")
-        stmt.execute("DROP VIEW IF EXISTS semantic_package_quotient")
-        stmt.execute("DROP VIEW IF EXISTS semantic_file_quotient")
-        stmt.execute("DROP TRIGGER IF EXISTS fq_names_ai")
-        stmt.execute("DROP TRIGGER IF EXISTS fq_names_ad")
-        stmt.execute("DROP TRIGGER IF EXISTS fq_names_au")
-        stmt.execute("DROP TABLE IF EXISTS fq_names_fts")
-        stmt.execute("DROP TABLE IF EXISTS pending_updates")
-        stmt.execute("DROP TABLE IF EXISTS module_index_progress")
-        stmt.execute("DROP TABLE IF EXISTS semantic_edge_occurrences")
-        stmt.execute("DROP TABLE IF EXISTS semantic_symbol_annotations")
-        stmt.execute("DROP TABLE IF EXISTS semantic_type_edges")
-        stmt.execute("DROP TABLE IF EXISTS semantic_symbols")
-        stmt.execute("DROP TABLE IF EXISTS semantic_types")
-        stmt.execute("DROP TABLE IF EXISTS semantic_files")
-        stmt.execute("DROP TABLE IF EXISTS repository_overlay_state")
-        stmt.execute("DROP TABLE IF EXISTS repository_overlay_tombstones")
-        stmt.execute("DROP TABLE IF EXISTS semantic_graph_relations")
-        stmt.execute("DROP TABLE IF EXISTS semantic_graph_symbols")
-        stmt.execute("DROP TABLE IF EXISTS semantic_graph_files")
-        stmt.execute("DROP TABLE IF EXISTS declaration_supertypes")
-        stmt.execute("DROP TABLE IF EXISTS declarations")
-        stmt.execute("DROP TABLE IF EXISTS symbol_references")
-        stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
-        stmt.execute("DROP TABLE IF EXISTS file_imports")
-        stmt.execute("DROP TABLE IF EXISTS identifier_paths")
-        stmt.execute("DROP TABLE IF EXISTS file_stage_outcomes")
-        stmt.execute("DROP TABLE IF EXISTS file_gradle_source_sets")
-        stmt.execute("DROP TABLE IF EXISTS file_gradle_projects")
-        stmt.execute("DROP TABLE IF EXISTS file_metadata")
-        stmt.execute("DROP TABLE IF EXISTS file_manifest")
-        stmt.execute("DROP TABLE IF EXISTS fq_names")
-        stmt.execute("DROP TABLE IF EXISTS path_prefixes")
+        stmt.execute("DROP VIEW IF EXISTS main.semantic_module_quotient")
+        stmt.execute("DROP VIEW IF EXISTS main.semantic_package_quotient")
+        stmt.execute("DROP VIEW IF EXISTS main.semantic_file_quotient")
+        stmt.execute("DROP TRIGGER IF EXISTS main.fq_names_ai")
+        stmt.execute("DROP TRIGGER IF EXISTS main.fq_names_ad")
+        stmt.execute("DROP TRIGGER IF EXISTS main.fq_names_au")
+        stmt.execute("DROP TABLE IF EXISTS main.fq_names_fts")
+        stmt.execute("DROP TABLE IF EXISTS main.pending_updates")
+        stmt.execute("DROP TABLE IF EXISTS main.module_index_progress")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_edge_occurrences")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_symbol_annotations")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_type_edges")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_symbols")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_types")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_files")
+        stmt.execute("DROP TABLE IF EXISTS main.repository_overlay_state")
+        stmt.execute("DROP TABLE IF EXISTS main.repository_overlay_tombstones")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_graph_relations")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_graph_symbols")
+        stmt.execute("DROP TABLE IF EXISTS main.semantic_graph_files")
+        stmt.execute("DROP TABLE IF EXISTS main.declaration_supertypes")
+        stmt.execute("DROP TABLE IF EXISTS main.declarations")
+        stmt.execute("DROP TABLE IF EXISTS main.symbol_references")
+        stmt.execute("DROP TABLE IF EXISTS main.file_wildcard_imports")
+        stmt.execute("DROP TABLE IF EXISTS main.file_imports")
+        stmt.execute("DROP TABLE IF EXISTS main.identifier_paths")
+        stmt.execute("DROP TABLE IF EXISTS main.file_stage_outcomes")
+        stmt.execute("DROP TABLE IF EXISTS main.file_gradle_source_sets")
+        stmt.execute("DROP TABLE IF EXISTS main.file_gradle_projects")
+        stmt.execute("DROP TABLE IF EXISTS main.file_metadata")
+        stmt.execute("DROP TABLE IF EXISTS main.file_manifest")
+        stmt.execute("DROP TABLE IF EXISTS main.fq_names")
+        stmt.execute("DROP TABLE IF EXISTS main.path_prefixes")
     }
 
     internal fun createAllTables(conn: Connection) {
         conn.createStatement().use { stmt ->
-            stmt.execute(
-                """CREATE TABLE IF NOT EXISTS schema_version (
-                    version INTEGER NOT NULL,
-                    generation INTEGER NOT NULL DEFAULT 0,
-                    head_commit TEXT
-                )""",
-            )
-            stmt.execute("INSERT INTO schema_version (version, generation, head_commit) VALUES ($SOURCE_INDEX_SCHEMA_VERSION, 0, NULL)")
-
+            WorkspaceMetadataSchema.createTables(stmt)
             tables.createPathPrefixTable(stmt)
             tables.createFqNameTable(stmt)
             tables.createFqNameSearchIndex(stmt)
             tables.createSourceIndexTables(stmt)
             createSourceIndexIndexes(stmt)
 
-            stmt.execute(
-                """CREATE TABLE IF NOT EXISTS workspace_discovery (
-                    cache_key TEXT PRIMARY KEY,
-                    schema_version INTEGER NOT NULL,
-                    payload TEXT NOT NULL
-                )""",
-            )
         }
     }
 

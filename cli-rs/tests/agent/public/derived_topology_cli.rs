@@ -5,7 +5,7 @@ use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use support::workspace_files::WorkspaceIndexFixture;
+use support::workspace_files::{WorkspaceIndexFixture, install_repository_overlay_fixture};
 use support::{published_semantic_command_for_reads, workspace_database_path_for_test};
 
 struct ReferenceFixture {
