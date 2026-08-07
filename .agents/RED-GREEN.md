@@ -2,6 +2,23 @@
 
 ## RED
 
+### Persisted overlay repository authority
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.RepositorySnapshotFallbackTest --no-daemon --console=plain
+```
+
+Expected failure: an existing workspace database retains an otherwise valid
+overlay descriptor whose base belongs to the repository previously occupying
+the same workspace path, so preparation suppresses full-index publication and
+leaves startup to reject the stale authority.
+
+Observed failure: FAILED as expected. Preparation returned normally but the
+old repository descriptor still existed; the regression stopped on that exact
+assertion before accepting the suppressed publication authority.
+
 ### Semantic-graph recovery deadline authority
 
 Commands:
@@ -312,6 +329,8 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.KastProjectOpenSourceIndexingTest --tests io.github.amichne.kast.idea.NativeSemanticGraphGenerationTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.CommittedGitTreeManifestTest --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 ./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReadAuthorityTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.RepositorySnapshotFallbackTest --no-daemon --console=plain
+./gradlew :index-store:test --no-daemon --console=plain
 ./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --no-daemon --console=plain
 cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy_covers_reconciliation_methods
 cargo test --manifest-path cli-rs/Cargo.toml --locked
@@ -356,4 +375,10 @@ recovery now receives the progress-bounded transition deadline from both the
 Kotlin server and Rust client policy; both focused cross-language regressions
 passed. The complete Rust test suite, all-target/all-feature Clippy gate with
 warnings denied, Rust formatting check, and the final full Gradle check all
-passed.
+passed. Persisted overlay membership is now revalidated against the exact
+repository store before an existing workspace database can suppress full-index
+publication; the repository-replacement regression proved typed authority
+change, descriptor revocation, and eligible publication, and both focused
+fallback tests passed. The current full Gradle and index-store suites passed;
+the follow-up PR semantic audit completed all 8 changed Kotlin files with zero
+errors, warnings, infos, or skips.

@@ -173,35 +173,16 @@ internal class RepositoryOverlayRetention(
      */
     private fun repositoryMembership(
         descriptor: ValidatedRepositoryOverlayDescriptor,
-    ): RepositoryOverlayBaseMembership {
-        val overlay = descriptor.manifest
-        val expected = snapshots.databasePath(overlay.base)
-        if (overlay.baseDatabase != expected) {
-            val declared = overlay.baseDatabase.toJavaPath()
-            if (declared.startsWith(snapshots.repositoryDirectory.toJavaPath())) {
-                return RepositoryOverlayBaseMembership.Rejected(
-                    RepositoryOverlayRetentionFailure.CurrentRepositoryBaseInvalid(
-                        descriptor.path,
-                        RepositorySnapshotDatabaseFailure.PathMismatch(expected, overlay.baseDatabase),
-                    ),
-                )
-            }
-            return RepositoryOverlayBaseMembership.OtherRepository
-        }
-        return when (
-            val resolution = snapshots.resolveDatabase(
-                RepositorySnapshotDatabaseCandidate(overlay.base, overlay.baseDatabase),
-            )
-        ) {
-            is RepositorySnapshotDatabaseResolution.Resolved ->
-                RepositoryOverlayBaseMembership.CurrentRepository(resolution.database)
-            is RepositorySnapshotDatabaseResolution.Rejected -> RepositoryOverlayBaseMembership.Rejected(
-                RepositoryOverlayRetentionFailure.CurrentRepositoryBaseInvalid(
-                    descriptor.path,
-                    resolution.failure,
-                ),
-            )
-        }
+    ): RepositoryOverlayBaseMembership = when (val resolution = snapshots.resolveOverlayBase(descriptor.manifest)) {
+        RepositoryOverlayBaseResolution.OtherRepository -> RepositoryOverlayBaseMembership.OtherRepository
+        is RepositoryOverlayBaseResolution.CurrentRepository ->
+            RepositoryOverlayBaseMembership.CurrentRepository(resolution.database)
+        is RepositoryOverlayBaseResolution.Rejected -> RepositoryOverlayBaseMembership.Rejected(
+            RepositoryOverlayRetentionFailure.CurrentRepositoryBaseInvalid(
+                descriptor.path,
+                resolution.failure,
+            ),
+        )
     }
 
     private fun resolved(keys: Set<SnapshotKey>) = RepositoryOverlayRetentionResolution.Resolved(

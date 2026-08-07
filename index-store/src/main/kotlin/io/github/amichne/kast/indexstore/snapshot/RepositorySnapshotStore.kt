@@ -123,6 +123,17 @@ class RepositorySnapshotStore(repositoryDirectory: Path) {
         layout.resolveDatabase(RepositorySnapshotDatabaseCandidate(key, layout.databasePath(key)))
 
     /**
+     * Proof transition: `OverlayManifest -> RepositoryOverlayBaseResolution`.
+     *
+     * Resolves the declared base against this store's exact repository
+     * authority. A current-repository result carries the validated database;
+     * another repository and finite current-repository rejection remain
+     * explicit closed outcomes.
+     */
+    fun resolveOverlayBase(overlay: OverlayManifest): RepositoryOverlayBaseResolution =
+        layout.resolveOverlayBase(overlay)
+
+    /**
      * Proof transition:
      * `RepositoryContentShardPayload -> RepositoryContentShardPublicationResult`.
      *
