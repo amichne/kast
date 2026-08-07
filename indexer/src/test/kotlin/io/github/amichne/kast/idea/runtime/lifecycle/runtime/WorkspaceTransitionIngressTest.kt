@@ -25,6 +25,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.properties.Delegates
 
 class WorkspaceTransitionIngressTest {
     @Test
@@ -70,7 +71,7 @@ class WorkspaceTransitionIngressTest {
         val next = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(3))
         val admission = readyAdmission(initial)
         val transitionRequested = AtomicBoolean(false)
-        lateinit var ingress: WorkspaceTransitionIngress
+        var ingress: WorkspaceTransitionIngress by Delegates.notNull()
         val awaiter = testAwaiter { elapsed ->
             if (elapsed == Duration.ofMillis(1)) {
                 publish(admission, next)
@@ -117,7 +118,7 @@ class WorkspaceTransitionIngressTest {
         val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(7))
         val next = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(8))
         val admission = readyAdmission(initial)
-        lateinit var ingress: WorkspaceTransitionIngress
+        var ingress: WorkspaceTransitionIngress by Delegates.notNull()
         val awaiter = testAwaiter { elapsed ->
             if (elapsed < Duration.ofMillis(5)) {
                 ingress.observe(

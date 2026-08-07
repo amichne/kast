@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
+import kotlin.properties.Delegates
 
 class WorkspaceTransitionCoordinatorTest {
     @Test
@@ -73,7 +74,7 @@ class WorkspaceTransitionCoordinatorTest {
 
     @Test
     fun `event during reconciliation discards candidate and schedules another cycle`() {
-        lateinit var coordinator: WorkspaceTransitionCoordinator
+        var coordinator: WorkspaceTransitionCoordinator by Delegates.notNull()
         val operations = RecordingOperations(
             reconcile = {
                 coordinator.observe(WorkspaceSignal.GitWorktree)

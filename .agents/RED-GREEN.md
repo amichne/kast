@@ -2,6 +2,22 @@
 
 ## RED
 
+### Changed Kotlin test initialization authority
+
+Command:
+
+```shell
+base_commit=$(git merge-base HEAD origin/main)
+changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <(git diff --name-only "$base_commit" -- '*.kt' | sort -u)
+kast check "${changed_kotlin[@]}"
+```
+
+Expected failure: every changed Kotlin file is compiler-clean, including test
+fixtures that intentionally bind a callback to an object constructed later.
+
+Observed failure: FAILED as expected. All 121 files were analyzed, with zero
+errors but three `CAN_BE_VAL_LATEINIT` warnings in transition tests.
+
 ### Full-index overlay revocation
 
 Command:
@@ -185,6 +201,9 @@ yet exist.
 Commands:
 
 ```shell
+base_commit=$(git merge-base HEAD origin/main)
+changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <(git diff --name-only "$base_commit" -- '*.kt' | sort -u)
+kast check "${changed_kotlin[@]}"
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.RepositorySnapshotFallbackTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --no-daemon --console=plain
@@ -205,7 +224,9 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ```
 
-Observed result: PASSED. The focused full-index fallback test proved that a
+Observed result: PASSED. Exact semantic analysis completed all 121 changed
+Kotlin production and test files with zero errors, warnings, infos, or skips.
+The focused full-index fallback test proved that a
 dirty-tree preparation revokes the interrupted overlay descriptor before
 returning typed standalone-index authority. The full analysis-api suite and all nine runtime-status
 consistency tests passed, including exact reference progress-stage rejection;
