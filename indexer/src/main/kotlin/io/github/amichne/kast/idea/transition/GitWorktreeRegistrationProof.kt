@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea.transition
 
 import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
+import io.github.amichne.kast.api.client.ReadOnlyGitCommand
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
@@ -83,7 +84,7 @@ internal class GitWorktreeRegistrationProof private constructor(
                 "--git-common-dir",
             )
             val process = runCatching {
-                ProcessBuilder(command).also { builder ->
+                ReadOnlyGitCommand.processBuilder(command).also { builder ->
                     GIT_REPOSITORY_SELECTION_ENVIRONMENT.forEach(builder.environment()::remove)
                 }.directory(workspaceRoot.toFile()).redirectErrorStream(true).start()
             }.getOrNull() ?: return null

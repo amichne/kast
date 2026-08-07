@@ -169,7 +169,11 @@ fn effective_backend_source_path(
     }
     #[cfg(not(target_os = "macos"))]
     let _ = install;
-    PathBuf::from(&backend.runtime_libs_dir)
+    backend
+        .runtime_libs_dir
+        .as_deref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(&backend.install_dir).join("runtime-libs"))
 }
 
 fn effective_backend_payload_exists(

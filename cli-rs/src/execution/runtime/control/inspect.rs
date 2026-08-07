@@ -56,11 +56,12 @@ fn inspect_descriptor(
     }
 
     let socket_path = Path::new(&registered.descriptor.socket_path);
-    let status_result = rpc::request::<RuntimeStatusResponse>(
+    let status_result = rpc::request::<RuntimeStatusWireResponse>(
         socket_path,
         "runtime/status",
         Value::Object(Default::default()),
     )
+    .and_then(RuntimeStatusWireResponse::into_status)
     .and_then(|status| {
         validate_runtime_status_identity(&registered.descriptor, &status)?;
         Ok(status)

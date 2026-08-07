@@ -8,10 +8,8 @@ import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridge
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 
 internal const val RECOVERY_AUDIT_MILLIS = 300_000L
-private const val GRADLE_REFRESH_TIMEOUT_MINUTES = 5L
 
 internal enum class WorkspaceModelRefreshRequirement {
     VfsOnly,
@@ -39,7 +37,7 @@ internal fun refreshWorkspaceModels(
     if (workspaceModelRefreshRequirement(signals) == WorkspaceModelRefreshRequirement.Gradle) {
         val refresh = CompletableFuture<Void>()
         IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, gradleBuildRoot, refresh)
-        refresh.get(GRADLE_REFRESH_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+        GradleProjectImportBridge.awaitGradleRefresh(project, refresh)
     }
     GradleProjectImportBridge.awaitGradleModelSettlement(project)
 }
@@ -48,7 +46,8 @@ internal fun indexingRetryDelayMillis(consecutiveFailures: Int): Long = when (co
     1 -> 250L
     2 -> 500L
     3 -> 1_000L
-    else -> RECOVERY_AUDIT_MILLIS
+    4 -> 2_000L
+    else -> 5_000L
 }
 
 internal fun loadLiveIndexingConfig(

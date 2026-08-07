@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.snapshot
 
+import io.github.amichne.kast.api.client.ReadOnlyGitCommand
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.RepositorySnapshotStore
@@ -94,7 +95,7 @@ class RepositorySnapshotCoordinator(
     }
 
     private fun currentBranch(): String? = runCatching {
-        val process = ProcessBuilder("git", "symbolic-ref", "--quiet", "--short", "HEAD")
+        val process = ReadOnlyGitCommand.processBuilder("symbolic-ref", "--quiet", "--short", "HEAD")
             .directory(workspaceRoot.toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
@@ -102,7 +103,7 @@ class RepositorySnapshotCoordinator(
     }.getOrNull()
 
     private fun gitBlob(oid: io.github.amichne.kast.indexstore.snapshot.GitObjectId): ByteArray? = runCatching {
-        val process = ProcessBuilder("git", "cat-file", "blob", oid.value)
+        val process = ReadOnlyGitCommand.processBuilder("cat-file", "blob", oid.value)
             .directory(workspaceRoot.toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()

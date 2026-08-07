@@ -33,12 +33,13 @@ impl SemanticWorkspaceRead {
     pub(crate) fn revalidate(&self) -> Result<()> {
         self.published.revalidate()?;
         self.session.admission.validate_current()?;
-        let status = rpc::request_wait_for_close::<RuntimeStatusResponse>(
+        let status = rpc::request_wait_for_close::<RuntimeStatusWireResponse>(
             Path::new(&self.session.socket_path),
             "runtime/status",
             Value::Object(Default::default()),
             self.session.response_timeout,
-        )?;
+        )?
+        .into_status()?;
         validate_runtime_status_identity(&self.session.admission.candidate().descriptor, &status)?;
         require_published_runtime_status(&status, &self.published)
     }

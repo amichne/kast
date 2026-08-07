@@ -63,6 +63,30 @@ pub enum InstallAuthority {
 }
 
 #[derive(Debug, Serialize)]
+pub struct DoctorInstallState {
+    #[serde(flatten)]
+    pub(crate) source: InstallState,
+    #[serde(skip)]
+    pub version: String,
+    #[serde(skip)]
+    pub active_version: String,
+    #[serde(skip)]
+    pub release_digest: String,
+    #[serde(skip)]
+    pub components: Vec<String>,
+    #[serde(skip)]
+    pub backends: Vec<DoctorBackendState>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorBackendState {
+    pub name: String,
+    pub version: String,
+    pub runtime_libs_dir: String,
+}
+
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelfDoctorResult {
     pub target: ReadyTarget,
@@ -78,7 +102,7 @@ pub struct SelfDoctorResult {
     pub path_resolution: PathResolutionReport,
     pub minimum_backend_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub install: Option<InstallState>,
+    pub install: Option<DoctorInstallState>,
     pub ok: bool,
     pub issues: Vec<String>,
     pub warnings: Vec<String>,
@@ -163,13 +187,18 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
                 backend.name.trim()
             };
             if !install.platform.starts_with("macos-")
-                && !Path::new(&backend.runtime_libs_dir)
-                    .join("classpath.txt")
-                    .is_file()
+                && backend
+                    .runtime_libs_dir
+                    .as_ref()
+                    .is_none_or(|path| !Path::new(path).join("classpath.txt").is_file())
             {
                 issues.push(format!(
                     "{} backend runtime-libs classpath is missing at {}",
-                    backend_label, backend.runtime_libs_dir
+                    backend_label,
+                    backend
+                        .runtime_libs_dir
+                        .as_deref()
+                        .unwrap_or("<not declared>")
                 ));
             }
             match version_meets_minimum(&backend.version, minimum_backend_version) {
@@ -213,6 +242,27 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
     } else {
         None
     };
+    let doctor_install = install.as_ref().map(|install| DoctorInstallState {
+        version: install.version.clone(),
+        active_version: install.active_version.clone(),
+        release_digest: install.release_digest.clone(),
+        components: install.components.clone(),
+        backends: install
+            .backends
+            .iter()
+            .filter_map(|backend| {
+                backend
+                    .runtime_libs_dir
+                    .as_ref()
+                    .map(|runtime_libs_dir| DoctorBackendState {
+                        name: backend.name.clone(),
+                        version: backend.version.clone(),
+                        runtime_libs_dir: runtime_libs_dir.clone(),
+                    })
+            })
+            .collect(),
+        source: install.clone(),
+    });
     Ok(SelfDoctorResult {
         target,
         installed: install.is_some(),
@@ -225,7 +275,7 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
         agent_environment,
         path_resolution,
         minimum_backend_version: minimum_backend_version.to_string(),
-        install,
+        install: doctor_install,
         ok: issues.is_empty(),
         issues,
         warnings,

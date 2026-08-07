@@ -117,7 +117,11 @@ internal class KastDiagnosticsState(
     ) {
         it.copy(
             backendState = it.backendState.indexingIfReady(),
-            indexSummary = KastSourceIndexSummary(state = KastIndexState.WAITING_FOR_IDE),
+            indexSummary = KastSourceIndexSummary(
+                state = KastIndexState.WAITING_FOR_IDE,
+                stageStartedAtEpochMillis = now().toEpochMilli(),
+                lastProgressAtEpochMillis = now().toEpochMilli(),
+            ),
         )
     }
 
@@ -128,7 +132,11 @@ internal class KastDiagnosticsState(
     ) {
         it.copy(
             backendState = it.backendState.indexingIfReady(),
-            indexSummary = KastSourceIndexSummary(state = KastIndexState.HYDRATING),
+            indexSummary = KastSourceIndexSummary(
+                state = KastIndexState.HYDRATING,
+                stageStartedAtEpochMillis = now().toEpochMilli(),
+                lastProgressAtEpochMillis = now().toEpochMilli(),
+            ),
         )
     }
 
@@ -139,7 +147,11 @@ internal class KastDiagnosticsState(
     ) {
         it.copy(
             backendState = it.backendState.indexingIfReady(),
-            indexSummary = KastSourceIndexSummary(state = KastIndexState.INDEXING),
+            indexSummary = KastSourceIndexSummary(
+                state = KastIndexState.INDEXING,
+                stageStartedAtEpochMillis = now().toEpochMilli(),
+                lastProgressAtEpochMillis = now().toEpochMilli(),
+            ),
         )
     }
 
@@ -166,7 +178,10 @@ internal class KastDiagnosticsState(
             } else {
                 it.backendState
             },
-            indexSummary = summary,
+            indexSummary = summary.copy(
+                stageStartedAtEpochMillis = it.indexSummary.stageStartedAtEpochMillis,
+                lastProgressAtEpochMillis = now().toEpochMilli(),
+            ),
         )
     }
 
@@ -300,6 +315,8 @@ internal data class KastSourceIndexSummary(
     val importCount: Int? = null,
     val message: String? = null,
     val referenceCoverageLimitations: List<ReferenceCoverageLimitation> = emptyList(),
+    val stageStartedAtEpochMillis: Long? = null,
+    val lastProgressAtEpochMillis: Long? = null,
 ) {
     fun displayText(): String {
         message?.let { return it }

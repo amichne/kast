@@ -6,6 +6,7 @@ import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VfsUtilCore
+import io.github.amichne.kast.api.client.ReadOnlyGitCommand
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.idea.SemanticPathContentIdentity
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
@@ -72,7 +73,7 @@ private fun localClasspathRootPath(rootUrl: String): Path? {
 }
 
 internal fun gitWorkspaceScope(workspaceRoot: java.nio.file.Path): String = runCatching {
-    val process = ProcessBuilder("git", "rev-parse", "--show-prefix")
+    val process = ReadOnlyGitCommand.processBuilder("rev-parse", "--show-prefix")
         .directory(workspaceRoot.toFile())
         .redirectError(ProcessBuilder.Redirect.DISCARD)
         .start()

@@ -26,6 +26,7 @@ class GradleModelSettlementException(
                 "totalTransitions=${evidence.totalTransitions}, " +
                 "stableObservations=${evidence.stableObservations}, " +
                 "elapsed=${evidence.elapsed}, " +
+                "noProgress=${evidence.noProgress}, " +
                 "recentTransitions=${evidence.recentTransitions}"
         }
     }

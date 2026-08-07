@@ -2,6 +2,19 @@
 mod tests {
     use super::*;
     use std::io::Write;
+    #[cfg(target_os = "macos")]
+    fn write_kotlin_jps_fixture(path: &Path) {
+        let file = fs::File::create(path).expect("Kotlin JPS fixture");
+        let mut archive = zip::ZipWriter::new(file);
+        archive
+            .start_file(
+                "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
+                zip::write::SimpleFileOptions::default(),
+            )
+            .expect("Kotlin builder entry");
+        archive.write_all(b"fixture").expect("Kotlin builder bytes");
+        archive.finish().expect("Kotlin JPS archive");
+    }
 
     #[test]
     fn java_command_uses_indexer_classpath_entries_relative_to_runtime_libs() {
@@ -178,12 +191,15 @@ mod tests {
         let resources = contents.join("Resources");
         let java = contents.join("jbr/Contents/Home/bin/java");
         let boot_jar = contents.join("lib/platform-loader.jar");
+        let kotlin_jps = contents.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
         std::fs::create_dir(&workspace).unwrap();
         std::fs::create_dir_all(&resources).unwrap();
         std::fs::create_dir_all(java.parent().unwrap()).unwrap();
         std::fs::create_dir_all(boot_jar.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
         std::fs::write(&java, "fixture").unwrap();
         std::fs::write(&boot_jar, "fixture").unwrap();
+        write_kotlin_jps_fixture(&kotlin_jps);
         std::fs::write(
             resources.join("product-info.json"),
             serde_json::to_vec(&serde_json::json!({
@@ -264,6 +280,58 @@ mod tests {
             std::fs::canonicalize(sidecar_root.join("plugins/kast-indexer")).unwrap(),
             std::fs::canonicalize(payload.parent().unwrap()).unwrap(),
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn installed_idea_preflight_rejects_missing_kotlin_jps_dependency() {
+        let temp = tempfile::tempdir().unwrap();
+        let error = preflight_installed_idea_semantic_runtime(
+            &temp.path().join("idea-home"),
+            &temp.path().join("idea-system"),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "INDEXER_DEPENDENCY_UNAVAILABLE");
+        assert!(error.message.contains("kotlin-jps-plugin"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn installed_idea_preflight_rejects_truncated_kotlin_jps_dependency() {
+        let temp = tempfile::tempdir().unwrap();
+        let idea_home = temp.path().join("idea-home");
+        let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+        std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
+        std::fs::write(&kotlin_jps, b"PK\x03\x04fixture").unwrap();
+
+        let error = preflight_installed_idea_semantic_runtime(
+            &idea_home,
+            &temp.path().join("idea-system"),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "INDEXER_DEPENDENCY_INVALID");
+        assert!(error.message.contains(&kotlin_jps.display().to_string()));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn installed_idea_preflight_rejects_corrupt_plugin_cache() {
+        let temp = tempfile::tempdir().unwrap();
+        let idea_home = temp.path().join("idea-home");
+        let idea_system = temp.path().join("idea-system");
+        let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+        let cache = idea_system.join("plugins/pluginsXMLIds.json");
+        std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
+        write_kotlin_jps_fixture(&kotlin_jps);
+        std::fs::write(&cache, "not-json").unwrap();
+
+        let error = preflight_installed_idea_semantic_runtime(&idea_home, &idea_system).unwrap_err();
+
+        assert_eq!(error.code, "INDEXER_CACHE_INVALID");
+        assert!(error.message.contains(&cache.display().to_string()));
     }
 
     #[cfg(target_os = "macos")]

@@ -261,7 +261,9 @@ fn lease_installation_identity(
     backend_name: BackendName,
 ) -> Result<WorkspaceLeaseInstallationIdentity> {
     let doctor = self_mgmt::doctor(crate::cli::ReadyTarget::Machine, None)?;
-    let installed_backend = self_mgmt::installed_backend_diagnostic(doctor.install.as_ref());
+    let installed_backend = self_mgmt::installed_backend_diagnostic(
+        doctor.install.as_ref().map(|install| &install.source),
+    );
     if !doctor.ok
         || installed_backend.state != self_mgmt::AgentResourceState::Managed
         || installed_backend.kind.as_deref() != Some(backend_name.canonical())

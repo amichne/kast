@@ -13,6 +13,24 @@
         "referenceIndexReady": false,
         "referenceCoverageState": "UNAVAILABLE",
         "referenceCoverageLimitations": [],
+        "readiness": {
+            "runtime": {
+                "type": "READY"
+            },
+            "model": {
+                "type": "READY"
+            },
+            "references": {
+                "type": "BLOCKED"
+            },
+            "semanticGraph": {
+                "type": "READY"
+            },
+            "mutation": {
+                "type": "READY"
+            }
+        },
+        "ready": false,
         "schemaVersion": 6
     },
     "id": 1,

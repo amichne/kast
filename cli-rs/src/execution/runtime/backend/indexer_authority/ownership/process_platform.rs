@@ -205,7 +205,7 @@ fn macos_process_identity(pid: u64) -> Result<Option<ManagedProcessIdentity>> {
     };
     if read == 0 {
         let error = std::io::Error::last_os_error();
-        return if matches!(error.raw_os_error(), Some(libc::ESRCH)) {
+        return if matches!(error.raw_os_error(), Some(libc::ESRCH) | Some(libc::ENOENT)) {
             Ok(None)
         } else {
             Err(process_io_error(pid, "BSD process info", error))
@@ -273,7 +273,11 @@ fn macos_process_arguments(pid: libc::c_int) -> Result<MacosArguments> {
 fn classify_macos_arguments(pid: u64, read: std::io::Result<Vec<u8>>) -> Result<MacosArguments> {
     match read {
         Ok(bytes) => parse_macos_arguments(&bytes).map(MacosArguments::Exact),
-        Err(error) if error.raw_os_error() == Some(libc::ESRCH) => Ok(MacosArguments::Gone),
+        Err(error)
+            if matches!(error.raw_os_error(), Some(libc::ESRCH) | Some(libc::ENOENT)) =>
+        {
+            Ok(MacosArguments::Gone)
+        }
         Err(error) => Err(process_io_error(pid, "command arguments", error)),
     }
 }
@@ -353,9 +357,7 @@ fn linux_live_stat_retains_start_identity_review_regression() {
 #[test]
 fn linux_dead_states_are_terminated_review_regression() {
     for state in ["Z", "X", "x"] {
-        let stat = format!(
-            "42 (kast indexer) {state} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 123"
-        );
+        let stat = format!("42 (x) {state} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 123");
         assert_eq!(
             parse_linux_process_stat(&stat).expect("Linux process stat"),
             LinuxProcessStat::Terminated { start_ticks: 123 },
@@ -373,8 +375,7 @@ fn linux_zombie_is_gone_review_regression() {
     let pid = u64::from(child.id());
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
     loop {
-        let stat =
-            fs::read_to_string(format!("/proc/{pid}/stat")).expect("unreaped process stat");
+        let stat = fs::read_to_string(format!("/proc/{pid}/stat")).expect("process stat");
         if matches!(
             parse_linux_process_stat(&stat).expect("Linux process stat"),
             LinuxProcessStat::Terminated { .. }

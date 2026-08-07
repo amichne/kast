@@ -1007,6 +1007,10 @@ components:
           anyOf:
             - "$ref": "#/components/schemas/PublishedWorkspaceGenerationStatus"
             - type: "null"
+        readiness:
+          "$ref": "#/components/schemas/RuntimeReadiness"
+        ready:
+          type: boolean
         schemaVersion:
           type: integer
           format: int32
@@ -1074,6 +1078,106 @@ components:
         - sourceIndexSchemaVersion
         - databaseFile
         - publishedAtEpochMillis
+    RuntimeReadiness:
+      type: object
+      properties:
+        runtime:
+          "$ref": "#/components/schemas/RuntimeReadinessLane"
+        model:
+          "$ref": "#/components/schemas/RuntimeReadinessLane"
+        references:
+          "$ref": "#/components/schemas/RuntimeReadinessLane"
+        semanticGraph:
+          "$ref": "#/components/schemas/RuntimeReadinessLane"
+        mutation:
+          "$ref": "#/components/schemas/RuntimeReadinessLane"
+      additionalProperties: false
+      required:
+        - runtime
+        - model
+        - references
+        - semanticGraph
+        - mutation
+    RuntimeReadinessLane:
+      oneOf:
+        - "$ref": "#/components/schemas/RuntimeReadinessLane.Ready"
+        - "$ref": "#/components/schemas/RuntimeReadinessLane.InProgress"
+        - "$ref": "#/components/schemas/RuntimeReadinessLane.Blocked"
+      discriminator:
+        propertyName: type
+        mapping:
+          READY: "#/components/schemas/RuntimeReadinessLane.Ready"
+          IN_PROGRESS: "#/components/schemas/RuntimeReadinessLane.InProgress"
+          BLOCKED: "#/components/schemas/RuntimeReadinessLane.Blocked"
+    RuntimeReadinessLane.Ready:
+      type: object
+      properties:
+        type:
+          type: string
+          const: READY
+      additionalProperties: false
+      required:
+        - type
+    RuntimeReadinessLane.InProgress:
+      type: object
+      properties:
+        type:
+          type: string
+          const: IN_PROGRESS
+        progress:
+          "$ref": "#/components/schemas/RuntimeReadinessProgress"
+      additionalProperties: false
+      required:
+        - type
+        - progress
+    RuntimeReadinessProgress:
+      type: object
+      description: Typed stage and bounded progress evidence.
+      properties:
+        stage:
+          "$ref": "#/components/schemas/RuntimeProgressStage"
+        completedUnits:
+          type: integer
+          format: int64
+          minimum: 0
+        totalUnits:
+          type: integer
+          format: int64
+          minimum: 0
+        elapsedMillis:
+          type: integer
+          format: int64
+          minimum: 0
+        noProgressMillis:
+          type: integer
+          format: int64
+          minimum: 0
+      additionalProperties: false
+      required:
+        - stage
+        - completedUnits
+        - totalUnits
+        - elapsedMillis
+        - noProgressMillis
+    RuntimeReadinessLane.Blocked:
+      type: object
+      properties:
+        type:
+          type: string
+          const: BLOCKED
+      additionalProperties: false
+      required:
+        - type
+    RuntimeProgressStage:
+      type: string
+      enum:
+        - STARTING
+        - GRADLE_IMPORT
+        - MODEL_SETTLEMENT
+        - IDE_INDEXING
+        - SOURCE_INDEX
+        - REFERENCE_INDEX
+        - SEMANTIC_GRAPH
     RuntimeLifecycleResponse:
       type: object
       properties:

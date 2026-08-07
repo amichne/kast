@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.snapshot
 
+import io.github.amichne.kast.api.client.ReadOnlyGitCommand
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
 import java.nio.file.Path
@@ -45,7 +46,7 @@ object CommittedGitTreeResolver {
         gitBytes(workspaceRoot, *arguments)?.toString(Charsets.UTF_8)?.trim()
 
     private fun gitBytes(workspaceRoot: Path, vararg arguments: String): ByteArray? = runCatching {
-        val process = ProcessBuilder("git", *arguments)
+        val process = ReadOnlyGitCommand.processBuilder(*arguments)
             .directory(workspaceRoot.toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()

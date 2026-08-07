@@ -3,6 +3,20 @@ package io.github.amichne.kast.api.client
 import io.github.amichne.kast.api.validation.FileHashing
 import java.nio.file.Path
 
+object ReadOnlyGitCommand {
+    private const val OPTIONAL_LOCKS_ENVIRONMENT = "GIT_OPTIONAL_LOCKS"
+
+    fun processBuilder(vararg arguments: String): ProcessBuilder =
+        processBuilder(listOf("git", *arguments))
+
+    fun processBuilder(command: List<String>): ProcessBuilder {
+        require(command.isNotEmpty()) { "Git command must not be empty" }
+        return ProcessBuilder(command).also { builder ->
+            builder.environment()[OPTIONAL_LOCKS_ENVIRONMENT] = "0"
+        }
+    }
+}
+
 data class GitRemote(
     val host: String,
     val owner: String,
@@ -33,7 +47,7 @@ object GitRemoteParser {
         .firstOrNull()
 
     fun origin(workspaceRoot: Path): GitRemote? = runCatching {
-        val process = ProcessBuilder("git", "config", "--get", "remote.origin.url")
+        val process = ReadOnlyGitCommand.processBuilder("config", "--get", "remote.origin.url")
             .directory(workspaceRoot.toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
@@ -66,7 +80,7 @@ object GitWorkspaceResolver {
             ?.normalize()
 
     private fun gitOutput(workspaceRoot: Path, vararg args: String): String? = runCatching {
-        val process = ProcessBuilder("git", *args)
+        val process = ReadOnlyGitCommand.processBuilder(*args)
             .directory(workspaceRoot.toFile())
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()

@@ -312,7 +312,7 @@ fn git_path(workspace_root: &Path, args: &[&str]) -> Option<PathBuf> {
 }
 
 fn git_output(workspace_root: &Path, args: &[&str]) -> Option<String> {
-    let mut command = std::process::Command::new("git");
+    let mut command = ReadOnlyGitCommand::new();
     command.args(args).current_dir(workspace_root);
     for name in GIT_REPOSITORY_SELECTION_ENVIRONMENT {
         command.env_remove(name);
@@ -382,3 +382,4 @@ fn sanitized_segment(value: &str) -> String {
         trimmed.chars().take(80).collect()
     }
 }
+use crate::git::ReadOnlyGitCommand;

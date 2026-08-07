@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.api.client.ReadOnlyGitCommand
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
@@ -215,7 +216,7 @@ private class ResolvedGitWorktreeTransitionGuard(
             }
         }
         val process = runCatching {
-            ProcessBuilder(command).also { builder ->
+            ReadOnlyGitCommand.processBuilder(command).also { builder ->
                 GitRepositorySelectionEnvironment.entries.forEach { selection ->
                     builder.environment().remove(selection.variable)
                 }

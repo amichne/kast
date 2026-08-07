@@ -12,6 +12,7 @@ class GradleModelSettlementAwaiter internal constructor(
 ) {
     fun await(observer: () -> GradleImportObservation): GradleModelSettlementOutcome {
         val startedAt = nanoTime()
+        var lastProgressAt = startedAt
         val transitions = ArrayDeque<GradleImportTransition>()
         var lastObservation: GradleImportObservation? = null
         var totalObservations = 0L
@@ -19,13 +20,15 @@ class GradleModelSettlementAwaiter internal constructor(
         var stableObservations = 0
 
         while (true) {
-            val elapsed = elapsedSince(startedAt)
+            val observedAt = nanoTime()
+            val elapsed = durationBetween(startedAt, observedAt)
             val observation = observer()
             totalObservations += 1
 
             if (observation == lastObservation) {
                 transitions.addLast(transitions.removeLast().repeatAt(elapsed))
             } else {
+                lastProgressAt = observedAt
                 if (lastObservation != null) {
                     totalTransitions += 1
                 }
@@ -44,11 +47,16 @@ class GradleModelSettlementAwaiter internal constructor(
             }
 
             stableObservations = if (observation.isSettlementCandidate) stableObservations + 1 else 0
+            if (observation.isSettlementCandidate) {
+                lastProgressAt = observedAt
+            }
+            val noProgress = durationBetween(lastProgressAt, observedAt)
             val evidence =
                 GradleModelSettlementEvidence(
                     lastObservation = observation,
                     recentTransitions = transitions.toList(),
                     elapsed = elapsed,
+                    noProgress = noProgress,
                     totalObservations = totalObservations,
                     totalTransitions = totalTransitions,
                     stableObservations = stableObservations,
@@ -60,7 +68,7 @@ class GradleModelSettlementAwaiter internal constructor(
             if (stableObservations >= policy.requiredStableObservations) {
                 return GradleModelSettlementOutcome.Settled(evidence)
             }
-            if (elapsed >= policy.timeout) {
+            if (noProgress >= policy.noProgressTimeout || elapsed >= policy.maximumWait) {
                 return GradleModelSettlementOutcome.TimedOut(evidence)
             }
 
@@ -73,8 +81,8 @@ class GradleModelSettlementAwaiter internal constructor(
         }
     }
 
-    private fun elapsedSince(startedAt: Long): Duration =
-        Duration.ofNanos((nanoTime() - startedAt).coerceAtLeast(0))
+    private fun durationBetween(startedAt: Long, observedAt: Long): Duration =
+        Duration.ofNanos((observedAt - startedAt).coerceAtLeast(0))
 
     companion object {
         @JvmStatic

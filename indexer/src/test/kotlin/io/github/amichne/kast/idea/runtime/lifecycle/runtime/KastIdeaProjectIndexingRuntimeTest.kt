@@ -259,8 +259,9 @@ class KastIdeaProjectIndexingRuntimeTest {
         assertEquals(250, indexingRetryDelayMillis(1))
         assertEquals(500, indexingRetryDelayMillis(2))
         assertEquals(1_000, indexingRetryDelayMillis(3))
-        assertEquals(300_000, indexingRetryDelayMillis(4))
-        assertEquals(300_000, indexingRetryDelayMillis(100))
+        assertEquals(2_000, indexingRetryDelayMillis(4))
+        assertEquals(5_000, indexingRetryDelayMillis(5))
+        assertEquals(5_000, indexingRetryDelayMillis(100))
     }
 
     @Test

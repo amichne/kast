@@ -12,6 +12,9 @@ import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import io.github.amichne.kast.api.contract.ReferenceCoverage
+import io.github.amichne.kast.api.contract.RuntimeProgressStage
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
+import io.github.amichne.kast.api.contract.RuntimeReadinessProgress
 import java.nio.file.Path
 
 internal const val KAST_TOOL_WINDOW_ID = "Kast"
@@ -252,5 +255,28 @@ internal fun RuntimeStatusResponse.withReferenceIndex(
         KastIndexState.CANCELLED,
         -> ReferenceCoverage.unavailable(limitations)
     }
-    return withReferenceCoverage(coverage)
+    val covered = withReferenceCoverage(coverage)
+    if (covered.readiness.references !is RuntimeReadinessLane.InProgress) return covered
+    val now = System.currentTimeMillis()
+    val started = index.stageStartedAtEpochMillis ?: now
+    val lastProgress = index.lastProgressAtEpochMillis ?: started
+    val elapsed = (now - started).coerceAtLeast(0)
+    val noProgress = (now - lastProgress).coerceIn(0, elapsed)
+    val total = index.fileCount?.toLong() ?: 0L
+    val completed = if (index.state == KastIndexState.READY) total else 0L
+    val referenceLane = RuntimeReadinessLane.InProgress(
+        RuntimeReadinessProgress(
+            stage = when (index.state) {
+                KastIndexState.WAITING_FOR_IDE -> RuntimeProgressStage.IDE_INDEXING
+                KastIndexState.HYDRATING -> RuntimeProgressStage.MODEL_SETTLEMENT
+                else -> RuntimeProgressStage.REFERENCE_INDEX
+            },
+            completedUnits = completed,
+            totalUnits = total,
+            elapsedMillis = elapsed,
+            noProgressMillis = noProgress,
+        ),
+    )
+    val readiness = covered.readiness.copy(references = referenceLane)
+    return covered.copy(readiness = readiness, ready = readiness.readySummary)
 }

@@ -36,6 +36,22 @@ pub(super) fn observe_process(pid: u64) -> Result<Option<ObservedProcess>> {
     }
 }
 
+pub(super) fn observe_owned_process(pid: u64, owner_uid: u64) -> Result<Option<ObservedProcess>> {
+    if pid == 0 || pid > i32::MAX as u64 {
+        return Ok(None);
+    }
+    #[cfg(target_os = "macos")]
+    let identity = macos_process_identity(pid)?;
+    #[cfg(target_os = "linux")]
+    let identity = linux_process_identity(pid)?;
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let identity: Option<ManagedProcessIdentity> = None;
+    if identity.is_none_or(|identity| identity.owner_uid != owner_uid) {
+        return Ok(None);
+    }
+    observe_process(pid)
+}
+
 pub(super) fn process_is_alive(pid: u64) -> Result<bool> {
     Ok(observe_process(pid)?.is_some())
 }

@@ -277,6 +277,7 @@ internal class KastIndexerBackend(
             else -> RuntimeState.READY
         }
         val moduleNames = ModuleManager.getInstance(project).modules.map { it.name }.sorted()
+        val readiness = kastRuntimeReadiness(admission, isDumb, moduleNames.size)
         return RuntimeStatusResponse(
             state = state,
             healthy = state != RuntimeState.DEGRADED,
@@ -295,6 +296,8 @@ internal class KastIndexerBackend(
             },
             sourceModuleNames = moduleNames,
             publishedWorkspaceGeneration = (admission as? IdeaIndexSemanticAdmission.Status.Ready)?.generation?.toRuntimeStatus(),
+            readiness = readiness,
+            ready = readiness.readySummary,
         )
     }
 

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.docs.internal
 
 import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.query.MutationPostconditionAuthority
 import io.github.amichne.kast.api.contract.query.MutationScratchRecoveryPreimage
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
@@ -14,6 +15,25 @@ import kotlinx.serialization.KSerializer
 
 internal fun SchemaRegistry.manualUnionSchema(componentName: String): Map<String, Any?>? =
     manualMutationProofUnionSchema(componentName) ?: when (componentName) {
+        "RuntimeReadinessProgress" -> runtimeReadinessProgressSchema()
+        "RuntimeReadinessLane" -> discriminatedUnion(
+            "type",
+            "READY" to "RuntimeReadinessLane.Ready",
+            "IN_PROGRESS" to "RuntimeReadinessLane.InProgress",
+            "BLOCKED" to "RuntimeReadinessLane.Blocked",
+        )
+        "RuntimeReadinessLane.Ready" -> subtypeWithDiscriminator(
+            RuntimeReadinessLane.Ready.serializer(),
+            discriminatorValue = "READY",
+        )
+        "RuntimeReadinessLane.InProgress" -> subtypeWithDiscriminator(
+            RuntimeReadinessLane.InProgress.serializer(),
+            discriminatorValue = "IN_PROGRESS",
+        )
+        "RuntimeReadinessLane.Blocked" -> subtypeWithDiscriminator(
+            RuntimeReadinessLane.Blocked.serializer(),
+            discriminatorValue = "BLOCKED",
+        )
         "FileOperation" -> discriminatedUnion(
             "type",
             "CREATE_FILE" to "FileOperation.CreateFile",
@@ -192,6 +212,20 @@ internal fun SchemaRegistry.manualUnionSchema(componentName: String): Map<String
         )
         else -> null
     }
+
+private fun runtimeReadinessProgressSchema(): Map<String, Any?> = linkedMapOf(
+    "type" to "object",
+    "description" to "Typed stage and bounded progress evidence.",
+    "properties" to linkedMapOf(
+        "stage" to linkedMapOf("\$ref" to "#/components/schemas/RuntimeProgressStage"),
+        "completedUnits" to linkedMapOf("type" to "integer", "format" to "int64", "minimum" to 0),
+        "totalUnits" to linkedMapOf("type" to "integer", "format" to "int64", "minimum" to 0),
+        "elapsedMillis" to linkedMapOf("type" to "integer", "format" to "int64", "minimum" to 0),
+        "noProgressMillis" to linkedMapOf("type" to "integer", "format" to "int64", "minimum" to 0),
+    ),
+    "additionalProperties" to false,
+    "required" to listOf("stage", "completedUnits", "totalUnits", "elapsedMillis", "noProgressMillis"),
+)
 
 private fun SchemaRegistry.relationshipEvidenceVariant(
     discriminatorValue: String,

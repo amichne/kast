@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.protocol.*
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.EncodeDefault
 import java.nio.file.Path
 
 @Serializable
@@ -57,6 +58,25 @@ data class RuntimeStatusResponse(
         defaultValue = "null",
     )
     val publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus? = null,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    @DocField(
+        description = "Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes.",
+        defaultValue = "derived from legacy runtime and reference fields",
+    )
+    val readiness: RuntimeReadiness = RuntimeReadiness.fromLegacy(
+        state = state,
+        healthy = healthy,
+        active = active,
+        indexing = indexing,
+        referenceCoverage = ReferenceCoverage.parse(
+            indexReady = referenceIndexReady,
+            state = referenceCoverageState,
+            limitations = referenceCoverageLimitations,
+        ),
+    ),
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    @DocField(description = "Compatibility summary. True only when every readiness lane is ready.")
+    val ready: Boolean = readiness.readySummary,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 ) {
@@ -67,11 +87,27 @@ data class RuntimeStatusResponse(
         limitations = referenceCoverageLimitations,
     )
 
-    fun withReferenceCoverage(coverage: ReferenceCoverage): RuntimeStatusResponse = copy(
-        referenceIndexReady = coverage.indexReady,
-        referenceCoverageState = coverage.state,
-        referenceCoverageLimitations = coverage.limitations,
-    )
+    init {
+        require(ready == readiness.readySummary) {
+            "Compatibility readiness must equal the layered readiness summary"
+        }
+        require(RuntimeReadinessLane.matchesReferenceCoverage(readiness.references, referenceCoverage)) {
+            "Reference readiness must match reference coverage evidence"
+        }
+    }
+
+    fun withReferenceCoverage(coverage: ReferenceCoverage): RuntimeStatusResponse {
+        val updatedReadiness = readiness.copy(
+            references = RuntimeReadinessLane.fromReferenceCoverage(coverage),
+        )
+        return copy(
+            referenceIndexReady = coverage.indexReady,
+            referenceCoverageState = coverage.state,
+            referenceCoverageLimitations = coverage.limitations,
+            readiness = updatedReadiness,
+            ready = updatedReadiness.readySummary,
+        )
+    }
 }
 
 @Serializable

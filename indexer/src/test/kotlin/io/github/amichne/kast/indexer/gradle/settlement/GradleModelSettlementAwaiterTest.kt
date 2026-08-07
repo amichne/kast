@@ -50,6 +50,7 @@ class GradleModelSettlementAwaiterTest {
         val timedOut = assertInstanceOf(GradleModelSettlementOutcome.TimedOut::class.java, outcome)
         assertEquals(stalled, timedOut.evidence.lastObservation)
         assertEquals(0, timedOut.evidence.totalTransitions)
+        assertEquals(Duration.ofMillis(3), timedOut.evidence.noProgress)
     }
 
     @Test
@@ -85,6 +86,7 @@ class GradleModelSettlementAwaiterTest {
         assertTrue(message.contains("lastObservation=$stalled"))
         assertTrue(message.contains("totalTransitions=0"))
         assertFalse(message.contains("transitionProgress"))
+        assertTrue(message.contains("noProgress="))
     }
 
     @Test
@@ -176,7 +178,8 @@ class GradleModelSettlementAwaiterTest {
         maxTransitionTraceEntries: Int = 16,
     ) =
         GradleModelSettlementPolicy(
-            timeout = Duration.ofMillis(timeoutMillis),
+            noProgressTimeout = Duration.ofMillis(timeoutMillis),
+            maximumWait = Duration.ofMillis(timeoutMillis),
             observationInterval = Duration.ofMillis(1),
             requiredStableObservations = stableObservations,
             maxTransitionTraceEntries = maxTransitionTraceEntries,

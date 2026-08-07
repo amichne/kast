@@ -91,6 +91,41 @@ class RuntimeStatusResponseTest {
     }
 
     @Test
+    fun `layered readiness keeps runtime model graph and references distinct`() {
+        val response = Json.decodeFromString<RuntimeStatusResponse>(
+            legacyRuntimeStatusJson(referenceIndexReady = false),
+        )
+
+        assertTrue(response.readiness.runtime is RuntimeReadinessLane.Ready)
+        assertTrue(response.readiness.model is RuntimeReadinessLane.Ready)
+        assertTrue(response.readiness.semanticGraph is RuntimeReadinessLane.Ready)
+        assertTrue(response.readiness.references is RuntimeReadinessLane.Blocked)
+        assertFalse(response.ready)
+    }
+
+    @Test
+    fun `typed progress rejects elapsed or work contradictions`() {
+        assertThrows<IllegalArgumentException> {
+            RuntimeReadinessProgress(
+                stage = RuntimeProgressStage.GRADLE_IMPORT,
+                completedUnits = 2,
+                totalUnits = 1,
+                elapsedMillis = 10,
+                noProgressMillis = 0,
+            )
+        }
+        assertThrows<IllegalArgumentException> {
+            RuntimeReadinessProgress(
+                stage = RuntimeProgressStage.MODEL_SETTLEMENT,
+                completedUnits = 0,
+                totalUnits = 0,
+                elapsedMillis = 10,
+                noProgressMillis = 11,
+            )
+        }
+    }
+
+    @Test
     fun `published workspace generation rejects non-canonical database paths`() {
         assertThrows<IllegalArgumentException> {
             PublishedWorkspaceGenerationStatus(

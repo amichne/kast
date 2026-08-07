@@ -322,6 +322,23 @@ fn reconcile_validated_runtime_ownership(
         return Ok(RuntimeOwnershipSnapshot::LegacyOwned(Box::new(legacy)));
     }
     if proven_dead.services.is_empty() && proven_dead.legacy.is_empty() {
+        let unregistered =
+            super::service_manager::discover_unregistered_runtime_processes(&canonical_root)?;
+        if !unregistered.is_empty() {
+            return Ok(RuntimeOwnershipSnapshot::Ambiguous(
+                RuntimeOwnershipAmbiguity {
+                    workspace_root: canonical_root,
+                    reason: format!(
+                        "Live indexer process has no persisted ownership evidence: {}. Stop it before starting a replacement.",
+                        unregistered
+                            .iter()
+                            .map(|process| process.evidence())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                },
+            ));
+        }
         Ok(RuntimeOwnershipSnapshot::Absent(AbsentRuntimeOwnership {
             workspace_root: canonical_root,
         }))
@@ -358,12 +375,21 @@ fn read_workspace_registrations(
         if name.to_string_lossy().starts_with('.') || name == "active.json" {
             continue;
         }
-        if !entry.file_type()?.is_dir() {
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        };
+        if !file_type.is_dir() {
             return Err(ownership_error(
                 "Runtime service workspace contains an unexpected non-directory entry.",
             ));
         }
-        registrations.push(validate_service_registration(&entry.path(), root)?);
+        match validate_service_registration(&entry.path(), root) {
+            Ok(registration) => registrations.push(registration),
+            Err(error) if error.code == "RUNTIME_REGISTRATION_MISSING" => continue,
+            Err(error) => return Err(error),
+        }
     }
     Ok(registrations)
 }

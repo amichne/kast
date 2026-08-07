@@ -27,14 +27,16 @@ fn macos_pid_reuse_is_conflict_remaining_review_regression() {
 }
 
 #[test]
-fn macos_argument_esrch_is_gone_final_review_regression() {
-    let observed = classify_macos_arguments(
-        42,
-        Err(std::io::Error::from_raw_os_error(libc::ESRCH)),
-    )
-    .expect("ESRCH means the process exited during argument collection");
+fn macos_argument_disappearance_is_gone_final_review_regression() {
+    for code in [libc::ESRCH, libc::ENOENT] {
+        let observed = classify_macos_arguments(
+            42,
+            Err(std::io::Error::from_raw_os_error(code)),
+        )
+        .expect("disappearance means the process exited during argument collection");
 
-    assert_eq!(observed, MacosArguments::Gone);
+        assert_eq!(observed, MacosArguments::Gone);
+    }
 }
 
 #[test]

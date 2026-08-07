@@ -86,7 +86,7 @@ pub(crate) fn spawn_ready_indexer_backend_after_marker(
             thread::sleep(std::time::Duration::from_millis(10));
         }
         Some(
-            spawn_scripted_backend(
+            spawn_registered_scripted_backend(
                 &home,
                 &config_home,
                 &workspace,
@@ -105,6 +105,94 @@ pub(crate) fn spawn_ready_indexer_backend_after_marker(
             .expect("ready indexer"),
         )
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn spawn_registered_scripted_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    backend_name: &str,
+    invocation_count: usize,
+    semantic_ready: bool,
+    mutation_capabilities: Vec<&'static str>,
+    mutation_file_write: Option<(PathBuf, Vec<u8>)>,
+    mutation_gate: Option<(PathBuf, PathBuf)>,
+    keepalive_until: Option<PathBuf>,
+    scratch_crash_gate: Option<ScriptedScratchCrashGate>,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    let backend = spawn_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        backend_name,
+        invocation_count,
+        semantic_ready,
+        mutation_capabilities,
+        mutation_file_write,
+        mutation_gate,
+        keepalive_until,
+        scratch_crash_gate,
+        scripted_results,
+    );
+    publish_registered_runtime_descriptor(home, workspace, socket_path, backend_name);
+    backend
+}
+
+fn publish_registered_runtime_descriptor(
+    home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    backend_name: &str,
+) {
+    let services = default_install_root(home).join("state/runtime/services");
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let (runtime_instance_id, pid) = loop {
+        if let Some(identity) = registered_runtime_identity(&services) {
+            break identity;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "registered runtime identity was not published under {}",
+            services.display(),
+        );
+        thread::sleep(std::time::Duration::from_millis(10));
+    };
+    let mut descriptor = runtime_descriptor_for_process_test(
+        workspace,
+        socket_path,
+        backend_name,
+        "scripted-test",
+        pid,
+    );
+    descriptor["runtimeInstanceId"] = runtime_instance_id.into();
+    std::fs::write(
+        default_descriptor_dir(home).join("daemons.json"),
+        serde_json::to_vec_pretty(&serde_json::json!([descriptor])).expect("descriptor json"),
+    )
+    .expect("registered descriptor");
+}
+
+fn registered_runtime_identity(services: &Path) -> Option<(String, u32)> {
+    let workspace = std::fs::read_dir(services)
+        .ok()?
+        .filter_map(Result::ok)
+        .find(|entry| entry.file_type().ok().is_some_and(|kind| kind.is_dir()))?;
+    let active: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(workspace.path().join("active.json")).ok()?,
+    )
+    .ok()?;
+    let runtime_instance_id = active["runtimeInstanceId"].as_str()?.to_string();
+    let receipt: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(workspace.path().join(&runtime_instance_id).join("receipt.json")).ok()?,
+    )
+    .ok()?;
+    let state_path = Path::new(receipt["manager"]["state_path"].as_str()?);
+    let state: serde_json::Value = serde_json::from_slice(&std::fs::read(state_path).ok()?).ok()?;
+    Some((runtime_instance_id, u32::try_from(state["pid"].as_u64()?).ok()?))
 }
 
 #[allow(clippy::too_many_arguments)]

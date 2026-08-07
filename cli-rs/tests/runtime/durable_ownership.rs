@@ -157,6 +157,30 @@ fn stop_signals_an_exact_live_orphan_after_the_service_manager_loses_it() {
 }
 
 #[test]
+fn truly_unregistered_live_runtime_is_not_admitted_as_absent() {
+    let mut fixture = RuntimeServiceFixture::new();
+    fixture.remove_registration_and_descriptor();
+
+    let repair = fixture
+        .repair_command(false)
+        .output()
+        .expect("unregistered runtime inspection");
+
+    assert_success(&repair, "unregistered runtime inspection");
+    let repair = output_json(&repair);
+    assert_eq!(repair["state"], "BLOCKED");
+    assert_eq!(repair["blockers"].as_array().map(Vec::len), Some(1));
+    assert!(
+        fixture
+            .runtime
+            .try_wait()
+            .expect("runtime status")
+            .is_none(),
+        "inspection terminated the unregistered runtime"
+    );
+}
+
+#[test]
 fn descriptor_for_unrelated_live_process_never_signals() {
     let temp = tempfile::tempdir().expect("runtime ownership fixture");
     let home = temp.path().join("home");

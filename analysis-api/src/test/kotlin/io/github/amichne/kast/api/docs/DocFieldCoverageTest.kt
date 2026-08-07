@@ -37,6 +37,12 @@ class DocFieldCoverageTest {
         // System responses
         "HealthResponse" to HealthResponse.serializer(),
         "RuntimeStatusResponse" to RuntimeStatusResponse.serializer(),
+        "RuntimeReadiness" to RuntimeReadiness.serializer(),
+        "RuntimeReadinessLane" to RuntimeReadinessLane.serializer(),
+        "RuntimeReadinessLane.Ready" to RuntimeReadinessLane.Ready.serializer(),
+        "RuntimeReadinessLane.InProgress" to RuntimeReadinessLane.InProgress.serializer(),
+        "RuntimeReadinessLane.Blocked" to RuntimeReadinessLane.Blocked.serializer(),
+        "RuntimeReadinessProgress" to RuntimeReadinessProgress.serializer(),
         "PublishedWorkspaceGenerationStatus" to PublishedWorkspaceGenerationStatus.serializer(),
         "RuntimeLifecycleResponse" to RuntimeLifecycleResponse.serializer(),
         "BackendCapabilities" to BackendCapabilities.serializer(),

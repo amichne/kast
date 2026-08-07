@@ -11,7 +11,7 @@ impl KastConfig {
                 max_concurrent_requests: 4,
             },
             indexer: IndexerConfig {
-                runtime_libs_dir: Some(paths.indexer_runtime_libs_dir.clone()),
+                runtime_libs_dir: paths.indexer_runtime_libs_dir.clone(),
                 host_home: paths.indexer_host_home.clone(),
                 ..IndexerConfig::default()
             },
