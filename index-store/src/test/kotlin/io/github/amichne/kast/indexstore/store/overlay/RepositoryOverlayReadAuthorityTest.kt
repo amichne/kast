@@ -2,11 +2,15 @@ package io.github.amichne.kast.indexstore
 
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.client.WorkspaceRepository
+import io.github.amichne.kast.api.contract.ByteOffset
+import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
@@ -41,6 +45,13 @@ class RepositoryOverlayReadAuthorityTest {
         val unchanged = workspace.resolve("src/Unchanged.kt")
         val changed = workspace.resolve("src/Changed.kt")
         val deleted = workspace.resolve("src/Deleted.kt")
+        val unchangedGraphPath = SemanticGraphSourcePath.parse(unchanged.relativeTo(workspace))
+        val changedGraphPath = SemanticGraphSourcePath.parse(changed.relativeTo(workspace))
+        val unchangedGraphSymbol = semanticSymbol(
+            "unchanged-base#symbol",
+            "unchanged-base",
+            unchangedGraphPath,
+        ).copy(annotations = listOf(NonBlankString("sample.AuthoritativeAnnotation")))
         listOf(unchanged, changed, deleted).forEach { path ->
             Files.createDirectories(path.parent)
             Files.writeString(path, "class ${path.fileName.toString().removeSuffix(".kt")}")
@@ -81,7 +92,7 @@ class RepositoryOverlayReadAuthorityTest {
             }
             store.replaceSemanticGraphFiles(
                 listOf(
-                    graphUpdate(unchanged, "unchanged-base"),
+                    semanticUpdate(unchangedGraphPath, "a", listOf(unchangedGraphSymbol)),
                     graphUpdate(changed, "changed-base"),
                     graphUpdate(deleted, "deleted-base"),
                 ),
@@ -155,7 +166,27 @@ class RepositoryOverlayReadAuthorityTest {
                 targetPath = null,
                 targetOffset = null,
             )
-            store.replaceSemanticGraphFiles(listOf(graphUpdate(changed, "changed-main")))
+            val changedGraphSymbol = semanticSymbol("changed-main#symbol", "changed-main", changedGraphPath)
+            val boundaryRelation = SemanticGraphRelation(
+                sourceKey = changedGraphSymbol.canonicalKey,
+                targetKey = unchangedGraphSymbol.canonicalKey,
+                kind = SemanticGraphRelationKind.CALLS,
+                sourcePath = changedGraphPath,
+                startOffset = ByteOffset(0),
+                endOffset = ByteOffset(1),
+                line = LineNumber(1),
+            )
+            store.replaceSemanticGraphFiles(
+                listOf(
+                    semanticUpdate(
+                        changedGraphPath,
+                        "a",
+                        listOf(changedGraphSymbol),
+                        boundarySymbols = listOf(unchangedGraphSymbol),
+                        relations = listOf(boundaryRelation),
+                    ),
+                ),
+            )
 
             val source = store.loadSourceIndexSnapshot().candidatePathsByIdentifier
             assertEquals(setOf("UnchangedBase", "ChangedMain"), source.keys)
@@ -180,6 +211,14 @@ class RepositoryOverlayReadAuthorityTest {
                         SemanticGraphSourcePath.parse(deleted.relativeTo(workspace)),
                     ),
                 ).symbols.mapTo(mutableSetOf()) { it.name.value },
+            )
+            val changedGraph = store.readSemanticGraph(listOf(changedGraphPath))
+            assertEquals(listOf(boundaryRelation), changedGraph.relations)
+            assertEquals(
+                listOf(NonBlankString("sample.AuthoritativeAnnotation")),
+                changedGraph.boundarySymbols.single { symbol ->
+                    symbol.canonicalKey == unchangedGraphSymbol.canonicalKey
+                }.annotations,
             )
             assertEquals(
                 mapOf(NormalizedPath.of(unchanged).value to 1L, NormalizedPath.of(changed).value to 2L),

@@ -2,11 +2,28 @@
 
 ## RED
 
+### Overlay boundary symbol authority
+
+Command:
+
+```shell
+./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReadAuthorityTest --no-daemon --console=plain
+```
+
+Expected failure: a cached main boundary row suppresses the authoritative base
+symbol, discarding its annotation while a changed-file edge targets it.
+
+Observed failure: FAILED as expected. The changed-file edge remained present,
+but its unchanged target resolved to the cached boundary row and returned no
+annotations instead of `sample.AuthoritativeAnnotation` from the base symbol.
+
 ### Ignored non-source snapshot eligibility
 
 Command:
 
 ```shell
+./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReadAuthorityTest --no-daemon --console=plain
+./gradlew :index-store:test --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 ```
 
@@ -138,6 +155,7 @@ Commands:
 ./gradlew :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --no-daemon --console=plain
 python3 .github/scripts/check-repository-shape.py --root .
 ./gradlew check --no-daemon --console=plain
+kast refresh index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/overlay/RepositoryOverlaySemanticViews.kt
 kast refresh indexer/src/main/kotlin/io/github/amichne/kast/idea/snapshot/CommittedGitTreeResolver.kt
 kast refresh indexer/src/main/kotlin/io/github/amichne/kast/indexer/gradle/settlement/ProgressAwareFutureAwaiter.kt
 kast refresh index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/lifecycle/SourceIndexSnapshotStore.kt
@@ -151,8 +169,10 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ```
 
-Observed result: PASSED. All eight repository snapshot integration tests passed;
-overlay replacement and unchanged-file authority tests passed; all seven
+Observed result: PASSED. The full index-store suite passed; the overlay boundary
+target retained its authoritative base annotation and the changed-file relation;
+all eight repository snapshot
+integration tests passed; overlay replacement and unchanged-file authority tests passed; all seven
 terminal wait-authority tests passed; all 19 durable-ownership tests passed;
 both readiness/read-action tests
 passed; the host-supplied backend regression passed; and the transition timeout,
