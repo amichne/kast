@@ -47,7 +47,11 @@ internal suspend fun SkillRpcContext.resolve(request: KastResolveRequest): KastR
         return KastResolveAmbiguousResponse(
             query = query,
             candidates = candidates.map { candidate ->
-                candidate.resolvedConstraintSymbol ?: candidate.ranked.symbol
+                val symbol = candidate.resolvedConstraintSymbol ?: candidate.ranked.symbol
+                KastResolveCandidate(
+                    symbol = symbol,
+                    selectorHandle = issueSelectorHandle(symbol),
+                )
             },
             logFile = placeholderLogFile(),
         )
@@ -131,7 +135,8 @@ internal suspend fun SkillRpcContext.discover(request: KastDiscoverRequest): Kas
     return KastDiscoverSuccessResponse(
         query = query,
         candidates = visibleCandidates.mapIndexed { index, candidate ->
-            candidate.toDiscoveryCandidate(
+            toDiscoveryCandidate(
+                candidate = candidate,
                 rank = index + 1,
                 workspaceRoot = workspaceRoot,
                 requestedSymbol = request.symbol,

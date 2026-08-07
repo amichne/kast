@@ -97,6 +97,7 @@ internal fun KastExactSymbolSelector.toHandleSubject(): SymbolIdentity = SymbolI
 
 internal fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily> = when (this) {
     SymbolKind.CLASS, SymbolKind.INTERFACE -> setOf(
+        SelectorOperationFamily.IDENTITY,
         SelectorOperationFamily.REFERENCES,
         SelectorOperationFamily.IMPLEMENTATIONS,
         SelectorOperationFamily.HIERARCHY,
@@ -105,6 +106,7 @@ internal fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily
         SelectorOperationFamily.REPLACE_DECLARATION,
     )
     SymbolKind.OBJECT -> setOf(
+        SelectorOperationFamily.IDENTITY,
         SelectorOperationFamily.REFERENCES,
         SelectorOperationFamily.HIERARCHY,
         SelectorOperationFamily.IMPACT,
@@ -112,6 +114,7 @@ internal fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily
         SelectorOperationFamily.REPLACE_DECLARATION,
     )
     SymbolKind.FUNCTION -> setOf(
+        SelectorOperationFamily.IDENTITY,
         SelectorOperationFamily.REFERENCES,
         SelectorOperationFamily.CALLERS,
         SelectorOperationFamily.CALLEES,
@@ -120,12 +123,14 @@ internal fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily
         SelectorOperationFamily.REPLACE_DECLARATION,
     )
     SymbolKind.PROPERTY -> setOf(
+        SelectorOperationFamily.IDENTITY,
         SelectorOperationFamily.REFERENCES,
         SelectorOperationFamily.IMPACT,
         SelectorOperationFamily.RENAME,
         SelectorOperationFamily.REPLACE_DECLARATION,
     )
     SymbolKind.PARAMETER -> setOf(
+        SelectorOperationFamily.IDENTITY,
         SelectorOperationFamily.REFERENCES,
         SelectorOperationFamily.RENAME,
     )

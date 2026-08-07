@@ -11,3 +11,27 @@ cargo test \
   semantic_contract_inventory_is_complete_and_machine_testable \
   -- \
   --exact
+
+cargo test \
+  --manifest-path cli-rs/Cargo.toml \
+  --locked \
+  --test kast_agent_surface \
+  typed_selector_vertical_slice_exposes_only_canonical_routes \
+  -- \
+  --exact
+
+cargo test \
+  --manifest-path cli-rs/Cargo.toml \
+  --locked \
+  --test kast_agent_surface \
+  selectors_round_trip_verbatim_across_the_overloaded_vertical_slice \
+  -- \
+  --exact
+
+cargo test \
+  --manifest-path cli-rs/Cargo.toml \
+  --locked \
+  --test kast_agent_surface \
+  exact_routes_reject_substitutes_through_closed_selector_authentication \
+  -- \
+  --exact

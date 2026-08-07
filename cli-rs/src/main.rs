@@ -147,10 +147,11 @@ struct KastHome {
 }
 
 fn run_kast_agent(cli: KastCli) -> Result<i32> {
+    let output_format = cli.output.into();
     let Some(command) = cli.command else {
         let root = config::resolve_workspace_root(None)?;
         let home = kast_home(root)?;
-        output::print_structured(&home, OutputFormat::Toon)?;
+        output::print_structured(&home, output_format)?;
         return Ok(0);
     };
     match command {
@@ -165,7 +166,8 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
         }
         KastCommand::Up => agent_adapter::run_up(),
         KastCommand::Files { pattern, page } => agent_adapter::run_files(pattern, page),
-        KastCommand::Symbol(args) => agent_adapter::run_symbol(args),
+        KastCommand::Symbol(args) => agent_adapter::run_symbol(args, output_format),
+        KastCommand::Relation(args) => agent_adapter::run_relation(args, output_format),
         KastCommand::Graph(args) => agent_adapter::run_graph(args),
         KastCommand::Check(args) => agent_adapter::run_check(args),
         KastCommand::Refresh(args) => agent_adapter::run_refresh(args),
@@ -212,7 +214,7 @@ fn kast_home(root: PathBuf) -> Result<KastHome> {
     let next = if ready {
         vec![
             "kast refresh".to_string(),
-            "kast symbol find <query>".to_string(),
+            "kast symbol search --query <query>".to_string(),
         ]
     } else {
         vec!["kast up".to_string()]

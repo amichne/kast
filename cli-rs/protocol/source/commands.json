@@ -793,7 +793,8 @@
               "HIERARCHY",
               "IMPACT",
               "RENAME",
-              "REPLACE_DECLARATION"
+              "REPLACE_DECLARATION",
+              "IDENTITY"
             ],
             "sample": "IMPACT"
           }

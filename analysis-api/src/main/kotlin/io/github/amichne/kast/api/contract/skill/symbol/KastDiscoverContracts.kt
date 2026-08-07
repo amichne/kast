@@ -47,6 +47,7 @@ data class KastDiscoveryCandidate(
     val rank: Int,
     val confidence: Double,
     val symbol: Symbol,
+    val selectorHandle: String,
     val reasons: List<String>,
     val resolveParams: KastResolveParams,
     val nextRequest: KastNextRequest,

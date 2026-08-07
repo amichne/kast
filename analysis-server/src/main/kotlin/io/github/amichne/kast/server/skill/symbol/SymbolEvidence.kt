@@ -219,31 +219,6 @@ internal fun SkillRpcContext.snippetOverlap(codeSnippet: String?, candidate: Sym
     return queryTokens.intersect(candidateTokens).size
 }
 
-internal fun RankedNamedSymbolCandidate.toDiscoveryCandidate(
-    rank: Int,
-    workspaceRoot: String,
-    requestedSymbol: String,
-): KastDiscoveryCandidate {
-    val params = KastResolveParams(
-        workspaceRoot = workspaceRoot,
-        symbol = requestedSymbol,
-        fileHint = symbol.location.filePath,
-        kind = symbol.kind.toWrapperNamedSymbolKindOrNull(),
-        containingType = symbol.containingDeclaration,
-    )
-    return KastDiscoveryCandidate(
-        rank = rank,
-        confidence = score / 100.0,
-        symbol = symbol,
-        reasons = reasons,
-        resolveParams = params,
-        nextRequest = KastNextRequest(
-            method = "symbol/resolve",
-            params = params,
-        ),
-    )
-}
-
 internal suspend fun SkillRpcContext.resolveContext(
     symbol: Symbol,
     request: KastResolveRequest,
@@ -355,7 +330,7 @@ internal fun WrapperNamedSymbolKind.toSymbolKind(): SymbolKind = when (this) {
     WrapperNamedSymbolKind.PROPERTY -> SymbolKind.PROPERTY
 }
 
-private fun SymbolKind.toWrapperNamedSymbolKindOrNull(): WrapperNamedSymbolKind? = when (this) {
+internal fun SymbolKind.toWrapperNamedSymbolKindOrNull(): WrapperNamedSymbolKind? = when (this) {
     SymbolKind.CLASS -> WrapperNamedSymbolKind.CLASS
     SymbolKind.INTERFACE -> WrapperNamedSymbolKind.INTERFACE
     SymbolKind.OBJECT -> WrapperNamedSymbolKind.OBJECT
