@@ -30,21 +30,26 @@ internal sealed interface RpcRequestWaitPolicy {
         ) : ServerDeadline {
             companion object {
                 /**
-                 * Proof transition: `Long -> ServerDeadline.WorkspaceTransition`.
+                 * Proof transition:
+                 * `ServerDeadline.Ordinary -> ServerDeadline.WorkspaceTransition`.
                  *
-                 * Refines the positive ordinary timeout into a finite outer
-                 * deadline covering the backend's one-hour reconciliation
-                 * maximum plus transport reserve, without shortening a larger
-                 * configured deadline.
+                 * Derives a finite outer deadline for the complete recovery
+                 * dispatch: one ordinary graph pass may discover incomplete
+                 * coverage, reconciliation may consume its one-hour maximum,
+                 * and a second ordinary graph pass must publish the response.
                  */
-                fun derive(ordinaryTimeoutMillis: Long): WorkspaceTransition {
-                    require(ordinaryTimeoutMillis > 0) { "RPC server deadline must be positive" }
+                fun derive(ordinary: Ordinary): WorkspaceTransition {
+                    val graphPassBudget = Math.multiplyExact(
+                        ordinary.timeoutMillis,
+                        SEMANTIC_GRAPH_PASS_COUNT,
+                    )
                     return WorkspaceTransition(
-                        maxOf(ordinaryTimeoutMillis, MINIMUM_TIMEOUT_MILLIS),
+                        Math.addExact(MAXIMUM_RECONCILIATION_MILLIS, graphPassBudget),
                     )
                 }
 
-                private const val MINIMUM_TIMEOUT_MILLIS = 60L * 60 * 1_000 + 5_000
+                private const val SEMANTIC_GRAPH_PASS_COUNT = 2L
+                private const val MAXIMUM_RECONCILIATION_MILLIS = 60L * 60 * 1_000
             }
         }
     }
@@ -62,51 +67,41 @@ internal sealed interface RpcRequestWaitPolicy {
          * backend progress retain backend-owned deadline authority; every
          * other method receives the effective ordinary server deadline.
          */
-        fun derive(method: String, config: AnalysisServerConfig): RpcRequestWaitPolicy = when {
-            TransitionAwareRpcMethod.resolve(method) != null ->
-                ServerDeadline.WorkspaceTransition.derive(config.effectiveRequestTimeoutMillis)
-            BackendProgressRpcMethod.resolve(method) != null -> BackendProgressDeadline
-            else -> ServerDeadline.Ordinary.derive(config.effectiveRequestTimeoutMillis)
+        fun derive(method: String, config: AnalysisServerConfig): RpcRequestWaitPolicy = when (
+            RpcDeadlineAuthority.derive(method)
+        ) {
+            RpcDeadlineAuthority.SEMANTIC_GRAPH_SERVER -> ServerDeadline.WorkspaceTransition.derive(
+                ServerDeadline.Ordinary.derive(config.effectiveRequestTimeoutMillis),
+            )
+            RpcDeadlineAuthority.BACKEND_PROGRESS -> BackendProgressDeadline
+            RpcDeadlineAuthority.ORDINARY_SERVER ->
+                ServerDeadline.Ordinary.derive(config.effectiveRequestTimeoutMillis)
         }
     }
 }
 
-private enum class TransitionAwareRpcMethod(val protocolName: String) {
-    SEMANTIC_GRAPH("raw/semantic-graph"),
+private enum class RpcDeadlineAuthority {
+    SEMANTIC_GRAPH_SERVER,
+    BACKEND_PROGRESS,
+    ORDINARY_SERVER,
     ;
 
     companion object {
         /**
-         * Boundary transition: `String -> TransitionAwareRpcMethod?`.
+         * Boundary transition: `String -> RpcDeadlineAuthority`.
          *
-         * Refines the transport method primitive into the closed set requiring
-         * a finite server deadline large enough for nested workspace
-         * reconciliation.
+         * Derives exactly one deadline authority from the transport primitive.
+         * The result intentionally need not retain the method string: it is the
+         * stronger, constrained fact consumed by exhaustive policy selection.
          */
-        fun resolve(method: String): TransitionAwareRpcMethod? = entries.singleOrNull { candidate ->
-            candidate.protocolName == method
-        }
-    }
-}
-
-private enum class BackendProgressRpcMethod(val protocolName: String) {
-    WORKSPACE_REFRESH("raw/workspace-refresh"),
-    APPLY_EDITS("raw/apply-edits"),
-    EXACT_FILE_IMAGE_CAS("raw/exact-file-image-cas"),
-    RECOVER_MUTATION_SCRATCH("raw/recover-mutation-scratch"),
-    ;
-
-    companion object {
-        /**
-         * Boundary transition: `String -> BackendProgressRpcMethod?`.
-         *
-         * Refines the transport method primitive into the closed set whose
-         * backend contract can wait for progress-bounded workspace
-         * reconciliation. `null` means the method has no such authority and
-         * must keep the ordinary server deadline.
-         */
-        fun resolve(method: String): BackendProgressRpcMethod? = entries.singleOrNull { candidate ->
-            candidate.protocolName == method
+        fun derive(method: String): RpcDeadlineAuthority = when (method) {
+            "raw/semantic-graph" -> SEMANTIC_GRAPH_SERVER
+            "raw/workspace-refresh",
+            "raw/apply-edits",
+            "raw/exact-file-image-cas",
+            "raw/recover-mutation-scratch",
+            -> BACKEND_PROGRESS
+            else -> ORDINARY_SERVER
         }
     }
 }

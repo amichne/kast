@@ -63,6 +63,7 @@ mod runtime_status_wire_tests {
     fn workspace_transition_response_policy_covers_reconciliation_methods() {
         let policy = RpcResponseTimeoutPolicy::derive(Duration::from_secs(35));
         let diagnostics = serde_json::json!({"method": "raw/diagnostics"}).to_string();
+        let complete_transition_dispatch = Duration::from_secs(60 * 60 + 2 * 35 + 5);
 
         for method in [
             "raw/semantic-graph",
@@ -74,12 +75,18 @@ mod runtime_status_wire_tests {
             let request = serde_json::json!({"method": method}).to_string();
             assert_eq!(
                 policy.for_request(&request).expect("transition policy"),
-                WORKSPACE_TRANSITION_RESPONSE_TIMEOUT,
+                complete_transition_dispatch,
                 "method={method}"
             );
         }
         assert_eq!(
             policy.for_request(&diagnostics).expect("diagnostics policy"),
+            Duration::from_secs(35)
+        );
+        assert_eq!(
+            policy
+                .for_request("{}")
+                .expect("request without a method has closed ordinary authority"),
             Duration::from_secs(35)
         );
     }
