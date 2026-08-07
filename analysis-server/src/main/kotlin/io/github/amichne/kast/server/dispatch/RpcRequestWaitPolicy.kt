@@ -43,6 +43,7 @@ internal sealed interface RpcRequestWaitPolicy {
 }
 
 private enum class BackendProgressRpcMethod(val protocolName: String) {
+    SEMANTIC_GRAPH("raw/semantic-graph"),
     WORKSPACE_REFRESH("raw/workspace-refresh"),
     APPLY_EDITS("raw/apply-edits"),
     EXACT_FILE_IMAGE_CAS("raw/exact-file-image-cas"),
@@ -54,9 +55,9 @@ private enum class BackendProgressRpcMethod(val protocolName: String) {
          * Boundary transition: `String -> BackendProgressRpcMethod?`.
          *
          * Refines the transport method primitive into the closed set whose
-         * backend contract can wait for post-mutation reconciliation. `null`
-         * means the method has no such authority and must keep the ordinary
-         * server deadline.
+         * backend contract can wait for progress-bounded workspace
+         * reconciliation. `null` means the method has no such authority and
+         * must keep the ordinary server deadline.
          */
         fun resolve(method: String): BackendProgressRpcMethod? = entries.singleOrNull { candidate ->
             candidate.protocolName == method

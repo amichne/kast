@@ -2,6 +2,24 @@
 
 ## RED
 
+### Semantic-graph recovery deadline authority
+
+Commands:
+
+```shell
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy_covers_reconciliation_methods
+```
+
+Expected failure: `raw/semantic-graph` can enter progress-bounded workspace
+reconciliation after incomplete published coverage, but both the Kotlin server
+and Rust client classify it under the ordinary request deadline.
+
+Observed failure: FAILED as expected in both languages. Kotlin derived
+`ServerDeadline(timeoutMillis=1)` instead of `BackendProgressDeadline`; Rust
+derived the 35-second ordinary timeout instead of the 3,605-second workspace
+transition allowance.
+
 ### Effective semantic-file path authority
 
 Command:
@@ -294,6 +312,11 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.KastProjectOpenSourceIndexingTest --tests io.github.amichne.kast.idea.NativeSemanticGraphGenerationTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.CommittedGitTreeManifestTest --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 ./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReadAuthorityTest --no-daemon --console=plain
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --no-daemon --console=plain
+cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_response_policy_covers_reconciliation_methods
+cargo test --manifest-path cli-rs/Cargo.toml --locked
+cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
+cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 base_commit=$(git merge-base HEAD origin/main)
 changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <({ git diff --name-only "$base_commit" -- '*.kt'; git ls-files --others --exclude-standard -- '*.kt'; } | sort -u)
 kast check "${changed_kotlin[@]}"
@@ -328,4 +351,9 @@ contract passed. Exact installed-head semantic analysis also completed all 77
 changed production Kotlin files with zero errors, warnings, infos, or skipped
 files. The final working-tree audit completed all 128 changed Kotlin production
 and test files, including the new progress authority and strict manifest
-decoder, with zero errors, warnings, infos, or skipped files.
+decoder, with zero errors, warnings, infos, or skipped files. Semantic-graph
+recovery now receives the progress-bounded transition deadline from both the
+Kotlin server and Rust client policy; both focused cross-language regressions
+passed. The complete Rust test suite, all-target/all-feature Clippy gate with
+warnings denied, Rust formatting check, and the final full Gradle check all
+passed.
