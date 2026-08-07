@@ -88,6 +88,12 @@ class RepositorySnapshotFallbackTest {
         val workspaceDatabase = workspace.resolveSibling("${workspace.fileName}-worktree/source-index.db")
         Files.createDirectories(workspaceDatabase.parent)
         Files.writeString(workspaceDatabase, "persisted overlay")
+        val workspaceRollbackJournal = workspaceDatabase.resolveSibling("${workspaceDatabase.fileName}-journal")
+        val workspaceWriteAheadLog = workspaceDatabase.resolveSibling("${workspaceDatabase.fileName}-wal")
+        val workspaceSharedMemory = workspaceDatabase.resolveSibling("${workspaceDatabase.fileName}-shm")
+        Files.writeString(workspaceRollbackJournal, "persisted rollback journal")
+        Files.writeString(workspaceWriteAheadLog, "persisted write-ahead log")
+        Files.writeString(workspaceSharedMemory, "persisted shared memory")
         val descriptor = workspaceDatabase.resolveSibling("repository-overlay.json")
         Files.writeString(
             descriptor,
@@ -119,6 +125,10 @@ class RepositorySnapshotFallbackTest {
         val seed = assertInstanceOf(WorktreeOverlaySeed.None::class.java, preparation.overlaySeed)
         assertEquals(WorktreeOverlayAbsence.RepositoryAuthorityChanged, seed.reason)
         assertFalse(Files.exists(descriptor, LinkOption.NOFOLLOW_LINKS))
+        assertFalse(Files.exists(workspaceDatabase, LinkOption.NOFOLLOW_LINKS))
+        assertFalse(Files.exists(workspaceRollbackJournal, LinkOption.NOFOLLOW_LINKS))
+        assertFalse(Files.exists(workspaceWriteAheadLog, LinkOption.NOFOLLOW_LINKS))
+        assertFalse(Files.exists(workspaceSharedMemory, LinkOption.NOFOLLOW_LINKS))
         assertNotEquals(RepositorySnapshotPublication.Suppressed, preparation.capturePublication())
     }
 

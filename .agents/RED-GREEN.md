@@ -2,6 +2,23 @@
 
 ## RED
 
+### Repository replacement database authority
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.RepositorySnapshotFallbackTest --no-daemon --console=plain
+```
+
+Expected failure: replacing the repository at an existing workspace path
+revokes only `repository-overlay.json`; the overlay-local `source-index.db`
+family survives and can reuse source-stage ownership and provenance proven by
+the previous repository.
+
+Observed failure: FAILED as expected. The focused class ran two tests; the
+repository-replacement case reached the new database-family assertion and
+found `source-index.db` still present after its descriptor had been revoked.
+
 ### Closed deadline authority and layered semantic-graph budget
 
 Commands:
@@ -430,4 +447,9 @@ Rust formatting, and the exact nine-file semantic audit. Two unrelated macOS
 I/O races interrupted separate full Rust attempts (`EWOULDBLOCK` in the demo
 socket fixture and `EIO` while reading spawned-process arguments); each exact
 fixture passed immediately without a source change. Exact-head CI remains the
-authority for the uninterrupted complete Rust suite.
+authority for the uninterrupted complete Rust suite. The repository-authority
+replacement regression now proves that the stale SQLite database, rollback
+journal, write-ahead log, shared-memory file, and overlay descriptor are all
+absent before typed full-index authority is derived. The focused fallback class, full Gradle gate,
+repository-shape gate, and exact nine-file compiler audit passed with zero
+diagnostics or skipped files.
