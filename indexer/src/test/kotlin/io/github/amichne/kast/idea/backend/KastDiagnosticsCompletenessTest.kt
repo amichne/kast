@@ -103,6 +103,23 @@ internal class KastDiagnosticsCompletenessTest : KastDiagnosticsCompletenessFixt
     }
 
     @Test
+    fun `diagnostics reject cached PSI that is behind saved disk content`() = runBlocking {
+        ensureProjectReady()
+        val psiFile = validFileFixture.get()
+        val filePath = Path.of(psiFile.virtualFile.path)
+        readAction { psiFile.text }
+        Files.writeString(filePath, "package diagnostics\n\nfun valid(): String = Missing.value\n")
+
+        val result = backend().diagnostics(
+            DiagnosticsQuery(filePaths = listOf(filePath.toString())),
+        )
+
+        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
+        assertEquals(FileAnalysisState.PENDING_INDEX, result.fileStatuses.single().state)
+        assertTrue(result.fileHashes.isEmpty())
+    }
+
+    @Test
     fun `diagnostic hash reflects unsaved committed PSI text from the analysis epoch`() = runBlocking {
         ensureProjectReady()
         val psiFile = validFileFixture.get()

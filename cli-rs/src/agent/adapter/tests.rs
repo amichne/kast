@@ -87,7 +87,22 @@ mod tests {
 
     #[test]
     fn current_check_refreshes_only_typed_workspace_staleness() {
-        let covered = json!({"ok": true, "result": {"fileHashes": []}});
+        let covered = json!({
+            "ok": true,
+            "result": {
+                "semanticOutcome": "COMPLETE",
+                "fileStatuses": [],
+                "fileHashes": []
+            }
+        });
+        let vfs_behind_disk = json!({
+            "ok": true,
+            "result": {
+                "semanticOutcome": "INCOMPLETE",
+                "fileStatuses": [{"state": "PENDING_INDEX"}],
+                "fileHashes": []
+            }
+        });
         let stale = json!({
             "ok": false,
             "result": {
@@ -131,6 +146,10 @@ mod tests {
         assert_eq!(
             CurrentCheckAttempt::derive(covered.clone()),
             CurrentCheckAttempt::Covered(covered)
+        );
+        assert_eq!(
+            CurrentCheckAttempt::derive(vfs_behind_disk),
+            CurrentCheckAttempt::RefreshRequired(WorkspaceStaleness::DiagnosticPublicationPending)
         );
         assert_eq!(
             CurrentCheckAttempt::derive(stale),

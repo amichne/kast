@@ -46,10 +46,10 @@ internal fun routeWorkspaceSignal(
  * Effect-boundary transition:
  * `(IdeaIndexSemanticAdmission, ProgressAwareFutureAwaiter) -> WorkspaceTransitionIngress`.
  *
- * Retains READY publication proof while routing a request either to a new
- * reconciliation or to the compatible reconciliation that already owns the
- * workspace. Waiting consumes typed progress and deadline evidence; the
- * ordinary RPC request budget is not reused as an indexing deadline.
+ * Retains READY publication proof while every request enqueues its freshness
+ * signal and shares the single transition publication lane. Waiting consumes
+ * typed progress and deadline evidence; the ordinary RPC request budget is not
+ * reused as an indexing deadline.
  */
 internal class WorkspaceTransitionIngress(
     private val semanticAdmission: IdeaIndexSemanticAdmission,
@@ -110,12 +110,9 @@ internal class WorkspaceTransitionIngress(
     }
 
     override suspend fun reconcile(signal: WorkspaceSignal): PublishedWorkspaceGenerationManifest {
-        val registration = registerInitialWaiter(signal)
-        when (registration) {
-            is ReconciliationRegistration.Join -> Unit
-            is ReconciliationRegistration.Request -> request(signal, registration.waiter)
-        }
-        return awaitStable(registration.waiter)
+        val waiter = registerInitialWaiter()
+        request(signal, waiter)
+        return awaitStable(waiter)
     }
 
     override suspend fun <T> mutate(
@@ -163,14 +160,13 @@ internal class WorkspaceTransitionIngress(
         }
     }
 
-    private fun registerInitialWaiter(signal: WorkspaceSignal): ReconciliationRegistration {
+    private fun registerInitialWaiter(): TransitionWaiter {
         val status = semanticAdmission.status()
         val route = synchronized(lock) {
-            WorkspaceTransitionRoute.derive(signal, status, observation)
+            WorkspaceTransitionRoute.derive(status, observation)
         }
         return when (route) {
-            is WorkspaceTransitionRoute.Join -> ReconciliationRegistration.Join(register(route.baseline))
-            is WorkspaceTransitionRoute.Request -> ReconciliationRegistration.Request(register(route.baseline))
+            is WorkspaceTransitionRoute.Enqueue -> register(route.baseline)
             is WorkspaceTransitionRoute.Rejected -> throw route.failure.toConflict()
         }
     }
@@ -337,14 +333,6 @@ internal class WorkspaceTransitionIngress(
          */
         fun completion(): RuntimeWaitCompletion =
             if (result.isDone) RuntimeWaitCompletion.Completed else RuntimeWaitCompletion.Pending
-    }
-
-    private sealed interface ReconciliationRegistration {
-        val waiter: TransitionWaiter
-
-        data class Request(override val waiter: TransitionWaiter) : ReconciliationRegistration
-
-        data class Join(override val waiter: TransitionWaiter) : ReconciliationRegistration
     }
 
     private sealed interface IngressBinding {

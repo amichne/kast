@@ -60,15 +60,23 @@ mod runtime_status_wire_tests {
     }
 
     #[test]
-    fn workspace_refresh_uses_the_indexing_response_timeout() {
+    fn workspace_transition_response_policy_covers_reconciliation_methods() {
         let policy = RpcResponseTimeoutPolicy::derive(Duration::from_secs(35));
-        let refresh = serde_json::json!({"method": "raw/workspace-refresh"}).to_string();
         let diagnostics = serde_json::json!({"method": "raw/diagnostics"}).to_string();
 
-        assert_eq!(
-            policy.for_request(&refresh).expect("refresh policy"),
-            WORKSPACE_TRANSITION_RESPONSE_TIMEOUT
-        );
+        for method in [
+            "raw/workspace-refresh",
+            "raw/apply-edits",
+            "raw/exact-file-image-cas",
+            "raw/recover-mutation-scratch",
+        ] {
+            let request = serde_json::json!({"method": method}).to_string();
+            assert_eq!(
+                policy.for_request(&request).expect("transition policy"),
+                WORKSPACE_TRANSITION_RESPONSE_TIMEOUT,
+                "method={method}"
+            );
+        }
         assert_eq!(
             policy.for_request(&diagnostics).expect("diagnostics policy"),
             Duration::from_secs(35)

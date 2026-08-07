@@ -43,10 +43,39 @@ impl RpcResponseTimeoutPolicy {
     /// policy consumed by the Unix socket read boundary.
     fn for_request(self, raw_request: &str) -> Result<Duration> {
         let request: Value = serde_json::from_str(raw_request)?;
-        Ok(match request.get("method").and_then(Value::as_str) {
-            Some("raw/workspace-refresh") => self.workspace_transition,
-            _ => self.ordinary,
-        })
+        Ok(
+            match WorkspaceTransitionRpcMethod::derive(
+                request.get("method").and_then(Value::as_str),
+            ) {
+                Some(_) => self.workspace_transition,
+                None => self.ordinary,
+            },
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WorkspaceTransitionRpcMethod {
+    WorkspaceRefresh,
+    ApplyEdits,
+    ExactFileImageCas,
+    RecoverMutationScratch,
+}
+
+impl WorkspaceTransitionRpcMethod {
+    /// Boundary transition: `Option<&str> -> Option<WorkspaceTransitionRpcMethod>`.
+    ///
+    /// Refines the untrusted JSON-RPC method field into the closed set whose
+    /// response can include progress-bounded workspace reconciliation. An
+    /// absent or unrelated method has no transition-timeout authority.
+    fn derive(method: Option<&str>) -> Option<Self> {
+        match method {
+            Some("raw/workspace-refresh") => Some(Self::WorkspaceRefresh),
+            Some("raw/apply-edits") => Some(Self::ApplyEdits),
+            Some("raw/exact-file-image-cas") => Some(Self::ExactFileImageCas),
+            Some("raw/recover-mutation-scratch") => Some(Self::RecoverMutationScratch),
+            _ => None,
+        }
     }
 }
 

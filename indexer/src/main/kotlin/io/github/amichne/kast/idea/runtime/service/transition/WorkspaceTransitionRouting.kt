@@ -3,7 +3,6 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.transition.TransitionBlocker
 import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
@@ -15,54 +14,42 @@ internal sealed interface TransitionObservation {
 }
 
 internal sealed interface WorkspaceTransitionRoute {
-    data class Request(
-        val baseline: PublishedWorkspaceGenerationState,
-    ) : WorkspaceTransitionRoute
-
-    data class Join(
+    data class Enqueue(
         val baseline: PublishedWorkspaceGenerationState,
     ) : WorkspaceTransitionRoute
 
     data class Rejected(
-        val failure: WorkspaceTransitionJoinFailure,
+        val failure: WorkspaceTransitionRequestFailure,
     ) : WorkspaceTransitionRoute
 
     companion object {
         /**
          * Proof transition:
-         * `(WorkspaceSignal, IdeaIndexSemanticAdmission.Status, TransitionObservation)`
+         * `(IdeaIndexSemanticAdmission.Status, TransitionObservation)`
          * `-> WorkspaceTransitionRoute`.
          *
-         * A source request retains the observed publication and joins only an
-         * active reconciliation. Recovery audits remain non-joinable because
-         * an unrelated cycle does not prove that audit semantics ran; they
-         * request a superseding cycle. Pending admission retains the most
-         * recent publication baseline and requests work when no compatible
-         * cycle exists. Failed admission becomes finite rejection data.
+         * Every admitted request retains its publication baseline and enqueues
+         * its semantic signal. The waiter still shares the single transition
+         * publication lane, while enqueueing ensures that a request arriving
+         * after the active cycle's VFS refresh invalidates that cycle instead
+         * of being incorrectly treated as covered. Failed admission becomes
+         * finite rejection data.
          */
         fun derive(
-            signal: WorkspaceSignal,
             status: IdeaIndexSemanticAdmission.Status,
             observation: TransitionObservation,
         ): WorkspaceTransitionRoute {
             val admission = TransitionRequestAdmission.derive(status, observation)
             return when (admission) {
                 is TransitionRequestAdmission.Rejected -> Rejected(admission.failure)
-                is TransitionRequestAdmission.Permitted -> {
-                    val activity = TransitionActivity.derive(observation)
-                    if (signal == WorkspaceSignal.Source && activity is TransitionActivity.Active) {
-                        Join(activity.snapshot.published)
-                    } else {
-                        Request(admission.baseline)
-                    }
-                }
+                is TransitionRequestAdmission.Permitted -> Enqueue(admission.baseline)
             }
         }
     }
 }
 
-internal sealed interface WorkspaceTransitionJoinFailure {
-    data class SemanticAdmissionFailed(val detail: String) : WorkspaceTransitionJoinFailure
+internal sealed interface WorkspaceTransitionRequestFailure {
+    data class SemanticAdmissionFailed(val detail: String) : WorkspaceTransitionRequestFailure
 
     fun toConflict(): ConflictException = when (this) {
         is SemanticAdmissionFailed -> ConflictException(
@@ -92,7 +79,7 @@ private sealed interface TransitionRequestAdmission {
     ) : TransitionRequestAdmission
 
     data class Rejected(
-        val failure: WorkspaceTransitionJoinFailure,
+        val failure: WorkspaceTransitionRequestFailure,
     ) : TransitionRequestAdmission
 
     companion object {
@@ -118,7 +105,7 @@ private sealed interface TransitionRequestAdmission {
             )
 
             is IdeaIndexSemanticAdmission.Status.Failed -> Rejected(
-                WorkspaceTransitionJoinFailure.SemanticAdmissionFailed(status.detail),
+                WorkspaceTransitionRequestFailure.SemanticAdmissionFailed(status.detail),
             )
         }
     }
@@ -157,37 +144,6 @@ internal sealed interface WorkspaceTransitionCompletion {
             WorkspaceLifecycle.Reconciling,
             WorkspaceLifecycle.Verifying,
             -> InProgress
-        }
-    }
-}
-
-private sealed interface TransitionActivity {
-    data object Inactive : TransitionActivity
-
-    data class Active(val snapshot: WorkspaceTransitionSnapshot) : TransitionActivity
-
-    companion object {
-        /**
-         * Proof transition: `TransitionObservation -> TransitionActivity`.
-         *
-         * Refines an observed lifecycle into a closed active/inactive state.
-         * Callers cannot mistake an absent or terminal observation for a
-         * joinable reconciliation.
-         */
-        fun derive(observation: TransitionObservation): TransitionActivity = when (observation) {
-            TransitionObservation.Unobserved -> Inactive
-            is TransitionObservation.Observed -> when (observation.snapshot.lifecycle) {
-                WorkspaceLifecycle.Dirty,
-                WorkspaceLifecycle.Settling,
-                WorkspaceLifecycle.Refreshing,
-                WorkspaceLifecycle.Reconciling,
-                WorkspaceLifecycle.Verifying,
-                -> Active(observation.snapshot)
-
-                WorkspaceLifecycle.Ready,
-                WorkspaceLifecycle.Blocked,
-                -> Inactive
-            }
         }
     }
 }

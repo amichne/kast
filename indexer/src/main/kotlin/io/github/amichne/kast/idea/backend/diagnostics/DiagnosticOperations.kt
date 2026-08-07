@@ -18,7 +18,6 @@ import io.github.amichne.kast.api.continuation.ContinuationTransition
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
-import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
@@ -199,24 +198,33 @@ internal fun KastIndexerBackend.analyzeDiagnosticsFileInReadEpoch(filePath: Norm
                         state = FileAnalysisState.BACKEND_FAILURE,
                         message = "Semantic diagnostics require a Kotlin source file",
                     )
+            val documentManager = FileDocumentManager.getInstance()
+            val document = documentManager.getDocument(virtualFile)
+            val contentObservation = if (document != null && documentManager.isDocumentUnsaved(document)) {
+                DiagnosticContentObservation.unsaved(filePath, file.text)
+            } else {
+                DiagnosticContentObservation.saved(
+                    filePath = filePath,
+                    vfsContent = virtualFile.contentsToByteArray(),
+                    diskContent = Files.readAllBytes(Path.of(filePath.value)),
+                )
+            }
+            val contentAuthority = when (val authority = DiagnosticContentAuthority.derive(contentObservation)) {
+                is DiagnosticContentAuthority.Current -> authority
+                is DiagnosticContentAuthority.VfsBehindDisk -> return skippedDiagnostics(
+                    filePath = filePath,
+                    state = FileAnalysisState.PENDING_INDEX,
+                    message = "IDEA VFS content is behind the saved file",
+                )
+            }
             val fileDiagnostics = analyze(file) {
                 file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
                     .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
             }
-            val documentManager = FileDocumentManager.getInstance()
-            val document = documentManager.getDocument(virtualFile)
-            val fileHash = if (document != null && documentManager.isDocumentUnsaved(document)) {
-                FileHashing.sha256(file.text)
-            } else {
-                FileHashing.sha256(Files.readAllBytes(Path.of(filePath.value)))
-            }
             DiagnosticsFileAnalysis(
                 status = FileAnalysisStatus.analyzed(filePath),
                 diagnostics = fileDiagnostics,
-                fileHash = FileHash(
-                    filePath = filePath.value,
-                    hash = fileHash,
-                ),
+                fileHash = contentAuthority.fileHash,
             )
         } catch (ex: ProcessCanceledException) {
             throw ex

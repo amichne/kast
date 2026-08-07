@@ -65,7 +65,7 @@ class WorkspaceTransitionIngressTest {
     }
 
     @Test
-    fun `source reconciliation joins a compatible transition already in progress`() {
+    fun `source reconciliation enqueues freshness while sharing an active transition`() {
         val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(2))
         val next = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(3))
         val admission = readyAdmission(initial)
@@ -91,7 +91,7 @@ class WorkspaceTransitionIngressTest {
         val published = runBlocking { ingress.reconcile(WorkspaceSignal.Source) }
 
         assertEquals(next, published)
-        assertFalse(transitionRequested.get())
+        assertTrue(transitionRequested.get())
     }
 
     @Test
@@ -99,7 +99,6 @@ class WorkspaceTransitionIngressTest {
         val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(3))
 
         val route = WorkspaceTransitionRoute.derive(
-            signal = WorkspaceSignal.Source,
             status = IdeaIndexSemanticAdmission.Status.Failed("semantic publication failed"),
             observation = TransitionObservation.Observed(
                 activeSnapshot(
