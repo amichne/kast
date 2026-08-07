@@ -45,8 +45,13 @@ internal object SymbolOverlayViews {
                LEFT JOIN main.fq_names main_supertype
                  ON main_supertype.fq_name = base_supertype.fq_name
                WHERE EXISTS (
-                   SELECT 1 FROM effective_declarations declaration
-                   WHERE declaration.fq_id = COALESCE(main_declaration.fq_id, -base_edge.declaration_fq_id)
+                   SELECT 1
+                   FROM repository_base.declarations base_declaration_row
+                   JOIN repository_effective_file_authority authority
+                     ON authority.origin = 'base'
+                    AND authority.source_prefix_id = base_declaration_row.prefix_id
+                    AND authority.filename = base_declaration_row.filename
+                   WHERE base_declaration_row.fq_id = base_edge.declaration_fq_id
                )""",
         ),
         OverlayViewDefinition.schemaOwned(

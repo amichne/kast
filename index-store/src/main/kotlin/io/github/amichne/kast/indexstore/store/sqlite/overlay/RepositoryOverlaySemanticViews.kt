@@ -118,7 +118,7 @@ internal object RepositoryOverlaySemanticViews {
            SELECT symbols.id, annotations.annotation_name
            FROM repository_base.semantic_symbol_annotations annotations
            JOIN repository_base.semantic_symbols base_symbol ON base_symbol.id = annotations.symbol_id
-           JOIN effective_semantic_symbols symbols ON symbols.stable_key = base_symbol.stable_key""",
+           JOIN effective_semantic_symbols symbols ON symbols.id = -base_symbol.id""",
         """CREATE TEMP VIEW IF NOT EXISTS effective_semantic_edge_occurrences AS
            SELECT edges.*
            FROM main.semantic_edge_occurrences edges
@@ -133,7 +133,7 @@ internal object RepositoryOverlaySemanticViews {
                   edges.start_offset, edges.end_offset, edges.line
            FROM repository_base.semantic_edge_occurrences edges
            JOIN repository_base.semantic_files base_file ON base_file.id = edges.source_file_id
-           JOIN effective_semantic_files source_file ON source_file.path = base_file.path
+           JOIN effective_semantic_files source_file ON source_file.id = -base_file.id
            JOIN repository_base.semantic_symbols base_source ON base_source.id = edges.source_id
            JOIN effective_semantic_symbols source ON source.stable_key = base_source.stable_key
            JOIN repository_base.semantic_symbols base_target ON base_target.id = edges.target_id
