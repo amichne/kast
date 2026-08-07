@@ -1,6 +1,33 @@
 use super::*;
 use uuid::Uuid;
 
+#[derive(Debug, Clone, Default)]
+pub(in crate::runtime::indexer_authority) struct RegisteredRuntimeIdentities(
+    std::collections::HashSet<Uuid>,
+);
+
+impl RegisteredRuntimeIdentities {
+    /// Proof transition: `Iterator<Uuid> -> RegisteredRuntimeIdentities`.
+    pub(in crate::runtime::indexer_authority) fn derive(
+        ids: impl IntoIterator<Item = Uuid>,
+    ) -> Self {
+        Self(ids.into_iter().collect())
+    }
+
+    /// Proof transition: `(RegisteredRuntimeIdentities, Uuid) -> RegisteredRuntimeIdentities`.
+    pub(in crate::runtime::indexer_authority) fn record(&mut self, id: Uuid) {
+        self.0.insert(id);
+    }
+
+    fn contains(&self, id: &Uuid) -> bool {
+        self.0.contains(id)
+    }
+
+    pub(in crate::runtime::indexer_authority) fn contains_descriptor_id(&self, raw: &str) -> bool {
+        Uuid::parse_str(raw).is_ok_and(|id| self.contains(&id))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(in crate::runtime::indexer_authority) struct UnregisteredRuntimeProcess {
     process: super::super::process::ObservedProcess,
@@ -19,10 +46,17 @@ impl UnregisteredRuntimeProcess {
             |id| format!("runtime {id} at PID {}", self.process.identity.pid),
         )
     }
+
+    /// Refines an exact-workspace process candidate using retained registration identity evidence.
+    fn has_persisted_identity(&self, persisted_runtime_ids: &RegisteredRuntimeIdentities) -> bool {
+        self.runtime_instance_id
+            .is_some_and(|id| persisted_runtime_ids.contains(&id))
+    }
 }
 
-pub(in crate::runtime::indexer_authority) fn discover_unregistered_runtime_processes(
+pub(in crate::runtime::indexer_authority) fn discover_unregistered(
     workspace_root: &Path,
+    persisted_runtime_ids: &RegisteredRuntimeIdentities,
 ) -> Result<Vec<UnregisteredRuntimeProcess>> {
     let owner_uid = u64::from(unsafe { libc::geteuid() });
     let mut matches = Vec::new();
@@ -30,7 +64,9 @@ pub(in crate::runtime::indexer_authority) fn discover_unregistered_runtime_proce
         let Some(process) = super::super::process::observe_owned_process(pid, owner_uid)? else {
             continue;
         };
-        if let Some(process) = indexer_process_for_workspace(process, workspace_root) {
+        if let Some(process) = indexer_process_for_workspace(process, workspace_root)
+            && !process.has_persisted_identity(persisted_runtime_ids)
+        {
             matches.push(process);
         }
     }

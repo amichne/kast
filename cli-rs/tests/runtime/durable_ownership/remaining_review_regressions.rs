@@ -204,6 +204,43 @@ fn partial_live_registration_cannot_be_cleaned_around_remaining_review_regressio
     );
 }
 
+#[test]
+fn missing_live_registration_cannot_be_cleaned_around_remaining_review_regression() {
+    let mut fixture = RuntimeServiceFixture::new();
+    let dead_registration = fixture.add_dead_registration();
+    let active_registration = fixture
+        .registration
+        .parent()
+        .expect("service workspace")
+        .join("active.json");
+    std::fs::remove_dir_all(&fixture.registration).expect("remove live registration");
+    std::fs::remove_file(active_registration).expect("remove active pointer");
+    std::fs::remove_file(&fixture.descriptor_registry).expect("remove live descriptor");
+    std::fs::remove_file(&fixture.socket_path).expect("remove live socket registration");
+
+    let repair = fixture
+        .repair_command(true)
+        .output()
+        .expect("missing registration repair");
+
+    assert_success(&repair, "missing registration repair");
+    let repair = output_json(&repair);
+    assert_eq!(repair["state"], "BLOCKED");
+    assert_eq!(repair["actions"].as_array().map(Vec::len), Some(0));
+    assert!(
+        dead_registration.exists(),
+        "dead evidence was cleaned around an unregistered live runtime"
+    );
+    assert!(
+        fixture
+            .runtime
+            .try_wait()
+            .expect("live runtime status")
+            .is_none(),
+        "repair terminated the unregistered live runtime"
+    );
+}
+
 struct LegacyPidReuseFixture {
     _temp: tempfile::TempDir,
     home: PathBuf,

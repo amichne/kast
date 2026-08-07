@@ -3,7 +3,7 @@ use super::registration::{
     ValidatedServiceRegistration, read_active_registration, service_workspace_directory,
     validate_service_registration,
 };
-use super::service_manager::ServiceManagerObservation;
+use super::service_manager::{RegisteredRuntimeIdentities, ServiceManagerObservation};
 use super::*;
 
 #[path = "ownership/missing_workspace.rs"]
@@ -209,22 +209,17 @@ fn reconcile_validated_runtime_ownership(
     }
     let legacy_descriptors =
         find_indexer_descriptors(&config.paths.descriptor_dir, &canonical_root)?;
-    let registered_ids = registrations
-        .iter()
-        .map(|registration| registration.receipt.runtime_instance_id.to_string())
-        .collect::<Vec<_>>();
-    let caller_registered_ids = registrations
-        .iter()
-        .map(|registration| {
-            service_descriptor_directory(registration).map(|directory| {
-                (directory == config.paths.descriptor_dir.as_path())
-                    .then(|| registration.receipt.runtime_instance_id.to_string())
-            })
-        })
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
+    let registered_ids = RegisteredRuntimeIdentities::derive(
+        registrations
+            .iter()
+            .map(|registration| registration.receipt.runtime_instance_id),
+    );
+    let mut caller_registered_ids = RegisteredRuntimeIdentities::default();
+    for registration in &registrations {
+        if service_descriptor_directory(registration)? == config.paths.descriptor_dir.as_path() {
+            caller_registered_ids.record(registration.receipt.runtime_instance_id);
+        }
+    }
     let mut live = Vec::new();
     let mut dead = Vec::new();
 
@@ -257,7 +252,10 @@ fn reconcile_validated_runtime_ownership(
             .descriptor
             .runtime_instance_id
             .as_ref()
-            .is_some_and(|id| registered_ids.contains(id) && !caller_registered_ids.contains(id))
+            .is_some_and(|id| {
+                registered_ids.contains_descriptor_id(id)
+                    && !caller_registered_ids.contains_descriptor_id(id)
+            })
     }) {
         return Ok(RuntimeOwnershipSnapshot::Ambiguous(
             RuntimeOwnershipAmbiguity {
@@ -274,7 +272,7 @@ fn reconcile_validated_runtime_ownership(
                 .descriptor
                 .runtime_instance_id
                 .as_ref()
-                .is_some_and(|id| caller_registered_ids.contains(id))
+                .is_some_and(|id| caller_registered_ids.contains_descriptor_id(id))
         })
         .map(|descriptor| observe_legacy_runtime(descriptor, &canonical_root))
         .collect::<Result<Vec<_>>>()?;
@@ -321,30 +319,30 @@ fn reconcile_validated_runtime_ownership(
         legacy.proven_dead = proven_dead;
         return Ok(RuntimeOwnershipSnapshot::LegacyOwned(Box::new(legacy)));
     }
-    if proven_dead.services.is_empty() && proven_dead.legacy.is_empty() {
-        let unregistered =
-            super::service_manager::discover_unregistered_runtime_processes(&canonical_root)?;
-        if !unregistered.is_empty() {
-            return Ok(RuntimeOwnershipSnapshot::Ambiguous(
-                RuntimeOwnershipAmbiguity {
-                    workspace_root: canonical_root,
-                    reason: format!(
-                        "Live indexer process has no persisted ownership evidence: {}. Stop it before starting a replacement.",
-                        unregistered
-                            .iter()
-                            .map(|process| process.evidence())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    ),
-                },
-            ));
-        }
-        Ok(RuntimeOwnershipSnapshot::Absent(AbsentRuntimeOwnership {
-            workspace_root: canonical_root,
-        }))
-    } else {
-        Ok(RuntimeOwnershipSnapshot::ProvenDead(proven_dead))
+    let unregistered =
+        super::service_manager::discover_unregistered(&canonical_root, &registered_ids)?;
+    if !unregistered.is_empty() {
+        return Ok(RuntimeOwnershipSnapshot::Ambiguous(
+            RuntimeOwnershipAmbiguity {
+                workspace_root: canonical_root,
+                reason: format!(
+                    "Live indexer process has no persisted ownership evidence: {}. Stop it before starting a replacement.",
+                    unregistered
+                        .iter()
+                        .map(|process| process.evidence())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            },
+        ));
     }
+    Ok(if proven_dead.is_empty() {
+        RuntimeOwnershipSnapshot::Absent(AbsentRuntimeOwnership {
+            workspace_root: canonical_root,
+        })
+    } else {
+        RuntimeOwnershipSnapshot::ProvenDead(proven_dead)
+    })
 }
 
 fn legacy_runtime_id(runtime: &LegacyOwnedRuntime) -> String {
