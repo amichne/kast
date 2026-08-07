@@ -2,6 +2,21 @@
 
 ## RED
 
+### Overlay-base raw extraction boundary
+
+Command:
+
+```shell
+rg -U -q '(?s)Raw path extraction from.*RepositorySnapshotDatabase.*filesystem, SQLite, or.*serialization' index-store/src/main/kotlin/io/github/amichne/kast/indexstore/snapshot/RepositorySnapshotLayout.kt
+```
+
+Expected failure: the overlay-base validation KDoc states the stronger result
+and finite rejection but does not constrain where callers may unpack the
+validated repository database path.
+
+Observed failure: FAILED as expected. The exact KDoc audit found no permitted
+raw-extraction boundary for the validated `RepositorySnapshotDatabase` path.
+
 ### Repository replacement database authority
 
 Command:
@@ -394,6 +409,10 @@ cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 base_commit=$(git merge-base HEAD origin/main)
 changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <({ git diff --name-only "$base_commit" -- '*.kt'; git ls-files --others --exclude-standard -- '*.kt'; } | sort -u)
 kast check "${changed_kotlin[@]}"
+rg -U -q '(?s)Raw path extraction from.*RepositorySnapshotDatabase.*filesystem, SQLite, or.*serialization' index-store/src/main/kotlin/io/github/amichne/kast/indexstore/snapshot/RepositorySnapshotLayout.kt
+./gradlew :index-store:compileKotlin --no-daemon --console=plain
+kast refresh index-store/src/main/kotlin/io/github/amichne/kast/indexstore/snapshot/RepositorySnapshotLayout.kt
+kast check index-store/src/main/kotlin/io/github/amichne/kast/indexstore/snapshot/RepositorySnapshotLayout.kt
 ```
 
 Observed result: PASSED. Fully missing live registration now produces a
@@ -452,4 +471,7 @@ replacement regression now proves that the stale SQLite database, rollback
 journal, write-ahead log, shared-memory file, and overlay descriptor are all
 absent before typed full-index authority is derived. The focused fallback class, full Gradle gate,
 repository-shape gate, and exact nine-file compiler audit passed with zero
-diagnostics or skipped files.
+diagnostics or skipped files. The overlay-base KDoc now confines raw validated
+database-path extraction to filesystem, SQLite, and serialization adapters;
+the executable KDoc audit, index-store compilation, and exact-file semantic
+analysis all passed with zero diagnostics or skips.
