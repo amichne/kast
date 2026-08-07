@@ -56,6 +56,16 @@ Metadata-boundary command:
 
 Observed failure: test compilation failed because the finite `RepositorySnapshotMetadataFailure.SnapshotManifestInvalid` outcome did not yet exist, proving retained-inventory discovery had no pre-decode non-symlink proof.
 
+Release-benchmark contract command:
+
+```shell
+./.github/scripts/test-release-indexing-benchmark-contract.sh
+```
+
+Expected failure: benchmark evidence fixtures still publish generation-relative database paths instead of the canonical flat `source-index.db` authority.
+
+Observed failure: the contract reached its publication-path assertion and exited 1 with `published workspace database path is not canonical`, matching exact-head CI job `92799028502`.
+
 ## GREEN
 
 Commands:
@@ -69,6 +79,7 @@ cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-feat
 cargo fmt --manifest-path cli-rs/Cargo.toml -- --check
 python3 .github/scripts/check-repository-shape.py
 bash -n scripts/release/benchmark-real-repositories.sh
+./.github/scripts/test-release-indexing-benchmark-contract.sh
 ```
 
-Observed result: flat-routing, atomic-publication, overlay-read, typed-alias, and pre-decode manifest-boundary tests passed; the complete Gradle test graph passed; every locked Cargo unit and integration target passed; strict Clippy passed with warnings denied; Rust formatting and benchmark shell syntax passed; repository shape reported `ok: true` with zero file, directory, missing-path, or retired-surface violations. The 51 changed production Kotlin files were audited with zero newly added nullable or primitive control protocols.
+Observed result: flat-routing, atomic-publication, overlay-read, typed-alias, and pre-decode manifest-boundary tests passed; the complete Gradle test graph passed; every locked Cargo unit and integration target passed; strict Clippy passed with warnings denied; Rust formatting and benchmark shell syntax passed; repository shape reported `ok: true` with zero file, directory, missing-path, or retired-surface violations. The release indexing benchmark contract passed against flat schema-15 workspace-publication fixtures. The 51 changed production Kotlin files were audited with zero newly added nullable or primitive control protocols.

@@ -794,9 +794,10 @@ try:
         or published_at_epoch_millis < 0
         or not isinstance(manifest_generation, int)
         or manifest_generation < 0
-        or len({refresh_generation, graph_generation, manifest_generation}) != 1
     ):
         raise SystemExit("workspace publication identity is invalid")
+    if len({refresh_generation, graph_generation, manifest_generation}) != 1:
+        raise SystemExit("semantic evidence does not belong to one source-index generation")
     schema_row = connection.execute(
         "SELECT version, generation FROM schema_version LIMIT 1"
     ).fetchone()

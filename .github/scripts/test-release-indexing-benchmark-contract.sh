@@ -1353,30 +1353,36 @@ printf '%s\n' '{"ok":true,"result":{"generation":7,"nodeCount":4,"edgeOccurrence
   >"$scratch/evidence-graph.json"
 evidence_workspace_root="$scratch/evidence-root"
 evidence_workspace_pages="$scratch/evidence-workspace-pages"
-evidence_publication="$scratch/evidence-publication/semantic-generations"
-evidence_generation="$evidence_publication/generations/generation-fixture"
-evidence_pointer="$evidence_publication/current.json"
-evidence_database="$evidence_generation/source-index.db"
+evidence_workspaces="$scratch/evidence-publication/workspaces"
+evidence_database="$evidence_workspaces/$(printf '%064d' 0)/cache/source-index.db"
 mkdir -p \
   "$evidence_workspace_root/src" \
   "$evidence_workspace_pages" \
-  "$evidence_generation"
+  "$(dirname "$evidence_database")"
 cat >"$evidence_workspace_pages/page-000001.json" <<'JSON'
 {"ok":true,"result":{"cardinality":{"type":"EXACT","totalCount":2},"returnedCount":2,"files":[{"relativePath":"src/B.kt"},{"relativePath":"src/A.kt"}]}}
 JSON
-python3 - "$evidence_database" "$evidence_pointer" "$evidence_workspace_root" <<'PY'
-import json
+python3 - "$evidence_database" "$evidence_workspace_root" <<'PY'
 import sqlite3
 import sys
 from pathlib import Path
 
 database = Path(sys.argv[1])
-pointer = Path(sys.argv[2])
-workspace = Path(sys.argv[3]).resolve()
+workspace = Path(sys.argv[2]).resolve()
 connection = sqlite3.connect(database)
 connection.executescript("""
 CREATE TABLE schema_version(version INTEGER NOT NULL, generation INTEGER NOT NULL);
-INSERT INTO schema_version VALUES (13, 7);
+INSERT INTO schema_version VALUES (15, 7);
+CREATE TABLE workspace_publication(
+    singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+    revision INTEGER NOT NULL,
+    identity TEXT NOT NULL,
+    source_index_generation INTEGER NOT NULL,
+    source_index_schema_version INTEGER NOT NULL,
+    published_at_epoch_millis INTEGER NOT NULL,
+    repository_overlay_file TEXT
+);
+INSERT INTO workspace_publication VALUES (1, 1, 'contract-fixture', 7, 15, 1, NULL);
 CREATE TABLE semantic_files(id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE);
 CREATE TABLE semantic_symbols(
     id INTEGER PRIMARY KEY,
@@ -1426,14 +1432,6 @@ connection.executemany(
 )
 connection.commit()
 connection.close()
-pointer.write_text(json.dumps({
-    "generation": 1,
-    "identity": "contract-fixture",
-    "sourceIndexGeneration": 7,
-    "sourceIndexSchemaVersion": 13,
-    "databaseFile": "generation-fixture/source-index.db",
-    "publishedAtEpochMillis": 1,
-}), encoding="utf-8")
 PY
 verify_benchmark_evidence \
   "$scratch/evidence-workspace.json" \
@@ -1442,7 +1440,7 @@ verify_benchmark_evidence \
   src/Probe.kt \
   "$evidence_workspace_root" \
   "$evidence_workspace_pages" \
-  "$evidence_pointer" \
+  "$evidence_database" \
   "$(( $(monotonic_millis) + 5000 ))" \
   "$scratch/correctness-evidence.json"
 python3 - "$scratch/correctness-evidence.json" <<'PY'
@@ -1473,20 +1471,16 @@ PY
 # Equal cardinalities and the old source/target/kind/context tuple do not prove
 # edge occurrence identity. Source file, resolution, and source locations are
 # semantic fields and must all change the exact edge fingerprint.
-cp "$evidence_pointer" "$scratch/evidence-pointer-original.json"
-evidence_changed_edge_generation="$evidence_publication/generations/generation-edge-identity"
-mkdir -p "$evidence_changed_edge_generation"
-cp "$evidence_database" "$evidence_changed_edge_generation/source-index.db"
+evidence_changed_edge_database="$evidence_workspaces/$(printf '%064d' 1)/cache/source-index.db"
+mkdir -p "$(dirname "$evidence_changed_edge_database")"
+cp "$evidence_database" "$evidence_changed_edge_database"
 python3 - \
-  "$evidence_changed_edge_generation/source-index.db" \
-  "$evidence_pointer" <<'PY'
-import json
+  "$evidence_changed_edge_database" <<'PY'
 import sqlite3
 import sys
 from pathlib import Path
 
 database = Path(sys.argv[1])
-pointer = Path(sys.argv[2])
 connection = sqlite3.connect(database)
 connection.execute(
     """UPDATE semantic_edge_occurrences
@@ -1499,9 +1493,6 @@ connection.execute(
 )
 connection.commit()
 connection.close()
-manifest = json.loads(pointer.read_text(encoding="utf-8"))
-manifest["databaseFile"] = "generation-edge-identity/source-index.db"
-pointer.write_text(json.dumps(manifest), encoding="utf-8")
 PY
 verify_benchmark_evidence \
   "$scratch/evidence-workspace.json" \
@@ -1510,7 +1501,7 @@ verify_benchmark_evidence \
   src/Probe.kt \
   "$evidence_workspace_root" \
   "$evidence_workspace_pages" \
-  "$evidence_pointer" \
+  "$evidence_changed_edge_database" \
   "$(( $(monotonic_millis) + 5000 ))" \
   "$scratch/changed-edge-correctness-evidence.json"
 python3 - \
@@ -1537,32 +1528,28 @@ assert baseline["graphEdgeIdentitySha256"] != changed["graphEdgeIdentitySha256"]
     changed,
 )
 PY
-cp "$scratch/evidence-pointer-original.json" "$evidence_pointer"
-
 # Counts remain equal, but a publication that moves after the graph summary is
 # a different semantic snapshot and must be rejected before comparison.
-evidence_moved_generation="$evidence_publication/generations/generation-moved"
-mkdir -p "$evidence_moved_generation"
-cp "$evidence_database" "$evidence_moved_generation/source-index.db"
+evidence_moved_database="$evidence_workspaces/$(printf '%064d' 2)/cache/source-index.db"
+mkdir -p "$(dirname "$evidence_moved_database")"
+cp "$evidence_database" "$evidence_moved_database"
 python3 - \
-  "$evidence_moved_generation/source-index.db" \
-  "$evidence_pointer" <<'PY'
-import json
+  "$evidence_moved_database" <<'PY'
 import sqlite3
 import sys
 from pathlib import Path
 
 database = Path(sys.argv[1])
-pointer = Path(sys.argv[2])
 connection = sqlite3.connect(database)
 connection.execute("UPDATE schema_version SET generation = 8")
 connection.execute("UPDATE semantic_symbols SET stable_key = 'sample.Replaced' WHERE id = 4")
+connection.execute(
+    "UPDATE workspace_publication "
+    "SET revision = 2, identity = 'moved-fixture', source_index_generation = 8 "
+    "WHERE singleton = 1"
+)
 connection.commit()
 connection.close()
-manifest = json.loads(pointer.read_text(encoding="utf-8"))
-manifest["sourceIndexGeneration"] = 8
-manifest["databaseFile"] = "generation-moved/source-index.db"
-pointer.write_text(json.dumps(manifest), encoding="utf-8")
 PY
 if verify_benchmark_evidence \
     "$scratch/evidence-workspace.json" \
@@ -1571,7 +1558,7 @@ if verify_benchmark_evidence \
     src/Probe.kt \
     "$evidence_workspace_root" \
     "$evidence_workspace_pages" \
-    "$evidence_pointer" \
+    "$evidence_moved_database" \
     "$(( $(monotonic_millis) + 5000 ))" \
     "$scratch/moved-correctness-evidence.json" \
     2>"$scratch/moved-publication.stderr"; then
@@ -1579,7 +1566,6 @@ if verify_benchmark_evidence \
 fi
 grep -Fq 'one source-index generation' "$scratch/moved-publication.stderr" \
   || die 'publication movement failed without exact generation evidence'
-cp "$scratch/evidence-pointer-original.json" "$evidence_pointer"
 
 repository_fixture="$scratch/repository"
 ktor_fixture="$repository_fixture/ktor-test-server"
