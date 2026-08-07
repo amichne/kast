@@ -2,11 +2,28 @@
 
 ## RED
 
+### Reference progress-stage consistency
+
+Command:
+
+```shell
+./gradlew :analysis-api:test --tests io.github.amichne.kast.api.contract.RuntimeStatusResponseTest --no-daemon --console=plain
+./gradlew :analysis-api:test --no-daemon --console=plain
+```
+
+Expected failure: qualified reference coverage accepts an unrelated
+`SOURCE_INDEX` in-progress lane instead of requiring `REFERENCE_INDEX`.
+
+Observed failure: FAILED as expected. `RuntimeStatusResponse` accepted
+qualified non-ready reference coverage paired with a `SOURCE_INDEX` lane; the
+focused class ran nine tests with only the missing consistency rejection failing.
+
 ### Overlay boundary symbol authority
 
 Command:
 
 ```shell
+./gradlew :analysis-api:test --tests io.github.amichne.kast.api.contract.RuntimeStatusResponseTest --no-daemon --console=plain
 ./gradlew :index-store:test --tests io.github.amichne.kast.indexstore.RepositoryOverlayReadAuthorityTest --no-daemon --console=plain
 ```
 
@@ -155,6 +172,7 @@ Commands:
 ./gradlew :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --no-daemon --console=plain
 python3 .github/scripts/check-repository-shape.py --root .
 ./gradlew check --no-daemon --console=plain
+kast refresh analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/runtime/RuntimeReadiness.kt
 kast refresh index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/overlay/RepositoryOverlaySemanticViews.kt
 kast refresh indexer/src/main/kotlin/io/github/amichne/kast/idea/snapshot/CommittedGitTreeResolver.kt
 kast refresh indexer/src/main/kotlin/io/github/amichne/kast/indexer/gradle/settlement/ProgressAwareFutureAwaiter.kt
@@ -169,8 +187,10 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ```
 
-Observed result: PASSED. The full index-store suite passed; the overlay boundary
-target retained its authoritative base annotation and the changed-file relation;
+Observed result: PASSED. The full analysis-api suite and all nine runtime-status
+consistency tests passed, including exact reference progress-stage rejection;
+the full index-store suite
+passed; the overlay boundary target retained its authoritative base annotation and the changed-file relation;
 all eight repository snapshot
 integration tests passed; overlay replacement and unchanged-file authority tests passed; all seven
 terminal wait-authority tests passed; all 19 durable-ownership tests passed;

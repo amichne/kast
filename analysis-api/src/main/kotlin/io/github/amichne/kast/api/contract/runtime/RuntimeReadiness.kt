@@ -122,7 +122,9 @@ sealed interface RuntimeReadinessLane {
          * A resolved value carries the agreement between layered readiness and
          * persisted reference coverage. Mismatch is finite
          * [ReferenceReadinessAlignmentFailure] data; callers retain the aligned
-         * proof rather than discarding a Boolean validation result.
+         * proof rather than discarding a Boolean validation result. In-progress
+         * agreement requires the reference stage while allowing work and timing
+         * observations to vary.
          */
         internal fun alignWithReferenceCoverage(
             lane: RuntimeReadinessLane,
@@ -131,7 +133,7 @@ sealed interface RuntimeReadinessLane {
             val expected = fromReferenceCoverage(coverage)
             val aligned = when (expected) {
                 Ready -> lane is Ready
-                is InProgress -> lane is InProgress
+                is InProgress -> lane is InProgress && lane.progress.stage == expected.progress.stage
                 Blocked -> lane is Blocked
             }
             return if (aligned) {

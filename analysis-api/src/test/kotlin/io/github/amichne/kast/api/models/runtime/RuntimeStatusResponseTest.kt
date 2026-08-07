@@ -137,6 +137,49 @@ class RuntimeStatusResponseTest {
     }
 
     @Test
+    fun `qualified reference coverage rejects an unrelated progress stage`() {
+        val coverage = ReferenceCoverage.qualified(
+            limitations = listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS),
+            indexReady = false,
+        )
+        val actualLane = RuntimeReadinessLane.inProgress(RuntimeProgressStage.SOURCE_INDEX)
+        val readiness = RuntimeReadiness(
+            runtime = RuntimeReadinessLane.Ready,
+            model = RuntimeReadinessLane.Ready,
+            references = actualLane,
+            semanticGraph = RuntimeReadinessLane.Ready,
+            mutation = RuntimeReadinessLane.Ready,
+        )
+
+        val failure = assertThrows<RuntimeStatusConsistencyException> {
+            RuntimeStatusResponse(
+                state = RuntimeState.INDEXING,
+                healthy = true,
+                active = true,
+                indexing = true,
+                backendName = "indexer",
+                backendVersion = "test",
+                workspaceRoot = "/workspace",
+                referenceIndexReady = coverage.indexReady,
+                referenceCoverageState = coverage.state,
+                referenceCoverageLimitations = coverage.limitations,
+                readiness = readiness,
+                ready = false,
+            )
+        }.failure
+
+        assertEquals(
+            RuntimeStatusConsistencyFailure.ReferenceCoverageMismatch(
+                ReferenceReadinessAlignmentFailure.Mismatch(
+                    RuntimeReadinessLane.inProgress(RuntimeProgressStage.REFERENCE_INDEX),
+                    actualLane,
+                ),
+            ),
+            failure,
+        )
+    }
+
+    @Test
     fun `typed progress is derived from closed work and timing evidence`() {
         val progress = RuntimeReadinessProgress.derive(
             stage = RuntimeProgressStage.GRADLE_IMPORT,
