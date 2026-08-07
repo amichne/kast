@@ -10,6 +10,7 @@ import io.github.amichne.kast.indexstore.snapshot.GitObjectIdResolution
 import io.github.amichne.kast.indexstore.snapshot.RepositoryRelativePath
 import io.github.amichne.kast.indexstore.snapshot.RepositoryRelativePathFailure
 import io.github.amichne.kast.indexstore.snapshot.RepositoryRelativePathResolution
+import java.nio.charset.CharacterCodingException
 
 data class CommittedGitTree(
     val treeOid: GitObjectId,
@@ -62,10 +63,92 @@ private sealed interface GitReadResult {
     data object Failed : GitReadResult
 }
 
+@JvmInline
+private value class GitOutputText private constructor(val value: String) {
+    companion object {
+        /**
+         * Proof transition: `(ByteArray, GitTreeReadRequest) -> GitOutputTextResolution`.
+         *
+         * Refines raw process bytes into lossless UTF-8 text or one finite
+         * request-bound failure. Replacement decoding is never admitted.
+         */
+        fun resolve(
+            rawOutput: ByteArray,
+            request: GitTreeReadRequest,
+        ): GitOutputTextResolution = try {
+            GitOutputTextResolution.Decoded(
+                GitOutputText(rawOutput.decodeToString(throwOnInvalidSequence = true)),
+            )
+        } catch (_: CharacterCodingException) {
+            GitOutputTextResolution.Rejected(CommittedGitTreeFailure.InvalidGitOutput(request))
+        }
+    }
+}
+
+private sealed interface GitOutputTextResolution {
+    data class Decoded(val text: GitOutputText) : GitOutputTextResolution
+
+    data class Rejected(
+        val failure: CommittedGitTreeFailure.InvalidGitOutput,
+    ) : GitOutputTextResolution
+}
+
 private sealed interface IgnoredKotlinSourceAuthority {
     data object Admitted : IgnoredKotlinSourceAuthority
 
     data class Rejected(val failure: CommittedGitTreeFailure) : IgnoredKotlinSourceAuthority
+}
+
+internal object CommittedGitTreeManifest {
+    /**
+     * Proof transition: `(GitObjectId, ByteArray) -> CommittedGitTreeResolution`.
+     *
+     * Publishes a typed tree only after the complete NUL-delimited manifest is
+     * losslessly decoded and every eligible entry carries a canonical path and
+     * object ID. Invalid bytes fail the whole manifest before path identity can
+     * collapse through replacement characters.
+     */
+    fun resolve(
+        treeOid: GitObjectId,
+        rawManifest: ByteArray,
+    ): CommittedGitTreeResolution {
+        val request = GitTreeReadRequest.TreeManifest(treeOid)
+        val manifest = when (val resolution = GitOutputText.resolve(rawManifest, request)) {
+            is GitOutputTextResolution.Decoded -> resolution.text.value
+            is GitOutputTextResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(resolution.failure)
+        }
+        val files = sortedMapOf<RepositoryRelativePath, GitObjectId>()
+        manifest.split('\u0000').asSequence().filter(String::isNotEmpty).forEach { record ->
+            val fields = record.split('\t', limit = 2)
+            if (fields.size != 2) {
+                return CommittedGitTreeResolution.Unavailable(
+                    CommittedGitTreeFailure.UnsupportedTreeEntry(record),
+                )
+            }
+            val metadata = fields[0].split(' ')
+            if (metadata.size != 3 || metadata[1] != "blob") {
+                return CommittedGitTreeResolution.Unavailable(
+                    CommittedGitTreeFailure.UnsupportedTreeEntry(record),
+                )
+            }
+            val path = when (val resolution = RepositoryRelativePath.resolve(fields[1])) {
+                is RepositoryRelativePathResolution.Resolved -> resolution.path
+                is RepositoryRelativePathResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(
+                    CommittedGitTreeFailure.InvalidRepositoryPath(fields[1], resolution.failure),
+                )
+            }
+            if (SourceIndexFilePolicy.isEligibleWorkspaceRelative(path.value)) {
+                val objectId = when (val resolution = GitObjectId.resolve(metadata[2])) {
+                    is GitObjectIdResolution.Resolved -> resolution.objectId
+                    is GitObjectIdResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(
+                        CommittedGitTreeFailure.InvalidGitObjectId(metadata[2], resolution.failure),
+                    )
+                }
+                files[path] = objectId
+            }
+        }
+        return CommittedGitTreeResolution.Resolved(CommittedGitTree(treeOid, files))
+    }
 }
 
 object CommittedGitTreeResolver {
@@ -101,7 +184,13 @@ object CommittedGitTreeResolver {
         if (prefix !is GitReadResult.Completed) {
             return unavailable(GitTreeReadRequest.WorkspacePrefix)
         }
-        val treeExpression = NonBlankString(prefix.output.toString(Charsets.UTF_8)
+        val prefixText = when (
+            val resolution = GitOutputText.resolve(prefix.output, GitTreeReadRequest.WorkspacePrefix)
+        ) {
+            is GitOutputTextResolution.Decoded -> resolution.text.value
+            is GitOutputTextResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(resolution.failure)
+        }
+        val treeExpression = NonBlankString(prefixText
             .removeSuffix("\n")
             .removeSuffix("\r")
             .removeSuffix("/")
@@ -113,7 +202,10 @@ object CommittedGitTreeResolver {
         if (treeOidRead !is GitReadResult.Completed) {
             return unavailable(treeOidRequest)
         }
-        val rawTreeOid = treeOidRead.output.toString(Charsets.UTF_8).trim()
+        val rawTreeOid = when (val resolution = GitOutputText.resolve(treeOidRead.output, treeOidRequest)) {
+            is GitOutputTextResolution.Decoded -> resolution.text.value.trim()
+            is GitOutputTextResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(resolution.failure)
+        }
         val treeOid = when (val resolution = GitObjectId.resolve(rawTreeOid)) {
             is GitObjectIdResolution.Resolved -> resolution.objectId
             is GitObjectIdResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(
@@ -125,7 +217,7 @@ object CommittedGitTreeResolver {
         if (manifest !is GitReadResult.Completed) {
             return unavailable(manifestRequest)
         }
-        return parseManifest(treeOid, manifest.output)
+        return CommittedGitTreeManifest.resolve(treeOid, manifest.output)
     }
 
     /**
@@ -136,12 +228,12 @@ object CommittedGitTreeResolver {
      * sources remain finite rejection data.
      */
     private fun ignoredKotlinSourceAuthority(rawOutput: ByteArray): IgnoredKotlinSourceAuthority {
-        val output = runCatching { rawOutput.decodeToString(throwOnInvalidSequence = true) }
-            .getOrElse {
-                return IgnoredKotlinSourceAuthority.Rejected(
-                    CommittedGitTreeFailure.InvalidGitOutput(GitTreeReadRequest.IgnoredKotlinSources),
-                )
-            }
+        val output = when (
+            val resolution = GitOutputText.resolve(rawOutput, GitTreeReadRequest.IgnoredKotlinSources)
+        ) {
+            is GitOutputTextResolution.Decoded -> resolution.text.value
+            is GitOutputTextResolution.Rejected -> return IgnoredKotlinSourceAuthority.Rejected(resolution.failure)
+        }
         output.split('\u0000').asSequence().filter(String::isNotEmpty).forEach { value ->
             val path = when (val resolution = RepositoryRelativePath.resolve(value)) {
                 is RepositoryRelativePathResolution.Resolved -> resolution.path
@@ -156,47 +248,6 @@ object CommittedGitTreeResolver {
             }
         }
         return IgnoredKotlinSourceAuthority.Admitted
-    }
-
-    private fun parseManifest(
-        treeOid: GitObjectId,
-        rawManifest: ByteArray,
-    ): CommittedGitTreeResolution {
-        val files = sortedMapOf<RepositoryRelativePath, GitObjectId>()
-        rawManifest.toString(Charsets.UTF_8)
-            .split('\u0000')
-            .asSequence()
-            .filter(String::isNotEmpty)
-            .forEach { record ->
-                val fields = record.split('\t', limit = 2)
-                if (fields.size != 2) {
-                    return CommittedGitTreeResolution.Unavailable(
-                        CommittedGitTreeFailure.UnsupportedTreeEntry(record),
-                    )
-                }
-                val metadata = fields[0].split(' ')
-                if (metadata.size != 3 || metadata[1] != "blob") {
-                    return CommittedGitTreeResolution.Unavailable(
-                        CommittedGitTreeFailure.UnsupportedTreeEntry(record),
-                    )
-                }
-                val path = when (val resolution = RepositoryRelativePath.resolve(fields[1])) {
-                    is RepositoryRelativePathResolution.Resolved -> resolution.path
-                    is RepositoryRelativePathResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(
-                        CommittedGitTreeFailure.InvalidRepositoryPath(fields[1], resolution.failure),
-                    )
-                }
-                if (SourceIndexFilePolicy.isEligibleWorkspaceRelative(path.value)) {
-                    val objectId = when (val resolution = GitObjectId.resolve(metadata[2])) {
-                        is GitObjectIdResolution.Resolved -> resolution.objectId
-                        is GitObjectIdResolution.Rejected -> return CommittedGitTreeResolution.Unavailable(
-                            CommittedGitTreeFailure.InvalidGitObjectId(metadata[2], resolution.failure),
-                        )
-                    }
-                    files[path] = objectId
-                }
-            }
-        return CommittedGitTreeResolution.Resolved(CommittedGitTree(treeOid, files))
     }
 
     private fun unavailable(request: GitTreeReadRequest): CommittedGitTreeResolution =

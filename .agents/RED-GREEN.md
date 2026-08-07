@@ -2,6 +2,23 @@
 
 ## RED
 
+### Strict committed-tree manifest decoding
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.CommittedGitTreeManifestTest --no-daemon --console=plain
+```
+
+Expected failure: invalid UTF-8 bytes in a NUL-delimited committed-tree path
+are replacement-decoded before `RepositoryRelativePath` validation, allowing
+distinct Git byte paths to collapse into one publishable manifest key instead
+of returning typed `InvalidGitOutput` evidence.
+
+Observed failure: FAILED as expected during `:indexer:compileTestKotlin`; the
+proof-carrying `CommittedGitTreeManifest` decoder did not exist, leaving the
+lossy private parser as the only manifest path.
+
 ### Active indexing progress authority
 
 Command:
@@ -259,6 +276,7 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --tests io.github.amichne.kast.server.dispatcher.raw.AnalysisDispatcherRawMutationRecoveryTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.KastProjectOpenSourceIndexingTest --tests io.github.amichne.kast.idea.NativeSemanticGraphGenerationTest --no-daemon --console=plain
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.snapshot.CommittedGitTreeManifestTest --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 base_commit=$(git merge-base HEAD origin/main)
 changed_kotlin=(); while IFS= read -r source_file; do [[ -f "$source_file" ]] && changed_kotlin+=("$source_file"); done < <({ git diff --name-only "$base_commit" -- '*.kt'; git ls-files --others --exclude-standard -- '*.kt'; } | sort -u)
 kast check "${changed_kotlin[@]}"
@@ -283,9 +301,11 @@ server mutation deadline, ingress freshness, diagnostic completeness, and typed
 content-authority regressions passed. Active source, relationship, and semantic
 graph file-stage work now advances the ingress progress observation while its
 transition snapshot remains unchanged; all three focused production-wiring
-fixtures passed. The full Gradle check and repository-shape
+fixtures passed. Invalid UTF-8 in a committed-tree manifest now returns typed
+`InvalidGitOutput` evidence before path parsing; the strict-decoding regression
+and all repository snapshot integration tests passed. The full Gradle check and repository-shape
 contract passed. Exact installed-head semantic analysis also completed all 77
 changed production Kotlin files with zero errors, warnings, infos, or skipped
-files. The final working-tree audit completed all 127 changed Kotlin production
-and test files, including the new progress authority, with zero errors,
-warnings, infos, or skipped files.
+files. The final working-tree audit completed all 128 changed Kotlin production
+and test files, including the new progress authority and strict manifest
+decoder, with zero errors, warnings, infos, or skipped files.
