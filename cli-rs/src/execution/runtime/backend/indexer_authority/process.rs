@@ -1,4 +1,7 @@
 use super::*;
+use std::ffi::{OsStr, OsString};
+#[cfg(unix)]
+use std::os::unix::ffi::OsStringExt as _;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -12,7 +15,24 @@ pub(super) struct ManagedProcessIdentity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ObservedProcess {
     pub identity: ManagedProcessIdentity,
-    pub command: Vec<String>,
+    pub command: Vec<OsString>,
+}
+
+impl ObservedProcess {
+    pub(super) fn has_argument(&self, expected: &str) -> bool {
+        self.command
+            .iter()
+            .any(|argument| argument == OsStr::new(expected))
+    }
+
+    pub(super) fn command_matches(&self, expected: &[String]) -> bool {
+        self.command.len() == expected.len()
+            && self
+                .command
+                .iter()
+                .zip(expected)
+                .all(|(observed, expected)| observed == OsStr::new(expected))
+    }
 }
 
 pub(super) fn observe_process(pid: u64) -> Result<Option<ObservedProcess>> {

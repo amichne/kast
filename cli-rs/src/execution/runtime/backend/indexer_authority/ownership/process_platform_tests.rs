@@ -49,7 +49,7 @@ fn macos_argument_bytes_are_exact_final_review_regression() {
 
     assert_eq!(
         observed,
-        MacosArguments::Exact(vec!["java".to_string(), "--version".to_string()]),
+        MacosArguments::Exact(vec![OsString::from("java"), OsString::from("--version")]),
     );
 }
 

@@ -152,7 +152,7 @@ unsafe extern "C" {
 #[derive(Debug, PartialEq, Eq)]
 enum MacosArguments {
     Gone,
-    Exact(Vec<String>),
+    Exact(Vec<OsString>),
 }
 
 #[cfg(target_os = "macos")]
@@ -283,7 +283,7 @@ fn classify_macos_arguments(pid: u64, read: std::io::Result<Vec<u8>>) -> Result<
 }
 
 #[cfg(any(target_os = "macos", test))]
-fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<String>> {
+fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<OsString>> {
     if bytes.len() < std::mem::size_of::<libc::c_int>() {
         return Err(process_error("macOS process arguments are truncated."));
     }
@@ -305,10 +305,7 @@ fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<String>> {
             .position(|byte| *byte == 0)
             .map(|offset| cursor + offset)
             .ok_or_else(|| process_error("macOS process argument is unterminated."))?;
-        arguments.push(
-            String::from_utf8(bytes[cursor..end].to_vec())
-                .map_err(|_| process_error("macOS process argument is not UTF-8."))?,
-        );
+        arguments.push(OsString::from_vec(bytes[cursor..end].to_vec()));
         cursor = end + 1;
     }
     Ok(arguments)
@@ -324,17 +321,14 @@ fn skip_c_string(bytes: &[u8], cursor: usize) -> Result<usize> {
 }
 
 #[cfg(target_os = "linux")]
-fn parse_nul_command(bytes: &[u8]) -> Result<Vec<String>> {
+fn parse_nul_command(bytes: &[u8]) -> Result<Vec<OsString>> {
     if bytes.last() != Some(&0) {
         return Err(process_error("Linux process command line is truncated."));
     }
     let arguments = bytes[..bytes.len().saturating_sub(1)]
         .split(|byte| *byte == 0)
-        .map(|value| {
-            String::from_utf8(value.to_vec())
-                .map_err(|_| process_error("Linux process argument is not UTF-8."))
-        })
-        .collect::<Result<Vec<_>>>()?;
+        .map(|value| OsString::from_vec(value.to_vec()))
+        .collect::<Vec<_>>();
     if arguments.is_empty() || arguments[0].is_empty() {
         Err(process_error("Linux process command line is empty."))
     } else {

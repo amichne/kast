@@ -348,9 +348,8 @@ fn reconcile_validated_runtime_ownership(
 }
 
 fn legacy_runtime_id(runtime: &LegacyOwnedRuntime) -> String {
-    runtime
-        .descriptor
-        .descriptor
+    let descriptor = &runtime.descriptor.descriptor;
+    descriptor
         .runtime_instance_id
         .clone()
         .unwrap_or_else(|| runtime.descriptor.id.clone())
@@ -387,7 +386,9 @@ fn read_workspace_registrations(
         }
         match validate_service_registration(&entry.path(), root) {
             Ok(registration) => registrations.push(registration),
-            Err(error) if error.code == "RUNTIME_REGISTRATION_MISSING" => continue,
+            Err(error) if error.code == "RUNTIME_REGISTRATION_MISSING" => {
+                return Err(ownership_error(&error.message));
+            }
             Err(error) => return Err(error),
         }
     }

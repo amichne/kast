@@ -42,28 +42,29 @@ fn indexer_process_for_workspace(
     process: super::super::process::ObservedProcess,
     workspace_root: &Path,
 ) -> Option<UnregisteredRuntimeProcess> {
-    let is_indexer = process.command.iter().any(|argument| {
-        matches!(
-            argument.as_str(),
-            "kast-indexer" | "io.github.amichne.kast.indexer.KastIndexerMainKt"
-        )
-    });
+    let is_indexer = process.has_argument("kast-indexer")
+        || process.has_argument("io.github.amichne.kast.indexer.KastIndexerMainKt");
     if !is_indexer {
         return None;
     }
-    let claims_root = process.command.iter().any(|argument| {
-        argument
-            .strip_prefix("--workspace-root=")
-            .map(PathBuf::from)
-            .filter(|path| path.is_absolute())
-            .is_some_and(|path| config::normalize(path) == workspace_root)
-    });
+    let claims_root = process
+        .command
+        .iter()
+        .filter_map(|argument| argument.to_str())
+        .any(|argument| {
+            argument
+                .strip_prefix("--workspace-root=")
+                .map(PathBuf::from)
+                .filter(|path| path.is_absolute())
+                .is_some_and(|path| config::normalize(path) == workspace_root)
+        });
     if !claims_root {
         return None;
     }
     let runtime_instance_id = process
         .command
         .iter()
+        .filter_map(|argument| argument.to_str())
         .filter_map(|argument| argument.strip_prefix("--runtime-instance-id="))
         .next()
         .and_then(|value| Uuid::parse_str(value).ok());
