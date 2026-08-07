@@ -2,6 +2,23 @@
 
 ## RED
 
+### Finite semantic-graph outer deadline
+
+Command:
+
+```shell
+./gradlew :analysis-server:test --tests io.github.amichne.kast.server.RpcRequestWaitPolicyTest --no-daemon --console=plain
+```
+
+Expected failure: classifying `raw/semantic-graph` as backend-owned progress
+removes the server's outer timeout from cached and post-reconciliation graph
+extraction, even though only the nested reconciliation wait has its own finite
+progress deadline.
+
+Observed failure: FAILED as expected. The policy test observed
+`BackendProgressDeadline` where a finite `ServerDeadline` was required, so no
+server timeout value existed for the semantic-graph request.
+
 ### Persisted overlay repository authority
 
 Command:
@@ -371,8 +388,9 @@ changed production Kotlin files with zero errors, warnings, infos, or skipped
 files. The final working-tree audit completed all 128 changed Kotlin production
 and test files, including the new progress authority and strict manifest
 decoder, with zero errors, warnings, infos, or skipped files. Semantic-graph
-recovery now receives the progress-bounded transition deadline from both the
-Kotlin server and Rust client policy; both focused cross-language regressions
+recovery now receives a finite 3,605-second transition-aware outer deadline
+from both the Kotlin server and Rust client, while mutation operations retain
+backend-owned progress deadlines; both focused cross-language regressions
 passed. The complete Rust test suite, all-target/all-feature Clippy gate with
 warnings denied, Rust formatting check, and the final full Gradle check all
 passed. Persisted overlay membership is now revalidated against the exact
@@ -380,5 +398,5 @@ repository store before an existing workspace database can suppress full-index
 publication; the repository-replacement regression proved typed authority
 change, descriptor revocation, and eligible publication, and both focused
 fallback tests passed. The current full Gradle and index-store suites passed;
-the follow-up PR semantic audit completed all 8 changed Kotlin files with zero
+the follow-up PR semantic audit completed all 9 changed Kotlin files with zero
 errors, warnings, infos, or skips.
