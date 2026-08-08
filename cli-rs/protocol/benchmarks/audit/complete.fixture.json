@@ -1,0 +1,129 @@
+{
+  "auditId": "kpa-001-pr-569-60dcf69d",
+  "environment": {
+    "artifactRoot": "audit/artifacts",
+    "cacheRoot": "audit/cache",
+    "homeRoot": "audit/home",
+    "installationRoot": "audit/installation",
+    "locale": "C.UTF-8",
+    "runtimeRoot": "audit/runtime",
+    "socketPath": "audit/socket/kast.sock",
+    "temporaryRoot": "audit/temporary",
+    "timezone": "UTC",
+    "type": "AUDIT_ENVIRONMENT",
+    "variableDigestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "host": {
+    "architecture": "arm64",
+    "cpuModel": "Apple M4 Max",
+    "ide": {
+      "buildNumber": "262.12345.67",
+      "product": "INTELLIJ_IDEA",
+      "type": "IDE_IDENTITY",
+      "version": "2026.2"
+    },
+    "logicalCpuCount": 16,
+    "memoryBytes": 68719476736,
+    "operatingSystem": "MACOS",
+    "operatingSystemVersion": "15.6",
+    "type": "HOST_IDENTITY"
+  },
+  "installation": {
+    "binarySha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "binaryVersion": "0.21.6-15-ged0083718",
+    "bundleSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "bundleSizeBytes": 734003200,
+    "runtimeArtifactSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "runtimeBuild": "ed0083718",
+    "sealedInstallationSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "type": "SEALED_INSTALLATION"
+  },
+  "instrumentation": {
+    "artifacts": {
+      "manifestPath": "raw/audit-manifest.json",
+      "manifestSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "profilePath": "raw/runtime.jfr",
+      "profileSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "tracePath": "raw/backend-trace.jsonl",
+      "traceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "type": "RAW_AUDIT_ARTIFACTS"
+    },
+    "profiler": {
+      "configurationSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "kind": "JFR",
+      "samplePeriodMicros": 10000,
+      "settings": "profile",
+      "type": "PROFILER_CONFIGURATION"
+    },
+    "telemetryMode": "OTLP_FILE",
+    "tracingMode": "REQUEST_PHASES",
+    "type": "INSTRUMENTATION_CONFIGURATION"
+  },
+  "metrics": {
+    "allocationBytes": 123456789,
+    "cpuNanos": 987654321,
+    "gcPauseNanos": 1234567,
+    "latencyNanos": 2345678901,
+    "lockWaitNanos": 7654321,
+    "outputBytes": 45678,
+    "traceCorrelation": {
+      "correlatedPhaseCount": 8,
+      "requestId": "req-019fe30e",
+      "traceId": "0123456789abcdef0123456789abcdef",
+      "type": "TRACE_CORRELATION"
+    },
+    "type": "AUDIT_METRICS"
+  },
+  "runState": {
+    "cacheState": "EMPTY",
+    "coldOrWarm": "COLD",
+    "indexingState": "READY",
+    "relationshipsEnabled": true,
+    "sourceIndexGeneration": 42,
+    "type": "AUDIT_RUN_STATE"
+  },
+  "schemaVersion": 1,
+  "source": {
+    "commitSha": "60dcf69d0431d38d8a2bb5476ee349a9f796829b",
+    "repository": "https://github.com/amichne/kast.git",
+    "treeSha": "4444444444444444444444444444444444444444",
+    "type": "EXACT_SOURCE",
+    "worktreeState": "CLEAN"
+  },
+  "teardown": {
+    "completedAt": "2026-08-08T20:00:00Z",
+    "evidenceSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "processClosure": "PROVEN_EMPTY",
+    "runtimeState": "STOPPED",
+    "socketState": "ABSENT",
+    "temporaryRootState": "REMOVED",
+    "type": "CLEAN_TEARDOWN",
+    "workspaceState": "REMOVED"
+  },
+  "type": "KAST_PERFORMANCE_AUDIT",
+  "workload": {
+    "arguments": [
+      "agent",
+      "graph",
+      "summary",
+      "--output",
+      "json"
+    ],
+    "command": "kast",
+    "concurrency": 1,
+    "inputSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "invocationCount": 5,
+    "iterationCount": 5,
+    "operation": "agent.graph.summary",
+    "type": "AUDIT_WORKLOAD"
+  },
+  "workspace": {
+    "buildCount": 1,
+    "fileCount": 842,
+    "gradleProjectCount": 12,
+    "kotlinFileCount": 719,
+    "shapeSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+    "sourceBytes": 12582912,
+    "type": "WORKSPACE_SHAPE"
+  }
+}
