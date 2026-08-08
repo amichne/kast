@@ -1,7 +1,7 @@
 use super::*;
 
-pub(crate) fn decode(output: &Output) -> Value {
-    let value: Value = toon_format::decode_default(
+pub(crate) fn decode_envelope(output: &Output) -> Value {
+    toon_format::decode_default(
         std::str::from_utf8(&output.stdout)
             .expect("UTF-8 output")
             .trim(),
@@ -11,9 +11,17 @@ pub(crate) fn decode(output: &Output) -> Value {
             "valid TOON: {error}; stdout={}",
             String::from_utf8_lossy(&output.stdout)
         )
-    });
+    })
+}
+
+pub(crate) fn decode(output: &Output) -> Value {
+    let value = decode_envelope(output);
     if value["schemaVersion"] == 2 && value["result"].is_object() {
-        value["result"].clone()
+        if value["result"]["type"] == "rejected" && value["result"]["failure"].is_object() {
+            value["result"]["failure"].clone()
+        } else {
+            value["result"].clone()
+        }
     } else {
         value
     }

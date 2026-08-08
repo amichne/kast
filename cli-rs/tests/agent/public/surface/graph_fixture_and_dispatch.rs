@@ -75,6 +75,26 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
     index
 }
 
+fn seed_paged_public_graph(workspace: &Path) -> WorkspaceIndexFixture {
+    let index = seed_public_graph(workspace, false);
+    let connection = index.connection();
+    for id in 3_i64..=501 {
+        connection
+            .execute(
+                "INSERT INTO semantic_symbols(id, stable_key, kind, name, file_id)
+                 VALUES (?, ?, 'CLASS', ?, 1)",
+                params![
+                    id,
+                    format!("class:sample.Node{id:03}"),
+                    format!("Node{id:03}")
+                ],
+            )
+            .expect("graph symbol");
+    }
+    drop(connection);
+    index
+}
+
 #[test]
 fn public_graph_exposes_read_only_topology() {
     let fixture = tempfile::tempdir().expect("temporary graph fixture");

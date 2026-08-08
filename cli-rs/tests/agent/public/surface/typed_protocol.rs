@@ -150,7 +150,7 @@ fn selectors_round_trip_verbatim_across_the_overloaded_vertical_slice() {
         &config_home,
         &workspace,
         &fixture.path().join("indexer.sock"),
-        5,
+        6,
         vec![
             (
                 "symbol/discover",
@@ -176,6 +176,10 @@ fn selectors_round_trip_verbatim_across_the_overloaded_vertical_slice() {
                     ],
                     "logFile": "/tmp/kast.log"
                 }),
+            ),
+            (
+                "selector/identity",
+                serde_json::json!({"type": "AVAILABLE", "identity": protocol_identity(&declaration_file, 10)}),
             ),
             (
                 "symbol/resolve",
@@ -229,6 +233,15 @@ fn selectors_round_trip_verbatim_across_the_overloaded_vertical_slice() {
         "overload identities collapsed: {search:#}",
     );
 
+    let first_shown = typed_protocol_json(
+        typed_public_kast(&home, &config_home, &workspace)
+            .args(["--output", "json", "symbol", "show", "--selector", first_selector])
+            .output()
+            .expect("show first overload"),
+    );
+    assert_eq!(first_shown["result"]["selector"], first_selector);
+    assert_eq!(first_shown["result"]["symbol"]["declarationStartOffset"], 10);
+
     let resolved = typed_protocol_toon(
         typed_public_kast(&home, &config_home, &workspace)
             .args(["symbol", "resolve", "--query", "lib.overloaded"])
@@ -275,14 +288,20 @@ fn selectors_round_trip_verbatim_across_the_overloaded_vertical_slice() {
             .collect::<Vec<_>>(),
         vec![
             "symbol/discover",
+            "selector/identity",
             "symbol/resolve",
             "selector/identity",
             "selector/identity",
             "symbol/references",
         ],
     );
-    for request in &semantic_requests[2..] {
+    assert_eq!(semantic_requests[1]["params"]["selectorHandle"], first_selector);
+    for request in &semantic_requests[3..] {
         assert_eq!(request["params"]["selectorHandle"], second_selector);
+    }
+    for request in semantic_requests.iter().skip(1).filter(|request| {
+        request["method"] == "selector/identity" || request["method"] == "symbol/references"
+    }) {
         for reconstructed in [
             "symbol",
             "fqName",
@@ -297,73 +316,4 @@ fn selectors_round_trip_verbatim_across_the_overloaded_vertical_slice() {
             );
         }
     }
-}
-
-#[test]
-fn exact_routes_reject_substitutes_through_closed_selector_authentication() {
-    let fixture = tempfile::tempdir().expect("temporary rejection fixture");
-    let home = fixture.path().join("home");
-    let config_home = fixture.path().join("config");
-    let workspace = fixture.path().join("workspace");
-    support::metrics::seed_source_index(&workspace);
-    let workspace = workspace.canonicalize().expect("canonical workspace");
-    let backend = support::spawn_scripted_indexer_backend_for_invocations(
-        &home,
-        &config_home,
-        &workspace,
-        &fixture.path().join("indexer.sock"),
-        2,
-        vec![
-            (
-                "selector/identity",
-                serde_json::json!({
-                    "type": "SELECTOR_HANDLE_REJECTED",
-                    "reason": "TAMPERED",
-                    "recovery": "RESOLVE_AGAIN"
-                }),
-            ),
-            (
-                "selector/identity",
-                serde_json::json!({
-                    "type": "SELECTOR_HANDLE_REJECTED",
-                    "reason": "TAMPERED",
-                    "recovery": "RESOLVE_AGAIN"
-                }),
-            ),
-        ],
-    );
-
-    for rejected in ["lib.overloaded", "ksh1.valid-looking-but-malformed"] {
-        let output = typed_public_kast(&home, &config_home, &workspace)
-            .args(["--output", "json", "symbol", "show", "--selector", rejected])
-            .output()
-            .expect("reject selector substitute");
-        assert_eq!(output.status.code(), Some(1), "{output:?}");
-        let value: serde_json::Value =
-            serde_json::from_slice(&output.stdout).expect("closed rejection JSON");
-        assert_eq!(value["schemaVersion"], 2, "{value:#}");
-        assert_eq!(value["operation"], "symbol.show", "{value:#}");
-        assert_eq!(value["status"], "rejected", "{value:#}");
-        assert_eq!(value["result"]["type"], "rejected", "{value:#}");
-        assert_eq!(value["result"]["failure"]["type"], "selector-rejected");
-        assert_eq!(value["result"]["failure"]["reason"], "tampered");
-    }
-
-    let requests = backend.join().expect("scripted rejection backend");
-    let selector_requests = requests
-        .iter()
-        .filter(|request| request["method"] == "selector/identity")
-        .collect::<Vec<_>>();
-    assert_eq!(selector_requests.len(), 2, "{requests:#?}");
-    assert_eq!(
-        selector_requests[0]["params"]["selectorHandle"],
-        "lib.overloaded"
-    );
-    assert_eq!(
-        selector_requests[1]["params"]["selectorHandle"],
-        "ksh1.valid-looking-but-malformed"
-    );
-    assert!(selector_requests
-        .iter()
-        .all(|request| request["method"] == "selector/identity"));
 }

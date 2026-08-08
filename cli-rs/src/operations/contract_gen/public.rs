@@ -141,52 +141,70 @@ fn public_result_schema(
     let failure_types = [
         "actionable-failure", "backend-contract-violation", "backend-rejected", "continuation-invalid",
         "continuation-mismatch", "continuation-stale", "invalid-input", "selector-rejected",
-        "subject-identity-mismatch", "subject-not-found", "unsupported-subject-kind",
+        "mutation-non-success", "subject-identity-mismatch", "subject-not-found",
+        "unsupported-subject-kind",
     ];
-    let variants = definitions
-        .iter()
-        .map(|definition| {
-            let mut results = definition
-                .result_discriminators
-                .iter()
-                .map(|result_type| serde_json::json!({
+    let mut result_definitions = BTreeMap::new();
+    for definition in definitions {
+        for result_type in definition.result_discriminators {
+            result_definitions.entry(format!("result-{result_type}")).or_insert_with(|| {
+                serde_json::json!({
                     "type": "object",
                     "required": ["type"],
                     "properties": {"type": {"const": result_type}},
-                }))
-                .collect::<Vec<_>>();
-            results.push(serde_json::json!({
+                })
+            });
+        }
+    }
+    result_definitions.insert("rejected".to_string(), serde_json::json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "failure"],
+        "properties": {
+            "type": {"const": "rejected"},
+            "failure": {
                 "type": "object",
-                "additionalProperties": false,
-                "required": ["type", "failure"],
-                "properties": {
-                    "type": {"const": "rejected"},
-                    "failure": {
-                        "type": "object",
-                        "required": ["type"],
-                        "properties": {"type": {"enum": failure_types}},
-                    },
-                },
-            }));
-            serde_json::json!({
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["schemaVersion", "operation", "status", "result"],
-                "properties": {
-                    "schemaVersion": {"const": 2},
-                    "operation": {"const": definition.id},
-                    "status": {"enum": ["complete", "qualified", "rejected"]},
-                    "result": {"oneOf": results},
-                },
-            })
-        })
-        .collect::<Vec<_>>();
+                "required": ["type"],
+                "properties": {"type": {"enum": failure_types}},
+            },
+        },
+    }));
+    result_definitions.insert("envelope".to_string(), serde_json::json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schemaVersion", "operation", "status", "result"],
+        "properties": {
+            "schemaVersion": {"const": 2},
+            "operation": {"enum": definitions.iter().map(|definition| definition.id).collect::<Vec<_>>()},
+            "status": {"enum": ["complete", "qualified", "rejected"]},
+            "result": {"type": "object"},
+        },
+        "allOf": [{
+            "if": {"properties": {"status": {"const": "rejected"}}, "required": ["status"]},
+            "then": {"properties": {"result": {"$ref": "#/$defs/rejected"}}},
+            "else": {"properties": {"result": {"not": {"$ref": "#/$defs/rejected"}}}},
+        }],
+    }));
+    let variants = definitions.iter().map(|definition| {
+        let mut results = definition.result_discriminators.iter().map(|result_type| {
+            serde_json::json!({"$ref": format!("#/$defs/result-{result_type}")})
+        }).collect::<Vec<_>>();
+        results.push(serde_json::json!({"$ref": "#/$defs/rejected"}));
+        serde_json::json!({"allOf": [
+            {"$ref": "#/$defs/envelope"},
+            {"properties": {
+                "operation": {"const": definition.id},
+                "result": {"oneOf": results},
+            }},
+        ]})
+    }).collect::<Vec<_>>();
     serde_json::json!({
         "schemaVersion": 1,
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "https://kast.michne.com/protocol/public-result.schema.json",
         "title": "Kast public canonical result envelope",
         "oneOf": variants,
+        "$defs": result_definitions,
     })
 }
 
@@ -267,7 +285,7 @@ fn render_public_skill(
             definition.id.as_str(), definition.cli.syntax, successors,
         ));
     }
-    text.push_str("\nUse `--output toon` for compact output or `--output json` for JSON. Both retain `schemaVersion`, `operation`, `status`, and `result.type`. Treat only complete evidence and a `VERIFIED` mutation receipt as success. A qualified result has explicit limitations; rejected, conflicted, rolled-back, and recovery-required outcomes are non-success.\n\nFor setup, runtime control, configuration, raw RPC, local-state inspection, or release work, invoke `/kast:developer`. Read `developerOperations.cli`; do not assume `kastctl` is on `PATH`.\n");
+    text.push_str("\nUse `--output toon` for compact TOON or `--output json` for JSON. Both retain `schemaVersion`, `operation`, `status`, and `result.type`. Treat only complete evidence and a `VERIFIED` mutation receipt as success. A qualified result has explicit limitations; rejected, conflicted, rolled-back, and recovery-required outcomes are non-success.\n\nFor setup, runtime control, configuration, raw RPC, local-state inspection, or release work, invoke `/kast:developer`. Read `developerOperations.cli`; do not assume `kastctl` is on `PATH`.\n");
     text
 }
 
@@ -317,6 +335,11 @@ fn golden_workflow() -> Value {
             {"operation": ChangeApply, "planIdFrom": "steps[3].result.planId", "transform": "none"}
         ],
         "forbiddenIdentitySources": ["qualifiedName", "location", "path", "offset", "kind", "container"],
+        "evidenceTests": [
+            "selectors_round_trip_verbatim_across_the_overloaded_vertical_slice",
+            "typed_exact_operations::one_issued_selector_round_trips_verbatim_through_every_relation_consumer",
+            "typed_mutation_operations::rejected_mutation_targets_never_enter_planning_or_create_plan_artifacts"
+        ],
     })
 }
 
@@ -330,6 +353,22 @@ fn benchmark_fixture() -> Value {
             "mutationAttemptsRejectedBeforePlanning", "staleContinuationHandling", "staleSelectorHandling"
         ],
         "acceptance": {"semanticMisselection": 0, "selectorProducerToConsumerRoundTripPercent": 100},
+        "measurements": {
+            "before": {
+                "source": "protocol/source/public-semantic-contract-inventory.json",
+                "resolvedContractFindings": 8
+            },
+            "after": {
+                "repeatWith": ".github/scripts/test-cli-typed-composable-protocol.sh",
+                "semanticMisselection": 0,
+                "selectorProducerToConsumerRoundTripPercent": 100,
+                "evidenceTests": [
+                    "selectors_round_trip_verbatim_across_the_overloaded_vertical_slice",
+                    "continuations_are_operation_bound_and_stale_closed",
+                    "exact_routes_reject_substitutes_through_closed_selector_authentication"
+                ]
+            }
+        },
         "scenarios": [
             {"id": "unknown-target", "inputState": "unknownTarget", "firstOperation": crate::agent::public_protocol::OperationId::SymbolSearch},
             {"id": "exact-text", "inputState": "exactText", "firstOperation": crate::agent::public_protocol::OperationId::SymbolResolve},

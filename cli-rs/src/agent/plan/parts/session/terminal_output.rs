@@ -60,6 +60,30 @@ enum PublicTerminalMutationReceipt<'a> {
     },
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PublicMutationFailure<T: Serialize> {
+    #[serde(rename = "type")]
+    failure_type: PublicMutationFailureType,
+    #[serde(flatten)]
+    receipt: T,
+}
+
+impl<T: Serialize> PublicMutationFailure<T> {
+    fn new(receipt: T) -> Self {
+        Self {
+            failure_type: PublicMutationFailureType::MutationNonSuccess,
+            receipt,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum PublicMutationFailureType {
+    MutationNonSuccess,
+}
+
 impl<'a> From<&'a TerminalMutationReceipt> for PublicTerminalMutationReceipt<'a> {
     fn from(receipt: &'a TerminalMutationReceipt) -> Self {
         match receipt {

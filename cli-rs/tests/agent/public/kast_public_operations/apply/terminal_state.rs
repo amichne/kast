@@ -200,6 +200,13 @@ fn public_apply_persists_stable_rejected_and_conflicted_outcomes() {
         .output()
         .expect("rejected apply");
     assert_eq!(rejected.status.code(), Some(1), "{rejected:?}");
+    let rejected_envelope = decode_envelope(&rejected);
+    assert_eq!(rejected_envelope["status"], "rejected");
+    assert_eq!(rejected_envelope["result"]["type"], "rejected");
+    assert_eq!(
+        rejected_envelope["result"]["failure"]["type"],
+        "mutation-non-success"
+    );
     let rejected_receipt = decode(&rejected);
     assert_eq!(
         rejected_receipt["outcome"], "REJECTED",

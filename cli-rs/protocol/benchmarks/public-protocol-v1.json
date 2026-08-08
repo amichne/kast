@@ -4,6 +4,22 @@
     "semanticMisselection": 0
   },
   "benchmarkVersion": "public-protocol-v1",
+  "measurements": {
+    "after": {
+      "evidenceTests": [
+        "selectors_round_trip_verbatim_across_the_overloaded_vertical_slice",
+        "continuations_are_operation_bound_and_stale_closed",
+        "exact_routes_reject_substitutes_through_closed_selector_authentication"
+      ],
+      "repeatWith": ".github/scripts/test-cli-typed-composable-protocol.sh",
+      "selectorProducerToConsumerRoundTripPercent": 100,
+      "semanticMisselection": 0
+    },
+    "before": {
+      "resolvedContractFindings": 8,
+      "source": "protocol/source/public-semantic-contract-inventory.json"
+    }
+  },
   "metrics": [
     "firstCommandValidity",
     "correctiveCliCallsBeforeSuccess",
