@@ -1,5 +1,7 @@
 use super::*;
 
+include!("declaration_input.rs");
+
 #[test]
 fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     let fixture = tempfile::tempdir().expect("fixture");
