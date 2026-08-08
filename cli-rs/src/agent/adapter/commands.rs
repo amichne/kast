@@ -205,17 +205,31 @@ pub(crate) fn run_graph(args: KastGraphArgs, output_format: OutputFormat) -> Res
             None,
             output_format,
         ),
-        KastGraphCommand::Nodes { continuation } => print_native_graph(
-            workspace_root,
-            NativeGraphOperation::Nodes,
-            None,
-            None,
-            continuation
-                .map(|value| value.parse::<KastGraphNodesPageToken>())
+        KastGraphCommand::Nodes { continuation } => {
+            let page = match continuation
+                .map(agent::public_protocol::GraphNodesPageToken::parse)
                 .transpose()
-                .map_err(|message| CliError::new("CLI_USAGE", message))?,
-            output_format,
-        ),
+            {
+                Ok(page) => page,
+                Err(failure) => {
+                    return print_actionable_failure(
+                        agent::public_protocol::OperationId::GraphNodes,
+                        failure.code(),
+                        failure.message(),
+                        "kast graph nodes",
+                        output_format,
+                    );
+                }
+            };
+            print_native_graph(
+                workspace_root,
+                NativeGraphOperation::Nodes,
+                None,
+                None,
+                page,
+                output_format,
+            )
+        }
         KastGraphCommand::Neighbors { node_selector } => {
             let node_selector = match agent::public_protocol::UntrustedGraphNodeSelector::parse(
                 node_selector,

@@ -9,8 +9,8 @@ mod traversal;
 mod traversal_types;
 
 pub(crate) use graph::{
-    UntrustedGraphNodeSelector, authenticate_graph_node_selector, graph_workspace_fingerprint,
-    issue_graph_node_selector,
+    GraphNodesPageToken, UntrustedGraphNodeSelector, authenticate_graph_node_selector,
+    graph_workspace_fingerprint, issue_graph_node_selector,
 };
 
 use domain::{

@@ -26,7 +26,8 @@ fn graph_continuations_reject_stale_generations() {
         .split('.')
         .map(str::to_string)
         .collect::<Vec<_>>();
-    assert_eq!(fields.len(), 5, "{continuation}");
+    assert_eq!(fields.len(), 4, "{continuation}");
+    assert_eq!(fields[0], "kgn3", "{continuation}");
     fields[2] = fields[2]
         .parse::<u64>()
         .expect("graph generation")

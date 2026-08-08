@@ -149,9 +149,18 @@ enum AgentCompilerResolveResponse {
     #[serde(rename = "RESOLVE_NOT_FOUND")]
     NotFound,
     #[serde(rename = "RESOLVE_AMBIGUOUS")]
-    Ambiguous { candidates: Vec<Value> },
+    Ambiguous {
+        candidates: Vec<AgentCompilerResolveCandidate>,
+    },
     #[serde(rename = "RESOLVE_FAILURE")]
     OperationalFailure,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCompilerResolveCandidate {
+    symbol: AgentCompilerSymbolIdentity,
+    selector_handle: AgentSelectorHandle,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

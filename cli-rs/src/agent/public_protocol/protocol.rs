@@ -270,9 +270,17 @@ pub(super) enum ProtocolFailure {
     BackendContractViolation {
         message: String,
     },
-    SubjectNotFound,
-    SubjectIdentityMismatch,
-    UnsupportedSubjectKind,
+    SubjectNotFound {
+        selector: IssuedSymbolSelector,
+    },
+    SubjectIdentityMismatch {
+        selector: IssuedSymbolSelector,
+        actual: SymbolIdentity,
+    },
+    UnsupportedSubjectKind {
+        selector: IssuedSymbolSelector,
+        subject: SymbolIdentity,
+    },
     ContinuationInvalid,
     ContinuationMismatch,
     ContinuationStale,

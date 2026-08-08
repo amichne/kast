@@ -1,11 +1,60 @@
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSelectableSymbolProjectionInput {
+    symbol: Value,
+    selector_handle: AgentSelectorHandle,
+}
+
 fn project_symbol_candidates(
     candidates: Vec<Value>,
 ) -> std::result::Result<Vec<AgentSymbolCandidateProjection>, String> {
     candidates
         .into_iter()
         .map(AgentSymbolEvidenceProjection::try_from)
-        .map(|result| result.map(AgentSymbolCandidateProjection::from))
+        .map(|result| {
+            result.map(|candidate| AgentSymbolCandidateProjection {
+                identity: candidate.identity,
+                selector_handle: None,
+                location: candidate.location,
+            })
+        })
         .collect()
+}
+
+fn project_selectable_symbol_candidates(
+    candidates: Vec<AgentSelectableSymbolProjectionInput>,
+) -> std::result::Result<Vec<AgentSymbolCandidateProjection>, String> {
+    candidates
+        .into_iter()
+        .map(|candidate| {
+            AgentSymbolEvidenceProjection::try_from(candidate.symbol).map(|symbol| {
+                AgentSymbolCandidateProjection {
+                    identity: symbol.identity,
+                    selector_handle: Some(candidate.selector_handle),
+                    location: symbol.location,
+                }
+            })
+        })
+        .collect()
+}
+
+fn project_ambiguous_symbol_candidates(
+    source: &str,
+    candidates: Vec<Value>,
+) -> std::result::Result<Vec<AgentSymbolCandidateProjection>, String> {
+    match source {
+        "compiler" => candidates
+            .into_iter()
+            .map(|candidate| {
+                serde_json::from_value(candidate).map_err(|error| {
+                    format!("compiler ambiguity candidate was not selectable: {error}")
+                })
+            })
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .and_then(project_selectable_symbol_candidates),
+        "indexed-exact" => project_symbol_candidates(candidates),
+        _ => Err("ambiguity source did not define a candidate contract".to_string()),
+    }
 }
 
 impl AgentRelationshipProjection {

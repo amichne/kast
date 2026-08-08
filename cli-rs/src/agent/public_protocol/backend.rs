@@ -1,5 +1,5 @@
 use super::domain::{
-    IssuedSymbolSelector, ReferenceOccurrence, SourceLocation, SymbolIdentity, SymbolKind,
+    IssuedSymbolSelector, RelationshipSelectorInput, SourceLocation, SymbolIdentity, SymbolKind,
     SymbolRecord, WorkspaceKotlinPath,
 };
 use super::protocol::{
@@ -9,6 +9,8 @@ use super::protocol::{
 use crate::cli::AgentRuntimeArgs;
 use serde::Deserialize;
 use serde_json::{Value, json};
+
+use super::traversal_types::ReferenceInput;
 
 pub(super) fn request(
     runtime: &AgentRuntimeArgs,
@@ -151,11 +153,17 @@ pub(super) enum ReferencesResponse {
         evidence: RelationshipEvidence,
     },
     #[serde(rename = "SUBJECT_NOT_FOUND")]
-    SubjectNotFound,
+    SubjectNotFound { selector: RelationshipSelectorInput },
     #[serde(rename = "SUBJECT_IDENTITY_MISMATCH")]
-    SubjectIdentityMismatch,
+    SubjectIdentityMismatch {
+        selector: RelationshipSelectorInput,
+        actual: SymbolIdentityInput,
+    },
     #[serde(rename = "UNSUPPORTED_SUBJECT_KIND")]
-    UnsupportedSubjectKind,
+    UnsupportedSubjectKind {
+        selector: RelationshipSelectorInput,
+        subject: SymbolIdentityInput,
+    },
     #[serde(rename = "CURSOR_STALE")]
     CursorStale,
     #[serde(rename = "CURSOR_INVALID")]
@@ -199,11 +207,6 @@ pub(super) struct LocationInput {
     pub start_line: u64,
     pub start_column: u64,
     pub preview: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct ReferenceInput {
-    pub location: LocationInput,
 }
 
 #[derive(Debug, Deserialize)]
@@ -308,17 +311,6 @@ impl LocationInput {
             start_line: self.start_line,
             start_column: self.start_column,
             preview: self.preview,
-        })
-    }
-}
-
-impl ReferenceInput {
-    pub fn normalize(
-        self,
-        runtime: &AgentRuntimeArgs,
-    ) -> Result<ReferenceOccurrence, ProtocolFailure> {
-        Ok(ReferenceOccurrence {
-            location: self.location.normalize(runtime)?,
         })
     }
 }

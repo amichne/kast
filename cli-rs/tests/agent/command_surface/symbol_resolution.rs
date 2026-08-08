@@ -204,49 +204,77 @@ fn agent_symbol_defaults_to_exact_and_returns_compiler_identity() {
 }
 
 #[test]
-fn agent_symbol_not_found_and_ambiguous_do_not_discover() {
-    for result in [
-        json!({"type":"RESOLVE_NOT_FOUND","ok":true,"source":"compiler"}),
-        json!({
-            "type":"RESOLVE_AMBIGUOUS",
-            "ok":true,
-            "source":"compiler",
-            "candidates":[{"fqName":"alpha.Parser.parse"},{"fqName":"beta.Parser.parse"}]
-        }),
-    ] {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let home = temp.path().join("home");
-        let config_home = temp.path().join("config");
-        let workspace = temp.path().join("workspace");
-        let socket_path = temp.path().join("indexer.sock");
-        let handle = spawn_scripted_indexer_backend(
-            &home,
-            &config_home,
-            &workspace,
-            &socket_path,
-            vec![("symbol/resolve", result)],
-        );
+fn agent_symbol_not_found_does_not_discover() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("indexer.sock");
+    let handle = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![(
+            "symbol/resolve",
+            json!({"type":"RESOLVE_NOT_FOUND","ok":true,"source":"compiler"}),
+        )],
+    );
 
-        let output = run_agent_symbol(&home, &config_home, &workspace, &[]);
+    let output = run_agent_symbol(&home, &config_home, &workspace, &[]);
 
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stdout)
-        );
-        let stdout: Value = serde_json::from_slice(&output.stdout).expect("symbol json");
-        assert!(matches!(
-            stdout["result"]["outcome"].as_str(),
-            Some("NOT_FOUND" | "AMBIGUOUS")
-        ));
-        let requests = handle.join().expect("scripted backend");
-        assert_eq!(
-            requests.len(),
-            3,
-            "expected only runtime probes plus resolve"
-        );
-        assert_eq!(requests[2]["method"], "symbol/resolve");
-    }
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stdout));
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("symbol json");
+    assert_eq!(stdout["result"]["outcome"], "NOT_FOUND");
+    let requests = handle.join().expect("scripted backend");
+    assert_eq!(requests.len(), 3, "expected only runtime probes plus resolve");
+    assert_eq!(requests[2]["method"], "symbol/resolve");
+}
+
+#[test]
+fn review_comment_regression_wrapped_ambiguity_candidates_remain_selectable() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("indexer.sock");
+    let first = symbol_result(&workspace, "alpha.Parser.parse")["symbol"].clone();
+    let second = symbol_result(&workspace, "beta.Parser.parse")["symbol"].clone();
+    let handle = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![(
+            "symbol/resolve",
+            json!({
+                "type": "RESOLVE_AMBIGUOUS",
+                "ok": true,
+                "source": "compiler",
+                "candidates": [
+                    {"symbol": first, "selectorHandle": "ksh1.alpha-parse"},
+                    {"symbol": second, "selectorHandle": "ksh1.beta-parse"}
+                ]
+            }),
+        )],
+    );
+
+    let output = run_agent_symbol(&home, &config_home, &workspace, &[]);
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("symbol json");
+    assert_eq!(stdout["result"]["outcome"], "AMBIGUOUS");
+    assert_eq!(stdout["result"]["candidates"][0]["identity"]["fqName"], "alpha.Parser.parse");
+    assert_eq!(stdout["result"]["candidates"][0]["selectorHandle"], "ksh1.alpha-parse");
+    assert_eq!(stdout["result"]["candidates"][1]["selectorHandle"], "ksh1.beta-parse");
+    let requests = handle.join().expect("scripted backend");
+    assert_eq!(requests.len(), 3, "expected only runtime probes plus resolve");
+    assert_eq!(requests[2]["method"], "symbol/resolve");
 }
 
 #[path = "cases/symbol_fallbacks.rs"]

@@ -5,7 +5,89 @@ use std::num::NonZeroU64;
 use std::path::Path;
 
 const GRAPH_NODE_SELECTOR_VERSION: &str = "kgns1";
+const GRAPH_NODES_PAGE_TOKEN_VERSION: &str = "kgn3";
 const MAX_GRAPH_NODE_SELECTOR_LENGTH: usize = 4_096;
+const MAX_GRAPH_NODES_PAGE_TOKEN_LENGTH: usize = 128;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct GraphNodesPageToken {
+    workspace_fingerprint: String,
+    generation: u64,
+    after_id: NonZeroU64,
+}
+
+impl GraphNodesPageToken {
+    pub(crate) fn issue(
+        workspace_fingerprint: String,
+        generation: u64,
+        after_id: u64,
+    ) -> Option<Self> {
+        let after_id = NonZeroU64::new(after_id)?;
+        Some(Self {
+            workspace_fingerprint,
+            generation,
+            after_id,
+        })
+    }
+
+    pub(crate) fn parse(value: String) -> Result<Self, GraphNodesPageTokenFailure> {
+        if value.len() > MAX_GRAPH_NODES_PAGE_TOKEN_LENGTH
+            || !value.is_ascii()
+            || value.chars().any(char::is_control)
+        {
+            return Err(GraphNodesPageTokenFailure::Malformed);
+        }
+        let fields = value.split('.').collect::<Vec<_>>();
+        if fields.len() != 4
+            || fields[0] != GRAPH_NODES_PAGE_TOKEN_VERSION
+            || !is_lower_hex_24(fields[1])
+        {
+            return Err(GraphNodesPageTokenFailure::Malformed);
+        }
+        let generation = canonical_page_u64(fields[2])?;
+        let after_id = NonZeroU64::new(canonical_page_u64(fields[3])?)
+            .ok_or(GraphNodesPageTokenFailure::Malformed)?;
+        Ok(Self {
+            workspace_fingerprint: fields[1].to_string(),
+            generation,
+            after_id,
+        })
+    }
+
+    pub(crate) fn workspace_fingerprint(&self) -> &str {
+        &self.workspace_fingerprint
+    }
+
+    pub(crate) fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    pub(crate) fn after_id(&self) -> u64 {
+        self.after_id.get()
+    }
+
+    pub(crate) fn canonical(&self) -> String {
+        format!(
+            "{GRAPH_NODES_PAGE_TOKEN_VERSION}.{}.{}.{}",
+            self.workspace_fingerprint, self.generation, self.after_id
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum GraphNodesPageTokenFailure {
+    Malformed,
+}
+
+impl GraphNodesPageTokenFailure {
+    pub(crate) fn code(self) -> &'static str {
+        "GRAPH_PAGE_TOKEN_MALFORMED"
+    }
+
+    pub(crate) fn message(self) -> &'static str {
+        "The graph page token is malformed or belongs to an obsolete token domain."
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct UntrustedGraphNodeSelector(String);
@@ -155,6 +237,22 @@ fn graph_node_identity(
     digest.update(b"\n");
     digest.update(stable_key.as_bytes());
     hex::encode(digest.finalize())[..24].to_string()
+}
+
+fn canonical_page_u64(value: &str) -> Result<u64, GraphNodesPageTokenFailure> {
+    let parsed = value
+        .parse::<u64>()
+        .map_err(|_| GraphNodesPageTokenFailure::Malformed)?;
+    (parsed.to_string() == value)
+        .then_some(parsed)
+        .ok_or(GraphNodesPageTokenFailure::Malformed)
+}
+
+fn is_lower_hex_24(value: &str) -> bool {
+    value.len() == 24
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn canonical_u64(value: &str) -> Result<u64, GraphNodeSelectorFailure> {

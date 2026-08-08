@@ -1,5 +1,7 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::{Uuid, Version};
+
+use super::traversal_types::ContainingSymbol;
 
 #[derive(Debug)]
 pub(super) enum PublicOperation {
@@ -244,6 +246,46 @@ pub(super) struct SymbolIdentity {
     pub containing_type: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct RelationshipSelectorInput {
+    pub fq_name: String,
+    pub declaration_file: String,
+    pub declaration_start_offset: u64,
+    #[serde(default)]
+    pub kind: Option<SymbolKind>,
+    #[serde(default)]
+    pub containing_type: Option<String>,
+}
+
+impl RelationshipSelectorInput {
+    pub(super) fn matches(
+        self,
+        runtime: &crate::cli::AgentRuntimeArgs,
+        expected: &SymbolIdentity,
+    ) -> Result<bool, super::protocol::ProtocolFailure> {
+        if self.fq_name.trim().is_empty()
+            || self
+                .containing_type
+                .as_ref()
+                .is_some_and(|value| value.trim().is_empty())
+        {
+            return Err(super::protocol::ProtocolFailure::BackendContractViolation {
+                message: "backend returned an invalid relationship selector".to_string(),
+            });
+        }
+        Ok(self.fq_name == expected.fq_name
+            && super::backend::normalize_path(runtime, self.declaration_file)?
+                == expected.declaration_file
+            && self.declaration_start_offset == expected.declaration_start_offset
+            && self.kind.is_none_or(|kind| kind == expected.kind)
+            && self
+                .containing_type
+                .as_ref()
+                .is_none_or(|value| Some(value) == expected.containing_type.as_ref()))
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct SelectableSymbol {
@@ -265,4 +307,75 @@ pub(super) struct SymbolMatch {
 #[serde(rename_all = "camelCase")]
 pub(super) struct ReferenceOccurrence {
     pub location: SourceLocation,
+    pub containing_symbol: ContainingSymbol,
+}
+
+pub(super) fn subject_not_found_failure(
+    runtime: &crate::cli::AgentRuntimeArgs,
+    selector: &SymbolSelector,
+    evidence_selector: RelationshipSelectorInput,
+) -> Result<super::protocol::ProtocolFailure, super::protocol::ProtocolFailure> {
+    require_relationship_selector(runtime, selector, evidence_selector)?;
+    Ok(super::protocol::ProtocolFailure::SubjectNotFound {
+        selector: selector.issued().clone(),
+    })
+}
+
+pub(super) fn subject_identity_mismatch_failure(
+    runtime: &crate::cli::AgentRuntimeArgs,
+    selector: &SymbolSelector,
+    evidence_selector: RelationshipSelectorInput,
+    actual: super::backend::SymbolIdentityInput,
+) -> Result<super::protocol::ProtocolFailure, super::protocol::ProtocolFailure> {
+    require_relationship_selector(runtime, selector, evidence_selector)?;
+    let actual = actual.normalize(runtime)?;
+    if &actual == selector.identity() {
+        return Err(invalid_relationship_evidence(
+            "identity mismatch evidence repeated the authenticated subject",
+        ));
+    }
+    Ok(super::protocol::ProtocolFailure::SubjectIdentityMismatch {
+        selector: selector.issued().clone(),
+        actual,
+    })
+}
+
+pub(super) fn unsupported_subject_kind_failure(
+    runtime: &crate::cli::AgentRuntimeArgs,
+    selector: &SymbolSelector,
+    evidence_selector: RelationshipSelectorInput,
+    subject: super::backend::SymbolIdentityInput,
+    supports: impl FnOnce(SymbolKind) -> bool,
+) -> Result<super::protocol::ProtocolFailure, super::protocol::ProtocolFailure> {
+    require_relationship_selector(runtime, selector, evidence_selector)?;
+    let subject = subject.normalize(runtime)?;
+    if &subject != selector.identity() || supports(subject.kind) {
+        return Err(invalid_relationship_evidence(
+            "unsupported-kind evidence did not prove the authenticated subject and family",
+        ));
+    }
+    Ok(super::protocol::ProtocolFailure::UnsupportedSubjectKind {
+        selector: selector.issued().clone(),
+        subject,
+    })
+}
+
+fn require_relationship_selector(
+    runtime: &crate::cli::AgentRuntimeArgs,
+    selector: &SymbolSelector,
+    evidence_selector: RelationshipSelectorInput,
+) -> Result<(), super::protocol::ProtocolFailure> {
+    if evidence_selector.matches(runtime, selector.identity())? {
+        Ok(())
+    } else {
+        Err(invalid_relationship_evidence(
+            "relationship outcome selector did not match the authenticated subject",
+        ))
+    }
+}
+
+fn invalid_relationship_evidence(message: &str) -> super::protocol::ProtocolFailure {
+    super::protocol::ProtocolFailure::BackendContractViolation {
+        message: message.to_string(),
+    }
 }

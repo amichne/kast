@@ -136,8 +136,27 @@ enum HierarchyKind {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ReferenceInput {
+    pub location: super::backend::LocationInput,
+    pub containing_symbol: ContainingSymbolInput,
+}
+
+impl ReferenceInput {
+    pub(super) fn normalize(
+        self,
+        runtime: &crate::cli::AgentRuntimeArgs,
+    ) -> Result<super::domain::ReferenceOccurrence, ProtocolFailure> {
+        Ok(super::domain::ReferenceOccurrence {
+            location: self.location.normalize(runtime)?,
+            containing_symbol: self.containing_symbol.normalize(runtime)?,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all_fields = "camelCase")]
-enum ContainingSymbolInput {
+pub(super) enum ContainingSymbolInput {
     #[serde(rename = "KNOWN")]
     Known { symbol: SymbolIdentityInput },
     #[serde(rename = "TOP_LEVEL")]
@@ -147,7 +166,7 @@ enum ContainingSymbolInput {
 }
 
 impl ContainingSymbolInput {
-    fn normalize(
+    pub(super) fn normalize(
         self,
         runtime: &crate::cli::AgentRuntimeArgs,
     ) -> Result<ContainingSymbol, ProtocolFailure> {
@@ -162,7 +181,7 @@ impl ContainingSymbolInput {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-enum ContainingSymbolUnavailable {
+pub(super) enum ContainingSymbolUnavailable {
     #[serde(rename(serialize = "no-semantic-owner", deserialize = "NO_SEMANTIC_OWNER"))]
     NoSemanticOwner,
     #[serde(rename(
@@ -183,7 +202,7 @@ enum ContainingSymbolUnavailable {
     rename_all = "kebab-case",
     rename_all_fields = "camelCase"
 )]
-enum ContainingSymbol {
+pub(super) enum ContainingSymbol {
     Known { symbol: SymbolIdentity },
     TopLevel,
     Unavailable { reason: ContainingSymbolUnavailable },
