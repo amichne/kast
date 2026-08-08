@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 
 @TestApplication
@@ -251,6 +252,61 @@ internal class ExactAdditionPlanningTest : ExactAdditionPlanningTestSupport() {
             }.exceptionOrNull() as? MutationPostconditionFailedException
                 ?: error("Expected changed add-file source context to fail")
             assertEquals(listOf(MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED), contextFailure.limitations)
+        }
+
+    @Test
+    fun `add file postcondition maps an unreadable proof image to source context changed`() =
+        kotlinx.coroutines.runBlocking {
+            ensureProjectReady()
+            val sourceRoot = sourceRoot()
+            assumeTrue(Files.getFileStore(sourceRoot).supportsFileAttributeView("posix"))
+            val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
+            val contextPath = sourceRoot.resolve("AUnreadablePostconditionContext.kt")
+            val target = sourceRoot.resolve("UnreadablePostconditionTarget.kt")
+            val content = "package demo\n\nclass UnreadablePostconditionTarget\n"
+            lateinit var contextVirtualFile: com.intellij.openapi.vfs.VirtualFile
+            ApplicationManager.getApplication().invokeAndWait {
+                ApplicationManager.getApplication().runWriteAction {
+                    contextVirtualFile = sampleFile.virtualFile.parent.createChildData(
+                        this,
+                        contextPath.fileName.toString(),
+                    )
+                    VfsUtil.saveText(contextVirtualFile, "package demo\n\nclass AUnreadablePostconditionContext\n")
+                }
+            }
+            waitUntilIndexesAreReady(project)
+            val backend = backend(workspaceRoot, workspaceModelReader = model(workspaceRoot, sourceRoot))
+            val plan = backend.planAddFile(
+                AddFilePlanQuery(AdditionTargetPath.parse(target.toString()), content),
+            )
+            ApplicationManager.getApplication().invokeAndWait {
+                ApplicationManager.getApplication().runWriteAction {
+                    val targetVirtualFile = sampleFile.virtualFile.parent.createChildData(this, target.fileName.toString())
+                    VfsUtil.saveText(targetVirtualFile, content)
+                }
+            }
+            waitUntilIndexesAreReady(project)
+            val originalPermissions = Files.getPosixFilePermissions(contextPath)
+            try {
+                Files.setPosixFilePermissions(contextPath, emptySet())
+
+                val failure = assertThrows(MutationPostconditionFailedException::class.java) {
+                    kotlinx.coroutines.runBlocking {
+                        backend.verifyMutationPostcondition(
+                            MutationPostconditionQuery(
+                                MutationPostconditionAuthority.AddFile(plan.proof, plan.postimage),
+                            ).parsed(),
+                        )
+                    }
+                }
+
+                assertEquals(
+                    listOf(MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED),
+                    failure.limitations,
+                )
+            } finally {
+                Files.setPosixFilePermissions(contextPath, originalPermissions)
+            }
         }
 
     @Test

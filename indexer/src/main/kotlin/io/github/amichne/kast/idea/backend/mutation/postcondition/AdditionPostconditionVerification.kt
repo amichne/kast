@@ -6,7 +6,6 @@
 package io.github.amichne.kast.idea.backend.mutation
 
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiReference
@@ -23,7 +22,6 @@ import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.ParsedMutationPostconditionAuthority
 import io.github.amichne.kast.api.validation.ParsedMutationPostconditionQuery
 import io.github.amichne.kast.idea.IdeaTelemetryScope
-import io.github.amichne.kast.idea.IdeaWorkspaceMutation
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.relationships.CompleteRelationshipCoverageAdmission
 import io.github.amichne.kast.idea.backend.relationships.completeRelationshipCoverageAdmission
@@ -34,7 +32,6 @@ import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.visibility
 import java.nio.file.Path
-import java.util.concurrent.CancellationException
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.psi.KtFile
@@ -127,20 +124,21 @@ private fun KastIndexerBackend.verifyAddition(
         MutationPostconditionLimitation.CLASSPATH_CHANGED,
         "The exact addition compiler classpath changed",
     )
-    val currentPaths = currentOwner.sourceFiles.map(Path::toString).toSet()
+    val currentPaths = currentOwner.sourceFiles.map { it.path.toString() }.toSet()
     if (currentPaths != expectedContextPaths) failPostcondition(
         MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED,
         "The exact model-owned source file set changed",
     )
+    val currentFiles = currentOwner.sourceFiles.associateBy { it.path.toString() }
     expectedContext.contextFileHashes.forEach { expected ->
         if (targetContextMayDiffer && expected.filePath == targetPath) return@forEach
+        val sourceFile = currentFiles[expected.filePath] ?: failPostcondition(
+            MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED,
+            "A required addition source-context file is no longer model-owned",
+        )
         val actual = try {
-            exactFileImageMutation.readFileBytes(Path.of(expected.filePath), IdeaWorkspaceMutation.TEXT_EDIT)
-        } catch (failure: ProcessCanceledException) {
-            throw failure
-        } catch (failure: CancellationException) {
-            throw failure
-        } catch (_: Exception) {
+            sourceFile.readExactBytes()
+        } catch (_: AdditionProofIncompleteException) {
             failPostcondition(
                 MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED,
                 "A required addition source-context image is unreadable",
@@ -192,7 +190,12 @@ private fun KastIndexerBackend.verifyAddition(
         },
     )
     try {
-        proveZeroRebindingCandidates(declarations, expectedPackage, currentOwner.sourceFiles, exclusions)
+        proveZeroRebindingCandidates(
+            declarations,
+            expectedPackage,
+            currentOwner.sourceFiles.map { it.path },
+            exclusions,
+        )
     } catch (failure: AdditionProofIncompleteException) {
         failPostcondition(
             MutationPostconditionLimitation.COLLISION_OR_REBINDING_CHANGED,

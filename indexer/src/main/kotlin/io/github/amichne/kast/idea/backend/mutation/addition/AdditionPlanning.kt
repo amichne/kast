@@ -67,11 +67,12 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
 
 internal data class AdditionOwnerSnapshot(
+    val editableTarget: EditableAdditionTarget,
     val owner: AdditionSourceOwner,
     val modelFingerprint: AdditionProjectModelFingerprint,
     val classpathFingerprint: AdditionClasspathFingerprint,
-    val sourceFiles: List<Path>,
-    val anchorSourceFiles: List<Path>,
+    val sourceFiles: List<AdditionProofFile>,
+    val anchorSourceFiles: List<AdditionProofFile>,
 )
 
 internal data class ParsedAddition(
@@ -92,7 +93,6 @@ internal suspend fun KastIndexerBackend.planAddFileOperation(
     telemetry.inSpan(IdeaTelemetryScope.PLAN_ADD_FILE, "kast.idea.planAddFile") {
         timedReadAction(telemetry, IdeaTelemetryScope.PLAN_ADD_FILE, "kast.idea.planAddFile.prove") {
             val target = query.targetPath.toJavaPath()
-            requireAdditionPathAuthority(target, "add-file target")
             if (!Files.isDirectory(target.parent, NOFOLLOW_LINKS)) failAddition(
                 AdditionProofLimitation.TARGET_PARENT_MISSING,
                 "The add-file target parent does not exist",
@@ -102,8 +102,9 @@ internal suspend fun KastIndexerBackend.planAddFileOperation(
                 "The add-file target already exists",
             )
             val owner = exactAdditionOwner(target)
-            requireSecureAbsentTarget(target, owner.owner)
+            requireSecureAbsentTarget(owner.editableTarget)
             val anchor = owner.anchorSourceFiles.asSequence()
+                .map(AdditionProofFile::path)
                 .filter { it.toString().endsWith(".kt") }
                 .mapNotNull(::findKtFileOrNull)
                 .firstOrNull()
@@ -112,10 +113,14 @@ internal suspend fun KastIndexerBackend.planAddFileOperation(
                     "The exact source owner has no Kotlin module-context anchor",
                 )
             val parsed = parseAddFile(query.proposedContent.value, target.fileName.toString(), anchor)
-            proveZeroRebindingCandidates(parsed.declarations, parsed.packageIdentity, owner.sourceFiles)
+            proveZeroRebindingCandidates(
+                parsed.declarations,
+                parsed.packageIdentity,
+                owner.sourceFiles.map(AdditionProofFile::path),
+            )
             val proofParts = proveAdditionDeclarations(parsed, relativeBaseOffset = 0)
             val generation = psiGeneration()
-            val context = exactAdditionContext(owner, generation, targetToInclude = null)
+            val context = exactAdditionContext(owner, generation)
             revalidateAdditionContext(owner, generation, context, target, mustExist = false)
             val postimage = strictAdditionPlannerUtf8Bytes(query.proposedContent.value)
             AddFilePlanResult.of(
@@ -146,12 +151,12 @@ internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
             "kast.idea.planAddDeclaration.prove",
         ) {
             val target = query.targetPath.toJavaPath()
-            requireAdditionPathAuthority(target, "add-declaration target")
+            val owner = exactAdditionOwner(target)
             if (!Files.isRegularFile(target, NOFOLLOW_LINKS)) failAddition(
                 AdditionProofLimitation.TARGET_FILE_MISSING,
                 "The add-declaration target file does not exist",
             )
-            val rawPreimage = secureAdditionRead(target)
+            val rawPreimage = secureAdditionTargetRead(owner.editableTarget)
             val actualPrehash = FileHashing.sha256(rawPreimage)
             if (actualPrehash != query.expectedCurrentSha256.value) failAddition(
                 AdditionProofLimitation.TARGET_FILE_HASH_CHANGED,
@@ -161,8 +166,7 @@ internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
                 AdditionProofLimitation.TARGET_NOT_KOTLIN_SOURCE,
                 "The add-declaration target is not one exact Kotlin source file",
             )
-            val owner = exactAdditionOwner(target)
-            requireSecureExistingTarget(target, owner.owner)
+            requireSecureExistingTarget(owner.editableTarget)
             val parsedProposal = parseAddDeclaration(query.proposedDeclaration.value, targetFile)
             val insertion = SemanticInsertionPointResolver.resolve(
                 targetFile,
@@ -197,10 +201,14 @@ internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
                 packageIdentity = targetFile.packageFqName.toAdditionPackage(),
                 analysisSource = AdditionAnalysisSource.COPIED_PROPOSAL,
             )
-            proveZeroRebindingCandidates(contextual.declarations, contextual.packageIdentity, owner.sourceFiles)
+            proveZeroRebindingCandidates(
+                contextual.declarations,
+                contextual.packageIdentity,
+                owner.sourceFiles.map(AdditionProofFile::path),
+            )
             val proofParts = proveAdditionDeclarations(contextual, relativeBaseOffset = proposedStart)
             val generation = psiGeneration()
-            val context = exactAdditionContext(owner, generation, targetToInclude = target)
+            val context = exactAdditionContext(owner, generation)
             revalidateAdditionContext(owner, generation, context, target, mustExist = true)
             val imagePlan = try {
                 IdeaTextImagePlanner.plan(
