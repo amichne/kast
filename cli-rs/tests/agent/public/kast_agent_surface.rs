@@ -2,6 +2,8 @@
 mod developer_route;
 #[path = "surface/graph_summary_protocol.rs"]
 mod graph_summary_protocol;
+#[path = "surface/review_comment_regressions.rs"]
+mod review_comment_regressions;
 #[path = "../../support/mod.rs"]
 mod support;
 #[path = "surface/typed_exact_operations.rs"]
@@ -239,7 +241,7 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
         .as_str()
         .expect("opaque public graph continuation")
         .to_string();
-    assert!(continuation.starts_with("kgn2."), "{first:#}");
+    assert!(continuation.starts_with("kgn3."), "{first:#}");
     for private in [
         "truncated",
         "nextPage",

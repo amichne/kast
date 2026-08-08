@@ -248,16 +248,9 @@ impl TryFrom<Value> for AgentSymbolEvidenceProjection {
 struct AgentSymbolCandidateProjection {
     identity: AgentSymbolIdentityProjection,
     #[serde(skip_serializing_if = "Option::is_none")]
+    selector_handle: Option<AgentSelectorHandle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     location: Option<AgentLocationInput>,
-}
-
-impl From<AgentSymbolEvidenceProjection> for AgentSymbolCandidateProjection {
-    fn from(value: AgentSymbolEvidenceProjection) -> Self {
-        Self {
-            identity: value.identity,
-            location: value.location,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -364,18 +357,21 @@ impl AgentSymbolProjection {
                 source,
                 query,
                 candidates,
-            } => Ok(Self {
-                mode,
-                outcome: "AMBIGUOUS",
-                ambiguous: true,
-                source,
-                query: Some(query),
-                identity: None,
-                selector_handle: None,
-                location: None,
-                candidates: project_symbol_candidates(candidates)?,
-                relationships: Vec::new(),
-            }),
+            } => {
+                let candidates = project_ambiguous_symbol_candidates(&source, candidates)?;
+                Ok(Self {
+                    mode,
+                    outcome: "AMBIGUOUS",
+                    ambiguous: true,
+                    source,
+                    query: Some(query),
+                    identity: None,
+                    selector_handle: None,
+                    location: None,
+                    candidates,
+                    relationships: Vec::new(),
+                })
+            }
             AgentSymbolOutcomeProjectionInput::Discovered {
                 source,
                 query,

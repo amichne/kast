@@ -107,12 +107,6 @@ enum ImpactProjection {
     },
     #[serde(rename = "DEGRADED")]
     Degraded { reason: String },
-    #[serde(rename = "SUBJECT_NOT_FOUND")]
-    SubjectNotFound,
-    #[serde(rename = "SUBJECT_IDENTITY_MISMATCH")]
-    SubjectIdentityMismatch,
-    #[serde(rename = "UNSUPPORTED_SUBJECT_KIND")]
-    UnsupportedSubjectKind,
     #[serde(rename = "SELECTOR_HANDLE_REJECTED")]
     SelectorRejected {
         reason: super::protocol::SelectorRejectionReason,
@@ -195,10 +189,13 @@ fn normalize_impact(
         } => {
             let subject = match query.subject.normalize(runtime) {
                 Ok(subject) if subject.fq_name == query.symbol => subject,
-                Ok(_) => {
+                Ok(actual) => {
                     return ProtocolEnvelope::rejected(
                         operation,
-                        ProtocolFailure::SubjectIdentityMismatch,
+                        ProtocolFailure::SubjectIdentityMismatch {
+                            selector: selector.clone(),
+                            actual,
+                        },
                     );
                 }
                 Err(failure) => return ProtocolEnvelope::rejected(operation, failure),
@@ -243,15 +240,6 @@ fn normalize_impact(
                 super::protocol::ProtocolLimitation::BackendIncomplete
             }],
         },
-        ImpactProjection::SubjectNotFound => {
-            return ProtocolEnvelope::rejected(operation, ProtocolFailure::SubjectNotFound);
-        }
-        ImpactProjection::SubjectIdentityMismatch => {
-            return ProtocolEnvelope::rejected(operation, ProtocolFailure::SubjectIdentityMismatch);
-        }
-        ImpactProjection::UnsupportedSubjectKind => {
-            return ProtocolEnvelope::rejected(operation, ProtocolFailure::UnsupportedSubjectKind);
-        }
         ImpactProjection::SelectorRejected { reason, recovery } => {
             return ProtocolEnvelope::rejected(
                 operation,

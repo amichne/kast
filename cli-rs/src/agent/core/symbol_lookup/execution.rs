@@ -129,6 +129,7 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
             },
         ),
         AgentCompilerResolveResponse::Ambiguous { candidates } if candidates.len() >= 2 => {
+            let candidates = candidates.into_iter().map(|candidate| json!(candidate)).collect();
             symbol_lookup_envelope(
                 args.mode,
                 compiler_request,

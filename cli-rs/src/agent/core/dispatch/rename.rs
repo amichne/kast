@@ -89,7 +89,7 @@ fn execute_agent_rename_symbol_preview(
                 );
                 error
                     .details
-                    .insert("candidates".to_string(), Value::Array(candidates));
+                    .insert("candidates".to_string(), json!(candidates));
                 return error_envelope("agent/rename".to_string(), Some(identity_request), error);
             }
             Ok(AgentCompilerResolveResponse::OperationalFailure) => {

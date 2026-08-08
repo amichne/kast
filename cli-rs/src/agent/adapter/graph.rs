@@ -35,7 +35,7 @@ fn print_native_graph(
     operation: NativeGraphOperation,
     scope: Option<NativeGraphScope>,
     node_selector: Option<agent::public_protocol::UntrustedGraphNodeSelector>,
-    page: Option<KastGraphNodesPageToken>,
+    page: Option<agent::public_protocol::GraphNodesPageToken>,
     output_format: OutputFormat,
 ) -> Result<i32> {
     let public_operation = public_graph_operation(operation);
@@ -108,7 +108,9 @@ fn print_native_graph(
             );
         }
     };
-    let after_id = page.as_ref().map(KastGraphNodesPageToken::after_id);
+    let after_id = page
+        .as_ref()
+        .map(agent::public_protocol::GraphNodesPageToken::after_id);
     let envelope = projected_value(native_graph_command(
         workspace_root.clone(),
         operation,
@@ -143,7 +145,6 @@ fn print_native_graph(
         serde_json::to_value(admission.coverage())?,
     );
     if operation == NativeGraphOperation::Nodes {
-        let previously_returned = page.as_ref().map_or(0, KastGraphNodesPageToken::returned);
         let generation = fields
             .get("generation")
             .and_then(Value::as_u64)
@@ -152,6 +153,28 @@ fn print_native_graph(
                 CliError::new(
                     "KAST_INVALID_AGENT_RESULT",
                     "The native graph node page returned the wrong generation.",
+                )
+            })?;
+        let expected_after_id = page
+            .as_ref()
+            .map_or(0, agent::public_protocol::GraphNodesPageToken::after_id);
+        fields
+            .remove("afterId")
+            .and_then(|value| value.as_u64())
+            .filter(|after_id| *after_id == expected_after_id)
+            .ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned the wrong prior node identity.",
+                )
+            })?;
+        let previously_returned = fields
+            .remove("previouslyReturned")
+            .and_then(|value| value.as_u64())
+            .ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned no prior cardinality evidence.",
                 )
             })?;
         let nodes = fields
@@ -225,11 +248,10 @@ fn print_native_graph(
                     "The native graph node page returned an invalid continuation.",
                 )
             })?;
-            let next_page = KastGraphNodesPageToken::issue(
+            let next_page = agent::public_protocol::GraphNodesPageToken::issue(
                 workspace_fingerprint,
                 admission.generation(),
                 next_after_id,
-                cumulative_returned,
             )
             .ok_or_else(|| {
                 CliError::new(
@@ -239,13 +261,19 @@ fn print_native_graph(
             })?;
             continuation = Some(next_page.canonical());
         }
-        fields.remove("afterId");
+        let cardinality = if truncated {
+            let known_minimum = cumulative_returned.checked_add(1).ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The graph node page exceeded public cardinality.",
+                )
+            })?;
+            json!({"type": "known-minimum", "count": known_minimum})
+        } else {
+            json!({"type": "exact", "count": cumulative_returned})
+        };
         let mut page = json!({
-            "cardinality": if truncated {
-                json!({"type": "known-minimum", "count": cumulative_returned + 1})
-            } else {
-                json!({"type": "exact", "count": cumulative_returned})
-            },
+            "cardinality": cardinality,
             "returned": returned,
         });
         if let Some(continuation) = continuation {

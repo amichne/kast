@@ -4,7 +4,8 @@ use super::backend::{
 };
 use super::domain::{
     IssuedSymbolSelector, PublicOperation, SelectableSymbol, SymbolMatch, SymbolSelector,
-    UntrustedSymbolSelector,
+    UntrustedSymbolSelector, subject_identity_mismatch_failure, subject_not_found_failure,
+    unsupported_subject_kind_failure,
 };
 use super::protocol::{OperationId, ProtocolEnvelope, ProtocolFailure, ProtocolResult};
 use crate::cli::AgentRuntimeArgs;
@@ -221,12 +222,28 @@ fn references_result(
             references,
             evidence,
         } => (subject, references, evidence, None, false),
-        ReferencesResponse::SubjectNotFound => return Err(ProtocolFailure::SubjectNotFound),
-        ReferencesResponse::SubjectIdentityMismatch => {
-            return Err(ProtocolFailure::SubjectIdentityMismatch);
+        ReferencesResponse::SubjectNotFound { selector: evidence } => {
+            return Err(subject_not_found_failure(runtime, &selector, evidence)?);
         }
-        ReferencesResponse::UnsupportedSubjectKind => {
-            return Err(ProtocolFailure::UnsupportedSubjectKind);
+        ReferencesResponse::SubjectIdentityMismatch {
+            selector: evidence,
+            actual,
+        } => {
+            return Err(subject_identity_mismatch_failure(
+                runtime, &selector, evidence, actual,
+            )?);
+        }
+        ReferencesResponse::UnsupportedSubjectKind {
+            selector: evidence,
+            subject,
+        } => {
+            return Err(unsupported_subject_kind_failure(
+                runtime,
+                &selector,
+                evidence,
+                subject,
+                |kind| kind != super::domain::SymbolKind::Unknown,
+            )?);
         }
         ReferencesResponse::CursorStale => return Err(ProtocolFailure::ContinuationStale),
         ReferencesResponse::CursorInvalid => return Err(ProtocolFailure::ContinuationInvalid),
@@ -236,7 +253,10 @@ fn references_result(
     };
     let subject = subject.normalize(runtime)?;
     if &subject != selector.identity() {
-        return Err(ProtocolFailure::SubjectIdentityMismatch);
+        return Err(ProtocolFailure::SubjectIdentityMismatch {
+            selector: selector.issued().clone(),
+            actual: subject,
+        });
     }
     let references = references
         .into_iter()

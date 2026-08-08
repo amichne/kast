@@ -125,7 +125,7 @@ fn execute_agent_replacement_symbol_preview(
                 );
                 error
                     .details
-                    .insert("candidates".to_string(), Value::Array(candidates));
+                    .insert("candidates".to_string(), json!(candidates));
                 return error_envelope(
                     "agent/replace-declaration".to_string(),
                     Some(identity_request),

@@ -1,7 +1,11 @@
 use super::backend::{
     RelationshipEvidence, SymbolIdentityInput, page, request, selector_rejection,
 };
-use super::domain::{ExactSymbolRequest, IssuedSymbolSelector, SymbolSelector};
+use super::domain::{
+    ExactSymbolRequest, IssuedSymbolSelector, RelationshipSelectorInput, SymbolKind,
+    SymbolSelector, subject_identity_mismatch_failure, subject_not_found_failure,
+    unsupported_subject_kind_failure,
+};
 use super::execution::authenticate_selector;
 use super::protocol::{OperationId, ProtocolEnvelope, ProtocolFailure, ProtocolResult};
 use super::traversal_types::{
@@ -99,6 +103,19 @@ impl TraversalOperation {
                 | (Self::HierarchySubtypes, RelationRecord::Subtype { .. })
         )
     }
+
+    fn supports_subject_kind(self, kind: SymbolKind) -> bool {
+        match self {
+            Self::CallsIncoming | Self::CallsOutgoing => kind == SymbolKind::Function,
+            Self::Implementations => matches!(kind, SymbolKind::Class | SymbolKind::Interface),
+            Self::HierarchySupertypes | Self::HierarchySubtypes => {
+                matches!(
+                    kind,
+                    SymbolKind::Class | SymbolKind::Interface | SymbolKind::Object
+                )
+            }
+        }
+    }
 }
 
 pub(super) fn execute(
@@ -154,11 +171,17 @@ enum TraversalResponse {
         records: Vec<RelationRecordInput>,
     },
     #[serde(rename = "SUBJECT_NOT_FOUND")]
-    SubjectNotFound { selector: Value },
+    SubjectNotFound { selector: RelationshipSelectorInput },
     #[serde(rename = "SUBJECT_IDENTITY_MISMATCH")]
-    SubjectIdentityMismatch { selector: Value, actual: Value },
+    SubjectIdentityMismatch {
+        selector: RelationshipSelectorInput,
+        actual: SymbolIdentityInput,
+    },
     #[serde(rename = "UNSUPPORTED_SUBJECT_KIND")]
-    UnsupportedSubjectKind { selector: Value, subject: Value },
+    UnsupportedSubjectKind {
+        selector: RelationshipSelectorInput,
+        subject: SymbolIdentityInput,
+    },
     #[serde(rename = "CURSOR_STALE")]
     CursorStale { reason: CursorStaleReason },
     #[serde(rename = "CURSOR_INVALID")]
@@ -239,17 +262,28 @@ fn normalize_response(
             validate_degraded_reason(operation, reason)?;
             (subject, records, evidence, None, false)
         }
-        TraversalResponse::SubjectNotFound { selector } => {
-            drop(selector);
-            return Err(ProtocolFailure::SubjectNotFound);
+        TraversalResponse::SubjectNotFound { selector: evidence } => {
+            return Err(subject_not_found_failure(runtime, &selector, evidence)?);
         }
-        TraversalResponse::SubjectIdentityMismatch { selector, actual } => {
-            drop((selector, actual));
-            return Err(ProtocolFailure::SubjectIdentityMismatch);
+        TraversalResponse::SubjectIdentityMismatch {
+            selector: evidence,
+            actual,
+        } => {
+            return Err(subject_identity_mismatch_failure(
+                runtime, &selector, evidence, actual,
+            )?);
         }
-        TraversalResponse::UnsupportedSubjectKind { selector, subject } => {
-            drop((selector, subject));
-            return Err(ProtocolFailure::UnsupportedSubjectKind);
+        TraversalResponse::UnsupportedSubjectKind {
+            selector: evidence,
+            subject,
+        } => {
+            return Err(unsupported_subject_kind_failure(
+                runtime,
+                &selector,
+                evidence,
+                subject,
+                |kind| operation.supports_subject_kind(kind),
+            )?);
         }
         TraversalResponse::CursorStale { reason } => {
             let _ = reason;
@@ -269,7 +303,15 @@ fn normalize_response(
     };
     let subject = subject.normalize(runtime)?;
     if &subject != selector.identity() {
-        return Err(ProtocolFailure::SubjectIdentityMismatch);
+        return Err(ProtocolFailure::SubjectIdentityMismatch {
+            selector: selector.issued().clone(),
+            actual: subject,
+        });
+    }
+    if !operation.supports_subject_kind(subject.kind) {
+        return Err(contract_violation(
+            "relationship subject used a kind outside the requested family",
+        ));
     }
     let records = records
         .into_iter()

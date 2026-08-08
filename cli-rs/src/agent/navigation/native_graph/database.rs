@@ -143,6 +143,24 @@ fn native_graph_symbol_page(
                 "Source-index generation changed before keyset enumeration.",
             ));
         }
+        let after_id_bound = i64::try_from(after_id).unwrap_or(i64::MAX);
+        let count_sql = if has_repository_base {
+            format!(
+                "{} SELECT COUNT(*) FROM effective_symbol_rows WHERE encoded_id <= ?",
+                native_graph_overlay_cte(),
+            )
+        } else {
+            "SELECT COUNT(*) FROM semantic_symbols WHERE id <= ?".to_string()
+        };
+        let previously_returned = connection
+            .query_row(&count_sql, [after_id_bound], |row| row.get::<_, i64>(0))
+            .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?;
+        let previously_returned = u64::try_from(previously_returned).map_err(|_| {
+            agent_error(
+                "NATIVE_GRAPH_QUERY_FAILED",
+                "Native graph prior cardinality was outside the public range.",
+            )
+        })?;
         let sql = if has_repository_base {
             format!(
                 "{} SELECT encoded_id, stable_key, kind, name, file_path
@@ -167,7 +185,7 @@ fn native_graph_symbol_page(
         let rows = statement
             .query_map(
                 rusqlite::params![
-                    i64::try_from(after_id).unwrap_or(i64::MAX),
+                    after_id_bound,
                     i64::try_from(limit.saturating_add(1)).unwrap_or(i64::MAX)
                 ],
                 |row| {
@@ -198,6 +216,7 @@ fn native_graph_symbol_page(
             "type": "KAST_NATIVE_GRAPH_NODES",
             "generation": generation,
             "afterId": after_id,
+            "previouslyReturned": previously_returned,
             "nodes": page,
             "nextAfterId": next_after_id,
             "schemaVersion": SCHEMA_VERSION
