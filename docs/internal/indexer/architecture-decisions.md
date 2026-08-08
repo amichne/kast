@@ -37,9 +37,9 @@ become a second path authority.
 
 ## Start only on explicit demand
 
-**Decision:** `kast up` and semantic commands admit or create the exact-root
-indexer. Foreground editor events are not lifecycle inputs. Kast does not add
-continuous supervision.
+**Decision:** `kast workspace ensure` and semantic commands admit or create the
+exact-root indexer. Foreground editor events are not lifecycle inputs. Kast
+does not add continuous supervision.
 
 **Consequence:** After a crash, the next explicit demand admits or creates a
 replacement.

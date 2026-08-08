@@ -279,6 +279,8 @@ fn current_public_artifacts_contain_no_retired_routes_or_aliases() {
         repository_root.join("docs/how-to/explore-kotlin-code.md"),
         repository_root.join("docs/how-to/plan-safe-edits.md"),
         repository_root.join("docs/tutorials/first-compiler-backed-task.md"),
+        repository_root.join("docs/internal/indexer/flows/load-and-bootstrap.md"),
+        repository_root.join("docs/internal/indexer/architecture-decisions.md"),
         manifest_dir.join("resources/kast/SKILL.md"),
         manifest_dir.join("protocol/source/public-runbook.md"),
         manifest_dir.join("protocol/completions/_kast"),

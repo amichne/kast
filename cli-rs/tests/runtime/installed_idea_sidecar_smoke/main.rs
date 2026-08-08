@@ -14,7 +14,7 @@ use support::{
 const SIDECAR_LAUNCH_MARKER: &str = "__KAST_SIDECAR_LAUNCH__";
 
 #[test]
-fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
+fn workspace_ensure_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
     let fixture = tempfile::tempdir().expect("fixture");
     let fixture_root = fixture.path().canonicalize().expect("canonical fixture");
     let home = fixture_root.join("home");
@@ -94,7 +94,7 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
         &marker,
         2,
     );
-    let first = sidecar_up_command(
+    let first = sidecar_workspace_ensure_command(
         &home,
         &config_home,
         &workspace,
@@ -103,8 +103,8 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
         &service_manager_root,
     )
     .spawn()
-    .expect("first kast up");
-    let second = sidecar_up_command(
+    .expect("first kast workspace ensure");
+    let second = sidecar_workspace_ensure_command(
         &home,
         &config_home,
         &workspace,
@@ -113,15 +113,19 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
         &service_manager_root,
     )
     .spawn()
-    .expect("second kast up");
-    let first_output = first.wait_with_output().expect("first kast up output");
-    let second_output = second.wait_with_output().expect("second kast up output");
+    .expect("second kast workspace ensure");
+    let first_output = first
+        .wait_with_output()
+        .expect("first kast workspace ensure output");
+    let second_output = second
+        .wait_with_output()
+        .expect("second kast workspace ensure output");
     std::fs::write(&stop, b"").expect("stop sidecar");
 
     for (label, output) in [("first", &first_output), ("second", &second_output)] {
         assert!(
             output.status.success(),
-            "{label} kast up failed: first stdout={}, second stdout={}, marker={}, stderr={}",
+            "{label} kast workspace ensure failed: first stdout={}, second stdout={}, marker={}, stderr={}",
             String::from_utf8_lossy(&first_output.stdout),
             String::from_utf8_lossy(&second_output.stdout),
             std::fs::read_to_string(&marker).unwrap_or_default(),
@@ -142,7 +146,7 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
             .filter(|line| *line == SIDECAR_LAUNCH_MARKER)
             .count(),
         1,
-        "concurrent `kast up` calls must launch one sidecar: {launch}",
+        "concurrent `kast workspace ensure` calls must launch one sidecar: {launch}",
     );
     assert!(
         launch.contains(&format!("\n{}\n", java.canonicalize().unwrap().display())),
@@ -165,7 +169,7 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
     );
 }
 
-fn sidecar_up_command(
+fn sidecar_workspace_ensure_command(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -190,7 +194,7 @@ fn sidecar_up_command(
         )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .arg("up");
+        .args(["workspace", "ensure"]);
     command
 }
 

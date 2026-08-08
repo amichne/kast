@@ -14,9 +14,9 @@ code_sources:
 
 # Indexer Load and Bootstrap
 
-Public demand begins with `kast up` or a semantic command from the canonical
-workspace root. The runtime layer inspects only exact-root candidates and
-passes them through one admission boundary.
+Public demand begins with `kast workspace ensure` or a semantic command from
+the canonical workspace root. The runtime layer inspects only exact-root
+candidates and passes them through one admission boundary.
 
 ```mermaid
 sequenceDiagram
