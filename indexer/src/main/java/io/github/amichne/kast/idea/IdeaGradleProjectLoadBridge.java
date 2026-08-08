@@ -30,9 +30,12 @@ import org.jetbrains.plugins.gradle.util.GradleConstants;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -146,7 +149,7 @@ public final class IdeaGradleProjectLoadBridge {
             .sorted(Comparator.comparing(Path::toString))
             .toList();
         LinkedHashSet<GradleModuleIdentity> importedModuleIdentities = new LinkedHashSet<>();
-        LinkedHashSet<Path> importedSourceRoots = new LinkedHashSet<>();
+        Map<Path, LinkedHashSet<ExternalSystemSourceType>> importedSourceRoots = new LinkedHashMap<>();
         boolean[] importedModelComplete = {
             !ProjectDataManager.getInstance().getExternalProjectsData(project, GradleConstants.SYSTEM_ID).isEmpty()
         };
@@ -236,9 +239,7 @@ public final class IdeaGradleProjectLoadBridge {
                     .thenComparing(GradleModuleIdentity::externalModuleId)
             )
             .toList();
-        List<Path> sourceRoots = importedSourceRoots.stream()
-            .sorted(Comparator.comparing(Path::toString))
-            .toList();
+        List<GradleSourceRoot> sourceRoots = classifySourceRoots(importedSourceRoots);
         return new GradleWorkspaceModel(
             List.copyOf(roots),
             importedModelComplete[0],
@@ -258,11 +259,11 @@ public final class IdeaGradleProjectLoadBridge {
             String externalName = sourceSetData.getExternalName();
             int separator = externalName.lastIndexOf(':');
             String sourceSetName = separator >= 0 ? externalName.substring(separator + 1) : externalName;
-            LinkedHashSet<Path> sourceRoots = new LinkedHashSet<>();
+            Map<Path, LinkedHashSet<ExternalSystemSourceType>> sourceRoots = new LinkedHashMap<>();
             collectSourceRoots(node, sourceRoots);
             sourceSets.add(new GradleSourceSetAssociation(
                 sourceSetName,
-                sourceRoots.stream().sorted(Comparator.comparing(Path::toString)).toList()
+                classifySourceRoots(sourceRoots)
             ));
         });
         return sourceSets.stream()
@@ -281,7 +282,10 @@ public final class IdeaGradleProjectLoadBridge {
         return new GradleModuleIdentity(normalize(Path.of(externalProjectPath)), externalModuleId);
     }
 
-    private static void collectModuleSourceRoots(DataNode<?> node, LinkedHashSet<Path> sourceRoots) {
+    private static void collectModuleSourceRoots(
+        DataNode<?> node,
+        Map<Path, LinkedHashSet<ExternalSystemSourceType>> sourceRoots
+    ) {
         for (DataNode<?> child : node.getChildren()) {
             if (child.getData() instanceof ModuleData) {
                 continue;
@@ -295,14 +299,19 @@ public final class IdeaGradleProjectLoadBridge {
                         .map(ContentRootData.SourceRoot::getPath)
                         .map(Path::of)
                         .map(IdeaGradleProjectLoadBridge::normalize)
-                        .forEach(sourceRoots::add);
+                        .forEach(path -> sourceRoots
+                            .computeIfAbsent(path, ignored -> new LinkedHashSet<>())
+                            .add(sourceType));
                 }
             }
             collectModuleSourceRoots(child, sourceRoots);
         }
     }
 
-    private static void collectSourceRoots(DataNode<?> node, LinkedHashSet<Path> sourceRoots) {
+    private static void collectSourceRoots(
+        DataNode<?> node,
+        Map<Path, LinkedHashSet<ExternalSystemSourceType>> sourceRoots
+    ) {
         for (DataNode<?> child : node.getChildren()) {
             if (child.getData() instanceof ModuleData) {
                 continue;
@@ -316,7 +325,9 @@ public final class IdeaGradleProjectLoadBridge {
                         .map(ContentRootData.SourceRoot::getPath)
                         .map(Path::of)
                         .map(IdeaGradleProjectLoadBridge::normalize)
-                        .forEach(sourceRoots::add);
+                        .forEach(path -> sourceRoots
+                            .computeIfAbsent(path, ignored -> new LinkedHashSet<>())
+                            .add(sourceType));
                 }
             }
             collectSourceRoots(child, sourceRoots);
@@ -395,12 +406,72 @@ public final class IdeaGradleProjectLoadBridge {
         return path.toAbsolutePath().normalize();
     }
 
+    private static List<GradleSourceRoot> classifySourceRoots(
+        Map<Path, ? extends Collection<ExternalSystemSourceType>> sourceRoots
+    ) {
+        return sourceRoots.entrySet().stream()
+            .map(entry -> classifySourceRoot(entry.getKey(), entry.getValue()))
+            .sorted(Comparator.comparing(sourceRoot -> sourceRoot.path().toString()))
+            .toList();
+    }
+
+    static GradleSourceRoot classifySourceRoot(
+        Path path,
+        Collection<ExternalSystemSourceType> sourceTypes
+    ) {
+        Objects.requireNonNull(sourceTypes, "sourceTypes");
+        List<ExternalSystemSourceType> exactSourceTypes = sourceTypes.stream()
+            .map(sourceType -> Objects.requireNonNull(sourceType, "sourceType"))
+            .distinct()
+            .sorted(Comparator.comparing(Enum::name))
+            .toList();
+        List<GradleSourceRootModelEvidence> modelEvidence = exactSourceTypes.stream()
+            .map(IdeaGradleProjectLoadBridge::modelEvidence)
+            .toList();
+        GradleSourceRootProvenance provenance;
+        if (exactSourceTypes.isEmpty()) {
+            provenance = new GradleSourceRootProvenance.Unknown(
+                "Gradle model supplied no source-type classification",
+                modelEvidence
+            );
+        } else if (exactSourceTypes.stream().anyMatch(sourceType -> sourceType.isExcluded() || sourceType.isResource())) {
+            provenance = new GradleSourceRootProvenance.Unknown(
+                "Gradle model supplied a non-code source-type classification",
+                modelEvidence
+            );
+        } else if (exactSourceTypes.stream().allMatch(ExternalSystemSourceType::isGenerated)) {
+            provenance = new GradleSourceRootProvenance.Generated(modelEvidence);
+        } else if (exactSourceTypes.stream().noneMatch(ExternalSystemSourceType::isGenerated)) {
+            provenance = new GradleSourceRootProvenance.Authored(modelEvidence);
+        } else {
+            provenance = new GradleSourceRootProvenance.Unknown(
+                "Gradle model supplied conflicting authored and generated classifications",
+                modelEvidence
+            );
+        }
+        return new GradleSourceRoot(path, provenance);
+    }
+
+    private static GradleSourceRootModelEvidence modelEvidence(ExternalSystemSourceType sourceType) {
+        return switch (sourceType) {
+            case SOURCE -> GradleSourceRootModelEvidence.SOURCE;
+            case TEST -> GradleSourceRootModelEvidence.TEST;
+            case EXCLUDED -> GradleSourceRootModelEvidence.EXCLUDED;
+            case SOURCE_GENERATED -> GradleSourceRootModelEvidence.SOURCE_GENERATED;
+            case TEST_GENERATED -> GradleSourceRootModelEvidence.TEST_GENERATED;
+            case RESOURCE -> GradleSourceRootModelEvidence.RESOURCE;
+            case TEST_RESOURCE -> GradleSourceRootModelEvidence.TEST_RESOURCE;
+            case RESOURCE_GENERATED -> GradleSourceRootModelEvidence.RESOURCE_GENERATED;
+            case TEST_RESOURCE_GENERATED -> GradleSourceRootModelEvidence.TEST_RESOURCE_GENERATED;
+        };
+    }
+
     public record GradleWorkspaceModel(
         List<Path> linkedBuildRoots,
         boolean importedModelComplete,
         List<GradleModuleIdentity> importedModuleIdentities,
         List<LoadedGradleModule> loadedModules,
-        List<Path> importedSourceRoots,
+        List<GradleSourceRoot> importedSourceRoots,
         List<GradleModuleAssociation> moduleAssociations
     ) {
     }
@@ -430,7 +501,132 @@ public final class IdeaGradleProjectLoadBridge {
 
     public record GradleSourceSetAssociation(
         String sourceSetName,
-        List<Path> sourceRoots
+        List<GradleSourceRoot> sourceRoots
     ) {
+    }
+
+    public record GradleSourceRoot(
+        Path path,
+        GradleSourceRootProvenance provenance
+    ) {
+        public GradleSourceRoot {
+            path = normalize(Objects.requireNonNull(path, "path"));
+            provenance = Objects.requireNonNull(provenance, "provenance");
+        }
+
+        public String stableIdentity() {
+            return path.toString().replace('\\', '/') + '|' + provenance.stableIdentity();
+        }
+    }
+
+    public enum GradleSourceRootModelEvidence {
+        SOURCE(true, false),
+        TEST(true, false),
+        EXCLUDED(false, false),
+        SOURCE_GENERATED(true, true),
+        TEST_GENERATED(true, true),
+        RESOURCE(false, false),
+        TEST_RESOURCE(false, false),
+        RESOURCE_GENERATED(false, true),
+        TEST_RESOURCE_GENERATED(false, true);
+
+        private final boolean code;
+        private final boolean generated;
+
+        GradleSourceRootModelEvidence(boolean code, boolean generated) {
+            this.code = code;
+            this.generated = generated;
+        }
+
+        private boolean isAuthoredCode() {
+            return code && !generated;
+        }
+
+        private boolean isGeneratedCode() {
+            return code && generated;
+        }
+    }
+
+    public sealed interface GradleSourceRootProvenance
+        permits GradleSourceRootProvenance.Authored,
+            GradleSourceRootProvenance.Generated,
+            GradleSourceRootProvenance.Unknown {
+        List<GradleSourceRootModelEvidence> modelEvidence();
+
+        String stableIdentity();
+
+        record Authored(List<GradleSourceRootModelEvidence> modelEvidence)
+            implements GradleSourceRootProvenance {
+            public Authored {
+                modelEvidence = requiredModelEvidence(modelEvidence);
+                if (modelEvidence.stream().anyMatch(evidence -> !evidence.isAuthoredCode())) {
+                    throw new IllegalArgumentException("Authored provenance requires authored Gradle code evidence");
+                }
+            }
+
+            @Override
+            public String stableIdentity() {
+                return "AUTHORED:" + evidenceIdentity(modelEvidence);
+            }
+        }
+
+        record Generated(List<GradleSourceRootModelEvidence> modelEvidence)
+            implements GradleSourceRootProvenance {
+            public Generated {
+                modelEvidence = requiredModelEvidence(modelEvidence);
+                if (modelEvidence.stream().anyMatch(evidence -> !evidence.isGeneratedCode())) {
+                    throw new IllegalArgumentException("Generated provenance requires generated Gradle code evidence");
+                }
+            }
+
+            @Override
+            public String stableIdentity() {
+                return "GENERATED:" + evidenceIdentity(modelEvidence);
+            }
+        }
+
+        record Unknown(String reason, List<GradleSourceRootModelEvidence> modelEvidence)
+            implements GradleSourceRootProvenance {
+            public Unknown {
+                reason = Objects.requireNonNull(reason, "reason").trim();
+                if (reason.isEmpty()) {
+                    throw new IllegalArgumentException("Unknown Gradle source-root provenance requires a reason");
+                }
+                modelEvidence = copyModelEvidence(modelEvidence);
+            }
+
+            @Override
+            public String stableIdentity() {
+                return "UNKNOWN:" + reason + ':' + evidenceIdentity(modelEvidence);
+            }
+        }
+    }
+
+    private static List<GradleSourceRootModelEvidence> requiredModelEvidence(
+        List<GradleSourceRootModelEvidence> modelEvidence
+    ) {
+        List<GradleSourceRootModelEvidence> exactEvidence = copyModelEvidence(modelEvidence);
+        if (exactEvidence.isEmpty()) {
+            throw new IllegalArgumentException("Known Gradle source-root provenance requires model evidence");
+        }
+        return exactEvidence;
+    }
+
+    private static List<GradleSourceRootModelEvidence> copyModelEvidence(
+        List<GradleSourceRootModelEvidence> modelEvidence
+    ) {
+        Objects.requireNonNull(modelEvidence, "modelEvidence");
+        return modelEvidence.stream()
+            .map(evidence -> Objects.requireNonNull(evidence, "modelEvidence entry"))
+            .distinct()
+            .sorted(Comparator.comparing(Enum::name))
+            .toList();
+    }
+
+    private static String evidenceIdentity(List<GradleSourceRootModelEvidence> modelEvidence) {
+        return modelEvidence.stream()
+            .map(Enum::name)
+            .reduce((left, right) -> left + ',' + right)
+            .orElse("");
     }
 }

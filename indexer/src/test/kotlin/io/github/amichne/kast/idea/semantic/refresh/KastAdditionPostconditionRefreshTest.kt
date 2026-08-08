@@ -67,14 +67,19 @@ internal class KastAdditionPostconditionRefreshTest : IdeaEditApplicationTestFix
             ":",
             true,
             false,
-            listOf(IdeaGradleProjectLoadBridge.GradleSourceSetAssociation("main", listOf(sourceRoot))),
+            listOf(
+                IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(
+                    "main",
+                    listOf(authoredGradleSourceRoot(sourceRoot)),
+                ),
+            ),
         )
         return IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
             listOf(workspaceRoot),
             true,
             listOf(identity),
             listOf(IdeaGradleProjectLoadBridge.LoadedGradleModule("main", identity)),
-            listOf(sourceRoot),
+            listOf(authoredGradleSourceRoot(sourceRoot)),
             listOf(association),
         )
     }
