@@ -11,12 +11,12 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
         }
     };
     let selector = prepared.selector().map(str::to_string);
-    let content = prepared.requires_content().then(read_stdin).transpose()?;
+    let content = PreparedPlanContent::read_for(&prepared)?;
     let plan_id = Uuid::new_v4();
     let paths = PlanPaths::new(plan_id);
     let preview_content = content
-        .as_deref()
-        .map(TemporaryPreviewContent::create)
+        .as_ref()
+        .map(|content| TemporaryPreviewContent::create(content.as_bytes()))
         .transpose()?;
     let preview = agent_adapter::projected_value(prepared.command(
         workspace_root.clone(),
@@ -31,14 +31,16 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
     let preview_result = projected_result(&preview)?;
     let stored_operation = prepared.into_stored(preview_result)?;
     let public_plan = public_plan(preview_result);
-    let content_sha256 = content.as_deref().map(manifest::sha256_bytes);
+    let content_sha256 = content
+        .as_ref()
+        .map(|content| manifest::sha256_bytes(content.as_bytes()));
     if let Err(message) = stored_operation.validate_content_sha256(content_sha256.as_deref()) {
         return Err(CliError::new("KAST_INVALID_AGENT_RESULT", message));
     }
 
     ensure_private_directory(&paths.directory)?;
-    if let Some(content) = content.as_deref()
-        && let Err(error) = write_private_file(&paths.content, content)
+    if let Some(content) = content.as_ref()
+        && let Err(error) = write_private_file(&paths.content, content.as_bytes())
     {
         return Err(error);
     }
@@ -69,6 +71,41 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
         &result,
     )?;
     Ok(0)
+}
+
+struct PreparedPlanContent {
+    bytes: Vec<u8>,
+}
+
+impl PreparedPlanContent {
+    fn read_for(operation: &PreparedOperation) -> Result<Option<Self>> {
+        match operation {
+            PreparedOperation::Rename { .. } => Ok(None),
+            PreparedOperation::AddFile { .. } | PreparedOperation::Replace { .. } => {
+                read_stdin().map(Self::exact).map(Some)
+            }
+            PreparedOperation::AddDeclaration { .. } => {
+                read_stdin().map(Self::declaration).map(Some)
+            }
+        }
+    }
+
+    fn exact(bytes: Vec<u8>) -> Self {
+        Self { bytes }
+    }
+
+    fn declaration(mut bytes: Vec<u8>) -> Self {
+        if bytes.ends_with(b"\r\n") {
+            bytes.truncate(bytes.len() - 2);
+        } else if bytes.ends_with(b"\n") {
+            bytes.truncate(bytes.len() - 1);
+        }
+        Self { bytes }
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
 }
 
 struct TemporaryPreviewContent {

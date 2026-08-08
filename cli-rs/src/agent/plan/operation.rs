@@ -71,10 +71,6 @@ impl PreparedOperation {
         }
     }
 
-    fn requires_content(&self) -> bool {
-        !matches!(self, Self::Rename { .. })
-    }
-
     fn into_stored(self, preview: &Value) -> Result<StoredOperation> {
         match self {
             Self::Rename { .. } => AgentRenameAuthority::from_projected_result(preview)
