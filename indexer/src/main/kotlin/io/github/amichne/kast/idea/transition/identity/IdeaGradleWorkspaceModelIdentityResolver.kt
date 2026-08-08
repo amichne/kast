@@ -23,7 +23,7 @@ internal object IdeaGradleWorkspaceModelIdentityResolver {
                         identity.externalModuleId()
                 },
             )
-            records("imported-source-root", model.importedSourceRoots().map(::stablePath))
+            records("imported-source-root", model.importedSourceRoots().map { it.stableIdentity() })
             model.moduleAssociations()
                 .sortedWith(
                     compareBy(
@@ -44,7 +44,7 @@ internal object IdeaGradleWorkspaceModelIdentityResolver {
                         .forEach { sourceSet ->
                             append("source-set=")
                                 .append(sourceSet.sourceSetName()).append('|')
-                                .append(sourceSet.sourceRoots().map(::stablePath).sorted().joinToString(","))
+                                .append(sourceSet.sourceRoots().map { it.stableIdentity() }.sorted().joinToString(","))
                                 .append('\n')
                         }
                 }

@@ -56,6 +56,7 @@ internal class IdeaGradleFileProvenance private constructor(
                     project = projectIdentity,
                     sourceSets = association.sourceSets().mapNotNull { sourceSet ->
                         val roots = sourceSet.sourceRoots()
+                            .map { sourceRoot -> sourceRoot.path() }
                             .map(Path::toAbsolutePath)
                             .map(Path::normalize)
                             .filter(workspace::contains)

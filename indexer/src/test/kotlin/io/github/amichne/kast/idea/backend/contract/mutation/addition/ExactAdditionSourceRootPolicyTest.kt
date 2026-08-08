@@ -122,7 +122,7 @@ internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupp
                         )
                     }
                 }
-                assertLimitation(failure, AdditionProofLimitation.SOURCE_OWNER_UNPROVEN)
+                assertLimitation(failure, AdditionProofLimitation.HARD_EXCLUDED_MUTATION_TARGET)
             } finally {
                 deleteSourceRoot(workspaceRoot.resolve(excludedName))
             }
@@ -130,7 +130,7 @@ internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupp
     }
 
     @Test
-    fun `add declaration permits a generated source root outside hard exclusions`() = runBlocking {
+    fun `add declaration rejects a generated source root outside hard exclusions`() = runBlocking {
         ensureProjectReady()
         val workspaceRoot = sourceRoot()
         val generatedRoot = createSourceRoot(
@@ -142,25 +142,40 @@ internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupp
         try {
             val before = Files.readAllBytes(target)
 
-            val result = backend(
-                workspaceRoot,
-                workspaceModelReader = model(workspaceRoot, generatedRoot),
-            ).planAddDeclaration(
-                AddDeclarationPlanQuery(
-                    targetPath = AdditionTargetPath.parse(target.toString()),
-                    expectedCurrentSha256 = AdditionTargetPreimageSha256.of(FileHashing.sha256(before)),
-                    proposedDeclaration = "class PermittedGenerated",
-                ),
-            )
+            val failure = assertThrows(AdditionProofIncompleteException::class.java) {
+                runBlocking {
+                    backend(
+                        workspaceRoot,
+                        workspaceModelReader = model(
+                            workspaceRoot,
+                            listOf(
+                                association(
+                                    "generated",
+                                    workspaceRoot,
+                                    ":generated",
+                                    "main",
+                                    generatedGradleSourceRoot(generatedRoot),
+                                ),
+                            ),
+                        ),
+                    ).planAddDeclaration(
+                        AddDeclarationPlanQuery(
+                            targetPath = AdditionTargetPath.parse(target.toString()),
+                            expectedCurrentSha256 = AdditionTargetPreimageSha256.of(FileHashing.sha256(before)),
+                            proposedDeclaration = "class RejectedGenerated",
+                        ),
+                    )
+                }
+            }
 
-            assertEquals(generatedRoot.toString(), result.proof.owner.sourceRoot.value)
+            assertLimitation(failure, AdditionProofLimitation.GENERATED_SOURCE_READ_ONLY)
         } finally {
             deleteSourceRoot(workspaceRoot.resolve("generated"))
         }
     }
 
     @Test
-    fun `allowed addition rejects a second hard-excluded model source root`() = runBlocking {
+    fun `allowed addition ignores mutation authority of a second generated model source root`() = runBlocking {
         ensureProjectReady()
         val allowedRoot = sourceRoot()
         val workspaceRoot = requireNotNull(allowedRoot.parent)
@@ -171,42 +186,44 @@ internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupp
         )
         val target = Path.of(sampleFile.virtualFile.path).toAbsolutePath().normalize()
         try {
-            val failure = assertThrows(AdditionProofIncompleteException::class.java) {
-                runBlocking {
-                    backend(
-                        workspaceRoot,
-                        workspaceModelReader = model(
+            val result = backend(
+                workspaceRoot,
+                workspaceModelReader = model(
+                    workspaceRoot,
+                    listOf(
+                        association("main", workspaceRoot, ":", "main", allowedRoot),
+                        association(
+                            "excluded",
                             workspaceRoot,
-                            listOf(
-                                association("main", workspaceRoot, ":", "main", allowedRoot),
-                                association("excluded", workspaceRoot, ":excluded", "main", excludedRoot),
-                            ),
+                            ":excluded",
+                            "main",
+                            generatedGradleSourceRoot(excludedRoot),
                         ),
-                    ).planAddDeclaration(
-                        AddDeclarationPlanQuery(
-                            targetPath = AdditionTargetPath.parse(target.toString()),
-                            expectedCurrentSha256 = AdditionTargetPreimageSha256.of(
-                                FileHashing.sha256(Files.readAllBytes(target)),
-                            ),
-                            proposedDeclaration = "class RejectedExcludedContext",
-                        ),
-                    )
-                }
-            }
+                    ),
+                ),
+            ).planAddDeclaration(
+                AddDeclarationPlanQuery(
+                    targetPath = AdditionTargetPath.parse(target.toString()),
+                    expectedCurrentSha256 = AdditionTargetPreimageSha256.of(
+                        FileHashing.sha256(Files.readAllBytes(target)),
+                    ),
+                    proposedDeclaration = "class AllowedWithGeneratedContext",
+                ),
+            )
 
-            assertLimitation(failure, AdditionProofLimitation.SOURCE_OWNER_UNPROVEN)
+            assertEquals(allowedRoot.toString(), result.proof.owner.sourceRoot.value)
         } finally {
             deleteSourceRoot(allowedRoot.resolve("build"))
         }
     }
 
     @Test
-    fun `allowed addition rejects a second outside-workspace model source root`() = runBlocking {
+    fun `allowed addition ignores mutation authority of a second outside-workspace model source root`() = runBlocking {
         ensureProjectReady()
         val allowedRoot = sourceRoot().toRealPath()
-        val workspaceRoot = allowedRoot
+        val workspaceRoot = requireNotNull(allowedRoot.parent).toRealPath()
         val outsideRoot = Files.createTempDirectory(
-            requireNotNull(workspaceRoot.parent),
+            Path.of(System.getProperty("user.dir")).toRealPath(),
             "kast-outside-addition-proof-root",
         ).toRealPath()
         val outsideFile = outsideRoot.resolve("OutsideContext.kt")
@@ -215,33 +232,121 @@ internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupp
             Files.writeString(outsideFile, "package outside\n\nclass OutsideContext\n")
             val target = Path.of(sampleFile.virtualFile.path).toAbsolutePath().normalize()
 
+            val result = backend(
+                workspaceRoot,
+                workspaceModelReader = model(
+                    workspaceRoot,
+                    listOf(
+                        association("main", workspaceRoot, ":", "main", allowedRoot),
+                        association("outside", workspaceRoot, ":outside", "main", outsideRoot),
+                    ),
+                ),
+            ).planAddDeclaration(
+                AddDeclarationPlanQuery(
+                    targetPath = AdditionTargetPath.parse(target.toString()),
+                    expectedCurrentSha256 = AdditionTargetPreimageSha256.of(
+                        FileHashing.sha256(Files.readAllBytes(target)),
+                    ),
+                    proposedDeclaration = "class AllowedWithOutsideContext",
+                ),
+            )
+
+            assertEquals(allowedRoot.toString(), result.proof.owner.sourceRoot.value)
+        } finally {
+            Files.deleteIfExists(outsideFile)
+            Files.deleteIfExists(outsideRoot)
+        }
+    }
+
+    @Test
+    fun `add file rejects unknown target provenance`() = runBlocking {
+        ensureProjectReady()
+        val workspaceRoot = sourceRoot()
+        val unknownRoot = createSourceRoot("unclassified/kotlin", "Anchor.kt", "package unknown\n\nclass Anchor\n")
+        val target = unknownRoot.resolve("RejectedUnknown.kt")
+        try {
             val failure = assertThrows(AdditionProofIncompleteException::class.java) {
                 runBlocking {
                     backend(
                         workspaceRoot,
                         workspaceModelReader = model(
                             workspaceRoot,
-                            listOf(
-                                association("main", workspaceRoot, ":", "main", allowedRoot),
-                                association("outside", workspaceRoot, ":outside", "main", outsideRoot),
-                            ),
+                            listOf(association("unknown", workspaceRoot, ":unknown", "main", unknownGradleSourceRoot(unknownRoot))),
                         ),
-                    ).planAddDeclaration(
-                        AddDeclarationPlanQuery(
-                            targetPath = AdditionTargetPath.parse(target.toString()),
-                            expectedCurrentSha256 = AdditionTargetPreimageSha256.of(
-                                FileHashing.sha256(Files.readAllBytes(target)),
-                            ),
-                            proposedDeclaration = "class RejectedOutsideContext",
+                    ).planAddFile(
+                        AddFilePlanQuery(
+                            AdditionTargetPath.parse(target.toString()),
+                            "package unknown\n\nclass RejectedUnknown\n",
                         ),
                     )
                 }
             }
-
-            assertLimitation(failure, AdditionProofLimitation.SOURCE_OWNER_UNPROVEN)
+            assertLimitation(failure, AdditionProofLimitation.SOURCE_PROVENANCE_UNKNOWN)
         } finally {
-            Files.deleteIfExists(outsideFile)
-            Files.deleteIfExists(outsideRoot)
+            deleteSourceRoot(workspaceRoot.resolve("unclassified"))
+        }
+    }
+
+    @Test
+    fun `add file rejects an exact owner outside workspace authority`() = runBlocking {
+        ensureProjectReady()
+        val workspaceRoot = sourceRoot().toRealPath()
+        val outsideBuildRoot = Files.createTempDirectory(
+            requireNotNull(workspaceRoot.parent),
+            "kast-outside-addition-target",
+        ).toRealPath()
+        val outsideSourceRoot = Files.createDirectories(outsideBuildRoot.resolve("src/main/kotlin")).toRealPath()
+        try {
+            val target = outsideSourceRoot.resolve("RejectedOutside.kt")
+            val failure = assertThrows(AdditionProofIncompleteException::class.java) {
+                runBlocking {
+                    backend(
+                        workspaceRoot,
+                        workspaceModelReader = model(
+                            workspaceRoot,
+                            listOf(association("outside", outsideBuildRoot, ":", "main", outsideSourceRoot)),
+                        ),
+                    ).planAddFile(
+                        AddFilePlanQuery(
+                            AdditionTargetPath.parse(target.toString()),
+                            "class RejectedOutside\n",
+                        ),
+                    )
+                }
+            }
+            assertLimitation(failure, AdditionProofLimitation.OUTSIDE_WORKSPACE_AUTHORITY)
+        } finally {
+            listOf(outsideSourceRoot, outsideSourceRoot.parent, outsideSourceRoot.parent.parent, outsideBuildRoot)
+                .forEach(Files::deleteIfExists)
+        }
+    }
+
+    @Test
+    fun `model-authored buildSrc and build-logic roots remain editable`() = runBlocking {
+        ensureProjectReady()
+        val workspaceRoot = sourceRoot()
+        listOf("buildSrc", "build-logic").forEachIndexed { index, rootName ->
+            val authoredRoot = createSourceRoot(
+                "$rootName/src/main/kotlin",
+                "Authored$index.kt",
+                "package authored$index\n\nclass Authored$index\n",
+            )
+            val target = authoredRoot.resolve("Authored$index.kt")
+            try {
+                val result = backend(
+                    workspaceRoot,
+                    workspaceModelReader = model(workspaceRoot, authoredRoot),
+                ).planAddDeclaration(
+                    AddDeclarationPlanQuery(
+                        AdditionTargetPath.parse(target.toString()),
+                        AdditionTargetPreimageSha256.of(FileHashing.sha256(Files.readAllBytes(target))),
+                        "class AddedToAuthored$index",
+                    ),
+                )
+                assertEquals(authoredRoot.toString(), result.proof.owner.sourceRoot.value)
+            } finally {
+                deleteSourceRoot(workspaceRoot.resolve(rootName))
+            }
         }
     }
 

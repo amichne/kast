@@ -187,6 +187,7 @@ internal class IdeaRelationshipCoverageAuthority(
         }
 
         val modelSourceRoots = gradleModel.importedSourceRoots()
+            .map { sourceRoot -> sourceRoot.path() }
             .map(Path::toAbsolutePath)
             .map(Path::normalize)
             .filter(Files::isDirectory)

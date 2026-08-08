@@ -12,7 +12,7 @@ internal fun focusedOwnerModuleNames(
         .filter { association ->
             association.sourceSets().any { sourceSet ->
                 sourceSet.sourceRoots().any { sourceRoot ->
-                    absolutePath.startsWith(sourceRoot.toAbsolutePath().normalize())
+                    absolutePath.startsWith(sourceRoot.path())
                 }
             }
         }

@@ -6,7 +6,6 @@
 package io.github.amichne.kast.idea.backend.mutation
 
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiReference
@@ -19,11 +18,9 @@ import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.protocol.*
-import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.ParsedMutationPostconditionAuthority
 import io.github.amichne.kast.api.validation.ParsedMutationPostconditionQuery
 import io.github.amichne.kast.idea.IdeaTelemetryScope
-import io.github.amichne.kast.idea.IdeaWorkspaceMutation
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.relationships.CompleteRelationshipCoverageAdmission
 import io.github.amichne.kast.idea.backend.relationships.completeRelationshipCoverageAdmission
@@ -33,27 +30,29 @@ import io.github.amichne.kast.shared.analysis.compilerContainingDeclarationName
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.visibility
-import java.nio.file.Path
-import java.util.concurrent.CancellationException
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
+/**
+ * Proof transition: `ParsedMutationPostconditionAuthority.AddFile
+ * -> MutationPostconditionEvidence.AddFile`.
+ *
+ * Establishes that the exact add-file proof still matches the resulting compiler and filesystem
+ * state. Expected drift is closed by `MutationPostconditionFailedException`; proof paths are
+ * extracted only at the postimage filesystem and PSI boundaries.
+ */
 internal fun KastIndexerBackend.verifyAddFile(
     authority: ParsedMutationPostconditionAuthority.AddFile,
 ): MutationPostconditionEvidence.AddFile = verifyAddition(
-    targetPath = authority.proof.targetPath.value,
+    targetPath = authority.proof.targetPath,
     expectedOwner = authority.proof.owner,
     expectedContext = authority.proof.context,
     expectedPackage = authority.proof.packageIdentity,
     expectedDeclarations = authority.proof.declarations,
     expectedOutbound = authority.proof.outboundEvidence,
-    relativeBaseOffset = 0,
-    expectedContextPaths = authority.proof.context.contextFileHashes.map { it.filePath }.toSet() +
-        authority.proof.targetPath.value,
-    targetContextMayDiffer = true,
-    provenFileBottomOffset = null,
+    shape = AdditionPostconditionShape.AddedFile,
 ).let { parts ->
     MutationPostconditionEvidence.AddFile(
         owner = authority.proof.owner,
@@ -63,6 +62,14 @@ internal fun KastIndexerBackend.verifyAddFile(
     )
 }
 
+/**
+ * Proof transition: `ParsedMutationPostconditionAuthority.AddDeclaration
+ * -> MutationPostconditionEvidence.AddDeclaration`.
+ *
+ * Establishes that the exact add-declaration proof still matches the resulting compiler and
+ * filesystem state. Expected drift is closed by `MutationPostconditionFailedException`; proof
+ * paths and preimage bytes are extracted only at the postimage and text-image boundaries.
+ */
 internal fun KastIndexerBackend.verifyAddDeclaration(
     authority: ParsedMutationPostconditionAuthority.AddDeclaration,
 ): MutationPostconditionEvidence.AddDeclaration {
@@ -75,16 +82,16 @@ internal fun KastIndexerBackend.verifyAddDeclaration(
     }
     val relativeBase = authority.proof.insertion.offset.value + separatorLength
     val parts = verifyAddition(
-        targetPath = authority.proof.targetPath.value,
+        targetPath = authority.proof.targetPath,
         expectedOwner = authority.proof.owner,
         expectedContext = authority.proof.context,
         expectedPackage = authority.proof.packageIdentity,
         expectedDeclarations = listOf(authority.proof.declaration),
         expectedOutbound = authority.proof.outboundEvidence,
-        relativeBaseOffset = relativeBase,
-        expectedContextPaths = authority.proof.context.contextFileHashes.map { it.filePath }.toSet(),
-        targetContextMayDiffer = true,
-        provenFileBottomOffset = authority.proof.insertion.offset.value,
+        shape = AdditionPostconditionShape.AppendedDeclaration(
+            insertion = authority.proof.insertion,
+            declarationStartOffset = relativeBase,
+        ),
     )
     return MutationPostconditionEvidence.AddDeclaration(
         owner = authority.proof.owner,
@@ -94,19 +101,33 @@ internal fun KastIndexerBackend.verifyAddDeclaration(
     )
 }
 
+private sealed interface AdditionPostconditionShape {
+    data object AddedFile : AdditionPostconditionShape
+
+    data class AppendedDeclaration(
+        val insertion: CompilerFileBottomInsertion,
+        val declarationStartOffset: Int,
+    ) : AdditionPostconditionShape
+}
+
+/**
+ * Proof transition: `(AdditionTargetPath, AdditionSourceOwner, ExactAdditionProofContext,
+ * AdditionPostconditionShape) -> AdditionProofParts`.
+ *
+ * Revalidates exact source ownership, compiler context, content hashes, declaration identity,
+ * collision evidence, and outbound bindings after an addition. Expected drift is closed by
+ * `MutationPostconditionLimitation`; raw paths are used only at filesystem and PSI boundaries.
+ */
 private fun KastIndexerBackend.verifyAddition(
-    targetPath: String,
+    targetPath: AdditionTargetPath,
     expectedOwner: AdditionSourceOwner,
     expectedContext: ExactAdditionProofContext,
     expectedPackage: AdditionKotlinPackage,
     expectedDeclarations: List<AdditionTopLevelDeclaration>,
     expectedOutbound: ExactAdditionOutboundEvidence,
-    relativeBaseOffset: Int,
-    expectedContextPaths: Set<String>,
-    targetContextMayDiffer: Boolean,
-    provenFileBottomOffset: Int?,
+    shape: AdditionPostconditionShape,
 ): AdditionProofParts {
-    val target = Path.of(targetPath)
+    val target = targetPath.toJavaPath()
     val currentOwner = try {
         exactAdditionOwner(target)
     } catch (failure: AdditionProofIncompleteException) {
@@ -127,43 +148,57 @@ private fun KastIndexerBackend.verifyAddition(
         MutationPostconditionLimitation.CLASSPATH_CHANGED,
         "The exact addition compiler classpath changed",
     )
-    val currentPaths = currentOwner.sourceFiles.map(Path::toString).toSet()
+    val expectedContextPaths = expectedContext.contextFileHashes.map { it.filePath }.toSet() + when (shape) {
+        AdditionPostconditionShape.AddedFile -> setOf(targetPath.value)
+        is AdditionPostconditionShape.AppendedDeclaration -> emptySet()
+    }
+    val currentPaths = currentOwner.sourceFiles.map { it.path.toString() }.toSet()
     if (currentPaths != expectedContextPaths) failPostcondition(
         MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED,
         "The exact model-owned source file set changed",
     )
+    val currentFiles = currentOwner.sourceFiles.associateBy { it.path.toString() }
     expectedContext.contextFileHashes.forEach { expected ->
-        if (targetContextMayDiffer && expected.filePath == targetPath) return@forEach
+        if (expected.filePath == targetPath.value) return@forEach
+        val sourceFile = currentFiles[expected.filePath] ?: failPostcondition(
+            MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED,
+            "A required addition source-context file is no longer model-owned",
+        )
         val actual = try {
-            exactFileImageMutation.readFileBytes(Path.of(expected.filePath), IdeaWorkspaceMutation.TEXT_EDIT)
-        } catch (failure: ProcessCanceledException) {
-            throw failure
-        } catch (failure: CancellationException) {
-            throw failure
-        } catch (_: Exception) {
+            sourceFile.readExactHash()
+        } catch (_: AdditionProofIncompleteException) {
             failPostcondition(
                 MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED,
                 "A required addition source-context image is unreadable",
             )
         }
-        if (FileHashing.sha256(actual) != expected.sha256) failPostcondition(
+        if (actual.sha256 != expected.sha256) failPostcondition(
             MutationPostconditionLimitation.SOURCE_CONTEXT_CHANGED,
             "A non-target addition source-context image changed",
         )
     }
-    val file = exactPostimageKtFile(targetPath)
-    val declarations = if (provenFileBottomOffset == null) {
-        file.declarations.map { declaration -> declaration as? KtNamedDeclaration ?: failPostcondition(
-            MutationPostconditionLimitation.DECLARATION_SET_MISMATCH,
-            "The added file contains an unsupported top-level declaration",
-        ) }
-    } else {
-        exactFileBottomDeclaration(file, provenFileBottomOffset, relativeBaseOffset)
+    val file = exactPostimageKtFile(targetPath.value)
+    val declarations = when (shape) {
+        AdditionPostconditionShape.AddedFile -> file.declarations.map { declaration ->
+            declaration as? KtNamedDeclaration ?: failPostcondition(
+                MutationPostconditionLimitation.DECLARATION_SET_MISMATCH,
+                "The added file contains an unsupported top-level declaration",
+            )
+        }
+        is AdditionPostconditionShape.AppendedDeclaration -> exactFileBottomDeclaration(
+            file,
+            shape.insertion.offset.value,
+            shape.declarationStartOffset,
+        )
     }
     if (declarations.isEmpty()) failPostcondition(
         MutationPostconditionLimitation.DECLARATION_SET_MISMATCH,
         "The resulting addition declaration was not found at its authorized source range",
     )
+    val relativeBaseOffset = when (shape) {
+        AdditionPostconditionShape.AddedFile -> 0
+        is AdditionPostconditionShape.AppendedDeclaration -> shape.declarationStartOffset
+    }
     val parsed = ParsedAddition(
         file,
         declarations,
@@ -187,12 +222,17 @@ private fun KastIndexerBackend.verifyAddition(
         "The resulting addition outbound occurrence set changed",
     )
     val exclusions = mapOf(
-        targetPath to declarations.map { declaration ->
+        targetPath.value to declarations.map { declaration ->
             declaration.textRange.startOffset until declaration.textRange.endOffset
         },
     )
     try {
-        proveZeroRebindingCandidates(declarations, expectedPackage, currentOwner.sourceFiles, exclusions)
+        proveZeroRebindingCandidates(
+            declarations,
+            expectedPackage,
+            currentOwner.sourceFiles.map { it.path },
+            exclusions,
+        )
     } catch (failure: AdditionProofIncompleteException) {
         failPostcondition(
             MutationPostconditionLimitation.COLLISION_OR_REBINDING_CHANGED,

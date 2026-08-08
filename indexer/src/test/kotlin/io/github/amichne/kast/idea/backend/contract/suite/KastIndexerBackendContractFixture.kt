@@ -231,7 +231,7 @@ internal abstract class KastIndexerBackendContractTestFixture {
                 IdeaGradleProjectLoadBridge.LoadedGradleModule("main", mainIdentity),
                 IdeaGradleProjectLoadBridge.LoadedGradleModule("secondary", secondaryIdentity),
             ),
-            sourceRoots,
+            sourceRoots.map(::authoredGradleSourceRoot),
             emptyList(),
         )
         return IdeaRelationshipCoverageAuthority(

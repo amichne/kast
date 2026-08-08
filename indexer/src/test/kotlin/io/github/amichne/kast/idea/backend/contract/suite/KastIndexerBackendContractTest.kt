@@ -127,7 +127,7 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
                 model.importedModelComplete(),
                 model.importedModuleIdentities(),
                 model.loadedModules(),
-                model.importedSourceRoots() + listOf(materializedOmittedSourceRoot),
+                model.importedSourceRoots() + authoredGradleSourceRoot(materializedOmittedSourceRoot),
                 model.moduleAssociations(),
             )
         }.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE)
@@ -148,7 +148,7 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
                 model.importedModelComplete(),
                 model.importedModuleIdentities(),
                 model.loadedModules(),
-                model.importedSourceRoots() + listOf(absentSourceRoot),
+                model.importedSourceRoots() + authoredGradleSourceRoot(absentSourceRoot),
                 model.moduleAssociations(),
             )
         }.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE)
