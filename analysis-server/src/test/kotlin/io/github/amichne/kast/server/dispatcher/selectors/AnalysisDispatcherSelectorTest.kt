@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.contract.selector.*
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.validation.*
+import io.github.amichne.kast.server.skill.selectorOperationFamilies
 import io.github.amichne.kast.testing.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
@@ -232,6 +233,48 @@ class AnalysisDispatcherSelectorTest : AnalysisDispatcherTestSupport() {
         assertEquals(2, relationships.callRelationCalls)
         assertEquals(1, relationships.implementationRelationCalls)
         assertEquals(1, relationships.hierarchyRelationCalls)
+    }
+
+    @Test
+    fun `class-like selector handles reject replacement compatibility while callables retain it`() {
+        val backend = FakeAnalysisBackend.sample(tempDir)
+
+        fun replacementResolution(kind: SymbolKind): SelectorHandleAuthority.Resolution {
+            val symbol = lookupSymbol(
+                fqName = "sample.${kind.name}",
+                kind = kind,
+                fileName = "${kind.name}.kt",
+            )
+            val issued = assertInstanceOf(
+                SelectorHandleAuthority.IssueResult.Issued::class.java,
+                backend.selectorHandles.issue(
+                    selector = symbol.exactSelector(),
+                    allowedFamilies = kind.selectorOperationFamilies(),
+                ),
+            )
+            return backend.selectorHandles.resolve(
+                handle = issued.handle.value,
+                workspaceRoot = tempDir.toAbsolutePath().normalize().toString(),
+                family = SelectorOperationFamily.REPLACE_DECLARATION,
+            )
+        }
+
+        listOf(SymbolKind.CLASS, SymbolKind.INTERFACE, SymbolKind.OBJECT).forEach { kind ->
+            val rejected = assertInstanceOf(
+                SelectorHandleAuthority.Resolution.Rejected::class.java,
+                replacementResolution(kind),
+            )
+            assertEquals(
+                SelectorHandleAuthority.Resolution.RejectionReason.FAMILY_NOT_ALLOWED,
+                rejected.reason,
+            )
+        }
+        listOf(SymbolKind.FUNCTION, SymbolKind.PROPERTY).forEach { kind ->
+            assertInstanceOf(
+                SelectorHandleAuthority.Resolution.Resolved::class.java,
+                replacementResolution(kind),
+            )
+        }
     }
 
     @Test
