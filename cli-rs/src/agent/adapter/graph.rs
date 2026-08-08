@@ -122,7 +122,7 @@ fn print_native_graph(
     ))?;
     let mut result = match backend_outcome(public_operation, envelope) {
         BackendOutcome::Complete(result) => result,
-        BackendOutcome::Rejected(envelope) => return print_protocol(envelope, output_format),
+        BackendOutcome::Rejected(envelope) => return print_protocol(*envelope, output_format),
     };
     let fields = result.as_object_mut().ok_or_else(|| {
         CliError::new(

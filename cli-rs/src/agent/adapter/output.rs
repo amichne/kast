@@ -4,7 +4,7 @@ pub(crate) fn projected_value(command: AgentCommand) -> Result<Value> {
 
 enum BackendOutcome {
     Complete(Value),
-    Rejected(agent::public_protocol::ProtocolEnvelope),
+    Rejected(Box<agent::public_protocol::ProtocolEnvelope>),
 }
 
 fn backend_outcome(
@@ -12,13 +12,13 @@ fn backend_outcome(
     envelope: Value,
 ) -> BackendOutcome {
     let Some(ok) = envelope.get("ok").and_then(Value::as_bool) else {
-        return BackendOutcome::Rejected(
+        return BackendOutcome::Rejected(Box::new(
             agent::public_protocol::ProtocolEnvelope::backend_rejected(
                 operation,
                 "KAST_INVALID_AGENT_RESULT",
                 "The typed operation returned no success state.",
             ),
-        );
+        ));
     };
     if !ok {
         let error = envelope.get("error");
@@ -30,19 +30,19 @@ fn backend_outcome(
             .and_then(|error| error.get("message"))
             .and_then(Value::as_str)
             .unwrap_or("The typed operation failed.");
-        return BackendOutcome::Rejected(
+        return BackendOutcome::Rejected(Box::new(
             agent::public_protocol::ProtocolEnvelope::backend_rejected(operation, code, message),
-        );
+        ));
     }
     match envelope.get("result").cloned() {
         Some(result) => BackendOutcome::Complete(result),
-        None => BackendOutcome::Rejected(
+        None => BackendOutcome::Rejected(Box::new(
             agent::public_protocol::ProtocolEnvelope::backend_rejected(
                 operation,
                 "KAST_INVALID_AGENT_RESULT",
                 "The typed operation completed without a result.",
             ),
-        ),
+        )),
     }
 }
 
@@ -52,7 +52,7 @@ pub(crate) fn print_backend_failure(
     output_format: OutputFormat,
 ) -> Result<i32> {
     let envelope = match backend_outcome(operation, envelope) {
-        BackendOutcome::Rejected(envelope) => envelope,
+        BackendOutcome::Rejected(envelope) => *envelope,
         BackendOutcome::Complete(_) => {
             agent::public_protocol::ProtocolEnvelope::backend_rejected(
                 operation,
@@ -90,7 +90,7 @@ fn print_file_list(envelope: Value, output_format: OutputFormat) -> Result<i32> 
 
     let result = match backend_outcome(OperationId::FileList, envelope) {
         BackendOutcome::Complete(result) => result,
-        BackendOutcome::Rejected(envelope) => return print_protocol(envelope, output_format),
+        BackendOutcome::Rejected(envelope) => return print_protocol(*envelope, output_format),
     };
     let fields = result.as_object().ok_or_else(|| {
         CliError::new(
@@ -150,7 +150,7 @@ fn print_diagnostics(
 
     let result = match backend_outcome(OperationId::DiagnosticCheck, envelope) {
         BackendOutcome::Complete(result) => result,
-        BackendOutcome::Rejected(envelope) => return print_protocol(envelope, output_format),
+        BackendOutcome::Rejected(envelope) => return print_protocol(*envelope, output_format),
     };
     result.as_object().ok_or_else(|| {
         CliError::new(

@@ -31,9 +31,9 @@ class AgentResourceAssetsTest(unittest.TestCase):
         )
         for required in (
             "compact TOON",
-            "nextPage",
+            "continuation",
             "standard input",
-            "planId",
+            "plan ID",
             "limitation",
             "/kast:developer",
         ):
