@@ -2,14 +2,54 @@ package io.github.amichne.kast.idea.mutation
 
 import com.sun.jna.Memory
 import com.sun.jna.NativeLong
+import io.github.amichne.kast.api.validation.FileHashing
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 
+internal sealed interface SecureSourceProofReadOutcome {
+    @JvmInline
+    value class Read private constructor(val sha256: String) : SecureSourceProofReadOutcome {
+        companion object {
+            /**
+             * Proof transition: `ByteArray -> SecureSourceProofReadOutcome.Read`.
+             *
+             * Retains the exact SHA-256 identity of bytes read through the no-follow adapter. Raw
+             * bytes exist only inside `SecureSourceProofRead` and are not exposed by the result.
+             */
+            fun from(bytes: ByteArray): Read = Read(FileHashing.sha256(bytes))
+        }
+    }
+
+    enum class Unavailable : SecureSourceProofReadOutcome {
+        UNSUPPORTED_PLATFORM,
+        NATIVE_PRIMITIVES_UNAVAILABLE,
+        UNSAFE_OR_UNREADABLE_PATH,
+    }
+}
+
 internal object SecureSourceProofRead {
-    fun fileBytes(path: Path): ByteArray {
+    /**
+     * Proof transition: `Path -> SecureSourceProofReadOutcome`.
+     *
+     * `Read` proves that one regular file was opened through no-follow descriptors and carries the
+     * hash of its exact bytes. `Unavailable` is the closed expected failure when the platform,
+     * native primitives, or path cannot provide that proof. Raw bytes exist only inside this
+     * filesystem adapter.
+     */
+    fun sha256(path: Path): SecureSourceProofReadOutcome {
         val normalizedPath = path.toAbsolutePath().normalize()
         val platform = PosixPlatform.current()
-            ?: error("Secure source-proof reads require a supported POSIX runtime")
+            ?: return SecureSourceProofReadOutcome.Unavailable.UNSUPPORTED_PLATFORM
+        return try {
+            SecureSourceProofReadOutcome.Read.from(readFileBytes(normalizedPath, platform))
+        } catch (_: LinkageError) {
+            SecureSourceProofReadOutcome.Unavailable.NATIVE_PRIMITIVES_UNAVAILABLE
+        } catch (_: Exception) {
+            SecureSourceProofReadOutcome.Unavailable.UNSAFE_OR_UNREADABLE_PATH
+        }
+    }
+
+    private fun readFileBytes(normalizedPath: Path, platform: PosixPlatform): ByteArray {
         val filesystemRoot = checkNotNull(normalizedPath.root) {
             "Absolute source-proof file must have a filesystem root"
         }
@@ -45,19 +85,15 @@ internal object SecureSourceProofRead {
             )
             if (fileDescriptorValue < 0) error("Unsafe source-proof file component")
             return NativeDescriptor(api, fileDescriptorValue).use { fileDescriptor ->
-                requireRegularFile(fileDescriptor, platform)
+                val status = Memory(STAT_BUFFER_SIZE)
+                if (api.fstat(fileDescriptor.value, status) < 0 ||
+                    platform.readStatus(status).mode.fileType != NativeFileType.REGULAR
+                ) error("Source-proof path is not a regular file")
                 readBytes(fileDescriptor)
             }
         } finally {
             opened.asReversed().forEach(NativeDescriptor::close)
         }
-    }
-
-    private fun requireRegularFile(descriptor: NativeDescriptor, platform: PosixPlatform) {
-        val status = Memory(STAT_BUFFER_SIZE)
-        if (api.fstat(descriptor.value, status) < 0 ||
-            platform.readStatus(status).mode.fileType != NativeFileType.REGULAR
-        ) error("Source-proof path is not a regular file")
     }
 
     private fun readBytes(descriptor: NativeDescriptor): ByteArray {
