@@ -17,6 +17,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionCoordinator
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionOperations
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.idea.transition.WorkspaceWakeup
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
@@ -187,9 +188,9 @@ internal class WorkspaceTransitionWorker(
         },
     )
 
-    fun observe(signal: WorkspaceSignal) {
-        coordinator.observe(signal)
-    }
+    fun observe(signal: WorkspaceSignal) = coordinator.observe(signal)
+
+    fun observe(request: WorkspaceTransitionRequest) = coordinator.observe(request)
 
     fun requestRecoveryAudit() {
         val audit = try {

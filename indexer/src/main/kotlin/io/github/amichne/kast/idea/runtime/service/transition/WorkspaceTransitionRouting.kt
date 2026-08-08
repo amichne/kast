@@ -3,6 +3,8 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.transition.TransitionBlocker
 import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
+import io.github.amichne.kast.idea.transition.WorkspaceSourceFreshnessCoverage
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
@@ -18,6 +20,10 @@ internal sealed interface WorkspaceTransitionRoute {
         val baseline: PublishedWorkspaceGenerationState,
     ) : WorkspaceTransitionRoute
 
+    data class Join(
+        val baseline: PublishedWorkspaceGenerationState,
+    ) : WorkspaceTransitionRoute
+
     data class Rejected(
         val failure: WorkspaceTransitionRequestFailure,
     ) : WorkspaceTransitionRoute
@@ -28,22 +34,56 @@ internal sealed interface WorkspaceTransitionRoute {
          * `(IdeaIndexSemanticAdmission.Status, TransitionObservation)`
          * `-> WorkspaceTransitionRoute`.
          *
-         * Every admitted request retains its publication baseline and enqueues
-         * its semantic signal. The waiter still shares the single transition
-         * publication lane, while enqueueing ensures that a request arriving
-         * after the active cycle's VFS refresh invalidates that cycle instead
-         * of being incorrectly treated as covered. Failed admission becomes
-         * finite rejection data.
+         * Every admitted request retains its publication baseline. Exact
+         * source claims already covered by the active cycle become [Join]; all
+         * unkeyed, changed, or disjoint work becomes [Enqueue] so it cannot be
+         * incorrectly treated as covered. Failed admission becomes finite
+         * rejection data.
          */
         fun derive(
             status: IdeaIndexSemanticAdmission.Status,
             observation: TransitionObservation,
+            request: WorkspaceTransitionRequest,
         ): WorkspaceTransitionRoute {
             val admission = TransitionRequestAdmission.derive(status, observation)
             return when (admission) {
                 is TransitionRequestAdmission.Rejected -> Rejected(admission.failure)
-                is TransitionRequestAdmission.Permitted -> Enqueue(admission.baseline)
+                is TransitionRequestAdmission.Permitted -> when (
+                    ActiveSourceRequestCoverage.derive(observation, request)
+                ) {
+                    WorkspaceSourceFreshnessCoverage.Covered -> Join(admission.baseline)
+                    WorkspaceSourceFreshnessCoverage.Uncovered -> Enqueue(admission.baseline)
+                }
             }
+        }
+    }
+}
+
+private object ActiveSourceRequestCoverage {
+    /**
+     * Proof transition:
+     * `(TransitionObservation, WorkspaceTransitionRequest)`
+     * `-> WorkspaceSourceFreshnessCoverage`.
+     *
+     * Only claims retained by the currently observed active cycle can cover a
+     * request. Unobserved and inactive snapshots fail closed as uncovered.
+     */
+    fun derive(
+        observation: TransitionObservation,
+        request: WorkspaceTransitionRequest,
+    ): WorkspaceSourceFreshnessCoverage = when (observation) {
+        TransitionObservation.Unobserved -> WorkspaceSourceFreshnessCoverage.Uncovered
+        is TransitionObservation.Observed -> when (observation.snapshot.lifecycle) {
+            WorkspaceLifecycle.Refreshing,
+            WorkspaceLifecycle.Reconciling,
+            WorkspaceLifecycle.Verifying,
+            -> observation.snapshot.activeSourceFreshness.coverageOf(request)
+
+            WorkspaceLifecycle.Ready,
+            WorkspaceLifecycle.Dirty,
+            WorkspaceLifecycle.Settling,
+            WorkspaceLifecycle.Blocked,
+            -> WorkspaceSourceFreshnessCoverage.Uncovered
         }
     }
 }
