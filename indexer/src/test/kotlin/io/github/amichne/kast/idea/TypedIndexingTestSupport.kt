@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceType
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
@@ -15,6 +16,15 @@ import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleName
 import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
+
+internal fun authoredGradleSourceRoot(path: Path): IdeaGradleProjectLoadBridge.GradleSourceRoot =
+    IdeaGradleProjectLoadBridge.classifySourceRoot(path, listOf(ExternalSystemSourceType.SOURCE))
+
+internal fun generatedGradleSourceRoot(path: Path): IdeaGradleProjectLoadBridge.GradleSourceRoot =
+    IdeaGradleProjectLoadBridge.classifySourceRoot(path, listOf(ExternalSystemSourceType.SOURCE_GENERATED))
+
+internal fun unknownGradleSourceRoot(path: Path): IdeaGradleProjectLoadBridge.GradleSourceRoot =
+    IdeaGradleProjectLoadBridge.classifySourceRoot(path, emptyList())
 
 internal val WorkspaceSourcePath.rawPath: String
     get() = absolute.value.value

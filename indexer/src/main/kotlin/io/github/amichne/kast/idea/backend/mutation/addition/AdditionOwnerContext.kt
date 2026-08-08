@@ -5,7 +5,6 @@
 
 package io.github.amichne.kast.idea.backend.mutation
 
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiClass
@@ -31,7 +30,6 @@ import io.github.amichne.kast.api.protocol.AdditionProofIncompleteException
 import io.github.amichne.kast.api.protocol.AdditionProofLimitation
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.idea.IdeaTelemetryScope
-import io.github.amichne.kast.idea.IdeaWorkspaceMutation
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.relationships.relationshipIdentity
 import io.github.amichne.kast.idea.backend.workspace.isWorkspaceFile
@@ -48,7 +46,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
-import java.util.concurrent.CancellationException
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -79,6 +76,14 @@ private data class AdditionOwnerObservation(
     val ideaModuleName: AdditionIdeaModuleName,
 )
 
+/**
+ * Proof transition: `Path -> AdditionOwnerSnapshot`.
+ *
+ * Establishes one deepest exact Gradle source-set owner, an admitted editable target, one indexed
+ * IDEA module, and classified read-only proof roots for the exact workspace model. Expected
+ * failures are closed by `AdditionProofIncompleteException` and `AdditionProofLimitation`; the raw
+ * path enters only at this addition-planning boundary.
+ */
 internal fun KastIndexerBackend.exactAdditionOwner(target: Path): AdditionOwnerSnapshot {
     val model = workspaceModelReader()
     if (!model.importedModelComplete()) failAddition(
@@ -153,7 +158,7 @@ internal fun KastIndexerBackend.exactAdditionOwner(target: Path): AdditionOwnerS
             gradleProjectPath = gradleOwner.gradleProjectPath,
             sourceSetName = gradleOwner.sourceSetName,
         ),
-        modelFingerprint = AdditionProjectModelFingerprint.of(projectModelFingerprint(model)),
+        modelFingerprint = projectModelFingerprint(model),
         classpathFingerprint = AdditionClasspathFingerprint.of(
             BuildClasspathFingerprintResolver.resolve(project, sharedWorkspaceIdentity).value,
         ),
@@ -162,6 +167,13 @@ internal fun KastIndexerBackend.exactAdditionOwner(target: Path): AdditionOwnerS
     )
 }
 
+/**
+ * Proof transition: `(Path, Path, List<AdditionOwnerObservation>) -> AdditionIdeaModuleName`.
+ *
+ * Establishes one IDEA module that agrees with the exact Gradle source-set observations. Expected
+ * ambiguity or missing indexed ownership is closed by `AdditionProofIncompleteException` and
+ * `AdditionProofLimitation`; raw paths are used only at the IDEA file-index boundary.
+ */
 private fun KastIndexerBackend.exactAdditionIdeaModule(
     target: Path,
     sourceRoot: Path,
@@ -193,6 +205,13 @@ private fun KastIndexerBackend.exactAdditionIdeaModule(
     )
 }
 
+/**
+ * Proof transition: `AdditionProofRoot -> List<AdditionProofFile>`.
+ *
+ * Establishes a deterministic set of regular Kotlin and Java descendants with no symbolic links.
+ * Expected unsafe source trees are closed by `AdditionProofIncompleteException` and
+ * `AdditionProofLimitation`; raw paths are used only at the no-follow filesystem boundary.
+ */
 private fun sourceFilesUnder(root: AdditionProofRoot): List<AdditionProofFile> {
     if (Files.isSymbolicLink(root.path)) failAddition(
         AdditionProofLimitation.SOURCE_OWNER_UNPROVEN,
@@ -213,8 +232,16 @@ private fun sourceFilesUnder(root: AdditionProofRoot): List<AdditionProofFile> {
     }
 }
 
-private fun projectModelFingerprint(model: io.github.amichne.kast.idea.IdeaGradleProjectLoadBridge.GradleWorkspaceModel): String =
-    FileHashing.sha256(
+/**
+ * Proof transition: `GradleWorkspaceModel -> AdditionProjectModelFingerprint`.
+ *
+ * Binds completeness, module identities, source sets, and classified source-root provenance into
+ * one deterministic fingerprint. The serialized model image exists only at this hashing boundary.
+ */
+private fun projectModelFingerprint(
+    model: io.github.amichne.kast.idea.IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+): AdditionProjectModelFingerprint =
+    AdditionProjectModelFingerprint.of(FileHashing.sha256(
         buildString {
             append("complete=").append(model.importedModelComplete()).append('\n')
             model.moduleAssociations().sortedWith(
@@ -234,8 +261,15 @@ private fun projectModelFingerprint(model: io.github.amichne.kast.idea.IdeaGradl
                 }
             }
         },
-    )
+    ))
 
+/**
+ * Proof transition: `AdditionOwnerSnapshot -> ExactAdditionProofContext`.
+ *
+ * Binds the current semantic generation, project model, classpath, classified proof-file set, and
+ * exact no-follow content hashes into the persisted addition proof context. Expected read failures
+ * are closed by `AdditionProofIncompleteException` and `AdditionProofLimitation`.
+ */
 internal fun KastIndexerBackend.exactAdditionContext(
     owner: AdditionOwnerSnapshot,
     generation: Long,
@@ -245,55 +279,8 @@ internal fun KastIndexerBackend.exactAdditionContext(
         projectModelFingerprint = owner.modelFingerprint,
         classpathFingerprint = owner.classpathFingerprint,
         contextFileHashes = owner.sourceFiles.map { file ->
-            ExactAdditionContextFileHash.of(file.path.toString(), FileHashing.sha256(file.readExactBytes()))
+            ExactAdditionContextFileHash.of(file.path.toString(), file.readExactHash().sha256)
         },
-    )
-}
-
-internal fun KastIndexerBackend.revalidateAdditionContext(
-    owner: AdditionOwnerSnapshot,
-    generation: Long,
-    context: ExactAdditionProofContext,
-    target: Path,
-    mustExist: Boolean,
-) {
-    if (psiGeneration() != generation) failAddition(
-        AdditionProofLimitation.GENERATION_CHANGED,
-        "The semantic generation changed during addition planning",
-    )
-    val currentOwner = exactAdditionOwner(target)
-    if (currentOwner.modelFingerprint != owner.modelFingerprint) failAddition(
-        AdditionProofLimitation.PROJECT_MODEL_CHANGED,
-        "The Gradle project model changed during addition planning",
-    )
-    if (currentOwner.classpathFingerprint != owner.classpathFingerprint) failAddition(
-        AdditionProofLimitation.CLASSPATH_CHANGED,
-        "The compiler classpath changed during addition planning",
-    )
-    if (currentOwner.sourceFiles != owner.sourceFiles) failAddition(
-        AdditionProofLimitation.SOURCE_CONTEXT_CHANGED,
-        "The model-owned Kotlin and Java source-file set changed during addition planning",
-    )
-    if (Files.exists(target, NOFOLLOW_LINKS) != mustExist) failAddition(
-        if (mustExist) AdditionProofLimitation.TARGET_FILE_MISSING else AdditionProofLimitation.TARGET_ALREADY_EXISTS,
-        "The addition target state changed during planning",
-    )
-    val currentSourceFiles = currentOwner.sourceFiles.associateBy(AdditionProofFile::path)
-    context.contextFileHashes.forEach { expected ->
-        val path = Path.of(expected.filePath)
-        val sourceFile = currentSourceFiles[path]
-        if (sourceFile == null || !Files.isRegularFile(path, NOFOLLOW_LINKS) ||
-            FileHashing.sha256(sourceFile.readExactBytes()) != expected.sha256
-        ) {
-            failAddition(
-                AdditionProofLimitation.SOURCE_CONTEXT_CHANGED,
-                "A compiler source-context file changed during addition planning",
-            )
-        }
-    }
-    if (psiGeneration() != generation) failAddition(
-        AdditionProofLimitation.GENERATION_CHANGED,
-        "The semantic generation changed during addition proof finalization",
     )
 }
 
@@ -302,65 +289,6 @@ internal fun KastIndexerBackend.findKtFileOrNull(path: Path): KtFile? {
     return PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
 }
 
-internal fun KastIndexerBackend.secureAdditionTargetRead(target: EditableAdditionTarget): ByteArray = try {
-    exactFileImageMutation.readFileBytes(target.targetPath, IdeaWorkspaceMutation.TEXT_EDIT)
-} catch (failure: ProcessCanceledException) {
-    throw failure
-} catch (failure: CancellationException) {
-    throw failure
-} catch (_: Exception) {
-    failAddition(
-        AdditionProofLimitation.SOURCE_CONTEXT_CHANGED,
-        "An exact source-context image could not be read without following symbolic links",
-    )
-}
-
-internal fun requireSecureAbsentTarget(target: EditableAdditionTarget) {
-    val normalizedTarget = target.targetPath
-    val normalizedParent = normalizedTarget.parent ?: failAddition(
-        AdditionProofLimitation.TARGET_PARENT_MISSING,
-        "The add-file target has no parent directory",
-    )
-    val canonicalParent = try {
-        normalizedParent.toRealPath()
-    } catch (_: Exception) {
-        failAddition(AdditionProofLimitation.TARGET_PARENT_MISSING, "The add-file parent is not canonical")
-    }
-    val sourceRoot = target.sourceRootPath
-    val canonicalSourceRoot = try {
-        sourceRoot.toRealPath()
-    } catch (_: Exception) {
-        failAddition(AdditionProofLimitation.SOURCE_OWNER_UNPROVEN, "The model-owned source root is not canonical")
-    }
-    val canonicalCandidate = canonicalParent.resolve(normalizedTarget.fileName).normalize()
-    if (canonicalParent != normalizedParent || canonicalSourceRoot != sourceRoot ||
-        canonicalCandidate != normalizedTarget || !canonicalCandidate.startsWith(canonicalSourceRoot)
-    ) failAddition(
-        AdditionProofLimitation.SOURCE_OWNER_UNPROVEN,
-        "The add-file target or its parent escapes the canonical model-owned source root",
-    )
-}
-
-internal fun requireSecureExistingTarget(target: EditableAdditionTarget) {
-    val normalizedTarget = target.targetPath
-    val canonicalTarget = try {
-        normalizedTarget.toRealPath()
-    } catch (_: Exception) {
-        failAddition(AdditionProofLimitation.TARGET_NOT_KOTLIN_SOURCE, "The target path is not canonical")
-    }
-    val sourceRoot = target.sourceRootPath
-    val canonicalSourceRoot = try {
-        sourceRoot.toRealPath()
-    } catch (_: Exception) {
-        failAddition(AdditionProofLimitation.SOURCE_OWNER_UNPROVEN, "The model-owned source root is not canonical")
-    }
-    if (canonicalTarget != normalizedTarget || canonicalSourceRoot != sourceRoot ||
-        !canonicalTarget.startsWith(canonicalSourceRoot)
-    ) failAddition(
-        AdditionProofLimitation.SOURCE_OWNER_UNPROVEN,
-        "The add-declaration target escapes the canonical model-owned source root",
-    )
-}
 
 internal fun strictAdditionPlannerUtf8Bytes(value: String): ByteArray {
     val encoded = StandardCharsets.UTF_8.newEncoder()

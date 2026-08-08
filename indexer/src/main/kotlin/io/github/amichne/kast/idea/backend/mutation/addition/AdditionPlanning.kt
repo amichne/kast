@@ -87,6 +87,14 @@ internal enum class AdditionAnalysisSource {
     PROJECT_POSTIMAGE,
 }
 
+/**
+ * Proof transition: `ParsedAddFilePlanQuery -> AddFilePlanResult`.
+ *
+ * Establishes an authored exact source owner, an absent canonical target, compiler-valid content,
+ * collision/rebinding evidence, and a revalidated proof context. Expected planning failures are
+ * closed by `AdditionProofIncompleteException` and `AdditionProofLimitation`; raw bytes are
+ * extracted only at the exact text-image planner boundary.
+ */
 internal suspend fun KastIndexerBackend.planAddFileOperation(
     query: ParsedAddFilePlanQuery,
 ): AddFilePlanResult = withContext(readDispatcher) {
@@ -102,7 +110,7 @@ internal suspend fun KastIndexerBackend.planAddFileOperation(
                 "The add-file target already exists",
             )
             val owner = exactAdditionOwner(target)
-            requireSecureAbsentTarget(owner.editableTarget)
+            val creatableTarget = CreatableAdditionTarget.admit(owner.editableTarget)
             val anchor = owner.anchorSourceFiles.asSequence()
                 .map(AdditionProofFile::path)
                 .filter { it.toString().endsWith(".kt") }
@@ -121,7 +129,13 @@ internal suspend fun KastIndexerBackend.planAddFileOperation(
             val proofParts = proveAdditionDeclarations(parsed, relativeBaseOffset = 0)
             val generation = psiGeneration()
             val context = exactAdditionContext(owner, generation)
-            revalidateAdditionContext(owner, generation, context, target, mustExist = false)
+            val revalidatedContext = RevalidatedAdditionContext.admit(
+                backend = this@planAddFileOperation,
+                owner = owner,
+                generation = generation,
+                context = context,
+                target = creatableTarget,
+            )
             val postimage = strictAdditionPlannerUtf8Bytes(query.proposedContent.value)
             AddFilePlanResult.of(
                 proposedContent = query.proposedContent.value,
@@ -130,7 +144,7 @@ internal suspend fun KastIndexerBackend.planAddFileOperation(
                     owner = owner.owner,
                     packageIdentity = parsed.packageIdentity,
                     declarations = proofParts.declarations,
-                    context = context,
+                    context = revalidatedContext.context,
                     collisionEvidence = ExactAdditionCollisionEvidence.complete(proofParts.declarations.size),
                     outboundEvidence = proofParts.outbound,
                     rebindingBaseline = ExactAdditionRebindingBaseline.complete(emptyList()),
@@ -141,6 +155,14 @@ internal suspend fun KastIndexerBackend.planAddFileOperation(
     }
 }
 
+/**
+ * Proof transition: `ParsedAddDeclarationPlanQuery -> AddDeclarationPlanResult`.
+ *
+ * Establishes an authored exact source owner, canonical existing target and preimage, compiler-valid
+ * insertion, collision/rebinding evidence, and a revalidated proof context. Expected planning
+ * failures are closed by `AdditionProofIncompleteException` and `AdditionProofLimitation`; raw
+ * bytes are extracted only at the exact text-image planner boundary.
+ */
 internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
     query: ParsedAddDeclarationPlanQuery,
 ): AddDeclarationPlanResult = withContext(readDispatcher) {
@@ -152,11 +174,11 @@ internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
         ) {
             val target = query.targetPath.toJavaPath()
             val owner = exactAdditionOwner(target)
-            if (!Files.isRegularFile(target, NOFOLLOW_LINKS)) failAddition(
-                AdditionProofLimitation.TARGET_FILE_MISSING,
-                "The add-declaration target file does not exist",
+            val existingTarget = ExistingAdditionTarget.admit(
+                this@planAddDeclarationOperation,
+                owner.editableTarget,
             )
-            val rawPreimage = secureAdditionTargetRead(owner.editableTarget)
+            val rawPreimage = existingTarget.copyPreimage()
             val actualPrehash = FileHashing.sha256(rawPreimage)
             if (actualPrehash != query.expectedCurrentSha256.value) failAddition(
                 AdditionProofLimitation.TARGET_FILE_HASH_CHANGED,
@@ -166,7 +188,6 @@ internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
                 AdditionProofLimitation.TARGET_NOT_KOTLIN_SOURCE,
                 "The add-declaration target is not one exact Kotlin source file",
             )
-            requireSecureExistingTarget(owner.editableTarget)
             val parsedProposal = parseAddDeclaration(query.proposedDeclaration.value, targetFile)
             val insertion = SemanticInsertionPointResolver.resolve(
                 targetFile,
@@ -209,7 +230,13 @@ internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
             val proofParts = proveAdditionDeclarations(contextual, relativeBaseOffset = proposedStart)
             val generation = psiGeneration()
             val context = exactAdditionContext(owner, generation)
-            revalidateAdditionContext(owner, generation, context, target, mustExist = true)
+            val revalidatedContext = RevalidatedAdditionContext.admit(
+                backend = this@planAddDeclarationOperation,
+                owner = owner,
+                generation = generation,
+                context = context,
+                target = existingTarget,
+            )
             val imagePlan = try {
                 IdeaTextImagePlanner.plan(
                     rawPreimage = rawPreimage,
@@ -241,7 +268,7 @@ internal suspend fun KastIndexerBackend.planAddDeclarationOperation(
                     declaration = proofParts.declarations.single(),
                     insertion = CompilerFileBottomInsertion.at(insertion),
                     newlinePolicy = AdditionNewlinePolicy.PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF,
-                    context = context,
+                    context = revalidatedContext.context,
                     collisionEvidence = ExactAdditionCollisionEvidence.complete(1),
                     outboundEvidence = proofParts.outbound,
                     rebindingBaseline = ExactAdditionRebindingBaseline.complete(emptyList()),
