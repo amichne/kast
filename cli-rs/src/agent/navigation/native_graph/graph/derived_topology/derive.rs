@@ -1,3 +1,5 @@
+include!("projection_work.rs");
+
 fn derive_reference_topology(
     snapshot: ReferenceTopologySnapshot,
     previous: Option<&DerivedTopologyArtifact>,
@@ -31,8 +33,9 @@ fn derive_reference_topology(
             .collect(),
     );
     let memberships = native_weighted_leiden(&graph, DERIVED_TOPOLOGY_RESOLUTION);
-    let (nodes, communities) =
+    let (nodes, communities, work) =
         derived_topology_projection(&snapshot.nodes, &snapshot.edges, &positions, &memberships);
+    emit_derived_topology_work_evidence(work);
     let (lineage, changes) = previous.map_or((None, None), |previous| {
         (
             Some(derived_topology_lineage(previous, &communities)),
@@ -69,12 +72,26 @@ fn derived_topology_projection(
     edges: &[ReferenceEdgeInput],
     positions: &BTreeMap<String, usize>,
     memberships: &[usize],
-) -> (Vec<DerivedTopologyNode>, Vec<DerivedTopologyCommunity>) {
+) -> (
+    Vec<DerivedTopologyNode>,
+    Vec<DerivedTopologyCommunity>,
+    DerivedTopologyProjectionWork,
+) {
     let mut incoming = vec![0usize; inputs.len()];
     let mut outgoing = vec![0usize; inputs.len()];
     let mut cross_community = vec![0usize; inputs.len()];
     let mut weighted_degree = vec![0.0; inputs.len()];
+    let mut members = BTreeMap::<usize, Vec<usize>>::new();
+    for (node, &community) in memberships.iter().enumerate() {
+        members.entry(community).or_default().push(node);
+    }
+    let mut community_edges = members
+        .keys()
+        .map(|&community| (community, DerivedTopologyCommunityEdgeMetrics::default()))
+        .collect::<BTreeMap<_, _>>();
+    let mut edge_visits = 0;
     for edge in edges {
+        edge_visits += 1;
         let (Some(&source), Some(&target)) =
             (positions.get(&edge.source), positions.get(&edge.target))
         else {
@@ -84,14 +101,25 @@ fn derived_topology_projection(
         incoming[target] += edge.occurrence_count;
         weighted_degree[source] += edge.normalized_weight;
         weighted_degree[target] += edge.normalized_weight;
-        if memberships[source] != memberships[target] {
+        let source_community = memberships[source];
+        let target_community = memberships[target];
+        if source_community == target_community {
+            community_edges
+                .get_mut(&source_community)
+                .expect("node memberships establish community edge metrics")
+                .record_internal(edge);
+        } else {
             cross_community[source] += edge.occurrence_count;
             cross_community[target] += edge.occurrence_count;
+            community_edges
+                .get_mut(&source_community)
+                .expect("source membership establishes community edge metrics")
+                .record_external(edge);
+            community_edges
+                .get_mut(&target_community)
+                .expect("target membership establishes community edge metrics")
+                .record_external(edge);
         }
-    }
-    let mut members = BTreeMap::<usize, Vec<usize>>::new();
-    for (node, &community) in memberships.iter().enumerate() {
-        members.entry(community).or_default().push(node);
     }
     let communities = members
         .iter()
@@ -100,9 +128,10 @@ fn derived_topology_projection(
                 community,
                 members,
                 inputs,
-                edges,
-                positions,
                 &weighted_degree,
+                community_edges
+                    .get(&community)
+                    .expect("community members establish community edge metrics"),
             )
         })
         .collect::<Vec<_>>();
@@ -152,42 +181,22 @@ fn derived_topology_projection(
             }
         })
         .collect();
-    (nodes, communities)
+    let work = DerivedTopologyProjectionWork {
+        node_count: inputs.len(),
+        edge_count: edges.len(),
+        community_count: communities.len(),
+        edge_visits,
+    };
+    (nodes, communities, work)
 }
 
 fn derived_topology_community(
     community: usize,
     members: &[usize],
     nodes: &[ReferenceNodeInput],
-    edges: &[ReferenceEdgeInput],
-    positions: &BTreeMap<String, usize>,
     weighted_degree: &[f64],
+    edge_metrics: &DerivedTopologyCommunityEdgeMetrics,
 ) -> DerivedTopologyCommunity {
-    let member_set = members.iter().copied().collect::<BTreeSet<_>>();
-    let mut internal_edge_count = 0;
-    let mut external_edge_count = 0;
-    let mut internal_weight = 0.0;
-    let mut external_weight = 0.0;
-    let mut relationship_kinds = BTreeMap::new();
-    for edge in edges {
-        let (Some(&source), Some(&target)) =
-            (positions.get(&edge.source), positions.get(&edge.target))
-        else {
-            continue;
-        };
-        let source_member = member_set.contains(&source);
-        let target_member = member_set.contains(&target);
-        if source_member && target_member {
-            internal_edge_count += 1;
-            internal_weight += edge.normalized_weight;
-        } else if source_member || target_member {
-            external_edge_count += 1;
-            external_weight += edge.normalized_weight;
-        } else {
-            continue;
-        }
-        *relationship_kinds.entry(edge.kind).or_default() += edge.occurrence_count;
-    }
     let mut term_counts = BTreeMap::<String, usize>::new();
     for &member in members {
         for term in semantic_label_terms(&nodes[member].name) {
@@ -214,8 +223,10 @@ fn derived_topology_community(
             .total_cmp(&weighted_degree[left])
             .then_with(|| nodes[left].key.cmp(&nodes[right].key))
     });
-    let total_weight = internal_weight + external_weight;
-    let volume = internal_weight.mul_add(2.0, external_weight);
+    let total_weight = edge_metrics.internal_weight + edge_metrics.external_weight;
+    let volume = edge_metrics
+        .internal_weight
+        .mul_add(2.0, edge_metrics.external_weight);
     DerivedTopologyCommunity {
         id: community,
         label: label_terms.join("-"),
@@ -225,17 +236,17 @@ fn derived_topology_community(
             .map(|&member| nodes[member].key.clone())
             .collect(),
         member_count: members.len(),
-        internal_edge_count,
-        external_edge_count,
-        internal_weight,
-        external_weight,
+        internal_edge_count: edge_metrics.internal_edge_count,
+        external_edge_count: edge_metrics.external_edge_count,
+        internal_weight: edge_metrics.internal_weight,
+        external_weight: edge_metrics.external_weight,
         cohesion: if total_weight > 0.0 {
-            internal_weight / total_weight
+            edge_metrics.internal_weight / total_weight
         } else {
             0.0
         },
         conductance: if volume > 0.0 {
-            external_weight / volume
+            edge_metrics.external_weight / volume
         } else {
             0.0
         },
@@ -244,7 +255,7 @@ fn derived_topology_community(
             .take(3)
             .map(|member| nodes[member].key.clone())
             .collect(),
-        relationship_kinds,
+        relationship_kinds: edge_metrics.relationship_kinds.clone(),
     }
 }
 

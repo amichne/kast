@@ -1,5 +1,8 @@
 use super::*;
 
+#[path = "scaling.rs"]
+mod scaling;
+
 impl ReferenceFixture {
     fn install_repository_base(&self) -> PathBuf {
         let database = self.database();
