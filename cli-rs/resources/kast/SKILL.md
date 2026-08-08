@@ -53,6 +53,6 @@ Copy Kast-issued selectors, continuations, plan IDs, and recovery IDs verbatim. 
 | `change.apply` | `kast change apply --plan-id <PLAN_ID>` | change.recover |
 | `change.recover` | `kast change recover --recovery-id <RECOVERY_ID>` | change.apply |
 
-Use `--output toon` for compact output or `--output json` for JSON. Both retain `schemaVersion`, `operation`, `status`, and `result.type`. Treat only complete evidence and a `VERIFIED` mutation receipt as success. A qualified result has explicit limitations; rejected, conflicted, rolled-back, and recovery-required outcomes are non-success.
+Use `--output toon` for compact TOON or `--output json` for JSON. Both retain `schemaVersion`, `operation`, `status`, and `result.type`. Treat only complete evidence and a `VERIFIED` mutation receipt as success. A qualified result has explicit limitations; rejected, conflicted, rolled-back, and recovery-required outcomes are non-success.
 
 For setup, runtime control, configuration, raw RPC, local-state inspection, or release work, invoke `/kast:developer`. Read `developerOperations.cli`; do not assume `kastctl` is on `PATH`.

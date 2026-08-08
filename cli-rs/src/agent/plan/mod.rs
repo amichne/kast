@@ -132,6 +132,14 @@ fn print_plan_protocol(
     output::print_structured(&envelope, context.format)
 }
 
+fn print_plan_rejection(context: PlanOutputContext, failure: &impl Serialize) -> Result<()> {
+    let envelope = crate::agent::public_protocol::ProtocolEnvelope::projected_rejected(
+        context.operation,
+        failure,
+    )?;
+    output::print_structured(&envelope, context.format)
+}
+
 pub(crate) fn run_apply(raw: String, output_format: OutputFormat) -> Result<i32> {
     let plan_id = match crate::agent::public_protocol::PlanId::parse(&raw) {
         Ok(plan_id) => plan_id,

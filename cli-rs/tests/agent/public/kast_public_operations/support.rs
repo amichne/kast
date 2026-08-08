@@ -381,7 +381,7 @@ pub(super) fn independent_diagnostics(
 mod output;
 #[path = "support/verification_failure.rs"]
 mod verification_failure;
-pub(super) use output::{assert_selector_forwarding, decode};
+pub(super) use output::{assert_selector_forwarding, decode, decode_envelope};
 pub(super) use verification_failure::{
     assert_independent_verification_failure_rolls_back, successful_verified_add_file_script,
 };

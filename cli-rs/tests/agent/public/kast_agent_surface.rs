@@ -6,8 +6,16 @@ mod graph_summary_protocol;
 mod support;
 #[path = "surface/typed_exact_operations.rs"]
 mod typed_exact_operations;
+#[path = "surface/typed_graph_protocol.rs"]
+mod typed_graph_protocol;
 #[path = "surface/typed_mutation_operations.rs"]
 mod typed_mutation_operations;
+#[path = "surface/typed_output_protocol.rs"]
+mod typed_output_protocol;
+#[path = "surface/typed_pagination.rs"]
+mod typed_pagination;
+#[path = "surface/typed_selector_rejections.rs"]
+mod typed_selector_rejections;
 
 use std::os::unix::process::CommandExt;
 use std::path::Path;
@@ -175,22 +183,7 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
     let workspace = workspace.canonicalize().expect("canonical workspace");
-    let index = seed_public_graph(&workspace, false);
-    let connection = index.connection();
-    for id in 3_i64..=501 {
-        connection
-            .execute(
-                "INSERT INTO semantic_symbols(id, stable_key, kind, name, file_id)
-                 VALUES (?, ?, 'CLASS', ?, 1)",
-                params![
-                    id,
-                    format!("class:sample.Node{id:03}"),
-                    format!("Node{id:03}")
-                ],
-            )
-            .expect("graph symbol");
-    }
-    drop(connection);
+    let _index = seed_paged_public_graph(&workspace);
 
     let first = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)

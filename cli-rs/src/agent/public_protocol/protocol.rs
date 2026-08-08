@@ -85,6 +85,34 @@ impl ProtocolEnvelope {
         )
     }
 
+    pub(crate) fn projected_rejected(
+        operation: OperationId,
+        failure: &impl Serialize,
+    ) -> Result<Self, serde_json::Error> {
+        let failure = serde_json::to_value(failure)?;
+        if failure
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            .is_none()
+        {
+            return Ok(Self::rejected(
+                operation,
+                ProtocolFailure::BackendContractViolation {
+                    message: "projected rejection omitted its typed failure discriminator"
+                        .to_string(),
+                },
+            ));
+        }
+        Ok(Self::new(
+            operation,
+            OperationStatus::Rejected,
+            EnvelopeResult::ProjectedRejected(ProjectedRejectedResult {
+                result_type: RejectedResultType::Rejected,
+                failure,
+            }),
+        ))
+    }
+
     pub(crate) fn backend_rejected(
         operation: OperationId,
         code: impl Into<String>,
@@ -134,6 +162,7 @@ impl ProtocolEnvelope {
 enum EnvelopeResult {
     Typed(ProtocolResult),
     Projected(ProjectedResult),
+    ProjectedRejected(ProjectedRejectedResult),
 }
 
 #[derive(Debug, Serialize)]
@@ -143,6 +172,19 @@ struct ProjectedResult {
     result_type: &'static str,
     #[serde(flatten)]
     fields: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+struct ProjectedRejectedResult {
+    #[serde(rename = "type")]
+    result_type: RejectedResultType,
+    failure: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum RejectedResultType {
+    Rejected,
 }
 
 #[derive(Debug, Serialize)]

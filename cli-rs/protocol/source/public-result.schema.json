@@ -1,2167 +1,1066 @@
 {
+  "$defs": {
+    "envelope": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "result": {
+                "not": {
+                  "$ref": "#/$defs/rejected"
+                }
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "rejected"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/rejected"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "workspace.home",
+            "workspace.ensure",
+            "workspace.refresh",
+            "workspace.externalize",
+            "file.list",
+            "symbol.search",
+            "symbol.resolve",
+            "symbol.show",
+            "relation.references",
+            "relation.calls.incoming",
+            "relation.calls.outgoing",
+            "relation.implementations",
+            "relation.hierarchy.supertypes",
+            "relation.hierarchy.subtypes",
+            "graph.summary",
+            "graph.nodes",
+            "graph.neighbors",
+            "graph.topology",
+            "graph.communities",
+            "graph.derive",
+            "graph.impact",
+            "diagnostic.check",
+            "change.plan.rename",
+            "change.plan.add-file",
+            "change.plan.add-declaration",
+            "change.plan.replace",
+            "change.apply",
+            "change.recover"
+          ]
+        },
+        "result": {
+          "type": "object"
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    "rejected": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "properties": {
+            "type": {
+              "enum": [
+                "actionable-failure",
+                "backend-contract-violation",
+                "backend-rejected",
+                "continuation-invalid",
+                "continuation-mismatch",
+                "continuation-stale",
+                "invalid-input",
+                "selector-rejected",
+                "mutation-non-success",
+                "subject-identity-mismatch",
+                "subject-not-found",
+                "unsupported-subject-kind"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "rejected"
+        }
+      },
+      "required": [
+        "type",
+        "failure"
+      ],
+      "type": "object"
+    },
+    "result-ambiguous": {
+      "properties": {
+        "type": {
+          "const": "ambiguous"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-change-plan": {
+      "properties": {
+        "type": {
+          "const": "change-plan"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-derived-topology": {
+      "properties": {
+        "type": {
+          "const": "derived-topology"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-diagnostics": {
+      "properties": {
+        "type": {
+          "const": "diagnostics"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-externalization": {
+      "properties": {
+        "type": {
+          "const": "externalization"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-files": {
+      "properties": {
+        "type": {
+          "const": "files"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-graph-communities": {
+      "properties": {
+        "type": {
+          "const": "graph-communities"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-graph-neighbors": {
+      "properties": {
+        "type": {
+          "const": "graph-neighbors"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-graph-nodes": {
+      "properties": {
+        "type": {
+          "const": "graph-nodes"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-graph-summary": {
+      "properties": {
+        "type": {
+          "const": "graph-summary"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-graph-topology": {
+      "properties": {
+        "type": {
+          "const": "graph-topology"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-home": {
+      "properties": {
+        "type": {
+          "const": "home"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-impact": {
+      "properties": {
+        "type": {
+          "const": "impact"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-impact-qualified": {
+      "properties": {
+        "type": {
+          "const": "impact-qualified"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-matches": {
+      "properties": {
+        "type": {
+          "const": "matches"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-mutation-receipt": {
+      "properties": {
+        "type": {
+          "const": "mutation-receipt"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-not-found": {
+      "properties": {
+        "type": {
+          "const": "not-found"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-references": {
+      "properties": {
+        "type": {
+          "const": "references"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-relations": {
+      "properties": {
+        "type": {
+          "const": "relations"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-resolved": {
+      "properties": {
+        "type": {
+          "const": "resolved"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-symbol": {
+      "properties": {
+        "type": {
+          "const": "symbol"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-workspace-ready": {
+      "properties": {
+        "type": {
+          "const": "workspace-ready"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "result-workspace-refresh": {
+      "properties": {
+        "type": {
+          "const": "workspace-refresh"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    }
+  },
   "$id": "https://kast.michne.com/protocol/public-result.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "oneOf": [
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "workspace.home"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "home"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "workspace.home"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-home"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "workspace.ensure"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "workspace-ready"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "workspace.ensure"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-workspace-ready"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "workspace.refresh"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "workspace-refresh"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "workspace.refresh"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-workspace-refresh"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "workspace.externalize"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "externalization"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "workspace.externalize"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-externalization"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "file.list"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "files"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "file.list"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-files"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "symbol.search"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "matches"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "symbol.search"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-matches"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "symbol.resolve"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "resolved"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "symbol.resolve"
             },
-            {
-              "properties": {
-                "type": {
-                  "const": "not-found"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "type": {
-                  "const": "ambiguous"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-resolved"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/result-not-found"
+                },
+                {
+                  "$ref": "#/$defs/result-ambiguous"
+                },
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "symbol.show"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "symbol"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "symbol.show"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-symbol"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "relation.references"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "references"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "relation.references"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-references"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "relation.calls.incoming"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "relations"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "relation.calls.incoming"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-relations"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "relation.calls.outgoing"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "relations"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "relation.calls.outgoing"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-relations"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "relation.implementations"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "relations"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "relation.implementations"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-relations"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "relation.hierarchy.supertypes"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "relations"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "relation.hierarchy.supertypes"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-relations"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "relation.hierarchy.subtypes"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "relations"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "relation.hierarchy.subtypes"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-relations"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "graph.summary"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "graph-summary"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "graph.summary"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-graph-summary"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "graph.nodes"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "graph-nodes"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "graph.nodes"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-graph-nodes"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "graph.neighbors"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "graph-neighbors"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "graph.neighbors"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-graph-neighbors"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "graph.topology"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "graph-topology"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "graph.topology"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-graph-topology"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "graph.communities"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "graph-communities"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "graph.communities"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-graph-communities"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "graph.derive"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "derived-topology"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "graph.derive"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-derived-topology"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "graph.impact"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "impact"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "graph.impact"
             },
-            {
-              "properties": {
-                "type": {
-                  "const": "impact-qualified"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-impact"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/result-impact-qualified"
+                },
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "diagnostic.check"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "diagnostics"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "diagnostic.check"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-diagnostics"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "change.plan.rename"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "change-plan"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "change.plan.rename"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-change-plan"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "change.plan.add-file"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "change-plan"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "change.plan.add-file"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-change-plan"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "change.plan.add-declaration"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "change-plan"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "change.plan.add-declaration"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-change-plan"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "change.plan.replace"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "change-plan"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "change.plan.replace"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-change-plan"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "change.apply"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "mutation-receipt"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "change.apply"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-mutation-receipt"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     },
     {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "change.recover"
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
         },
-        "result": {
-          "oneOf": [
-            {
-              "properties": {
-                "type": {
-                  "const": "mutation-receipt"
-                }
-              },
-              "required": [
-                "type"
-              ],
-              "type": "object"
+        {
+          "properties": {
+            "operation": {
+              "const": "change.recover"
             },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failure": {
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "actionable-failure",
-                        "backend-contract-violation",
-                        "backend-rejected",
-                        "continuation-invalid",
-                        "continuation-mismatch",
-                        "continuation-stale",
-                        "invalid-input",
-                        "selector-rejected",
-                        "subject-identity-mismatch",
-                        "subject-not-found",
-                        "unsupported-subject-kind"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "type": "object"
+            "result": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/result-mutation-receipt"
                 },
-                "type": {
-                  "const": "rejected"
+                {
+                  "$ref": "#/$defs/rejected"
                 }
-              },
-              "required": [
-                "type",
-                "failure"
-              ],
-              "type": "object"
+              ]
             }
-          ]
-        },
-        "schemaVersion": {
-          "const": 2
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "qualified",
-            "rejected"
-          ]
+          }
         }
-      },
-      "required": [
-        "schemaVersion",
-        "operation",
-        "status",
-        "result"
-      ],
-      "type": "object"
+      ]
     }
   ],
   "schemaVersion": 1,
