@@ -20,7 +20,7 @@ Start your coding agent at the exact Gradle workspace root, then start or
 resume its indexer:
 
 ```console
-kast up
+kast workspace ensure
 ```
 
 Inspect the selected indexer and next action:
@@ -67,18 +67,19 @@ of each relationship and the occurrence that connects them.
 
 ## Query the same evidence directly
 
-Find the symbol and follow its exact identity:
+Search for the symbol, then copy a returned selector verbatim into the exact
+operation:
 
 ```console
-kast symbol find GradleModelSettlementOutcome
-kast symbol show <symbol>
+kast symbol search --query GradleModelSettlementOutcome
+kast symbol show --selector <SELECTOR>
 ```
 
 Then choose the relationship you need:
 
 ```console
-kast symbol refs <symbol>
-kast symbol callers <symbol>
+kast relation references --selector <SELECTOR>
+kast relation calls incoming --selector <SELECTOR>
 ```
 
 Treat limited or resumable coverage as a boundary to investigate, not as proof

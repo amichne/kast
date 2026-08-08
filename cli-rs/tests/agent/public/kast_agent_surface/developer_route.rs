@@ -26,16 +26,21 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
     assert!(stdout.contains("next["), "{stdout}");
     let decoded: serde_json::Value =
         toon_format::decode_default(stdout.trim()).expect("home output is valid TOON");
+    assert_eq!(decoded["schemaVersion"], 2);
+    assert_eq!(decoded["operation"], "workspace.home");
+    assert_eq!(decoded["status"], "complete");
+    assert_eq!(decoded["result"]["type"], "home");
+    let home = &decoded["result"];
     assert_eq!(
-        decoded["developerOperations"]["cli"],
+        home["developerOperations"]["cli"],
         developer_cli.display().to_string()
     );
     assert_eq!(
-        decoded["developerOperations"]["helpArgs"],
+        home["developerOperations"]["helpArgs"],
         serde_json::json!(["--help"]),
     );
-    assert_eq!(decoded["developerOperations"]["skill"], "/kast:developer");
-    let help_args = decoded["developerOperations"]["helpArgs"]
+    assert_eq!(home["developerOperations"]["skill"], "/kast:developer");
+    let help_args = home["developerOperations"]["helpArgs"]
         .as_array()
         .expect("developer help args")
         .iter()
@@ -49,7 +54,7 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
         String::from_utf8_lossy(&help.stdout).contains("Usage: kastctl"),
         "{help:?}"
     );
-    for cruft in ["state: UNKNOWN", "schemaVersion", "ok:", "method:"] {
+    for cruft in ["state: UNKNOWN", "ok:", "method:"] {
         assert!(!stdout.contains(cruft), "leaked {cruft}: {stdout}");
     }
 }

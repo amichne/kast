@@ -128,7 +128,11 @@ fn public_output_flag_selects_json() {
     assert!(output.status.success(), "{output:?}");
     let value: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("public JSON output");
-    assert_eq!(value["bin"], "kast", "{value:#}");
+    assert_eq!(value["schemaVersion"], 2, "{value:#}");
+    assert_eq!(value["operation"], "workspace.home", "{value:#}");
+    assert_eq!(value["status"], "complete", "{value:#}");
+    assert_eq!(value["result"]["type"], "home", "{value:#}");
+    assert_eq!(value["result"]["bin"], "kast", "{value:#}");
     assert!(output.stderr.is_empty(), "{output:?}");
 }
 
@@ -210,19 +214,23 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
     assert_eq!(first["status"], "complete", "{first:#}");
     assert_eq!(first["result"]["type"], "graph-nodes", "{first:#}");
     assert_eq!(first["result"]["nodes"].as_array().map(Vec::len), Some(500));
-    assert_eq!(first["result"]["truncated"], true);
+    assert_eq!(first["result"]["page"]["returned"], 500);
+    assert_eq!(
+        first["result"]["page"]["cardinality"]["type"],
+        "known-minimum"
+    );
     let node_selector = first["result"]["nodes"][0]["nodeSelector"]
         .as_str()
         .expect("opaque graph node selector")
         .to_string();
     assert!(node_selector.starts_with("kgns1."), "{first:#}");
-    let continuation = first["result"]["continuation"]
+    let continuation = first["result"]["page"]["continuation"]
         .as_str()
         .expect("opaque public graph continuation")
         .to_string();
-    assert!(continuation.starts_with("kgn1."), "{first:#}");
+    assert!(continuation.starts_with("kgn2."), "{first:#}");
     for private in [
-        "page",
+        "truncated",
         "nextPage",
         "pageToken",
         "nextPageToken",
@@ -281,8 +289,13 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
             .as_str()
             .is_some_and(|selector| selector.starts_with("kgns1."))
     );
-    assert_eq!(second["result"]["truncated"], false);
-    assert!(second["result"].get("continuation").is_none(), "{second:#}");
+    assert_eq!(second["result"]["page"]["returned"], 1);
+    assert_eq!(second["result"]["page"]["cardinality"]["type"], "exact");
+    assert_eq!(second["result"]["page"]["cardinality"]["count"], 501);
+    assert!(
+        second["result"]["page"].get("continuation").is_none(),
+        "{second:#}"
+    );
 
     let other_workspace = fixture.path().join("other-workspace");
     std::fs::create_dir_all(&other_workspace).expect("other workspace");
@@ -303,7 +316,12 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
             .trim(),
     )
     .expect("cross-workspace page error TOON");
-    assert_eq!(wrong_root["error"], "GRAPH_PAGE_TOKEN_MISMATCH");
+    assert_eq!(wrong_root["status"], "rejected", "{wrong_root:#}");
+    assert_eq!(wrong_root["result"]["type"], "rejected", "{wrong_root:#}");
+    assert_eq!(
+        wrong_root["result"]["failure"]["code"], "GRAPH_PAGE_TOKEN_MISMATCH",
+        "{wrong_root:#}"
+    );
 
     let wrong_domain = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
@@ -322,7 +340,11 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
             .trim(),
     )
     .expect("wrong-domain failure TOON");
-    assert_eq!(wrong_domain["error"], "GRAPH_NODE_SELECTOR_MALFORMED");
+    assert_eq!(wrong_domain["status"], "rejected", "{wrong_domain:#}");
+    assert_eq!(
+        wrong_domain["result"]["failure"]["code"], "GRAPH_NODE_SELECTOR_MALFORMED",
+        "{wrong_domain:#}"
+    );
 
     let wrong_root_node =
         published_public_kast(&home, &fixture.path().join("config"), &other_workspace)
@@ -341,9 +363,10 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
             .trim(),
     )
     .expect("wrong-root selector failure TOON");
+    assert_eq!(wrong_root_node["status"], "rejected", "{wrong_root_node:#}");
     assert_eq!(
-        wrong_root_node["error"],
-        "GRAPH_NODE_SELECTOR_WRONG_WORKSPACE"
+        wrong_root_node["result"]["failure"]["code"], "GRAPH_NODE_SELECTOR_WRONG_WORKSPACE",
+        "{wrong_root_node:#}"
     );
 }
 

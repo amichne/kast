@@ -1,30 +1,39 @@
-fn print_refresh_noop(workspace_root: &Path) -> Result<i32> {
+fn print_refresh_noop(workspace_root: &Path, output_format: OutputFormat) -> Result<i32> {
     let admission =
         match crate::repository_intelligence::semantic_graph_read_admission(workspace_root) {
             Ok(admission) => admission,
             Err(error) => {
                 return print_actionable_failure(
+                    agent::public_protocol::OperationId::WorkspaceRefresh,
                     "GRAPH_EVIDENCE_UNAVAILABLE",
                     &error.message,
-                    "kast refresh",
+                    "kast workspace refresh",
+                    output_format,
                 );
             }
         };
     if admission.is_rejected() {
         return print_actionable_failure(
+            agent::public_protocol::OperationId::WorkspaceRefresh,
             "GRAPH_EVIDENCE_INCOMPLETE",
             "Persisted semantic graph evidence is incomplete.",
-            "kast refresh",
+            "kast workspace refresh",
+            output_format,
         );
     }
-    print_direct(&json!({
-        "fileCount": 0,
-        "qualification": admission
-            .qualification()
-            .expect("non-rejected graph evidence has a qualification"),
-        "coverage": admission.coverage(),
-        "message": "Semantic graph evidence is current.",
-    }))
+    print_public_value(
+        agent::public_protocol::OperationId::WorkspaceRefresh,
+        agent::public_protocol::OperationStatus::Complete,
+        &json!({
+            "fileCount": 0,
+            "qualification": admission
+                .qualification()
+                .expect("non-rejected graph evidence has a qualification"),
+            "coverage": admission.coverage(),
+            "message": "Semantic graph evidence is current.",
+        }),
+        output_format,
+    )
 }
 
 fn changed_kotlin_files(workspace_root: &Path) -> Result<std::result::Result<Vec<String>, Value>> {
@@ -51,7 +60,7 @@ fn changed_kotlin_files(workspace_root: &Path) -> Result<std::result::Result<Vec
     if !coverage_complete {
         return Err(CliError::new(
             "CHANGED_FILE_EVIDENCE_INCOMPLETE",
-            "Kast could not prove the complete changed Kotlin file set. Pass explicit paths to `kast check`.",
+            "Kast could not prove the complete changed Kotlin file set. Pass explicit paths to `kast diagnostic check --file <PATH>`.",
         ));
     }
     let truncated = result
@@ -66,7 +75,7 @@ fn changed_kotlin_files(workspace_root: &Path) -> Result<std::result::Result<Vec
     if truncated {
         return Err(CliError::new(
             "CHANGED_FILE_SET_TOO_LARGE",
-            "More than 200 changed Kotlin files were found. Run `kast check <path>...` with explicit batches.",
+            "More than 200 changed Kotlin files were found. Run `kast diagnostic check --file <PATH>...` with explicit batches.",
         ));
     }
     let files = result.get("files").ok_or_else(|| {

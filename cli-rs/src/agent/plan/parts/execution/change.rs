@@ -26,7 +26,7 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
         None,
     )?)?;
     if preview.get("ok") != Some(&Value::Bool(true)) {
-        return agent_adapter::print_projected_value(preview);
+        return agent_adapter::print_backend_failure(operation, preview, output_format);
     }
     let preview_result = projected_result(&preview)?;
     let stored_operation = prepared.into_stored(preview_result)?;
@@ -65,7 +65,6 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
     };
     print_plan_protocol(
         plan_output_context(output_format, operation),
-        "change-plan",
         crate::agent::public_protocol::OperationStatus::Complete,
         &result,
     )?;

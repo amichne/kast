@@ -63,8 +63,11 @@ enum RecoveryObservationClass {
     Foreign,
 }
 
-pub(crate) fn run_recover(raw_recovery_id: String, output_format: OutputFormat) -> Result<i32> {
-    let recovery_id = parse_recovery_id(&raw_recovery_id)?;
+fn run_recover_typed(
+    recovery_id: crate::agent::public_protocol::RecoveryId,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    let recovery_id = recovery_id.uuid();
     let paths = PlanPaths::new(recovery_id);
     let _operation_lock = PlanOperationLock::acquire(&paths.lock)?;
     let mut plan = read_plan(&paths.plan, recovery_id)?;

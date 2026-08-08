@@ -1,5 +1,8 @@
-pub(crate) fn run_apply(raw_plan_id: String, output_format: OutputFormat) -> Result<i32> {
-    let plan_id = parse_plan_id(&raw_plan_id)?;
+fn run_apply_typed(
+    plan_id: crate::agent::public_protocol::PlanId,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    let plan_id = plan_id.uuid();
     let paths = PlanPaths::new(plan_id);
     let _operation_lock = PlanOperationLock::acquire(&paths.lock)?;
     let mut plan = read_plan(&paths.plan, plan_id)?;
@@ -15,7 +18,7 @@ pub(crate) fn run_apply(raw_plan_id: String, output_format: OutputFormat) -> Res
         read_recovery(&paths.recovery, plan_id, &plan)?;
         return print_recovery_required(
             &plan,
-            "This plan already has a durable recovery journal; use `kast recover` before retrying apply.",
+            "This plan already has a durable recovery journal; use `kast change recover --recovery-id <RECOVERY_ID>` before retrying apply.",
         );
     }
 
@@ -86,7 +89,6 @@ pub(crate) fn run_apply(raw_plan_id: String, output_format: OutputFormat) -> Res
             return Err(error);
         }
     };
-
     if MutationFailurePoint::BeforeJournal.active() {
         return fail_before_recovery_journal(lease, CliError::new(
             "KAST_TEST_MUTATION_INTERRUPTED",
@@ -111,7 +113,6 @@ pub(crate) fn run_apply(raw_plan_id: String, output_format: OutputFormat) -> Res
             "Apply stopped after its recovery journal became durable.",
         );
     }
-
     let initial_scratch = match inspect_mutation_scratch(
         &workspace_root,
         &journal,

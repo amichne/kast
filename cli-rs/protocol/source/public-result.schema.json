@@ -1,0 +1,2169 @@
+{
+  "$id": "https://kast.michne.com/protocol/public-result.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "workspace.home"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "home"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "workspace.ensure"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "workspace-ready"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "workspace.refresh"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "workspace-refresh"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "workspace.externalize"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "externalization"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "file.list"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "files"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "symbol.search"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "matches"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "symbol.resolve"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "resolved"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "not-found"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "ambiguous"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "symbol.show"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "symbol"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "relation.references"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "references"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "relation.calls.incoming"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "relations"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "relation.calls.outgoing"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "relations"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "relation.implementations"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "relations"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "relation.hierarchy.supertypes"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "relations"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "relation.hierarchy.subtypes"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "relations"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "graph.summary"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "graph-summary"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "graph.nodes"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "graph-nodes"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "graph.neighbors"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "graph-neighbors"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "graph.topology"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "graph-topology"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "graph.communities"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "graph-communities"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "graph.derive"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "derived-topology"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "graph.impact"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "impact"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "impact-qualified"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "diagnostic.check"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "diagnostics"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "change.plan.rename"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "change-plan"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "change.plan.add-file"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "change-plan"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "change.plan.add-declaration"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "change-plan"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "change.plan.replace"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "change-plan"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "change.apply"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "mutation-receipt"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "change.recover"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "properties": {
+                "type": {
+                  "const": "mutation-receipt"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failure": {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "actionable-failure",
+                        "backend-contract-violation",
+                        "backend-rejected",
+                        "continuation-invalid",
+                        "continuation-mismatch",
+                        "continuation-stale",
+                        "invalid-input",
+                        "selector-rejected",
+                        "subject-identity-mismatch",
+                        "subject-not-found",
+                        "unsupported-subject-kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": {
+                  "const": "rejected"
+                }
+              },
+              "required": [
+                "type",
+                "failure"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operation",
+        "status",
+        "result"
+      ],
+      "type": "object"
+    }
+  ],
+  "schemaVersion": 1,
+  "title": "Kast public canonical result envelope"
+}

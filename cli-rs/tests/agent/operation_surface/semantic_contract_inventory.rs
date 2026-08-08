@@ -63,10 +63,11 @@ fn semantic_contract_inventory_is_complete_and_machine_testable() {
         "relation.references",
         "symbol.resolve",
         "symbol.search",
+        "symbol.show",
         "workspace.ensure",
+        "workspace.externalize",
         "workspace.home",
         "workspace.refresh",
-        "workspace.refresh.external",
     ]);
     let operations = inventory["operations"]
         .as_array()
@@ -92,6 +93,37 @@ fn semantic_contract_inventory_is_complete_and_machine_testable() {
     assert_eq!(actual_operations, expected_operations);
     assert_eq!(actual_operations.len(), operations.len());
 
+    let registry_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("protocol/source/public-operations.json");
+    let registry: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(&registry_path).unwrap_or_else(|error| {
+            panic!(
+                "public operation registry is missing at {}: {error}",
+                registry_path.display()
+            )
+        }),
+    )
+    .expect("public operation registry is valid JSON");
+    let registry_operations = registry["operations"]
+        .as_array()
+        .expect("registry operations are an array");
+    let registry_ids = registry_operations
+        .iter()
+        .map(|operation| required_nonempty_string(operation, "id"))
+        .collect::<BTreeSet<_>>();
+    assert_eq!(actual_operations, registry_ids);
+    for operation in operations {
+        let id = required_nonempty_string(operation, "id");
+        let registry_operation = registry_operations
+            .iter()
+            .find(|registered| registered["id"] == id)
+            .unwrap_or_else(|| panic!("inventory operation {id} is not registered"));
+        assert_eq!(
+            operation["currentRoute"], registry_operation["cli"]["syntax"],
+            "{id} route drifted from the typed registry"
+        );
+    }
+
     let classifications = BTreeSet::from([
         "CALLER_VALUE",
         "KAST_ISSUED_VALUE",
@@ -99,6 +131,19 @@ fn semantic_contract_inventory_is_complete_and_machine_testable() {
         "EVIDENCE",
     ]);
     let mut value_ids = BTreeSet::new();
+    let exact_symbol_operations = BTreeSet::from([
+        "change.plan.rename",
+        "change.plan.replace",
+        "graph.impact",
+        "relation.calls.incoming",
+        "relation.calls.outgoing",
+        "relation.hierarchy.subtypes",
+        "relation.hierarchy.supertypes",
+        "relation.implementations",
+        "relation.references",
+        "symbol.show",
+    ]);
+    let mut exact_selector_inputs = BTreeSet::new();
     let values = inventory["values"]
         .as_array()
         .expect("inventory values are an array");
@@ -172,6 +217,22 @@ fn semantic_contract_inventory_is_complete_and_machine_testable() {
             classifications.contains(classification),
             "{id} has unknown classification {classification}"
         );
+        let public_term = required_nonempty_string(value, "publicTerm");
+        assert!(
+            !matches!(public_term, "page" | "nextPage" | "selectorHandle"),
+            "{id} exposes retired public term {public_term}"
+        );
+        if value["direction"] == "INPUT" && public_term == "selector" {
+            assert!(
+                required_nonempty_string(value, "rustType").contains("SymbolSelector"),
+                "{id} does not retain the exact selector type"
+            );
+            assert!(
+                exact_symbol_operations.contains(operation),
+                "{id} exposes selector for non-exact operation {operation}"
+            );
+            exact_selector_inputs.insert(operation);
+        }
         for field in ["producers", "consumers"] {
             for related in value[field]
                 .as_array()
@@ -187,6 +248,7 @@ fn semantic_contract_inventory_is_complete_and_machine_testable() {
             }
         }
     }
+    assert_eq!(exact_selector_inputs, exact_symbol_operations);
 
     let required_finding_kinds = BTreeSet::from([
         "CALLER_RECONSTRUCTION_REQUIRED",
@@ -209,11 +271,11 @@ fn semantic_contract_inventory_is_complete_and_machine_testable() {
             assert!(finding_ids.insert(id), "finding IDs must be unique");
             assert!(matches!(
                 required_nonempty_string(finding, "status"),
-                "OPEN" | "RESOLVED"
+                "RESOLVED"
             ));
             required_nonempty_string(finding, "evidence");
             required_nonempty_string(finding, "requiredResolution");
-            assert!(finding.get("resolutionProof").is_some());
+            required_nonempty_string(finding, "resolutionProof");
             required_nonempty_string(finding, "kind")
         })
         .collect::<BTreeSet<_>>();

@@ -1,0 +1,38 @@
+#compdef kast
+# Generated from the typed public operation registry.
+
+_kast_typed_operations() {
+  local -a operations
+  operations=(
+    'workspace ensure:workspace.ensure'
+    'workspace refresh:workspace.refresh'
+    'workspace externalize:workspace.externalize'
+    'file list:file.list'
+    'symbol search:symbol.search'
+    'symbol resolve:symbol.resolve'
+    'symbol show:symbol.show'
+    'relation references:relation.references'
+    'relation calls incoming:relation.calls.incoming'
+    'relation calls outgoing:relation.calls.outgoing'
+    'relation implementations:relation.implementations'
+    'relation hierarchy supertypes:relation.hierarchy.supertypes'
+    'relation hierarchy subtypes:relation.hierarchy.subtypes'
+    'graph summary:graph.summary'
+    'graph nodes:graph.nodes'
+    'graph neighbors:graph.neighbors'
+    'graph topology:graph.topology'
+    'graph communities:graph.communities'
+    'graph derive:graph.derive'
+    'graph impact:graph.impact'
+    'diagnostic check:diagnostic.check'
+    'change plan rename:change.plan.rename'
+    'change plan add-file:change.plan.add-file'
+    'change plan add-declaration:change.plan.add-declaration'
+    'change plan replace:change.plan.replace'
+    'change apply:change.apply'
+    'change recover:change.recover'
+  )
+  _describe 'typed Kast operation' operations
+}
+
+_kast_typed_operations "$@"

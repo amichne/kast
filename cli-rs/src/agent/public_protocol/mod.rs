@@ -4,6 +4,7 @@ mod execution;
 mod graph;
 mod impact;
 mod protocol;
+mod registry;
 mod traversal;
 mod traversal_types;
 
@@ -12,14 +13,19 @@ pub(crate) use graph::{
     issue_graph_node_selector,
 };
 
-pub(crate) use domain::SymbolSelector;
 use domain::{
     ExactSymbolRequest, PublicOperation, RelationReferencesInput, SymbolQuery,
     SymbolResolveRequest, SymbolSearchRequest, SymbolShowInput, UntrustedSymbolSelector,
 };
+pub(crate) use domain::{
+    ExternalFailureId, PlanId, RecoveryId, SymbolSelector, WorkspaceKotlinPath,
+};
+pub(crate) use protocol::OperationStatus;
 pub(crate) use protocol::ProtocolEnvelope;
 use protocol::ProtocolFailure;
-pub(crate) use protocol::{OperationId, OperationStatus};
+pub(crate) use registry::{
+    Capability, OperationDefinition, OperationId, Paging, RequestType, operation_definitions,
+};
 use std::path::PathBuf;
 
 pub(crate) fn symbol_search(workspace_root: PathBuf, query: String) -> ProtocolEnvelope {

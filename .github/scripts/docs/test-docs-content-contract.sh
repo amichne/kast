@@ -78,7 +78,7 @@ require_contains "${docs_root}/how-to/install-or-update.md" "No remote marketpla
 require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "GradleModelSettlementOutcome"
 require_contains "${docs_root}/how-to/explore-kotlin-code.md" "complete reported coverage"
 require_contains "${docs_root}/how-to/plan-safe-edits.md" "one exact compiler identity"
-for command in up refresh files symbol graph check change apply; do
+for command in workspace file symbol relation graph diagnostic change; do
   require_contains "${docs_root}/reference/cli.md" "\`kast ${command}"
 done
 public_mutation_docs=(
@@ -91,7 +91,9 @@ for public_mutation_doc in "${public_mutation_docs[@]}"; do
   require_not_contains_file "$public_mutation_doc" "--lease-id"
 done
 for public_mutation_command in \
-  'kast change' 'kast apply <PLAN_ID>' 'kast recover <RECOVERY_ID>'; do
+  'kast change plan rename --selector <SELECTOR> --name' \
+  'kast change apply --plan-id <PLAN_ID>' \
+  'kast change recover --recovery-id <RECOVERY_ID>'; do
   require_contains "${repo_root}/cli-rs/resources/kast/SKILL.md" \
     "$public_mutation_command"
   require_contains "${docs_root}/how-to/plan-safe-edits.md" \
@@ -100,7 +102,7 @@ for public_mutation_command in \
     "$public_mutation_command"
 done
 require_contains "${docs_root}/reference/cli.md" '`kast` is the only public interface'
-require_contains "${docs_root}/reference/cli.md" "compact TOON"
+require_contains "${docs_root}/reference/cli.md" "Compact TOON"
 require_contains "${docs_root}/reference/cli.md" '`libexec/kastctl` multicall entrypoint'
 require_contains "${docs_root}/reference/cli.md" '`UNKNOWN` graph boundary'
 require_contains "${docs_root}/reference/codex-plugin.md" "Codex, Claude,"
@@ -136,7 +138,7 @@ for page in "${docs_root}"/how-to/*.md; do
   require_contains "$page" "# How to "
 done
 require_contains "${docs_root}/reference/cli.md" \
-  '`kast graph [summary]`'
+  '`kast graph summary --scope symbol`'
 require_contains "${docs_root}/reference/cli.md" \
   "Diagnostics do not block reference indexing"
 require_contains "${docs_root}/explanation/architecture.md" \
@@ -166,9 +168,9 @@ require_contains "$hidden_system_map" "Open Knowledge Format"
 require_contains "$hidden_system_map" '`libexec/kastctl` preserves the full administrative CLI'
 require_contains "$hidden_system_map" '`libexec/kastctl setup`'
 require_contains "$hidden_system_map" 'byte-identical `bin/kast` and'
-require_contains "$hidden_system_map" '`kast refresh external <FAILURE_ID>...`'
+require_contains "$hidden_system_map" '`kast workspace externalize --failure-id <FAILURE_ID>`'
 require_contains "$hidden_system_map" 'io.github.amichne.kast.api.contract.backend.AnalysisBackend'
-for command in up refresh files symbol graph check change apply; do
+for command in workspace file symbol relation graph diagnostic change; do
   require_contains "$hidden_system_map" "\`kast ${command}\`"
 done
 for source in \

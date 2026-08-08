@@ -69,16 +69,18 @@ This page is an Open Knowledge Format (OKF) `Runtime Flow` concept. Its
 ## Public API coverage
 
 The visible `kast --help` surface contains only agent-actionable operations.
+Its command families are `kast workspace`, `kast file`, `kast symbol`,
+`kast relation`, `kast graph`, `kast diagnostic`, and `kast change`.
 
 | Family | Commands | Boundary |
 | --- | --- | --- |
 | Orientation | `kast` | Discover the nearest Gradle root and report readiness and next actions. |
-| Indexer | `kast up` | Reuse or create the exact-root indexer and await evidence. |
-| Refresh | `kast refresh` | Refresh changed or selected files. |
-| Discovery | `kast files`, `kast symbol` | Enumerate files, resolve symbols, and traverse relationships. |
+| Indexer | `kast workspace ensure` | Reuse or create the exact-root indexer and await evidence. |
+| Refresh | `kast workspace refresh` | Refresh changed or selected files. |
+| Discovery | `kast file`, `kast symbol`, `kast relation` | Enumerate files, resolve symbols, and traverse relationships. |
 | Graph | `kast graph` | Read generation-pinned topology, communities, and impact. |
-| Diagnostics | `kast check` | Report compiler diagnostics. |
-| Mutations | `kast change`, `kast apply` | Validate a plan, then apply its opaque identifier with an exact-root lease. |
+| Diagnostics | `kast diagnostic check` | Report compiler diagnostics. |
+| Mutations | `kast change plan`, `kast change apply` | Validate a plan, then apply its opaque identifier with an exact-root lease. |
 
 `libexec/kastctl` preserves the full administrative CLI for setup, process
 control, raw RPC, release, and developer automation. It is private, is not on
@@ -109,7 +111,7 @@ Claude, and Copilot resources locally.
 
 ### Indexer admission
 
-`kast up` discovers the nearest Gradle workspace. It reuses an eligible healthy
+`kast workspace ensure` discovers the nearest Gradle workspace. It reuses an eligible healthy
 indexer bound to that canonical root. If none exists, Kast creates an isolated
 indexer. Descriptor, process, endpoint, release, health, and capability
 evidence must all match.
@@ -156,17 +158,17 @@ evidence.
 
 <kast-view view-id="sqlite-pipeline" browser="true" dynamic-variant="sequence"></kast-view>
 
-`kast refresh external <FAILURE_ID>...` verifies a content-bound failure,
+`kast workspace externalize --failure-id <FAILURE_ID>` verifies a content-bound failure,
 clears unsupported outgoing facts, and records an `UNKNOWN` graph boundary.
 Cancellation, corruption, protocol, and infrastructure failures remain
 terminal.
 
 ### Mutations and hooks
 
-`kast change` resolves a target and persists a proof-carrying plan.
-`kast apply` owns the workspace lease, revalidates the plan, and journals
+`kast change plan` consumes an exact selector and persists a proof-carrying plan.
+`kast change apply` owns the workspace lease, revalidates the plan, and journals
 exact recovery authority. It applies the write and verifies the compiler
-postcondition. `kast recover` either completes verification or restores the
+postcondition. `kast change recover` either completes verification or restores the
 exact pre-state after an interrupted apply. A stale identity or incomplete
 analysis remains a failure.
 
@@ -215,19 +217,20 @@ Start from the exact root:
 
 ```shell
 kast
-kast up
-kast graph topology
-kast graph communities
+kast workspace ensure
+kast graph topology --scope symbol
+kast graph communities --scope symbol
 ```
 
 Resolve exact Kotlin identity before navigation:
 
 ```shell
-kast symbol find io.github.amichne.kast.api.contract.backend.AnalysisBackend
-kast symbol show <symbol>
+kast symbol resolve --query io.github.amichne.kast.api.contract.backend.AnalysisBackend
+kast symbol show --selector <SELECTOR>
 ```
 
-Then use `kast symbol callers`, `kast symbol callees`, or
-`kast symbol implementations`. If Kast returns ambiguity, incomplete coverage,
+Then use `kast relation calls incoming`, `kast relation calls outgoing`, or
+`kast relation implementations`, each with `--selector <SELECTOR>`. If Kast
+returns ambiguity, incomplete coverage,
 or a typed readiness blocker, report it. Do not fill the gap with an inferred
 edge.

@@ -2,50 +2,277 @@ pub(crate) fn projected_value(command: AgentCommand) -> Result<Value> {
     serde_json::to_value(agent::execute_projected(command)).map_err(CliError::from)
 }
 
-pub(crate) fn print_projected_value(envelope: Value) -> Result<i32> {
-    let ok = envelope.get("ok").and_then(Value::as_bool).ok_or_else(|| {
-        CliError::new(
-            "KAST_INVALID_AGENT_RESULT",
-            "The typed operation returned no success state.",
-        )
-    })?;
-    if !ok {
-        let error = envelope.get("error").ok_or_else(|| {
-            CliError::new(
+enum BackendOutcome {
+    Complete(Value),
+    Rejected(agent::public_protocol::ProtocolEnvelope),
+}
+
+fn backend_outcome(
+    operation: agent::public_protocol::OperationId,
+    envelope: Value,
+) -> BackendOutcome {
+    let Some(ok) = envelope.get("ok").and_then(Value::as_bool) else {
+        return BackendOutcome::Rejected(
+            agent::public_protocol::ProtocolEnvelope::backend_rejected(
+                operation,
                 "KAST_INVALID_AGENT_RESULT",
-                "The typed operation failed without an actionable error.",
-            )
-        })?;
+                "The typed operation returned no success state.",
+            ),
+        );
+    };
+    if !ok {
+        let error = envelope.get("error");
         let code = error
-            .get("code")
+            .and_then(|error| error.get("code"))
             .and_then(Value::as_str)
             .unwrap_or("KAST_OPERATION_FAILED");
         let message = error
-            .get("message")
+            .and_then(|error| error.get("message"))
             .and_then(Value::as_str)
             .unwrap_or("The typed operation failed.");
-        output::print_structured(
-            &ProjectedError {
-                error: code.to_string(),
-                message: message.to_string(),
-                next: "Run `kast --help` for valid commands and arguments.",
-            },
-            OutputFormat::Toon,
-        )?;
-        return Ok(1);
+        return BackendOutcome::Rejected(
+            agent::public_protocol::ProtocolEnvelope::backend_rejected(operation, code, message),
+        );
     }
-    let result = envelope.get("result").cloned().ok_or_else(|| {
-        CliError::new(
-            "KAST_INVALID_AGENT_RESULT",
-            "The typed operation completed without a result.",
-        )
-    })?;
-    print_direct(&sanitize_agent_result(result, true))
+    match envelope.get("result").cloned() {
+        Some(result) => BackendOutcome::Complete(result),
+        None => BackendOutcome::Rejected(
+            agent::public_protocol::ProtocolEnvelope::backend_rejected(
+                operation,
+                "KAST_INVALID_AGENT_RESULT",
+                "The typed operation completed without a result.",
+            ),
+        ),
+    }
 }
 
-fn print_direct(value: &impl Serialize) -> Result<i32> {
-    output::print_structured(value, OutputFormat::Toon)?;
-    Ok(0)
+pub(crate) fn print_backend_failure(
+    operation: agent::public_protocol::OperationId,
+    envelope: Value,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    let envelope = match backend_outcome(operation, envelope) {
+        BackendOutcome::Rejected(envelope) => envelope,
+        BackendOutcome::Complete(_) => {
+            agent::public_protocol::ProtocolEnvelope::backend_rejected(
+                operation,
+                "KAST_INVALID_AGENT_RESULT",
+                "An expected backend failure returned a success value.",
+            )
+        }
+    };
+    print_protocol(envelope, output_format)
+}
+
+pub(crate) fn print_public_value(
+    operation: agent::public_protocol::OperationId,
+    status: agent::public_protocol::OperationStatus,
+    value: &impl Serialize,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    let fields = serde_json::to_value(value)?
+        .as_object()
+        .cloned()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "The public operation returned a non-object result.",
+            )
+        })?;
+    print_protocol(
+        agent::public_protocol::ProtocolEnvelope::projected(operation, status, fields),
+        output_format,
+    )
+}
+
+fn print_file_list(envelope: Value, output_format: OutputFormat) -> Result<i32> {
+    use agent::public_protocol::{OperationId, OperationStatus};
+
+    let result = match backend_outcome(OperationId::FileList, envelope) {
+        BackendOutcome::Complete(result) => result,
+        BackendOutcome::Rejected(envelope) => return print_protocol(envelope, output_format),
+    };
+    let fields = result.as_object().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "File listing returned a non-object result.",
+        )
+    })?;
+    let files = public_file_collection(required_field(&result, "files")?)?;
+    let returned = required_field(&result, "returnedCount")?
+        .as_u64()
+        .and_then(|count| usize::try_from(count).ok())
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "File listing returned invalid cardinality.",
+            )
+        })?;
+    let continuation = fields.get("nextPageToken").and_then(Value::as_str);
+    let page = canonical_page(required_field(&result, "cardinality")?, returned, continuation)?;
+    let limitations = required_field(&result, "limitations")?.clone();
+    let status = if limitations.as_array().is_some_and(Vec::is_empty) {
+        OperationStatus::Complete
+    } else {
+        OperationStatus::Qualified
+    };
+    let mut public = serde_json::Map::new();
+    public.insert("files".to_string(), files);
+    public.insert("page".to_string(), page);
+    for field in [
+        "coverage",
+        "limitations",
+        "backendPageCoverage",
+        "classificationEvidence",
+        "normalizedQuery",
+        "compositionDigest",
+    ] {
+        if let Some(value) = fields.get(field) {
+            public.insert(field.to_string(), value.clone());
+        }
+    }
+    print_protocol(
+        agent::public_protocol::ProtocolEnvelope::projected(
+            OperationId::FileList,
+            status,
+            public,
+        ),
+        output_format,
+    )
+}
+
+fn print_diagnostics(
+    workspace_root: &Path,
+    envelope: Value,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    use agent::public_protocol::{OperationId, OperationStatus};
+
+    let result = match backend_outcome(OperationId::DiagnosticCheck, envelope) {
+        BackendOutcome::Complete(result) => result,
+        BackendOutcome::Rejected(envelope) => return print_protocol(envelope, output_format),
+    };
+    result.as_object().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "Diagnostic check returned a non-object result.",
+        )
+    })?;
+    let cardinality = required_field(&result, "cardinality")?;
+    let returned = required_field(cardinality, "returnedCount")?
+        .as_u64()
+        .and_then(|count| usize::try_from(count).ok())
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Diagnostic check returned invalid cardinality.",
+            )
+        })?;
+    let page = canonical_page(cardinality, returned, None)?;
+    let mut public = serde_json::Map::new();
+    let files = required_field(&result, "filePaths")?
+        .as_array()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Diagnostic check returned invalid file paths.",
+            )
+        })?
+        .iter()
+        .map(|path| {
+            path.as_str()
+                .ok_or_else(|| {
+                    CliError::new(
+                        "KAST_INVALID_AGENT_RESULT",
+                        "Diagnostic check returned a non-string file path.",
+                    )
+                })
+                .and_then(|path| public_source_path(workspace_root, path))
+                .map(Value::String)
+        })
+        .collect::<Result<Vec<_>>>()?;
+    public.insert("files".to_string(), Value::Array(files));
+    public.insert(
+        "fileHashes".to_string(),
+        public_file_hashes(workspace_root, required_field(&result, "fileHashes")?)?,
+    );
+    public.insert(
+        "analysis".to_string(),
+        required_field(&result, "analysis")?.clone(),
+    );
+    public.insert(
+        "severityCounts".to_string(),
+        required_field(&result, "severityCounts")?.clone(),
+    );
+    public.insert(
+        "diagnostics".to_string(),
+        public_diagnostics(workspace_root, required_field(&result, "diagnostics")?)?,
+    );
+    public.insert("page".to_string(), page);
+    let complete = result
+        .pointer("/analysis/semanticOutcome")
+        .and_then(Value::as_str)
+        == Some("COMPLETE")
+        && cardinality.get("truncated").and_then(Value::as_bool) == Some(false);
+    public.insert(
+        "limitations".to_string(),
+        if complete {
+            Value::Array(Vec::new())
+        } else {
+            serde_json::json!(["compiler-diagnostics-incomplete"])
+        },
+    );
+    print_protocol(
+        agent::public_protocol::ProtocolEnvelope::projected(
+            OperationId::DiagnosticCheck,
+            if complete {
+                OperationStatus::Complete
+            } else {
+                OperationStatus::Qualified
+            },
+            public,
+        ),
+        output_format,
+    )
+}
+
+fn canonical_page(
+    cardinality: &Value,
+    returned: usize,
+    continuation: Option<&str>,
+) -> Result<Value> {
+    let cardinality_type = required_field(cardinality, "type")?
+        .as_str()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Cardinality returned a non-string type.",
+            )
+        })?;
+    let canonical = match cardinality_type {
+        "EXACT" => serde_json::json!({
+            "type": "exact",
+            "count": required_field(cardinality, "totalCount")?,
+        }),
+        "KNOWN_MINIMUM" => serde_json::json!({
+            "type": "known-minimum",
+            "count": required_field(cardinality, "knownMinimumCount")?,
+        }),
+        _ => {
+            return Err(CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Cardinality returned an unknown type.",
+            ));
+        }
+    };
+    let mut page = serde_json::json!({
+        "cardinality": canonical,
+        "returned": returned,
+    });
+    if let Some(continuation) = continuation {
+        page["continuation"] = Value::String(continuation.to_string());
+    }
+    Ok(page)
 }
 
 fn print_protocol(
@@ -57,49 +284,19 @@ fn print_protocol(
     Ok(exit_code)
 }
 
-fn sanitize_agent_result(value: Value, root: bool) -> Value {
-    match value {
-        Value::Object(fields) => {
-            let nodes_truncated = fields.get("nextAfterId").map(|next| !next.is_null());
-            let next_page = fields
-                .get("nextPageToken")
-                .filter(|next| !next.is_null())
-                .cloned();
-            let mut sanitized = fields
-                .into_iter()
-                .filter_map(|(key, value)| {
-                    let protocol_cruft = matches!(
-                        key.as_str(),
-                        "ok" | "method"
-                            | "schemaVersion"
-                            | "pageToken"
-                            | "nextPageToken"
-                            | "afterId"
-                            | "nextAfterId"
-                    );
-                    (!(protocol_cruft || root && key == "type"))
-                        .then(|| (key, sanitize_agent_result(value, false)))
-                })
-                .collect::<serde_json::Map<_, _>>();
-            if let Some(truncated) = nodes_truncated {
-                sanitized.insert("truncated".to_string(), Value::Bool(truncated));
-            }
-            if let Some(next_page) = next_page {
-                sanitized.insert(
-                    "nextPage".to_string(),
-                    sanitize_agent_result(next_page, false),
-                );
-            }
-            Value::Object(sanitized)
-        }
-        Value::Array(items) => Value::Array(
-            items
-                .into_iter()
-                .map(|item| sanitize_agent_result(item, false))
-                .collect(),
+pub(crate) fn print_actionable_failure(
+    operation: agent::public_protocol::OperationId,
+    code: &str,
+    message: &str,
+    next: &str,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    print_protocol(
+        agent::public_protocol::ProtocolEnvelope::actionable_rejected(
+            operation, code, message, next,
         ),
-        scalar => scalar,
-    }
+        output_format,
+    )
 }
 
 pub(crate) fn agent_runtime(workspace_root: PathBuf) -> AgentRuntimeArgs {

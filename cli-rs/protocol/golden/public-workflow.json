@@ -1,0 +1,45 @@
+{
+  "acceptance": {
+    "selectorRoundTripPercent": 100,
+    "semanticMisselection": 0
+  },
+  "forbiddenIdentitySources": [
+    "qualifiedName",
+    "location",
+    "path",
+    "offset",
+    "kind",
+    "container"
+  ],
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "operation": "symbol.search",
+      "produces": "selector",
+      "request": {
+        "query": "Widget.render"
+      }
+    },
+    {
+      "operation": "symbol.show",
+      "selectorFrom": "steps[0].result.matches[0].selector",
+      "transform": "none"
+    },
+    {
+      "operation": "relation.references",
+      "selectorFrom": "steps[0].result.matches[0].selector",
+      "transform": "none"
+    },
+    {
+      "operation": "change.plan.rename",
+      "selectorFrom": "steps[0].result.matches[0].selector",
+      "transform": "none"
+    },
+    {
+      "operation": "change.apply",
+      "planIdFrom": "steps[3].result.planId",
+      "transform": "none"
+    }
+  ],
+  "workflowVersion": "typed-selector-v1"
+}

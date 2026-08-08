@@ -66,7 +66,11 @@ fn ready_result(workspace_root: &Path, status: Option<&RuntimeStatusResponse>) -
         backend: status.backend_name.clone(),
         reference_index_ready: status.reference_index_ready,
         source_module_count: status.source_module_names.len(),
-        next: vec!["kast refresh", "kast files", "kast symbol find <query>"],
+        next: vec![
+            "kast workspace refresh",
+            "kast file list",
+            "kast symbol search --query <query>",
+        ],
     })
 }
 
@@ -86,4 +90,144 @@ fn runtime_state_name(state: &RuntimeState) -> &'static str {
         RuntimeState::Ready => "READY",
         RuntimeState::Degraded => "DEGRADED",
     }
+}
+
+fn public_file_collection(value: &Value) -> Result<Value> {
+    let mut files = value.clone();
+    for entry in files.as_array_mut().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "File listing returned a non-array file collection.",
+        )
+    })? {
+        let paths = entry
+            .as_object_mut()
+            .ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "File listing returned a non-object file entry.",
+                )
+            })?
+            .get_mut("paths")
+            .and_then(Value::as_array_mut);
+        if let Some(paths) = paths {
+            for path in paths {
+                public_file_record(path)?;
+            }
+        } else {
+            public_file_record(entry)?;
+        }
+    }
+    Ok(files)
+}
+
+fn public_file_record(value: &mut Value) -> Result<()> {
+    let fields = value.as_object_mut().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "File listing returned a non-object path entry.",
+        )
+    })?;
+    fields.remove("filePath");
+    let relative = fields
+        .remove("relativePath")
+        .and_then(|value| value.as_str().map(str::to_string))
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "File listing returned no workspace-relative path.",
+            )
+        })?;
+    let path = agent::public_protocol::WorkspaceKotlinPath::from_normalized(relative)
+        .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message))?;
+    fields.insert("path".to_string(), Value::String(path.as_str().to_string()));
+    Ok(())
+}
+
+fn public_file_hashes(workspace_root: &Path, value: &Value) -> Result<Value> {
+    let mut hashes = value.clone();
+    for hash in hashes.as_array_mut().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "Diagnostic check returned invalid file hash evidence.",
+        )
+    })? {
+        replace_public_path(workspace_root, hash, "filePath", "path")?;
+    }
+    Ok(hashes)
+}
+
+fn public_diagnostics(workspace_root: &Path, value: &Value) -> Result<Value> {
+    let mut diagnostics = value.clone();
+    for diagnostic in diagnostics.as_array_mut().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "Diagnostic check returned an invalid diagnostic collection.",
+        )
+    })? {
+        let location = diagnostic.get_mut("location").ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Diagnostic check returned no source location.",
+            )
+        })?;
+        replace_public_path(workspace_root, location, "filePath", "path")?;
+    }
+    Ok(diagnostics)
+}
+
+fn replace_public_path(
+    workspace_root: &Path,
+    value: &mut Value,
+    source_field: &str,
+    target_field: &str,
+) -> Result<()> {
+    let fields = value.as_object_mut().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "Public source evidence returned a non-object path container.",
+        )
+    })?;
+    let path = fields
+        .remove(source_field)
+        .and_then(|value| value.as_str().map(str::to_string))
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Public source evidence returned no source path.",
+            )
+        })?;
+    fields.insert(
+        target_field.to_string(),
+        Value::String(public_source_path(workspace_root, &path)?),
+    );
+    Ok(())
+}
+
+fn public_source_path(workspace_root: &Path, value: &str) -> Result<String> {
+    let candidate = Path::new(value);
+    let relative = if candidate.is_absolute() {
+        candidate.strip_prefix(workspace_root).map_err(|_| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Public source evidence named a path outside the workspace.",
+            )
+        })?
+    } else {
+        candidate
+    };
+    let normalized = relative
+        .components()
+        .map(|component| component.as_os_str().to_str())
+        .collect::<Option<Vec<_>>>()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Public source evidence named a non-UTF-8 path.",
+            )
+        })?
+        .join("/");
+    agent::public_protocol::WorkspaceKotlinPath::from_normalized(normalized)
+        .map(|path| path.as_str().to_string())
+        .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message))
 }

@@ -32,7 +32,7 @@ git worktree list --porcelain
 Admit the current root:
 
 ```console
-kast up
+kast workspace ensure
 ```
 
 Kast reuses an eligible exact-root indexer or creates an isolated one. Continue
@@ -178,7 +178,7 @@ Recovery must reestablish each authority in order. First admit the exact-root
 indexer:
 
 ```console
-kast up
+kast workspace ensure
 ```
 
 Then inspect its typed descriptor without choosing an implementation:

@@ -1,94 +1,65 @@
 ---
 type: Reference
 title: CLI Reference
-description: The public Kast command surface for coding agents.
+description: The typed public Kast protocol for coding agents.
 tags: [cli, reference, commands, agents]
 code_sources:
-  - path: cli-rs/src/interface/cli/agent/agent_surface.rs
-  - path: cli-rs/src/agent/adapter/mod.rs
-  - path: cli-rs/src/main.rs
+  - path: cli-rs/src/agent/public_protocol/registry.rs
 ---
 
 # CLI Reference
 
-`kast` is the only public interface. It discovers the nearest Gradle workspace
-from the current directory and emits compact TOON without output-format or
-schema controls.
+<!-- Generated from the typed public operation registry. -->
 
-Run `kast` with no command to inspect the selected root, runtime readiness,
-reference-index readiness, limitations, and suggested next commands.
+`kast` is the only public interface. Every command supports `--output toon|json`; both formats preserve the same canonical protocol envelope. Compact TOON never removes semantic discriminators.
 
-## Commands
+Every result contains `schemaVersion`, `operation`, `status`, and `result.type`. A `qualified` result names limitations. A `rejected` result contains a closed typed failure.
 
-| Command | Result |
-| --- | --- |
-| `kast up` | Start or reuse the exact-root semantic runtime and wait for usable compiler evidence. |
-| `kast refresh [PATH...]` | Refresh changed or selected Kotlin files, reference evidence, and their persisted graph facts. |
-| `kast refresh external <FAILURE_ID>...` | Accept eligible file-local indexing failures as explicit external `UNKNOWN` graph boundaries. |
-| `kast files [PATTERN]` | List Kotlin source and script files. |
-| `kast symbol find <QUERY>` | Find compiler-backed symbol identities. |
-| `kast symbol show <SYMBOL>` | Show one symbol. |
-| `kast symbol refs <SYMBOL>` | Find references. |
-| `kast symbol callers <SYMBOL>` | Find incoming callers. |
-| `kast symbol callees <SYMBOL>` | Find outgoing callees. |
-| `kast symbol implementations <SYMBOL>` | Find implementations. |
-| `kast symbol supertypes <SYMBOL>` | Traverse supertypes. |
-| `kast symbol subtypes <SYMBOL>` | Traverse subtypes. |
-| `kast graph [summary]` | Report persisted graph generation and cardinality. |
-| `kast graph nodes` | Enumerate generation-pinned graph nodes. |
-| `kast graph neighbors <SYMBOL>` | Report adjacent nodes. |
-| `kast graph topology` | Report topology statistics. |
-| `kast graph communities` | Report deterministic graph communities. |
-| `kast graph impact <SYMBOL>` | Report bounded source impact. |
-| `kast check [PATH...]` | Refresh and report compiler diagnostics for changed or selected files. |
-| `kast change rename <SYMBOL> <NEW_NAME>` | Validate a compiler-resolved rename. |
-| `kast change add-file <PATH>` | Validate a Kotlin file whose content comes from standard input. |
-| `kast change add-declaration <PATH>` | Validate a declaration appended to one file; content comes from standard input. |
-| `kast change replace <SYMBOL>` | Validate replacement content from standard input. |
-| `kast apply <PLAN_ID>` | Own the workspace lease, revalidate and apply the plan, verify its postcondition, and persist a terminal receipt. |
-| `kast recover <RECOVERY_ID>` | Complete or roll back an interrupted mutation from durable recovery state. |
+## Operations
 
-Use `kast <command> --help` for the small operation-specific grammar.
+| Operation | CLI syntax | Request type | Result type | Paging |
+| --- | --- | --- | --- | --- |
+| `workspace.home` | `kast` | `workspaceHome` | `workspaceHome` | unpaged |
+| `workspace.ensure` | `kast workspace ensure` | `workspaceEnsure` | `workspaceReady` | unpaged |
+| `workspace.refresh` | `kast workspace refresh --file src/main/kotlin/example/Widget.kt` | `workspaceRefresh` | `workspaceRefresh` | unpaged |
+| `workspace.externalize` | `kast workspace externalize --failure-id <FAILURE_ID>` | `workspaceExternalize` | `externalization` | unpaged |
+| `file.list` | `kast file list --match '**/*.kt'` | `fileList` | `files` | continuation (fileList) |
+| `symbol.search` | `kast symbol search --query Widget` | `symbolSearch` | `matches` | unpaged |
+| `symbol.resolve` | `kast symbol resolve --query 'example.Widget.render()'` | `symbolResolve` | `resolution` | unpaged |
+| `symbol.show` | `kast symbol show --selector <SELECTOR>` | `symbolShow` | `symbol` | unpaged |
+| `relation.references` | `kast relation references --selector <SELECTOR>` | `exactRelation` | `references` | continuation (references) |
+| `relation.calls.incoming` | `kast relation calls incoming --selector <SELECTOR>` | `exactRelation` | `relations` | continuation (callsIncoming) |
+| `relation.calls.outgoing` | `kast relation calls outgoing --selector <SELECTOR>` | `exactRelation` | `relations` | continuation (callsOutgoing) |
+| `relation.implementations` | `kast relation implementations --selector <SELECTOR>` | `exactRelation` | `relations` | continuation (implementations) |
+| `relation.hierarchy.supertypes` | `kast relation hierarchy supertypes --selector <SELECTOR>` | `exactRelation` | `relations` | continuation (hierarchySupertypes) |
+| `relation.hierarchy.subtypes` | `kast relation hierarchy subtypes --selector <SELECTOR>` | `exactRelation` | `relations` | continuation (hierarchySubtypes) |
+| `graph.summary` | `kast graph summary --scope symbol` | `graphProjection` | `graphSummary` | unpaged |
+| `graph.nodes` | `kast graph nodes` | `graphNodes` | `graphNodes` | continuation (graphNodes) |
+| `graph.neighbors` | `kast graph neighbors --node-selector <NODE_SELECTOR>` | `graphNeighbors` | `graphNeighbors` | unpaged |
+| `graph.topology` | `kast graph topology --scope symbol` | `graphProjection` | `graphTopology` | unpaged |
+| `graph.communities` | `kast graph communities --scope symbol` | `graphProjection` | `graphCommunities` | unpaged |
+| `graph.derive` | `kast graph derive --experimental-derived-topology --out .kast/topology.json` | `graphDerive` | `derivedTopology` | unpaged |
+| `graph.impact` | `kast graph impact --selector <SELECTOR>` | `graphImpact` | `impact` | continuation (graphImpact) |
+| `diagnostic.check` | `kast diagnostic check --file src/main/kotlin/example/Widget.kt` | `diagnosticCheck` | `diagnostics` | unpaged |
+| `change.plan.rename` | `kast change plan rename --selector <SELECTOR> --name Renamed` | `changePlanRename` | `changePlan` | unpaged |
+| `change.plan.add-file` | `printf 'class Widget' | kast change plan add-file --file src/main/kotlin/example/Widget.kt` | `changePlanAddFile` | `changePlan` | unpaged |
+| `change.plan.add-declaration` | `printf 'fun render() = Unit' | kast change plan add-declaration --file src/main/kotlin/example/Widget.kt` | `changePlanAddDeclaration` | `changePlan` | unpaged |
+| `change.plan.replace` | `printf 'fun render() = Unit' | kast change plan replace --selector <SELECTOR>` | `changePlanReplace` | `changePlan` | unpaged |
+| `change.apply` | `kast change apply --plan-id <PLAN_ID>` | `changeApply` | `mutationReceipt` | unpaged |
+| `change.recover` | `kast change recover --recovery-id <RECOVERY_ID>` | `changeRecover` | `mutationReceipt` | unpaged |
 
-## Mutation receipts
+Diagnostics do not block reference indexing.
 
-`kast change` persists a proof-carrying plan for one exact workspace root.
-`kast apply <PLAN_ID>` owns lease acquisition and release. It revalidates the
-plan before writing, then refreshes semantic evidence, compares diagnostics,
-and verifies the operation postcondition.
+## Composition
 
-Mutation outcomes are a closed set:
+Use `query` only for `symbol.search` and `symbol.resolve`. Copy every Kast-issued `selector` verbatim into compatible exact operations. Repeat the same operation with its opaque `continuation`; continuations never cross operations. Apply only a returned plan ID with `kast change apply --plan-id <PLAN_ID>`. Recover only a returned recovery ID with `kast change recover --recovery-id <RECOVERY_ID>`.
 
-| Outcome | Meaning |
-| --- | --- |
-| `VERIFIED` | The requested postcondition is proven and the verified final state is retained. This is the only zero-exit outcome. |
-| `REJECTED` | The request failed before a mutation could be accepted. |
-| `CONFLICTED` | The prepared evidence no longer matches the workspace. |
-| `ROLLED_BACK` | Verification did not complete and Kast restored the exact source pre-state. |
-| `RECOVERY_REQUIRED` | Durable recovery state remains after an interruption. Run `kast recover <RECOVERY_ID>`, including from a new process. |
-
-Retrying a terminal plan or recovery receipt does not repeat source writes. No
-non-success outcome reports silent partial success.
-
-When `files`, a symbol relationship, `graph nodes`, or `graph impact` returns
-`nextPage`, repeat the same command with `--page <nextPage>`. The continuation
-binds its workspace and query without exposing backend paging controls.
+Public paths are workspace-relative and use forward slashes. A qualified name, location, path, offset, or graph node selector is never a symbol selector.
 
 ## Boundary semantics
 
-Diagnostics do not block reference indexing. An eligible file-local failure is
-reported with a content-bound identifier. Externalizing that identifier keeps
-the failure visible, removes unsupported outgoing facts, and records the file
-as an `UNKNOWN` graph boundary. Cancellation, storage corruption, protocol
-failure, and workspace failure remain terminal.
-
-An empty result is not evidence of completeness. Read the returned coverage,
-limitations, and next action.
+Externalizing an eligible content-bound failure records an explicit `UNKNOWN` graph boundary. Unknown, stale, incomplete, and wrong-workspace evidence fails closed.
 
 ## Internal control plane
 
-The private release-local `libexec/kastctl` multicall entrypoint retains setup,
-developer, release, raw RPC, and legacy command families for Kast-owned
-automation. It is not placed on `PATH`, is not an agent interface, and is
-intentionally omitted from installed skills. Maintainer documentation uses its
-release-local path when one of those operations is required.
+The private release-local `libexec/kastctl` multicall entrypoint remains the developer control plane. It is not a public semantic route. Read `developerOperations.cli` and use `/kast:developer`; do not assume `kastctl` is on `PATH`.

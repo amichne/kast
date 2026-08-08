@@ -38,49 +38,35 @@ mod tests {
     }
 
     #[test]
-    fn sanitizer_removes_protocol_cruft_but_preserves_nested_discriminants() {
-        let result = sanitize_agent_result(
-            json!({
-                "type": "ROOT",
-                "ok": true,
-                "method": "agent/example",
-                "schemaVersion": 1,
-                "item": {
-                    "type": "NESTED",
-                    "ok": true,
-                    "schemaVersion": 1
-                }
-            }),
-            true,
-        );
-
-        assert_eq!(result, json!({"item": {"type": "NESTED"}}));
-    }
-
-    #[test]
-    fn sanitizer_exposes_actionable_continuations_without_protocol_fields() {
-        let result = sanitize_agent_result(
-            json!({
-                "type": "KAST_NATIVE_GRAPH_NODES",
-                "afterId": 0,
-                "nextAfterId": 42,
-                "nextPageToken": "opaque",
-                "page": {
-                    "truncated": true,
-                    "nextPageToken": "relation-page"
-                },
-                "nodes": []
-            }),
-            true,
-        );
+    fn file_projection_uses_one_workspace_relative_path_representation() {
+        let result = public_file_collection(&json!([{
+            "paths": [{
+                "filePath": "/workspace/src/main/kotlin/Widget.kt",
+                "relativePath": "src/main/kotlin/Widget.kt"
+            }]
+        }]))
+        .expect("public file projection");
 
         assert_eq!(
             result,
+            json!([{"paths": [{"path": "src/main/kotlin/Widget.kt"}]}])
+        );
+    }
+
+    #[test]
+    fn page_projection_preserves_cardinality_and_opaque_continuation() {
+        let result = canonical_page(
+            &json!({"type": "KNOWN_MINIMUM", "knownMinimumCount": 437}),
+            200,
+            Some("krp1.opaque"),
+        )
+        .expect("canonical page");
+        assert_eq!(
+            result,
             json!({
-                "nodes": [],
-                "page": {"truncated": true, "nextPage": "relation-page"},
-                "truncated": true,
-                "nextPage": "opaque"
+                "cardinality": {"type": "known-minimum", "count": 437},
+                "returned": 200,
+                "continuation": "krp1.opaque"
             })
         );
     }

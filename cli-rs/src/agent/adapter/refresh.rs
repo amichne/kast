@@ -1,4 +1,4 @@
-pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
+pub(crate) fn run_refresh(files: Vec<PathBuf>, output_format: OutputFormat) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     let inferred_scope = files.is_empty();
     let mut requested_paths = if inferred_scope {
@@ -14,7 +14,20 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
         if file_paths.is_empty() {
             file_paths = match changed_kotlin_files(&workspace_root)? {
                 Ok(file_paths) => file_paths,
-                Err(envelope) => return print_projected_value(envelope),
+                Err(envelope) => {
+                    return match backend_outcome(
+                        agent::public_protocol::OperationId::WorkspaceRefresh,
+                        envelope,
+                    ) {
+                        BackendOutcome::Complete(_) => Err(CliError::new(
+                            "KAST_INVALID_AGENT_RESULT",
+                            "Changed-file discovery returned an unexpected success value.",
+                        )),
+                        BackendOutcome::Rejected(envelope) => {
+                            print_protocol(envelope, output_format)
+                        }
+                    };
+                }
             };
         }
         file_paths
@@ -27,21 +40,34 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
     requested_paths.sort();
     requested_paths.dedup();
     if requested_paths.is_empty() {
-        return print_refresh_noop(&workspace_root);
+        return print_refresh_noop(&workspace_root, output_format);
     }
     let runtime_args = agent_runtime(workspace_root.clone());
     let file_paths = match agent::normalize_public_file_paths(&runtime_args, &requested_paths) {
         Ok(file_paths) => file_paths,
-        Err(error) => return print_failure(&error.code, &error.message),
+        Err(error) => {
+            return print_failure(
+                agent::public_protocol::OperationId::WorkspaceRefresh,
+                &error.code,
+                &error.message,
+                output_format,
+            );
+        }
     };
     let refresh_response = raw_workspace_refresh(&workspace_root, &file_paths, &[])?;
     if let Some((code, message)) = rpc_failure(&refresh_response) {
-        return print_failure(code, message);
+        return print_failure(
+            agent::public_protocol::OperationId::WorkspaceRefresh,
+            code,
+            message,
+            output_format,
+        );
     }
     let refresh_result = projected_result(&refresh_response)?;
     let refreshed_paths = string_array_field(refresh_result, "refreshedFiles")?;
     let removed_paths = string_array_field(refresh_result, "removedFiles")?;
-    let externalizable_failures = refresh_relationship_failures(refresh_result, &refreshed_paths)?;
+    let mut externalizable_failures =
+        refresh_relationship_failures(refresh_result, &refreshed_paths)?;
 
     let diagnostics = if refreshed_paths.is_empty() {
         json!({
@@ -75,7 +101,10 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
             json!({
                 "severityCounts": required_field(result, "severityCounts")?,
                 "cardinality": diagnostic_cardinality(result)?,
-                "diagnostics": required_field(result, "diagnostics")?,
+                "diagnostics": public_diagnostics(
+                    &workspace_root,
+                    required_field(result, "diagnostics")?,
+                )?,
             })
         }
     };
@@ -93,9 +122,11 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
             }
             Err(error) => {
                 return print_actionable_failure(
+                    agent::public_protocol::OperationId::WorkspaceRefresh,
                     "GRAPH_EVIDENCE_UNAVAILABLE",
                     &error.message,
                     "kast workspace refresh",
+                    output_format,
                 );
             }
         }
@@ -125,7 +156,16 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
             None,
         ))?;
         if graph.get("ok") != Some(&Value::Bool(true)) {
-            return print_projected_value(graph);
+            return match backend_outcome(
+                agent::public_protocol::OperationId::WorkspaceRefresh,
+                graph,
+            ) {
+                BackendOutcome::Complete(_) => Err(CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "Graph refresh returned an unexpected success value.",
+                )),
+                BackendOutcome::Rejected(envelope) => print_protocol(envelope, output_format),
+            };
         }
         let graph_result = projected_result(&graph)?;
         json!({
@@ -148,13 +188,34 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
         })
         .collect::<Vec<_>>();
 
-    print_direct(&json!({
-        "fileCount": file_paths.len(),
-        "files": refreshed_paths,
-        "removedFiles": removed_paths,
-        "diagnostics": diagnostics,
-        "graph": graph_summary,
-        "externalizableFailures": externalizable_failures,
-        "next": next,
-    }))
+    let public_files = refreshed_paths
+        .iter()
+        .map(|path| public_source_path(&workspace_root, path))
+        .collect::<Result<Vec<_>>>()?;
+    let public_removed_files = removed_paths
+        .iter()
+        .map(|path| public_source_path(&workspace_root, path))
+        .collect::<Result<Vec<_>>>()?;
+    for failure in &mut externalizable_failures {
+        replace_public_path(&workspace_root, failure, "path", "path")?;
+    }
+    print_public_value(
+        agent::public_protocol::OperationId::WorkspaceRefresh,
+        if externalizable_failures.is_empty() {
+            agent::public_protocol::OperationStatus::Complete
+        } else {
+            agent::public_protocol::OperationStatus::Qualified
+        },
+        &json!({
+            "fileCount": file_paths.len(),
+            "files": public_files,
+            "removedFiles": public_removed_files,
+            "diagnostics": diagnostics,
+            "graph": graph_summary,
+            "externalizableFailures": externalizable_failures,
+            "limitations": if next.is_empty() { Vec::<&str>::new() } else { vec!["relationship-indexing-incomplete"] },
+            "next": next,
+        }),
+        output_format,
+    )
 }

@@ -1,5 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct ContractPaths {
+    manifest_dir: PathBuf,
     pub catalog: PathBuf,
     pub yaml: PathBuf,
     pub samples_root: PathBuf,
@@ -27,6 +28,7 @@ impl ContractPaths {
     pub fn defaults(manifest_dir: &Path) -> Self {
         let references = manifest_dir.join("protocol/source");
         Self {
+            manifest_dir: manifest_dir.to_path_buf(),
             catalog: references.join("commands.json"),
             yaml: references.join("commands.yaml"),
             samples_root: references.join("requests"),
@@ -62,7 +64,9 @@ pub fn write(paths: &ContractPaths) -> Result<ContractGenerationReport> {
 
 pub fn generated_files(paths: &ContractPaths) -> Result<BTreeMap<PathBuf, String>> {
     let catalog = load_catalog(&paths.catalog)?;
-    generated_files_from_catalog(&catalog, &paths.yaml, &paths.samples_root)
+    let mut files = generated_files_from_catalog(&catalog, &paths.yaml, &paths.samples_root)?;
+    files.extend(public_generated_files(&paths.manifest_dir)?);
+    Ok(files)
 }
 
 pub fn generated_files_from_catalog(
