@@ -223,7 +223,7 @@ internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupp
         val allowedRoot = sourceRoot().toRealPath()
         val workspaceRoot = requireNotNull(allowedRoot.parent).toRealPath()
         val outsideRoot = Files.createTempDirectory(
-            requireNotNull(workspaceRoot.parent),
+            Path.of(System.getProperty("user.dir")).toRealPath(),
             "kast-outside-addition-proof-root",
         ).toRealPath()
         val outsideFile = outsideRoot.resolve("OutsideContext.kt")
