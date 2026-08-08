@@ -280,8 +280,14 @@ class KastSemanticAdmissionRefreshTest {
             true,
             false,
             listOf(
-                IdeaGradleProjectLoadBridge.GradleSourceSetAssociation("main", listOf(productionRoot)),
-                IdeaGradleProjectLoadBridge.GradleSourceSetAssociation("test", listOf(testRoot)),
+                IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(
+                    "main",
+                    listOf(authoredGradleSourceRoot(productionRoot)),
+                ),
+                IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(
+                    "test",
+                    listOf(authoredGradleSourceRoot(testRoot)),
+                ),
             ),
         )
         return IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
@@ -289,7 +295,7 @@ class KastSemanticAdmissionRefreshTest {
             true,
             listOf(identity),
             listOf(IdeaGradleProjectLoadBridge.LoadedGradleModule("main", identity)),
-            listOf(productionRoot, testRoot),
+            listOf(productionRoot, testRoot).map(::authoredGradleSourceRoot),
             listOf(association),
         )
     }

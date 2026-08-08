@@ -111,6 +111,20 @@ internal abstract class ExactAdditionPlanningTestSupport : KastIndexerBackendCon
         projectPath: String,
         sourceSet: String,
         sourceRoot: Path,
+    ): IdeaGradleProjectLoadBridge.GradleModuleAssociation = association(
+        moduleName,
+        workspaceRoot,
+        projectPath,
+        sourceSet,
+        authoredGradleSourceRoot(sourceRoot),
+    )
+
+    protected fun association(
+        moduleName: String,
+        workspaceRoot: Path,
+        projectPath: String,
+        sourceSet: String,
+        sourceRoot: IdeaGradleProjectLoadBridge.GradleSourceRoot,
     ): IdeaGradleProjectLoadBridge.GradleModuleAssociation =
         IdeaGradleProjectLoadBridge.GradleModuleAssociation(
             moduleName,

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea.transition
 
 import io.github.amichne.kast.idea.IdeaGradleProjectLoadBridge
+import io.github.amichne.kast.idea.authoredGradleSourceRoot
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
@@ -42,10 +43,11 @@ class IdeaGradleWorkspaceModelIdentityResolverTest {
     ): IdeaGradleProjectLoadBridge.GradleWorkspaceModel {
         val appIdentity = IdeaGradleProjectLoadBridge.GradleModuleIdentity(workspaceRoot, appProjectPath)
         val libIdentity = IdeaGradleProjectLoadBridge.GradleModuleIdentity(workspaceRoot, ":lib")
-        val appSourceRoots = ordered(
+        val appSourceRootPaths = ordered(
             listOf(workspaceRoot.resolve("app/src/main/kotlin"), workspaceRoot.resolve("app/src/main/java")),
             reverseCollections,
         )
+        val appSourceRoots = appSourceRootPaths.map(::authoredGradleSourceRoot)
         val associations = ordered(
             listOf(
                 IdeaGradleProjectLoadBridge.GradleModuleAssociation(
@@ -60,7 +62,7 @@ class IdeaGradleWorkspaceModelIdentityResolverTest {
                             IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(appSourceSetName, appSourceRoots),
                             IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(
                                 "test",
-                                listOf(workspaceRoot.resolve("app/src/test/kotlin")),
+                                listOf(authoredGradleSourceRoot(workspaceRoot.resolve("app/src/test/kotlin"))),
                             ),
                         ),
                         reverseCollections,
@@ -76,7 +78,7 @@ class IdeaGradleWorkspaceModelIdentityResolverTest {
                     listOf(
                         IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(
                             "main",
-                            listOf(workspaceRoot.resolve("lib/src/main/kotlin")),
+                            listOf(authoredGradleSourceRoot(workspaceRoot.resolve("lib/src/main/kotlin"))),
                         ),
                     ),
                 ),
@@ -94,7 +96,10 @@ class IdeaGradleWorkspaceModelIdentityResolverTest {
                 ),
                 reverseCollections,
             ),
-            ordered(appSourceRoots + workspaceRoot.resolve("lib/src/main/kotlin"), reverseCollections),
+            ordered(
+                appSourceRoots + authoredGradleSourceRoot(workspaceRoot.resolve("lib/src/main/kotlin")),
+                reverseCollections,
+            ),
             associations,
         )
     }
