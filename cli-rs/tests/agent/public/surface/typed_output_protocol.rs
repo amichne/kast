@@ -1,8 +1,18 @@
-use super::named;
+use std::path::Path;
+
+use super::{public_kast_with_install, support::write_current_cli_install_manifest_for_test};
 
 #[test]
 fn json_and_toon_encode_the_same_canonical_result() {
-    let json = named("kast")
+    let fixture = tempfile::tempdir().expect("temporary install");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repository root");
+    write_current_cli_install_manifest_for_test(&home, &config_home);
+
+    let json = public_kast_with_install(&home, &config_home, workspace)
         .args(["--output", "json"])
         .output()
         .expect("JSON public home");
@@ -10,7 +20,7 @@ fn json_and_toon_encode_the_same_canonical_result() {
     let json: serde_json::Value =
         serde_json::from_slice(&json.stdout).expect("canonical JSON public home");
 
-    let toon = named("kast")
+    let toon = public_kast_with_install(&home, &config_home, workspace)
         .args(["--output", "toon"])
         .output()
         .expect("TOON public home");

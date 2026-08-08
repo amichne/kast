@@ -37,6 +37,16 @@ fn named(name: &str) -> Command {
     command
 }
 
+fn public_kast_with_install(home: &Path, config_home: &Path, workspace: &Path) -> Command {
+    let mut command = named("kast");
+    command
+        .current_dir(workspace)
+        .env("HOME", home)
+        .env("KAST_HOME", home.join(".local/share/kast"))
+        .env("KAST_CONFIG_HOME", config_home);
+    command
+}
+
 fn published_public_kast(
     home: &Path,
     config_home: &Path,
@@ -128,7 +138,15 @@ fn public_pageable_commands_use_one_continuation_flag() {
 
 #[test]
 fn public_output_flag_selects_json() {
-    let output = named("kast")
+    let fixture = tempfile::tempdir().expect("temporary install");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repository root");
+    write_current_cli_install_manifest_for_test(&home, &config_home);
+
+    let output = public_kast_with_install(&home, &config_home, workspace)
         .args(["--output", "json"])
         .output()
         .expect("run kast with JSON output");

@@ -232,16 +232,21 @@ fn refresh_external_not_found_is_an_actionable_failure() {
         .output()
         .expect("external refresh");
     assert_eq!(external.status.code(), Some(1), "{external:?}");
-    let external = decode(&external);
+    let external = decode_envelope(&external);
     assert_eq!(
         external,
         json!({
-            "type": "rejected",
-            "failure": {
-                "type": "actionable-failure",
-                "code": "EXTERNAL_FAILURE_NOT_FOUND",
-                "message": "One or more external failure IDs no longer identify current content.",
-                "next": "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID."
+            "schemaVersion": 2,
+            "operation": "workspace.externalize",
+            "status": "rejected",
+            "result": {
+                "type": "rejected",
+                "failure": {
+                    "type": "actionable-failure",
+                    "code": "EXTERNAL_FAILURE_NOT_FOUND",
+                    "message": "One or more external failure IDs no longer identify current content.",
+                    "next": "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID."
+                }
             }
         })
     );
