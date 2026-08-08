@@ -97,7 +97,11 @@ fn refresh_bootstraps_clean_pending_graph_files() {
     );
     let refresh = decode(&refresh);
     assert_eq!(refresh["fileCount"], 1, "{refresh:#}");
-    assert_eq!(refresh["files"], json!([source]), "{refresh:#}");
+    assert_eq!(
+        refresh["files"],
+        json!(["src/main/kotlin/sample/Source0000.kt"]),
+        "{refresh:#}"
+    );
     let requests = backend.join().expect("clean refresh backend");
     let raw = requests
         .iter()
@@ -115,6 +119,8 @@ fn refresh_external_projects_only_actionable_outcomes() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
+    let failure_a = "00000000-0000-0000-0000-000000000451";
+    let failure_b = "00000000-0000-0000-0000-000000000452";
     let socket = fixture.path().join("external.sock");
     let backend = spawn_scripted_indexer_backend(
         &home,
@@ -129,8 +135,8 @@ fn refresh_external_projects_only_actionable_outcomes() {
                 "fullRefresh": false,
                 "fileStatuses": [],
                 "externalFailureOutcomes": [
-                    {"failureId": "failure-a", "status": "EXTERNALIZED"},
-                    {"failureId": "failure-b", "status": "ALREADY_EXTERNAL"}
+                    {"failureId": failure_a, "status": "EXTERNALIZED"},
+                    {"failureId": failure_b, "status": "ALREADY_EXTERNAL"}
                 ],
                 "semanticOutcome": "COMPLETE",
                 "requestedFileCount": 0,
@@ -149,9 +155,9 @@ fn refresh_external_projects_only_actionable_outcomes() {
             "workspace",
             "externalize",
             "--failure-id",
-            "failure-a",
+            failure_a,
             "--failure-id",
-            "failure-b",
+            failure_b,
         ])
         .output()
         .expect("external refresh");
@@ -165,9 +171,10 @@ fn refresh_external_projects_only_actionable_outcomes() {
     assert_eq!(
         external,
         json!({
+            "type": "externalization",
             "external": [
-                {"failureId": "failure-a", "status": "EXTERNALIZED"},
-                {"failureId": "failure-b", "status": "ALREADY_EXTERNAL"}
+                {"failureId": failure_a, "status": "EXTERNALIZED"},
+                {"failureId": failure_b, "status": "ALREADY_EXTERNAL"}
             ]
         })
     );
@@ -178,7 +185,7 @@ fn refresh_external_projects_only_actionable_outcomes() {
         .expect("workspace refresh");
     assert_eq!(
         request["params"]["externalFailureIds"],
-        json!(["failure-a", "failure-b"])
+        json!([failure_a, failure_b])
     );
     assert_eq!(request["params"]["filePaths"], json!([]));
 }
@@ -192,6 +199,8 @@ fn refresh_external_not_found_is_an_actionable_failure() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
+    let failure_a = "00000000-0000-0000-0000-000000000451";
+    let stale_failure = "00000000-0000-0000-0000-000000000452";
     let socket = fixture.path().join("external-not-found.sock");
     let backend = spawn_scripted_indexer_backend(
         &home,
@@ -204,8 +213,8 @@ fn refresh_external_not_found_is_an_actionable_failure() {
                 "refreshedFiles": [],
                 "removedFiles": [],
                 "externalFailureOutcomes": [
-                    {"failureId": "failure-a", "status": "EXTERNALIZED"},
-                    {"failureId": "stale-failure", "status": "NOT_FOUND"}
+                    {"failureId": failure_a, "status": "EXTERNALIZED"},
+                    {"failureId": stale_failure, "status": "NOT_FOUND"}
                 ]
             }),
         )],
@@ -216,9 +225,9 @@ fn refresh_external_not_found_is_an_actionable_failure() {
             "workspace",
             "externalize",
             "--failure-id",
-            "failure-a",
+            failure_a,
             "--failure-id",
-            "stale-failure",
+            stale_failure,
         ])
         .output()
         .expect("external refresh");
@@ -227,11 +236,13 @@ fn refresh_external_not_found_is_an_actionable_failure() {
     assert_eq!(
         external,
         json!({
-            "external": [
-                {"failureId": "failure-a", "status": "EXTERNALIZED"},
-                {"failureId": "stale-failure", "status": "NOT_FOUND"}
-            ],
-            "next": "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID."
+            "type": "rejected",
+            "failure": {
+                "type": "actionable-failure",
+                "code": "EXTERNAL_FAILURE_NOT_FOUND",
+                "message": "One or more external failure IDs no longer identify current content.",
+                "next": "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID."
+            }
         })
     );
     backend.join().expect("external backend");
@@ -302,7 +313,7 @@ fn refresh_removes_graph_facts_without_diagnosing_a_deleted_file() {
     let refresh = decode(&refresh);
     assert_eq!(refresh["fileCount"], 1);
     assert_eq!(refresh["files"], json!([]));
-    assert_eq!(refresh["removedFiles"], json!([removed]));
+    assert_eq!(refresh["removedFiles"], json!(["src/Removed.kt"]));
     assert_eq!(refresh["diagnostics"]["cardinality"]["totalCount"], 0);
 
     let requests = backend.join().expect("removed refresh backend");
@@ -319,81 +330,4 @@ fn refresh_removes_graph_facts_without_diagnosing_a_deleted_file() {
     assert_eq!(graph["params"]["removedFilePaths"], json!([removed]));
 }
 
-fn complete_refresh(file: &Path, failure_id: &str) -> Value {
-    let file = file.display().to_string();
-    json!({
-        "refreshedFiles": [file],
-        "removedFiles": [],
-        "fullRefresh": false,
-        "fileStatuses": [{
-            "filePath": file,
-            "fileSystemDiscovery": "DISCOVERED",
-            "sourceModuleOwnership": "OWNED",
-            "indexAdmission": "ADMITTED",
-            "analysisAvailability": "AVAILABLE",
-            "analysisStatus": {"filePath": file, "state": "ANALYZED"}
-        }],
-        "relationshipFailures": [{
-            "failureId": failure_id,
-            "filePath": file,
-            "code": "PSI_UNAVAILABLE"
-        }],
-        "semanticOutcome": "COMPLETE",
-        "requestedFileCount": 1,
-        "analyzedFileCount": 1,
-        "skippedFileCount": 0,
-        "removedFileCount": 0,
-        "attemptCount": 1,
-        "elapsedMillis": 0,
-        "schemaVersion": api_schema_version()
-    })
-}
-
-fn seed_empty_graph_scope(workspace: &Path) -> WorkspaceIndexFixture {
-    let index = WorkspaceIndexFixture::at_database_path(
-        workspace,
-        &workspace_database_path_for_test(workspace),
-    );
-    index
-        .connection()
-        .execute_batch(
-            "CREATE TABLE semantic_files(
-                 id INTEGER PRIMARY KEY,
-                 path TEXT NOT NULL UNIQUE,
-                 package_name TEXT,
-                 module_name TEXT,
-                 content_hash TEXT,
-                 refresh_status TEXT NOT NULL,
-                 diagnostics_json TEXT NOT NULL
-             );",
-        )
-        .expect("empty semantic graph scope");
-    index
-}
-
-fn diagnostics_with_error(file: &Path) -> Value {
-    let file = file.display().to_string();
-    json!({
-        "diagnostics": [{
-            "location": {
-                "filePath": file,
-                "startOffset": 12,
-                "endOffset": 19,
-                "startLine": 1,
-                "startColumn": 13,
-                "preview": "missing"
-            },
-            "severity": "ERROR",
-            "message": "Unresolved reference",
-            "code": "UNRESOLVED_REFERENCE"
-        }],
-        "fileStatuses": [{"filePath": file, "state": "ANALYZED"}],
-        "fileHashes": [{"filePath": file, "hash": "c".repeat(64)}],
-        "semanticOutcome": "COMPLETE",
-        "requestedFileCount": 1,
-        "analyzedFileCount": 1,
-        "skippedFileCount": 0,
-        "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
-        "cardinality": {"type": "EXACT", "totalCount": 1}
-    })
-}
+include!("refresh_support.rs");

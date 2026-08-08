@@ -25,10 +25,10 @@ After installation, `kast` is the agent interface:
 
 ```console
 kast
-kast up
-kast refresh
-kast symbol find <query>
-kast graph summary
+kast workspace ensure
+kast workspace refresh
+kast symbol search --query '<query>'
+kast graph summary --scope symbol
 ```
 
 Pass `--harness codex`, `--harness claude`, or `--harness copilot` to select

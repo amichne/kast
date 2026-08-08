@@ -1,7 +1,3 @@
-pub(crate) fn print_projected(command: AgentCommand) -> Result<i32> {
-    print_projected_value(projected_value(command)?)
-}
-
 fn print_derived_topology(
     workspace_root: PathBuf,
     args: crate::cli::KastDerivedTopologyArgs,
@@ -28,7 +24,6 @@ fn print_derived_topology(
         agent::public_protocol::ProtocolEnvelope::projected(
             agent::public_protocol::OperationId::GraphDerive,
             agent::public_protocol::OperationStatus::Complete,
-            "derived-topology",
             fields,
         ),
         output_format,
@@ -43,6 +38,7 @@ fn print_native_graph(
     page: Option<KastGraphNodesPageToken>,
     output_format: OutputFormat,
 ) -> Result<i32> {
+    let public_operation = public_graph_operation(operation);
     let workspace_fingerprint =
         agent::public_protocol::graph_workspace_fingerprint(&workspace_root);
     if page
@@ -50,9 +46,11 @@ fn print_native_graph(
         .is_some_and(|page| page.workspace_fingerprint() != workspace_fingerprint)
     {
         return print_actionable_failure(
+            public_operation,
             "GRAPH_PAGE_TOKEN_MISMATCH",
             "The graph page belongs to a different workspace.",
             "kast graph nodes",
+            output_format,
         );
     }
     let admission =
@@ -60,17 +58,21 @@ fn print_native_graph(
             Ok(admission) => admission,
             Err(error) => {
                 return print_actionable_failure(
+                    public_operation,
                     "GRAPH_EVIDENCE_UNAVAILABLE",
                     &error.message,
-                    "kast refresh",
+                    "kast workspace refresh",
+                    output_format,
                 );
             }
         };
     if admission.is_rejected() {
         return print_actionable_failure(
+            public_operation,
             "GRAPH_EVIDENCE_INCOMPLETE",
             "Persisted semantic graph evidence is incomplete.",
-            "kast refresh",
+            "kast workspace refresh",
+            output_format,
         );
     }
     if page
@@ -78,9 +80,11 @@ fn print_native_graph(
         .is_some_and(|page| page.generation() != admission.generation())
     {
         return print_actionable_failure(
+            public_operation,
             "GRAPH_PAGE_EXPIRED",
             "The graph changed after this page was issued.",
             "kast graph nodes",
+            output_format,
         );
     }
     let selected_node = match node_selector
@@ -96,9 +100,11 @@ fn print_native_graph(
         Ok(selector) => selector,
         Err(failure) => {
             return print_actionable_failure(
+                public_operation,
                 failure.code(),
                 failure.message(),
                 "kast graph nodes",
+                output_format,
             );
         }
     };
@@ -114,10 +120,10 @@ fn print_native_graph(
         Some(admission.generation()),
         after_id,
     ))?;
-    if envelope.get("ok") != Some(&Value::Bool(true)) {
-        return print_projected_value(envelope);
-    }
-    let mut result = projected_result(&envelope)?.clone();
+    let mut result = match backend_outcome(public_operation, envelope) {
+        BackendOutcome::Complete(result) => result,
+        BackendOutcome::Rejected(envelope) => return print_protocol(envelope, output_format),
+    };
     let fields = result.as_object_mut().ok_or_else(|| {
         CliError::new(
             "KAST_INVALID_AGENT_RESULT",
@@ -137,6 +143,7 @@ fn print_native_graph(
         serde_json::to_value(admission.coverage())?,
     );
     if operation == NativeGraphOperation::Nodes {
+        let previously_returned = page.as_ref().map_or(0, KastGraphNodesPageToken::returned);
         let generation = fields
             .get("generation")
             .and_then(Value::as_u64)
@@ -156,7 +163,8 @@ fn print_native_graph(
                     "The native graph node page returned no node collection.",
                 )
             })?;
-        for node in nodes {
+        for node in nodes.iter_mut() {
+            replace_public_path(&workspace_root, node, "path", "path")?;
             let node_fields = node.as_object_mut().ok_or_else(|| {
                 CliError::new(
                     "KAST_INVALID_AGENT_RESULT",
@@ -190,6 +198,18 @@ fn print_native_graph(
                 Value::String(selector.as_str().to_string()),
             );
         }
+        let returned = u64::try_from(nodes.len()).map_err(|_| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "The graph node page exceeded public cardinality.",
+            )
+        })?;
+        let cumulative_returned = previously_returned.checked_add(returned).ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "The graph node continuation exceeded public cardinality.",
+            )
+        })?;
         let next_after_id = fields.remove("nextAfterId").ok_or_else(|| {
             CliError::new(
                 "KAST_INVALID_AGENT_RESULT",
@@ -197,7 +217,7 @@ fn print_native_graph(
             )
         })?;
         let truncated = !next_after_id.is_null();
-        fields.insert("truncated".to_string(), Value::Bool(truncated));
+        let mut continuation = None;
         if truncated {
             let next_after_id = next_after_id.as_u64().ok_or_else(|| {
                 CliError::new(
@@ -209,6 +229,7 @@ fn print_native_graph(
                 workspace_fingerprint,
                 admission.generation(),
                 next_after_id,
+                cumulative_returned,
             )
             .ok_or_else(|| {
                 CliError::new(
@@ -216,8 +237,21 @@ fn print_native_graph(
                     "The native graph node page returned a zero continuation.",
                 )
             })?;
-            fields.insert("continuation".to_string(), json!(next_page.canonical()));
+            continuation = Some(next_page.canonical());
         }
+        fields.remove("afterId");
+        let mut page = json!({
+            "cardinality": if truncated {
+                json!({"type": "known-minimum", "count": cumulative_returned + 1})
+            } else {
+                json!({"type": "exact", "count": cumulative_returned})
+            },
+            "returned": returned,
+        });
+        if let Some(continuation) = continuation {
+            page["continuation"] = Value::String(continuation);
+        }
+        fields.insert("page".to_string(), page);
     }
     if let Some(selected_node) = selected_node
         && fields.get("key").and_then(Value::as_str) != Some(selected_node.stable_key())
@@ -230,50 +264,60 @@ fn print_native_graph(
             ),
         ));
     }
-    let result = sanitize_agent_result(result, true);
-    let status = if result.get("qualification").and_then(Value::as_str) == Some("QUALIFIED") {
+    let backend_type = fields.remove("type").and_then(|value| value.as_str().map(str::to_string));
+    if backend_type.as_deref() != Some(native_graph_result_type(operation)) {
+        return Err(CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "The native graph operation returned the wrong result type.",
+        ));
+    }
+    if fields.remove("schemaVersion").and_then(|value| value.as_u64())
+        != Some(u64::from(crate::SCHEMA_VERSION))
+    {
+        return Err(CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "The native graph operation returned the wrong schema version.",
+        ));
+    }
+    let status = if fields.get("qualification").and_then(Value::as_str) == Some("QUALIFIED") {
         agent::public_protocol::OperationStatus::Qualified
     } else {
         agent::public_protocol::OperationStatus::Complete
     };
-    let fields = result.as_object().cloned().ok_or_else(|| {
-        CliError::new(
-            "KAST_INVALID_AGENT_RESULT",
-            "The native graph operation did not produce an object result.",
-        )
-    })?;
-    let (operation, result_type) = match operation {
-        NativeGraphOperation::Summary => (
-            agent::public_protocol::OperationId::GraphSummary,
-            "graph-summary",
-        ),
-        NativeGraphOperation::Nodes => (
-            agent::public_protocol::OperationId::GraphNodes,
-            "graph-nodes",
-        ),
-        NativeGraphOperation::Neighbors => (
-            agent::public_protocol::OperationId::GraphNeighbors,
-            "graph-neighbors",
-        ),
-        NativeGraphOperation::Topology => (
-            agent::public_protocol::OperationId::GraphTopology,
-            "graph-topology",
-        ),
-        NativeGraphOperation::Communities => (
-            agent::public_protocol::OperationId::GraphCommunities,
-            "graph-communities",
-        ),
-        NativeGraphOperation::Refresh => unreachable!("public graph refresh uses workspace.refresh"),
-    };
     print_protocol(
         agent::public_protocol::ProtocolEnvelope::projected(
-            operation,
+            public_operation,
             status,
-            result_type,
-            fields,
+            fields.clone(),
         ),
         output_format,
     )
+}
+
+fn public_graph_operation(
+    operation: NativeGraphOperation,
+) -> agent::public_protocol::OperationId {
+    match operation {
+        NativeGraphOperation::Summary => agent::public_protocol::OperationId::GraphSummary,
+        NativeGraphOperation::Nodes => agent::public_protocol::OperationId::GraphNodes,
+        NativeGraphOperation::Neighbors => agent::public_protocol::OperationId::GraphNeighbors,
+        NativeGraphOperation::Topology => agent::public_protocol::OperationId::GraphTopology,
+        NativeGraphOperation::Communities => {
+            agent::public_protocol::OperationId::GraphCommunities
+        }
+        NativeGraphOperation::Refresh => agent::public_protocol::OperationId::WorkspaceRefresh,
+    }
+}
+
+fn native_graph_result_type(operation: NativeGraphOperation) -> &'static str {
+    match operation {
+        NativeGraphOperation::Summary => "KAST_NATIVE_GRAPH_SUMMARY",
+        NativeGraphOperation::Nodes => "KAST_NATIVE_GRAPH_NODES",
+        NativeGraphOperation::Neighbors => "KAST_NATIVE_GRAPH_NEIGHBORS",
+        NativeGraphOperation::Topology => "KAST_NATIVE_GRAPH_TOPOLOGY",
+        NativeGraphOperation::Communities => "KAST_NATIVE_GRAPH_COMMUNITIES",
+        NativeGraphOperation::Refresh => "KAST_NATIVE_GRAPH_REFRESH",
+    }
 }
 
 fn native_graph_command(

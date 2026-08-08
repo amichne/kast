@@ -151,8 +151,12 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
     let Some(command) = cli.command else {
         let root = config::resolve_workspace_root(None)?;
         let home = kast_home(root)?;
-        output::print_structured(&home, output_format)?;
-        return Ok(0);
+        return agent_adapter::print_public_value(
+            agent::public_protocol::OperationId::WorkspaceHome,
+            agent::public_protocol::OperationStatus::Complete,
+            &home,
+            output_format,
+        );
     };
     match command {
         KastCommand::Internal(cli::KastInternalArgs {
@@ -164,12 +168,12 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
             install::install_agent_resources(&harnesses)?;
             Ok(0)
         }
-        KastCommand::Workspace(args) => agent_adapter::run_workspace(args),
-        KastCommand::File(args) => agent_adapter::run_file(args),
+        KastCommand::Workspace(args) => agent_adapter::run_workspace(args, output_format),
+        KastCommand::File(args) => agent_adapter::run_file(args, output_format),
         KastCommand::Symbol(args) => agent_adapter::run_symbol(args, output_format),
         KastCommand::Relation(args) => agent_adapter::run_relation(args, output_format),
         KastCommand::Graph(args) => agent_adapter::run_graph(args, output_format),
-        KastCommand::Diagnostic(args) => agent_adapter::run_diagnostic(args),
+        KastCommand::Diagnostic(args) => agent_adapter::run_diagnostic(args, output_format),
         KastCommand::Change(args) => match args.command {
             cli::KastChangeCommand::Plan(plan) => agent_plan::run_change(plan, output_format),
             cli::KastChangeCommand::Apply { plan_id } => {
@@ -218,7 +222,7 @@ fn kast_home(root: PathBuf) -> Result<KastHome> {
     let ready = runtime_state == "READY" && reference_index_ready;
     let next = if ready {
         vec![
-            "kast refresh".to_string(),
+            "kast workspace refresh".to_string(),
             "kast symbol search --query <query>".to_string(),
         ]
     } else {

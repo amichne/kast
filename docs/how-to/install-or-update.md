@@ -86,24 +86,24 @@ Start an agent from the exact project or worktree root and run:
 
 ```console
 kast
-kast up
+kast workspace ensure
 ```
 
-`kast up` reuses an eligible exact-root indexer. If none exists, it creates one
+`kast workspace ensure` reuses an eligible exact-root indexer. If none exists, it creates one
 isolated process for the root. It returns only after usable semantic evidence
 is available, or reports the typed blocker to act on.
 
 Refresh after source changes:
 
 ```console
-kast refresh
-kast refresh src/main/kotlin/App.kt
+kast workspace refresh
+kast workspace refresh --file src/main/kotlin/App.kt
 ```
 
 Inspect persisted evidence separately from runtime readiness:
 
 ```console
-kast graph summary
+kast graph summary --scope symbol
 ```
 
 A ready runtime and a non-empty graph do not prove exhaustive coverage. Use

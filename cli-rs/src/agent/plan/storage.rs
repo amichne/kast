@@ -87,20 +87,6 @@ fn canonical_workspace_root() -> Result<PathBuf> {
     })
 }
 
-fn parse_plan_id(raw: &str) -> Result<Uuid> {
-    let plan_id = Uuid::parse_str(raw)
-        .ok()
-        .filter(|id| id.get_version() == Some(Version::Random))
-        .filter(|id| id.hyphenated().to_string() == raw)
-        .ok_or_else(|| {
-            CliError::new(
-                "CLI_USAGE",
-                "Plan ids must be canonical lowercase version-4 UUIDs returned by `kast change`.",
-            )
-        })?;
-    Ok(plan_id)
-}
-
 fn validate_plan(plan: &StoredPlan, expected_id: Uuid) -> Result<()> {
     if plan.schema_version != PLAN_SCHEMA_VERSION {
         return Err(CliError::new(

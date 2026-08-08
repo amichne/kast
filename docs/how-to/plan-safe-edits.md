@@ -41,10 +41,11 @@ it does not mean the remaining workspace is unaffected.
 
 ## Create the plan
 
-Run `kast change` for one operation. For example:
+Copy the selector returned by `kast symbol resolve --query <QUERY>` verbatim
+into one planning operation. For example:
 
 ```console
-kast change rename <SYMBOL> evaluateInvoice
+kast change plan rename --selector <SELECTOR> --name evaluateInvoice
 ```
 
 For `replace`, `add-file`, or `add-declaration`, supply the requested content on
@@ -56,7 +57,7 @@ identifier. Do not apply a plan with unresolved limitations.
 Apply the reviewed plan:
 
 ```console
-kast apply <PLAN_ID>
+kast change apply --plan-id <PLAN_ID>
 ```
 
 Kast acquires the workspace lease, revalidates the root-bound plan, applies the
@@ -73,7 +74,7 @@ If the receipt is `RECOVERY_REQUIRED`, retain its recovery identifier. In a new
 process if necessary, run:
 
 ```console
-kast recover <RECOVERY_ID>
+kast change recover --recovery-id <RECOVERY_ID>
 ```
 
 Recovery completes verification or restores the exact source pre-state. Retry

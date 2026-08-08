@@ -10,5 +10,6 @@ const PATH_SAMPLE: &str = "/absolute/path/to/workspace/src/main/kotlin/example/W
 const WORKSPACE_SAMPLE: &str = "/absolute/path/to/workspace";
 
 include!("contract_gen/generation.rs");
+include!("contract_gen/public.rs");
 include!("contract_gen/samples.rs");
 include!("contract_gen/tests.rs");

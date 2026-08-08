@@ -15,6 +15,22 @@ cargo test \
 cargo test \
   --manifest-path cli-rs/Cargo.toml \
   --locked \
+  --test agent_operation_surface_smoke \
+  public_operation_registry_is_complete_typed_and_callable \
+  -- \
+  --exact
+
+cargo test \
+  --manifest-path cli-rs/Cargo.toml \
+  --locked \
+  --test agent_operation_surface_smoke \
+  every_required_public_projection_is_checked_in_and_registry_bound \
+  -- \
+  --exact
+
+cargo test \
+  --manifest-path cli-rs/Cargo.toml \
+  --locked \
   --test kast_agent_surface \
   typed_selector_vertical_slice_exposes_only_canonical_routes \
   -- \

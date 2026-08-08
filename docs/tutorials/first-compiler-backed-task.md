@@ -34,7 +34,7 @@ If you still need Kast, follow [Install or update Kast](../how-to/install-or-upd
 From the repository root, run:
 
 ```console
-kast up
+kast workspace ensure
 ```
 
 A `READY` result means Kast admitted one compatible indexer for this exact

@@ -171,7 +171,8 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         stdout["result"]["capabilities"]["publicRead"],
         json!([{
             "capability": "WORKSPACE_FILES",
-            "command": "kast agent workspace-files"
+            "operation": "file.list",
+            "command": "kast file list"
         }])
     );
     assert!(stdout["result"].get("steps").is_none(), "{stdout}");

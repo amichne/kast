@@ -1,10 +1,20 @@
 pub(crate) fn run_external_refresh(
     workspace_root: PathBuf,
-    failure_ids: Vec<String>,
+    failure_ids: Vec<agent::public_protocol::ExternalFailureId>,
+    output_format: OutputFormat,
 ) -> Result<i32> {
-    let response = raw_workspace_refresh(&workspace_root, &[], &failure_ids)?;
+    let transport_ids = failure_ids
+        .iter()
+        .map(|failure_id| failure_id.as_str().to_string())
+        .collect::<Vec<_>>();
+    let response = raw_workspace_refresh(&workspace_root, &[], &transport_ids)?;
     if let Some((code, message)) = rpc_failure(&response) {
-        return print_failure(code, message);
+        return print_failure(
+            agent::public_protocol::OperationId::WorkspaceExternalize,
+            code,
+            message,
+            output_format,
+        );
     }
     let outcomes = response
         .get("result")
@@ -35,7 +45,7 @@ pub(crate) fn run_external_refresh(
                         "External graph-boundary refresh returned an outcome without a failure id.",
                     )
                 })?;
-            if failure_id != requested_id {
+            if failure_id != requested_id.as_str() {
                 return Err(CliError::new(
                     "KAST_INVALID_AGENT_RESULT",
                     "External graph-boundary refresh returned outcomes out of order.",
@@ -60,16 +70,20 @@ pub(crate) fn run_external_refresh(
         .iter()
         .any(|outcome| outcome["status"] == "NOT_FOUND")
     {
-        output::print_structured(
-            &json!({
-                "external": external,
-                "next": "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID."
-            }),
-            OutputFormat::Toon,
-        )?;
-        return Ok(1);
+        return print_actionable_failure(
+            agent::public_protocol::OperationId::WorkspaceExternalize,
+            "EXTERNAL_FAILURE_NOT_FOUND",
+            "One or more external failure IDs no longer identify current content.",
+            "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID.",
+            output_format,
+        );
     }
-    print_direct(&json!({"external": external}))
+    print_public_value(
+        agent::public_protocol::OperationId::WorkspaceExternalize,
+        agent::public_protocol::OperationStatus::Complete,
+        &json!({"external": external}),
+        output_format,
+    )
 }
 
 fn raw_workspace_refresh(
@@ -110,20 +124,19 @@ fn rpc_failure(response: &Value) -> Option<(&str, &str)> {
     Some((code, message))
 }
 
-fn print_failure(code: &str, message: &str) -> Result<i32> {
+fn print_failure(
+    operation: agent::public_protocol::OperationId,
+    code: &str,
+    message: &str,
+    output_format: OutputFormat,
+) -> Result<i32> {
     print_actionable_failure(
+        operation,
         code,
         message,
         "Run `kast --help` for valid commands and arguments.",
+        output_format,
     )
-}
-
-fn print_actionable_failure(code: &str, message: &str, next: &str) -> Result<i32> {
-    output::print_structured(
-        &json!({"error": code, "message": message, "next": next}),
-        OutputFormat::Toon,
-    )?;
-    Ok(1)
 }
 
 fn string_array_field(result: &Value, field: &str) -> Result<Vec<String>> {

@@ -1,11 +1,4 @@
 #[derive(Debug, Serialize)]
-struct ProjectedError {
-    error: String,
-    message: String,
-    next: &'static str,
-}
-
-#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UpResult {
     root: String,
@@ -17,7 +10,7 @@ struct UpResult {
     next: Vec<&'static str>,
 }
 
-pub(crate) fn run_up() -> Result<i32> {
+pub(crate) fn run_up(output_format: OutputFormat) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     let mut args = crate::default_runtime_args();
     args.workspace_root = Some(workspace_root.clone());
@@ -25,7 +18,12 @@ pub(crate) fn run_up() -> Result<i32> {
     let deadline = Instant::now() + Duration::from_millis(args.wait_timeout_ms);
     let ensured = runtime::workspace_ensure(args.clone())?;
     if let Some(result) = ready_result(&workspace_root, ensured.selected.runtime_status.as_ref()) {
-        return print_direct(&result);
+        return print_public_value(
+            agent::public_protocol::OperationId::WorkspaceEnsure,
+            agent::public_protocol::OperationStatus::Complete,
+            &result,
+            output_format,
+        );
     }
 
     let mut last_status = ensured.selected.runtime_status;
@@ -37,7 +35,12 @@ pub(crate) fn run_up() -> Result<i32> {
             .selected
             .and_then(|candidate| candidate.runtime_status);
         if let Some(result) = ready_result(&workspace_root, last_status.as_ref()) {
-            return print_direct(&result);
+            return print_public_value(
+                agent::public_protocol::OperationId::WorkspaceEnsure,
+                agent::public_protocol::OperationStatus::Complete,
+                &result,
+                output_format,
+            );
         }
     }
 
@@ -51,27 +54,46 @@ pub(crate) fn run_up() -> Result<i32> {
     let source_module_count = last_status
         .as_ref()
         .map_or(0, |status| status.source_module_names.len());
-    Err(CliError::new(
+    print_actionable_failure(
+        agent::public_protocol::OperationId::WorkspaceEnsure,
         "SEMANTIC_EVIDENCE_NOT_READY",
-        format!(
-            "The exact workspace reached {state}, but semantic evidence did not become ready within {} ms (referenceIndexReady={reference_index_ready}, sourceModuleCount={source_module_count}). Let the indexer finish, then run `kast up` again.",
+        &format!(
+            "The exact workspace reached {state}, but semantic evidence did not become ready within {} ms (referenceIndexReady={reference_index_ready}, sourceModuleCount={source_module_count}). Let the indexer finish, then run `kast workspace ensure` again.",
             args.wait_timeout_ms
         ),
-    ))
+        "kast workspace ensure",
+        output_format,
+    )
 }
 
-pub(crate) fn run_workspace(args: KastWorkspaceArgs) -> Result<i32> {
+pub(crate) fn run_workspace(args: KastWorkspaceArgs, output_format: OutputFormat) -> Result<i32> {
     match args.command {
-        KastWorkspaceCommand::Ensure => run_up(),
-        KastWorkspaceCommand::Refresh { files } => run_refresh(files),
+        KastWorkspaceCommand::Ensure => run_up(output_format),
+        KastWorkspaceCommand::Refresh { files } => run_refresh(files, output_format),
         KastWorkspaceCommand::Externalize { failure_ids } => {
+            let failure_ids = match failure_ids
+                .into_iter()
+                .map(agent::public_protocol::ExternalFailureId::parse)
+                .collect::<std::result::Result<Vec<_>, _>>()
+            {
+                Ok(failure_ids) => failure_ids,
+                Err(message) => {
+                    return print_actionable_failure(
+                        agent::public_protocol::OperationId::WorkspaceExternalize,
+                        "EXTERNAL_FAILURE_ID_MALFORMED",
+                        message,
+                        "Use a failure ID returned by `kast workspace refresh`.",
+                        output_format,
+                    );
+                }
+            };
             let workspace_root = config::resolve_workspace_root(None)?;
-            run_external_refresh(workspace_root, failure_ids)
+            run_external_refresh(workspace_root, failure_ids, output_format)
         }
     }
 }
 
-pub(crate) fn run_file(args: KastFileArgs) -> Result<i32> {
+pub(crate) fn run_file(args: KastFileArgs, output_format: OutputFormat) -> Result<i32> {
     let KastFileCommand::List {
         pattern,
         continuation,
@@ -86,7 +108,10 @@ pub(crate) fn run_file(args: KastFileArgs) -> Result<i32> {
                 .map_err(|message| CliError::new("CLI_USAGE", message))
         })
         .transpose()?;
-    print_projected(AgentCommand::WorkspaceFiles(args))
+    print_file_list(
+        projected_value(AgentCommand::WorkspaceFiles(args))?,
+        output_format,
+    )
 }
 
 pub(crate) fn run_symbol(args: KastSymbolArgs, output_format: OutputFormat) -> Result<i32> {
@@ -198,9 +223,11 @@ pub(crate) fn run_graph(args: KastGraphArgs, output_format: OutputFormat) -> Res
                 Ok(selector) => selector,
                 Err(failure) => {
                     return print_actionable_failure(
+                        agent::public_protocol::OperationId::GraphNeighbors,
                         failure.code(),
                         failure.message(),
                         "kast graph nodes",
+                        output_format,
                     );
                 }
             };

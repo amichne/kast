@@ -22,10 +22,10 @@ action does not have to guess at all four.
 | `IDEA_VERSION_UNSUPPORTED` | Check the installed runtime-source build | Use IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261. |
 | `IDEA_HOST_AMBIGUOUS` | Check installed supported bundles | Configure one exact supported runtime source. |
 | Indexer identity conflicts | Compare the reported exact-root identities | Stop only the stale Kast-owned process named by the typed result, then retry. |
-| The indexer is unavailable | Run `kast` from the exact root | Run `kast up`. |
-| The indexer reports indexing | Wait for Gradle, Kotlin, and Kast indexing | Retry `kast up`. |
+| The indexer is unavailable | Run `kast` from the exact root | Run `kast workspace ensure`. |
+| The indexer reports indexing | Wait for Gradle, Kotlin, and Kast indexing | Retry `kast workspace ensure`. |
 | The indexer reports degraded | Read its single actionable cause | Repair the named Gradle, Kotlin admission, or reference-index failure. |
-| Kotlin source modules are unavailable | Check the imported Gradle model and SDK | Repair the build model, then rerun `kast up`. |
+| Kotlin source modules are unavailable | Check the imported Gradle model and SDK | Repair the build model, then rerun `kast workspace ensure`. |
 | Relationships are limited | Read the result's coverage and next action | Resume or narrow the query; do not treat a partial result as exhaustive. |
 | A mutation is rejected | Check exact-root readiness and target identity | Prepare the workspace and resolve one exact declaration before retrying. |
 
@@ -53,12 +53,13 @@ Run these read-only checks from the intended workspace:
 
 ```console
 kast
-kast graph summary
+kast graph summary --scope symbol
 ```
 
 The home result reports indexer readiness. The graph summary reports retained
 coverage separately. An indexer can be ready while a graph result remains
-incomplete. In that case, run `kast refresh` for the affected files and retain
+incomplete. In that case, run `kast workspace refresh --file <PATH>` for each
+affected file and retain
 the limitation until coverage is complete.
 
 Kast progress and success are silent. It emits one deduplicated notification

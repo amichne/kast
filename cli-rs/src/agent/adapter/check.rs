@@ -6,13 +6,27 @@ struct EmptyCheckResult {
     message: &'static str,
 }
 
-pub(crate) fn run_diagnostic(args: KastDiagnosticArgs) -> Result<i32> {
+pub(crate) fn run_diagnostic(
+    args: KastDiagnosticArgs,
+    output_format: OutputFormat,
+) -> Result<i32> {
     let KastDiagnosticCommand::Check { files } = args.command;
     let workspace_root = config::resolve_workspace_root(None)?;
     let file_paths = if files.is_empty() {
         match changed_kotlin_files(&workspace_root)? {
             Ok(file_paths) => file_paths,
-            Err(envelope) => return print_projected_value(envelope),
+            Err(envelope) => {
+                return match backend_outcome(
+                    agent::public_protocol::OperationId::DiagnosticCheck,
+                    envelope,
+                ) {
+                    BackendOutcome::Complete(_) => Err(CliError::new(
+                        "KAST_INVALID_AGENT_RESULT",
+                        "Changed-file discovery returned an unexpected success value.",
+                    )),
+                    BackendOutcome::Rejected(envelope) => print_protocol(envelope, output_format),
+                };
+            }
         }
     } else {
         files
@@ -21,11 +35,16 @@ pub(crate) fn run_diagnostic(args: KastDiagnosticArgs) -> Result<i32> {
             .collect()
     };
     if file_paths.is_empty() {
-        return print_direct(&EmptyCheckResult {
-            changed_file_count: 0,
-            diagnostic_count: 0,
-            message: "No changed Kotlin files were found.",
-        });
+        return print_public_value(
+            agent::public_protocol::OperationId::DiagnosticCheck,
+            agent::public_protocol::OperationStatus::Complete,
+            &EmptyCheckResult {
+                changed_file_count: 0,
+                diagnostic_count: 0,
+                message: "No changed Kotlin files were found.",
+            },
+            output_format,
+        );
     }
     let current = projected_value(check_diagnostics_command(
         &workspace_root,
@@ -33,13 +52,21 @@ pub(crate) fn run_diagnostic(args: KastDiagnosticArgs) -> Result<i32> {
         CheckDiagnosticsRead::CurrentPublication,
     ))?;
     match CurrentCheckAttempt::derive(current) {
-        CurrentCheckAttempt::Covered(envelope) => print_projected_value(envelope),
-        CurrentCheckAttempt::RefreshRequired(_) => print_projected(check_diagnostics_command(
+        CurrentCheckAttempt::Covered(envelope) => {
+            print_diagnostics(&workspace_root, envelope, output_format)
+        }
+        CurrentCheckAttempt::RefreshRequired(_) => print_diagnostics(
             &workspace_root,
-            &file_paths,
-            CheckDiagnosticsRead::ReconciledPublication,
-        )),
-        CurrentCheckAttempt::Rejected(envelope) => print_projected_value(envelope),
+            projected_value(check_diagnostics_command(
+                &workspace_root,
+                &file_paths,
+                CheckDiagnosticsRead::ReconciledPublication,
+            ))?,
+            output_format,
+        ),
+        CurrentCheckAttempt::Rejected(envelope) => {
+            print_diagnostics(&workspace_root, envelope, output_format)
+        }
     }
 }
 

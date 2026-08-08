@@ -1,57 +1,33 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum AgentPublicCapability {
-    WorkspaceFiles,
-}
-
-impl AgentPublicCapability {
-    fn backend_capability(self) -> &'static str {
-        match self {
-            Self::WorkspaceFiles => "WORKSPACE_FILES",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct AgentPublicCapabilityRoute {
-    capability: AgentPublicCapability,
-    command_segments: &'static [&'static str],
-    display_command: &'static str,
-}
-
-const AGENT_PUBLIC_CAPABILITY_ROUTES: &[AgentPublicCapabilityRoute] =
-    &[AgentPublicCapabilityRoute {
-        capability: AgentPublicCapability::WorkspaceFiles,
-        command_segments: &["agent", "workspace-files"],
-        display_command: "kast agent workspace-files",
-    }];
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentPublicCapabilityProjection {
-    capability: AgentPublicCapability,
-    command: &'static str,
+    capability: crate::agent::public_protocol::Capability,
+    operation: crate::agent::public_protocol::OperationId,
+    command: String,
 }
 
 fn public_read_capabilities(raw_read_capabilities: &[String]) -> Vec<AgentPublicCapabilityProjection> {
-    AGENT_PUBLIC_CAPABILITY_ROUTES
-        .iter()
-        .filter(|route| {
-            raw_read_capabilities
-                .iter()
-                .any(|raw| raw == route.capability.backend_capability())
-                && public_capability_route_is_callable(route)
+    crate::agent::public_protocol::operation_definitions()
+        .filter(|definition| {
+            definition
+                .capability
+                .backend_capability()
+                .is_some_and(|backend| raw_read_capabilities.iter().any(|raw| raw == backend))
+                && public_capability_route_is_callable(*definition)
         })
-        .map(|route| AgentPublicCapabilityProjection {
-            capability: route.capability,
-            command: route.display_command,
+        .map(|definition| AgentPublicCapabilityProjection {
+            capability: definition.capability,
+            operation: definition.id,
+            command: format!("kast {}", definition.cli.segments.join(" ")),
         })
         .collect()
 }
 
-fn public_capability_route_is_callable(route: &AgentPublicCapabilityRoute) -> bool {
-    let mut command = crate::cli::Cli::command();
-    for segment in route.command_segments {
+fn public_capability_route_is_callable(
+    definition: crate::agent::public_protocol::OperationDefinition,
+) -> bool {
+    let mut command = crate::cli::KastCli::command();
+    for segment in definition.cli.segments {
         let Some(next) = command
             .get_subcommands()
             .find(|subcommand| subcommand.get_name() == *segment)
@@ -69,30 +45,31 @@ mod public_capability_route_tests {
     use super::*;
 
     #[test]
-    fn every_registered_public_capability_resolves_through_the_clap_command_tree() {
+    fn every_backend_projected_capability_resolves_through_the_public_clap_tree() {
+        let definitions = crate::agent::public_protocol::operation_definitions()
+            .filter(|definition| definition.capability.backend_capability().is_some())
+            .collect::<Vec<_>>();
+        assert_eq!(definitions.len(), 1);
         assert_eq!(
-            AGENT_PUBLIC_CAPABILITY_ROUTES,
-            &[AgentPublicCapabilityRoute {
-                capability: AgentPublicCapability::WorkspaceFiles,
-                command_segments: &["agent", "workspace-files"],
-                display_command: "kast agent workspace-files",
-            }]
+            definitions[0].id,
+            crate::agent::public_protocol::OperationId::FileList
         );
         assert!(
-            AGENT_PUBLIC_CAPABILITY_ROUTES
-                .iter()
+            definitions
+                .into_iter()
                 .all(public_capability_route_is_callable)
         );
     }
 
     #[test]
-    fn public_read_evidence_requires_both_backend_support_and_a_callable_route() {
+    fn public_read_evidence_requires_backend_support_for_the_registered_operation() {
         assert!(public_read_capabilities(&[]).is_empty());
         assert_eq!(
             public_read_capabilities(&["WORKSPACE_FILES".to_string()]),
             vec![AgentPublicCapabilityProjection {
-                capability: AgentPublicCapability::WorkspaceFiles,
-                command: "kast agent workspace-files",
+                capability: crate::agent::public_protocol::Capability::WorkspaceFiles,
+                operation: crate::agent::public_protocol::OperationId::FileList,
+                command: "kast file list".to_string(),
             }]
         );
     }

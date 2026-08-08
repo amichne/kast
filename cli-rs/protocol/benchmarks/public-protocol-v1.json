@@ -1,0 +1,52 @@
+{
+  "acceptance": {
+    "selectorProducerToConsumerRoundTripPercent": 100,
+    "semanticMisselection": 0
+  },
+  "benchmarkVersion": "public-protocol-v1",
+  "metrics": [
+    "firstCommandValidity",
+    "correctiveCliCallsBeforeSuccess",
+    "selectorRoundTripSuccess",
+    "wrongSymbolSelection",
+    "outputSchemaInterpretationFailures",
+    "tokensBeforeDecisiveEvidence",
+    "mutationAttemptsRejectedBeforePlanning",
+    "staleContinuationHandling",
+    "staleSelectorHandling"
+  ],
+  "scenarios": [
+    {
+      "firstOperation": "symbol.search",
+      "id": "unknown-target",
+      "inputState": "unknownTarget"
+    },
+    {
+      "firstOperation": "symbol.resolve",
+      "id": "exact-text",
+      "inputState": "exactText"
+    },
+    {
+      "id": "issued-selector",
+      "identityTransformations": 0,
+      "inputState": "selector"
+    },
+    {
+      "expected": "rejectedBeforeSemanticExecution",
+      "id": "wrong-root-selector"
+    },
+    {
+      "expected": "rejectedBeforeSemanticExecution",
+      "id": "stale-selector"
+    },
+    {
+      "expected": "continuationMismatch",
+      "id": "cross-operation-continuation"
+    },
+    {
+      "expected": "rejectedBeforePlanning",
+      "id": "mutation-from-query"
+    }
+  ],
+  "schemaVersion": 1
+}

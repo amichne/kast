@@ -112,7 +112,6 @@ fn plan_output_context(
 
 fn print_plan_protocol(
     context: PlanOutputContext,
-    result_type: &'static str,
     status: crate::agent::public_protocol::OperationStatus,
     value: &impl Serialize,
 ) -> Result<()> {
@@ -128,10 +127,41 @@ fn print_plan_protocol(
     let envelope = crate::agent::public_protocol::ProtocolEnvelope::projected(
         context.operation,
         status,
-        result_type,
         fields,
     );
     output::print_structured(&envelope, context.format)
+}
+
+pub(crate) fn run_apply(raw: String, output_format: OutputFormat) -> Result<i32> {
+    let plan_id = match crate::agent::public_protocol::PlanId::parse(&raw) {
+        Ok(plan_id) => plan_id,
+        Err(message) => {
+            return agent_adapter::print_actionable_failure(
+                crate::agent::public_protocol::OperationId::ChangeApply,
+                "PLAN_ID_MALFORMED",
+                message,
+                "Use the plan ID returned by a `kast change plan` operation.",
+                output_format,
+            );
+        }
+    };
+    run_apply_typed(plan_id, output_format)
+}
+
+pub(crate) fn run_recover(raw: String, output_format: OutputFormat) -> Result<i32> {
+    let recovery_id = match crate::agent::public_protocol::RecoveryId::parse(&raw) {
+        Ok(recovery_id) => recovery_id,
+        Err(message) => {
+            return agent_adapter::print_actionable_failure(
+                crate::agent::public_protocol::OperationId::ChangeRecover,
+                "RECOVERY_ID_MALFORMED",
+                message,
+                "Use the recovery ID returned by `kast change apply`.",
+                output_format,
+            );
+        }
+    };
+    run_recover_typed(recovery_id, output_format)
 }
 
 include!("execution.rs");

@@ -3,58 +3,11 @@ use super::domain::{
     SymbolQuery,
 };
 use super::impact::{ImpactConfidence, ImpactNode};
+pub(super) use super::registry::OperationId;
 use super::traversal_types::RelationRecord;
 use serde::Serialize;
 
 pub(super) const PUBLIC_PROTOCOL_SCHEMA_VERSION: u32 = 2;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-pub(crate) enum OperationId {
-    #[serde(rename = "symbol.search")]
-    SymbolSearch,
-    #[serde(rename = "symbol.resolve")]
-    SymbolResolve,
-    #[serde(rename = "symbol.show")]
-    SymbolShow,
-    #[serde(rename = "relation.references")]
-    RelationReferences,
-    #[serde(rename = "relation.calls.incoming")]
-    RelationCallsIncoming,
-    #[serde(rename = "relation.calls.outgoing")]
-    RelationCallsOutgoing,
-    #[serde(rename = "relation.implementations")]
-    RelationImplementations,
-    #[serde(rename = "relation.hierarchy.supertypes")]
-    RelationHierarchySupertypes,
-    #[serde(rename = "relation.hierarchy.subtypes")]
-    RelationHierarchySubtypes,
-    #[serde(rename = "graph.nodes")]
-    GraphNodes,
-    #[serde(rename = "graph.neighbors")]
-    GraphNeighbors,
-    #[serde(rename = "graph.summary")]
-    GraphSummary,
-    #[serde(rename = "graph.topology")]
-    GraphTopology,
-    #[serde(rename = "graph.communities")]
-    GraphCommunities,
-    #[serde(rename = "graph.derive")]
-    GraphDerive,
-    #[serde(rename = "graph.impact")]
-    GraphImpact,
-    #[serde(rename = "change.plan.rename")]
-    ChangePlanRename,
-    #[serde(rename = "change.plan.add-file")]
-    ChangePlanAddFile,
-    #[serde(rename = "change.plan.add-declaration")]
-    ChangePlanAddDeclaration,
-    #[serde(rename = "change.plan.replace")]
-    ChangePlanReplace,
-    #[serde(rename = "change.apply")]
-    ChangeApply,
-    #[serde(rename = "change.recover")]
-    ChangeRecover,
-}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -101,9 +54,27 @@ impl ProtocolEnvelope {
     pub(crate) fn projected(
         operation: OperationId,
         status: OperationStatus,
-        result_type: &'static str,
         fields: serde_json::Map<String, serde_json::Value>,
     ) -> Self {
+        let definition = operation.definition();
+        let [result_type] = definition.result_discriminators else {
+            return Self::rejected(
+                operation,
+                ProtocolFailure::BackendContractViolation {
+                    message: "projected operation has more than one result discriminator"
+                        .to_string(),
+                },
+            );
+        };
+        if fields.contains_key("type") {
+            return Self::rejected(
+                operation,
+                ProtocolFailure::BackendContractViolation {
+                    message: "projected result attempted to replace its registry discriminator"
+                        .to_string(),
+                },
+            );
+        }
         Self::new(
             operation,
             status,
@@ -111,6 +82,36 @@ impl ProtocolEnvelope {
                 result_type,
                 fields,
             }),
+        )
+    }
+
+    pub(crate) fn backend_rejected(
+        operation: OperationId,
+        code: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::rejected(
+            operation,
+            ProtocolFailure::BackendRejected {
+                code: code.into(),
+                message: message.into(),
+            },
+        )
+    }
+
+    pub(crate) fn actionable_rejected(
+        operation: OperationId,
+        code: impl Into<String>,
+        message: impl Into<String>,
+        next: impl Into<String>,
+    ) -> Self {
+        Self::rejected(
+            operation,
+            ProtocolFailure::ActionableFailure {
+                code: code.into(),
+                message: message.into(),
+                next: next.into(),
+            },
         )
     }
 
@@ -207,6 +208,11 @@ pub(super) enum ProtocolResult {
     rename_all_fields = "camelCase"
 )]
 pub(super) enum ProtocolFailure {
+    ActionableFailure {
+        code: String,
+        message: String,
+        next: String,
+    },
     InvalidInput {
         field: &'static str,
         reason: String,
@@ -233,32 +239,44 @@ pub(super) enum ProtocolFailure {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum SelectorRejectionReason {
-    #[serde(alias = "TAMPERED")]
+    #[serde(rename(serialize = "tampered", deserialize = "TAMPERED"))]
     Tampered,
-    #[serde(alias = "WRONG_WORKSPACE")]
+    #[serde(rename(serialize = "wrong-workspace", deserialize = "WRONG_WORKSPACE"))]
     WrongWorkspace,
-    #[serde(alias = "WRONG_BACKEND")]
+    #[serde(rename(serialize = "wrong-backend", deserialize = "WRONG_BACKEND"))]
     WrongBackend,
-    #[serde(alias = "STALE")]
+    #[serde(rename(serialize = "stale", deserialize = "STALE"))]
     Stale,
-    #[serde(alias = "FAMILY_NOT_ALLOWED")]
+    #[serde(rename(serialize = "family-not-allowed", deserialize = "FAMILY_NOT_ALLOWED"))]
     FamilyNotAllowed,
-    #[serde(alias = "UNAVAILABLE")]
+    #[serde(rename(serialize = "unavailable", deserialize = "UNAVAILABLE"))]
     Unavailable,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum SelectorRecovery {
-    #[serde(alias = "RESOLVE_AGAIN")]
+    #[serde(rename(serialize = "resolve-again", deserialize = "RESOLVE_AGAIN"))]
     ResolveAgain,
-    #[serde(alias = "RESOLVE_IN_CURRENT_WORKSPACE")]
+    #[serde(rename(
+        serialize = "resolve-in-current-workspace",
+        deserialize = "RESOLVE_IN_CURRENT_WORKSPACE"
+    ))]
     ResolveInCurrentWorkspace,
-    #[serde(alias = "RESOLVE_WITH_ACTIVE_BACKEND")]
+    #[serde(rename(
+        serialize = "resolve-with-active-backend",
+        deserialize = "RESOLVE_WITH_ACTIVE_BACKEND"
+    ))]
     ResolveWithActiveBackend,
-    #[serde(alias = "CHOOSE_COMPATIBLE_OPERATION")]
+    #[serde(rename(
+        serialize = "choose-compatible-operation",
+        deserialize = "CHOOSE_COMPATIBLE_OPERATION"
+    ))]
     ChooseCompatibleOperation,
-    #[serde(alias = "USE_EXPLICIT_SELECTOR")]
+    #[serde(rename(
+        serialize = "use-explicit-selector",
+        deserialize = "USE_EXPLICIT_SELECTOR"
+    ))]
     UseExplicitSelector,
 }
 

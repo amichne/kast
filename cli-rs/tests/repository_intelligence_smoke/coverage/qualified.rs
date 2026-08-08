@@ -250,8 +250,10 @@ fn critical_graph_stale_file_rejects_read_admission() {
     let (status, response) = graph_summary(&home, &config_home, &workspace);
 
     assert!(!status.success(), "{response:#}");
+    assert_eq!(response["status"], "rejected", "{response:#}");
     assert_eq!(
-        response["error"], "GRAPH_EVIDENCE_INCOMPLETE",
+        response["result"]["failure"]["code"],
+        "GRAPH_EVIDENCE_INCOMPLETE",
         "{response:#}"
     );
 }
@@ -265,8 +267,10 @@ fn critical_graph_unmatched_pattern_rejects_read_admission() {
     let (status, response) = graph_summary(&home, &config_home, &workspace);
 
     assert!(!status.success(), "{response:#}");
+    assert_eq!(response["status"], "rejected", "{response:#}");
     assert_eq!(
-        response["error"], "GRAPH_EVIDENCE_INCOMPLETE",
+        response["result"]["failure"]["code"],
+        "GRAPH_EVIDENCE_INCOMPLETE",
         "{response:#}"
     );
 }
@@ -288,7 +292,11 @@ fn critical_graph_noncritical_stale_file_remains_qualified() {
     let (status, response) = graph_summary(&home, &config_home, &workspace);
 
     assert!(status.success(), "{response:#}");
-    assert_eq!(response["qualification"], "QUALIFIED", "{response:#}");
+    assert_eq!(
+        response["result"]["qualification"],
+        "QUALIFIED",
+        "{response:#}"
+    );
 }
 
 fn write_critical_paths(fixture: &WorkspaceIndexFixture, pattern: &str) {

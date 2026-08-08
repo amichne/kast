@@ -212,6 +212,7 @@ pub struct KastGraphNodesPageToken {
     workspace_fingerprint: String,
     generation: u64,
     after_id: std::num::NonZeroU64,
+    returned: std::num::NonZeroU64,
 }
 
 impl KastGraphNodesPageToken {
@@ -219,11 +220,13 @@ impl KastGraphNodesPageToken {
         workspace_fingerprint: String,
         generation: u64,
         after_id: u64,
+        returned: u64,
     ) -> Option<Self> {
         Some(Self {
             workspace_fingerprint,
             generation,
             after_id: std::num::NonZeroU64::new(after_id)?,
+            returned: std::num::NonZeroU64::new(returned)?,
         })
     }
 
@@ -239,10 +242,14 @@ impl KastGraphNodesPageToken {
         self.after_id.get()
     }
 
+    pub(crate) fn returned(&self) -> u64 {
+        self.returned.get()
+    }
+
     pub(crate) fn canonical(&self) -> String {
         format!(
-            "kgn1.{}.{}.{}",
-            self.workspace_fingerprint, self.generation, self.after_id
+            "kgn2.{}.{}.{}.{}",
+            self.workspace_fingerprint, self.generation, self.after_id, self.returned
         )
     }
 }
@@ -255,8 +262,8 @@ impl std::str::FromStr for KastGraphNodesPageToken {
             return Err("graph continuation is malformed".to_string());
         }
         let fields = value.split('.').collect::<Vec<_>>();
-        if fields.len() != 4
-            || fields[0] != "kgn1"
+        if fields.len() != 5
+            || fields[0] != "kgn2"
             || fields[1].len() != 24
             || !fields[1]
                 .bytes()
@@ -270,13 +277,20 @@ impl std::str::FromStr for KastGraphNodesPageToken {
         let after_id = fields[3]
             .parse::<std::num::NonZeroU64>()
             .map_err(|_| "graph continuation is malformed".to_string())?;
-        if generation.to_string() != fields[2] || after_id.to_string() != fields[3] {
+        let returned = fields[4]
+            .parse::<std::num::NonZeroU64>()
+            .map_err(|_| "graph continuation is malformed".to_string())?;
+        if generation.to_string() != fields[2]
+            || after_id.to_string() != fields[3]
+            || returned.to_string() != fields[4]
+        {
             return Err("graph continuation is malformed".to_string());
         }
         Ok(Self {
             workspace_fingerprint: fields[1].to_string(),
             generation,
             after_id,
+            returned,
         })
     }
 }

@@ -13,19 +13,6 @@ fn require_current_workspace(plan: &StoredPlan, plan_id: Uuid) -> Result<PathBuf
     Ok(workspace_root)
 }
 
-fn parse_recovery_id(raw: &str) -> Result<Uuid> {
-    Uuid::parse_str(raw)
-        .ok()
-        .filter(|id| id.get_version() == Some(Version::Random))
-        .filter(|id| id.hyphenated().to_string() == raw)
-        .ok_or_else(|| {
-            CliError::new(
-                "CLI_USAGE",
-                "Recovery ids must be canonical lowercase version-4 UUIDs returned by `kast apply`.",
-            )
-        })
-}
-
 fn finish_terminal_receipt(
     paths: &PlanPaths,
     plan: &mut StoredPlan,
@@ -100,7 +87,6 @@ fn print_terminal_receipt(plan: &StoredPlan, receipt: &TerminalMutationReceipt) 
     };
     print_plan_protocol(
         plan.runtime_output()?,
-        "mutation-receipt",
         status,
         &PublicTerminalMutationReceipt::from(receipt),
     )?;
@@ -111,7 +97,6 @@ fn print_recovery_required(plan: &StoredPlan, reason: impl Into<String>) -> Resu
     let receipt = RecoveryRequiredReceipt::new(plan, reason);
     print_plan_protocol(
         plan.runtime_output()?,
-        "mutation-receipt",
         crate::agent::public_protocol::OperationStatus::Rejected,
         &receipt,
     )?;

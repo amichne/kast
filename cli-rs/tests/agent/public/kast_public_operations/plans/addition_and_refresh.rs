@@ -340,7 +340,7 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
     assert_eq!(
         refresh["externalizableFailures"],
         json!([{
-            "path": source,
+            "path": "src/App.kt",
             "failureId": failure_id,
             "code": "PSI_UNAVAILABLE"
         }])

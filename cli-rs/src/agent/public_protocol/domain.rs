@@ -1,4 +1,5 @@
 use serde::Serialize;
+use uuid::{Uuid, Version};
 
 #[derive(Debug)]
 pub(super) enum PublicOperation {
@@ -122,15 +123,79 @@ impl SymbolSelector {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(transparent)]
-pub(super) struct WorkspaceKotlinPath(String);
+pub(crate) struct WorkspaceKotlinPath(String);
 
 impl WorkspaceKotlinPath {
-    pub fn from_normalized(value: String) -> Result<Self, &'static str> {
-        if value.is_empty() || value.starts_with('/') || value.contains('\\') {
+    pub(crate) fn from_normalized(value: String) -> Result<Self, &'static str> {
+        if value.is_empty()
+            || value.starts_with('/')
+            || value.contains('\\')
+            || value
+                .split('/')
+                .any(|segment| matches!(segment, "" | "." | ".."))
+        {
             return Err("public source path must be workspace-relative with forward slashes");
         }
         Ok(Self(value))
     }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct PlanId(Uuid);
+
+impl PlanId {
+    pub(crate) fn parse(value: &str) -> Result<Self, &'static str> {
+        parse_v4_id(value)
+            .map(Self)
+            .ok_or("Plan IDs must be canonical lowercase version-4 UUIDs returned by Kast.")
+    }
+
+    pub(crate) fn uuid(self) -> Uuid {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct RecoveryId(Uuid);
+
+impl RecoveryId {
+    pub(crate) fn parse(value: &str) -> Result<Self, &'static str> {
+        parse_v4_id(value)
+            .map(Self)
+            .ok_or("Recovery IDs must be canonical lowercase version-4 UUIDs returned by Kast.")
+    }
+
+    pub(crate) fn uuid(self) -> Uuid {
+        self.0
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ExternalFailureId(String);
+
+impl ExternalFailureId {
+    pub(crate) fn parse(value: String) -> Result<Self, &'static str> {
+        Uuid::parse_str(&value)
+            .ok()
+            .filter(|parsed| parsed.hyphenated().to_string() == value)
+            .map(|_| Self(value))
+            .ok_or("External failure IDs must be canonical lowercase UUIDs returned by Kast.")
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+fn parse_v4_id(value: &str) -> Option<Uuid> {
+    Uuid::parse_str(value)
+        .ok()
+        .filter(|id| id.get_version() == Some(Version::Random))
+        .filter(|id| id.hyphenated().to_string() == value)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, Serialize)]
