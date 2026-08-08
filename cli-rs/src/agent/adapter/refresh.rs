@@ -24,7 +24,7 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>, output_format: OutputFormat) -> R
                             "Changed-file discovery returned an unexpected success value.",
                         )),
                         BackendOutcome::Rejected(envelope) => {
-                            print_protocol(envelope, output_format)
+                            print_protocol(*envelope, output_format)
                         }
                     };
                 }
@@ -164,7 +164,7 @@ pub(crate) fn run_refresh(files: Vec<PathBuf>, output_format: OutputFormat) -> R
                     "KAST_INVALID_AGENT_RESULT",
                     "Graph refresh returned an unexpected success value.",
                 )),
-                BackendOutcome::Rejected(envelope) => print_protocol(envelope, output_format),
+                BackendOutcome::Rejected(envelope) => print_protocol(*envelope, output_format),
             };
         }
         let graph_result = projected_result(&graph)?;

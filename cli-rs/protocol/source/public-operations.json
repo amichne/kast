@@ -12,7 +12,7 @@
       "examples": [
         "kast"
       ],
-      "failureType": "installationFailure",
+      "failureType": "installation",
       "id": "workspace.home",
       "paging": {
         "type": "unpaged"
@@ -44,7 +44,7 @@
       "examples": [
         "kast workspace ensure"
       ],
-      "failureType": "workspaceFailure",
+      "failureType": "workspace",
       "id": "workspace.ensure",
       "paging": {
         "type": "unpaged"
@@ -82,7 +82,7 @@
       "examples": [
         "kast workspace refresh --file src/main/kotlin/example/Widget.kt"
       ],
-      "failureType": "workspaceFailure",
+      "failureType": "workspace",
       "id": "workspace.refresh",
       "paging": {
         "type": "unpaged"
@@ -124,7 +124,7 @@
       "examples": [
         "kast workspace externalize --failure-id <FAILURE_ID>"
       ],
-      "failureType": "workspaceFailure",
+      "failureType": "workspace",
       "id": "workspace.externalize",
       "paging": {
         "type": "unpaged"
@@ -162,7 +162,7 @@
       "examples": [
         "kast file list --match '**/*.kt'"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "file.list",
       "paging": {
         "continuation_type": "fileList",
@@ -202,7 +202,7 @@
       "examples": [
         "kast symbol search --query Widget"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "symbol.search",
       "paging": {
         "type": "unpaged"
@@ -248,7 +248,7 @@
       "examples": [
         "kast symbol resolve --query 'example.Widget.render()'"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "symbol.resolve",
       "paging": {
         "type": "unpaged"
@@ -296,7 +296,7 @@
       "examples": [
         "kast symbol show --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "symbol.show",
       "paging": {
         "type": "unpaged"
@@ -343,7 +343,7 @@
       "examples": [
         "kast relation references --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "relation.references",
       "paging": {
         "continuation_type": "references",
@@ -389,7 +389,7 @@
       "examples": [
         "kast relation calls incoming --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "relation.calls.incoming",
       "paging": {
         "continuation_type": "callsIncoming",
@@ -435,7 +435,7 @@
       "examples": [
         "kast relation calls outgoing --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "relation.calls.outgoing",
       "paging": {
         "continuation_type": "callsOutgoing",
@@ -480,7 +480,7 @@
       "examples": [
         "kast relation implementations --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "relation.implementations",
       "paging": {
         "continuation_type": "implementations",
@@ -526,7 +526,7 @@
       "examples": [
         "kast relation hierarchy supertypes --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "relation.hierarchy.supertypes",
       "paging": {
         "continuation_type": "hierarchySupertypes",
@@ -572,7 +572,7 @@
       "examples": [
         "kast relation hierarchy subtypes --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "relation.hierarchy.subtypes",
       "paging": {
         "continuation_type": "hierarchySubtypes",
@@ -616,7 +616,7 @@
       "examples": [
         "kast graph summary --scope symbol"
       ],
-      "failureType": "graphFailure",
+      "failureType": "graph",
       "id": "graph.summary",
       "paging": {
         "type": "unpaged"
@@ -651,7 +651,7 @@
       "examples": [
         "kast graph nodes"
       ],
-      "failureType": "graphFailure",
+      "failureType": "graph",
       "id": "graph.nodes",
       "paging": {
         "continuation_type": "graphNodes",
@@ -691,7 +691,7 @@
       "examples": [
         "kast graph neighbors --node-selector <NODE_SELECTOR>"
       ],
-      "failureType": "graphFailure",
+      "failureType": "graph",
       "id": "graph.neighbors",
       "paging": {
         "type": "unpaged"
@@ -729,7 +729,7 @@
       "examples": [
         "kast graph topology --scope symbol"
       ],
-      "failureType": "graphFailure",
+      "failureType": "graph",
       "id": "graph.topology",
       "paging": {
         "type": "unpaged"
@@ -762,7 +762,7 @@
       "examples": [
         "kast graph communities --scope symbol"
       ],
-      "failureType": "graphFailure",
+      "failureType": "graph",
       "id": "graph.communities",
       "paging": {
         "type": "unpaged"
@@ -795,7 +795,7 @@
       "examples": [
         "kast graph derive --experimental-derived-topology --out .kast/topology.json"
       ],
-      "failureType": "graphFailure",
+      "failureType": "graph",
       "id": "graph.derive",
       "paging": {
         "type": "unpaged"
@@ -832,7 +832,7 @@
       "examples": [
         "kast graph impact --selector <SELECTOR>"
       ],
-      "failureType": "publicProtocolFailure",
+      "failureType": "publicProtocol",
       "id": "graph.impact",
       "paging": {
         "continuation_type": "graphImpact",
@@ -878,7 +878,7 @@
       "examples": [
         "kast diagnostic check --file src/main/kotlin/example/Widget.kt"
       ],
-      "failureType": "diagnosticFailure",
+      "failureType": "diagnostic",
       "id": "diagnostic.check",
       "paging": {
         "type": "unpaged"
@@ -919,7 +919,7 @@
       "examples": [
         "kast change plan rename --selector <SELECTOR> --name Renamed"
       ],
-      "failureType": "mutationPlanFailure",
+      "failureType": "mutationPlan",
       "id": "change.plan.rename",
       "paging": {
         "type": "unpaged"
@@ -960,7 +960,7 @@
       "examples": [
         "printf 'class Widget' | kast change plan add-file --file src/main/kotlin/example/Widget.kt"
       ],
-      "failureType": "mutationPlanFailure",
+      "failureType": "mutationPlan",
       "id": "change.plan.add-file",
       "paging": {
         "type": "unpaged"
@@ -1000,7 +1000,7 @@
       "examples": [
         "printf 'fun render() = Unit' | kast change plan add-declaration --file src/main/kotlin/example/Widget.kt"
       ],
-      "failureType": "mutationPlanFailure",
+      "failureType": "mutationPlan",
       "id": "change.plan.add-declaration",
       "paging": {
         "type": "unpaged"
@@ -1040,7 +1040,7 @@
       "examples": [
         "printf 'fun render() = Unit' | kast change plan replace --selector <SELECTOR>"
       ],
-      "failureType": "mutationPlanFailure",
+      "failureType": "mutationPlan",
       "id": "change.plan.replace",
       "paging": {
         "type": "unpaged"
@@ -1080,7 +1080,7 @@
       "examples": [
         "kast change apply --plan-id <PLAN_ID>"
       ],
-      "failureType": "mutationReceiptFailure",
+      "failureType": "mutationReceipt",
       "id": "change.apply",
       "paging": {
         "type": "unpaged"
@@ -1120,7 +1120,7 @@
       "examples": [
         "kast change recover --recovery-id <RECOVERY_ID>"
       ],
-      "failureType": "mutationReceiptFailure",
+      "failureType": "mutationReceipt",
       "id": "change.recover",
       "paging": {
         "type": "unpaged"

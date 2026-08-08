@@ -285,7 +285,7 @@ fn render_public_skill(
             definition.id.as_str(), definition.cli.syntax, successors,
         ));
     }
-    text.push_str("\nUse `--output toon` for compact TOON or `--output json` for JSON. Both retain `schemaVersion`, `operation`, `status`, and `result.type`. Treat only complete evidence and a `VERIFIED` mutation receipt as success. A qualified result has explicit limitations; rejected, conflicted, rolled-back, and recovery-required outcomes are non-success.\n\nFor setup, runtime control, configuration, raw RPC, local-state inspection, or release work, invoke `/kast:developer`. Read `developerOperations.cli`; do not assume `kastctl` is on `PATH`.\n");
+    text.push_str("\nPipe change content on standard input; do not place source text in argv. Use `--output toon` for compact TOON or `--output json` for JSON. Both retain `schemaVersion`, `operation`, `status`, and `result.type`. Treat only complete evidence and a `VERIFIED` mutation receipt as success. A qualified result has explicit limitations; rejected, conflicted, rolled-back, and recovery-required outcomes are non-success.\n\nFor setup, runtime control, configuration, raw RPC, local-state inspection, or release work, invoke `/kast:developer`. Read `developerOperations.cli`; do not assume `kastctl` is on `PATH`.\n");
     text
 }
 

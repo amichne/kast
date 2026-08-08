@@ -24,7 +24,7 @@ pub(crate) fn run_diagnostic(
                         "KAST_INVALID_AGENT_RESULT",
                         "Changed-file discovery returned an unexpected success value.",
                     )),
-                    BackendOutcome::Rejected(envelope) => print_protocol(envelope, output_format),
+                    BackendOutcome::Rejected(envelope) => print_protocol(*envelope, output_format),
                 };
             }
         }
