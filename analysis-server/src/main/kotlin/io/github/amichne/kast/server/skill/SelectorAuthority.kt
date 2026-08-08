@@ -103,7 +103,6 @@ internal fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily
         SelectorOperationFamily.HIERARCHY,
         SelectorOperationFamily.IMPACT,
         SelectorOperationFamily.RENAME,
-        SelectorOperationFamily.REPLACE_DECLARATION,
     )
     SymbolKind.OBJECT -> setOf(
         SelectorOperationFamily.IDENTITY,
@@ -111,7 +110,6 @@ internal fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily
         SelectorOperationFamily.HIERARCHY,
         SelectorOperationFamily.IMPACT,
         SelectorOperationFamily.RENAME,
-        SelectorOperationFamily.REPLACE_DECLARATION,
     )
     SymbolKind.FUNCTION -> setOf(
         SelectorOperationFamily.IDENTITY,
