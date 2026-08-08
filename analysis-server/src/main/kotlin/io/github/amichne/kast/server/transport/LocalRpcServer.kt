@@ -21,8 +21,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.util.Collections
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import kotlin.io.path.deleteIfExists
 
@@ -35,13 +34,35 @@ internal data class BoundSocketEvidence(
     val socketOwnerUid: SocketOwnerUid,
 )
 
+private sealed interface UnixSocketHandlerLifecycle {
+    data object Accepting : UnixSocketHandlerLifecycle
+
+    data object Closed : UnixSocketHandlerLifecycle
+}
+
+private sealed interface UnixSocketHandlerAdmission {
+    data object Accepted : UnixSocketHandlerAdmission
+
+    data object RejectedAfterClose : UnixSocketHandlerAdmission
+}
+
+private sealed interface UnixSocketHandlerShutdown {
+    data class Started(
+        val acceptedClients: List<SocketChannel>,
+        val activeHandlers: List<Thread>,
+    ) : UnixSocketHandlerShutdown
+
+    data object AlreadyClosed : UnixSocketHandlerShutdown
+}
+
 internal class UnixDomainSocketRpcServer(
     private val socketPath: Path,
     private val dispatcher: RpcAnalysisDispatcher,
 ) : LocalRpcServer {
-    private val closed = AtomicBoolean(false)
-    private val handlers = Collections.synchronizedSet(mutableSetOf<Thread>())
-    private val clients = mutableSetOf<SocketChannel>()
+    private val handlerLifecycleLock = Any()
+    private var handlerLifecycle: UnixSocketHandlerLifecycle = UnixSocketHandlerLifecycle.Accepting
+    private val handlers = ConcurrentHashMap.newKeySet<Thread>()
+    private val clients = ConcurrentHashMap.newKeySet<SocketChannel>()
     private val serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
     @Volatile
     private var boundEvidence: BoundSocketEvidence? = null
@@ -78,35 +99,34 @@ internal class UnixDomainSocketRpcServer(
     }
 
     override fun close() {
-        if (!closed.compareAndSet(false, true)) {
-            return
-        }
-        val deadlineNanos = System.nanoTime() + RPC_CLOSE_TIMEOUT_NANOS
-        runCatching { serverChannel.close() }
-        val currentThread = Thread.currentThread()
-        val (acceptedClients, activeHandlers) = synchronized(handlers) {
-            clients.toList() to handlers.toList()
-        }
-        acceptedClients.forEach { client ->
-            runCatching { client.close() }
-        }
-        activeHandlers.forEach { handler ->
-            if (handler !== currentThread) {
-                handler.interrupt()
+        when (val shutdown = beginHandlerShutdown()) {
+            UnixSocketHandlerShutdown.AlreadyClosed -> return
+            is UnixSocketHandlerShutdown.Started -> {
+                val deadlineNanos = System.nanoTime() + RPC_CLOSE_TIMEOUT_NANOS
+                runCatching { serverChannel.close() }
+                val currentThread = Thread.currentThread()
+                shutdown.acceptedClients.forEach { client ->
+                    runCatching { client.close() }
+                }
+                shutdown.activeHandlers.forEach { handler ->
+                    if (handler !== currentThread) {
+                        handler.interrupt()
+                    }
+                }
+                joinRpcThreadsUntil(
+                    threads = listOf(acceptThread) + shutdown.activeHandlers,
+                    currentThread = currentThread,
+                    deadlineNanos = deadlineNanos,
+                )
+                if (boundEvidence == readBoundSocketEvidenceOrNull(socketPath)) {
+                    socketPath.deleteIfExists()
+                }
             }
-        }
-        joinRpcThreadsUntil(
-            threads = listOf(acceptThread) + activeHandlers,
-            currentThread = currentThread,
-            deadlineNanos = deadlineNanos,
-        )
-        if (boundEvidence == readBoundSocketEvidenceOrNull(socketPath)) {
-            socketPath.deleteIfExists()
         }
     }
 
     private fun acceptLoop() {
-        while (!closed.get()) {
+        while (true) {
             val client = runCatching { serverChannel.accept() }.getOrNull() ?: break
             val handler = thread(
                 start = false,
@@ -116,27 +136,63 @@ internal class UnixDomainSocketRpcServer(
                 try {
                     client.use(::handleClient)
                 } finally {
-                    synchronized(handlers) {
-                        clients.remove(client)
-                        handlers.remove(Thread.currentThread())
-                    }
+                    clients.remove(client)
+                    handlers.remove(Thread.currentThread())
                 }
             }
-            val started = synchronized(handlers) {
-                if (closed.get()) {
-                    false
-                } else {
-                    clients += client
-                    handlers += handler
-                    handler.start()
-                    true
+            when (admitHandler(client, handler)) {
+                UnixSocketHandlerAdmission.Accepted -> Unit
+                UnixSocketHandlerAdmission.RejectedAfterClose -> {
+                    runCatching { client.close() }
+                        .onFailure { throw it }
+                    break
                 }
             }
-            if (!started) {
-                runCatching { client.close() }
-                .onFailure { throw it }
-                break
+        }
+    }
+
+    /**
+     * Proof transition: `(SocketChannel, Thread) -> UnixSocketHandlerAdmission`.
+     *
+     * [UnixSocketHandlerAdmission.Accepted] establishes that both resources are owned by this server,
+     * registered for shutdown, and that the handler has started. The closed expected failure is
+     * [UnixSocketHandlerAdmission.RejectedAfterClose]. Raw resource extraction remains confined to the
+     * socket accept boundary, where rejected clients are closed.
+     */
+    private fun admitHandler(
+        client: SocketChannel,
+        handler: Thread,
+    ): UnixSocketHandlerAdmission = synchronized(handlerLifecycleLock) {
+        when (handlerLifecycle) {
+            UnixSocketHandlerLifecycle.Accepting -> {
+                clients += client
+                handlers += handler
+                handler.start()
+                UnixSocketHandlerAdmission.Accepted
             }
+
+            UnixSocketHandlerLifecycle.Closed -> UnixSocketHandlerAdmission.RejectedAfterClose
+        }
+    }
+
+    /**
+     * Proof transition: `UnixSocketHandlerLifecycle -> UnixSocketHandlerShutdown`.
+     *
+     * [UnixSocketHandlerShutdown.Started] establishes closed admission and carries the complete owned-resource
+     * snapshot that existed at the transition. [UnixSocketHandlerShutdown.AlreadyClosed] is the closed expected
+     * idempotency outcome. Raw client and thread extraction is permitted only at the transport close boundary.
+     */
+    private fun beginHandlerShutdown(): UnixSocketHandlerShutdown = synchronized(handlerLifecycleLock) {
+        when (handlerLifecycle) {
+            UnixSocketHandlerLifecycle.Accepting -> {
+                handlerLifecycle = UnixSocketHandlerLifecycle.Closed
+                UnixSocketHandlerShutdown.Started(
+                    acceptedClients = clients.toList(),
+                    activeHandlers = handlers.toList(),
+                )
+            }
+
+            UnixSocketHandlerLifecycle.Closed -> UnixSocketHandlerShutdown.AlreadyClosed
         }
     }
 
