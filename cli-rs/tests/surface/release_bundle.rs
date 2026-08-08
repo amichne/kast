@@ -3,6 +3,154 @@ mod support;
 
 use support::*;
 
+const ALLOW_TEST_HOST_EVIDENCE: &str = "KAST_TEST_ALLOW_PACKAGE_HOST_EVIDENCE";
+const TEST_HOST_OS: &str = "KAST_TEST_PACKAGE_HOST_OS";
+const TEST_HOST_ARCH: &str = "KAST_TEST_PACKAGE_HOST_ARCH";
+
+#[derive(Clone, Copy)]
+struct HostEvidenceFixture<'a> {
+    os: Option<&'a str>,
+    arch: Option<&'a str>,
+}
+
+fn run_package_for_platform(
+    host: HostEvidenceFixture<'_>,
+    platform_override: Option<&str>,
+) -> (tempfile::TempDir, std::process::Output) {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo_root = temp.path().join("repo");
+    let output = temp.path().join("dist/bundle.tar.gz");
+    std::fs::create_dir_all(&repo_root).expect("repo root");
+    std::fs::write(repo_root.join("install.sh"), "#!/usr/bin/env bash\n")
+        .expect("bootstrap script");
+    set_executable_for_test(&repo_root.join("install.sh"));
+
+    let cli_archive = write_cli_archive(temp.path());
+    let indexer_archive = write_indexer_archive(temp.path(), "indexer", "v9.8.7");
+    let mut command = kast(&home, &config_home);
+    command
+        .env_remove(ALLOW_TEST_HOST_EVIDENCE)
+        .env_remove(TEST_HOST_OS)
+        .env_remove(TEST_HOST_ARCH)
+        .env(ALLOW_TEST_HOST_EVIDENCE, "1")
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "release",
+            "package",
+            "setup-bundle",
+            "--repo-root",
+            repo_root.to_str().expect("repo root"),
+            "--cli-archive",
+            cli_archive.to_str().expect("cli archive"),
+            "--indexer-archive",
+            indexer_archive.to_str().expect("indexer archive"),
+            "--version",
+            "v9.8.7",
+            "--bundle-output",
+            output.to_str().expect("output"),
+        ]);
+    if let Some(os) = host.os {
+        command.env(TEST_HOST_OS, os);
+    }
+    if let Some(arch) = host.arch {
+        command.env(TEST_HOST_ARCH, arch);
+    }
+    if let Some(platform) = platform_override {
+        command.args(["--platform", platform]);
+    }
+
+    let package = command.output().expect("package setup bundle");
+    (temp, package)
+}
+
+#[test]
+fn package_setup_bundle_derives_each_supported_native_platform() {
+    for (os, arch, expected) in [
+        ("macos", "aarch64", "macos-arm64"),
+        ("macos", "x86_64", "macos-x64"),
+        ("linux", "x86_64", "linux-x64"),
+    ] {
+        let (_temp, package) = run_package_for_platform(
+            HostEvidenceFixture {
+                os: Some(os),
+                arch: Some(arch),
+            },
+            None,
+        );
+        assert!(
+            package.status.success(),
+            "{os}/{arch} package should succeed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&package.stdout),
+            String::from_utf8_lossy(&package.stderr)
+        );
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&package.stdout).expect("package json");
+        assert_eq!(stdout["platform"], expected, "host {os}/{arch}");
+    }
+}
+
+#[test]
+fn package_setup_bundle_honors_and_reports_supported_override() {
+    let (_temp, package) = run_package_for_platform(
+        HostEvidenceFixture {
+            os: Some("macos"),
+            arch: Some("aarch64"),
+        },
+        Some("linux-x64"),
+    );
+    assert!(
+        package.status.success(),
+        "override package should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&package.stdout),
+        String::from_utf8_lossy(&package.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&package.stdout).expect("package json");
+    assert_eq!(stdout["platform"], "linux-x64");
+}
+
+#[test]
+fn package_setup_bundle_rejects_unsupported_or_incomplete_host_evidence() {
+    for host in [
+        HostEvidenceFixture {
+            os: Some("windows"),
+            arch: Some("x86_64"),
+        },
+        HostEvidenceFixture {
+            os: Some("macos"),
+            arch: None,
+        },
+    ] {
+        let (_temp, package) = run_package_for_platform(host, None);
+        assert!(
+            !package.status.success(),
+            "unsupported or incomplete host evidence must fail closed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&package.stdout),
+            String::from_utf8_lossy(&package.stderr)
+        );
+    }
+}
+
+#[test]
+fn package_setup_bundle_rejects_unsupported_target_override() {
+    let (_temp, package) = run_package_for_platform(
+        HostEvidenceFixture {
+            os: Some("macos"),
+            arch: Some("aarch64"),
+        },
+        Some("windows-x64"),
+    );
+    assert!(
+        !package.status.success(),
+        "unsupported target must fail closed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&package.stdout),
+        String::from_utf8_lossy(&package.stderr)
+    );
+}
+
 #[test]
 fn package_setup_bundle_writes_manifest_projection() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -34,6 +182,8 @@ fn package_setup_bundle_writes_manifest_projection() {
             indexer_archive.to_str().expect("indexer archive"),
             "--version",
             "v9.8.7",
+            "--platform",
+            "linux-x64",
             "--bundle-output",
             output.to_str().expect("output"),
         ])

@@ -1,3 +1,12 @@
+mod setup_bundle_platform {
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/operations/parts/package/platform.rs"
+    ));
+}
+
+use setup_bundle_platform::SetupBundlePlatform;
+
 #[derive(Debug, Args, Clone)]
 pub struct ValidateArgs {
     /// Raw JSON-RPC request string.
@@ -47,12 +56,15 @@ pub struct SetupBundlePackageArgs {
     #[arg(long)]
     pub indexer_archive: PathBuf,
     /// Bundle platform id used in the archive name and manifest.
-    #[arg(long, default_value = "linux-x64")]
-    pub platform: String,
+    #[arg(
+        long,
+        default_value = setup_bundle_platform::native_default_value()
+    )]
+    pub(crate) platform: SetupBundlePlatform,
     /// Release tag or version for the generated bundle.
     #[arg(long)]
     pub version: String,
-    /// Output tar.gz path. Defaults to dist/kast-linux-x64-<version>.tar.gz.
+    /// Output tar.gz path. Defaults to dist/kast-<platform>-<version>.tar.gz.
     #[arg(long = "bundle-output")]
     pub bundle_output: Option<PathBuf>,
     /// Repository root containing install.sh, bundle resources, and LICENSE.
