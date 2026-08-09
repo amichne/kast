@@ -2,10 +2,10 @@
   "schemaVersion": 2,
   "evidenceMode": "structural-only",
   "provenance": {
-    "description": "Release topology for one retained indexer, four canonical setup bundles, one verified stable-versus-candidate bundle identity, and a required same-worker real-repository gate whose aggregate evidence is published with the release. Timing claims remain in benchmark evidence.",
-    "observedAt": "2026-08-06",
+    "description": "Tag-only release topology for one retained indexer, four canonical setup bundles, one verified stable-versus-candidate bundle identity, and a required same-worker real-repository gate whose aggregate evidence is published with the release. Timing claims remain in benchmark evidence.",
+    "observedAt": "2026-08-09",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "5637242c356df837cc9b4b9bafe694468a7ccbb76fa1ce1ce7d0b696db44570f"
+    "sourceSha256": "ccc55d97396fc4d3b445b7017b60f578d2da31d17ad083795b7e9c531ca651b6"
   },
   "tasks": [
     {
