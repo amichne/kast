@@ -12,6 +12,7 @@ const UNSUPPORTED_NATIVE_HOST_DEFAULT: &str = "__kast_unsupported_native_package
 pub(crate) enum SetupBundlePlatform {
     MacosArm64,
     MacosX64,
+    LinuxArm64,
     LinuxX64,
 }
 
@@ -20,6 +21,7 @@ impl SetupBundlePlatform {
         match self {
             Self::MacosArm64 => "macos-arm64",
             Self::MacosX64 => "macos-x64",
+            Self::LinuxArm64 => "linux-arm64",
             Self::LinuxX64 => "linux-x64",
         }
     }
@@ -52,6 +54,7 @@ impl FromStr for SetupBundlePlatform {
         match value {
             "macos-arm64" => Ok(Self::MacosArm64),
             "macos-x64" => Ok(Self::MacosX64),
+            "linux-arm64" => Ok(Self::LinuxArm64),
             "linux-x64" => Ok(Self::LinuxX64),
             UNSUPPORTED_NATIVE_HOST_DEFAULT => native_platform().and_then(|_| {
                 Err(SetupBundlePlatformError::UnsupportedTarget {
@@ -72,8 +75,9 @@ pub(super) fn native_default_value() -> &'static str {
 }
 
 fn native_platform() -> Result<SetupBundlePlatform, SetupBundlePlatformError> {
-    SupportedHostPlatform::try_from(observed_host_evidence()?)
-        .map(SupportedHostPlatform::package_platform)
+    observed_host_evidence().map(|evidence| {
+        SupportedHostPlatform::from(evidence).package_platform()
+    })
 }
 
 fn observed_host_evidence() -> Result<HostPlatformEvidence, SetupBundlePlatformError> {
@@ -166,6 +170,7 @@ impl fmt::Display for HostArchitecture {
 enum SupportedHostPlatform {
     MacosArm64,
     MacosX64,
+    LinuxArm64,
     LinuxX64,
 }
 
@@ -174,25 +179,19 @@ impl SupportedHostPlatform {
         match self {
             Self::MacosArm64 => SetupBundlePlatform::MacosArm64,
             Self::MacosX64 => SetupBundlePlatform::MacosX64,
+            Self::LinuxArm64 => SetupBundlePlatform::LinuxArm64,
             Self::LinuxX64 => SetupBundlePlatform::LinuxX64,
         }
     }
 }
 
-impl TryFrom<HostPlatformEvidence> for SupportedHostPlatform {
-    type Error = SetupBundlePlatformError;
-
-    fn try_from(evidence: HostPlatformEvidence) -> Result<Self, Self::Error> {
+impl From<HostPlatformEvidence> for SupportedHostPlatform {
+    fn from(evidence: HostPlatformEvidence) -> Self {
         match (evidence.operating_system, evidence.architecture) {
-            (HostOperatingSystem::Macos, HostArchitecture::Arm64) => Ok(Self::MacosArm64),
-            (HostOperatingSystem::Macos, HostArchitecture::X64) => Ok(Self::MacosX64),
-            (HostOperatingSystem::Linux, HostArchitecture::X64) => Ok(Self::LinuxX64),
-            (operating_system, architecture) => {
-                Err(SetupBundlePlatformError::UnsupportedHostCombination {
-                    operating_system,
-                    architecture,
-                })
-            }
+            (HostOperatingSystem::Macos, HostArchitecture::Arm64) => Self::MacosArm64,
+            (HostOperatingSystem::Macos, HostArchitecture::X64) => Self::MacosX64,
+            (HostOperatingSystem::Linux, HostArchitecture::Arm64) => Self::LinuxArm64,
+            (HostOperatingSystem::Linux, HostArchitecture::X64) => Self::LinuxX64,
         }
     }
 }
@@ -223,10 +222,6 @@ pub(crate) enum SetupBundlePlatformError {
     UnsupportedHostArchitecture {
         observed: String,
     },
-    UnsupportedHostCombination {
-        operating_system: HostOperatingSystem,
-        architecture: HostArchitecture,
-    },
     UnsupportedTarget {
         observed: String,
     },
@@ -246,16 +241,9 @@ impl fmt::Display for SetupBundlePlatformError {
                 formatter,
                 "Package host architecture `{observed}` is unsupported."
             ),
-            Self::UnsupportedHostCombination {
-                operating_system,
-                architecture,
-            } => write!(
-                formatter,
-                "Package host `{operating_system}/{architecture}` has no supported bundle target."
-            ),
             Self::UnsupportedTarget { observed } => write!(
                 formatter,
-                "Package target `{observed}` is unsupported; expected macos-arm64, macos-x64, or linux-x64."
+                "Package target `{observed}` is unsupported; expected macos-arm64, macos-x64, linux-arm64, or linux-x64."
             ),
         }
     }

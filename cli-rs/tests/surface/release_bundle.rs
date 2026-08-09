@@ -72,6 +72,7 @@ fn package_setup_bundle_derives_each_supported_native_platform() {
     for (os, arch, expected) in [
         ("macos", "aarch64", "macos-arm64"),
         ("macos", "x86_64", "macos-x64"),
+        ("linux", "aarch64", "linux-arm64"),
         ("linux", "x86_64", "linux-x64"),
     ] {
         let (_temp, package) = run_package_for_platform(
@@ -91,6 +92,25 @@ fn package_setup_bundle_derives_each_supported_native_platform() {
             serde_json::from_slice(&package.stdout).expect("package json");
         assert_eq!(stdout["platform"], expected, "host {os}/{arch}");
     }
+}
+
+#[test]
+fn package_setup_bundle_supports_linux_arm64_target() {
+    let (_temp, package) = run_package_for_platform(
+        HostEvidenceFixture {
+            os: Some("macos"),
+            arch: Some("aarch64"),
+        },
+        Some("linux-arm64"),
+    );
+    assert!(
+        package.status.success(),
+        "Linux ARM64 package should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&package.stdout),
+        String::from_utf8_lossy(&package.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&package.stdout).expect("package json");
+    assert_eq!(stdout["platform"], "linux-arm64");
 }
 
 #[test]
