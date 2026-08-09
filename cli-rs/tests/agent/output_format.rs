@@ -3,6 +3,7 @@ mod support;
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as STANDARD_BASE64};
 use sha2::{Digest as _, Sha256};
+use std::os::{fd::AsRawFd, unix::process::CommandExt};
 use support::*;
 
 fn rename_backend(
@@ -112,6 +113,153 @@ fn rename_backend(
 fn decode_toon(bytes: &[u8]) -> serde_json::Value {
     let output = std::str::from_utf8(bytes).expect("toon output should be utf-8");
     toon_format::decode_default(output.trim()).expect("toon output should decode")
+}
+
+#[derive(Clone, Copy, Debug)]
+enum FailureCase {
+    Parsing,
+    Validation,
+    LocalState,
+    BackendRejection,
+    InvalidContinuation,
+    BusyPlan,
+    RecoveryUnavailable,
+    Unexpected,
+}
+
+impl FailureCase {
+    fn marker(self) -> &'static str {
+        match self {
+            Self::Parsing | Self::LocalState => "CLI_USAGE",
+            Self::Validation => "PLAN_ID_MALFORMED",
+            Self::BackendRejection => "backend-rejected",
+            Self::InvalidContinuation => "GRAPH_PAGE_TOKEN_MALFORMED",
+            Self::BusyPlan => "KAST_PLAN_BUSY",
+            Self::RecoveryUnavailable => "KAST_PLAN_UNAVAILABLE",
+            Self::Unexpected => "IO_ERROR",
+        }
+    }
+
+    fn args(self, format: &str, id: &str) -> Vec<String> {
+        let tail: &[&str] = match self {
+            Self::Parsing => &["--unknown-machine-flag"],
+            Self::Validation => &["change", "apply", "--plan-id", "invalid"],
+            Self::LocalState => &["file", "list", "--match", "["],
+            Self::BackendRejection => &["symbol", "resolve", "--query", "sample.Missing"],
+            Self::InvalidContinuation => {
+                &["graph", "nodes", "--continuation", "not-a-continuation"]
+            }
+            Self::BusyPlan => &["change", "apply", "--plan-id", id],
+            Self::RecoveryUnavailable => &["change", "recover", "--recovery-id", id],
+            Self::Unexpected => &["change", "apply", "--plan-id", id],
+        };
+        ["--output", format]
+            .into_iter()
+            .chain(tail.iter().copied())
+            .map(str::to_string)
+            .collect()
+    }
+}
+
+fn public_kast(home: &Path, config_home: &Path, workspace: &Path) -> std::process::Command {
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_kast"));
+    command
+        .arg0("kast")
+        .current_dir(workspace)
+        .env("HOME", home)
+        .env("KAST_HOME", home.join(".local/share/kast"))
+        .env("KAST_CONFIG_HOME", config_home);
+    command
+}
+
+fn assert_canonical_machine_failure(
+    case: FailureCase,
+    format: &str,
+    output: &std::process::Output,
+) {
+    assert!(!output.status.success(), "{case:?}/{format}: {output:?}");
+    assert!(
+        output.stdout.ends_with(b"\n") && !output.stdout.ends_with(b"\n\n"),
+        "{case:?}/{format} must end with exactly one newline: {:?}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let value = match format {
+        "json" => serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
+            panic!(
+                "{case:?} emitted invalid JSON: {error}; stdout={}",
+                String::from_utf8_lossy(&output.stdout)
+            )
+        }),
+        "toon" => decode_toon(&output.stdout),
+        _ => unreachable!("closed test format"),
+    };
+    assert!(
+        value["schemaVersion"] == 2 && value["status"] == "rejected"
+            || value["error"].is_string()
+                && value["message"].is_string()
+                && value["next"].is_string(),
+        "{case:?}/{format} emitted a non-canonical failure: {value:#}"
+    );
+    assert!(
+        value.to_string().contains(case.marker()),
+        "{case:?}/{format} missed {}: {value:#}",
+        case.marker()
+    );
+}
+
+#[test]
+fn every_cli_failure_honors_the_selected_machine_output() {
+    const ID: &str = "b4d176ef-f0b9-4d54-9a3a-1ab659924452";
+    let cases = [
+        FailureCase::Parsing,
+        FailureCase::Validation,
+        FailureCase::LocalState,
+        FailureCase::BackendRejection,
+        FailureCase::InvalidContinuation,
+        FailureCase::BusyPlan,
+        FailureCase::RecoveryUnavailable,
+        FailureCase::Unexpected,
+    ];
+    for format in ["json", "toon"] {
+        for case in cases {
+            let temp = tempfile::tempdir().expect("failure fixture");
+            let home = temp.path().join("home");
+            let config_home = temp.path().join("config");
+            let workspace = temp.path().join("workspace");
+            std::fs::create_dir_all(&workspace).expect("workspace");
+            let mut lock = None;
+            if matches!(
+                case,
+                FailureCase::BusyPlan | FailureCase::RecoveryUnavailable
+            ) {
+                let directory = default_install_root(&home).join("state/agent-plans");
+                std::fs::create_dir_all(&directory).expect("plan directory");
+                if matches!(case, FailureCase::BusyPlan) {
+                    let file = std::fs::OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .create(true)
+                        .truncate(false)
+                        .open(directory.join(format!("{ID}.lock")))
+                        .expect("plan lock");
+                    assert_eq!(unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) }, 0);
+                    lock = Some(file);
+                }
+            }
+            let mut command = public_kast(&home, &config_home, &workspace);
+            if matches!(case, FailureCase::Unexpected) {
+                let blocked = temp.path().join("not-a-directory");
+                std::fs::write(&blocked, "blocked").expect("blocked install root");
+                command.env("KAST_HOME", blocked);
+            }
+            let output = command
+                .args(case.args(format, ID))
+                .output()
+                .expect("machine failure");
+            assert_canonical_machine_failure(case, format, &output);
+            drop(lock);
+        }
+    }
 }
 
 #[test]

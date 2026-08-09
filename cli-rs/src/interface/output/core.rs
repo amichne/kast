@@ -2,9 +2,53 @@ pub fn print_json(value: &impl Serialize) -> Result<()> {
     print_structured(value, OutputFormat::Json)
 }
 
-pub(crate) fn print_structured(value: &impl Serialize, format: OutputFormat) -> Result<()> {
+pub(crate) fn print_structured(value: &impl Serialize, fallback: OutputFormat) -> Result<()> {
+    let format = InvocationMachineOutput::selected()
+        .map(InvocationMachineOutput::format)
+        .unwrap_or(fallback);
     io::stdout().write_all(render_structured_output(value, format)?.as_bytes())?;
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InvocationMachineOutput {
+    Json,
+    Toon,
+}
+
+impl InvocationMachineOutput {
+    fn selected() -> Option<Self> {
+        let mut args = std::env::args_os().skip(1);
+        while let Some(arg) = args.next() {
+            let Some(arg) = arg.to_str() else {
+                continue;
+            };
+            if arg == "--output" {
+                return args
+                    .next()
+                    .and_then(|value| value.to_str().and_then(Self::parse));
+            }
+            if let Some(value) = arg.strip_prefix("--output=") {
+                return Self::parse(value);
+            }
+        }
+        None
+    }
+
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "json" => Some(Self::Json),
+            "toon" => Some(Self::Toon),
+            _ => None,
+        }
+    }
+
+    fn format(self) -> OutputFormat {
+        match self {
+            Self::Json => OutputFormat::Json,
+            Self::Toon => OutputFormat::Toon,
+        }
+    }
 }
 
 pub(crate) fn render_structured_output(
@@ -13,22 +57,30 @@ pub(crate) fn render_structured_output(
 ) -> Result<String> {
     match format {
         OutputFormat::Json => {
-            let mut rendered = serde_json::to_string_pretty(value)?;
-            rendered.push('\n');
-            Ok(rendered)
+            Ok(with_one_trailing_newline(serde_json::to_string_pretty(
+                value,
+            )?))
         }
         OutputFormat::Toon => {
             let value = serde_json::to_value(value)?;
             let rendered = toon_format::encode_default(&value)
                 .map_err(|error| CliError::new("TOON_ENCODE_ERROR", error.to_string()))?;
-            Ok(rendered)
+            Ok(with_one_trailing_newline(rendered))
         }
         OutputFormat::Human => {
-            let mut rendered = serde_json::to_string_pretty(value)?;
-            rendered.push('\n');
-            Ok(rendered)
+            Ok(with_one_trailing_newline(serde_json::to_string_pretty(
+                value,
+            )?))
         }
     }
+}
+
+fn with_one_trailing_newline(mut rendered: String) -> String {
+    while rendered.ends_with('\n') {
+        rendered.pop();
+    }
+    rendered.push('\n');
+    rendered
 }
 
 pub fn print_error(error: &CliError, output: OutputFormat) -> Result<()> {
