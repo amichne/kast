@@ -18,6 +18,7 @@ reject() {
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 ci="$repo_root/.github/workflows/ci.yml"
+cut_release="$repo_root/.github/workflows/cut-release.yml"
 release="$repo_root/.github/workflows/release.yml"
 model="$repo_root/.github/scripts/release/metadata/release-workflow-model.json"
 cli_builder="$repo_root/.github/scripts/release/actions/build-cli/action.yml"
@@ -26,15 +27,26 @@ setup_publisher="$repo_root/.github/scripts/release/actions/publish-setup-bundle
 
 [[ ! -e "$repo_root/.github/scripts/release/actions/publish-cli/action.yml" ]] \
   || die "raw CLI publisher action remains"
+[[ -f "$cut_release" ]] || die "cut release workflow is missing"
 
-workflow_jobs="$(awk '
+workflow_jobs() {
+  local workflow="$1"
+  awk '
   /^jobs:$/ { in_jobs=1; next }
   in_jobs && /^  [a-z0-9][a-z0-9-]*:$/ {
     value=$1
     sub(/:$/, "", value)
     print value
   }
-' "$release" | sort)"
+' "$workflow" | sort
+}
+
+cut_release_jobs="$(workflow_jobs "$cut_release")"
+expected_cut_release_jobs="$(printf '%s\n' cut-release release-preflight | sort)"
+[[ "$cut_release_jobs" == "$expected_cut_release_jobs" ]] \
+  || die "unexpected cut release job inventory: ${cut_release_jobs//$'\n'/, }"
+
+release_jobs="$(workflow_jobs "$release")"
 expected_workflow_jobs="$(printf '%s\n' \
   build-agent-resources \
   build-cli \
@@ -42,7 +54,6 @@ expected_workflow_jobs="$(printf '%s\n' \
   build-openapi-spec \
   build-release-metadata \
   build-setup-bundles \
-  bump-version \
   prepare-release \
   prepare-real-repository-indexing \
   publish-agent-resources \
@@ -54,8 +65,34 @@ expected_workflow_jobs="$(printf '%s\n' \
   real-repository-indexing \
   release-preflight \
   verify-release-state | sort)"
-[[ "$workflow_jobs" == "$expected_workflow_jobs" ]] \
-  || die "unexpected release job inventory: ${workflow_jobs//$'\n'/, }"
+[[ "$release_jobs" == "$expected_workflow_jobs" ]] \
+  || die "unexpected release job inventory: ${release_jobs//$'\n'/, }"
+
+require "$cut_release" 'name: Cut Release' \
+  "manual tag cutting must have a distinct workflow identity"
+require "$cut_release" '  workflow_dispatch:' \
+  "cut release must be manually dispatched"
+reject "$cut_release" '  push:' \
+  "cut release must not run for tag pushes"
+require "$release" 'name: Release' \
+  "publication must retain the release workflow identity"
+require "$release" '  push:' \
+  "release publication must run for tag pushes"
+require "$release" '      - "v*.*.*"' \
+  "release publication must remain tag scoped"
+reject "$release" '  workflow_dispatch:' \
+  "release publication must not instantiate on manual tag-cutting runs"
+reject "$release" 'inputs.release_type' \
+  "release publication must not contain tag-cutting inputs"
+
+for cut_evidence in \
+  'release_type="${{ inputs.release_type }}"' \
+  'token: ${{ secrets.RELEASE_GITHUB_TOKEN }}' \
+  'git tag "$new_tag"' \
+  'git push origin "$new_tag"'; do
+  require "$cut_release" "$cut_evidence" \
+    "cut release must retain tag-cutting evidence: ${cut_evidence}"
+done
 
 reject "$release" 'CI_AUX_' "release must not depend on mutable auxiliary flags"
 reject "$release" 'publish-cli-' "release must not publish intermediate CLI archives"
@@ -64,12 +101,14 @@ reject "$release" 'runtime-manifest' "release must not publish a second runtime 
 reject "$release" 'ubuntu-debian-headless' "release must not publish a legacy Linux bundle"
 reject "$release" 'linux-headless' "release must not publish a standalone runtime product"
 
-require "$release" 'timeout-minutes: 30' \
-  "release preflight must bound the exact-source CI wait"
-require "$release" 'gh run watch "$ci_run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10' \
-  "release preflight must wait for exact-source CI with explicit repository context"
-reject "$release" '-f status=success' \
-  "release preflight must discover in-progress exact-source CI"
+for preflight_surface in "$cut_release" "$release"; do
+  require "$preflight_surface" 'timeout-minutes: 30' \
+    "release preflight must bound the exact-source CI wait"
+  require "$preflight_surface" 'gh run watch "$ci_run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10' \
+    "release preflight must wait for exact-source CI with explicit repository context"
+  reject "$preflight_surface" '-f status=success' \
+    "release preflight must discover in-progress exact-source CI"
+done
 
 for exact_ci_evidence in \
   'actions: read' \
@@ -86,8 +125,10 @@ for exact_ci_evidence in \
   '.status == "completed"' \
   '.conclusion == "success"' \
   '.expired == false'; do
-  require "$release" "$exact_ci_evidence" \
-    "release preflight must require exact-source CI evidence: ${exact_ci_evidence}"
+  for preflight_surface in "$cut_release" "$release"; do
+    require "$preflight_surface" "$exact_ci_evidence" \
+      "release preflight must require exact-source CI evidence: ${exact_ci_evidence}"
+  done
 done
 reject "$release" 'actions/runs/${ci_run_id}/jobs' \
   "successful required CI must not be followed by a duplicate per-job policy query"
@@ -189,6 +230,13 @@ done
 
 [[ "$real_repository_contract" != *'if: ${{ false }}'* ]] \
   || die "real-repository release indexing must be enabled"
+for dependency_condition in \
+  'always() &&' \
+  "needs.prepare-release.result == 'success'" \
+  "needs.prepare-real-repository-indexing.result == 'success'"; do
+  [[ "$real_repository_contract" == *"$dependency_condition"* ]] \
+    || die "real-repository release indexing must require successful dependencies: ${dependency_condition}"
+done
 for benchmark_evidence in \
   '- prepare-real-repository-indexing' \
   'name: real-repository-comparison-bundles-${{ github.run_id }}' \

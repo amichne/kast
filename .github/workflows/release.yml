@@ -1,30 +1,10 @@
 name: Release
-run-name: >-
-  Release
-  ${{
-    github.event_name == 'workflow_dispatch'
-      && format('{0} ({1})', inputs.release_type, github.ref_name)
-      || github.ref_name
-  }}
+run-name: Release ${{ github.ref_name }}
 
 on:
   push:
     tags:
       - "v*.*.*"
-  workflow_dispatch:
-    inputs:
-      release_type:
-        description: >
-          Release type. Stable releases increment the latest vX.Y.Z tag.
-          Beta releases append the short commit SHA.
-        required: true
-        default: patch
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
-          - beta
 
 permissions:
   contents: read
@@ -54,10 +34,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" != "refs/heads/main" ]]; then
-            printf 'error: stable release dispatch must target refs/heads/main\n' >&2
-            exit 1
-          fi
           ci_runs="$(gh api --method GET \
             "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
             -f branch=main \
@@ -100,75 +76,10 @@ jobs:
             || { printf 'error: exact-source CI Maven evidence is unavailable for %s\n' "$GITHUB_SHA" >&2; exit 1; }
           printf 'run_id=%s\n' "$ci_run_id" >>"$GITHUB_OUTPUT"
 
-  bump-version:
-    name: Bump version (${{ inputs.release_type }})
-    needs: [release-preflight]
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      release_tag: ${{ steps.bump.outputs.release_tag }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
-
-      - name: Compute next semver tag and push
-        id: bump
-        shell: bash
-        run: |
-          set -euo pipefail
-          release_type="${{ inputs.release_type }}"
-          short_sha="${GITHUB_SHA:0:7}"
-          latest_stable="$(git tag --list 'v*' --sort=-version:refname \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)"
-          if [[ -z "$latest_stable" ]]; then
-            latest_stable="v0.0.0"
-          fi
-          base="${latest_stable#v}"
-          IFS='.' read -r major minor patch <<< "$base"
-          major="${major:-0}"
-          minor="${minor:-0}"
-          patch="${patch:-0}"
-
-          case "$release_type" in
-            major)
-              major=$((major + 1))
-              minor=0
-              patch=0
-              new_tag="v${major}.${minor}.${patch}"
-              ;;
-            minor)
-              minor=$((minor + 1))
-              patch=0
-              new_tag="v${major}.${minor}.${patch}"
-              ;;
-            patch)
-              patch=$((patch + 1))
-              new_tag="v${major}.${minor}.${patch}"
-              ;;
-            beta)
-              patch=$((patch + 1))
-              new_tag="v${major}.${minor}.${patch}-beta.${short_sha}"
-              ;;
-            *)
-              echo "Unknown release_type: ${release_type}" >&2
-              exit 1
-              ;;
-          esac
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "$new_tag"
-          git push origin "$new_tag"
-          printf 'release_tag=%s\n' "$new_tag" >> "$GITHUB_OUTPUT"
-
   prepare-release:
     name: Prepare release
-    needs: [release-preflight, bump-version]
-    if: always() && github.event_name == 'push' && needs.release-preflight.result == 'success' && needs.bump-version.result == 'skipped'
+    needs: [release-preflight]
+    if: always() && needs.release-preflight.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -183,11 +94,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            tag="${{ needs.bump-version.outputs.release_tag }}"
-          else
-            tag="${GITHUB_REF_NAME}"
-          fi
+          tag="${GITHUB_REF_NAME}"
           [[ "$tag" == v* ]] || { echo "release tag must start with v: $tag" >&2; exit 1; }
           printf 'value=%s\n' "$tag" >> "$GITHUB_OUTPUT"
           printf 'version=%s\n' "${tag#v}" >> "$GITHUB_OUTPUT"
@@ -912,9 +819,11 @@ jobs:
           }
           Path(output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
-          printf 'stable_tag=%s\n' "$stable_tag" >>"$GITHUB_OUTPUT"
-          printf 'stable_digest=%s\n' "$stable_digest" >>"$GITHUB_OUTPUT"
-          printf 'candidate_digest=%s\n' "$candidate_digest" >>"$GITHUB_OUTPUT"
+          {
+            printf 'stable_tag=%s\n' "$stable_tag"
+            printf 'stable_digest=%s\n' "$stable_digest"
+            printf 'candidate_digest=%s\n' "$candidate_digest"
+          } >>"$GITHUB_OUTPUT"
 
       - name: Retain verified comparison bundles
         uses: actions/upload-artifact@v6
@@ -968,6 +877,10 @@ jobs:
     needs:
       - prepare-release
       - prepare-real-repository-indexing
+    if: >-
+      always() &&
+      needs.prepare-release.result == 'success' &&
+      needs.prepare-real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     permissions:
@@ -1002,9 +915,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          set-default: false
 
-      - uses: actions/setup-java@v5
+      - name: Restore Java 21 Kast runtime
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"

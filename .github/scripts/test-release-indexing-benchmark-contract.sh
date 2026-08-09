@@ -115,8 +115,14 @@ require "$release" 'setup-bundle-linux-x64-${{ github.run_id }}' \
   'release gate must test the built release bundle'
 require "$release" 'Set up Gradle Java 17 toolchain' \
   'release gate must install the Ktor sample toolchain'
-require "$release" 'set-default: false' \
-  'Gradle toolchain setup must not replace the Java 21 Kast runtime'
+reject "$release" 'set-default:' \
+  'release gate must use only supported setup-java inputs'
+require "$release" 'Restore Java 21 Kast runtime' \
+  'release gate must restore the Java 21 Kast runtime after installing the Gradle toolchain'
+gradle_java_line="$(grep -nF 'Set up Gradle Java 17 toolchain' "$release" | cut -d: -f1)"
+kast_java_line="$(grep -nF 'Restore Java 21 Kast runtime' "$release" | cut -d: -f1)"
+[[ "$gradle_java_line" -lt "$kast_java_line" ]] \
+  || die 'release gate must restore Java 21 after installing the Java 17 Gradle toolchain'
 # shellcheck disable=SC2016
 require "$release" 'GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}' \
   'release gate must bind the installed Gradle toolchain'
