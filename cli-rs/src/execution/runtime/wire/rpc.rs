@@ -220,11 +220,23 @@ pub fn raw_request_passthrough_in_session(
             )
         });
     }
-    rpc::raw_wait_for_close(
+    let response_timeout = session.response_timeouts.for_request(&raw_request)?;
+    let traced_request = trace_correlation::trace_correlated_rpc_request(
+        raw_request,
+        session.admission.workspace_root(),
+        session.admission.config(),
+    )?;
+    let response = rpc::raw_wait_for_close(
         Path::new(&session.socket_path),
-        &raw_request,
-        session.response_timeouts.for_request(&raw_request)?,
-    )
+        traced_request.wire_request(),
+        response_timeout,
+    );
+    let trace_outcome = match &response {
+        Ok(_) => trace_correlation::RpcTraceOutcome::Succeeded,
+        Err(_) => trace_correlation::RpcTraceOutcome::Failed,
+    };
+    traced_request.record_completion(trace_outcome);
+    response
 }
 
 fn try_handle_local_raw_rpc(

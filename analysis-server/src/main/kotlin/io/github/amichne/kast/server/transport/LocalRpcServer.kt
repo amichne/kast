@@ -280,7 +280,7 @@ internal fun processRpcStream(
                 continue
             }
             val response = runBlocking {
-                dispatcher.dispatchRawForTransport(line)
+                withRpcTraceCorrelation(line, dispatcher::dispatchRawForTransport)
             }
             writer.write(response.response)
             writer.newLine()

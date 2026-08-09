@@ -1,43 +1,24 @@
 package io.github.amichne.kast.idea
-
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.workspaceDataDirectory
+import io.github.amichne.kast.server.*
 import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.api.common.Attributes
-import io.opentelemetry.api.trace.Span
-import io.opentelemetry.api.trace.StatusCode
-import io.opentelemetry.api.trace.Tracer
+import io.opentelemetry.api.trace.*
+import io.opentelemetry.context.Context
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import io.opentelemetry.sdk.trace.SdkTracerProvider
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import java.nio.file.Path
-
+import java.time.Instant
 internal enum class IdeaTelemetryScope {
-    RENAME,
-    PLAN_REPLACEMENT,
-    PLAN_ADD_FILE,
-    PLAN_ADD_DECLARATION,
-    VERIFY_MUTATION_POSTCONDITION,
-    EXACT_FILE_OBSERVATION,
-    EXACT_FILE_IMAGE_CAS,
-    REFERENCES,
-    CALL_HIERARCHY,
-    TYPE_HIERARCHY,
-    IMPLEMENTATIONS,
-    COMPLETIONS,
-    SEMANTIC_INSERTION_POINT,
-    DIAGNOSTICS,
-    OPTIMIZE_IMPORTS,
-    RESOLVE,
-    WORKSPACE_FILES,
-    WORKSPACE_SYMBOL_SEARCH,
-    WORKSPACE_SEARCH,
-    READ_ACTION,
-    FILE_OUTLINE,
-    APPLY_EDITS,
-    REFRESH,
+    RENAME, PLAN_REPLACEMENT, PLAN_ADD_FILE, PLAN_ADD_DECLARATION,
+    VERIFY_MUTATION_POSTCONDITION, EXACT_FILE_OBSERVATION, EXACT_FILE_IMAGE_CAS,
+    REFERENCES, CALL_HIERARCHY, TYPE_HIERARCHY, IMPLEMENTATIONS, COMPLETIONS,
+    SEMANTIC_INSERTION_POINT, DIAGNOSTICS, OPTIMIZE_IMPORTS, RESOLVE,
+    WORKSPACE_FILES, WORKSPACE_SYMBOL_SEARCH, WORKSPACE_SEARCH, READ_ACTION,
+    FILE_OUTLINE, APPLY_EDITS, REFRESH,
     ;
-
     companion object {
         fun parse(rawValue: String): IdeaTelemetryScope? = when (rawValue.trim().lowercase()) {
             "rename" -> RENAME
@@ -68,27 +49,15 @@ internal enum class IdeaTelemetryScope {
         }
     }
 }
-
-internal enum class IdeaTelemetryDetail {
-    BASIC,
-    VERBOSE,
-    ;
-
+internal enum class IdeaTelemetryDetail { BASIC, VERBOSE;
     companion object {
-        fun parse(rawValue: String?): IdeaTelemetryDetail = when (rawValue?.trim()?.lowercase()) {
-            "verbose" -> VERBOSE
-            else -> BASIC
-        }
+        fun parse(rawValue: String?): IdeaTelemetryDetail =
+            if (rawValue?.trim()?.equals("verbose", ignoreCase = true) == true) VERBOSE else BASIC
     }
 }
-
 internal data class IdeaTelemetryConfig(
-    val enabled: Boolean,
-    val scopes: Set<IdeaTelemetryScope>,
-    val detail: IdeaTelemetryDetail,
-    val outputFile: Path,
+    val enabled: Boolean, val scopes: Set<IdeaTelemetryScope>, val detail: IdeaTelemetryDetail, val outputFile: Path,
 )
-
 internal class IdeaTelemetrySpan internal constructor(
     private val telemetry: IdeaBackendTelemetry,
     private val scope: IdeaTelemetryScope,
@@ -122,14 +91,8 @@ internal class IdeaTelemetrySpan internal constructor(
     )
 
     companion object {
-        fun disabled(
-            telemetry: IdeaBackendTelemetry,
-            scope: IdeaTelemetryScope,
-        ): IdeaTelemetrySpan = IdeaTelemetrySpan(
-            telemetry = telemetry,
-            scope = scope,
-            span = null,
-        )
+        fun disabled(telemetry: IdeaBackendTelemetry, scope: IdeaTelemetryScope): IdeaTelemetrySpan =
+            IdeaTelemetrySpan(telemetry = telemetry, scope = scope, span = null)
     }
 }
 
@@ -152,19 +115,134 @@ internal class IdeaBackendTelemetry private constructor(
             return block(IdeaTelemetrySpan.disabled(this, scope))
         }
 
+        return when (val traceState = RpcTraceContext.current()) {
+            RpcTraceState.Absent -> runSpan(
+                scope = scope,
+                name = name,
+                attributes = attributes,
+                block = block,
+            )
+
+            is RpcTraceState.Active -> if (Span.current().spanContext.isValid) {
+                runSpan(
+                    scope = scope,
+                    name = name,
+                    attributes = attributes + correlatedPhaseAttributes(
+                        traceState.correlation,
+                        name.substringAfterLast('.'),
+                    ),
+                    block = block,
+                )
+            } else {
+                runCorrelatedOperation(
+                    scope = scope,
+                    name = name,
+                    attributes = attributes,
+                    correlation = traceState.correlation,
+                    block = block,
+                )
+            }
+        }
+    }
+
+    fun recordReadAction(scope: IdeaTelemetryScope, name: String, waitNanos: Long, holdNanos: Long) {
+        if (!isEnabled(IdeaTelemetryScope.READ_ACTION)) return
+        val endedAt = Instant.now()
+        val startedAt = endedAt.minusNanos(waitNanos.coerceAtLeast(0L).saturatingAdd(holdNanos.coerceAtLeast(0L)))
+        val correlationAttributes = when (val traceState = RpcTraceContext.current()) {
+            RpcTraceState.Absent -> emptyMap()
+            is RpcTraceState.Active -> correlatedPhaseAttributes(traceState.correlation, "readAction")
+        }
+        recordCompletedPhase(
+            scope = scope,
+            name = name,
+            phaseName = "readAction",
+            startedAt = startedAt,
+            endedAt = endedAt,
+            attributes = mapOf(
+                "kast.readAction.waitNanos" to waitNanos,
+                "kast.readAction.holdNanos" to holdNanos,
+            ) + correlationAttributes,
+            outcome = CorrelatedSpanOutcome.SUCCEEDED,
+        )
+    }
+
+    private inline fun <T> runCorrelatedOperation(
+        scope: IdeaTelemetryScope,
+        name: String,
+        attributes: Map<String, Any?>,
+        correlation: RpcTraceCorrelation,
+        block: (IdeaTelemetrySpan) -> T,
+    ): T {
+        val remoteParent = Span.wrap(
+            SpanContext.createFromRemoteParent(
+                correlation.traceIdAtTelemetryBoundary(),
+                correlation.parentSpanIdAtTelemetryBoundary(),
+                TraceFlags.getSampled(),
+                TraceState.getDefault(),
+            ),
+        )
+        val transportSpan = checkNotNull(tracer)
+            .spanBuilder(RPC_TRANSPORT_SPAN_NAME)
+            .setParent(Context.root().with(remoteParent))
+            .startSpan()
+        applySpanAttributes(
+            transportSpan,
+            correlatedAttributes(correlation, CorrelatedTraceRole.TRANSPORT),
+        )
+        val transportScope = transportSpan.makeCurrent()
+        return try {
+            runSpan(
+                scope = scope,
+                name = name,
+                attributes = attributes + correlatedAttributes(
+                    correlation,
+                    CorrelatedTraceRole.BACKEND_OPERATION,
+                ),
+            ) { operationSpan ->
+                val bodyStartedAt = Instant.now()
+                val result = try {
+                    block(operationSpan)
+                } catch (failure: Throwable) {
+                    recordCompletedPhase(
+                        scope = scope,
+                        name = "$name.operationBody",
+                        phaseName = "operationBody",
+                        startedAt = bodyStartedAt,
+                        endedAt = Instant.now(),
+                        attributes = correlatedPhaseAttributes(correlation, "operationBody"),
+                        outcome = CorrelatedSpanOutcome.FAILED,
+                    )
+                    throw failure
+                }
+                recordCompletedPhase(
+                    scope, "$name.operationBody", "operationBody", bodyStartedAt, Instant.now(),
+                    correlatedPhaseAttributes(correlation, "operationBody"), CorrelatedSpanOutcome.SUCCEEDED,
+                )
+                result
+            }
+        } catch (failure: Throwable) {
+            transportSpan.setStatus(StatusCode.ERROR)
+            throw failure
+        } finally {
+            transportScope.close()
+            transportSpan.end()
+        }
+    }
+
+    private inline fun <T> runSpan(
+        scope: IdeaTelemetryScope,
+        name: String,
+        attributes: Map<String, Any?>,
+        block: (IdeaTelemetrySpan) -> T,
+    ): T {
         val startedSpan = checkNotNull(tracer).spanBuilder(name).startSpan()
         applySpanAttributes(startedSpan, attributes)
         val otelScope = startedSpan.makeCurrent()
-        val telemetrySpan = IdeaTelemetrySpan(
-            telemetry = this,
-            scope = scope,
-            span = startedSpan,
-        )
-
+        val telemetrySpan = IdeaTelemetrySpan(this, scope, startedSpan)
         return try {
             block(telemetrySpan)
         } catch (failure: Throwable) {
-            startedSpan.recordException(failure)
             startedSpan.setStatus(StatusCode.ERROR)
             throw failure
         } finally {
@@ -173,16 +251,23 @@ internal class IdeaBackendTelemetry private constructor(
         }
     }
 
-    fun recordReadAction(scope: IdeaTelemetryScope, name: String, waitNanos: Long, holdNanos: Long) {
-        if (!isEnabled(IdeaTelemetryScope.READ_ACTION)) return
-        inSpan(
-            scope = scope,
-            name = name,
-            attributes = mapOf(
-                "kast.readAction.waitNanos" to waitNanos,
-                "kast.readAction.holdNanos" to holdNanos,
-            ),
-        ) {}
+    private fun recordCompletedPhase(
+        scope: IdeaTelemetryScope,
+        name: String,
+        phaseName: String,
+        startedAt: Instant,
+        endedAt: Instant,
+        attributes: Map<String, Any?>,
+        outcome: CorrelatedSpanOutcome,
+    ) {
+        if (!isEnabled(scope)) return
+        val phaseSpan = checkNotNull(tracer)
+            .spanBuilder(name)
+            .setStartTimestamp(startedAt)
+            .startSpan()
+        applySpanAttributes(phaseSpan, attributes + mapOf("kast.phase.name" to phaseName))
+        if (outcome == CorrelatedSpanOutcome.FAILED) phaseSpan.setStatus(StatusCode.ERROR)
+        phaseSpan.end(endedAt)
     }
 
     companion object {
@@ -263,7 +348,25 @@ internal class IdeaBackendTelemetry private constructor(
     }
 }
 
-// --- Shared attribute helpers ---
+@PublishedApi internal enum class CorrelatedTraceRole(val attributeValue: String) {
+    TRANSPORT("TRANSPORT"), BACKEND_OPERATION("BACKEND_OPERATION"), PHASE("PHASE") }
+internal enum class CorrelatedSpanOutcome { SUCCEEDED, FAILED }
+
+@PublishedApi internal fun correlatedAttributes(
+    correlation: RpcTraceCorrelation,
+    role: CorrelatedTraceRole,
+): Map<String, Any?> = buildMap {
+    put("kast.invocation.id", correlation.invocationIdAtTelemetryBoundary())
+    put("kast.invocation.parentId", correlation.parentInvocationIdAtTelemetryBoundary())
+    put("kast.request.id", correlation.requestIdAtTelemetryBoundary())
+    put("kast.trace.role", role.attributeValue)
+}
+
+private fun correlatedPhaseAttributes(correlation: RpcTraceCorrelation, phaseName: String): Map<String, Any?> =
+    correlatedAttributes(correlation, CorrelatedTraceRole.PHASE) + mapOf("kast.phase.name" to phaseName)
+
+private fun Long.saturatingAdd(other: Long): Long =
+    if (this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other
 
 private fun applySpanAttributes(span: Span, attributes: Map<String, Any?>) {
     attributes.forEach { (key, value) ->
