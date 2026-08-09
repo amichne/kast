@@ -15,8 +15,8 @@ fn unavailable_error_has_one_structured_recovery_action_and_toon_stdout_discipli
     );
     let toon = std::str::from_utf8(&output.stdout).expect("TOON UTF-8");
     assert!(
-        !output.stdout.ends_with(b"\n"),
-        "TOON stdout must not have a trailing newline: {toon:?}"
+        output.stdout.ends_with(b"\n") && !output.stdout.ends_with(b"\n\n"),
+        "TOON stdout must end with exactly one newline: {toon:?}"
     );
     let document: serde_json::Value =
         toon_format::decode_default(toon).expect("workspace-files TOON");
