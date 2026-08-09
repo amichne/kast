@@ -18,6 +18,13 @@ require_contains() {
   }
 }
 
+require_not_contains() {
+  ! grep --fixed-strings --quiet -- "$2" "${repo_root}/$1" || {
+    echo "$1 must not contain: $2" >&2
+    exit 1
+  }
+}
+
 require_graphviz_output_scripts() {
   node - "${repo_root}/package.json" <<'NODE'
 const fs = require('node:fs')
@@ -101,7 +108,8 @@ require_graphviz_output_scripts
 require_contains .github/workflows/docs.yml 'sudo apt-get install --yes --no-install-recommends graphviz'
 require_contains .github/workflows/docs.yml 'command -v dot'
 require_contains .github/workflows/docs.yml 'command -v unflatten'
-require_contains zensical.toml 'path = "architecture/likec4-views.mjs"'
+require_contains zensical.toml 'docs_dir = "docs/public"'
+require_not_contains zensical.toml 'path = "architecture/likec4-views.mjs"'
 require_contains docs/architecture/views.c4 'view system-landscape'
 require_contains docs/architecture/views.c4 'view runtime-components'
 require_contains docs/architecture/views.c4 'view indexing-landscape'

@@ -51,11 +51,18 @@ expected_page_lines="$(printf '%s\n' "${expected_pages[@]}" | sort)"
 }
 
 for obsolete in \
-  index.md tutorials how-to reference stylesheets questions concepts; do
+  index.md tutorials how-to stylesheets questions concepts; do
   require_absent "${docs_root}/${obsolete}"
 done
 require_absent "${docs_root}/explanation/architecture.md"
 require_absent "${docs_root}/explanation/repository-intelligence.md"
+generated_cli_reference="${docs_root}/reference/cli.md"
+require_present "$generated_cli_reference"
+require_contains "$generated_cli_reference" \
+  "Generated from the typed public operation registry"
+reference_files="$(find "${docs_root}/reference" -type f -print | sed "s#${docs_root}/reference/##" | sort)"
+[[ "$reference_files" == "cli.md" ]] || \
+  die "docs/reference must contain only the generated CLI projection"
 compiler_evidence_compat="${docs_root}/explanation/compiler-evidence.md"
 [[ -L "$compiler_evidence_compat" ]] || die "compiler-evidence compatibility path is not a symlink"
 [[ "$(readlink "$compiler_evidence_compat")" == "../public/concepts/evidence-boundaries.md" ]] || \
