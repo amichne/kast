@@ -280,38 +280,10 @@ pub(super) fn stop_service_runtime(
     owned: ServiceOwnedRuntime,
 ) -> Result<DaemonStopResult> {
     let owned = revalidate_service_runtime(config, &owned)?;
-    signal_exact_observed_process(&owned.process, &owned.socket, false)?;
-    let mut forced = false;
-    if !wait_until_gone(&owned.process.identity, Duration::from_secs(10))? {
-        signal_exact_observed_process(&owned.process, &owned.socket, true)?;
-        forced = true;
-        if !wait_until_gone(&owned.process.identity, Duration::from_secs(5))? {
-            return Err(CliError::new(
-                "RUNTIME_STOP_FAILED",
-                "The exact registered runtime did not stop.",
-            ));
-        }
-    }
     let descriptor = owned.descriptor.clone();
-    let process_claim = super::registration::read_process_claim(&owned.registration.directory)?;
-    let active = super::registration::read_active_registration(
-        &owned
-            .registration
-            .directory
-            .parent()
-            .ok_or_else(runtime_identity_mismatch)?
-            .join("active.json"),
-    )?;
-    cleanup_dead_registration(
-        config,
-        &DeadServiceRuntime {
-            registration: owned.registration,
-            process_claim,
-            active,
-            descriptor: descriptor.clone(),
-            socket: owned.socket,
-        },
-    )?;
+    let gone = prove_runtime_gone(ExpectedStopTerminal::Service(&owned))?;
+    let forced = gone.forced;
+    observe_stop_terminal_state(config, &gone)?.cleanup(config)?;
     Ok(stop_result(
         &owned.workspace_root,
         descriptor.as_ref(),
@@ -325,20 +297,9 @@ pub(super) fn stop_legacy_runtime(
     owned: LegacyOwnedRuntime,
 ) -> Result<DaemonStopResult> {
     let owned = revalidate_legacy_runtime(config, &owned)?;
-    signal_exact_observed_process(&owned.process, &owned.socket, false)?;
-    let mut forced = false;
-    if !wait_until_gone(&owned.process.identity, Duration::from_secs(5))? {
-        signal_exact_observed_process(&owned.process, &owned.socket, true)?;
-        forced = true;
-        if !wait_until_gone(&owned.process.identity, Duration::from_secs(5))? {
-            return Err(CliError::new(
-                "RUNTIME_STOP_FAILED",
-                "The exact legacy Kast runtime did not stop.",
-            ));
-        }
-    }
-    delete_descriptor(&config.paths.descriptor_dir, &owned.descriptor.descriptor)?;
-    remove_exact_socket(&owned.socket, owned.process.identity.owner_uid)?;
+    let gone = prove_runtime_gone(ExpectedStopTerminal::Legacy(&owned))?;
+    let forced = gone.forced;
+    observe_stop_terminal_state(config, &gone)?.cleanup(config)?;
     Ok(stop_result(
         &owned.workspace_root,
         Some(&owned.descriptor),
@@ -360,7 +321,7 @@ fn stop_result(
         backend_name: BackendName::Indexer.canonical().to_string(),
         descriptor_path: value.id.clone(),
         pid,
-        pid_alive: true,
+        pid_alive: false,
         reachable: false,
         lifecycle_accepted: true,
         lifecycle_method: Some("OWNERSHIP_SNAPSHOT".to_string()),

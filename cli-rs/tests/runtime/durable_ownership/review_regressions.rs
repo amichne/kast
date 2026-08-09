@@ -1,4 +1,85 @@
+use super::fixture::RuntimeTerminalBehavior;
 use super::*;
+
+#[test]
+fn stop_reports_observed_terminal_state_and_is_idempotent() {
+    let fixture = RuntimeServiceFixture::new_with_terminal_behavior(
+        RuntimeTerminalBehavior::RemoveOwnedArtifacts,
+    );
+    let pid = fixture.runtime.id();
+
+    let stop = fixture
+        .command()
+        .arg("stop")
+        .args([
+            "--workspace-root",
+            fixture.workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("runtime stop");
+
+    assert_success(&stop, "terminal-state stop");
+    let stop = output_json(&stop);
+    assert_eq!(stop["stopped"], true);
+    assert_eq!(stop["stoppedCount"], 1);
+    assert_eq!(stop["pid"], u64::from(pid));
+    assert_eq!(stop["candidates"][0]["pidAlive"], false);
+    assert_eq!(stop["candidates"][0]["terminated"], true);
+    assert_eq!(stop["candidates"][0]["descriptorDeleted"], true);
+    assert!(!fixture.registration.exists(), "registration remains");
+    assert!(!fixture.descriptor_registry.exists(), "descriptor remains");
+    assert!(!fixture.socket_path.exists(), "socket remains");
+
+    let repeated = fixture
+        .command()
+        .arg("stop")
+        .args([
+            "--workspace-root",
+            fixture.workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("repeated runtime stop");
+
+    assert_success(&repeated, "repeated terminal-state stop");
+    let repeated = output_json(&repeated);
+    assert_eq!(repeated["stopped"], false);
+    assert_eq!(repeated["stoppedCount"], 0);
+    assert!(repeated.get("pid").is_none());
+    assert_eq!(repeated["candidates"].as_array().map(Vec::len), None);
+}
+
+#[test]
+fn stop_retains_typed_evidence_when_terminal_cleanup_is_incomplete() {
+    let mut fixture = RuntimeServiceFixture::new_with_terminal_behavior(
+        RuntimeTerminalBehavior::LeaveIncompleteCleanup,
+    );
+
+    let stop = fixture
+        .command()
+        .arg("stop")
+        .args([
+            "--workspace-root",
+            fixture.workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("runtime stop");
+
+    assert_error(&stop, "RUNTIME_OWNERSHIP_CHANGED");
+    assert!(
+        wait_until(Duration::from_secs(1), || fixture
+            .runtime
+            .try_wait()
+            .expect("runtime status")
+            .is_some()),
+        "registered runtime did not terminate"
+    );
+    assert!(fixture.registration.exists(), "registration was removed");
+    assert!(
+        fixture.descriptor_registry.exists(),
+        "descriptor was removed"
+    );
+    assert!(fixture.socket_path.exists(), "socket was removed");
+}
 
 #[test]
 fn deleted_workspace_registration_is_repaired_deleted_workspace_registration_review_regression() {
