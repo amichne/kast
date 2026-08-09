@@ -76,10 +76,23 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
 }
 
 fn seed_paged_public_graph(workspace: &Path) -> WorkspaceIndexFixture {
+    seed_public_graph_with_symbol_count(workspace, 501, false)
+}
+
+fn seed_large_public_graph(workspace: &Path) -> WorkspaceIndexFixture {
+    seed_public_graph_with_symbol_count(workspace, 2_049, true)
+}
+
+fn seed_public_graph_with_symbol_count(
+    workspace: &Path,
+    symbol_count: i64,
+    connect_to_source: bool,
+) -> WorkspaceIndexFixture {
     let index = seed_public_graph(workspace, false);
-    let connection = index.connection();
-    for id in 3_i64..=501 {
-        connection
+    let mut connection = index.connection();
+    let transaction = connection.transaction().expect("large graph transaction");
+    for id in 3_i64..=symbol_count {
+        transaction
             .execute(
                 "INSERT INTO semantic_symbols(id, stable_key, kind, name, file_id)
                  VALUES (?, ?, 'CLASS', ?, 1)",
@@ -90,7 +103,17 @@ fn seed_paged_public_graph(workspace: &Path) -> WorkspaceIndexFixture {
                 ],
             )
             .expect("graph symbol");
+        if connect_to_source {
+            transaction
+                .execute(
+                    "INSERT INTO semantic_edge_occurrences
+                     VALUES (?, 1, ?, 1, 'REFERENCE', 'TYPE')",
+                    params![id, id],
+                )
+                .expect("large graph edge");
+        }
     }
+    transaction.commit().expect("large graph commit");
     drop(connection);
     index
 }
@@ -183,12 +206,7 @@ fn public_read_commands_delegate_to_typed_operations() {
         &["file", "list", "--match", "src/**/*.kt"][..],
         &["symbol", "search", "--query", "Widget"][..],
         &["symbol", "show", "--selector", "sample.Widget"][..],
-        &[
-            "relation",
-            "references",
-            "--selector",
-            "sample.Widget",
-        ][..],
+        &["relation", "references", "--selector", "sample.Widget"][..],
         &[
             "relation",
             "calls",
@@ -203,12 +221,7 @@ fn public_read_commands_delegate_to_typed_operations() {
             "--selector",
             "sample.Widget.run",
         ][..],
-        &[
-            "relation",
-            "implementations",
-            "--selector",
-            "sample.Widget",
-        ][..],
+        &["relation", "implementations", "--selector", "sample.Widget"][..],
         &[
             "relation",
             "hierarchy",
@@ -233,12 +246,7 @@ fn public_read_commands_delegate_to_typed_operations() {
         &["graph", "topology"][..],
         &["graph", "communities"][..],
         &["graph", "impact", "--selector", "sample.Widget"][..],
-        &[
-            "diagnostic",
-            "check",
-            "--file",
-            "src/main/kotlin/App.kt",
-        ][..],
+        &["diagnostic", "check", "--file", "src/main/kotlin/App.kt"][..],
     ] {
         let output = named("kast")
             .current_dir(&workspace)
