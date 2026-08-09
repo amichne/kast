@@ -138,8 +138,10 @@ class KastRuntimeProfilingTest {
         profiling: ProfilingConfig,
     ): IndexerServerOptions {
         val root = tempDir.resolve("runtime-${runtimeInstanceId.value}")
-        val socketRoot = Path.of(requireNotNull(System.getenv("TMPDIR")))
-            .toAbsolutePath()
+        val temporaryDirectory = System.getenv("TMPDIR")
+            ?.let(Path::of)
+            ?: Path.of(System.getProperty("java.io.tmpdir"))
+        val socketRoot = temporaryDirectory.toAbsolutePath()
             .normalize()
             .createDirectories()
         val config = hermeticConfig(root).copy(profiling = profiling)
