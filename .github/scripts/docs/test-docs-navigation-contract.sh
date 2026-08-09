@@ -31,7 +31,7 @@ expected = [
         ],
     ),
     ("Trust the evidence", ["concepts/evidence-boundaries.md"]),
-    ("Generated reference", ["reference/semantic-operations.md"]),
+    ("CLI contract", ["reference/cli.md"]),
 ]
 
 actual = []

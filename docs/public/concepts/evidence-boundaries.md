@@ -52,6 +52,5 @@ Kast is most trustworthy when the answer says exactly what was established.
 coverage. “These are all callers” requires complete coverage. “No callers
 exist” requires the same complete authority plus a terminal empty result.
 
-The [generated semantic operation contract](../reference/semantic-operations.md)
-lists the typed methods, request fields, response types, and result variants
-that carry these facts.
+The [generated CLI contract](../reference/cli.md) lists the executable commands,
+request types, result types, and paging rules that carry these facts.

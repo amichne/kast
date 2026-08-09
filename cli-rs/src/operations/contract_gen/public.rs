@@ -34,7 +34,7 @@ fn public_generated_files(manifest_dir: &Path) -> Result<BTreeMap<PathBuf, Strin
         json_file_content(&public_capabilities(&definitions))?,
     );
     files.insert(
-        repository_root.join("docs/reference/cli.md"),
+        repository_root.join("docs/public/reference/cli.md"),
         render_cli_reference(&definitions),
     );
     files.insert(
@@ -250,7 +250,7 @@ fn public_capabilities(
 fn render_cli_reference(
     definitions: &[crate::agent::public_protocol::OperationDefinition],
 ) -> String {
-    let mut text = "---\ntype: Reference\ntitle: CLI Reference\ndescription: The typed public Kast protocol for coding agents.\ntags: [cli, reference, commands, agents]\ncode_sources:\n  - path: cli-rs/src/agent/public_protocol/registry.rs\n---\n\n# CLI Reference\n\n<!-- Generated from the typed public operation registry. -->\n\n`kast` is the only public interface. Every command supports `--output toon|json`; both formats preserve the same canonical protocol envelope. Compact TOON never removes semantic discriminators.\n\nEvery result contains `schemaVersion`, `operation`, `status`, and `result.type`. A `qualified` result names limitations. A `rejected` result contains a closed typed failure.\n\n## Operations\n\n| Operation | CLI syntax | Request type | Result type | Paging |\n| --- | --- | --- | --- | --- |\n".to_string();
+    let mut text = "---\ntype: Generated Reference\ntitle: CLI Contract\ndescription: Generated facts for the executable public Kast CLI.\ntags: [generated, cli, reference, commands]\ncode_sources:\n  - path: cli-rs/src/agent/public_protocol/registry.rs\n---\n\n# CLI Contract\n\n> Generated from the typed public operation registry.\n\nThis page lists the executable `kast` commands and the contract each command preserves. Change the typed public registry, then regenerate this page.\n\nEvery command supports `--output toon|json`. Both formats preserve the same canonical protocol envelope. Compact TOON retains every semantic discriminator. Uppercase shell variables represent values returned by Kast.\n\nEvery result contains `schemaVersion`, `operation`, `status`, and `result.type`. A `qualified` result names its limitations. A `rejected` result contains a closed typed failure.\n\n## Operations\n\n| Operation | CLI syntax | Request type | Result type | Paging |\n| --- | --- | --- | --- | --- |\n".to_string();
     for definition in definitions {
         let paging = match definition.paging {
             crate::agent::public_protocol::Paging::Unpaged => "unpaged".to_string(),
@@ -260,13 +260,17 @@ fn render_cli_reference(
         };
         text.push_str(&format!(
             "| `{}` | `{}` | `{}` | `{}` | {} |\n",
-            definition.id.as_str(), definition.cli.syntax,
+            definition.id.as_str(), shell_variable_syntax(definition.cli.syntax),
             serialized_name(definition.request_type), serialized_name(definition.result_type), paging,
         ));
     }
     text.push_str("\nDiagnostics do not block reference indexing.\n");
-    text.push_str("\n## Composition\n\nUse `query` only for `symbol.search` and `symbol.resolve`. Copy every Kast-issued `selector` verbatim into compatible exact operations. Repeat the same operation with its opaque `continuation`; continuations never cross operations. Apply only a returned plan ID with `kast change apply --plan-id <PLAN_ID>`. Recover only a returned recovery ID with `kast change recover --recovery-id <RECOVERY_ID>`.\n\nPublic paths are workspace-relative and use forward slashes. A qualified name, location, path, offset, or graph node selector is never a symbol selector.\n\n## Boundary semantics\n\nExternalizing an eligible content-bound failure records an explicit `UNKNOWN` graph boundary. Unknown, stale, incomplete, and wrong-workspace evidence fails closed.\n\n## Internal control plane\n\nThe private release-local `libexec/kastctl` multicall entrypoint remains the developer control plane. It is not a public semantic route. Read `developerOperations.cli` and use `/kast:developer`; do not assume `kastctl` is on `PATH`.\n");
+    text.push_str("\n## Composition\n\nUse `query` only for `symbol.search` and `symbol.resolve`. Copy each Kast-issued `selector` verbatim into a compatible exact operation. Repeat a paged operation with its own opaque `continuation`; continuations never cross operations. Apply only a returned plan ID with `kast change apply --plan-id $PLAN_ID`. Recover only a returned recovery ID with `kast change recover --recovery-id $RECOVERY_ID`.\n\nPublic paths are workspace-relative and use forward slashes. A qualified name, location, path, offset, or graph node selector is never a symbol selector.\n\n## Boundary semantics\n\nExternalizing an eligible content-bound failure records an explicit `UNKNOWN` graph boundary. Unknown, stale, incomplete, and wrong-workspace evidence fails closed.\n");
     text
+}
+
+fn shell_variable_syntax(syntax: &str) -> String {
+    syntax.replace('<', "$").replace('>', "")
 }
 
 fn render_public_skill(

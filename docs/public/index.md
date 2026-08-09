@@ -82,6 +82,5 @@ the answer and where that evidence stops.
 A useful Kast answer says whether its evidence is complete, qualified, or
 rejected. [When can you trust a Kast answer?](concepts/evidence-boundaries.md)
 explains those states. The
-[generated semantic operation contract](reference/semantic-operations.md)
-states mechanically knowable protocol facts without duplicating them in
-authored prose.
+[generated CLI contract](reference/cli.md) states mechanically knowable command
+and result facts without duplicating them in authored prose.

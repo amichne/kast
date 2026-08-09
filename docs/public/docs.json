@@ -31,9 +31,9 @@
         ]
       },
       {
-        "group": "Generated reference",
+        "group": "CLI contract",
         "pages": [
-          "reference/semantic-operations"
+          "reference/cli"
         ]
       }
     ]

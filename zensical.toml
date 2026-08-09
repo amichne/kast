@@ -20,7 +20,7 @@ nav = [
     { "Did the change reach every dependency?" = "questions/verify-coverage.md" },
   ] },
   { "Trust the evidence" = "concepts/evidence-boundaries.md" },
-  { "Generated reference" = "reference/semantic-operations.md" },
+  { "CLI contract" = "reference/cli.md" },
 ]
 
 [project.markdown_extensions.admonition]

@@ -41,7 +41,7 @@ expected_pages=(
   "questions/resolve-declaration.md"
   "questions/value-flow.md"
   "questions/verify-coverage.md"
-  "reference/semantic-operations.md"
+  "reference/cli.md"
 )
 actual_pages="$(find "$public_root" -type f -name '*.md' -print | sed "s#${public_root}/##" | sort)"
 expected_page_lines="$(printf '%s\n' "${expected_pages[@]}" | sort)"
@@ -51,18 +51,11 @@ expected_page_lines="$(printf '%s\n' "${expected_pages[@]}" | sort)"
 }
 
 for obsolete in \
-  index.md tutorials how-to stylesheets questions concepts; do
+  index.md tutorials how-to reference stylesheets questions concepts; do
   require_absent "${docs_root}/${obsolete}"
 done
 require_absent "${docs_root}/explanation/architecture.md"
 require_absent "${docs_root}/explanation/repository-intelligence.md"
-generated_cli_reference="${docs_root}/reference/cli.md"
-require_present "$generated_cli_reference"
-require_contains "$generated_cli_reference" \
-  "Generated from the typed public operation registry"
-reference_files="$(find "${docs_root}/reference" -type f -print | sed "s#${docs_root}/reference/##" | sort)"
-[[ "$reference_files" == "cli.md" ]] || \
-  die "docs/reference must contain only the generated CLI projection"
 compiler_evidence_compat="${docs_root}/explanation/compiler-evidence.md"
 [[ -L "$compiler_evidence_compat" ]] || die "compiler-evidence compatibility path is not a symlink"
 [[ "$(readlink "$compiler_evidence_compat")" == "../public/concepts/evidence-boundaries.md" ]] || \
@@ -92,11 +85,16 @@ for boundary in "complete evidence" "qualified evidence" "rejected request"; do
   require_contains "$boundaries" "$boundary"
 done
 
-generated_reference="${public_root}/reference/semantic-operations.md"
-require_contains "$generated_reference" "> Generated file. Do not edit this page directly."
-require_contains "$generated_reference" "cli-rs/protocol/source/commands.json"
-require_contains "$generated_reference" "Response type"
-"${repo_root}/.github/scripts/docs/generate-cli-reference.py" --check
+generated_reference="${public_root}/reference/cli.md"
+require_contains "$generated_reference" "> Generated from the typed public operation registry."
+require_contains "$generated_reference" "cli-rs/src/agent/public_protocol/registry.rs"
+require_contains "$generated_reference" "kast relation references --selector"
+require_contains "$generated_reference" "kast change apply --plan-id"
+for private_contract_term in \
+  "selectorHandle" "pageToken" "symbol/references" "mutation/submit"; do
+  require_not_contains_file "$generated_reference" "$private_contract_term"
+done
+require_absent "${repo_root}/.github/scripts/docs/generate-cli-reference.py"
 
 for generic_agent_instruction in \
   "Ask your agent" "Start a Codex task" "Use this prompt" "Prompt:"; do
