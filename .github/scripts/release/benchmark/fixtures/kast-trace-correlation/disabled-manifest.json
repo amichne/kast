@@ -2,7 +2,7 @@
   "basis": {
     "kind": "DETERMINISTIC_PAIRED_RUN",
     "observedSpanCount": 0,
-    "sourceCommit": "d2dfb0d6d27693b2cbae93ba605eb5c6a2673f46"
+    "sourceCommit": "2120b4780c8a7f93291edfff64cbbf7e8abbe685"
   },
   "correlation": {
     "state": "NOT_EMITTED",
@@ -62,11 +62,11 @@
   "runId": "disabled-trace-574",
   "schemaVersion": 1,
   "source": {
-    "commitSha": "d2dfb0d6d27693b2cbae93ba605eb5c6a2673f46",
+    "commitSha": "2120b4780c8a7f93291edfff64cbbf7e8abbe685",
     "repository": "https://github.com/amichne/kast.git",
-    "treeSha": "32575402b438144b3bdd26986379aaace98f648c",
+    "treeSha": "2cd2d62e456fde7bf578f0510e431ee0a7f2c0df",
     "type": "EXACT_SOURCE_IDENTITY",
-    "worktreeState": "CLEAN_BEFORE_FIXTURE_AUTHORING"
+    "worktreeState": "EXACT_IMPLEMENTATION_COMMIT"
   },
   "teardown": {
     "evidencePath": "/private/tmp/kast-574-v2.4b4fa4/path-contract-proof.json",
