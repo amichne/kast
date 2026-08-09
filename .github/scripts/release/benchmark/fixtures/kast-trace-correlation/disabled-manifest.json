@@ -1,0 +1,99 @@
+{
+  "basis": {
+    "kind": "DETERMINISTIC_PAIRED_RUN",
+    "observedSpanCount": 0,
+    "sourceCommit": "2120b4780c8a7f93291edfff64cbbf7e8abbe685"
+  },
+  "correlation": {
+    "state": "NOT_EMITTED",
+    "type": "CORRELATION_DISABLED"
+  },
+  "environment": {
+    "artifactRoot": "/private/tmp/kast-574-v2.4b4fa4/artifacts/trace-correlation/disabled",
+    "cacheRoot": "/private/tmp/kast-574-v2.4b4fa4/cache",
+    "configRoot": "/private/tmp/kast-574-v2.4b4fa4/config",
+    "dataRoot": "/private/tmp/kast-574-v2.4b4fa4/installation/state/data",
+    "gradleRoot": "/private/tmp/kast-574-v2.4b4fa4/gradle-home",
+    "homeRoot": "/private/tmp/kast-574-v2.4b4fa4/home",
+    "installationRoot": "/private/tmp/kast-574-v2.4b4fa4/installation",
+    "javaHomeRoot": "/private/tmp/kast-574-v2.4b4fa4/java-home",
+    "runtimeRoot": "/private/tmp/kast-574-v2.4b4fa4/installation/state/runtime",
+    "socketPath": "/private/tmp/kast-574-v2.4b4fa4/cache/workspaces/issue-574/kast-indexer-67bf7f1c27e2.sock",
+    "temporaryRoot": "/private/tmp/kast-574-v2.4b4fa4/tmp",
+    "type": "CONTAINED_ENVIRONMENT",
+    "variableDigestSha256": "5edef2d57495db62fdc6fbed9ee4e5b96b1eb1a1b49a278892d3bc0cfb3e02fd"
+  },
+  "fixtureKind": "DETERMINISTIC_CONTRACT_FIXTURE",
+  "host": {
+    "architecture": "arm64",
+    "cpuModel": "Apple M1 Max",
+    "identityAuthority": "HOST_OBSERVATION",
+    "logicalCpuCount": 10,
+    "memoryBytes": 34359738368,
+    "operatingSystem": "MACOS",
+    "operatingSystemVersion": "26.5.2",
+    "type": "HOST_IDENTITY"
+  },
+  "installation": {
+    "backendArtifactSha256": "5922e4245ae5f3a24940e00b6138e9b12ac6baa76533d05fa4950d97694c2db7",
+    "binaryFormat": "Mach-O 64-bit executable arm64",
+    "binarySha256": "4befca28a45fa1b142b675cd8cf7d2d8095dc4b7a1296b355bb533f1b1e56237",
+    "binaryVersion": "0.22.0-7-gf3db15749",
+    "buildCommit": "f3db15749ec689d749b016d2aa14f2c3213ccd1f",
+    "receiptPlatform": "linux-x64",
+    "receiptPlatformSemantics": "PACKAGING_METADATA_NOT_HOST_IDENTITY",
+    "releaseDigest": "cf6913e166b37fec39c7477679ec100ba344ffd66f6616c7e8d47400060d7c81",
+    "type": "SEALED_INSTALLATION_IDENTITY"
+  },
+  "mode": {
+    "detail": "BASIC",
+    "profiler": "DISABLED",
+    "telemetry": "DISABLED",
+    "tracing": "DISABLED",
+    "type": "INSTRUMENTATION_MODE"
+  },
+  "observer": {
+    "measurementMode": "MINIMAL",
+    "observerOverheadNanos": 0,
+    "pairId": "trace-correlation-pair-574",
+    "peerRunId": "enabled-trace-574",
+    "type": "PAIRED_OBSERVER_MEASUREMENT"
+  },
+  "runId": "disabled-trace-574",
+  "schemaVersion": 1,
+  "source": {
+    "commitSha": "2120b4780c8a7f93291edfff64cbbf7e8abbe685",
+    "repository": "https://github.com/amichne/kast.git",
+    "treeSha": "2cd2d62e456fde7bf578f0510e431ee0a7f2c0df",
+    "type": "EXACT_SOURCE_IDENTITY",
+    "worktreeState": "EXACT_IMPLEMENTATION_COMMIT"
+  },
+  "teardown": {
+    "evidencePath": "/private/tmp/kast-574-v2.4b4fa4/path-contract-proof.json",
+    "evidenceSha256": "15056793297cced28cbcbc9e8b2c422c0febf612a579c1b5abf2779eab4df0d7",
+    "processClosure": "PROVEN_EMPTY",
+    "runtimeState": "NOT_STARTED",
+    "socketState": "ABSENT",
+    "temporaryRootState": "RETAINED_TASK_ROOT",
+    "type": "CLEAN_TEARDOWN"
+  },
+  "timing": {
+    "durationNanos": 1000000000,
+    "startEpochNanos": 1786293190000000000,
+    "type": "OBSERVED_DURATION"
+  },
+  "trace": {
+    "recordCount": 0,
+    "state": "DISABLED",
+    "type": "TRACE_DISABLED"
+  },
+  "type": "KAST_TRACE_CORRELATION_RUN",
+  "workload": {
+    "commandSurface": "kast symbol find",
+    "concurrency": 1,
+    "inputSha256": "fd6dd0fd5320d7ba300db7df7a95cddb68eb379713a3ee74ffd8302fec398c72",
+    "invocationCount": 1,
+    "operation": "workspace-symbol-search",
+    "type": "AUDIT_WORKLOAD_IDENTITY"
+  }
+}

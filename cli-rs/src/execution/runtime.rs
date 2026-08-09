@@ -28,6 +28,8 @@ include!("runtime/backend/sidecar_host.rs");
 include!("runtime/backend/workspace_admission.rs");
 include!("runtime/backend/workspace.rs");
 include!("runtime/control/lifecycle.rs");
+#[path = "runtime/wire/trace_correlation.rs"]
+mod trace_correlation;
 include!("runtime/wire/rpc.rs");
 include!("runtime/control/inspect.rs");
 include!("runtime/backend/descriptors.rs");
