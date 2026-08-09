@@ -107,7 +107,7 @@ fn every_required_public_projection_is_checked_in_and_registry_bound() {
     }
 
     for path in [
-        repository_root.join("docs/reference/cli.md"),
+        repository_root.join("docs/public/reference/cli.md"),
         manifest_dir.join("protocol/source/public-runbook.md"),
         manifest_dir.join("resources/kast/SKILL.md"),
         manifest_dir.join("protocol/completions/_kast"),
@@ -122,6 +122,37 @@ fn every_required_public_projection_is_checked_in_and_registry_bound() {
             text.contains("Generated from the typed public operation registry"),
             "{} is not registry-bound",
             path.display()
+        );
+    }
+
+    assert!(
+        !repository_root.join("docs/reference/cli.md").exists(),
+        "the generated CLI reference must have one public-site path"
+    );
+    let cli_reference = std::fs::read_to_string(
+        repository_root.join("docs/public/reference/cli.md"),
+    )
+    .expect("generated public CLI reference");
+    for private_contract_term in [
+        "<SELECTOR>",
+        "selectorHandle",
+        "pageToken",
+        "symbol/references",
+        "mutation/submit",
+    ] {
+        assert!(
+            !cli_reference.contains(private_contract_term),
+            "public CLI reference retained private contract term {private_contract_term}"
+        );
+    }
+    for executable_cli in [
+        "kast relation references --selector",
+        "kast change apply --plan-id",
+        "kast workspace externalize --failure-id",
+    ] {
+        assert!(
+            cli_reference.contains(executable_cli),
+            "public CLI reference omitted executable contract {executable_cli}"
         );
     }
 
@@ -275,10 +306,14 @@ fn current_public_artifacts_contain_no_retired_routes_or_aliases() {
     let repository_root = manifest_dir.parent().expect("repository root");
     let artifacts = [
         repository_root.join("README.md"),
-        repository_root.join("docs/reference/cli.md"),
-        repository_root.join("docs/how-to/explore-kotlin-code.md"),
-        repository_root.join("docs/how-to/plan-safe-edits.md"),
-        repository_root.join("docs/tutorials/first-compiler-backed-task.md"),
+        repository_root.join("docs/public/reference/cli.md"),
+        repository_root.join("docs/public/index.md"),
+        repository_root.join("docs/public/concepts/evidence-boundaries.md"),
+        repository_root.join("docs/public/questions/contract-change.md"),
+        repository_root.join("docs/public/questions/dependents.md"),
+        repository_root.join("docs/public/questions/resolve-declaration.md"),
+        repository_root.join("docs/public/questions/value-flow.md"),
+        repository_root.join("docs/public/questions/verify-coverage.md"),
         repository_root.join("docs/internal/indexer/flows/load-and-bootstrap.md"),
         repository_root.join("docs/internal/indexer/architecture-decisions.md"),
         manifest_dir.join("resources/kast/SKILL.md"),

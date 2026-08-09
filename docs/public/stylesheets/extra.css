@@ -20,7 +20,10 @@
   word-break: normal;
 }
 
-kast-view {
-  display: block;
-  margin-block: 1.5rem 2rem;
+.md-typeset .evidence-contrast > ul {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.md-typeset .evidence-contrast > ul > li:last-child {
+  border-color: var(--md-accent-fg-color);
 }

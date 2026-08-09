@@ -1,0 +1,41 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Kast",
+  "description": "Compiler-grounded answers to Kotlin repository questions.",
+  "colors": {
+    "primary": "#536DFE"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Start",
+        "pages": [
+          "index"
+        ]
+      },
+      {
+        "group": "Repository questions",
+        "pages": [
+          "questions/resolve-declaration",
+          "questions/dependents",
+          "questions/value-flow",
+          "questions/contract-change",
+          "questions/verify-coverage"
+        ]
+      },
+      {
+        "group": "Trust the evidence",
+        "pages": [
+          "concepts/evidence-boundaries"
+        ]
+      },
+      {
+        "group": "CLI contract",
+        "pages": [
+          "reference/cli"
+        ]
+      }
+    ]
+  }
+}
