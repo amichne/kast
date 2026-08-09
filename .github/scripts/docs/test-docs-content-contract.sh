@@ -8,6 +8,7 @@ die() {
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 docs_root="${repo_root}/docs"
+public_root="${docs_root}/public"
 readme="${repo_root}/README.md"
 
 require_contains() {
@@ -23,44 +24,77 @@ require_present() {
 }
 
 require_not_contains() {
-  ! grep -R -Fq --exclude-dir=internal --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
+  ! grep -R -Fq --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
 }
 
 require_not_contains_file() {
   ! grep -Fq -- "$2" "$1" || die "found '$2' in $1"
 }
 
-require_not_contains_any_docs() {
-  ! grep -R -Fq --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
-}
+[[ -d "$public_root" ]] || die "public documentation root is missing: $public_root"
 
 expected_pages=(
-  "explanation/architecture.md"
-  "explanation/compiler-evidence.md"
-  "explanation/repository-intelligence.md"
-  "how-to/explore-kotlin-code.md"
-  "how-to/install-or-update.md"
-  "how-to/maintain-repository-intelligence.md"
-  "how-to/plan-safe-edits.md"
-  "how-to/troubleshoot.md"
+  "concepts/evidence-boundaries.md"
   "index.md"
-  "reference/cli.md"
-  "reference/codex-plugin.md"
-  "tutorials/first-compiler-backed-task.md"
+  "questions/contract-change.md"
+  "questions/dependents.md"
+  "questions/resolve-declaration.md"
+  "questions/value-flow.md"
+  "questions/verify-coverage.md"
+  "reference/semantic-operations.md"
 )
-actual_pages="$(find "$docs_root" -path "${docs_root}/internal" -prune -o -type f -name '*.md' -print | sed "s#${docs_root}/##" | sort)"
+actual_pages="$(find "$public_root" -type f -name '*.md' -print | sed "s#${public_root}/##" | sort)"
 expected_page_lines="$(printf '%s\n' "${expected_pages[@]}" | sort)"
 [[ "$actual_pages" == "$expected_page_lines" ]] || {
   printf 'expected pages:\n%s\nactual pages:\n%s\n' "$expected_page_lines" "$actual_pages" >&2
-  die "public Markdown set differs from the Codex workstation journey"
+  die "public Markdown set differs from the problem-led documentation surface"
 }
 
-require_absent "${docs_root}/privacy.md"
-require_absent "${docs_root}/terms.md"
-require_absent "${docs_root}/install"
-require_absent "${docs_root}/use"
-require_absent "${docs_root}/design"
-require_absent "${docs_root}/assets/demo"
+for obsolete in \
+  index.md tutorials how-to reference stylesheets questions concepts; do
+  require_absent "${docs_root}/${obsolete}"
+done
+require_absent "${docs_root}/explanation/architecture.md"
+require_absent "${docs_root}/explanation/repository-intelligence.md"
+compiler_evidence_compat="${docs_root}/explanation/compiler-evidence.md"
+[[ -L "$compiler_evidence_compat" ]] || die "compiler-evidence compatibility path is not a symlink"
+[[ "$(readlink "$compiler_evidence_compat")" == "../public/concepts/evidence-boundaries.md" ]] || \
+  die "compiler-evidence compatibility path targets the wrong document"
+
+home="${public_root}/index.md"
+for question in \
+  "What declaration does this actually refer to?" \
+  "What depends on this API?" \
+  "Where can this value flow?" \
+  "What must change if this contract changes?" \
+  "Did this change reach every semantic dependency?"; do
+  require_contains "$home" "$question"
+done
+require_contains "$home" "Text can suggest"
+require_contains "$home" "Compiler evidence can establish"
+
+require_contains "${public_root}/questions/resolve-declaration.md" "exact compiler identity"
+require_contains "${public_root}/questions/resolve-declaration.md" "ambiguous"
+require_contains "${public_root}/questions/dependents.md" "relationship coverage"
+require_contains "${public_root}/questions/value-flow.md" "does not prove runtime value flow"
+require_contains "${public_root}/questions/contract-change.md" "bounded impact"
+require_contains "${public_root}/questions/verify-coverage.md" "complete eligible coverage"
+
+boundaries="${public_root}/concepts/evidence-boundaries.md"
+for boundary in "complete evidence" "qualified evidence" "rejected request"; do
+  require_contains "$boundaries" "$boundary"
+done
+
+generated_reference="${public_root}/reference/semantic-operations.md"
+require_contains "$generated_reference" "> Generated file. Do not edit this page directly."
+require_contains "$generated_reference" "cli-rs/protocol/source/commands.json"
+require_contains "$generated_reference" "Response type"
+"${repo_root}/.github/scripts/docs/generate-cli-reference.py" --check
+
+for generic_agent_instruction in \
+  "Ask your agent" "Start a Codex task" "Use this prompt" "Prompt:"; do
+  require_not_contains "$public_root" "$generic_agent_instruction"
+done
 
 installer='/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"'
 require_contains "$readme" "$installer"
@@ -68,89 +102,16 @@ require_contains "$readme" 'After installation, `kast` is the agent interface'
 require_contains "$readme" "libexec/kastctl"
 require_contains "$readme" "prior active release usable"
 require_contains "$readme" "--harness none"
-require_contains "${docs_root}/how-to/install-or-update.md" "$installer"
-require_contains "${docs_root}/how-to/install-or-update.md" "./gradlew refreshDevelopmentMachine"
-require_contains "${docs_root}/how-to/install-or-update.md" "current/bin/kast"
-require_contains "${docs_root}/how-to/install-or-update.md" "current/libexec/kastctl"
-require_contains "${docs_root}/how-to/install-or-update.md" "./install.sh --force"
-require_contains "${docs_root}/how-to/install-or-update.md" "--harness codex"
-require_contains "${docs_root}/how-to/install-or-update.md" "No remote marketplace checkout is required"
-require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "GradleModelSettlementOutcome"
-require_contains "${docs_root}/how-to/explore-kotlin-code.md" "complete reported coverage"
-require_contains "${docs_root}/how-to/plan-safe-edits.md" "one exact compiler identity"
-for command in workspace file symbol relation graph diagnostic change; do
-  require_contains "${docs_root}/reference/cli.md" "\`kast ${command}"
-done
-public_mutation_docs=(
-  "${docs_root}/how-to/plan-safe-edits.md"
-  "${docs_root}/reference/cli.md"
-  "${repo_root}/cli-rs/resources/kast/SKILL.md"
-)
-for public_mutation_doc in "${public_mutation_docs[@]}"; do
-  require_not_contains_file "$public_mutation_doc" "kastctl agent lease"
-  require_not_contains_file "$public_mutation_doc" "--lease-id"
-done
-for public_mutation_command in \
-  'kast change plan rename --selector <SELECTOR> --name' \
-  'kast change apply --plan-id <PLAN_ID>' \
-  'kast change recover --recovery-id <RECOVERY_ID>'; do
-  require_contains "${repo_root}/cli-rs/resources/kast/SKILL.md" \
-    "$public_mutation_command"
-  require_contains "${docs_root}/how-to/plan-safe-edits.md" \
-    "$public_mutation_command"
-  require_contains "${docs_root}/reference/cli.md" \
-    "$public_mutation_command"
-done
-require_contains "${docs_root}/reference/cli.md" '`kast` is the only public interface'
-require_contains "${docs_root}/reference/cli.md" "Compact TOON"
-require_contains "${docs_root}/reference/cli.md" '`libexec/kastctl` multicall entrypoint'
-require_contains "${docs_root}/reference/cli.md" '`UNKNOWN` graph boundary'
-require_contains "${docs_root}/reference/codex-plugin.md" "Codex, Claude,"
-require_contains "${docs_root}/reference/codex-plugin.md" "installer never"
-require_contains "${docs_root}/reference/codex-plugin.md" '`kast@kast`'
-require_contains "${docs_root}/reference/codex-plugin.md" "kast-codex-<tag>.tar"
-require_contains "${docs_root}/reference/codex-plugin.md" \
-  "CLI, provider plugin, and skill"
-require_contains "${docs_root}/reference/codex-plugin.md" \
-  "version or digest mismatch rejects harness activation"
-require_contains "${docs_root}/reference/codex-plugin.md" \
-  "Direct CLI use does not require agent harness resources"
-require_contains "${docs_root}/explanation/architecture.md" "exact workspace"
-require_contains "${docs_root}/explanation/compiler-evidence.md" "scope fingerprint"
-require_contains "${docs_root}/explanation/repository-intelligence.md" "Incomplete positive answers fail closed"
-require_contains "${docs_root}/explanation/repository-intelligence.md" "Precomputed labels are retrieval-only"
-require_contains "${docs_root}/how-to/maintain-repository-intelligence.md" "Recover compiler graph evidence"
-require_contains "${docs_root}/how-to/maintain-repository-intelligence.md" "exact source identity"
-require_contains "${docs_root}/how-to/troubleshoot.md" 'Do not edit `current`'
 require_contains "${repo_root}/requirements-docs.txt" "zensical==0.0.51"
+require_contains "${repo_root}/zensical.toml" 'docs_dir = "docs/public"'
 require_contains "${repo_root}/zensical.toml" 'extra_css = ["stylesheets/extra.css"]'
 require_contains "${repo_root}/zensical.toml" "[project.validation]"
 require_contains "${repo_root}/zensical.toml" "invalid_links = true"
 require_contains "${repo_root}/zensical.toml" "invalid_link_anchors = true"
-require_contains "${docs_root}/stylesheets/extra.css" ".md-typeset__table"
-require_contains "${docs_root}/stylesheets/extra.css" "overflow-x: auto"
-require_contains "${docs_root}/stylesheets/extra.css" "min-width: 40rem"
-for reader_job in \
-  "Learn by doing" "Complete a task" "Look up facts" "Understand why"; do
-  require_contains "${docs_root}/index.md" "$reader_job"
-done
-for page in "${docs_root}"/how-to/*.md; do
-  require_contains "$page" "# How to "
-done
-require_contains "${docs_root}/reference/cli.md" \
-  '`kast graph summary --scope symbol`'
-require_contains "${docs_root}/reference/cli.md" \
-  "Diagnostics do not block reference indexing"
-require_contains "${docs_root}/explanation/architecture.md" \
-  '<kast-view view-id="system-landscape"'
-require_contains "${docs_root}/explanation/compiler-evidence.md" \
-  '<kast-view view-id="compiler-evidence"'
-require_contains "${docs_root}/explanation/compiler-evidence.md" \
-  "Kotlin Analysis API (AA)"
-require_contains "${docs_root}/explanation/compiler-evidence.md" \
-  "Front-end Intermediate Representation (FIR)"
-require_contains "${docs_root}/explanation/repository-intelligence.md" \
-  '<kast-view view-id="runtime-components"'
+require_contains "${public_root}/stylesheets/extra.css" ".md-typeset__table"
+require_contains "${public_root}/stylesheets/extra.css" "overflow-x: auto"
+require_contains "${public_root}/stylesheets/extra.css" ".evidence-contrast"
+
 hidden_system_map="${docs_root}/internal/system-flow.md"
 require_contains "$hidden_system_map" "type: Runtime Flow"
 require_contains "$hidden_system_map" "# How Kast works"
@@ -201,38 +162,17 @@ require_absent "${repo_root}/.agents/adr/0032-macos-idea-golden-pathway.md"
 require_absent "${docs_root}/internal/idea-integration"
 require_present "${docs_root}/internal/indexer/index.md"
 for record in "${repo_root}"/.agents/adr/[0-9]*.md; do
-  require_contains "$hidden_system_map" \
-    "path: .agents/adr/$(basename "$record")"
+  require_contains "$hidden_system_map" "path: .agents/adr/$(basename "$record")"
 done
 
-require_not_contains "$docs_root" "codex plugin marketplace add"
-require_not_contains "$docs_root" "amichne/kast-marketplace"
-require_not_contains "$docs_root" "kagent"
-require_not_contains "$docs_root" "Homebrew"
-require_not_contains "$docs_root" "kast repair"
-require_not_contains "$docs_root" "kast machine"
-require_not_contains "$docs_root" "raw/semantic-graph"
-require_not_contains "$docs_root" "kast ready --for kotlin"
-require_not_contains "$docs_root" "semanticGraph.state"
-retired_selector='--back''end idea'
-retired_build_task='buildIdea''Plugin'
-for retired_idea_surface in \
-  "IDEA plugin" "$retired_selector" "$retired_build_task" "background-open"; do
-  require_not_contains "$docs_root" "$retired_idea_surface"
-  require_not_contains_file "$readme" "$retired_idea_surface"
-done
-for retired_public_command in \
-  "kast agent" "kast developer" "kast setup" "kast status" "kast start" \
-  "kast ready" "kast rpc" "kast demo"; do
-  require_not_contains_any_docs "$docs_root" "$retired_public_command"
-  require_not_contains_file "$readme" "$retired_public_command"
-done
-for retired_resource in \
-  "amichne/kast-marketplace" "codex plugin marketplace add" "kagent"; do
-  require_not_contains_file "$readme" "$retired_resource"
+for retired_public_term in \
+  "codex plugin marketplace add" "amichne/kast-marketplace" "kagent" \
+  "Homebrew" "kast repair" "kast machine" "raw/semantic-graph" \
+  "kast ready --for kotlin" "semanticGraph.state"; do
+  require_not_contains "$public_root" "$retired_public_term"
 done
 
-python3 - "$docs_root" "${expected_pages[@]}" <<'PY'
+python3 - "$public_root" "${expected_pages[@]}" <<'PY'
 import sys
 from pathlib import Path
 
@@ -248,7 +188,10 @@ for relative in sys.argv[2:]:
         frontmatter = text.split("---\n", 2)[1]
     except IndexError:
         raise SystemExit(f"{relative}: unterminated frontmatter")
-    if not any(line.startswith("type:") and line.removeprefix("type:").strip() for line in frontmatter.splitlines()):
+    if not any(
+        line.startswith("type:") and line.removeprefix("type:").strip()
+        for line in frontmatter.splitlines()
+    ):
         raise SystemExit(f"{relative}: missing non-empty OKF type")
     if "code_sources:\n" not in frontmatter:
         raise SystemExit(f"{relative}: missing code_sources")
