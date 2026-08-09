@@ -1,5 +1,11 @@
 use super::*;
 
+pub(super) enum RuntimeTerminalBehavior {
+    RetainArtifacts,
+    RemoveOwnedArtifacts,
+    LeaveIncompleteCleanup,
+}
+
 pub(super) struct RuntimeServiceFixture {
     _temp: tempfile::TempDir,
     home: PathBuf,
@@ -15,14 +21,18 @@ pub(super) struct RuntimeServiceFixture {
 
 impl RuntimeServiceFixture {
     pub(super) fn new() -> Self {
-        Self::with_persisted_descriptor_directory(false)
+        Self::with_options(false, RuntimeTerminalBehavior::RetainArtifacts)
     }
 
     pub(super) fn new_with_persisted_descriptor_directory() -> Self {
-        Self::with_persisted_descriptor_directory(true)
+        Self::with_options(true, RuntimeTerminalBehavior::RetainArtifacts)
     }
 
-    fn with_persisted_descriptor_directory(use_alternate_directory: bool) -> Self {
+    pub(super) fn new_with_terminal_behavior(terminal: RuntimeTerminalBehavior) -> Self {
+        Self::with_options(false, terminal)
+    }
+
+    fn with_options(use_alternate_directory: bool, terminal: RuntimeTerminalBehavior) -> Self {
         let temp = tempfile::tempdir().expect("runtime service fixture");
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
@@ -34,15 +44,6 @@ impl RuntimeServiceFixture {
         let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
         let listener = UnixListener::bind(&socket_path).expect("unservable endpoint");
         let runtime_instance_id = uuid::Uuid::new_v4();
-        let runtime_command =
-            registered_test_command(&workspace, &socket_path, runtime_instance_id);
-        let runtime = Command::new(&runtime_command[0])
-            .args(&runtime_command[1..])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-            .expect("registered process");
         let install_root = default_install_root(&home);
         let runtime_dir = install_root.join("state/runtime");
         let descriptor_directory = if use_alternate_directory {
@@ -56,20 +57,37 @@ impl RuntimeServiceFixture {
             .join("services")
             .join(&workspace_key)
             .join(runtime_instance_id.to_string());
+        let runtime_command = registered_test_command(
+            &workspace,
+            &socket_path,
+            runtime_instance_id,
+            &terminal,
+            &descriptor_registry,
+            &registration,
+        );
+        let runtime = Command::new(&runtime_command[0])
+            .args(&runtime_command[1..])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("registered process");
         let manager_root = temp.path().join("test-manager");
         std::fs::create_dir_all(&manager_root).expect("manager root");
         let manager_state = manager_root.join(format!("{runtime_instance_id}.json"));
         make_private_directory(&registration);
         let registration = std::fs::canonicalize(registration).expect("canonical registration");
-        write_registration(
-            &registration,
-            runtime_instance_id,
-            &workspace,
-            &descriptor_directory,
-            &socket_path,
-            &manager_state,
-            temp.path(),
-        );
+        write_registration(RegistrationFixtureInput {
+            registration: &registration,
+            id: runtime_instance_id,
+            workspace: &workspace,
+            descriptor_directory: &descriptor_directory,
+            socket_path: &socket_path,
+            manager_state: &manager_state,
+            temp: temp.path(),
+            terminal: &terminal,
+            descriptor_registry: &descriptor_registry,
+        });
         let receipt_bytes = std::fs::read(registration.join("receipt.json")).expect("receipt");
         write_private(
             &registration
@@ -128,16 +146,17 @@ impl RuntimeServiceFixture {
         make_private_directory(&registration);
         let registration = std::fs::canonicalize(registration).expect("canonical registration");
         let runtime_dir = default_install_root(&self.home).join("state/runtime");
-        let manager_state = self.manager_root.join(format!("{id}.json"));
-        write_registration(
-            &registration,
+        write_registration(RegistrationFixtureInput {
+            registration: &registration,
             id,
-            &self.workspace,
-            &runtime_dir.join("daemons"),
-            &self.socket_path,
-            &manager_state,
-            self._temp.path(),
-        );
+            workspace: &self.workspace,
+            descriptor_directory: &runtime_dir.join("daemons"),
+            socket_path: &self.socket_path,
+            manager_state: &self.manager_root.join(format!("{id}.json")),
+            temp: self._temp.path(),
+            terminal: &RuntimeTerminalBehavior::RetainArtifacts,
+            descriptor_registry: &runtime_dir.join("daemons/daemons.json"),
+        });
         registration
     }
 
@@ -257,18 +276,21 @@ impl Drop for RuntimeServiceFixture {
     }
 }
 
-fn write_registration(
-    registration: &Path,
+struct RegistrationFixtureInput<'a> {
+    registration: &'a Path,
     id: uuid::Uuid,
-    workspace: &Path,
-    descriptor_directory: &Path,
-    socket_path: &Path,
-    manager_state: &Path,
-    temp: &Path,
-) {
-    let runtime_config = registration.join("runtime-config.json");
+    workspace: &'a Path,
+    descriptor_directory: &'a Path,
+    socket_path: &'a Path,
+    manager_state: &'a Path,
+    temp: &'a Path,
+    terminal: &'a RuntimeTerminalBehavior,
+    descriptor_registry: &'a Path,
+}
+fn write_registration(input: RegistrationFixtureInput<'_>) {
+    let runtime_config = input.registration.join("runtime-config.json");
     write_private(&runtime_config, b"{}");
-    let launcher = temp.join("test-kastctl");
+    let launcher = input.temp.join("test-kastctl");
     if !launcher.exists() {
         std::fs::write(&launcher, "#!/bin/sh\nexit 0\n").expect("test launcher");
         std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o700))
@@ -277,16 +299,23 @@ fn write_registration(
     let launcher = std::fs::canonicalize(launcher).expect("canonical test launcher");
     let launch = serde_json::json!({
         "schemaVersion": 1,
-        "workspaceRoot": workspace.display().to_string(),
-        "workspaceKey": sha256(workspace.to_string_lossy().as_bytes()),
-        "runtimeInstanceId": id,
+        "workspaceRoot": input.workspace.display().to_string(),
+        "workspaceKey": sha256(input.workspace.to_string_lossy().as_bytes()),
+        "runtimeInstanceId": input.id,
         "ownerUid": u64::from(unsafe { libc::geteuid() }),
-        "workingDirectory": workspace.display().to_string(),
-        "command": registered_test_command(workspace, socket_path, id),
+        "workingDirectory": input.workspace.display().to_string(),
+        "command": registered_test_command(
+            input.workspace,
+            input.socket_path,
+            input.id,
+            input.terminal,
+            input.descriptor_registry,
+            input.registration,
+        ),
         "environment": {},
-        "logFile": temp.join("runtime.log").display().to_string(),
-        "descriptorDirectory": descriptor_directory.display().to_string(),
-        "socketPath": socket_path.display().to_string(),
+        "logFile": input.temp.join("runtime.log").display().to_string(),
+        "descriptorDirectory": input.descriptor_directory.display().to_string(),
+        "socketPath": input.socket_path.display().to_string(),
         "launcherPath": launcher.display().to_string(),
         "launcherSha256": sha256(&std::fs::read(&launcher).expect("launcher bytes")),
         "runtimeConfigPath": runtime_config.display().to_string(),
@@ -294,9 +323,9 @@ fn write_registration(
     });
     let launch_bytes = serde_json::to_vec_pretty(&launch).expect("launch JSON");
     let launch_sha256 = sha256(&launch_bytes);
-    let launch_path = registration.join("launch.json");
+    let launch_path = input.registration.join("launch.json");
     write_private(&launch_path, &launch_bytes);
-    let definition_path = registration.join("service.test.json");
+    let definition_path = input.registration.join("service.test.json");
     let definition = serde_json::to_vec_pretty(&serde_json::json!({
         "launcher": launcher,
         "registration": launch_path,
@@ -306,20 +335,20 @@ fn write_registration(
     write_private(&definition_path, &definition);
     let receipt = serde_json::json!({
         "schemaVersion": 1,
-        "workspaceRoot": workspace.display().to_string(),
-        "workspaceKey": sha256(workspace.to_string_lossy().as_bytes()),
-        "runtimeInstanceId": id,
+        "workspaceRoot": input.workspace.display().to_string(),
+        "workspaceKey": sha256(input.workspace.to_string_lossy().as_bytes()),
+        "runtimeInstanceId": input.id,
         "launchPath": launch_path.display().to_string(),
         "launchSha256": launch_sha256,
         "definitionSha256": sha256(&definition),
         "manager": {
             "kind": "TEST",
-            "state_path": manager_state.display().to_string(),
+            "state_path": input.manager_state.display().to_string(),
             "definition_path": definition_path.display().to_string()
         }
     });
     write_private(
-        &registration.join("receipt.json"),
+        &input.registration.join("receipt.json"),
         &serde_json::to_vec_pretty(&receipt).expect("receipt JSON"),
     );
 }
@@ -328,15 +357,28 @@ fn registered_test_command(
     workspace: &Path,
     socket_path: &Path,
     runtime_instance_id: uuid::Uuid,
+    terminal: &RuntimeTerminalBehavior,
+    descriptor_registry: &Path,
+    registration: &Path,
 ) -> Vec<String> {
+    let script = match terminal {
+        RuntimeTerminalBehavior::RetainArtifacts => "trap 'exit 0' TERM; read fixture_value",
+        RuntimeTerminalBehavior::RemoveOwnedArtifacts => {
+            "trap 'rm -f \"$4\" \"$5\";exit' TERM;read x"
+        }
+        RuntimeTerminalBehavior::LeaveIncompleteCleanup => "trap 'touch \"$6/x\";exit' TERM;read x",
+    };
     vec![
         "/bin/sh".to_string(),
         "-c".to_string(),
-        "trap 'exit 0' TERM; read fixture_value".to_string(),
+        script.to_string(),
         "kast-indexer".to_string(),
         format!("--workspace-root={}", workspace.display()),
         format!("--socket-path={}", socket_path.display()),
         format!("--runtime-instance-id={runtime_instance_id}"),
+        descriptor_registry.display().to_string(),
+        socket_path.display().to_string(),
+        registration.display().to_string(),
     ]
 }
 
