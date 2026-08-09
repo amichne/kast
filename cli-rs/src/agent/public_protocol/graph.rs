@@ -1,5 +1,6 @@
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::Serialize;
+use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 use std::num::NonZeroU64;
 use std::path::Path;
@@ -8,6 +9,7 @@ const GRAPH_NODE_SELECTOR_VERSION: &str = "kgns1";
 const GRAPH_NODES_PAGE_TOKEN_VERSION: &str = "kgn3";
 const MAX_GRAPH_NODE_SELECTOR_LENGTH: usize = 4_096;
 const MAX_GRAPH_NODES_PAGE_TOKEN_LENGTH: usize = 128;
+const PUBLIC_GRAPH_NODE_PAGE_LIMIT: usize = 64;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct GraphNodesPageToken {
@@ -71,6 +73,122 @@ impl GraphNodesPageToken {
             "{GRAPH_NODES_PAGE_TOKEN_VERSION}.{}.{}.{}",
             self.workspace_fingerprint, self.generation, self.after_id
         )
+    }
+
+    pub(crate) fn public_limit() -> u16 {
+        PUBLIC_GRAPH_NODE_PAGE_LIMIT as u16
+    }
+
+    pub(crate) fn project_page(
+        workspace_root: &Path,
+        expected_generation: u64,
+        prior: Option<&Self>,
+        mut fields: Map<String, Value>,
+    ) -> Result<ProjectedGraphNodesPage, GraphNodesPageProjectionFailure> {
+        if fields.get("generation").and_then(Value::as_u64) != Some(expected_generation) {
+            return Err(GraphNodesPageProjectionFailure::Generation);
+        }
+        let expected_after_id = prior.map_or(0, Self::after_id);
+        if fields.remove("afterId").and_then(|value| value.as_u64()) != Some(expected_after_id) {
+            return Err(GraphNodesPageProjectionFailure::PriorIdentity);
+        }
+        let previously_returned = fields
+            .remove("previouslyReturned")
+            .and_then(|value| value.as_u64())
+            .ok_or(GraphNodesPageProjectionFailure::Cardinality)?;
+        let nodes = fields
+            .get_mut("nodes")
+            .and_then(Value::as_array_mut)
+            .filter(|nodes| nodes.len() <= PUBLIC_GRAPH_NODE_PAGE_LIMIT)
+            .ok_or(GraphNodesPageProjectionFailure::Nodes)?;
+        let returned =
+            u64::try_from(nodes.len()).map_err(|_| GraphNodesPageProjectionFailure::Nodes)?;
+        for node in nodes {
+            let node = node
+                .as_object_mut()
+                .ok_or(GraphNodesPageProjectionFailure::Nodes)?;
+            let node_id = node
+                .get("id")
+                .and_then(Value::as_u64)
+                .ok_or(GraphNodesPageProjectionFailure::Nodes)?;
+            let stable_key = node
+                .get("stableKey")
+                .and_then(Value::as_str)
+                .ok_or(GraphNodesPageProjectionFailure::Nodes)?;
+            let selector = super::issue_graph_node_selector(
+                workspace_root,
+                expected_generation,
+                node_id,
+                stable_key,
+            )
+            .map_err(|_| GraphNodesPageProjectionFailure::Nodes)?;
+            node.insert(
+                "nodeSelector".to_string(),
+                Value::String(selector.as_str().to_string()),
+            );
+        }
+        let cumulative = previously_returned
+            .checked_add(returned)
+            .ok_or(GraphNodesPageProjectionFailure::Cardinality)?;
+        let next_after_id = fields
+            .remove("nextAfterId")
+            .ok_or(GraphNodesPageProjectionFailure::Continuation)?;
+        let continuation = if next_after_id.is_null() {
+            None
+        } else {
+            let after_id = next_after_id
+                .as_u64()
+                .ok_or(GraphNodesPageProjectionFailure::Continuation)?;
+            Some(
+                Self::issue(
+                    graph_workspace_fingerprint(workspace_root),
+                    expected_generation,
+                    after_id,
+                )
+                .ok_or(GraphNodesPageProjectionFailure::Continuation)?
+                .canonical(),
+            )
+        };
+        let cardinality = match continuation {
+            Some(_) => json!({"type": "known-minimum", "count": cumulative.checked_add(1)
+                .ok_or(GraphNodesPageProjectionFailure::Cardinality)?}),
+            None => json!({"type": "exact", "count": cumulative}),
+        };
+        let mut page = json!({"cardinality": cardinality, "returned": returned});
+        if let Some(continuation) = continuation {
+            page["continuation"] = Value::String(continuation);
+        }
+        fields.insert("page".to_string(), page);
+        Ok(ProjectedGraphNodesPage(fields))
+    }
+}
+
+pub(crate) struct ProjectedGraphNodesPage(Map<String, Value>);
+
+impl ProjectedGraphNodesPage {
+    pub(crate) fn into_fields(self) -> Map<String, Value> {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum GraphNodesPageProjectionFailure {
+    Generation,
+    PriorIdentity,
+    Cardinality,
+    Nodes,
+    Continuation,
+}
+
+impl GraphNodesPageProjectionFailure {
+    pub(crate) fn message(self) -> &'static str {
+        match self {
+            Self::Generation => "The graph node page returned the wrong generation.",
+            Self::PriorIdentity => "The graph node page returned the wrong prior node identity.",
+            Self::Cardinality => "The graph node page returned invalid cardinality evidence.",
+            Self::Nodes => "The graph node page exceeded its public record bound.",
+            Self::Continuation => "The graph node page returned invalid continuation evidence.",
+        }
     }
 }
 

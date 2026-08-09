@@ -155,131 +155,19 @@ fn print_native_graph(
                     "The native graph node page returned the wrong generation.",
                 )
             })?;
-        let expected_after_id = page
-            .as_ref()
-            .map_or(0, agent::public_protocol::GraphNodesPageToken::after_id);
-        fields
-            .remove("afterId")
-            .and_then(|value| value.as_u64())
-            .filter(|after_id| *after_id == expected_after_id)
-            .ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The native graph node page returned the wrong prior node identity.",
-                )
-            })?;
-        let previously_returned = fields
-            .remove("previouslyReturned")
-            .and_then(|value| value.as_u64())
-            .ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The native graph node page returned no prior cardinality evidence.",
-                )
-            })?;
-        let nodes = fields
-            .get_mut("nodes")
-            .and_then(Value::as_array_mut)
-            .ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The native graph node page returned no node collection.",
-                )
-            })?;
-        for node in nodes.iter_mut() {
-            replace_public_path(&workspace_root, node, "path", "path")?;
-            let node_fields = node.as_object_mut().ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The native graph node page returned a non-object node.",
-                )
-            })?;
-            let node_id = node_fields.get("id").and_then(Value::as_u64).ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The native graph node page returned a node without a numeric identity.",
-                )
-            })?;
-            let stable_key = node_fields
-                .get("stableKey")
-                .and_then(Value::as_str)
-                .ok_or_else(|| {
-                    CliError::new(
-                        "KAST_INVALID_AGENT_RESULT",
-                        "The native graph node page returned a node without a stable key.",
-                    )
-                })?;
-            let selector = agent::public_protocol::issue_graph_node_selector(
-                &workspace_root,
-                generation,
-                node_id,
-                stable_key,
-            )
-            .map_err(|failure| CliError::new(failure.code(), failure.message()))?;
-            node_fields.insert(
-                "nodeSelector".to_string(),
-                Value::String(selector.as_str().to_string()),
-            );
+        if let Some(nodes) = fields.get_mut("nodes").and_then(Value::as_array_mut) {
+            for node in nodes {
+                replace_public_path(&workspace_root, node, "path", "path")?;
+            }
         }
-        let returned = u64::try_from(nodes.len()).map_err(|_| {
-            CliError::new(
-                "KAST_INVALID_AGENT_RESULT",
-                "The graph node page exceeded public cardinality.",
-            )
-        })?;
-        let cumulative_returned = previously_returned.checked_add(returned).ok_or_else(|| {
-            CliError::new(
-                "KAST_INVALID_AGENT_RESULT",
-                "The graph node continuation exceeded public cardinality.",
-            )
-        })?;
-        let next_after_id = fields.remove("nextAfterId").ok_or_else(|| {
-            CliError::new(
-                "KAST_INVALID_AGENT_RESULT",
-                "The native graph node page returned no continuation evidence.",
-            )
-        })?;
-        let truncated = !next_after_id.is_null();
-        let mut continuation = None;
-        if truncated {
-            let next_after_id = next_after_id.as_u64().ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The native graph node page returned an invalid continuation.",
-                )
-            })?;
-            let next_page = agent::public_protocol::GraphNodesPageToken::issue(
-                workspace_fingerprint,
-                admission.generation(),
-                next_after_id,
-            )
-            .ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The native graph node page returned a zero continuation.",
-                )
-            })?;
-            continuation = Some(next_page.canonical());
-        }
-        let cardinality = if truncated {
-            let known_minimum = cumulative_returned.checked_add(1).ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "The graph node page exceeded public cardinality.",
-                )
-            })?;
-            json!({"type": "known-minimum", "count": known_minimum})
-        } else {
-            json!({"type": "exact", "count": cumulative_returned})
-        };
-        let mut page = json!({
-            "cardinality": cardinality,
-            "returned": returned,
-        });
-        if let Some(continuation) = continuation {
-            page["continuation"] = Value::String(continuation);
-        }
-        fields.insert("page".to_string(), page);
+        *fields = agent::public_protocol::GraphNodesPageToken::project_page(
+            &workspace_root,
+            generation,
+            page.as_ref(),
+            std::mem::take(fields),
+        )
+        .map_err(|failure| CliError::new("KAST_INVALID_AGENT_RESULT", failure.message()))?
+        .into_fields();
     }
     if let Some(selected_node) = selected_node
         && fields.get("key").and_then(Value::as_str) != Some(selected_node.stable_key())
@@ -292,14 +180,18 @@ fn print_native_graph(
             ),
         ));
     }
-    let backend_type = fields.remove("type").and_then(|value| value.as_str().map(str::to_string));
+    let backend_type = fields
+        .remove("type")
+        .and_then(|value| value.as_str().map(str::to_string));
     if backend_type.as_deref() != Some(native_graph_result_type(operation)) {
         return Err(CliError::new(
             "KAST_INVALID_AGENT_RESULT",
             "The native graph operation returned the wrong result type.",
         ));
     }
-    if fields.remove("schemaVersion").and_then(|value| value.as_u64())
+    if fields
+        .remove("schemaVersion")
+        .and_then(|value| value.as_u64())
         != Some(u64::from(crate::SCHEMA_VERSION))
     {
         return Err(CliError::new(
@@ -312,27 +204,140 @@ fn print_native_graph(
     } else {
         agent::public_protocol::OperationStatus::Complete
     };
-    print_protocol(
-        agent::public_protocol::ProtocolEnvelope::projected(
-            public_operation,
-            status,
-            fields.clone(),
-        ),
+    BoundedGraphResponse::print(
+        public_operation,
+        status,
+        operation,
+        std::mem::take(fields),
         output_format,
     )
 }
 
-fn public_graph_operation(
+const MAX_PUBLIC_GRAPH_RESPONSE_BYTES: usize = 64 * 1_024;
+
+struct BoundedGraphResponse(agent::public_protocol::ProtocolEnvelope);
+
+impl BoundedGraphResponse {
+    fn print(
+        public_operation: agent::public_protocol::OperationId,
+        status: agent::public_protocol::OperationStatus,
+        operation: NativeGraphOperation,
+        mut fields: serde_json::Map<String, Value>,
+        output_format: OutputFormat,
+    ) -> Result<i32> {
+        summarize_graph_projection(operation, &mut fields)?;
+        let envelope =
+            agent::public_protocol::ProtocolEnvelope::projected(public_operation, status, fields);
+        let bytes = output::render_structured_output(&envelope, output_format)?.len();
+        if bytes > MAX_PUBLIC_GRAPH_RESPONSE_BYTES {
+            return Err(CliError::new(
+                "KAST_GRAPH_RESPONSE_BUDGET_EXCEEDED",
+                format!(
+                    "The graph response required {bytes} bytes; the public bound is {MAX_PUBLIC_GRAPH_RESPONSE_BYTES}."
+                ),
+            ));
+        }
+        let response = Self(envelope);
+        print_protocol(response.0, output_format)
+    }
+}
+
+fn summarize_graph_projection(
     operation: NativeGraphOperation,
-) -> agent::public_protocol::OperationId {
+    fields: &mut serde_json::Map<String, Value>,
+) -> Result<()> {
+    let summary = match operation {
+        NativeGraphOperation::Summary | NativeGraphOperation::Nodes => return Ok(()),
+        NativeGraphOperation::Neighbors => json!({
+            "type": "bounded-summary",
+            "outgoingCount": take_graph_array(fields, "outgoing")?.len(),
+            "incomingCount": take_graph_array(fields, "incoming")?.len(),
+        }),
+        NativeGraphOperation::Topology => {
+            let nodes = take_graph_array(fields, "nodes")?;
+            let components = take_graph_array(fields, "components")?;
+            let strongly_connected = take_graph_array(fields, "stronglyConnectedComponents")?;
+            let topological = take_graph_array(fields, "condensationTopologicalOrder")?;
+            if components.len() != nodes.len() || strongly_connected.len() != nodes.len() {
+                return Err(invalid_graph_projection("topology cardinalities disagreed"));
+            }
+            let component_count = distinct_graph_ids(&components)?;
+            let strongly_connected_count = distinct_graph_ids(&strongly_connected)?;
+            if distinct_graph_ids(&topological)? != strongly_connected_count {
+                return Err(invalid_graph_projection(
+                    "topological components were incomplete",
+                ));
+            }
+            json!({
+                "type": "bounded-summary",
+                "nodeCount": nodes.len(),
+                "componentCount": component_count,
+                "stronglyConnectedComponentCount": strongly_connected_count,
+            })
+        }
+        NativeGraphOperation::Communities => {
+            let nodes = take_graph_array(fields, "nodes")?;
+            let mut communities = BTreeSet::new();
+            for node in &nodes {
+                let fields = node
+                    .as_object()
+                    .ok_or_else(|| invalid_graph_projection("community node was not an object"))?;
+                if fields.get("key").and_then(Value::as_str).is_none() {
+                    return Err(invalid_graph_projection("community node omitted its key"));
+                }
+                communities.insert(fields.get("community").and_then(Value::as_u64).ok_or_else(
+                    || invalid_graph_projection("community node omitted its identity"),
+                )?);
+            }
+            json!({
+                "type": "bounded-summary",
+                "nodeCount": nodes.len(),
+                "communityCount": communities.len()
+            })
+        }
+        NativeGraphOperation::Refresh => {
+            return Err(invalid_graph_projection(
+                "refresh reached the graph read projection",
+            ));
+        }
+    };
+    fields.insert("summary".to_string(), summary);
+    Ok(())
+}
+
+fn take_graph_array(
+    fields: &mut serde_json::Map<String, Value>,
+    name: &'static str,
+) -> Result<Vec<Value>> {
+    fields
+        .remove(name)
+        .and_then(|value| value.as_array().cloned())
+        .ok_or_else(|| invalid_graph_projection("graph summary omitted a required collection"))
+}
+
+fn distinct_graph_ids(values: &[Value]) -> Result<usize> {
+    values
+        .iter()
+        .map(|value| {
+            value.as_u64().ok_or_else(|| {
+                invalid_graph_projection("graph summary contained a non-numeric identity")
+            })
+        })
+        .collect::<Result<BTreeSet<_>>>()
+        .map(|ids| ids.len())
+}
+
+fn invalid_graph_projection(message: &'static str) -> CliError {
+    CliError::new("KAST_INVALID_AGENT_RESULT", message)
+}
+
+fn public_graph_operation(operation: NativeGraphOperation) -> agent::public_protocol::OperationId {
     match operation {
         NativeGraphOperation::Summary => agent::public_protocol::OperationId::GraphSummary,
         NativeGraphOperation::Nodes => agent::public_protocol::OperationId::GraphNodes,
         NativeGraphOperation::Neighbors => agent::public_protocol::OperationId::GraphNeighbors,
         NativeGraphOperation::Topology => agent::public_protocol::OperationId::GraphTopology,
-        NativeGraphOperation::Communities => {
-            agent::public_protocol::OperationId::GraphCommunities
-        }
+        NativeGraphOperation::Communities => agent::public_protocol::OperationId::GraphCommunities,
         NativeGraphOperation::Refresh => agent::public_protocol::OperationId::WorkspaceRefresh,
     }
 }
@@ -370,7 +375,8 @@ fn native_graph_command(
         symbol,
         generation,
         after_id,
-        limit: (operation == NativeGraphOperation::Nodes).then_some(500),
+        limit: (operation == NativeGraphOperation::Nodes)
+            .then_some(agent::public_protocol::GraphNodesPageToken::public_limit()),
         resolution: None,
     })
 }

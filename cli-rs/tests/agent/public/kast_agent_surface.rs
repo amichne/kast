@@ -226,8 +226,8 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
     assert_eq!(first["operation"], "graph.nodes", "{first:#}");
     assert_eq!(first["status"], "complete", "{first:#}");
     assert_eq!(first["result"]["type"], "graph-nodes", "{first:#}");
-    assert_eq!(first["result"]["nodes"].as_array().map(Vec::len), Some(500));
-    assert_eq!(first["result"]["page"]["returned"], 500);
+    assert_eq!(first["result"]["nodes"].as_array().map(Vec::len), Some(64));
+    assert_eq!(first["result"]["page"]["returned"], 64);
     assert_eq!(
         first["result"]["page"]["cardinality"]["type"],
         "known-minimum"
@@ -295,18 +295,24 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
             .trim(),
     )
     .expect("second graph page TOON");
-    assert_eq!(second["result"]["nodes"].as_array().map(Vec::len), Some(1));
-    assert_eq!(second["result"]["nodes"][0]["id"], 501);
+    assert_eq!(second["result"]["nodes"].as_array().map(Vec::len), Some(64));
+    assert_eq!(second["result"]["nodes"][0]["id"], 65);
     assert!(
         second["result"]["nodes"][0]["nodeSelector"]
             .as_str()
             .is_some_and(|selector| selector.starts_with("kgns1."))
     );
-    assert_eq!(second["result"]["page"]["returned"], 1);
-    assert_eq!(second["result"]["page"]["cardinality"]["type"], "exact");
-    assert_eq!(second["result"]["page"]["cardinality"]["count"], 501);
+    assert_eq!(second["result"]["page"]["returned"], 64);
+    assert_eq!(
+        second["result"]["page"]["cardinality"]["type"],
+        "known-minimum"
+    );
+    assert_eq!(second["result"]["page"]["cardinality"]["count"], 129);
     assert!(
-        second["result"]["page"].get("continuation").is_none(),
+        second["result"]["page"]
+            .get("continuation")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|continuation| continuation.starts_with("kgn3.")),
         "{second:#}"
     );
 
