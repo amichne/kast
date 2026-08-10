@@ -1778,6 +1778,18 @@ def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, 
         ):
             if not isinstance(capsule.get(field), bool):
                 raise ReproError(f"evidence manifest capsule {field} must be a boolean")
+        escaped_paths = capsule.get("escapedPaths")
+        if not isinstance(escaped_paths, list) or not all(
+            isinstance(path, str) and bool(path)
+            for path in escaped_paths
+        ):
+            raise ReproError(
+                "evidence manifest capsule escapedPaths must be an array of path strings"
+            )
+        if capsule["installationContained"] is not (not escaped_paths):
+            raise ReproError(
+                "evidence manifest capsule installationContained must match escapedPaths"
+            )
         for field in ("terminatedProcessIds", "processesRemaining"):
             process_ids = capsule.get(field)
             if not isinstance(process_ids, list) or not all(
@@ -1956,8 +1968,22 @@ def telemetry_missing_fields(directory: Path, manifest: dict[str, Any]) -> list[
         "dumbModeState": {"dumbModeState", "kast.idea.dumb_mode"},
         "typedOutcome": {"typedOutcome", "outcome", "errorCode", "kast.outcome.code"},
     }
+
+    def valid(field: str, value: Any) -> bool:
+        if field in {"semanticGenerationStart", "semanticGenerationEnd"}:
+            return (
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and value >= 0
+            )
+        return isinstance(value, str) and bool(value.strip())
+
     missing_by_request = [
-        [name for name, keys in aliases.items() if not keys & set(item)]
+        [
+            name
+            for name, keys in aliases.items()
+            if not any(key in item and valid(name, item[key]) for key in keys)
+        ]
         for item in attributes
     ]
     return min(missing_by_request, key=len) if missing_by_request else list(aliases)

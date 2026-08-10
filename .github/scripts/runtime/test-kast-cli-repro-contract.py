@@ -322,6 +322,7 @@ class KastCliReproContractTest(unittest.TestCase):
             manifest["capsule"] = {
                 "mode": "EPHEMERAL",
                 "installationContained": True,
+                "escapedPaths": [],
                 "stateContained": True,
                 "runtimeStopSucceeded": False,
                 "runtimeStopped": True,
@@ -355,6 +356,7 @@ class KastCliReproContractTest(unittest.TestCase):
             manifest["capsule"] = {
                 "mode": "EPHEMERAL",
                 "installationContained": True,
+                "escapedPaths": [],
                 "stateContained": True,
                 "runtimeStopSucceeded": True,
                 "runtimeStopped": True,
@@ -878,6 +880,7 @@ class KastCliReproContractTest(unittest.TestCase):
             manifest["capsule"] = {
                 "mode": "EPHEMERAL",
                 "installationContained": True,
+                "escapedPaths": [],
                 "stateContained": True,
                 "runtimeStopSucceeded": True,
                 "runtimeStopped": True,
@@ -898,6 +901,48 @@ class KastCliReproContractTest(unittest.TestCase):
             error = json.loads(result.stderr)
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("terminatedProcessIds", error["error"])
+
+    def test_capsule_escaped_paths_must_be_an_array_of_path_strings(self) -> None:
+        for escaped_paths in (None, [""], [42]):
+            with (
+                self.subTest(escaped_paths=escaped_paths),
+                tempfile.TemporaryDirectory() as raw_directory,
+            ):
+                directory = Path(raw_directory)
+                self.write_evidence(directory, incident=False)
+                manifest_path = directory / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["capsule"] = {
+                    "mode": "EPHEMERAL",
+                    "installationContained": False,
+                    "escapedPaths": escaped_paths,
+                    "stateContained": True,
+                    "runtimeStopSucceeded": True,
+                    "runtimeStopped": True,
+                    "terminatedProcessIds": [],
+                    "processesRemaining": [],
+                    "rootDeleted": True,
+                }
+                self.append_command_evidence(
+                    directory,
+                    manifest,
+                    "capsule-runtime-stop",
+                )
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = self.run_runner(
+                    "analyze", "--evidence-dir", str(directory), "--format", "json"
+                )
+
+                self.assertEqual(2, result.returncode)
+                self.assertEqual("", result.stdout)
+                error = json.loads(result.stderr)
+                self.assertEqual("INVALID_EVIDENCE", error["status"])
+                self.assertIn("escapedPaths", error["error"])
+                self.assertNotIn("Traceback", result.stderr)
 
     def test_replay_requires_runtime_stop_and_cold_transition_commands(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
@@ -937,6 +982,7 @@ class KastCliReproContractTest(unittest.TestCase):
             manifest["capsule"] = {
                 "mode": "EPHEMERAL",
                 "installationContained": True,
+                "escapedPaths": [],
                 "stateContained": True,
                 "runtimeStopSucceeded": True,
                 "runtimeStopped": True,
@@ -968,6 +1014,7 @@ class KastCliReproContractTest(unittest.TestCase):
             manifest["capsule"] = {
                 "mode": "EPHEMERAL",
                 "installationContained": True,
+                "escapedPaths": [],
                 "stateContained": True,
                 "runtimeStopSucceeded": True,
                 "runtimeStopped": True,
@@ -1788,6 +1835,47 @@ class KastCliReproContractTest(unittest.TestCase):
                 ["TRACE_CORRELATION_INCOMPLETE"],
                 [finding["code"] for finding in json.loads(result.stdout)["findings"]],
             )
+
+    def test_telemetry_correlation_requires_valid_attribute_values(self) -> None:
+        valid = {
+            "runtimeInstanceId": "runtime-1",
+            "semanticGenerationStart": 4,
+            "semanticGenerationEnd": 4,
+            "dumbModeState": "SMART",
+            "typedOutcome": "RESOLVED",
+        }
+        invalid_values = (
+            ("runtimeInstanceId", None),
+            ("runtimeInstanceId", ""),
+            ("semanticGenerationStart", True),
+            ("semanticGenerationEnd", "4"),
+            ("dumbModeState", []),
+            ("typedOutcome", {}),
+        )
+        for field, invalid in invalid_values:
+            with (
+                self.subTest(field=field, invalid=invalid),
+                tempfile.TemporaryDirectory() as raw_directory,
+            ):
+                directory = Path(raw_directory)
+                self.write_evidence(directory, incident=False)
+                record = {"attributes": {**valid, field: invalid}}
+                (directory / "telemetry.jsonl").write_text(
+                    json.dumps(record) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = self.run_runner(
+                    "analyze", "--evidence-dir", str(directory), "--format", "json"
+                )
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                report = json.loads(result.stdout)
+                self.assertEqual(
+                    ["TRACE_CORRELATION_INCOMPLETE"],
+                    [finding["code"] for finding in report["findings"]],
+                )
+                self.assertIn(field, report["findings"][0]["evidence"])
 
     def test_dry_run_covers_the_public_agent_surface(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
