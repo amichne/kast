@@ -124,6 +124,7 @@ class ActiveCommand:
     completion_token: str
     deadline_monotonic: float
     deadline_epoch_millis: int
+    observer_stop_path: Path | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -532,7 +533,9 @@ def observer_script(kast: str, symbol: str, samples: int, interval: float) -> st
     kast_command = shlex.quote(kast)
     symbol_argument = shlex.quote(symbol)
     return (
-        f"for i in $(seq 1 {samples}); do "
+        'stop=${KAST_REPRO_OBSERVER_STOP:?}; i=1; stop_seen=0; '
+        f'while [ "$i" -le {samples} ] || [ "$stop_seen" -eq 0 ]; do '
+        'if [ -e "$stop" ]; then stop_seen=1; fi; '
         'printf "__KAST_SAMPLE__=%s\\n" "$i"; '
         'printf "__KAST_OBSERVATION__=HOME\\n"; '
         f"{kast_command}; observation_status=$?; "
@@ -544,6 +547,7 @@ def observer_script(kast: str, symbol: str, samples: int, interval: float) -> st
         f'printf "{OBSERVATION_EXIT_SENTINEL}%s\\n" "$observation_status"; '
         'printf "__KAST_OBSERVATION_EPOCH_MILLIS__="; '
         "python3 -c 'import time; print(time.time_ns() // 1000000)'; "
+        'i=$((i + 1)); '
         f"sleep {interval}; "
         "done"
     )
@@ -586,6 +590,10 @@ class TmuxCapture:
         completion_marker = f"{EXIT_SENTINEL}{completion_token}:"
         environment = dict(self.base_environment)
         environment.update(dict(spec.environment))
+        observer_stop_path: Path | None = None
+        if spec.name in {"cold-observer", "refresh-observer"}:
+            observer_stop_path = self.evidence / f".{spec.name}-{completion_token}.stop"
+            environment["KAST_REPRO_OBSERVER_STOP"] = str(observer_stop_path)
         if environment:
             environment = " ".join(
                 f"{shlex.quote(key)}={shlex.quote(value)}" for key, value in environment.items()
@@ -628,7 +636,18 @@ class TmuxCapture:
             completion_token,
             deadline_monotonic,
             deadline_epoch_millis,
+            observer_stop_path,
         )
+
+    def request_observer_completion(self, active: ActiveCommand) -> None:
+        if active.observer_stop_path is None:
+            raise ReproError(f"command {active.spec.name} is not a transition observer")
+        try:
+            active.observer_stop_path.write_text("", encoding="utf-8")
+        except OSError as error:
+            raise ReproError(
+                f"cannot stop transition observer {active.spec.name}: {error}"
+            ) from error
 
     def finish(self, active: ActiveCommand) -> CommandEvidence:
         timed_out = False
@@ -700,6 +719,13 @@ class TmuxCapture:
                 check=False,
                 capture_output=True,
             )
+        if active.observer_stop_path is not None:
+            try:
+                active.observer_stop_path.unlink(missing_ok=True)
+            except OSError as error:
+                raise ReproError(
+                    f"cannot clear transition observer stop marker: {error}"
+                ) from error
         return evidence
 
     def run(self, spec: CommandSpec) -> CommandEvidence:
@@ -745,6 +771,7 @@ def finish_observed_operation(
     observer: ActiveCommand,
 ) -> tuple[CommandEvidence, CommandEvidence]:
     operation_evidence = runner.finish(operation)
+    runner.request_observer_completion(observer)
     observer_evidence = runner.finish(observer)
     return operation_evidence, observer_evidence
 
@@ -1315,6 +1342,7 @@ def ephemeral_capsule_is_safely_deletable(
         and capsule.mode == "EPHEMERAL"
         and proof is not None
         and proof.get("runtimeStopped") is True
+        and proof.get("runtimeStopSucceeded") is True
         and proof.get("installationContained") is True
         and proof.get("stateContained") is True
         and not teardown_errors
@@ -1739,6 +1767,29 @@ def observation_completed_during(
     )
 
 
+def observer_covers_operation_completion(
+    operation: dict[str, Any],
+    observer: dict[str, Any],
+    observations: list[TimedObservation],
+) -> bool:
+    operation_finished = operation.get("finishedAtEpochMillis")
+    observer_finished = observer.get("finishedAtEpochMillis")
+    if not all(
+        isinstance(value, int) and not isinstance(value, bool)
+        for value in (operation_finished, observer_finished)
+    ):
+        raise ReproError("command timing fields must be integers")
+    post_completion_kinds = {
+        observation.kind
+        for observation in observations
+        if observation.finished_at_epoch_millis >= operation_finished
+    }
+    return (
+        observer_finished >= operation_finished
+        and post_completion_kinds == {ObservationKind.HOME, ObservationKind.RESOLVE}
+    )
+
+
 def ready_sample_before(
     observations: list[TimedObservation],
     finished_at_epoch_millis: int,
@@ -1880,6 +1931,11 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             or observer.get("timedOut") is True
             or observation_kinds != {ObservationKind.HOME, ObservationKind.RESOLVE}
             or not overlaps(operation, observer)
+            or not observer_covers_operation_completion(
+                operation,
+                observer,
+                observations,
+            )
             or not observation_completed_during(operation, observations, required_kind)
             or not all(observation_has_expected_outcome(item) for item in observations)
         ):
