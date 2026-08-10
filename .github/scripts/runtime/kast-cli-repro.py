@@ -37,6 +37,29 @@ CAPSULE_STATE_ENVIRONMENT_KEYS = (
     "XDG_CONFIG_HOME",
     "XDG_DATA_HOME",
 )
+REQUIRED_SCENARIO_COMMANDS = (
+    "home",
+    "help",
+    "file-list",
+    "symbol-search",
+    "symbol-resolve",
+    "symbol-show",
+    "relation-references",
+    "relation-calls-incoming",
+    "relation-calls-outgoing",
+    "relation-implementations",
+    "relation-hierarchy-supertypes",
+    "relation-hierarchy-subtypes",
+    "graph-summary",
+    "graph-nodes",
+    "graph-neighbors",
+    "graph-topology",
+    "graph-communities",
+    "graph-impact",
+    "diagnostic-check",
+    "workspace-refresh",
+    "refresh-observer",
+)
 
 
 class ReproError(Exception):
@@ -1481,6 +1504,8 @@ def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, 
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise ReproError(f"invalid evidence manifest: {error}") from error
+    if not isinstance(manifest, dict):
+        raise ReproError("evidence manifest root must be an object")
     if manifest.get("schemaVersion") != SCHEMA_VERSION:
         raise ReproError(f"unsupported evidence schema: {manifest.get('schemaVersion')!r}")
     commands = manifest.get("commands")
@@ -1490,6 +1515,8 @@ def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, 
     for command in commands:
         if not isinstance(command, dict) or not isinstance(command.get("name"), str):
             raise ReproError("every evidence command must have a string name")
+        if command["name"] in indexed:
+            raise ReproError(f"duplicate evidence command: {command['name']}")
         indexed[command["name"]] = command
     return manifest, indexed
 
@@ -1634,15 +1661,17 @@ def telemetry_missing_fields(directory: Path, manifest: dict[str, Any]) -> list[
 def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     directory = directory.resolve(strict=True)
     manifest, commands = read_manifest(directory)
+    missing_commands = sorted(set(REQUIRED_SCENARIO_COMMANDS) - set(commands))
+    if missing_commands:
+        raise ReproError(
+            "evidence manifest is missing required scenario commands: "
+            + ", ".join(missing_commands)
+        )
     findings: list[Finding] = []
     cold_up = commands.get("cold-up")
     cold_observer = commands.get("cold-observer")
     refresh = commands.get("workspace-refresh")
     refresh_observer = commands.get("refresh-observer")
-    if refresh is None:
-        raise ReproError(
-            "evidence manifest is missing required transition command workspace-refresh"
-        )
     incomplete_observers: list[str] = []
     complete_observers: dict[str, list[TimedObservation]] = {}
     for operation, observer, observer_name, required_kind in (

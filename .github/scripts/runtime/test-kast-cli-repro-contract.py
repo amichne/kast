@@ -16,6 +16,29 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 RUNNER = Path(__file__).with_name("kast-cli-repro.py")
+REQUIRED_SCENARIO_COMMANDS = (
+    "home",
+    "help",
+    "file-list",
+    "symbol-search",
+    "symbol-resolve",
+    "symbol-show",
+    "relation-references",
+    "relation-calls-incoming",
+    "relation-calls-outgoing",
+    "relation-implementations",
+    "relation-hierarchy-supertypes",
+    "relation-hierarchy-subtypes",
+    "graph-summary",
+    "graph-nodes",
+    "graph-neighbors",
+    "graph-topology",
+    "graph-communities",
+    "graph-impact",
+    "diagnostic-check",
+    "workspace-refresh",
+    "refresh-observer",
+)
 
 
 def load_runner_module():
@@ -172,6 +195,14 @@ class KastCliReproContractTest(unittest.TestCase):
                     "typedOutcome": "RESOLVED",
                 },
             }
+
+        present = {item["name"] for item in commands}
+        for index, name in enumerate(REQUIRED_SCENARIO_COMMANDS):
+            if name not in present:
+                started = 1_200 + index * 20
+                commands.append(
+                    command(name, terminated, started=started, finished=started + 10)
+                )
 
         (directory / "telemetry.jsonl").write_text(json.dumps(telemetry) + "\n", encoding="utf-8")
         manifest = {
@@ -501,6 +532,46 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual(2, result.returncode)
             self.assertEqual("", result.stdout)
             self.assertEqual("INVALID_EVIDENCE", json.loads(result.stderr)["status"])
+
+    def test_missing_scenario_command_cannot_replay_as_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["commands"] = [
+                command for command in manifest["commands"]
+                if command["name"] != "graph-topology"
+            ]
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("graph-topology", error["error"])
+
+    def test_nonobject_manifest_is_structured_invalid_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            (directory / "manifest.json").write_text("[]\n", encoding="utf-8")
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertNotIn("Traceback", result.stderr)
 
     def test_failed_observer_subcommand_cannot_replay_as_clean(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
