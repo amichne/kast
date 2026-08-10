@@ -566,7 +566,9 @@ class TmuxCapture:
         self.workspace = workspace
         self.evidence = evidence
         self.keep_session = keep_session
-        self.base_environment = base_environment or {}
+        self.base_environment = (
+            os.environ.copy() if base_environment is None else dict(base_environment)
+        )
         self.commands: list[CommandEvidence] = []
 
     def start(self) -> None:
@@ -825,6 +827,8 @@ def read_config(
         payload = json.loads(result.stdout)
     except json.JSONDecodeError as error:
         raise ReproError(f"config discovery returned invalid JSON: {error}") from error
+    if not isinstance(payload, dict):
+        raise ReproError("config discovery did not return a JSON object")
     if payload.get("ok") is not True:
         raise ReproError("config discovery did not return ok=true")
     return payload

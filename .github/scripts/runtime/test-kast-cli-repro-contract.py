@@ -436,6 +436,38 @@ class KastCliReproContractTest(unittest.TestCase):
         )
         capture.request_observer_completion.assert_called_once_with(observer)
 
+    def test_non_capsule_tmux_capture_snapshots_the_caller_environment(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            evidence = directory / "evidence"
+            (evidence / "transcripts").mkdir(parents=True)
+            caller_environment = {
+                "HOME": "/current/home",
+                "KAST_HOME": "/current/kast-home",
+                "KAST_CONFIG_HOME": "/current/kast-config",
+                "PATH": "/current/bin",
+            }
+            with mock.patch.dict(runner.os.environ, caller_environment, clear=True):
+                capture = runner.TmuxCapture(
+                    "session",
+                    directory,
+                    evidence,
+                    keep_session=False,
+                )
+
+            self.assertEqual(caller_environment, capture.base_environment)
+
+    def test_config_discovery_rejects_nonobject_json(self) -> None:
+        runner = load_runner_module()
+        response = subprocess.CompletedProcess([], 0, "[]\n", "")
+
+        with (
+            mock.patch.object(runner.subprocess, "run", return_value=response),
+            self.assertRaisesRegex(runner.ReproError, "JSON object"),
+        ):
+            runner.read_config(Path("/kastctl"), Path("/workspace"))
+
     def test_command_completion_uses_a_nonce_and_the_wrapper_timestamp(self) -> None:
         runner = load_runner_module()
         with tempfile.TemporaryDirectory() as raw_directory:
