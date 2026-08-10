@@ -348,4 +348,4 @@ fn parse<T: DeserializeOwned>(value: serde_json::Value) -> Result<T, ProtocolFai
     })
 }
 
-include!("execution/reference_continuation.rs");
+include!("reference_continuation.rs");

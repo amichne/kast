@@ -396,6 +396,5 @@ private sealed interface RecoveryAuditOutcome {
         override val dirtyReason: String = "workspace recovery audit found build-semantic drift"
     }
 }
-
 private const val EVENT_QUIESCENCE_MILLIS = 250L
 private val GIT_TRANSITION_RETRY_DELAY: Duration = Duration.ofMillis(250)

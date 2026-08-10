@@ -284,7 +284,7 @@ pub(super) fn plan_legacy_backend_migration(
     ))
 }
 
-include!("indexer_authority/admission.rs");
+include!("indexer_authority/ownership/admission.rs");
 
 include!("indexer_authority/runtime.rs");
 
