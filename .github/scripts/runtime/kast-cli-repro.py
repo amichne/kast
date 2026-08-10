@@ -38,6 +38,9 @@ CAPSULE_STATE_ENVIRONMENT_KEYS = (
     "XDG_DATA_HOME",
 )
 REQUIRED_SCENARIO_COMMANDS = (
+    "runtime-stop",
+    "cold-up",
+    "cold-observer",
     "home",
     "help",
     "file-list",
@@ -63,7 +66,13 @@ REQUIRED_SCENARIO_COMMANDS = (
 REQUIRED_SUCCESSFUL_SCENARIO_COMMANDS = tuple(
     name
     for name in REQUIRED_SCENARIO_COMMANDS
-    if name not in {"workspace-refresh", "refresh-observer"}
+    if name
+    not in {
+        "cold-up",
+        "cold-observer",
+        "workspace-refresh",
+        "refresh-observer",
+    }
 )
 
 
@@ -1590,7 +1599,7 @@ def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, 
     manifest_path = directory / "manifest.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ReproError(f"invalid evidence manifest: {error}") from error
     if not isinstance(manifest, dict):
         raise ReproError("evidence manifest root must be an object")
@@ -1779,9 +1788,7 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     capsule = manifest.get("capsule")
     required_commands = set(REQUIRED_SCENARIO_COMMANDS)
     if isinstance(capsule, dict):
-        required_commands.update(
-            {"cold-up", "cold-observer", "capsule-runtime-stop"}
-        )
+        required_commands.add("capsule-runtime-stop")
     missing_commands = sorted(required_commands - set(commands))
     if missing_commands:
         raise ReproError(
@@ -2141,7 +2148,7 @@ def main() -> int:
             for finding in report["findings"]:
                 print(f"- {finding['code']}: {finding['message']}")
         return exit_code
-    except (ReproError, OSError) as error:
+    except (ReproError, OSError, UnicodeError) as error:
         print(json.dumps({"schemaVersion": SCHEMA_VERSION, "status": "INVALID_EVIDENCE", "error": str(error)}), file=sys.stderr)
         return 2
 

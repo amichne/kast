@@ -18,6 +18,9 @@ from typing import Any
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 RUNNER = Path(__file__).with_name("kast-cli-repro.py")
 REQUIRED_SCENARIO_COMMANDS = (
+    "runtime-stop",
+    "cold-up",
+    "cold-observer",
     "home",
     "help",
     "file-list",
@@ -352,6 +355,14 @@ class KastCliReproContractTest(unittest.TestCase):
             manifest_path = directory / "manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             cold_up = next(command for command in manifest["commands"] if command["name"] == "cold-up")
+            cold_up_transcript = directory / str(cold_up["transcript"])
+            cold_up_transcript.write_text(
+                cold_up_transcript.read_text(encoding="utf-8").replace(
+                    f"::kast-repro-exit={cold_up['completionToken']}:0:110",
+                    f"::kast-repro-exit={cold_up['completionToken']}:0:200",
+                ),
+                encoding="utf-8",
+            )
             cold_up["finishedAtEpochMillis"] = 200
             observer = next(
                 command for command in manifest["commands"] if command["name"] == "cold-observer"
@@ -532,6 +543,14 @@ class KastCliReproContractTest(unittest.TestCase):
                 )
                 if failure == "failed-command":
                     observer["exitCode"] = 1
+                    transcript_path = directory / str(observer["transcript"])
+                    transcript_path.write_text(
+                        transcript_path.read_text(encoding="utf-8").replace(
+                            f"::kast-repro-exit={observer['completionToken']}:0:130",
+                            f"::kast-repro-exit={observer['completionToken']}:1:130",
+                        ),
+                        encoding="utf-8",
+                    )
                 else:
                     (directory / observer["transcript"]).write_text(
                         "no parseable observations\n"
@@ -708,6 +727,21 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertNotIn("Traceback", result.stderr)
 
+    def test_invalid_utf8_manifest_is_structured_invalid_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            (directory / "manifest.json").write_bytes(b"\xff\xfe\x00")
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertNotIn("Traceback", result.stderr)
+
     def test_nonobject_capsule_proof_is_structured_invalid_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -760,27 +794,17 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("terminatedProcessIds", error["error"])
 
-    def test_capsule_replay_requires_cold_transition_commands(self) -> None:
+    def test_replay_requires_runtime_stop_and_cold_transition_commands(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
             self.write_evidence(directory, incident=False)
             manifest_path = directory / "manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest["capsule"] = {
-                "mode": "EPHEMERAL",
-                "installationContained": True,
-                "stateContained": True,
-                "runtimeStopSucceeded": True,
-                "runtimeStopped": True,
-                "terminatedProcessIds": [],
-                "processesRemaining": [],
-                "rootDeleted": True,
-            }
-            self.append_command_evidence(directory, manifest, "capsule-runtime-stop")
             manifest["commands"] = [
                 command
                 for command in manifest["commands"]
-                if command["name"] not in {"cold-up", "cold-observer"}
+                if command["name"]
+                not in {"runtime-stop", "cold-up", "cold-observer"}
             ]
             manifest_path.write_text(
                 json.dumps(manifest, indent=2) + "\n",
@@ -795,6 +819,7 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("", result.stdout)
             error = json.loads(result.stderr)
             self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("runtime-stop", error["error"])
             self.assertIn("cold-observer", error["error"])
             self.assertIn("cold-up", error["error"])
 
@@ -1437,6 +1462,14 @@ class KastCliReproContractTest(unittest.TestCase):
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             cold_up = next(command for command in manifest["commands"] if command["name"] == "cold-up")
             cold_up["exitCode"] = 1
+            transcript_path = directory / str(cold_up["transcript"])
+            transcript_path.write_text(
+                transcript_path.read_text(encoding="utf-8").replace(
+                    f"::kast-repro-exit={cold_up['completionToken']}:0:110",
+                    f"::kast-repro-exit={cold_up['completionToken']}:1:110",
+                ),
+                encoding="utf-8",
+            )
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
             result = self.run_runner("analyze", "--evidence-dir", str(directory), "--format", "json")
