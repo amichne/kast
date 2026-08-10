@@ -20,9 +20,15 @@ internal sealed interface WorkspaceTransitionRoute {
         val baseline: PublishedWorkspaceGenerationState,
     ) : WorkspaceTransitionRoute
 
-    data class Join(
-        val baseline: PublishedWorkspaceGenerationState,
-    ) : WorkspaceTransitionRoute
+    sealed interface Join : WorkspaceTransitionRoute {
+        data class Awaiting(
+            val baseline: PublishedWorkspaceGenerationState,
+        ) : Join
+
+        data class Published(
+            val manifest: PublishedWorkspaceGenerationManifest,
+        ) : Join
+    }
 
     data class Rejected(
         val failure: WorkspaceTransitionRequestFailure,
@@ -31,14 +37,14 @@ internal sealed interface WorkspaceTransitionRoute {
     companion object {
         /**
          * Proof transition:
-         * `(IdeaIndexSemanticAdmission.Status, TransitionObservation)`
+         * `(IdeaIndexSemanticAdmission.Status, TransitionObservation, WorkspaceTransitionRequest)`
          * `-> WorkspaceTransitionRoute`.
          *
          * Every admitted request retains its publication baseline. Exact
          * source claims already covered by the active cycle become [Join]; all
          * unkeyed, changed, or disjoint work becomes [Enqueue] so it cannot be
-         * incorrectly treated as covered. Failed admission becomes finite
-         * rejection data.
+         * incorrectly treated as covered. Failed admission becomes the finite
+         * [WorkspaceTransitionRequestFailure] rejection.
          */
         fun derive(
             status: IdeaIndexSemanticAdmission.Status,
@@ -51,7 +57,16 @@ internal sealed interface WorkspaceTransitionRoute {
                 is TransitionRequestAdmission.Permitted -> when (
                     ActiveSourceRequestCoverage.derive(observation, request)
                 ) {
-                    WorkspaceSourceFreshnessCoverage.Covered -> Join(admission.baseline)
+                    WorkspaceSourceFreshnessCoverage.Covered -> when (admission) {
+                        is TransitionRequestAdmission.Permitted.Pending -> Join.Awaiting(admission.baseline)
+                        is TransitionRequestAdmission.Permitted.Ready ->
+                            if (admission.baseline == admission.observedBaseline) {
+                                Join.Awaiting(admission.observedBaseline)
+                            } else {
+                                Join.Published(admission.manifest)
+                            }
+                    }
+
                     WorkspaceSourceFreshnessCoverage.Uncovered -> Enqueue(admission.baseline)
                 }
             }
@@ -114,9 +129,21 @@ private object TransitionPublicationBaseline {
 }
 
 private sealed interface TransitionRequestAdmission {
-    data class Permitted(
-        val baseline: PublishedWorkspaceGenerationState,
-    ) : TransitionRequestAdmission
+    sealed interface Permitted : TransitionRequestAdmission {
+        val baseline: PublishedWorkspaceGenerationState
+
+        data class Pending(
+            override val baseline: PublishedWorkspaceGenerationState,
+        ) : Permitted
+
+        data class Ready(
+            val manifest: PublishedWorkspaceGenerationManifest,
+            val observedBaseline: PublishedWorkspaceGenerationState,
+        ) : Permitted {
+            override val baseline: PublishedWorkspaceGenerationState =
+                PublishedWorkspaceGenerationState.Published(manifest)
+        }
+    }
 
     data class Rejected(
         val failure: WorkspaceTransitionRequestFailure,
@@ -128,19 +155,23 @@ private sealed interface TransitionRequestAdmission {
          * `(IdeaIndexSemanticAdmission.Status, TransitionObservation)`
          * `-> TransitionRequestAdmission`.
          *
-         * READY and PENDING retain a publication baseline suitable for a
-         * request or compatible join. FAILED retains a finite rejection and
-         * cannot be reinterpreted as joinable by a stale lifecycle observation.
+         * READY retains both its published generation and the observed
+         * transition baseline. Equality proves that READY is stale relative to
+         * an active observation and must still await that cycle; inequality
+         * proves publication won the observation race. PENDING retains the
+         * observed baseline. FAILED retains a finite rejection and cannot be
+         * reinterpreted as joinable by a stale lifecycle observation.
          */
         fun derive(
             status: IdeaIndexSemanticAdmission.Status,
             observation: TransitionObservation,
         ): TransitionRequestAdmission = when (status) {
-            is IdeaIndexSemanticAdmission.Status.Ready -> Permitted(
-                PublishedWorkspaceGenerationState.Published(status.generation),
+            is IdeaIndexSemanticAdmission.Status.Ready -> Permitted.Ready(
+                manifest = status.generation,
+                observedBaseline = TransitionPublicationBaseline.derive(observation),
             )
 
-            is IdeaIndexSemanticAdmission.Status.Pending -> Permitted(
+            is IdeaIndexSemanticAdmission.Status.Pending -> Permitted.Pending(
                 TransitionPublicationBaseline.derive(observation),
             )
 

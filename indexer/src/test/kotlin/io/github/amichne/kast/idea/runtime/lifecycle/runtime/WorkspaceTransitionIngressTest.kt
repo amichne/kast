@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.lang.reflect.Proxy
 import java.nio.file.Path
 import java.time.Duration
@@ -36,6 +37,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.properties.Delegates
 
 class WorkspaceTransitionIngressTest {
+    @TempDir lateinit var workspaceRoot: Path
     @Test
     fun `workspace signal is queued before its worker wakeup`() {
         val order = mutableListOf<String>()
@@ -106,6 +108,14 @@ class WorkspaceTransitionIngressTest {
         assertEquals(next, published)
         assertTrue(transitionRequested.get())
     }
+
+    @Test
+    fun `covered source reconciliation returns publication that won the routing race`() =
+        assertCoveredSourcePublicationRace(workspaceRoot)
+
+    @Test
+    fun `covered source reconciliation does not return a stale ready sample`() =
+        assertCoveredSourceStaleReadyRace(workspaceRoot)
 
     @Test
     fun `failed semantic admission outranks a stale active transition observation`() {

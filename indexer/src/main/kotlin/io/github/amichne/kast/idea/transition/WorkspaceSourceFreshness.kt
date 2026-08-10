@@ -30,6 +30,9 @@ internal sealed interface WorkspaceTransitionRequest {
          * belongs to the workspace source authority and is either a regular
          * file or a proven tombstone. Any unprovable path safely degrades to an
          * unkeyed source request, which cannot join an active cycle.
+         * Raw signal extraction is permitted only at the transition-worker
+         * wake boundary; path and content claims remain opaque outside the
+         * freshness aggregation and coverage owners.
          */
         fun sourceFiles(
             workspaceRoot: Path,
@@ -122,6 +125,8 @@ internal sealed interface WorkspaceSourceContentResolution {
          *
          * A regular file becomes an exact hash, a proven absent path becomes a
          * tombstone, and every ambiguous filesystem state remains unavailable.
+         * The returned identity may only construct freshness claims; raw hash
+         * and path extraction from this proof is prohibited.
          */
         fun derive(path: WorkspaceSourcePath): WorkspaceSourceContentResolution {
             val file = path.absolute.value.toJavaPath()

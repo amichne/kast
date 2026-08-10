@@ -132,14 +132,17 @@ internal class WorkspaceTransitionIngress(
     override suspend fun reconcile(
         request: WorkspaceTransitionRequest,
     ): PublishedWorkspaceGenerationManifest {
-        val route = initialRoute(request)
-        val waiter = when (route) {
-            is WorkspaceTransitionRoute.Enqueue -> register(route.baseline)
-            is WorkspaceTransitionRoute.Join -> register(route.baseline)
+        return when (val route = initialRoute(request)) {
+            is WorkspaceTransitionRoute.Enqueue -> {
+                val waiter = register(route.baseline)
+                request(request, waiter)
+                awaitStable(waiter)
+            }
+
+            is WorkspaceTransitionRoute.Join.Awaiting -> awaitStable(register(route.baseline))
+            is WorkspaceTransitionRoute.Join.Published -> route.manifest
             is WorkspaceTransitionRoute.Rejected -> throw route.failure.toConflict()
         }
-        if (route is WorkspaceTransitionRoute.Enqueue) request(request, waiter)
-        return awaitStable(waiter)
     }
 
     override suspend fun <T> mutate(
@@ -188,9 +191,8 @@ internal class WorkspaceTransitionIngress(
     }
 
     private fun initialRoute(request: WorkspaceTransitionRequest): WorkspaceTransitionRoute {
-        val status = semanticAdmission.status()
         return synchronized(lock) {
-            WorkspaceTransitionRoute.derive(status, observation, request)
+            WorkspaceTransitionRoute.derive(semanticAdmission.status(), observation, request)
         }
     }
 
