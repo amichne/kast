@@ -1119,6 +1119,35 @@ class KastCliReproContractTest(unittest.TestCase):
                 [finding["code"] for finding in json.loads(result.stdout)["findings"]],
             )
 
+    def test_conflict_text_requires_the_typed_rejection_exit_code(self) -> None:
+        for exit_code in (2, 139):
+            with self.subTest(exit_code=exit_code), tempfile.TemporaryDirectory() as raw_directory:
+                directory = Path(raw_directory)
+                self.write_evidence(directory, incident=False)
+                manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+                observer = next(
+                    command for command in manifest["commands"]
+                    if command["name"] == "cold-observer"
+                )
+                transcript_path = directory / str(observer["transcript"])
+                transcript_path.write_text(
+                    transcript_path.read_text(encoding="utf-8").replace(
+                        "result: missing\n__KAST_OBSERVATION_EXIT_CODE__=0\n",
+                        f"error: CONFLICT\n__KAST_OBSERVATION_EXIT_CODE__={exit_code}\n",
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = self.run_runner(
+                    "analyze", "--evidence-dir", str(directory), "--format", "json"
+                )
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(
+                    ["OBSERVER_EVIDENCE_INCOMPLETE"],
+                    [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+                )
+
     def test_non_overlapping_observer_cannot_replay_as_clean(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -1439,6 +1468,29 @@ class KastCliReproContractTest(unittest.TestCase):
                     self.assertRaisesRegex(runner.ReproError, "state .* escaped"),
                 ):
                     runner.build_capsule(args, workspace, "kast", dry_run=False)
+
+    def test_capsule_rejects_chained_symlink_escape_before_setup(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            base = Path(raw_directory)
+            root = base / "capsule"
+            root.mkdir()
+            environment = runner.capsule_environment(root, "workspace-id")
+            state_paths = runner.require_contained_capsule_state_paths(root, environment)
+            for state_path in state_paths:
+                state_path.mkdir(parents=True, exist_ok=True)
+            hidden = root / "hidden"
+            hidden.mkdir()
+            (root / "kast-home" / "current").symlink_to(
+                hidden,
+                target_is_directory=True,
+            )
+            external = base / "external"
+            external.mkdir()
+            (hidden / "config").symlink_to(external, target_is_directory=True)
+
+            with self.assertRaisesRegex(runner.ReproError, "symlink escaped"):
+                runner.require_contained_capsule_state_symlinks(root, state_paths)
 
     def test_ephemeral_capsule_is_removed_when_post_allocation_validation_fails(self) -> None:
         runner = load_runner_module()
@@ -1776,6 +1828,16 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertIn("KAST_REPRO_OBSERVER_STOP", cold_observer["argv"][-1])
             self.assertNotIn("for i in $(seq", cold_observer["argv"][-1])
             by_name = {command["name"]: command for command in plan["commands"]}
+            for stateful_name in (
+                "telemetry-enable",
+                "telemetry-verbose",
+                "runtime-stop",
+                "restore-enabled",
+                "restore-detail",
+                "restore-runtime-stop",
+                "restore-runtime-start",
+            ):
+                self.assertIn(stateful_name, by_name)
             self.assertEqual(
                 ["file", "list", "--match", "src/Probe.kt"],
                 by_name["file-list"]["argv"][1:],

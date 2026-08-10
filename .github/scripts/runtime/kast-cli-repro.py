@@ -250,13 +250,29 @@ def require_contained_capsule_state_symlinks(
     state_paths: tuple[Path, ...],
 ) -> None:
     try:
-        for state_path in state_paths:
-            for candidate in state_path.rglob("*"):
-                if candidate.is_symlink() and not is_within(candidate, root):
-                    raise ReproError(
-                        "capsule state symlink escaped its root: "
-                        f"{candidate} -> {candidate.resolve()}"
-                    )
+        pending = list(state_paths)
+        visited: set[Path] = set()
+        while pending:
+            directory = pending.pop()
+            resolved_directory = directory.resolve(strict=True)
+            if not is_within(resolved_directory, root):
+                raise ReproError(
+                    "capsule state symlink escaped its root: "
+                    f"{directory} -> {resolved_directory}"
+                )
+            if resolved_directory in visited:
+                continue
+            visited.add(resolved_directory)
+            for candidate in directory.iterdir():
+                if candidate.is_symlink():
+                    resolved_candidate = candidate.resolve(strict=True)
+                    if not is_within(resolved_candidate, root):
+                        raise ReproError(
+                            "capsule state symlink escaped its root: "
+                            f"{candidate} -> {resolved_candidate}"
+                        )
+                if candidate.is_dir():
+                    pending.append(candidate)
     except (OSError, RuntimeError) as error:
         raise ReproError(
             f"capsule state symlink could not be validated: {error}"
@@ -527,6 +543,28 @@ def command_plan(
             ]
         )
     return commands
+
+
+def scenario_execution_order(commands: list[CommandSpec]) -> list[CommandSpec]:
+    transitions = {
+        "cold-up",
+        "cold-observer",
+        "workspace-refresh",
+        "refresh-observer",
+    }
+    by_name = {command.name: command for command in commands}
+    ordered = [
+        by_name[name]
+        for name in ("cold-up", "cold-observer")
+        if name in by_name
+    ]
+    ordered.extend(command for command in commands if command.name not in transitions)
+    ordered.extend(
+        by_name[name]
+        for name in ("workspace-refresh", "refresh-observer")
+        if name in by_name
+    )
+    return ordered
 
 
 def observer_script(kast: str, symbol: str, samples: int, interval: float) -> str:
@@ -1153,6 +1191,52 @@ def terminate_capsule_processes(
     return sorted(terminated), sorted(remaining)
 
 
+def capture_state_specs(
+    kastctl: Path,
+    workspace: Path,
+    transition_timeout: float,
+) -> list[CommandSpec]:
+    base = (str(kastctl), "--output", "json")
+    return [
+        CommandSpec(
+            "telemetry-enable",
+            (
+                *base,
+                "config",
+                "set",
+                "telemetry.enabled",
+                "true",
+                "--workspace-root",
+                str(workspace),
+            ),
+        ),
+        CommandSpec(
+            "telemetry-verbose",
+            (
+                *base,
+                "config",
+                "set",
+                "telemetry.detail",
+                "verbose",
+                "--workspace-root",
+                str(workspace),
+            ),
+        ),
+        CommandSpec(
+            "runtime-stop",
+            (
+                *base,
+                "developer",
+                "runtime",
+                "stop",
+                "--workspace-root",
+                str(workspace),
+            ),
+            timeout_seconds=transition_timeout,
+        ),
+    ]
+
+
 def config_restore_specs(kastctl: Path, workspace: Path, config: dict[str, Any]) -> list[CommandSpec]:
     mutable = {
         item.get("key"): item
@@ -1171,6 +1255,48 @@ def config_restore_specs(kastctl: Path, workspace: Path, config: dict[str, Any])
             argv = (*base, "unset", key, "--workspace-root", str(workspace))
         specs.append(CommandSpec(f"restore-{leaf}", argv))
     return specs
+
+
+def config_restore_preview_specs() -> list[CommandSpec]:
+    return [
+        CommandSpec(
+            "restore-enabled",
+            ("internal:restore-config", "telemetry.enabled"),
+        ),
+        CommandSpec(
+            "restore-detail",
+            ("internal:restore-config", "telemetry.detail"),
+        ),
+    ]
+
+
+def runtime_restore_specs(
+    kastctl: Path,
+    kast: str,
+    workspace: Path,
+    transition_timeout: float,
+) -> list[CommandSpec]:
+    return [
+        CommandSpec(
+            "restore-runtime-stop",
+            (
+                str(kastctl),
+                "--output",
+                "json",
+                "developer",
+                "runtime",
+                "stop",
+                "--workspace-root",
+                str(workspace),
+            ),
+            timeout_seconds=transition_timeout,
+        ),
+        CommandSpec(
+            "restore-runtime-start",
+            (kast, "workspace", "ensure"),
+            timeout_seconds=transition_timeout,
+        ),
+    ]
 
 
 def restore_config(
@@ -1197,40 +1323,21 @@ def restore_config_and_runtime(
     transition_timeout: float,
 ) -> list[str]:
     errors = restore_config(runner, kastctl, workspace, config)
+    runtime_specs = runtime_restore_specs(
+        kastctl,
+        kast,
+        workspace,
+        transition_timeout,
+    )
     try:
-        require_success(
-            runner.run(
-                CommandSpec(
-                    "restore-runtime-stop",
-                    (
-                        str(kastctl),
-                        "--output",
-                        "json",
-                        "developer",
-                        "runtime",
-                        "stop",
-                        "--workspace-root",
-                        str(workspace),
-                    ),
-                    timeout_seconds=transition_timeout,
-                )
-            )
-        )
+        require_success(runner.run(runtime_specs[0]))
     except ReproError as error:
         errors.append(str(error))
         return errors
     if errors:
         return errors
     try:
-        require_success(
-            runner.run(
-                CommandSpec(
-                    "restore-runtime-start",
-                    (kast, "workspace", "ensure"),
-                    timeout_seconds=transition_timeout,
-                )
-            )
-        )
+        require_success(runner.run(runtime_specs[1]))
     except ReproError as error:
         errors.append(str(error))
     return errors
@@ -1404,7 +1511,29 @@ def capture(args: argparse.Namespace) -> int:
         transition_timeout=args.transition_timeout,
     )
     if args.dry_run:
-        dry_plan = capsule_lifecycle_plan(capsule, workspace, plan) if capsule is not None else plan
+        preview_kastctl = (
+            capsule.kastctl if capsule is not None else Path("<developer-cli>")
+        )
+        dry_plan = [
+            *capture_state_specs(
+                preview_kastctl,
+                workspace,
+                args.transition_timeout,
+            ),
+            *scenario_execution_order(plan),
+        ]
+        if capsule is not None:
+            dry_plan = capsule_lifecycle_plan(capsule, workspace, dry_plan)
+        else:
+            dry_plan.extend(config_restore_preview_specs())
+            dry_plan.extend(
+                runtime_restore_specs(
+                    preview_kastctl,
+                    kast,
+                    workspace,
+                    args.transition_timeout,
+                )
+            )
         payload: dict[str, Any] = {
             "schemaVersion": SCHEMA_VERSION,
             "commands": [spec.public() for spec in dry_plan],
@@ -1471,36 +1600,12 @@ def capture(args: argparse.Namespace) -> int:
         telemetry_path, idea_log_path = log_paths(config, workspace)
         telemetry_offset = file_size(telemetry_path)
         trace_offset = file_size(idea_log_path)
-        require_success(runner.run(
-            CommandSpec(
-                "telemetry-enable",
-                (
-                    str(kastctl), "--output", "json", "config", "set", "telemetry.enabled", "true",
-                    "--workspace-root", str(workspace),
-                ),
-            )
-        ))
-        require_success(runner.run(
-            CommandSpec(
-                "telemetry-verbose",
-                (
-                    str(kastctl), "--output", "json", "config", "set", "telemetry.detail", "verbose",
-                    "--workspace-root", str(workspace),
-                ),
-            )
-        ))
-        require_success(
-            runner.run(
-                CommandSpec(
-                    "runtime-stop",
-                    (
-                        str(kastctl), "--output", "json", "developer", "runtime", "stop",
-                        "--workspace-root", str(workspace),
-                    ),
-                    timeout_seconds=args.transition_timeout,
-                )
-            )
-        )
+        for spec in capture_state_specs(
+            kastctl,
+            workspace,
+            args.transition_timeout,
+        ):
+            require_success(runner.run(spec))
         cold_up = next(spec for spec in plan if spec.name == "cold-up")
         cold_observer = next(spec for spec in plan if spec.name == "cold-observer")
         up_active = runner.begin(cold_up)
@@ -1757,6 +1862,7 @@ def timed_observations(observer_text: str) -> list[TimedObservation]:
 def observation_has_expected_outcome(observation: TimedObservation) -> bool:
     return observation.exit_code == 0 or (
         observation.kind == ObservationKind.RESOLVE
+        and observation.exit_code == 1
         and re.search(r"(?m)^error: CONFLICT$", observation.text) is not None
     )
 
