@@ -6,6 +6,9 @@ use std::collections::{BTreeMap, btree_map};
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::{OsStrExt as _, OsStringExt as _};
 
+const IMPLICIT_JVM_OPTION_VARIABLES: [&str; 3] =
+    ["JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS"];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::runtime::indexer_authority) struct ServiceLaunchEnvironment {
     variables: BTreeMap<OsString, OsString>,
@@ -27,6 +30,9 @@ impl ServiceLaunchEnvironment {
         inherited: impl IntoIterator<Item = (OsString, OsString)>,
     ) -> std::result::Result<Self, &'static str> {
         let mut environment = Self::from_variables(inherited)?;
+        for variable in IMPLICIT_JVM_OPTION_VARIABLES {
+            environment.variables.remove(OsStr::new(variable));
+        }
         environment.variables.insert(
             OsString::from("KAST_HOME"),
             config.paths.install_root.as_os_str().to_os_string(),
@@ -186,6 +192,15 @@ mod tests {
                 OsString::from("HTTPS_PROXY"),
                 OsString::from("https://proxy.invalid"),
             ),
+            (
+                OsString::from("JAVA_TOOL_OPTIONS"),
+                OsString::from("-Xmx8192m"),
+            ),
+            (
+                OsString::from("JDK_JAVA_OPTIONS"),
+                OsString::from("-Xmx7168m"),
+            ),
+            (OsString::from("_JAVA_OPTIONS"), OsString::from("-Xmx6144m")),
             (OsString::from("KAST_HOME"), OsString::from("/poisoned")),
             (OsString::from("KAST_INDEXER"), OsString::from("false")),
             (
@@ -224,6 +239,9 @@ mod tests {
             environment.value(OsStr::new("HTTPS_PROXY")),
             Some(OsStr::new("https://proxy.invalid")),
         );
+        for variable in IMPLICIT_JVM_OPTION_VARIABLES {
+            assert_eq!(environment.value(OsStr::new(variable)), None);
+        }
         assert_eq!(
             environment.value(OsStr::new("KAST_HOME")),
             Some(config.paths.install_root.as_os_str()),

@@ -166,6 +166,7 @@ struct AdmittedIndexerCapabilities {
 pub(crate) enum SemanticRuntimeAvailability {
     ReuseOnly,
     StartIfMissing,
+    StartIfMissingOrAwaitCapability,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,13 +1,16 @@
 #[cfg(target_os = "macos")]
-fn preflight_installed_idea_semantic_runtime(idea_home: &Path, idea_system: &Path) -> Result<()> {
+fn preflight_installed_idea_semantic_runtime(
+    payload_plugin: &Path,
+    idea_system: &Path,
+) -> Result<()> {
     const KOTLIN_BUILDER: &str = "org/jetbrains/kotlin/jps/build/KotlinBuilder.class";
 
-    let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+    let kotlin_jps = payload_plugin.join("lib/kotlin-jps-plugin.jar");
     let file = fs::File::open(&kotlin_jps).map_err(|error| {
         CliError::new(
             "INDEXER_DEPENDENCY_UNAVAILABLE",
             format!(
-                "Required Kotlin/JPS dependency org.jetbrains.kotlin:kotlin-jps-plugin is unavailable at {}: {error}. Repair the supported IDE installation before starting Kast.",
+                "The active Kast release is missing its pinned Kotlin/JPS dependency at {}: {error}. Run `kast setup` for the active release before starting Kast.",
                 kotlin_jps.display(),
             ),
         )
@@ -56,7 +59,7 @@ fn invalid_kotlin_jps_dependency(path: &Path, reason: &str) -> CliError {
     CliError::new(
         "INDEXER_DEPENDENCY_INVALID",
         format!(
-            "Required Kotlin/JPS dependency org.jetbrains.kotlin:kotlin-jps-plugin is invalid at {}: {reason}. Repair the supported IDE installation before starting Kast.",
+            "The active Kast release contains an invalid pinned Kotlin/JPS dependency at {}: {reason}. Run `kast setup` for the active release before starting Kast.",
             path.display(),
         ),
     )

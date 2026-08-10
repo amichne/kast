@@ -46,7 +46,10 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
         workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
             IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
         },
-    ) : this(workspaceIdentity, IdeaProjectModelAccess(project, workspaceModelReader))
+    ) : this(
+        workspaceIdentity,
+        IdeaProjectModelAccess(project, workspaceIdentity.workspaceIdentity, workspaceModelReader),
+    )
 
     private constructor(
         workspaceIdentity: IdeaWorkspaceIdentity,
@@ -244,6 +247,7 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
 
     private class IdeaProjectModelAccess(
         private val project: Project,
+        private val workspaceIdentity: WorkspaceIdentity,
         private val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
     ) : IdeaWorkspaceFileProjectModelAccess {
         private val projectRootModificationTracker = ProjectRootModificationTracker.getInstance(project)
@@ -328,9 +332,15 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
             .filter(VirtualFile::isValid)
             .filterNot(VirtualFile::isDirectory)
             .filter { file -> file.path.endsWith(".kt") || file.path.endsWith(".kts") }
-            .distinctBy(VirtualFile::getPath)
-            .sortedBy(VirtualFile::getPath)
             .map(VirtualFile::toNioPath)
+            .map { path -> path.toAbsolutePath().normalize() }
+            .filter { path ->
+                workspaceIdentity.relativizeIfContained(path)
+                    ?.let { relative -> !WorkspacePathPolicy.isHardExcluded(relative) }
+                    ?: false
+            }
+            .distinct()
+            .sortedBy(Path::toString)
             .toList()
     }
 

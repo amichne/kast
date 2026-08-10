@@ -131,8 +131,13 @@ impl KastConfig {
                 self.server.max_concurrent_requests = value;
             }
         }
-        if let Some(value) = partial.indexer.and_then(|indexer| indexer.host_command) {
-            self.indexer.host_command = value;
+        if let Some(indexer) = partial.indexer {
+            if let Some(value) = indexer.host_command {
+                self.indexer.host_command = value;
+            }
+            if let Some(value) = indexer.max_heap_megabytes {
+                self.indexer.max_heap_megabytes = value;
+            }
         }
         if let Some(hooks) = partial.codex.and_then(|codex| codex.hooks) {
             if let Some(value) = hooks.enabled {

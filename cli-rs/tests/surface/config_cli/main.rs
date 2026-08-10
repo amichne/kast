@@ -184,6 +184,51 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
 }
 
 #[test]
+fn workspace_config_owns_a_positive_tunable_indexer_heap() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+
+    let listed = run(&home, &config_home, &workspace, &["list"]);
+    assert!(listed.status.success());
+    let listed: serde_json::Value = serde_json::from_slice(&listed.stdout).expect("list JSON");
+    assert_eq!(listed["effective"]["indexer"]["maxHeapMegabytes"], 2048);
+    assert_eq!(
+        mutable_field(&listed, "indexer.maxHeapMegabytes")["valueType"],
+        "integer",
+    );
+
+    let set = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["set", "indexer.maxHeapMegabytes", "3072"],
+    );
+    assert!(
+        set.status.success(),
+        "set failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&set.stdout),
+        String::from_utf8_lossy(&set.stderr),
+    );
+    let set: serde_json::Value = serde_json::from_slice(&set.stdout).expect("set JSON");
+    assert_eq!(set["effectiveValue"], 3072);
+
+    let zero = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["set", "indexer.maxHeapMegabytes", "0"],
+    );
+    assert!(!zero.status.success());
+    let zero: serde_json::Value = serde_json::from_slice(&zero.stdout).expect("invalid JSON");
+    assert_eq!(zero["code"], "CONFIG_VALUE_INVALID");
+}
+
+#[test]
 fn workspace_config_mutates_inline_tables() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

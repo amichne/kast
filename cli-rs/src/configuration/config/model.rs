@@ -28,6 +28,23 @@ pub struct IndexerConfig {
     pub runtime_libs_dir: Option<PathBuf>,
     pub host_home: Option<PathBuf>,
     pub host_command: PathBuf,
+    pub max_heap_megabytes: IndexerMaxHeapMegabytes,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct IndexerMaxHeapMegabytes(NonZeroU32);
+
+impl IndexerMaxHeapMegabytes {
+    pub(crate) fn jvm_argument(self) -> String {
+        format!("-Xmx{}m", self.0)
+    }
+}
+
+impl Default for IndexerMaxHeapMegabytes {
+    fn default() -> Self {
+        Self(NonZeroU32::new(2_048).expect("default indexer heap is positive"))
+    }
 }
 
 impl Default for IndexerConfig {
@@ -36,6 +53,7 @@ impl Default for IndexerConfig {
             runtime_libs_dir: None,
             host_home: None,
             host_command: PathBuf::from("idea"),
+            max_heap_megabytes: IndexerMaxHeapMegabytes::default(),
         }
     }
 }

@@ -8,6 +8,12 @@ value class WorkspaceRelativePath private constructor(val value: String) {
     val path: Path get() = Path.of(value)
 
     companion object {
+        /**
+         * Proof transition: `Path -> WorkspaceRelativePath`.
+         *
+         * Establishes that the path is relative, normalized, and cannot escape through a parent
+         * component. Raw `Path` extraction is permitted only at filesystem and protocol boundaries.
+         */
         fun parse(path: Path): WorkspaceRelativePath {
             require(!path.isAbsolute) { "Workspace-relative paths must not be absolute: $path" }
             val normalized = path.normalize()
@@ -17,6 +23,13 @@ value class WorkspaceRelativePath private constructor(val value: String) {
             return WorkspaceRelativePath(normalized.toString().replace('\\', '/'))
         }
 
+        /**
+         * Proof transition: `(workspace root, candidate Path) -> WorkspaceRelativePath?`.
+         *
+         * Establishes that the normalized candidate is contained by the normalized workspace root.
+         * `null` reports the closed containment miss at this filesystem boundary; raw `Path`
+         * extraction is permitted only at filesystem and protocol boundaries.
+         */
         fun resolve(workspaceRoot: Path, candidate: Path): WorkspaceRelativePath? {
             val root = NormalizedPath.of(workspaceRoot).toJavaPath()
             val absoluteCandidate = if (candidate.isAbsolute) candidate else root.resolve(candidate)
@@ -28,7 +41,8 @@ value class WorkspaceRelativePath private constructor(val value: String) {
 }
 
 object WorkspacePathPolicy {
-    private val hardExcludedDirectoryNames = setOf(".gradle", ".idea", ".kotlin", "build", "out")
+    private val hardExcludedDirectoryNames =
+        setOf(".gradle", ".idea", ".kotlin", "build", "out", "target")
 
     fun isHardExcluded(path: Path): Boolean =
         isHardExcluded(WorkspaceRelativePath.parse(path))

@@ -8,7 +8,8 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use support::{
-    default_install_root, default_socket_path_for_test, spawn_ready_indexer_backend_after_marker,
+    api_schema_version, default_install_root, default_socket_path_for_test,
+    spawn_ready_indexer_backend_after_marker, spawn_sequenced_indexer_backend,
 };
 
 const SIDECAR_LAUNCH_MARKER: &str = "__KAST_SIDECAR_LAUNCH__";
@@ -41,11 +42,9 @@ fn semantic_demand_launches_an_isolated_sidecar_from_a_supported_installed_idea(
     std::fs::create_dir_all(contents.join("Resources")).expect("resources");
     std::fs::create_dir_all(contents.join("bin")).expect("bin");
     std::fs::create_dir_all(contents.join("lib")).expect("lib");
-    std::fs::create_dir_all(contents.join("plugins/Kotlin/lib/jps")).expect("Kotlin JPS");
     std::fs::create_dir_all(java.parent().expect("JBR bin")).expect("JBR");
     std::fs::write(contents.join("Resources/build.txt"), "IU-262.1\n").expect("build");
     std::fs::write(contents.join("lib/platform-loader.jar"), b"fixture").expect("boot jar");
-    write_kotlin_jps_fixture(&contents.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar"));
     std::fs::write(
         contents.join("bin/idea.vmoptions"),
         format!(
@@ -79,10 +78,14 @@ fn semantic_demand_launches_an_isolated_sidecar_from_a_supported_installed_idea(
         b"fixture",
     )
     .expect("sidecar jar");
+    write_kotlin_jps_fixture(&sidecar_home.join("plugins/kast-indexer/lib/kotlin-jps-plugin.jar"));
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::write(
         config_home.join("config.toml"),
-        format!("[indexer]\nhostCommand = \"{}\"\n", toml_path(&app)),
+        format!(
+            "[indexer]\nhostCommand = \"{}\"\nmaxHeapMegabytes = 3072\n",
+            toml_path(&app),
+        ),
     )
     .expect("config");
 
@@ -149,6 +152,7 @@ fn semantic_demand_launches_an_isolated_sidecar_from_a_supported_installed_idea(
         "{launch}",
     );
     assert!(launch.contains("\nkast-indexer\n"), "{launch}");
+    assert!(launch.contains("\n-Xmx3072m\n"), "{launch}");
     assert!(launch.contains("--workspace-root="), "{launch}");
     assert!(launch.contains("--runtime-config-file="), "{launch}");
     for path in [
@@ -162,6 +166,58 @@ fn semantic_demand_launches_an_isolated_sidecar_from_a_supported_installed_idea(
     assert!(
         !sidecar_home.join("../runtime-libs/classpath.txt").is_file(),
         "the macOS sidecar must not require packaged IDEA runtime libraries",
+    );
+}
+
+#[test]
+fn workspace_up_waits_for_reference_ready_epoch() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    let socket = fixture.path().join("indexer.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let backend = spawn_sequenced_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket,
+        vec![
+            ("runtime/status", runtime_status(&workspace, false)),
+            ("capabilities", semantic_capabilities(&workspace)),
+            ("runtime/status", runtime_status(&workspace, true)),
+            ("capabilities", semantic_capabilities(&workspace)),
+            ("runtime/status", runtime_status(&workspace, true)),
+        ],
+    );
+
+    let output = kast_public(&home, &config_home, &workspace)
+        .args(["--output", "json", "up"])
+        .output()
+        .expect("kast up");
+    let requests = backend.join().expect("sequenced backend");
+
+    assert!(
+        output.status.success(),
+        "up failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let output: serde_json::Value = serde_json::from_slice(&output.stdout).expect("up JSON");
+    assert_eq!(output["result"]["referenceIndexReady"], true, "{output:#}");
+    assert_eq!(
+        requests
+            .iter()
+            .map(|request| request["method"].as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            Some("runtime/status"),
+            Some("capabilities"),
+            Some("runtime/status"),
+            Some("capabilities"),
+        ],
     );
 }
 
@@ -192,6 +248,46 @@ fn sidecar_semantic_demand_command(
         .stderr(Stdio::piped())
         .arg("up");
     command
+}
+
+fn kast_public(home: &Path, config_home: &Path, workspace: &Path) -> Command {
+    let mut command = support::kast(home, config_home);
+    command.arg0("kast").current_dir(workspace);
+    command
+}
+
+fn runtime_status(workspace: &Path, references_ready: bool) -> serde_json::Value {
+    serde_json::json!({
+        "state": "READY",
+        "backendName": "indexer",
+        "backendVersion": "scripted-test",
+        "workspaceRoot": workspace.display().to_string(),
+        "sourceModuleNames": [":fixture"],
+        "readiness": {
+            "runtime": {"type": "READY"},
+            "model": {"type": "READY"},
+            "references": {"type": if references_ready { "READY" } else { "BLOCKED" }},
+            "semanticGraph": {"type": "READY"},
+            "mutation": {"type": "READY"}
+        },
+        "schemaVersion": api_schema_version()
+    })
+}
+
+fn semantic_capabilities(workspace: &Path) -> serde_json::Value {
+    serde_json::json!({
+        "backendName": "indexer",
+        "backendVersion": "scripted-test",
+        "workspaceRoot": workspace.display().to_string(),
+        "readCapabilities": ["SEMANTIC_GRAPH"],
+        "mutationCapabilities": [],
+        "limits": {
+            "requestTimeoutMillis": 60000,
+            "maxResults": 1000,
+            "maxConcurrentRequests": 4
+        },
+        "schemaVersion": api_schema_version()
+    })
 }
 
 struct MarkerOnDrop(std::path::PathBuf);

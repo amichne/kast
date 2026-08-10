@@ -36,7 +36,7 @@ fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
         return execute_agent_native_graph_refresh(args);
     }
     let semantic_read = if args.database.is_none() {
-        match runtime::semantic_graph_workspace_read_ready(args.runtime.workspace_root.clone()) {
+        match runtime::semantic_graph_workspace_read(args.runtime.workspace_root.clone()) {
             Ok(read) => Some(read),
             Err(error) => {
                 return error_envelope(
@@ -236,7 +236,7 @@ fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelo
         params["expectedGeneration"] = json!(snapshot.generation);
     }
     let request = json_rpc_request("raw/semantic-graph", params);
-    let session = match runtime::raw_rpc_session_ready(args.runtime.workspace_root.clone()) {
+    let session = match runtime::raw_rpc_session(args.runtime.workspace_root.clone()) {
         Ok(session) => session,
         Err(error) => {
             return error_envelope(

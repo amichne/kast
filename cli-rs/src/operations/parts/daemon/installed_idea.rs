@@ -107,8 +107,8 @@ fn installed_idea_sidecar_java_command(
             )
         })?;
     }
-    preflight_installed_idea_semantic_runtime(&idea_home, &idea_system)?;
     let payload_plugin = installed_sidecar_plugin(args, config)?;
+    preflight_installed_idea_semantic_runtime(&payload_plugin, &idea_system)?;
     let isolated_plugin = plugins.join("kast-indexer");
     ensure_isolated_plugin_link(&payload_plugin, &isolated_plugin)?;
     let runtime_config_file = write_runtime_config_file(args, config, None, &idea_home)?;
@@ -138,8 +138,14 @@ fn installed_idea_sidecar_java_command(
             .filter(|argument| !is_sidecar_managed_jvm_argument(argument)),
     );
     if let Ok(java_opts) = env::var("JAVA_OPTS") {
-        command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
+        command.extend(
+            java_opts
+                .split_whitespace()
+                .filter(|argument| !is_indexer_heap_argument(argument))
+                .map(ToOwned::to_owned),
+        );
     }
+    command.push(config.indexer.max_heap_megabytes.jvm_argument());
     command.extend([
         "-Djava.awt.headless=true".to_string(),
         "-Didea.is.internal=true".to_string(),
@@ -211,6 +217,9 @@ fn materialize_product_argument(argument: &str, app: &Path, idea_home: &Path) ->
 
 #[cfg(target_os = "macos")]
 fn is_sidecar_managed_jvm_argument(argument: &str) -> bool {
+    if is_indexer_heap_argument(argument) {
+        return true;
+    }
     [
         "-Djava.awt.headless=",
         "-Didea.home.path=",

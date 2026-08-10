@@ -5,56 +5,134 @@ pub(super) fn admit_indexer_runtime<C: RequiredCapability>(
         Ok(candidate) => {
             construct_admitted_runtime(request, candidate, RuntimeAdmissionPath::Reused)
         }
-        Err(rejection)
-            if request.availability == SemanticRuntimeAvailability::StartIfMissing
-                && matches!(rejection.code, "NO_INDEXER_AVAILABLE" | "RUNTIME_NOT_READY") =>
+        Err(CandidateAdmissionRejection::Missing(_))
+            if matches!(
+                request.availability,
+                SemanticRuntimeAvailability::StartIfMissing
+                    | SemanticRuntimeAvailability::StartIfMissingOrAwaitCapability
+            ) =>
         {
             start_indexer_runtime(request)
         }
-        Err(rejection) => Err(rejection),
+        Err(CandidateAdmissionRejection::PresentButNotReady { candidate, .. })
+            if request.availability
+                == SemanticRuntimeAvailability::StartIfMissingOrAwaitCapability =>
+        {
+            await_observed_runtime(request, *candidate)
+        }
+        Err(rejection) => Err(rejection.into_runtime_rejection()),
+    }
+}
+
+enum CandidateAdmissionRejection {
+    Missing(SemanticRuntimeRejection),
+    PresentButNotReady {
+        candidate: Box<RuntimeCandidateStatus>,
+        rejection: SemanticRuntimeRejection,
+    },
+    Terminal(SemanticRuntimeRejection),
+}
+
+impl CandidateAdmissionRejection {
+    fn into_runtime_rejection(self) -> SemanticRuntimeRejection {
+        match self {
+            Self::Missing(rejection)
+            | Self::Terminal(rejection) => rejection,
+            Self::PresentButNotReady { rejection, .. } => rejection,
+        }
     }
 }
 
 fn admitted_candidate<C: RequiredCapability>(
     request: &SemanticRuntimeRequest<C>,
-) -> std::result::Result<RuntimeCandidateStatus, SemanticRuntimeRejection> {
+) -> std::result::Result<RuntimeCandidateStatus, CandidateAdmissionRejection> {
     let inspection = inspect_indexer_workspace_with_config(
         &request.workspace_root,
         &request.config,
         StaleDescriptorPolicy::Preserve,
     )
     .map_err(|error| {
-        runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
+        CandidateAdmissionRejection::Terminal(runtime_cli_rejection(
+            &request.workspace_root,
+            request.workspace_kind,
+            error,
+        ))
     })?;
     let reachable_candidates = inspection
         .candidates
         .into_iter()
-        .filter(|candidate| candidate.runtime_status.as_ref().is_some_and(is_servable))
+        .filter(|candidate| candidate.reachable)
         .collect::<Vec<_>>();
     if reachable_candidates.len() > 1 {
-        return Err(indexer_conflict_rejection(
-            &request.workspace_root,
-            request.workspace_kind,
-            &reachable_candidates,
+        return Err(CandidateAdmissionRejection::Terminal(
+            indexer_conflict_rejection(
+                &request.workspace_root,
+                request.workspace_kind,
+                &reachable_candidates,
+            ),
         ));
     }
-    let candidate = reachable_candidates.into_iter().next().filter(|candidate| {
-        candidate.runtime_status.as_ref().is_some_and(|status| {
-            status
+    let Some(candidate) = reachable_candidates.into_iter().next() else {
+        return Err(CandidateAdmissionRejection::Missing(
+            unavailable_rejection(
+                &request.workspace_root,
+                request.workspace_kind,
+                request.accept_indexing,
+            ),
+        ));
+    };
+    if candidate.runtime_status.as_ref().is_some_and(|status| {
+        is_servable(status)
+            && status
                 .published_workspace_generation
                 .as_ref()
                 .is_some_and(|publication| {
                     require_capability_publication::<C>(status, publication).is_ok()
                 })
-        })
-    });
-    candidate.ok_or_else(|| {
-        unavailable_rejection(
+    }) {
+        return Ok(candidate);
+    }
+    Err(CandidateAdmissionRejection::PresentButNotReady {
+        candidate: Box::new(candidate),
+        rejection: unavailable_rejection(
             &request.workspace_root,
             request.workspace_kind,
-            request.accept_indexing,
-        )
+            false,
+        ),
     })
+}
+
+fn await_observed_runtime<C: RequiredCapability>(
+    request: SemanticRuntimeRequest<C>,
+    observed: RuntimeCandidateStatus,
+) -> std::result::Result<AdmittedIndexerRuntime<C>, SemanticRuntimeRejection> {
+    let expected_descriptor = observed.descriptor;
+    let started_at = Instant::now();
+    let candidate = poll_for_runtime_candidate(
+        request.wait_timeout_ms,
+        250,
+        || u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX),
+        || {
+            admitted_candidate(&request)
+                .ok()
+                .filter(|candidate| candidate.descriptor == expected_descriptor)
+        },
+        |duration_ms| thread::sleep(Duration::from_millis(duration_ms)),
+    )
+    .ok_or_else(|| {
+        runtime_cli_rejection(
+            &request.workspace_root,
+            request.workspace_kind,
+            CliError::new(
+                "RUNTIME_TIMEOUT",
+                format!(
+                    "Timed out waiting for the existing indexer for {}.",
+                    request.workspace_root.display()
+                ),
+            ),
+        )
+    })?;
+    construct_admitted_runtime(request, candidate, RuntimeAdmissionPath::Reused)
 }
 
 enum RuntimeAdmissionPath<C: RequiredCapability> {

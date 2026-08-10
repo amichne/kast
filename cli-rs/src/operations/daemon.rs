@@ -68,8 +68,14 @@ fn linux_indexer_java_command(args: &DaemonStartArgs, config: &KastConfig) -> Re
         write_runtime_config_file(args, config, Some(&runtime_libs_dir), &idea_home)?;
     command.extend(indexer_jvm_args(&idea_home, config));
     if let Ok(java_opts) = env::var("JAVA_OPTS") {
-        command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
+        command.extend(
+            java_opts
+                .split_whitespace()
+                .filter(|argument| !is_indexer_heap_argument(argument))
+                .map(ToOwned::to_owned),
+        );
     }
+    command.push(config.indexer.max_heap_megabytes.jvm_argument());
     command.push("-cp".to_string());
     command.push(classpath);
     command.push(INDEXER_MAIN_CLASS.to_string());
@@ -248,6 +254,10 @@ fn indexer_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
         .map(|module| format!("--add-opens={module}=ALL-UNNAMED")),
     );
     args
+}
+
+fn is_indexer_heap_argument(argument: &str) -> bool {
+    argument.starts_with("-Xmx")
 }
 
 fn read_classpath(runtime_libs_dir: &Path) -> Result<String> {

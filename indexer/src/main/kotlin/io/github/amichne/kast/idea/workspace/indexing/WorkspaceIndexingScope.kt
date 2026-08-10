@@ -13,7 +13,6 @@ import java.nio.file.Path
 
 internal data class WorkspaceIndexingScope(
     val includedPaths: List<WorkspaceSourcePath>,
-    val ignoredPaths: List<Path>,
     val criticalPaths: List<WorkspaceSourcePath>,
     val unmatchedCriticalPatterns: List<WorkspaceIndexingPattern>,
 ) {
@@ -36,7 +35,6 @@ private data class WorkspaceIndexingRules(
         val sourceFilePolicy = SourceIndexFilePolicy.forWorkspace(rootPath)
         val matchedCriticalPatterns = linkedSetOf<WorkspaceIndexingPattern>()
         val included = mutableListOf<WorkspaceSourcePath>()
-        val ignored = mutableListOf<Path>()
         val critical = mutableListOf<WorkspaceSourcePath>()
 
         candidates
@@ -49,7 +47,6 @@ private data class WorkspaceIndexingRules(
             .forEach { path ->
                 val relative = WorkspaceRelativePath.resolve(rootPath, path)
                 if (relative == null) {
-                    ignored.add(path)
                     return@forEach
                 }
                 val matchingCriticalPatterns = criticalRules
@@ -67,7 +64,7 @@ private data class WorkspaceIndexingRules(
                     )
                 }
                 if (hardExcluded || ignoredByRule) {
-                    ignored.add(path)
+                    return@forEach
                 } else {
                     val sourcePath = checkNotNull(sourceFilePolicy.sourcePath(relative)) {
                         "Included indexing path is not an eligible Kotlin source file: ${relative.value}"
@@ -79,7 +76,6 @@ private data class WorkspaceIndexingRules(
 
         return WorkspaceIndexingScope(
             includedPaths = included,
-            ignoredPaths = ignored,
             criticalPaths = critical,
             unmatchedCriticalPatterns = criticalRules
                 .filterNot(matchedCriticalPatterns::contains),
