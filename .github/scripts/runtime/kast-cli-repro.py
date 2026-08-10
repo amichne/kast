@@ -74,6 +74,7 @@ class ActiveCommand:
     window_id: str
     started_at_epoch_millis: int
     completion_token: str
+    deadline_monotonic: float
 
 
 @dataclasses.dataclass(frozen=True)
@@ -523,6 +524,7 @@ class TmuxCapture:
         shell = f"python3 -c {shlex.quote(completion_wrapper)}; exec sleep 2147483647"
         window_name = re.sub(r"[^A-Za-z0-9_-]", "-", spec.name)[:40]
         started_at_epoch_millis = epoch_millis()
+        deadline_monotonic = time.monotonic() + spec.timeout_seconds
         result = run_checked(
             "tmux",
             "new-window",
@@ -543,10 +545,10 @@ class TmuxCapture:
             result.stdout.strip(),
             started_at_epoch_millis,
             completion_token,
+            deadline_monotonic,
         )
 
     def finish(self, active: ActiveCommand) -> CommandEvidence:
-        deadline = time.monotonic() + active.spec.timeout_seconds
         timed_out = False
         transcript = ""
         exit_code: int | None = None
@@ -571,7 +573,7 @@ class TmuxCapture:
                 exit_code = int(match.group(1))
                 completed_at_epoch_millis = int(match.group(2))
                 break
-            if time.monotonic() >= deadline:
+            if time.monotonic() >= active.deadline_monotonic:
                 timed_out = True
                 subprocess.run(
                     ["tmux", "send-keys", "-t", active.window_id, "C-c"],
@@ -896,6 +898,7 @@ def verify_capsule_install(
         candidate_paths.extend(
             Path(value) for value in effective_paths.values() if isinstance(value, str) and value
         )
+    candidate_paths.append(telemetry_output_path(config, workspace))
     escaped = sorted(str(path) for path in candidate_paths if not is_within(path, capsule.root))
     proof = {
         "installationContained": not escaped,
@@ -992,7 +995,8 @@ def signal_capsule_processes(
                 raise ReproError(
                     f"cannot terminate capsule-owned PID {process_id}"
                 ) from error
-            targeted.add(process_id)
+            else:
+                targeted.add(process_id)
         if remaining:
             stable_empty_scans = 0
             if time.monotonic() >= deadline:
@@ -1062,11 +1066,20 @@ def restore_config(
     return errors
 
 
-def log_paths(config: dict[str, Any]) -> tuple[Path, Path]:
+def telemetry_output_path(config: dict[str, Any], workspace: Path) -> Path:
+    output = config.get("effective", {}).get("telemetry", {}).get("outputFile")
+    if isinstance(output, str) and output:
+        configured = Path(output).expanduser()
+        return (configured if configured.is_absolute() else workspace / configured).resolve()
+    config_path = Path(str(config.get("configPath", "")))
+    return (config_path.parent / "telemetry" / "idea-spans.jsonl").resolve()
+
+
+def log_paths(config: dict[str, Any], workspace: Path) -> tuple[Path, Path]:
     config_path = Path(str(config.get("configPath", "")))
     if len(config_path.parent.name) != 64:
         raise ReproError("config discovery did not expose a canonical workspace data directory")
-    telemetry = config_path.parent / "telemetry" / "idea-spans.jsonl"
+    telemetry = telemetry_output_path(config, workspace)
     cache_root = Path(str(config.get("effective", {}).get("paths", {}).get("cacheDir", "")))
     idea_log = cache_root / "idea-sidecars" / config_path.parent.name[:12] / "idea-log" / "idea.log"
     return telemetry, idea_log
@@ -1237,7 +1250,7 @@ def capture(args: argparse.Namespace) -> int:
             json.dumps(config, indent=2) + "\n",
             encoding="utf-8",
         )
-        telemetry_path, idea_log_path = log_paths(config)
+        telemetry_path, idea_log_path = log_paths(config, workspace)
         telemetry_offset = file_size(telemetry_path)
         trace_offset = file_size(idea_log_path)
         require_success(runner.run(

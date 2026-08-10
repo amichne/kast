@@ -339,6 +339,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 "%1",
                 100,
                 "nonce",
+                float("inf"),
             )
             collision = subprocess.CompletedProcess(
                 [],
@@ -367,6 +368,47 @@ class KastCliReproContractTest(unittest.TestCase):
 
             self.assertEqual(0, command.exitCode)
             self.assertEqual(234, command.finishedAtEpochMillis)
+
+    def test_command_timeout_deadline_is_bound_when_the_command_begins(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            evidence = directory / "evidence"
+            (evidence / "transcripts").mkdir(parents=True)
+            capture = runner.TmuxCapture("session", directory, evidence, keep_session=False)
+            active = runner.ActiveCommand(
+                runner.CommandSpec(
+                    "probe",
+                    ("kast", "symbol", "show"),
+                    timeout_seconds=50.0,
+                ),
+                "%1",
+                100,
+                "nonce",
+                100.0,
+            )
+            pending = subprocess.CompletedProcess([], 0, "still running\n", "")
+            late_completion = subprocess.CompletedProcess(
+                [],
+                0,
+                "::kast-repro-exit=nonce:0:234\n",
+                "",
+            )
+            killed = subprocess.CompletedProcess([], 0, "", "")
+
+            with (
+                mock.patch.object(
+                    runner.subprocess,
+                    "run",
+                    side_effect=[pending, killed, late_completion, killed],
+                ),
+                mock.patch.object(runner.time, "monotonic", return_value=101.0),
+                mock.patch.object(runner.time, "sleep"),
+            ):
+                command = capture.finish(active)
+
+            self.assertTrue(command.timedOut)
+            self.assertEqual(124, command.exitCode)
 
     def test_incomplete_cold_observer_cannot_replay_as_clean(self) -> None:
         for failure in ("failed-command", "missing-home"):
@@ -561,6 +603,82 @@ class KastCliReproContractTest(unittest.TestCase):
         self.assertEqual([100, 101], targeted)
         self.assertEqual([], remaining)
         self.assertIn(mock.call(101, runner.signal.SIGTERM), kill.call_args_list)
+
+    def test_process_that_exits_before_signal_is_not_reported_as_terminated(self) -> None:
+        runner = load_runner_module()
+        root = Path("/tmp/kast")
+        observed = {100: "java --state /tmp/kast/cache"}
+
+        with (
+            mock.patch.object(
+                runner,
+                "capsule_processes",
+                side_effect=[observed, {}, {}],
+            ),
+            mock.patch.object(runner.os, "kill", side_effect=ProcessLookupError),
+            mock.patch.object(runner.time, "sleep"),
+        ):
+            targeted, remaining = runner.terminate_capsule_processes(root, observed)
+
+        self.assertEqual([], targeted)
+        self.assertEqual([], remaining)
+
+    def test_log_paths_honors_configured_telemetry_output(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            root = Path(raw_directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            workspace_data = root / ("a" * 64)
+            config = {
+                "configPath": str(workspace_data / "config.json"),
+                "effective": {
+                    "paths": {"cacheDir": str(root / "cache")},
+                    "telemetry": {"outputFile": "telemetry/custom-spans.jsonl"},
+                },
+            }
+
+            telemetry, _ = runner.log_paths(config, workspace)
+
+            self.assertEqual(
+                (workspace / "telemetry" / "custom-spans.jsonl").resolve(),
+                telemetry,
+            )
+
+    def test_capsule_rejects_configured_telemetry_output_outside_its_root(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            root = Path(raw_directory) / "capsule"
+            capsule = runner.CapsuleContext(
+                "PERSISTENT",
+                root,
+                root / "bundle",
+                {},
+                root / "bootstrap-kastctl",
+                root / "idea-host",
+            )
+            for executable in (capsule.kast, capsule.kastctl):
+                executable.parent.mkdir(parents=True, exist_ok=True)
+                executable.write_text("#!/bin/sh\n", encoding="utf-8")
+                executable.chmod(0o755)
+            config = {
+                "configPath": str(root / "config" / ("a" * 64) / "config.json"),
+                "effective": {
+                    "paths": {"cacheDir": str(root / "cache")},
+                    "telemetry": {"outputFile": "/tmp/external-spans.jsonl"},
+                },
+            }
+
+            with (
+                mock.patch.object(
+                    runner,
+                    "discover_developer_cli",
+                    return_value=capsule.kastctl,
+                ),
+                mock.patch.object(runner, "read_config", return_value=config),
+                self.assertRaisesRegex(runner.ReproError, "escaped its root"),
+            ):
+                runner.verify_capsule_install(capsule, root / "workspace")
 
     def test_failed_telemetry_restore_is_retained_as_teardown_error(self) -> None:
         runner = load_runner_module()
