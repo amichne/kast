@@ -44,7 +44,9 @@ internal sealed interface WorkspaceTransitionRoute {
          * source claims already covered by the active cycle become [Join]; all
          * unkeyed, changed, or disjoint work becomes [Enqueue] so it cannot be
          * incorrectly treated as covered. Failed admission becomes the finite
-         * [WorkspaceTransitionRequestFailure] rejection.
+         * [WorkspaceTransitionRequestFailure] rejection. The returned route
+         * may be unpacked only at the ingress dispatch and waiter-registration
+         * boundary.
          */
         fun derive(
             status: IdeaIndexSemanticAdmission.Status,
@@ -69,6 +71,53 @@ internal sealed interface WorkspaceTransitionRoute {
 
                     WorkspaceSourceFreshnessCoverage.Uncovered -> Enqueue(admission.baseline)
                 }
+            }
+        }
+    }
+}
+
+internal sealed interface WorkspaceTransitionJoinRegistration {
+    data object Awaiting : WorkspaceTransitionJoinRegistration
+
+    data class Published(
+        val manifest: PublishedWorkspaceGenerationManifest,
+    ) : WorkspaceTransitionJoinRegistration
+
+    data class Blocked(
+        val blocker: TransitionBlocker,
+    ) : WorkspaceTransitionJoinRegistration
+
+    data class Invalid(
+        val lifecycle: WorkspaceLifecycle,
+    ) : WorkspaceTransitionJoinRegistration
+
+    companion object {
+        /**
+         * Proof transition:
+         * `(WorkspaceTransitionRoute.Join.Awaiting, TransitionObservation)`
+         * `-> WorkspaceTransitionJoinRegistration`.
+         *
+         * Retains a publication, blocker, or invalid terminal state observed
+         * after a covered route was derived but before its waiter was
+         * registered. The finite result may be unpacked only at the ingress
+         * waiter-registration boundary.
+         */
+        fun derive(
+            join: WorkspaceTransitionRoute.Join.Awaiting,
+            observation: TransitionObservation,
+        ): WorkspaceTransitionJoinRegistration = when (observation) {
+            TransitionObservation.Unobserved -> Awaiting
+            is TransitionObservation.Observed -> when (
+                val completion = WorkspaceTransitionCompletion.derive(observation.snapshot)
+            ) {
+                is WorkspaceTransitionCompletion.Ready -> {
+                    val published = PublishedWorkspaceGenerationState.Published(completion.manifest)
+                    if (published == join.baseline) Awaiting else Published(completion.manifest)
+                }
+
+                is WorkspaceTransitionCompletion.Blocked -> Blocked(completion.blocker)
+                is WorkspaceTransitionCompletion.Invalid -> Invalid(completion.lifecycle)
+                WorkspaceTransitionCompletion.InProgress -> Awaiting
             }
         }
     }
@@ -113,6 +162,18 @@ internal sealed interface WorkspaceTransitionRequestFailure {
         )
     }
 }
+
+/** Converts a retained transition blocker only at the ingress RPC boundary. */
+internal fun TransitionBlocker.toConflict(): ConflictException = ConflictException(
+    message = "Workspace reconciliation is blocked: $detail",
+    details = mapOf("phase" to phase.name),
+)
+
+/** Converts an invalid completion lifecycle only at the ingress RPC boundary. */
+internal fun WorkspaceLifecycle.toInvalidCompletionConflict(): ConflictException = ConflictException(
+    message = "Workspace transition published an invalid completion state",
+    details = mapOf("lifecycle" to name),
+)
 
 private object TransitionPublicationBaseline {
     /**

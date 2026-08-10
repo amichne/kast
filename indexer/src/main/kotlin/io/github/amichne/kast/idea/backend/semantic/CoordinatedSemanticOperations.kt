@@ -79,7 +79,10 @@ internal suspend fun KastIndexerBackend.coordinatedRefresh(
  *
  * Focused refreshes retain canonical path-and-content freshness proof. A full
  * refresh retains its recovery-audit identity without manufacturing file
- * claims.
+ * claims. The returned request remains opaque through coalescing: raw signals
+ * may be extracted only by ingress and worker routing, coordinator aggregation,
+ * and semantic-admission detail rendering; freshness claims may be consumed
+ * only by freshness aggregation and transition coverage.
  */
 private fun KastIndexerBackend.refreshTransitionRequest(
     query: ParsedRefreshQuery,

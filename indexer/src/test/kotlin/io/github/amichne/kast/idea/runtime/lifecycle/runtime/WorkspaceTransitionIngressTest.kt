@@ -41,14 +41,12 @@ class WorkspaceTransitionIngressTest {
     @Test
     fun `workspace signal is queued before its worker wakeup`() {
         val order = mutableListOf<String>()
-
         routeWorkspaceSignal(
             lock = Any(),
             signal = WorkspaceSignal.Source,
             enqueue = { order += "queued:$it" },
             wake = { order += "wake:$it" },
         )
-
         assertEquals(
             listOf("queued:Source", "wake:Source"),
             order,
@@ -69,7 +67,6 @@ class WorkspaceTransitionIngressTest {
             publish(admission, next)
             ingress.observe(readySnapshot(next))
         }
-
         val published = runBlocking {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit))
         }
@@ -116,6 +113,10 @@ class WorkspaceTransitionIngressTest {
     @Test
     fun `covered source reconciliation does not return a stale ready sample`() =
         assertCoveredSourceStaleReadyRace(workspaceRoot)
+
+    @Test
+    fun `covered source join retains a blocker observed before registration`() =
+        assertCoveredSourceBlockedRegistrationRace(workspaceRoot)
 
     @Test
     fun `failed semantic admission outranks a stale active transition observation`() {

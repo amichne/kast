@@ -4,6 +4,8 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
 import io.github.amichne.kast.idea.transition.WorkspaceSourceFreshness
+import io.github.amichne.kast.idea.transition.TransitionBlocker
+import io.github.amichne.kast.idea.transition.TransitionPhase
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
@@ -164,6 +166,52 @@ internal fun assertCoveredSourceStaleReadyRace(workspaceRoot: Path) {
     } finally {
         ingress.close()
     }
+}
+
+internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
+    val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(24))
+    val source = workspaceRoot.resolve("src/Blocked.kt")
+    Files.createDirectories(source.parent)
+    Files.writeString(source, "class Blocked\n")
+    val request = WorkspaceTransitionRequest.sourceFiles(
+        workspaceRoot = workspaceRoot,
+        paths = listOf(NormalizedPath.of(source)),
+    ) as WorkspaceTransitionRequest.SourceFiles
+    val active = TransitionObservation.Observed(
+        WorkspaceTransitionSnapshot(
+            lifecycle = WorkspaceLifecycle.Reconciling,
+            pendingSignals = emptySet(),
+            published = PublishedWorkspaceGenerationState.Published(initial),
+            blocker = null,
+            observedEventCount = 6,
+            activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
+        ),
+    )
+    val join = WorkspaceTransitionRoute.derive(
+        status = IdeaIndexSemanticAdmission.Status.Pending("covered source transition is active"),
+        observation = active,
+        request = request,
+    ) as WorkspaceTransitionRoute.Join.Awaiting
+    val blocker = TransitionBlocker(
+        phase = TransitionPhase.Reconciling,
+        detail = "compiler reconciliation failed",
+    )
+
+    val registration = WorkspaceTransitionJoinRegistration.derive(
+        join = join,
+        observation = TransitionObservation.Observed(
+            WorkspaceTransitionSnapshot(
+                lifecycle = WorkspaceLifecycle.Blocked,
+                pendingSignals = emptySet(),
+                published = PublishedWorkspaceGenerationState.Published(initial),
+                blocker = blocker,
+                observedEventCount = 7,
+                activeSourceFreshness = WorkspaceSourceFreshness.Absent,
+            ),
+        ),
+    )
+
+    assertEquals(WorkspaceTransitionJoinRegistration.Blocked(blocker), registration)
 }
 
 private fun raceReadyAdmission(

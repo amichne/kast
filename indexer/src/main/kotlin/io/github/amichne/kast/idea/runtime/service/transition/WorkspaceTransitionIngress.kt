@@ -103,22 +103,12 @@ internal class WorkspaceTransitionIngress(
 
                 is WorkspaceTransitionCompletion.Blocked ->
                     waiters.toList().onEach(waiters::remove).map { waiter ->
-                        waiter to Result.failure(
-                            ConflictException(
-                                message = "Workspace reconciliation is blocked: ${completion.blocker.detail}",
-                                details = mapOf("phase" to completion.blocker.phase.name),
-                            ),
-                        )
+                        waiter to Result.failure(completion.blocker.toConflict())
                     }
 
                 is WorkspaceTransitionCompletion.Invalid ->
                     waiters.toList().onEach(waiters::remove).map { waiter ->
-                        waiter to Result.failure(
-                            ConflictException(
-                                message = "Workspace transition published an invalid completion state",
-                                details = mapOf("lifecycle" to completion.lifecycle.name),
-                            ),
-                        )
+                        waiter to Result.failure(completion.lifecycle.toInvalidCompletionConflict())
                     }
 
                 WorkspaceTransitionCompletion.InProgress -> emptyList()
@@ -139,7 +129,7 @@ internal class WorkspaceTransitionIngress(
                 awaitStable(waiter)
             }
 
-            is WorkspaceTransitionRoute.Join.Awaiting -> awaitStable(register(route.baseline))
+            is WorkspaceTransitionRoute.Join.Awaiting -> awaitStable(register(route))
             is WorkspaceTransitionRoute.Join.Published -> route.manifest
             is WorkspaceTransitionRoute.Rejected -> throw route.failure.toConflict()
         }
@@ -200,15 +190,40 @@ internal class WorkspaceTransitionIngress(
         return register(PublishedWorkspaceGenerationState.Published(baseline))
     }
 
+    private fun register(join: WorkspaceTransitionRoute.Join.Awaiting): TransitionWaiter {
+        val waiter = TransitionWaiter(join.baseline)
+        synchronized(lock) {
+            check(binding != IngressBinding.Closed) { "Workspace transition ingress is closed" }
+            when (val registration = WorkspaceTransitionJoinRegistration.derive(join, observation)) {
+                WorkspaceTransitionJoinRegistration.Awaiting -> waiters += waiter
+                is WorkspaceTransitionJoinRegistration.Published -> waiter.result.complete(registration.manifest)
+                is WorkspaceTransitionJoinRegistration.Blocked -> waiter.result.completeExceptionally(
+                    registration.blocker.toConflict(),
+                )
+
+                is WorkspaceTransitionJoinRegistration.Invalid -> waiter.result.completeExceptionally(
+                    registration.lifecycle.toInvalidCompletionConflict(),
+                )
+            }
+        }
+        reconcileReadyAdmission(waiter)
+        return waiter
+    }
+
     private fun register(baseline: PublishedWorkspaceGenerationState): TransitionWaiter {
         val waiter = TransitionWaiter(baseline)
         synchronized(lock) {
             check(binding != IngressBinding.Closed) { "Workspace transition ingress is closed" }
             waiters += waiter
         }
+        reconcileReadyAdmission(waiter)
+        return waiter
+    }
+
+    private fun reconcileReadyAdmission(waiter: TransitionWaiter) {
         when (val current = semanticAdmission.status()) {
             is IdeaIndexSemanticAdmission.Status.Ready -> if (
-                PublishedWorkspaceGenerationState.Published(current.generation) != baseline &&
+                PublishedWorkspaceGenerationState.Published(current.generation) != waiter.baseline &&
                 remove(waiter) == WaiterRemoval.Removed
             ) {
                 waiter.result.complete(current.generation)
@@ -218,7 +233,6 @@ internal class WorkspaceTransitionIngress(
             is IdeaIndexSemanticAdmission.Status.Failed,
             -> Unit
         }
-        return waiter
     }
 
     private fun request(request: WorkspaceTransitionRequest, waiter: TransitionWaiter) {
