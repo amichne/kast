@@ -340,6 +340,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 100,
                 "nonce",
                 float("inf"),
+                300,
             )
             collision = subprocess.CompletedProcess(
                 [],
@@ -386,6 +387,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 100,
                 "nonce",
                 100.0,
+                150,
             )
             pending = subprocess.CompletedProcess([], 0, "still running\n", "")
             late_completion = subprocess.CompletedProcess(
@@ -404,6 +406,42 @@ class KastCliReproContractTest(unittest.TestCase):
                 ),
                 mock.patch.object(runner.time, "monotonic", return_value=101.0),
                 mock.patch.object(runner.time, "sleep"),
+            ):
+                command = capture.finish(active)
+
+            self.assertTrue(command.timedOut)
+            self.assertEqual(124, command.exitCode)
+
+    def test_completion_recorded_after_the_deadline_is_timed_out(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            evidence = directory / "evidence"
+            (evidence / "transcripts").mkdir(parents=True)
+            capture = runner.TmuxCapture("session", directory, evidence, keep_session=False)
+            active = runner.ActiveCommand(
+                runner.CommandSpec("probe", ("kast", "symbol", "show")),
+                "%1",
+                100,
+                "nonce",
+                1_000.0,
+                200,
+            )
+            late_completion = subprocess.CompletedProcess(
+                [],
+                0,
+                "::kast-repro-exit=nonce:0:234\n",
+                "",
+            )
+            killed = subprocess.CompletedProcess([], 0, "", "")
+
+            with (
+                mock.patch.object(
+                    runner.subprocess,
+                    "run",
+                    side_effect=[late_completion, killed],
+                ),
+                mock.patch.object(runner.time, "monotonic", return_value=101.0),
             ):
                 command = capture.finish(active)
 
@@ -679,6 +717,41 @@ class KastCliReproContractTest(unittest.TestCase):
                 self.assertRaisesRegex(runner.ReproError, "escaped its root"),
             ):
                 runner.verify_capsule_install(capsule, root / "workspace")
+
+    def test_persistent_capsule_rejects_state_symlinks_before_setup(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory(dir="/private/tmp") as raw_directory:
+            base = Path(raw_directory)
+            root = base / "capsule"
+            root.mkdir()
+            external = base / "external-state"
+            external.mkdir()
+            (root / "kast-home").symlink_to(external, target_is_directory=True)
+            workspace = base / "workspace"
+            workspace.mkdir()
+            bundle = base / "bundle"
+            bundle.mkdir()
+            args = runner.argparse.Namespace(
+                capsule_root=root,
+                ephemeral_capsule=False,
+                bundle_source=bundle,
+                idea_host=None,
+            )
+
+            with (
+                mock.patch.object(
+                    runner,
+                    "discover_developer_cli",
+                    return_value=base / "bootstrap-kastctl",
+                ),
+                mock.patch.object(
+                    runner,
+                    "discover_idea_host",
+                    return_value=base / "idea-host",
+                ),
+                self.assertRaisesRegex(runner.ReproError, "state path escaped"),
+            ):
+                runner.build_capsule(args, workspace, "kast", dry_run=False)
 
     def test_failed_telemetry_restore_is_retained_as_teardown_error(self) -> None:
         runner = load_runner_module()
@@ -1080,6 +1153,71 @@ class KastCliReproContractTest(unittest.TestCase):
 
             build_capsule.assert_not_called()
             self.assertFalse(output.exists())
+
+    def test_existing_session_is_rejected_before_ephemeral_capsule_allocation(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            root = Path(raw_directory)
+            workspace = root / "workspace"
+            source = workspace / "src" / "Probe.kt"
+            source.parent.mkdir(parents=True)
+            source.write_text("package example\nclass Probe\n", encoding="utf-8")
+            args = runner.parser().parse_args(
+                [
+                    "capture",
+                    "--workspace-root",
+                    str(workspace),
+                    "--file",
+                    "src/Probe.kt",
+                    "--symbol",
+                    "example.Probe",
+                    "--session-name",
+                    "occupied",
+                    "--ephemeral-capsule",
+                ]
+            )
+
+            with (
+                mock.patch.object(runner.shutil, "which", return_value="/usr/bin/true"),
+                mock.patch.object(
+                    runner.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 0, "", ""),
+                ),
+                mock.patch.object(runner, "build_capsule", return_value=None) as build_capsule,
+                self.assertRaisesRegex(runner.ReproError, "tmux session already exists"),
+            ):
+                runner.capture(args)
+
+            build_capsule.assert_not_called()
+
+    def test_missing_capture_paths_are_structured_invalid_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            root = Path(raw_directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            cases = (
+                (root / "missing-workspace", "src/Probe.kt"),
+                (workspace, "src/Missing.kt"),
+            )
+            for missing_workspace, file_name in cases:
+                with self.subTest(workspace=missing_workspace, file=file_name):
+                    result = self.run_runner(
+                        "capture",
+                        "--workspace-root",
+                        str(missing_workspace),
+                        "--file",
+                        file_name,
+                        "--symbol",
+                        "example.Probe",
+                        "--dry-run",
+                    )
+
+                    self.assertEqual(2, result.returncode)
+                    self.assertEqual("", result.stdout)
+                    error = json.loads(result.stderr)
+                    self.assertEqual("INVALID_EVIDENCE", error["status"])
+                    self.assertNotIn("Traceback", result.stderr)
 
     def test_nonempty_output_is_rejected_before_ephemeral_capsule_allocation(self) -> None:
         runner = load_runner_module()

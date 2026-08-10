@@ -26,6 +26,17 @@ SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_BUDGET_BYTES = 30_000
 EXIT_SENTINEL = "::kast-repro-exit="
 OBSERVATION_EXIT_SENTINEL = "__KAST_OBSERVATION_EXIT_CODE__="
+CAPSULE_STATE_ENVIRONMENT_KEYS = (
+    "HOME",
+    "KAST_HOME",
+    "KAST_CONFIG_HOME",
+    "KAST_CACHE_HOME",
+    "GRADLE_USER_HOME",
+    "TMPDIR",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+)
 
 
 class ReproError(Exception):
@@ -75,6 +86,7 @@ class ActiveCommand:
     started_at_epoch_millis: int
     completion_token: str
     deadline_monotonic: float
+    deadline_epoch_millis: int
 
 
 @dataclasses.dataclass(frozen=True)
@@ -182,6 +194,17 @@ def capsule_environment(root: Path, workspace_id: str) -> dict[str, str]:
         "KAST_IDEA_TRACE": "true",
         "PATH": f"{home / '.local' / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}",
     }
+
+
+def require_contained_capsule_state_paths(
+    root: Path,
+    environment: dict[str, str],
+) -> tuple[Path, ...]:
+    paths = tuple(Path(environment[key]) for key in CAPSULE_STATE_ENVIRONMENT_KEYS)
+    escaped = sorted(str(path) for path in paths if not is_within(path, root))
+    if escaped:
+        raise ReproError(f"capsule state path escaped its root: {', '.join(escaped)}")
+    return paths
 
 
 def merged_environment(overrides: dict[str, str] | None = None) -> dict[str, str]:
@@ -525,6 +548,9 @@ class TmuxCapture:
         window_name = re.sub(r"[^A-Za-z0-9_-]", "-", spec.name)[:40]
         started_at_epoch_millis = epoch_millis()
         deadline_monotonic = time.monotonic() + spec.timeout_seconds
+        deadline_epoch_millis = started_at_epoch_millis + math.ceil(
+            spec.timeout_seconds * 1_000
+        )
         result = run_checked(
             "tmux",
             "new-window",
@@ -546,6 +572,7 @@ class TmuxCapture:
             started_at_epoch_millis,
             completion_token,
             deadline_monotonic,
+            deadline_epoch_millis,
         )
 
     def finish(self, active: ActiveCommand) -> CommandEvidence:
@@ -570,8 +597,11 @@ class TmuxCapture:
                 re.MULTILINE,
             )
             if match is not None:
-                exit_code = int(match.group(1))
                 completed_at_epoch_millis = int(match.group(2))
+                if completed_at_epoch_millis > active.deadline_epoch_millis:
+                    timed_out = True
+                else:
+                    exit_code = int(match.group(1))
                 break
             if time.monotonic() >= active.deadline_monotonic:
                 timed_out = True
@@ -859,18 +889,10 @@ def build_capsule(
     environment = capsule_environment(root, workspace_id)
     capsule = CapsuleContext(mode, root, bundle_source, environment, bootstrap, idea_host)
     if not dry_run:
-        for key in (
-            "HOME",
-            "KAST_HOME",
-            "KAST_CONFIG_HOME",
-            "KAST_CACHE_HOME",
-            "GRADLE_USER_HOME",
-            "TMPDIR",
-            "XDG_CACHE_HOME",
-            "XDG_CONFIG_HOME",
-            "XDG_DATA_HOME",
-        ):
-            Path(environment[key]).mkdir(parents=True, exist_ok=True)
+        state_paths = require_contained_capsule_state_paths(root, environment)
+        for path in state_paths:
+            path.mkdir(parents=True, exist_ok=True)
+        require_contained_capsule_state_paths(root, environment)
     return capsule
 
 
@@ -1140,6 +1162,13 @@ def live_capture_preflight(args: argparse.Namespace, workspace: Path) -> LiveCap
     session = args.session_name or f"kast-cli-repro-{os.getpid()}"
     if re.fullmatch(r"[A-Za-z0-9_-]+", session) is None:
         raise ReproError("--session-name must contain only letters, digits, underscores, or hyphens")
+    existing = subprocess.run(
+        ["tmux", "has-session", "-t", session],
+        capture_output=True,
+        check=False,
+    )
+    if existing.returncode == 0:
+        raise ReproError(f"tmux session already exists: {session}")
     return LiveCapturePreflight(output, session)
 
 
@@ -1156,11 +1185,17 @@ def discard_unstarted_ephemeral_capsule(capsule: CapsuleContext | None) -> None:
 
 
 def capture(args: argparse.Namespace) -> int:
-    workspace = args.workspace_root.resolve(strict=True)
+    try:
+        workspace = args.workspace_root.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ReproError(f"workspace root is unavailable: {error}") from error
     file_path = Path(args.file)
     if file_path.is_absolute() or ".." in file_path.parts:
         raise ReproError("--file must be a workspace-relative path without parent traversal")
-    source = (workspace / file_path).resolve(strict=True)
+    try:
+        source = (workspace / file_path).resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ReproError(f"capture file is unavailable: {error}") from error
     if workspace not in source.parents or source.suffix != ".kt":
         raise ReproError("--file must resolve to a Kotlin file inside the workspace")
     mutation_probe = (
@@ -1316,7 +1351,12 @@ def capture(args: argparse.Namespace) -> int:
         capture_failure = ReproError("capture interrupted")
     finally:
         capsule_proof: dict[str, Any] | None = None
-        if capsule is not None:
+        if capsule is not None and not runner_started:
+            try:
+                discard_unstarted_ephemeral_capsule(capsule)
+            except ReproError as error:
+                teardown_errors.append(str(error))
+        if capsule is not None and runner_started:
             observed_processes: dict[int, str] = {}
             try:
                 observed_processes = capsule_processes(capsule.root)
@@ -1356,19 +1396,9 @@ def capture(args: argparse.Namespace) -> int:
                 teardown_errors.append(str(error))
                 terminated = []
                 remaining = sorted(observed_processes)
-            state_keys = (
-                "HOME",
-                "KAST_HOME",
-                "KAST_CONFIG_HOME",
-                "KAST_CACHE_HOME",
-                "GRADLE_USER_HOME",
-                "TMPDIR",
-                "XDG_CACHE_HOME",
-                "XDG_CONFIG_HOME",
-                "XDG_DATA_HOME",
-            )
             state_contained = all(
-                is_within(Path(capsule.environment[key]), capsule.root) for key in state_keys
+                is_within(Path(capsule.environment[key]), capsule.root)
+                for key in CAPSULE_STATE_ENVIRONMENT_KEYS
             )
             capsule_proof = {
                 **capsule.public(),
@@ -1861,7 +1891,7 @@ def main() -> int:
             for finding in report["findings"]:
                 print(f"- {finding['code']}: {finding['message']}")
         return exit_code
-    except ReproError as error:
+    except (ReproError, OSError) as error:
         print(json.dumps({"schemaVersion": SCHEMA_VERSION, "status": "INVALID_EVIDENCE", "error": str(error)}), file=sys.stderr)
         return 2
 
