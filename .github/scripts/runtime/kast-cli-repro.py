@@ -1700,9 +1700,12 @@ def telemetry_missing_fields(directory: Path, manifest: dict[str, Any]) -> list[
 def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     directory = directory.resolve(strict=True)
     manifest, commands = read_manifest(directory)
+    capsule = manifest.get("capsule")
     required_commands = set(REQUIRED_SCENARIO_COMMANDS)
-    if "capsule" in manifest:
-        required_commands.update({"cold-up", "cold-observer"})
+    if isinstance(capsule, dict):
+        required_commands.update(
+            {"cold-up", "cold-observer", "capsule-runtime-stop"}
+        )
     missing_commands = sorted(required_commands - set(commands))
     if missing_commands:
         raise ReproError(
@@ -1715,7 +1718,12 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
         if (
             not isinstance(commands[name].get("exitCode"), int)
             or isinstance(commands[name].get("exitCode"), bool)
+            or commands[name].get("exitCode", -1) < 0
             or not isinstance(commands[name].get("timedOut"), bool)
+            or (
+                commands[name].get("timedOut") is True
+                and commands[name].get("exitCode") != 124
+            )
         )
     )
     if invalid_status_commands:
@@ -1723,6 +1731,16 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             "required scenario commands have invalid status evidence: "
             + ", ".join(invalid_status_commands)
         )
+    if isinstance(capsule, dict):
+        capsule_stop = commands["capsule-runtime-stop"]
+        captured_stop_succeeded = (
+            capsule_stop["exitCode"] == 0 and capsule_stop["timedOut"] is False
+        )
+        if capsule["runtimeStopSucceeded"] is not captured_stop_succeeded:
+            raise ReproError(
+                "evidence manifest capsule runtimeStopSucceeded does not match "
+                "capsule-runtime-stop status"
+            )
     failed_commands = sorted(
         name
         for name in REQUIRED_SUCCESSFUL_SCENARIO_COMMANDS
@@ -1841,13 +1859,34 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             if name in required_commands:
                 raise ReproError(f"required command {name} has invalid completion fields")
             continue
-        completion_frame = (
-            f"{EXIT_SENTINEL}{completion_token}:{exit_code}:{finished_at}"
+        nonce_frames = list(
+            re.finditer(
+                rf"{re.escape(EXIT_SENTINEL)}{re.escape(completion_token)}:"
+                r"([0-9]+):([0-9]+)\r?(?:\n|$)",
+                text,
+            )
         )
-        frame_match = re.search(
-            rf"{re.escape(completion_frame)}\r?(?:\n|$)",
-            text,
-        )
+        if command.get("timedOut") is True:
+            frame_match = next(
+                (
+                    match
+                    for match in nonce_frames
+                    if int(match.group(2)) == finished_at
+                ),
+                None,
+            )
+            if frame_match is None and not nonce_frames:
+                continue
+        else:
+            frame_match = next(
+                (
+                    match
+                    for match in nonce_frames
+                    if int(match.group(1)) == exit_code
+                    and int(match.group(2)) == finished_at
+                ),
+                None,
+            )
         if frame_match is None:
             if name in required_commands:
                 raise ReproError(
@@ -1887,7 +1926,6 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                 missing,
             )
         )
-    capsule = manifest.get("capsule")
     if isinstance(capsule, dict):
         confinement_evidence: list[str] = []
         if capsule.get("installationContained") is not True:

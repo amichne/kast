@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from unittest import mock
 from pathlib import Path
+from typing import Any
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -217,6 +218,37 @@ class KastCliReproContractTest(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def append_command_evidence(
+        self,
+        directory: Path,
+        manifest: dict[str, Any],
+        name: str,
+        *,
+        exit_code: int = 0,
+    ) -> None:
+        completion_token = f"contract-{name}"
+        started = 2_000 + len(manifest["commands"]) * 20
+        finished = started + 10
+        transcript_path = directory / "transcripts" / f"{name}.txt"
+        transcript = (
+            "result: ok\n"
+            f"::kast-repro-exit={completion_token}:{exit_code}:{finished}\n"
+        )
+        transcript_path.write_text(transcript, encoding="utf-8")
+        manifest["commands"].append(
+            {
+                "name": name,
+                "argv": ["kastctl", name],
+                "startedAtEpochMillis": started,
+                "finishedAtEpochMillis": finished,
+                "exitCode": exit_code,
+                "timedOut": False,
+                "completionToken": completion_token,
+                "transcript": str(transcript_path.relative_to(directory)),
+                "outputBytes": len(transcript.encode()),
+            }
+        )
+
     def test_incident_evidence_emits_stable_findings(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -268,6 +300,12 @@ class KastCliReproContractTest(unittest.TestCase):
                 "processesRemaining": [],
                 "rootDeleted": True,
             }
+            self.append_command_evidence(
+                directory,
+                manifest,
+                "capsule-runtime-stop",
+                exit_code=1,
+            )
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
             result = self.run_runner("analyze", "--evidence-dir", str(directory), "--format", "json")
@@ -295,6 +333,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 "processesRemaining": [],
                 "rootDeleted": True,
             }
+            self.append_command_evidence(directory, manifest, "capsule-runtime-stop")
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
             result = self.run_runner("analyze", "--evidence-dir", str(directory), "--format", "json")
@@ -617,6 +656,43 @@ class KastCliReproContractTest(unittest.TestCase):
                 self.assertEqual("INVALID_EVIDENCE", error["status"])
                 self.assertIn("workspace-refresh", error["error"])
 
+    def test_transition_timeout_preserves_findings_without_an_exact_frame(self) -> None:
+        for retained_frame in (False, True):
+            with (
+                self.subTest(retained_frame=retained_frame),
+                tempfile.TemporaryDirectory() as raw_directory,
+            ):
+                directory = Path(raw_directory)
+                self.write_evidence(directory, incident=False)
+                manifest_path = directory / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                refresh = next(
+                    command
+                    for command in manifest["commands"]
+                    if command["name"] == "workspace-refresh"
+                )
+                refresh["exitCode"] = 124
+                refresh["timedOut"] = True
+                if not retained_frame:
+                    (directory / str(refresh["transcript"])).write_text(
+                        "partial output before timeout\n",
+                        encoding="utf-8",
+                    )
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = self.run_runner(
+                    "analyze", "--evidence-dir", str(directory), "--format", "json"
+                )
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(
+                    ["REFRESH_DID_NOT_CONVERGE"],
+                    [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+                )
+
     def test_nonobject_manifest_is_structured_invalid_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -700,6 +776,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 "processesRemaining": [],
                 "rootDeleted": True,
             }
+            self.append_command_evidence(directory, manifest, "capsule-runtime-stop")
             manifest["commands"] = [
                 command
                 for command in manifest["commands"]
@@ -720,6 +797,74 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("cold-observer", error["error"])
             self.assertIn("cold-up", error["error"])
+
+    def test_capsule_replay_requires_runtime_stop_command(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["capsule"] = {
+                "mode": "EPHEMERAL",
+                "installationContained": True,
+                "stateContained": True,
+                "runtimeStopSucceeded": True,
+                "runtimeStopped": True,
+                "terminatedProcessIds": [],
+                "processesRemaining": [],
+                "rootDeleted": True,
+            }
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("capsule-runtime-stop", error["error"])
+
+    def test_capsule_stop_proof_matches_captured_command_status(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["capsule"] = {
+                "mode": "EPHEMERAL",
+                "installationContained": True,
+                "stateContained": True,
+                "runtimeStopSucceeded": True,
+                "runtimeStopped": True,
+                "terminatedProcessIds": [],
+                "processesRemaining": [],
+                "rootDeleted": True,
+            }
+            self.append_command_evidence(
+                directory,
+                manifest,
+                "capsule-runtime-stop",
+                exit_code=1,
+            )
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("runtimeStopSucceeded", error["error"])
 
     def test_required_command_requires_completion_token(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
