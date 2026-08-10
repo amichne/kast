@@ -1693,7 +1693,10 @@ def telemetry_missing_fields(directory: Path, manifest: dict[str, Any]) -> list[
 def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     directory = directory.resolve(strict=True)
     manifest, commands = read_manifest(directory)
-    missing_commands = sorted(set(REQUIRED_SCENARIO_COMMANDS) - set(commands))
+    required_commands = set(REQUIRED_SCENARIO_COMMANDS)
+    if "capsule" in manifest:
+        required_commands.update({"cold-up", "cold-observer"})
+    missing_commands = sorted(required_commands - set(commands))
     if missing_commands:
         raise ReproError(
             "evidence manifest is missing required scenario commands: "
@@ -1797,13 +1800,38 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                 )
             )
     framing_evidence: list[str] = []
-    for command in commands.values():
+    for name, command in commands.items():
         text = transcript(directory, command)
         completion_token = command.get("completionToken")
         if not isinstance(completion_token, str) or not completion_token:
+            if name in required_commands:
+                raise ReproError(f"required command {name} has no completion token")
             continue
-        marker = text.find(f"{EXIT_SENTINEL}{completion_token}:")
-        if marker > 0 and text[marker - 1] != "\n":
+        exit_code = command.get("exitCode")
+        finished_at = command.get("finishedAtEpochMillis")
+        if (
+            not isinstance(exit_code, int)
+            or isinstance(exit_code, bool)
+            or not isinstance(finished_at, int)
+            or isinstance(finished_at, bool)
+        ):
+            if name in required_commands:
+                raise ReproError(f"required command {name} has invalid completion fields")
+            continue
+        completion_frame = (
+            f"{EXIT_SENTINEL}{completion_token}:{exit_code}:{finished_at}"
+        )
+        frame_match = re.search(
+            rf"{re.escape(completion_frame)}\r?(?:\n|$)",
+            text,
+        )
+        if frame_match is None:
+            if name in required_commands:
+                raise ReproError(
+                    f"required command {name} has no exact nonce-bound completion frame"
+                )
+            continue
+        if frame_match.start() > 0 and text[frame_match.start() - 1] != "\n":
             framing_evidence.append(str(command.get("transcript")))
     if framing_evidence:
         findings.append(

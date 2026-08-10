@@ -653,6 +653,104 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("terminatedProcessIds", error["error"])
 
+    def test_capsule_replay_requires_cold_transition_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["capsule"] = {
+                "mode": "EPHEMERAL",
+                "installationContained": True,
+                "stateContained": True,
+                "runtimeStopSucceeded": True,
+                "runtimeStopped": True,
+                "terminatedProcessIds": [],
+                "processesRemaining": [],
+                "rootDeleted": True,
+            }
+            manifest["commands"] = [
+                command
+                for command in manifest["commands"]
+                if command["name"] not in {"cold-up", "cold-observer"}
+            ]
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("cold-observer", error["error"])
+            self.assertIn("cold-up", error["error"])
+
+    def test_required_command_requires_completion_token(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            topology = next(
+                command
+                for command in manifest["commands"]
+                if command["name"] == "graph-topology"
+            )
+            topology.pop("completionToken")
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("graph-topology", error["error"])
+
+    def test_required_command_requires_exact_nonce_bound_completion_frame(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            topology = next(
+                command
+                for command in manifest["commands"]
+                if command["name"] == "graph-topology"
+            )
+            transcript_path = directory / str(topology["transcript"])
+            transcript_path.write_text(
+                transcript_path.read_text(encoding="utf-8").replace(
+                    str(topology["completionToken"]),
+                    "wrong-completion-token",
+                ),
+                encoding="utf-8",
+            )
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("graph-topology", error["error"])
+
     def test_failed_observer_subcommand_cannot_replay_as_clean(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
