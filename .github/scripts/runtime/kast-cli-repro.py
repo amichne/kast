@@ -25,6 +25,7 @@ from typing import Any
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_BUDGET_BYTES = 30_000
 EXIT_SENTINEL = "::kast-repro-exit="
+OBSERVATION_EXIT_SENTINEL = "__KAST_OBSERVATION_EXIT_CODE__="
 
 
 class ReproError(Exception):
@@ -43,6 +44,11 @@ class FindingCode(str, enum.Enum):
     CAPSULE_PROCESS_LEAKED = "CAPSULE_PROCESS_LEAKED"
     CAPSULE_RUNTIME_STOP_FAILED = "CAPSULE_RUNTIME_STOP_FAILED"
     OBSERVER_EVIDENCE_INCOMPLETE = "OBSERVER_EVIDENCE_INCOMPLETE"
+
+
+class ObservationKind(str, enum.Enum):
+    HOME = "HOME"
+    RESOLVE = "RESOLVE"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -133,6 +139,16 @@ class LiveCapturePreflight:
 class MutationProbeIdentity:
     package_name: str
     declaration_name: str
+    add_file_path: str
+    add_file_declaration_name: str
+
+
+@dataclasses.dataclass(frozen=True)
+class TimedObservation:
+    kind: ObservationKind
+    text: str
+    exit_code: int
+    finished_at_epoch_millis: int
 
 
 def epoch_millis() -> int:
@@ -267,7 +283,11 @@ def issued_graph_node_command(name: str, kast: str) -> CommandSpec:
     return CommandSpec(name, ("/bin/bash", "-lc", script))
 
 
-def mutation_probe_identity(source: Path, symbol: str) -> MutationProbeIdentity:
+def mutation_probe_identity(
+    workspace: Path,
+    source: Path,
+    symbol: str,
+) -> MutationProbeIdentity:
     try:
         content = source.read_text(encoding="utf-8")
     except OSError as error:
@@ -289,7 +309,17 @@ def mutation_probe_identity(source: Path, symbol: str) -> MutationProbeIdentity:
         raise ReproError(
             "--exercise-plans requires a top-level declaration from the --file package"
         )
-    return MutationProbeIdentity(package.group(1), declaration.group(1))
+    for sequence in range(10_000):
+        probe_name = "KastCliReproProbe" + (str(sequence) if sequence else "")
+        probe_file = source.parent / f"{probe_name}.kt"
+        if not probe_file.exists() and not probe_file.is_symlink():
+            return MutationProbeIdentity(
+                package.group(1),
+                declaration.group(1),
+                probe_file.relative_to(workspace).as_posix(),
+                probe_name,
+            )
+    raise ReproError("--exercise-plans could not find an absent add-file probe path")
 
 
 def command_plan(
@@ -303,7 +333,6 @@ def command_plan(
     sample_interval: float,
     transition_timeout: float,
 ) -> list[CommandSpec]:
-    probe_path = (Path(file_path).parent / "KastCliReproProbe.kt").as_posix()
     observer = observer_script(kast, symbol, samples, sample_interval)
     commands = [
         CommandSpec("home", (kast,)),
@@ -368,10 +397,17 @@ def command_plan(
                 ),
                 CommandSpec(
                     "change-plan-add-file",
-                    (kast, "change", "plan", "add-file", "--file", probe_path),
+                    (
+                        kast,
+                        "change",
+                        "plan",
+                        "add-file",
+                        "--file",
+                        mutation_probe.add_file_path,
+                    ),
                     stdin=(
                         f"package {mutation_probe.package_name}\n\n"
-                        "internal object KastCliReproProbe"
+                        f"internal object {mutation_probe.add_file_declaration_name}"
                     ),
                 ),
                 CommandSpec(
@@ -420,11 +456,13 @@ def observer_script(kast: str, symbol: str, samples: int, interval: float) -> st
         f"for i in $(seq 1 {samples}); do "
         'printf "__KAST_SAMPLE__=%s\\n" "$i"; '
         'printf "__KAST_OBSERVATION__=HOME\\n"; '
-        f"{kast_command}; "
+        f"{kast_command}; observation_status=$?; "
+        f'printf "{OBSERVATION_EXIT_SENTINEL}%s\\n" "$observation_status"; '
         'printf "__KAST_OBSERVATION_EPOCH_MILLIS__="; '
         "python3 -c 'import time; print(time.time_ns() // 1000000)'; "
         'printf "__KAST_OBSERVATION__=RESOLVE\\n"; '
-        f"{kast_command} symbol resolve --query {symbol_argument}; "
+        f"{kast_command} symbol resolve --query {symbol_argument}; observation_status=$?; "
+        f'printf "{OBSERVATION_EXIT_SENTINEL}%s\\n" "$observation_status"; '
         'printf "__KAST_OBSERVATION_EPOCH_MILLIS__="; '
         "python3 -c 'import time; print(time.time_ns() // 1000000)'; "
         f"sleep {interval}; "
@@ -1113,7 +1151,7 @@ def capture(args: argparse.Namespace) -> int:
     if workspace not in source.parents or source.suffix != ".kt":
         raise ReproError("--file must resolve to a Kotlin file inside the workspace")
     mutation_probe = (
-        mutation_probe_identity(source, args.symbol)
+        mutation_probe_identity(workspace, source, args.symbol)
         if args.exercise_plans
         else None
     )
@@ -1432,7 +1470,7 @@ def overlaps(first: dict[str, Any], second: dict[str, Any]) -> bool:
     return values[0] < values[3] and values[2] < values[1]
 
 
-def timed_observations(observer_text: str) -> list[tuple[str, str, int]]:
+def timed_observations(observer_text: str) -> list[TimedObservation]:
     sample_pattern = re.compile(
         r"(?ms)^__KAST_SAMPLE__=\d+\n(.*?)(?=^__KAST_SAMPLE__=\d+\n|\Z)"
     )
@@ -1441,29 +1479,60 @@ def timed_observations(observer_text: str) -> list[tuple[str, str, int]]:
         r"(.*?)(?=^__KAST_OBSERVATION__=|\Z)"
     )
     timestamp_pattern = re.compile(r"(?m)^__KAST_OBSERVATION_EPOCH_MILLIS__=(\d+)$")
-    observations: list[tuple[str, str, int]] = []
+    exit_pattern = re.compile(
+        rf"(?m)^{re.escape(OBSERVATION_EXIT_SENTINEL)}([0-9]+)$"
+    )
+    observations: list[TimedObservation] = []
     for sample in sample_pattern.findall(observer_text):
         for kind, observation in observation_pattern.findall(sample):
             timestamp = timestamp_pattern.search(observation)
-            if timestamp is not None:
-                observations.append((kind, observation, int(timestamp.group(1))))
+            exit_code = exit_pattern.search(observation)
+            if timestamp is None or exit_code is None:
+                raise ReproError(
+                    f"{kind} observation lacks an exit code or completion timestamp"
+                )
+            observations.append(
+                TimedObservation(
+                    ObservationKind(kind),
+                    observation,
+                    int(exit_code.group(1)),
+                    int(timestamp.group(1)),
+                )
+            )
+    if not observations:
+        raise ReproError("observer transcript has no timed observations")
     return observations
 
 
-def ready_sample_before(observer_text: str, finished_at_epoch_millis: int) -> bool:
-    return any(
-        kind == "HOME" and timestamp < finished_at_epoch_millis
-        and re.search(r"(?m)^ready: true$", observation)
-        for kind, observation, timestamp in timed_observations(observer_text)
+def observation_has_expected_outcome(observation: TimedObservation) -> bool:
+    return observation.exit_code == 0 or (
+        observation.kind == ObservationKind.RESOLVE
+        and re.search(r"(?m)^error: [A-Z][A-Z0-9_]*$", observation.text) is not None
     )
 
 
-def conflict_sample_before(observer_text: str, finished_at_epoch_millis: int) -> bool:
+def ready_sample_before(
+    observations: list[TimedObservation],
+    finished_at_epoch_millis: int,
+) -> bool:
     return any(
-        kind == "RESOLVE" and timestamp < finished_at_epoch_millis
-        and "error: CONFLICT" in observation
-        and "Run `kast --help`" in observation
-        for kind, observation, timestamp in timed_observations(observer_text)
+        observation.kind == ObservationKind.HOME
+        and observation.finished_at_epoch_millis < finished_at_epoch_millis
+        and re.search(r"(?m)^ready: true$", observation.text)
+        for observation in observations
+    )
+
+
+def conflict_sample_before(
+    observations: list[TimedObservation],
+    finished_at_epoch_millis: int,
+) -> bool:
+    return any(
+        observation.kind == ObservationKind.RESOLVE
+        and observation.finished_at_epoch_millis < finished_at_epoch_millis
+        and "error: CONFLICT" in observation.text
+        and "Run `kast --help`" in observation.text
+        for observation in observations
     )
 
 
@@ -1504,26 +1573,40 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     cold_observer = commands.get("cold-observer")
     refresh = commands.get("workspace-refresh")
     refresh_observer = commands.get("refresh-observer")
+    if refresh is None:
+        raise ReproError(
+            "evidence manifest is missing required transition command workspace-refresh"
+        )
     incomplete_observers: list[str] = []
+    complete_observers: dict[str, list[TimedObservation]] = {}
     for operation, observer, observer_name in (
         (cold_up, cold_observer, "cold-observer"),
         (refresh, refresh_observer, "refresh-observer"),
     ):
         if operation is None:
+            if observer is not None:
+                incomplete_observers.append(f"orphaned:{observer_name}")
             continue
         if observer is None:
             incomplete_observers.append(f"missing:{observer_name}")
             continue
         observer_text = transcript(directory, observer)
-        observation_kinds = {
-            kind for kind, _, _ in timed_observations(observer_text)
-        }
+        try:
+            observations = timed_observations(observer_text)
+        except ReproError:
+            incomplete_observers.append(str(observer.get("transcript")))
+            continue
+        observation_kinds = {observation.kind for observation in observations}
         if (
             observer.get("exitCode") != 0
             or observer.get("timedOut") is True
-            or observation_kinds != {"HOME", "RESOLVE"}
+            or observation_kinds != {ObservationKind.HOME, ObservationKind.RESOLVE}
+            or not overlaps(operation, observer)
+            or not all(observation_has_expected_outcome(item) for item in observations)
         ):
             incomplete_observers.append(str(observer.get("transcript")))
+        else:
+            complete_observers[observer_name] = observations
     if incomplete_observers:
         findings.append(
             Finding(
@@ -1540,10 +1623,10 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                 [str(cold_up.get("transcript"))],
             )
         )
-    if cold_up and cold_observer and overlaps(cold_up, cold_observer):
-        observer_text = transcript(directory, cold_observer)
+    cold_observations = complete_observers.get("cold-observer")
+    if cold_up and cold_observations is not None:
         finished_at = cold_up.get("finishedAtEpochMillis")
-        if isinstance(finished_at, int) and ready_sample_before(observer_text, finished_at):
+        if isinstance(finished_at, int) and ready_sample_before(cold_observations, finished_at):
             findings.append(
                 Finding(
                     FindingCode.READY_DURING_PENDING_UP.value,
@@ -1559,10 +1642,10 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                 [str(refresh.get("transcript"))],
             )
         )
-    if refresh and refresh_observer and overlaps(refresh, refresh_observer):
-        observer_text = transcript(directory, refresh_observer)
+    refresh_observations = complete_observers.get("refresh-observer")
+    if refresh_observations is not None:
         finished_at = refresh.get("finishedAtEpochMillis")
-        if isinstance(finished_at, int) and conflict_sample_before(observer_text, finished_at):
+        if isinstance(finished_at, int) and conflict_sample_before(refresh_observations, finished_at):
             findings.append(
                 Finding(
                     FindingCode.GENERIC_CONFLICT_DURING_REFRESH.value,

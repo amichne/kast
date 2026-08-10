@@ -88,9 +88,11 @@ class KastCliReproContractTest(unittest.TestCase):
                     "cold-observer",
                     "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\n"
                     "ready: true\nruntime: READY\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=200\n"
                     "__KAST_OBSERVATION__=RESOLVE\n"
                     "next[2]: kast refresh,kast symbol find <query>\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=250\n"
                     "unterminated::kast-repro-exit=0\n",
                     started=120,
@@ -109,10 +111,12 @@ class KastCliReproContractTest(unittest.TestCase):
                     "refresh-observer",
                     "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\n"
                     "ready: false\nruntime: INDEXING\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=650\n"
                     "__KAST_OBSERVATION__=RESOLVE\nerror: CONFLICT\n"
                     "message: Semantic operation started while the workspace was not READY\n"
                     "next: \"Run `kast --help` for valid commands and arguments.\"\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=1\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=700\n"
                     "::kast-repro-exit=0\n",
                     started=620,
@@ -136,20 +140,24 @@ class KastCliReproContractTest(unittest.TestCase):
                 command(
                     "cold-observer",
                     "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: false\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=125\n"
                     "__KAST_OBSERVATION__=RESOLVE\nresult: missing\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=126\n::kast-repro-exit=0\n",
-                    started=120,
+                    started=105,
                     finished=130,
                 ),
                 command("workspace-refresh", terminated, started=200, finished=210),
                 command(
                     "refresh-observer",
                     "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: true\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=225\n"
                     "__KAST_OBSERVATION__=RESOLVE\nresult: resolved\n"
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                     "__KAST_OBSERVATION_EPOCH_MILLIS__=226\n::kast-repro-exit=0\n",
-                    started=220,
+                    started=205,
                     finished=230,
                 ),
                 command("graph-nodes", terminated, started=300, finished=310, output_bytes=2_000),
@@ -281,8 +289,10 @@ class KastCliReproContractTest(unittest.TestCase):
             observer["finishedAtEpochMillis"] = 300
             (directory / observer["transcript"]).write_text(
                 "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: true\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                 "__KAST_OBSERVATION_EPOCH_MILLIS__=250\n"
                 "__KAST_OBSERVATION__=RESOLVE\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                 "__KAST_OBSERVATION_EPOCH_MILLIS__=260\n"
                 f"::kast-repro-exit={observer['completionToken']}:0:300\n",
                 encoding="utf-8",
@@ -385,6 +395,87 @@ class KastCliReproContractTest(unittest.TestCase):
                     ["OBSERVER_EVIDENCE_INCOMPLETE"],
                     [finding["code"] for finding in json.loads(result.stdout)["findings"]],
                 )
+
+    def test_missing_transition_operation_cannot_replay_as_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["commands"] = []
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            self.assertEqual("INVALID_EVIDENCE", json.loads(result.stderr)["status"])
+
+    def test_failed_observer_subcommand_cannot_replay_as_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            observer = next(
+                command for command in manifest["commands"]
+                if command["name"] == "cold-observer"
+            )
+            transcript_path = directory / str(observer["transcript"])
+            transcript_path.write_text(
+                transcript_path.read_text(encoding="utf-8").replace(
+                    "__KAST_OBSERVATION_EXIT_CODE__=0\n",
+                    "__KAST_OBSERVATION_EXIT_CODE__=127\n",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertEqual(
+                ["OBSERVER_EVIDENCE_INCOMPLETE"],
+                [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+            )
+
+    def test_non_overlapping_observer_cannot_replay_as_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            observer = next(
+                command for command in manifest["commands"]
+                if command["name"] == "cold-observer"
+            )
+            observer["startedAtEpochMillis"] = 120
+            observer["finishedAtEpochMillis"] = 130
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertEqual(
+                ["OBSERVER_EVIDENCE_INCOMPLETE"],
+                [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+            )
 
     def test_new_descendant_is_rescanned_during_forced_teardown(self) -> None:
         runner = load_runner_module()
@@ -493,9 +584,11 @@ class KastCliReproContractTest(unittest.TestCase):
             observer["finishedAtEpochMillis"] = 260
             (directory / observer["transcript"]).write_text(
                 "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: false\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                 "__KAST_OBSERVATION_EPOCH_MILLIS__=205\n"
                 "__KAST_OBSERVATION__=RESOLVE\nerror: CONFLICT\n"
                 "next: Run `kast --help`\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=1\n"
                 "__KAST_OBSERVATION_EPOCH_MILLIS__=250\n"
                 f"::kast-repro-exit={observer['completionToken']}:0:260\n",
                 encoding="utf-8",
@@ -562,6 +655,10 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual(
                 2,
                 cold_observer["argv"][-1].count("__KAST_OBSERVATION_EPOCH_MILLIS__"),
+            )
+            self.assertEqual(
+                2,
+                cold_observer["argv"][-1].count("__KAST_OBSERVATION_EXIT_CODE__"),
             )
             by_name = {command["name"]: command for command in plan["commands"]}
             self.assertEqual(
@@ -646,6 +743,37 @@ class KastCliReproContractTest(unittest.TestCase):
                         "--exercise-plans requires a top-level declaration from the --file package",
                         result.stderr,
                     )
+
+    def test_mutation_plan_chooses_an_absent_probe_path(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            workspace = Path(raw_directory)
+            source = workspace / "src" / "Probe.kt"
+            source.parent.mkdir(parents=True)
+            source.write_text("package example\nclass Probe\n", encoding="utf-8")
+            occupied = source.parent / "KastCliReproProbe.kt"
+            occupied.write_text("package example\nobject Existing\n", encoding="utf-8")
+
+            result = self.run_runner(
+                "capture",
+                "--workspace-root",
+                str(workspace),
+                "--file",
+                "src/Probe.kt",
+                "--symbol",
+                "example.Probe",
+                "--exercise-plans",
+                "--dry-run",
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            plan = json.loads(result.stdout)
+            add_file = next(
+                command for command in plan["commands"]
+                if command["name"] == "change-plan-add-file"
+            )
+            probe_path = workspace / add_file["argv"][-1]
+            self.assertNotEqual(occupied, probe_path)
+            self.assertFalse(probe_path.exists())
 
     def test_capsule_process_ownership_requires_a_path_boundary(self) -> None:
         runner = load_runner_module()
