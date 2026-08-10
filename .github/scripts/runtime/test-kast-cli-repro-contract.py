@@ -1178,38 +1178,44 @@ class KastCliReproContractTest(unittest.TestCase):
 
     def test_persistent_capsule_rejects_state_symlinks_before_setup(self) -> None:
         runner = load_runner_module()
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as raw_directory:
-            base = Path(raw_directory)
-            root = base / "capsule"
-            root.mkdir()
-            external = base / "external-state"
-            external.mkdir()
-            (root / "kast-home").symlink_to(external, target_is_directory=True)
-            workspace = base / "workspace"
-            workspace.mkdir()
-            bundle = base / "bundle"
-            bundle.mkdir()
-            args = runner.argparse.Namespace(
-                capsule_root=root,
-                ephemeral_capsule=False,
-                bundle_source=bundle,
-                idea_host=None,
-            )
-
+        for relative_symlink in (Path("kast-home"), Path("kast-home/releases")):
             with (
-                mock.patch.object(
-                    runner,
-                    "discover_developer_cli",
-                    return_value=base / "bootstrap-kastctl",
-                ),
-                mock.patch.object(
-                    runner,
-                    "discover_idea_host",
-                    return_value=base / "idea-host",
-                ),
-                self.assertRaisesRegex(runner.ReproError, "state path escaped"),
+                self.subTest(relative_symlink=relative_symlink),
+                tempfile.TemporaryDirectory(dir="/private/tmp") as raw_directory,
             ):
-                runner.build_capsule(args, workspace, "kast", dry_run=False)
+                base = Path(raw_directory)
+                root = base / "capsule"
+                root.mkdir()
+                external = base / "external-state"
+                external.mkdir()
+                symlink = root / relative_symlink
+                symlink.parent.mkdir(parents=True, exist_ok=True)
+                symlink.symlink_to(external, target_is_directory=True)
+                workspace = base / "workspace"
+                workspace.mkdir()
+                bundle = base / "bundle"
+                bundle.mkdir()
+                args = runner.argparse.Namespace(
+                    capsule_root=root,
+                    ephemeral_capsule=False,
+                    bundle_source=bundle,
+                    idea_host=None,
+                )
+
+                with (
+                    mock.patch.object(
+                        runner,
+                        "discover_developer_cli",
+                        return_value=base / "bootstrap-kastctl",
+                    ),
+                    mock.patch.object(
+                        runner,
+                        "discover_idea_host",
+                        return_value=base / "idea-host",
+                    ),
+                    self.assertRaisesRegex(runner.ReproError, "state .* escaped"),
+                ):
+                    runner.build_capsule(args, workspace, "kast", dry_run=False)
 
     def test_ephemeral_capsule_is_removed_when_post_allocation_validation_fails(self) -> None:
         runner = load_runner_module()
@@ -1256,7 +1262,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 if allocated.exists():
                     allocated.rmdir()
 
-    def test_failed_telemetry_restore_is_retained_as_teardown_error(self) -> None:
+    def test_failed_telemetry_restore_stops_runtime_without_restarting(self) -> None:
         runner = load_runner_module()
         failed = runner.CommandEvidence(
             name="restore-enabled",
@@ -1269,8 +1275,9 @@ class KastCliReproContractTest(unittest.TestCase):
             outputBytes=0,
         )
         succeeded = dataclasses.replace(failed, name="restore-detail", exitCode=0)
+        stopped = dataclasses.replace(failed, name="restore-runtime-stop", exitCode=0)
         capture = mock.Mock()
-        capture.run.side_effect = [failed, succeeded]
+        capture.run.side_effect = [failed, succeeded, stopped]
         config = {
             "mutableFields": [
                 {"key": "telemetry.enabled", "workspaceOverride": False},
@@ -1279,15 +1286,68 @@ class KastCliReproContractTest(unittest.TestCase):
             "effective": {"telemetry": {"enabled": False, "detail": "normal"}},
         }
 
-        errors = runner.restore_config(
+        errors = runner.restore_config_and_runtime(
             capture,
             Path("/tmp/kastctl"),
+            "/tmp/kast",
             Path("/tmp/workspace"),
             config,
+            420.0,
         )
 
         self.assertEqual(1, len(errors))
         self.assertIn("restore-enabled", errors[0])
+        self.assertEqual(
+            ["restore-enabled", "restore-detail", "restore-runtime-stop"],
+            [call.args[0].name for call in capture.run.call_args_list],
+        )
+
+    def test_successful_telemetry_restore_restarts_runtime(self) -> None:
+        runner = load_runner_module()
+        succeeded = runner.CommandEvidence(
+            name="succeeded",
+            argv=["kastctl"],
+            startedAtEpochMillis=1,
+            finishedAtEpochMillis=2,
+            exitCode=0,
+            timedOut=False,
+            transcript="transcripts/succeeded.txt",
+            outputBytes=0,
+        )
+        capture = mock.Mock()
+        capture.run.return_value = succeeded
+        config = {
+            "mutableFields": [
+                {"key": "telemetry.enabled", "workspaceOverride": False},
+                {"key": "telemetry.detail", "workspaceOverride": False},
+            ],
+            "effective": {"telemetry": {"enabled": False, "detail": "normal"}},
+        }
+
+        errors = runner.restore_config_and_runtime(
+            capture,
+            Path("/tmp/kastctl"),
+            "/tmp/kast",
+            Path("/tmp/workspace"),
+            config,
+            420.0,
+        )
+
+        self.assertEqual([], errors)
+        specs = [call.args[0] for call in capture.run.call_args_list]
+        self.assertEqual(
+            [
+                "restore-enabled",
+                "restore-detail",
+                "restore-runtime-stop",
+                "restore-runtime-start",
+            ],
+            [spec.name for spec in specs],
+        )
+        self.assertEqual(
+            ("/tmp/kast", "workspace", "ensure"),
+            specs[-1].argv,
+        )
 
     def test_live_non_capsule_capture_requires_runtime_restart_authority(self) -> None:
         runner = load_runner_module()

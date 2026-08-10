@@ -235,6 +235,24 @@ def require_contained_capsule_state_paths(
     return paths
 
 
+def require_contained_capsule_state_symlinks(
+    root: Path,
+    state_paths: tuple[Path, ...],
+) -> None:
+    try:
+        for state_path in state_paths:
+            for candidate in state_path.rglob("*"):
+                if candidate.is_symlink() and not is_within(candidate, root):
+                    raise ReproError(
+                        "capsule state symlink escaped its root: "
+                        f"{candidate} -> {candidate.resolve()}"
+                    )
+    except (OSError, RuntimeError) as error:
+        raise ReproError(
+            f"capsule state symlink could not be validated: {error}"
+        ) from error
+
+
 def merged_environment(overrides: dict[str, str] | None = None) -> dict[str, str]:
     environment = os.environ.copy()
     if overrides:
@@ -922,6 +940,7 @@ def build_capsule(
             for path in state_paths:
                 path.mkdir(parents=True, exist_ok=True)
             require_contained_capsule_state_paths(root, environment)
+            require_contained_capsule_state_symlinks(root, state_paths)
         return capsule
     except (OSError, ReproError, KeyboardInterrupt):
         discard_unstarted_ephemeral_capsule(capsule)
@@ -1117,6 +1136,54 @@ def restore_config(
             require_success(runner.run(spec))
         except ReproError as error:
             errors.append(str(error))
+    return errors
+
+
+def restore_config_and_runtime(
+    runner: TmuxCapture,
+    kastctl: Path,
+    kast: str,
+    workspace: Path,
+    config: dict[str, Any],
+    transition_timeout: float,
+) -> list[str]:
+    errors = restore_config(runner, kastctl, workspace, config)
+    try:
+        require_success(
+            runner.run(
+                CommandSpec(
+                    "restore-runtime-stop",
+                    (
+                        str(kastctl),
+                        "--output",
+                        "json",
+                        "developer",
+                        "runtime",
+                        "stop",
+                        "--workspace-root",
+                        str(workspace),
+                    ),
+                    timeout_seconds=transition_timeout,
+                )
+            )
+        )
+    except ReproError as error:
+        errors.append(str(error))
+        return errors
+    if errors:
+        return errors
+    try:
+        require_success(
+            runner.run(
+                CommandSpec(
+                    "restore-runtime-start",
+                    (kast, "workspace", "ensure"),
+                    timeout_seconds=transition_timeout,
+                )
+            )
+        )
+    except ReproError as error:
+        errors.append(str(error))
     return errors
 
 
@@ -1459,7 +1526,16 @@ def capture(args: argparse.Namespace) -> int:
             )
         elif runner_started:
             if kastctl is not None and config is not None:
-                teardown_errors.extend(restore_config(runner, kastctl, workspace, config))
+                teardown_errors.extend(
+                    restore_config_and_runtime(
+                        runner,
+                        kastctl,
+                        kast,
+                        workspace,
+                        config,
+                        args.transition_timeout,
+                    )
+                )
             runner.close()
 
         if telemetry_path is None:
