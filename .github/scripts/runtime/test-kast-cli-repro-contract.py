@@ -264,6 +264,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 "stateContained": True,
                 "runtimeStopSucceeded": False,
                 "runtimeStopped": True,
+                "terminatedProcessIds": [],
                 "processesRemaining": [],
                 "rootDeleted": True,
             }
@@ -558,6 +559,33 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("graph-topology", error["error"])
 
+    def test_failed_required_scenario_command_cannot_replay_as_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            topology = next(
+                command for command in manifest["commands"]
+                if command["name"] == "graph-topology"
+            )
+            topology["exitCode"] = 1
+            topology["timedOut"] = True
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("graph-topology", error["error"])
+
     def test_nonobject_manifest_is_structured_invalid_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -594,6 +622,36 @@ class KastCliReproContractTest(unittest.TestCase):
             error = json.loads(result.stderr)
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("capsule", error["error"])
+
+    def test_incomplete_capsule_proof_is_structured_invalid_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["capsule"] = {
+                "mode": "EPHEMERAL",
+                "installationContained": True,
+                "stateContained": True,
+                "runtimeStopSucceeded": True,
+                "runtimeStopped": True,
+                "processesRemaining": [],
+                "rootDeleted": True,
+            }
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("terminatedProcessIds", error["error"])
 
     def test_failed_observer_subcommand_cannot_replay_as_clean(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:

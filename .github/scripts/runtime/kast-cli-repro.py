@@ -60,6 +60,11 @@ REQUIRED_SCENARIO_COMMANDS = (
     "workspace-refresh",
     "refresh-observer",
 )
+REQUIRED_SUCCESSFUL_SCENARIO_COMMANDS = tuple(
+    name
+    for name in REQUIRED_SCENARIO_COMMANDS
+    if name not in {"workspace-refresh", "refresh-observer"}
+)
 
 
 class ReproError(Exception):
@@ -1510,6 +1515,31 @@ def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, 
         raise ReproError(f"unsupported evidence schema: {manifest.get('schemaVersion')!r}")
     if "capsule" in manifest and not isinstance(manifest["capsule"], dict):
         raise ReproError("evidence manifest capsule proof must be an object")
+    capsule = manifest.get("capsule")
+    if isinstance(capsule, dict):
+        mode = capsule.get("mode")
+        if mode not in {"PERSISTENT", "EPHEMERAL"}:
+            raise ReproError("evidence manifest capsule mode is invalid")
+        for field in (
+            "installationContained",
+            "stateContained",
+            "runtimeStopSucceeded",
+            "runtimeStopped",
+            "rootDeleted",
+        ):
+            if not isinstance(capsule.get(field), bool):
+                raise ReproError(f"evidence manifest capsule {field} must be a boolean")
+        for field in ("terminatedProcessIds", "processesRemaining"):
+            process_ids = capsule.get(field)
+            if not isinstance(process_ids, list) or not all(
+                isinstance(process_id, int)
+                and not isinstance(process_id, bool)
+                and process_id >= 0
+                for process_id in process_ids
+            ):
+                raise ReproError(
+                    f"evidence manifest capsule {field} must be an array of process IDs"
+                )
     commands = manifest.get("commands")
     if not isinstance(commands, list):
         raise ReproError("evidence manifest commands must be an array")
@@ -1668,6 +1698,21 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
         raise ReproError(
             "evidence manifest is missing required scenario commands: "
             + ", ".join(missing_commands)
+        )
+    failed_commands = sorted(
+        name
+        for name in REQUIRED_SUCCESSFUL_SCENARIO_COMMANDS
+        if (
+            not isinstance(commands[name].get("exitCode"), int)
+            or isinstance(commands[name].get("exitCode"), bool)
+            or commands[name].get("exitCode") != 0
+            or commands[name].get("timedOut") is not False
+        )
+    )
+    if failed_commands:
+        raise ReproError(
+            "required scenario commands did not complete successfully: "
+            + ", ".join(failed_commands)
         )
     findings: list[Finding] = []
     cold_up = commands.get("cold-up")
