@@ -3,6 +3,7 @@
 #[path = "../support/mod.rs"]
 mod support;
 
+use std::os::unix::process::CommandExt;
 use support::*;
 
 fn standalone_workspace(root: &Path) {
@@ -15,7 +16,7 @@ fn standalone_workspace(root: &Path) {
 }
 
 #[test]
-fn semantic_demand_without_an_installed_indexer_reports_the_supported_distribution() {
+fn semantic_demand_without_an_installed_indexer_returns_a_typed_blocker() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -24,16 +25,9 @@ fn semantic_demand_without_an_installed_indexer_reports_the_supported_distributi
     standalone_workspace(&workspace);
 
     let demand = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "symbol",
-            "--query",
-            "Foo",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-        ])
+        .arg0("kast")
+        .current_dir(&workspace)
+        .args(["--output", "json", "symbol", "resolve", "--query", "Foo"])
         .output()
         .expect("semantic demand");
 
@@ -43,10 +37,13 @@ fn semantic_demand_without_an_installed_indexer_reports_the_supported_distributi
     );
     let output: serde_json::Value =
         serde_json::from_slice(&demand.stdout).expect("semantic demand JSON");
-    assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE");
+    assert_eq!(output["schemaVersion"], 3, "{output:#}");
+    assert_eq!(output["operation"], "symbol.resolve", "{output:#}");
+    assert_eq!(output["status"], "rejected", "{output:#}");
+    assert_eq!(output["result"]["type"], "rejected", "{output:#}");
     assert_eq!(
-        output["error"]["details"]["supportedDistribution"], "linux-indexer-tarball",
-        "error should identify the supported private indexer distribution: {output:#}",
+        output["result"]["failure"]["code"], "NO_INDEXER_AVAILABLE",
+        "{output:#}",
     );
 }
 
