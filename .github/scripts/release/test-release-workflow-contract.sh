@@ -42,7 +42,7 @@ workflow_jobs() {
 }
 
 cut_release_jobs="$(workflow_jobs "$cut_release")"
-expected_cut_release_jobs="$(printf '%s\n' cut-release release-preflight | sort)"
+expected_cut_release_jobs="$(printf '%s\n' cut-release publish-release release-preflight | sort)"
 [[ "$cut_release_jobs" == "$expected_cut_release_jobs" ]] \
   || die "unexpected cut release job inventory: ${cut_release_jobs//$'\n'/, }"
 
@@ -80,18 +80,41 @@ require "$release" '  push:' \
   "release publication must run for tag pushes"
 require "$release" '      - "v*.*.*"' \
   "release publication must remain tag scoped"
-reject "$release" '  workflow_dispatch:' \
-  "release publication must not instantiate on manual tag-cutting runs"
+require "$release" '  workflow_call:' \
+  "manual tag cutting must invoke publication as a reusable workflow"
 reject "$release" 'inputs.release_type' \
   "release publication must not contain tag-cutting inputs"
 
 for cut_evidence in \
   'release_type="${{ inputs.release_type }}"' \
-  'token: ${{ secrets.RELEASE_GITHUB_TOKEN }}' \
+  'token: ${{ github.token }}' \
   'git tag "$new_tag"' \
-  'git push origin "$new_tag"'; do
+  'git push origin "$new_tag"' \
+  'release_tag: ${{ steps.release-tag.outputs.value }}' \
+  'release_sha: ${{ steps.release-tag.outputs.sha }}' \
+  'uses: ./.github/workflows/release.yml' \
+  'release_tag: ${{ needs.cut-release.outputs.release_tag }}' \
+  'release_sha: ${{ needs.cut-release.outputs.release_sha }}' \
+  'secrets: inherit'; do
   require "$cut_release" "$cut_evidence" \
     "cut release must retain tag-cutting evidence: ${cut_evidence}"
+done
+
+for release_identity_evidence in \
+  'release_tag:' \
+  'release_sha:' \
+  'RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}' \
+  'RELEASE_SHA: ${{ inputs.release_sha || github.sha }}' \
+  'tag="${RELEASE_TAG}"' \
+  'git rev-parse "${tag}^{commit}"' \
+  '[[ "$tag_sha" == "$RELEASE_SHA" ]]'; do
+  require "$release" "$release_identity_evidence" \
+    "release publication must preserve exact reusable identity: ${release_identity_evidence}"
+done
+
+for tokenless_surface in "$cut_release" "$release"; do
+  reject "$tokenless_surface" 'RELEASE_GITHUB_TOKEN' \
+    "release automation must not depend on a long-lived GitHub token"
 done
 
 reject "$release" 'CI_AUX_' "release must not depend on mutable auxiliary flags"

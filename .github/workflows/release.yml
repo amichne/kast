@@ -1,19 +1,31 @@
 name: Release
-run-name: Release ${{ github.ref_name }}
+run-name: Release ${{ inputs.release_tag || github.ref_name }}
 
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Exact tag created by the cut-release job.
+        required: true
+        type: string
+      release_sha:
+        description: Exact source commit admitted by release preflight.
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+  RELEASE_SHA: ${{ inputs.release_sha || github.sha }}
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -34,6 +46,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$GITHUB_SHA" != "$RELEASE_SHA" ]]; then
+            printf 'error: release source %s does not match workflow source %s\n' \
+              "$RELEASE_SHA" "$GITHUB_SHA" >&2
+            exit 1
+          fi
           ci_runs="$(gh api --method GET \
             "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
             -f branch=main \
@@ -89,19 +106,25 @@ jobs:
       source_ci_run_id: ${{ needs.release-preflight.outputs.run_id }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
       - name: Resolve release tag
         id: release-tag
         shell: bash
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
           [[ "$tag" == v* ]] || { echo "release tag must start with v: $tag" >&2; exit 1; }
+          tag_sha="$(git rev-parse "${tag}^{commit}")"
+          [[ "$tag_sha" == "$RELEASE_SHA" ]] \
+            || { printf 'release tag %s resolves to %s, expected %s\n' "$tag" "$tag_sha" "$RELEASE_SHA" >&2; exit 1; }
           printf 'value=%s\n' "$tag" >> "$GITHUB_OUTPUT"
           printf 'version=%s\n' "${tag#v}" >> "$GITHUB_OUTPUT"
 
       - name: Ensure draft release exists
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -161,7 +184,7 @@ jobs:
               "runNumber": os.environ["GITHUB_RUN_NUMBER"],
               "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
               "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
+              "ref": "refs/tags/" + os.environ["RELEASE_TAG"],
               "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
               "actor": os.environ["GITHUB_ACTOR"],
               "platformId": "openapi",
@@ -220,7 +243,7 @@ jobs:
 
       - name: Verify and publish retained OpenAPI asset
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -553,7 +576,7 @@ jobs:
 
       - name: Verify and publish retained agent resource assets
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -866,7 +889,7 @@ jobs:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
       - uses: ./.github/scripts/release/actions/publish-setup-bundle
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         with:
           platform: ${{ matrix.platform }}
           tag: ${{ needs.prepare-release.outputs.release_tag }}
@@ -1154,7 +1177,7 @@ jobs:
 
       - name: Generate SHA256SUMS
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1225,7 +1248,7 @@ jobs:
 
       - name: Upload retained release metadata
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1239,7 +1262,7 @@ jobs:
 
       - name: Publish draft release with provenance annotation
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1277,7 +1300,7 @@ jobs:
 
       - name: Verify published release state
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail

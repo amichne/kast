@@ -93,13 +93,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      release_tag: ${{ steps.release-tag.outputs.value }}
+      release_sha: ${{ steps.release-tag.outputs.sha }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          token: ${{ github.token }}
 
       - name: Compute next semver tag and push
+        id: release-tag
         shell: bash
         run: |
           set -euo pipefail
@@ -146,3 +150,17 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$new_tag"
           git push origin "$new_tag"
+          printf 'value=%s\n' "$new_tag" >> "$GITHUB_OUTPUT"
+          printf 'sha=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+  publish-release:
+    name: Publish ${{ needs.cut-release.outputs.release_tag }}
+    needs: [cut-release]
+    permissions:
+      actions: write
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      release_tag: ${{ needs.cut-release.outputs.release_tag }}
+      release_sha: ${{ needs.cut-release.outputs.release_sha }}
+    secrets: inherit
