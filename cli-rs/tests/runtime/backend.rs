@@ -26,7 +26,7 @@ fn semantic_demand_without_an_installed_indexer_reports_the_supported_distributi
     let demand = kast(&home, &config_home)
         .args([
             "--output",
-            "human",
+            "json",
             "agent",
             "symbol",
             "--query",
@@ -41,11 +41,12 @@ fn semantic_demand_without_an_installed_indexer_reports_the_supported_distributi
         !demand.status.success(),
         "semantic demand should require an installed indexer"
     );
-    let stderr = String::from_utf8_lossy(&demand.stderr);
-    assert!(stderr.contains("- Code: NO_INDEXER_AVAILABLE"), "{stderr}");
-    assert!(
-        stderr.contains("supportedDistribution") && stderr.contains("linux-indexer-tarball"),
-        "stderr should identify the supported private indexer distribution: {stderr}",
+    let output: serde_json::Value =
+        serde_json::from_slice(&demand.stdout).expect("semantic demand JSON");
+    assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE");
+    assert_eq!(
+        output["error"]["details"]["supportedDistribution"], "linux-indexer-tarball",
+        "error should identify the supported private indexer distribution: {output:#}",
     );
 }
 
