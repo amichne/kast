@@ -619,6 +619,39 @@ class KastCliReproContractTest(unittest.TestCase):
                 [finding["code"] for finding in json.loads(result.stdout)["findings"]],
             )
 
+    def test_observer_requires_claim_bearing_sample_during_transition(self) -> None:
+        cases = (
+            ("cold-observer", "108", "125"),
+            ("refresh-observer", "209", "225"),
+        )
+        for observer_name, original_timestamp, late_timestamp in cases:
+            with self.subTest(observer=observer_name), tempfile.TemporaryDirectory() as raw_directory:
+                directory = Path(raw_directory)
+                self.write_evidence(directory, incident=False)
+                manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+                observer = next(
+                    command for command in manifest["commands"]
+                    if command["name"] == observer_name
+                )
+                transcript_path = directory / str(observer["transcript"])
+                transcript_path.write_text(
+                    transcript_path.read_text(encoding="utf-8").replace(
+                        f"__KAST_OBSERVATION_EPOCH_MILLIS__={original_timestamp}",
+                        f"__KAST_OBSERVATION_EPOCH_MILLIS__={late_timestamp}",
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = self.run_runner(
+                    "analyze", "--evidence-dir", str(directory), "--format", "json"
+                )
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(
+                    ["OBSERVER_EVIDENCE_INCOMPLETE"],
+                    [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+                )
+
     def test_new_descendant_is_rescanned_during_forced_teardown(self) -> None:
         runner = load_runner_module()
         root = Path("/tmp/kast")
@@ -753,6 +786,51 @@ class KastCliReproContractTest(unittest.TestCase):
             ):
                 runner.build_capsule(args, workspace, "kast", dry_run=False)
 
+    def test_ephemeral_capsule_is_removed_when_post_allocation_validation_fails(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            base = Path(raw_directory)
+            bundle = base / "bundle"
+            bundle.mkdir()
+            allocated = Path(
+                tempfile.mkdtemp(prefix="kast-capsule-contract-", dir="/private/tmp")
+            )
+            allocated.rmdir()
+            args = runner.argparse.Namespace(
+                capsule_root=None,
+                ephemeral_capsule=True,
+                bundle_source=bundle,
+                idea_host=None,
+            )
+
+            def allocate(*, prefix: str, dir: str) -> str:
+                self.assertEqual("kast-capsule-", prefix)
+                self.assertEqual("/private/tmp", dir)
+                allocated.mkdir()
+                return str(allocated)
+
+            try:
+                with (
+                    mock.patch.object(
+                        runner,
+                        "discover_developer_cli",
+                        return_value=base / "bootstrap-kastctl",
+                    ),
+                    mock.patch.object(
+                        runner,
+                        "discover_idea_host",
+                        return_value=base / "idea-host",
+                    ),
+                    mock.patch.object(runner.tempfile, "mkdtemp", side_effect=allocate),
+                    self.assertRaisesRegex(runner.ReproError, "must not overlap"),
+                ):
+                    runner.build_capsule(args, Path("/private/tmp"), "kast", dry_run=False)
+
+                self.assertFalse(allocated.exists())
+            finally:
+                if allocated.exists():
+                    allocated.rmdir()
+
     def test_failed_telemetry_restore_is_retained_as_teardown_error(self) -> None:
         runner = load_runner_module()
         failed = runner.CommandEvidence(
@@ -839,6 +917,12 @@ class KastCliReproContractTest(unittest.TestCase):
                 "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: false\n"
                 "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                 "__KAST_OBSERVATION_EPOCH_MILLIS__=205\n"
+                "__KAST_OBSERVATION__=RESOLVE\nresult: resolved\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=0\n"
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=206\n"
+                "__KAST_SAMPLE__=2\n__KAST_OBSERVATION__=HOME\nready: true\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=0\n"
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=240\n"
                 "__KAST_OBSERVATION__=RESOLVE\nerror: CONFLICT\n"
                 "next: Run `kast --help`\n"
                 "__KAST_OBSERVATION_EXIT_CODE__=1\n"

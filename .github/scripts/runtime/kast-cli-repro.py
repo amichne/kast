@@ -874,13 +874,6 @@ def build_capsule(
         root = args.capsule_root.expanduser().resolve()
         mode = "PERSISTENT"
 
-    if not dry_run and paths_overlap(root, workspace):
-        raise ReproError("capsule root must not overlap the observed workspace")
-    socket_probe = root / "tmp" / "kast-indexer-000000000000.sock"
-    if not dry_run and len(os.fsencode(str(socket_probe))) >= 104:
-        raise ReproError(
-            "capsule root is too long for a macOS Unix-domain socket; choose a shorter --capsule-root"
-        )
     workspace_id = (
         "<capsule-workspace-id>"
         if dry_run
@@ -888,12 +881,23 @@ def build_capsule(
     )
     environment = capsule_environment(root, workspace_id)
     capsule = CapsuleContext(mode, root, bundle_source, environment, bootstrap, idea_host)
-    if not dry_run:
-        state_paths = require_contained_capsule_state_paths(root, environment)
-        for path in state_paths:
-            path.mkdir(parents=True, exist_ok=True)
-        require_contained_capsule_state_paths(root, environment)
-    return capsule
+    try:
+        if not dry_run and paths_overlap(root, workspace):
+            raise ReproError("capsule root must not overlap the observed workspace")
+        socket_probe = root / "tmp" / "kast-indexer-000000000000.sock"
+        if not dry_run and len(os.fsencode(str(socket_probe))) >= 104:
+            raise ReproError(
+                "capsule root is too long for a macOS Unix-domain socket; choose a shorter --capsule-root"
+            )
+        if not dry_run:
+            state_paths = require_contained_capsule_state_paths(root, environment)
+            for path in state_paths:
+                path.mkdir(parents=True, exist_ok=True)
+            require_contained_capsule_state_paths(root, environment)
+        return capsule
+    except (OSError, ReproError, KeyboardInterrupt):
+        discard_unstarted_ephemeral_capsule(capsule)
+        raise
 
 
 def verify_capsule_install(
@@ -1557,6 +1561,7 @@ def observation_has_expected_outcome(observation: TimedObservation) -> bool:
 def observation_completed_during(
     operation: dict[str, Any],
     observations: list[TimedObservation],
+    required_kind: ObservationKind,
 ) -> bool:
     started = operation.get("startedAtEpochMillis")
     finished = operation.get("finishedAtEpochMillis")
@@ -1566,7 +1571,8 @@ def observation_completed_during(
     ):
         raise ReproError("command timing fields must be integers")
     return any(
-        started <= observation.finished_at_epoch_millis < finished
+        observation.kind == required_kind
+        and started <= observation.finished_at_epoch_millis < finished
         for observation in observations
     )
 
@@ -1639,9 +1645,9 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
         )
     incomplete_observers: list[str] = []
     complete_observers: dict[str, list[TimedObservation]] = {}
-    for operation, observer, observer_name in (
-        (cold_up, cold_observer, "cold-observer"),
-        (refresh, refresh_observer, "refresh-observer"),
+    for operation, observer, observer_name, required_kind in (
+        (cold_up, cold_observer, "cold-observer", ObservationKind.HOME),
+        (refresh, refresh_observer, "refresh-observer", ObservationKind.RESOLVE),
     ):
         if operation is None:
             if observer is not None:
@@ -1662,7 +1668,7 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             or observer.get("timedOut") is True
             or observation_kinds != {ObservationKind.HOME, ObservationKind.RESOLVE}
             or not overlaps(operation, observer)
-            or not observation_completed_during(operation, observations)
+            or not observation_completed_during(operation, observations, required_kind)
             or not all(observation_has_expected_outcome(item) for item in observations)
         ):
             incomplete_observers.append(str(observer.get("transcript")))
