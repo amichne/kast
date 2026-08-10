@@ -79,10 +79,13 @@ class KastCliReproContractTest(unittest.TestCase):
                 command("cold-up", terminated, started=100, finished=500),
                 command(
                     "cold-observer",
-                    "__KAST_SAMPLE__=1\nready: true\nruntime: READY\n"
-                    "__KAST_SAMPLE_EPOCH_MILLIS__=200\n"
-                    "next[2]: kast refresh,kast symbol find <query>"
-                    "::kast-repro-exit=0\n",
+                    "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\n"
+                    "ready: true\nruntime: READY\n"
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=200\n"
+                    "__KAST_OBSERVATION__=RESOLVE\n"
+                    "next[2]: kast refresh,kast symbol find <query>\n"
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=250\n"
+                    "unterminated::kast-repro-exit=0\n",
                     started=120,
                     finished=300,
                 ),
@@ -97,10 +100,13 @@ class KastCliReproContractTest(unittest.TestCase):
                 ),
                 command(
                     "refresh-observer",
-                    "__KAST_SAMPLE__=1\nready: false\nruntime: INDEXING\nerror: CONFLICT\n"
+                    "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\n"
+                    "ready: false\nruntime: INDEXING\n"
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=650\n"
+                    "__KAST_OBSERVATION__=RESOLVE\nerror: CONFLICT\n"
                     "message: Semantic operation started while the workspace was not READY\n"
-                    "__KAST_SAMPLE_EPOCH_MILLIS__=700\n"
                     "next: \"Run `kast --help` for valid commands and arguments.\"\n"
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=700\n"
                     "::kast-repro-exit=0\n",
                     started=620,
                     finished=780,
@@ -251,8 +257,10 @@ class KastCliReproContractTest(unittest.TestCase):
             observer["startedAtEpochMillis"] = 120
             observer["finishedAtEpochMillis"] = 300
             (directory / observer["transcript"]).write_text(
-                "__KAST_SAMPLE__=1\nready: true\n"
-                "__KAST_SAMPLE_EPOCH_MILLIS__=250\n::kast-repro-exit=0\n",
+                "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: true\n"
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=250\n"
+                "__KAST_OBSERVATION__=RESOLVE\n"
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=260\n::kast-repro-exit=0\n",
                 encoding="utf-8",
             )
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -350,9 +358,11 @@ class KastCliReproContractTest(unittest.TestCase):
             observer["startedAtEpochMillis"] = 205
             observer["finishedAtEpochMillis"] = 260
             (directory / observer["transcript"]).write_text(
-                "__KAST_SAMPLE__=1\nready: false\nerror: CONFLICT\n"
+                "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: false\n"
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=205\n"
+                "__KAST_OBSERVATION__=RESOLVE\nerror: CONFLICT\n"
                 "next: Run `kast --help`\n"
-                "__KAST_SAMPLE_EPOCH_MILLIS__=250\n::kast-repro-exit=0\n",
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=250\n::kast-repro-exit=0\n",
                 encoding="utf-8",
             )
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -412,7 +422,12 @@ class KastCliReproContractTest(unittest.TestCase):
             cold_observer = next(
                 command for command in plan["commands"] if command["name"] == "cold-observer"
             )
-            self.assertIn("__KAST_SAMPLE_EPOCH_MILLIS__", cold_observer["argv"][-1])
+            self.assertIn("__KAST_OBSERVATION__=HOME", cold_observer["argv"][-1])
+            self.assertIn("__KAST_OBSERVATION__=RESOLVE", cold_observer["argv"][-1])
+            self.assertEqual(
+                2,
+                cold_observer["argv"][-1].count("__KAST_OBSERVATION_EPOCH_MILLIS__"),
+            )
             by_name = {command["name"]: command for command in plan["commands"]}
             self.assertEqual(
                 ["file", "list", "--match", "src/Probe.kt"],
@@ -505,6 +520,55 @@ class KastCliReproContractTest(unittest.TestCase):
         self.assertFalse(
             runner.command_mentions_capsule_root("java --state /tmp/kast-backup/cache", root)
         )
+
+    def test_owned_descendant_survives_parent_exit_with_pid_reuse_guard(self) -> None:
+        runner = load_runner_module()
+        root = Path("/tmp/kast")
+        initial = {
+            100: (1, "java --state /tmp/kast/cache"),
+            101: (100, "capsule-worker"),
+        }
+        after_parent_exit = {101: (1, "capsule-worker")}
+        reused_pid = {101: (1, "unrelated-worker")}
+
+        with (
+            mock.patch.object(runner, "process_ancestry", return_value=set()),
+            mock.patch.object(runner, "process_table", return_value=initial),
+        ):
+            owned = runner.capsule_processes(root)
+
+        self.assertEqual(
+            {100: "java --state /tmp/kast/cache", 101: "capsule-worker"},
+            owned,
+        )
+        with (
+            mock.patch.object(runner, "process_ancestry", return_value=set()),
+            mock.patch.object(runner, "process_table", return_value=after_parent_exit),
+        ):
+            self.assertEqual({101: "capsule-worker"}, runner.capsule_processes(root, owned))
+        with (
+            mock.patch.object(runner, "process_ancestry", return_value=set()),
+            mock.patch.object(runner, "process_table", return_value=reused_pid),
+        ):
+            self.assertEqual({}, runner.capsule_processes(root, owned))
+
+    def test_nonfinite_capture_intervals_are_rejected(self) -> None:
+        runner = load_runner_module()
+        for field, value in (
+            ("sample_interval", float("nan")),
+            ("sample_interval", float("inf")),
+            ("transition_timeout", float("nan")),
+            ("transition_timeout", float("inf")),
+        ):
+            with self.subTest(field=field, value=value):
+                arguments = runner.argparse.Namespace(
+                    samples=1,
+                    sample_interval=0.1,
+                    transition_timeout=1.0,
+                )
+                setattr(arguments, field, value)
+                with self.assertRaises(runner.ReproError):
+                    runner.validate_numeric_arguments(arguments)
 
     def test_missing_tmux_is_rejected_before_ephemeral_capsule_allocation(self) -> None:
         runner = load_runner_module()

@@ -7,6 +7,7 @@ import argparse
 import dataclasses
 import enum
 import json
+import math
 import os
 import re
 import shlex
@@ -416,10 +417,14 @@ def observer_script(kast: str, symbol: str, samples: int, interval: float) -> st
     return (
         f"for i in $(seq 1 {samples}); do "
         'printf "__KAST_SAMPLE__=%s\\n" "$i"; '
+        'printf "__KAST_OBSERVATION__=HOME\\n"; '
         f"{kast_command}; "
-        'printf "__KAST_SAMPLE_EPOCH_MILLIS__="; '
+        'printf "__KAST_OBSERVATION_EPOCH_MILLIS__="; '
         "python3 -c 'import time; print(time.time_ns() // 1000000)'; "
+        'printf "__KAST_OBSERVATION__=RESOLVE\\n"; '
         f"{kast_command} symbol resolve --query {symbol_argument}; "
+        'printf "__KAST_OBSERVATION_EPOCH_MILLIS__="; '
+        "python3 -c 'import time; print(time.time_ns() // 1000000)'; "
         f"sleep {interval}; "
         "done"
     )
@@ -900,7 +905,7 @@ def command_mentions_capsule_root(command: str, root: Path) -> bool:
     return False
 
 
-def capsule_processes(root: Path, seeds: set[int] | None = None) -> set[int]:
+def capsule_processes(root: Path, seeds: dict[int, str] | None = None) -> dict[int, str]:
     table = process_table()
     excluded = process_ancestry(table)
     owned = {
@@ -910,10 +915,10 @@ def capsule_processes(root: Path, seeds: set[int] | None = None) -> set[int]:
     }
     owned.update(
         pid
-        for pid in seeds or set()
+        for pid, prior_command in (seeds or {}).items()
         if pid in table
         and pid not in excluded
-        and command_mentions_capsule_root(table[pid][1], root)
+        and table[pid][1] == prior_command
     )
     changed = True
     while changed:
@@ -922,7 +927,7 @@ def capsule_processes(root: Path, seeds: set[int] | None = None) -> set[int]:
             if pid not in excluded and parent in owned and pid not in owned:
                 owned.add(pid)
                 changed = True
-    return owned
+    return {pid: table[pid][1] for pid in owned}
 
 
 def alive_processes(process_ids: set[int]) -> set[int]:
@@ -1181,14 +1186,16 @@ def capture(args: argparse.Namespace) -> int:
             )
         ))
         if args.restart_runtime or capsule is not None:
-            runner.run(
-                CommandSpec(
-                    "runtime-stop",
-                    (
-                        str(kastctl), "--output", "json", "developer", "runtime", "stop",
-                        "--workspace-root", str(workspace),
-                    ),
-                    timeout_seconds=args.transition_timeout,
+            require_success(
+                runner.run(
+                    CommandSpec(
+                        "runtime-stop",
+                        (
+                            str(kastctl), "--output", "json", "developer", "runtime", "stop",
+                            "--workspace-root", str(workspace),
+                        ),
+                        timeout_seconds=args.transition_timeout,
+                    )
                 )
             )
             cold_up = next(spec for spec in plan if spec.name == "cold-up")
@@ -1224,7 +1231,7 @@ def capture(args: argparse.Namespace) -> int:
     finally:
         capsule_proof: dict[str, Any] | None = None
         if capsule is not None:
-            observed_processes: set[int] = set()
+            observed_processes: dict[int, str] = {}
             try:
                 observed_processes = capsule_processes(capsule.root)
             except ReproError as error:
@@ -1255,7 +1262,7 @@ def capture(args: argparse.Namespace) -> int:
                 runner.close()
             try:
                 remaining_candidates = capsule_processes(capsule.root, observed_processes)
-                terminated, remaining = terminate_capsule_processes(remaining_candidates)
+                terminated, remaining = terminate_capsule_processes(set(remaining_candidates))
             except ReproError as error:
                 teardown_errors.append(str(error))
                 terminated = []
@@ -1391,33 +1398,38 @@ def overlaps(first: dict[str, Any], second: dict[str, Any]) -> bool:
     return values[0] < values[3] and values[2] < values[1]
 
 
-def timed_samples(observer_text: str) -> list[tuple[str, int]]:
+def timed_observations(observer_text: str) -> list[tuple[str, str, int]]:
     sample_pattern = re.compile(
         r"(?ms)^__KAST_SAMPLE__=\d+\n(.*?)(?=^__KAST_SAMPLE__=\d+\n|\Z)"
     )
-    timestamp_pattern = re.compile(r"(?m)^__KAST_SAMPLE_EPOCH_MILLIS__=(\d+)$")
-    samples: list[tuple[str, int]] = []
+    observation_pattern = re.compile(
+        r"(?ms)^__KAST_OBSERVATION__=(HOME|RESOLVE)\n"
+        r"(.*?)(?=^__KAST_OBSERVATION__=|\Z)"
+    )
+    timestamp_pattern = re.compile(r"(?m)^__KAST_OBSERVATION_EPOCH_MILLIS__=(\d+)$")
+    observations: list[tuple[str, str, int]] = []
     for sample in sample_pattern.findall(observer_text):
-        timestamp = timestamp_pattern.search(sample)
-        if timestamp is not None:
-            samples.append((sample, int(timestamp.group(1))))
-    return samples
+        for kind, observation in observation_pattern.findall(sample):
+            timestamp = timestamp_pattern.search(observation)
+            if timestamp is not None:
+                observations.append((kind, observation, int(timestamp.group(1))))
+    return observations
 
 
 def ready_sample_before(observer_text: str, finished_at_epoch_millis: int) -> bool:
     return any(
-        timestamp < finished_at_epoch_millis
-        and re.search(r"(?m)^ready: true$", sample)
-        for sample, timestamp in timed_samples(observer_text)
+        kind == "HOME" and timestamp < finished_at_epoch_millis
+        and re.search(r"(?m)^ready: true$", observation)
+        for kind, observation, timestamp in timed_observations(observer_text)
     )
 
 
 def conflict_sample_before(observer_text: str, finished_at_epoch_millis: int) -> bool:
     return any(
-        timestamp < finished_at_epoch_millis
-        and "error: CONFLICT" in sample
-        and "Run `kast --help`" in sample
-        for sample, timestamp in timed_samples(observer_text)
+        kind == "RESOLVE" and timestamp < finished_at_epoch_millis
+        and "error: CONFLICT" in observation
+        and "Run `kast --help`" in observation
+        for kind, observation, timestamp in timed_observations(observer_text)
     )
 
 
@@ -1648,9 +1660,11 @@ def parser() -> argparse.ArgumentParser:
 def validate_numeric_arguments(args: argparse.Namespace) -> None:
     if getattr(args, "samples", 1) <= 0:
         raise ReproError("--samples must be positive")
-    if getattr(args, "sample_interval", 1.0) < 0:
+    sample_interval = getattr(args, "sample_interval", 1.0)
+    if not math.isfinite(sample_interval) or sample_interval < 0:
         raise ReproError("--sample-interval must be non-negative")
-    if getattr(args, "transition_timeout", 1.0) <= 0:
+    transition_timeout = getattr(args, "transition_timeout", 1.0)
+    if not math.isfinite(transition_timeout) or transition_timeout <= 0:
         raise ReproError("--transition-timeout must be positive")
 
 
