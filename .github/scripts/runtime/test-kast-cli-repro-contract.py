@@ -468,6 +468,52 @@ class KastCliReproContractTest(unittest.TestCase):
         ):
             runner.read_config(Path("/kastctl"), Path("/workspace"))
 
+    def test_config_discovery_rejects_nonobject_nested_fields(self) -> None:
+        runner = load_runner_module()
+        payloads = (
+            {"ok": True, "effective": []},
+            {"ok": True, "effective": {"indexer": []}},
+            {"ok": True, "effective": {"paths": []}},
+            {"ok": True, "effective": {"telemetry": []}},
+        )
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                response = subprocess.CompletedProcess(
+                    [],
+                    0,
+                    json.dumps(payload) + "\n",
+                    "",
+                )
+                with (
+                    mock.patch.object(runner.subprocess, "run", return_value=response),
+                    self.assertRaisesRegex(runner.ReproError, "JSON object"),
+                ):
+                    runner.read_config(Path("/kastctl"), Path("/workspace"))
+
+    def test_command_wrapper_normalizes_signaled_exit_status(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            evidence = directory / "evidence"
+            (evidence / "transcripts").mkdir(parents=True)
+            capture = runner.TmuxCapture(
+                "session",
+                directory,
+                evidence,
+                keep_session=False,
+                base_environment={},
+            )
+            created = subprocess.CompletedProcess([], 0, "%1\n", "")
+            with mock.patch.object(
+                runner,
+                "run_checked",
+                return_value=created,
+            ) as launch:
+                capture.begin(runner.CommandSpec("probe", ("kast", "--help")))
+
+            shell = launch.call_args.args[-1]
+            self.assertIn("status=128-status if status<0 else status", shell)
+
     def test_command_completion_uses_a_nonce_and_the_wrapper_timestamp(self) -> None:
         runner = load_runner_module()
         with tempfile.TemporaryDirectory() as raw_directory:

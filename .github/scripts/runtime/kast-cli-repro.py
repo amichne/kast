@@ -606,6 +606,7 @@ class TmuxCapture:
         completion_wrapper = (
             "import subprocess,time;"
             f"status=subprocess.run(['/bin/bash','-lc',{command!r}]).returncode;"
+            "status=128-status if status<0 else status;"
             "completed_at=time.time_ns()//1000000;"
             f"print({completion_marker!r}+str(status)+':'+str(completed_at),flush=True)"
         )
@@ -831,6 +832,14 @@ def read_config(
         raise ReproError("config discovery did not return a JSON object")
     if payload.get("ok") is not True:
         raise ReproError("config discovery did not return ok=true")
+    effective = payload.get("effective")
+    if not isinstance(effective, dict):
+        raise ReproError("config discovery field effective was not a JSON object")
+    for field in ("indexer", "paths", "telemetry"):
+        if field in effective and not isinstance(effective[field], dict):
+            raise ReproError(
+                f"config discovery field effective.{field} was not a JSON object"
+            )
     return payload
 
 
