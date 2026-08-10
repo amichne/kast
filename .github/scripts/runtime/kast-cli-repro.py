@@ -118,6 +118,12 @@ class CapsuleContext:
         }
 
 
+@dataclasses.dataclass(frozen=True)
+class LiveCapturePreflight:
+    output: Path
+    session: str
+
+
 def epoch_millis() -> int:
     return time.time_ns() // 1_000_000
 
@@ -210,6 +216,46 @@ def capsule_lifecycle_plan(
     ]
 
 
+def issued_symbol_command(
+    name: str,
+    kast: str,
+    query: str,
+    exact_arguments: tuple[str, ...],
+    *,
+    stdin: str | None = None,
+) -> CommandSpec:
+    resolve = shlex.join((kast, "--output", "json", "symbol", "resolve", "--query", query))
+    exact = shlex.join((kast, *exact_arguments))
+    extract = shlex.quote(
+        "import json,sys; value=json.load(sys.stdin).get('result',{}).get('selector'); "
+        "print(value) if isinstance(value,str) and value else sys.exit(2)"
+    )
+    script = (
+        f"resolved=$({resolve}) || exit $?; "
+        'printf "%s\\n" "$resolved"; '
+        f"selector=$(printf '%s' \"$resolved\" | python3 -c {extract}) || exit $?; "
+        f'{exact} --selector "$selector"'
+    )
+    return CommandSpec(name, ("/bin/bash", "-lc", script), stdin=stdin)
+
+
+def issued_graph_node_command(name: str, kast: str) -> CommandSpec:
+    nodes = shlex.join((kast, "--output", "json", "graph", "nodes"))
+    neighbors = shlex.join((kast, "graph", "neighbors"))
+    extract = shlex.quote(
+        "import json,sys; nodes=json.load(sys.stdin).get('result',{}).get('nodes',[]); "
+        "value=nodes[0].get('nodeSelector') if nodes and isinstance(nodes[0],dict) else None; "
+        "print(value) if isinstance(value,str) and value else sys.exit(2)"
+    )
+    script = (
+        f"nodes=$({nodes}) || exit $?; "
+        'printf "%s\\n" "$nodes"; '
+        f"node_selector=$(printf '%s' \"$nodes\" | python3 -c {extract}) || exit $?; "
+        f'{neighbors} --node-selector "$node_selector"'
+    )
+    return CommandSpec(name, ("/bin/bash", "-lc", script))
+
+
 def command_plan(
     kast: str,
     file_path: str,
@@ -228,49 +274,84 @@ def command_plan(
     commands = [
         CommandSpec("home", (kast,)),
         CommandSpec("help", (kast, "--help")),
-        CommandSpec("files", (kast, "files", file_path)),
-        CommandSpec("symbol-find", (kast, "symbol", "find", short_name)),
-        CommandSpec("symbol-show", (kast, "symbol", "show", symbol)),
-        CommandSpec("symbol-refs", (kast, "symbol", "refs", symbol)),
-        CommandSpec("symbol-callers", (kast, "symbol", "callers", symbol)),
-        CommandSpec("symbol-callees", (kast, "symbol", "callees", symbol)),
-        CommandSpec("symbol-implementations", (kast, "symbol", "implementations", symbol)),
-        CommandSpec("symbol-supertypes", (kast, "symbol", "supertypes", symbol)),
-        CommandSpec("symbol-subtypes", (kast, "symbol", "subtypes", symbol)),
-        CommandSpec("graph-summary", (kast, "graph", "summary")),
+        CommandSpec("file-list", (kast, "file", "list", "--match", file_path)),
+        CommandSpec("symbol-search", (kast, "symbol", "search", "--query", symbol)),
+        CommandSpec("symbol-resolve", (kast, "symbol", "resolve", "--query", symbol)),
+        issued_symbol_command("symbol-show", kast, symbol, ("symbol", "show")),
+        issued_symbol_command("relation-references", kast, symbol, ("relation", "references")),
+        issued_symbol_command(
+            "relation-calls-incoming",
+            kast,
+            symbol,
+            ("relation", "calls", "incoming"),
+        ),
+        issued_symbol_command(
+            "relation-calls-outgoing",
+            kast,
+            symbol,
+            ("relation", "calls", "outgoing"),
+        ),
+        issued_symbol_command(
+            "relation-implementations",
+            kast,
+            symbol,
+            ("relation", "implementations"),
+        ),
+        issued_symbol_command(
+            "relation-hierarchy-supertypes",
+            kast,
+            symbol,
+            ("relation", "hierarchy", "supertypes"),
+        ),
+        issued_symbol_command(
+            "relation-hierarchy-subtypes",
+            kast,
+            symbol,
+            ("relation", "hierarchy", "subtypes"),
+        ),
+        CommandSpec("graph-summary", (kast, "graph", "summary", "--scope", "symbol")),
         CommandSpec("graph-nodes", (kast, "graph", "nodes")),
-        CommandSpec("graph-neighbors", (kast, "graph", "neighbors", symbol)),
-        CommandSpec("graph-topology", (kast, "graph", "topology")),
-        CommandSpec("graph-communities", (kast, "graph", "communities")),
-        CommandSpec("graph-impact", (kast, "graph", "impact", symbol)),
-        CommandSpec("check", (kast, "check", file_path)),
+        issued_graph_node_command("graph-neighbors", kast),
+        CommandSpec("graph-topology", (kast, "graph", "topology", "--scope", "symbol")),
+        CommandSpec("graph-communities", (kast, "graph", "communities", "--scope", "symbol")),
+        issued_symbol_command("graph-impact", kast, symbol, ("graph", "impact")),
+        CommandSpec("diagnostic-check", (kast, "diagnostic", "check", "--file", file_path)),
     ]
     if exercise_plans:
         commands.extend(
             [
-                CommandSpec("change-rename", (kast, "change", "rename", symbol, f"{short_name}ReproProbe")),
+                issued_symbol_command(
+                    "change-plan-rename",
+                    kast,
+                    symbol,
+                    ("change", "plan", "rename", "--name", f"{short_name}ReproProbe"),
+                ),
                 CommandSpec(
-                    "change-add-file",
-                    (kast, "change", "add-file", probe_path),
+                    "change-plan-add-file",
+                    (kast, "change", "plan", "add-file", "--file", probe_path),
                     stdin=f"package {package_name}\n\ninternal object KastCliReproProbe",
                 ),
                 CommandSpec(
-                    "change-add-declaration",
-                    (kast, "change", "add-declaration", file_path),
+                    "change-plan-add-declaration",
+                    (kast, "change", "plan", "add-declaration", "--file", file_path),
                     stdin="private const val KAST_CLI_REPRO_SENTINEL = 1",
                 ),
-                CommandSpec(
-                    "change-replace",
-                    (kast, "change", "replace", symbol),
+                issued_symbol_command(
+                    "change-plan-replace",
+                    kast,
+                    symbol,
+                    ("change", "plan", "replace"),
                     stdin=f"class {short_name}ReproProbe",
                 ),
-                CommandSpec("apply-invalid", (kast, "apply", "repro-invalid-plan")),
-                CommandSpec("recover-invalid", (kast, "recover", "repro-invalid-recovery")),
             ]
         )
     commands.extend(
         [
-            CommandSpec("refresh", (kast, "refresh", file_path), timeout_seconds=transition_timeout),
+            CommandSpec(
+                "workspace-refresh",
+                (kast, "workspace", "refresh", "--file", file_path),
+                timeout_seconds=transition_timeout,
+            ),
             CommandSpec("refresh-observer", ("/bin/bash", "-lc", observer), timeout_seconds=transition_timeout),
         ]
     )
@@ -279,7 +360,7 @@ def command_plan(
             [
                 CommandSpec(
                     "cold-up",
-                    (kast, "up"),
+                    (kast, "workspace", "ensure"),
                     environment=(("KAST_IDEA_TRACE", "true"),),
                     timeout_seconds=transition_timeout,
                 ),
@@ -298,7 +379,7 @@ def observer_script(kast: str, symbol: str, samples: int, interval: float) -> st
         f"{kast_command}; "
         'printf "__KAST_SAMPLE_EPOCH_MILLIS__="; '
         "python3 -c 'import time; print(time.time_ns() // 1000000)'; "
-        f"{kast_command} symbol show {symbol_argument}; "
+        f"{kast_command} symbol resolve --query {symbol_argument}; "
         f"sleep {interval}; "
         "done"
     )
@@ -740,16 +821,31 @@ def process_ancestry(table: dict[int, tuple[int, str]]) -> set[int]:
     return ancestry
 
 
+def command_mentions_capsule_root(command: str, root: Path) -> bool:
+    for spelling in {str(root), str(root.resolve())}:
+        pattern = re.compile(
+            rf"(?:^|[\s'\"=:,]){re.escape(spelling)}(?=$|[/\s'\"=:,])"
+        )
+        if pattern.search(command):
+            return True
+    return False
+
+
 def capsule_processes(root: Path, seeds: set[int] | None = None) -> set[int]:
     table = process_table()
     excluded = process_ancestry(table)
-    root_spellings = {str(root), str(root.resolve())}
     owned = {
         pid
         for pid, (_, command) in table.items()
-        if pid not in excluded and any(spelling in command for spelling in root_spellings)
+        if pid not in excluded and command_mentions_capsule_root(command, root)
     }
-    owned.update(pid for pid in seeds or set() if pid in table and pid not in excluded)
+    owned.update(
+        pid
+        for pid in seeds or set()
+        if pid in table
+        and pid not in excluded
+        and command_mentions_capsule_root(table[pid][1], root)
+    )
     changed = True
     while changed:
         changed = False
@@ -866,6 +962,39 @@ def write_manifest(
     (directory / "manifest.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def live_capture_preflight(args: argparse.Namespace, workspace: Path) -> LiveCapturePreflight:
+    if shutil.which("tmux") is None:
+        raise ReproError("tmux is required for live capture")
+    output = args.output_dir or (
+        Path(tempfile.gettempdir())
+        / "kast-cli-repro"
+        / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{os.getpid()}"
+    )
+    output = output.resolve()
+    if output == workspace or workspace in output.parents:
+        raise ReproError("--output-dir must be outside the observed workspace so capture cannot trigger indexing")
+    if output.exists() and not output.is_dir():
+        raise ReproError(f"evidence output is not a directory: {output}")
+    if output.exists() and any(output.iterdir()):
+        raise ReproError(f"evidence output is not empty: {output}")
+    session = args.session_name or f"kast-cli-repro-{os.getpid()}"
+    if re.fullmatch(r"[A-Za-z0-9_-]+", session) is None:
+        raise ReproError("--session-name must contain only letters, digits, underscores, or hyphens")
+    return LiveCapturePreflight(output, session)
+
+
+def discard_unstarted_ephemeral_capsule(capsule: CapsuleContext | None) -> None:
+    if capsule is None or capsule.mode != "EPHEMERAL" or not capsule.root.exists():
+        return
+    expected_parent = Path("/private/tmp").resolve()
+    if (
+        capsule.root.parent.resolve() != expected_parent
+        or not capsule.root.name.startswith("kast-capsule-")
+    ):
+        raise ReproError("refused to clean an unrecognized ephemeral capsule root")
+    shutil.rmtree(capsule.root)
+
+
 def capture(args: argparse.Namespace) -> int:
     workspace = args.workspace_root.resolve(strict=True)
     file_path = Path(args.file)
@@ -878,6 +1007,7 @@ def capture(args: argparse.Namespace) -> int:
     if host_kast is None and not args.dry_run:
         raise ReproError(f"Kast executable is unavailable: {args.kast}")
     host_kast = host_kast or args.kast
+    preflight = None if args.dry_run else live_capture_preflight(args, workspace)
     capsule = build_capsule(args, workspace, host_kast, dry_run=args.dry_run)
     kast = str(capsule.kast) if capsule is not None else host_kast
     plan = command_plan(
@@ -900,26 +1030,17 @@ def capture(args: argparse.Namespace) -> int:
             payload["capsule"] = capsule.public()
         print(json.dumps(payload, indent=2))
         return 0
-    if shutil.which("tmux") is None:
-        raise ReproError("tmux is required for live capture")
-    output = args.output_dir or (
-        Path(tempfile.gettempdir())
-        / "kast-cli-repro"
-        / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{os.getpid()}"
-    )
-    output = output.resolve()
-    if output == workspace or workspace in output.parents:
-        raise ReproError("--output-dir must be outside the observed workspace so capture cannot trigger indexing")
-    if capsule is not None and paths_overlap(output, capsule.root):
-        raise ReproError("--output-dir must not overlap the capsule root")
-    if output.exists() and not output.is_dir():
-        raise ReproError(f"evidence output is not a directory: {output}")
-    if output.exists() and any(output.iterdir()):
-        raise ReproError(f"evidence output is not empty: {output}")
-    (output / "transcripts").mkdir(parents=True, exist_ok=True)
-    session = args.session_name or f"kast-cli-repro-{os.getpid()}"
-    if re.fullmatch(r"[A-Za-z0-9_-]+", session) is None:
-        raise ReproError("--session-name must contain only letters, digits, underscores, or hyphens")
+    if preflight is None:
+        raise ReproError("live capture preflight was not established")
+    output = preflight.output
+    session = preflight.session
+    try:
+        if capsule is not None and paths_overlap(output, capsule.root):
+            raise ReproError("--output-dir must not overlap the capsule root")
+        (output / "transcripts").mkdir(parents=True, exist_ok=True)
+    except (OSError, ReproError):
+        discard_unstarted_ephemeral_capsule(capsule)
+        raise
     runner = TmuxCapture(
         session,
         workspace,
@@ -1003,12 +1124,20 @@ def capture(args: argparse.Namespace) -> int:
             runner.finish(observer_active)
             runner.finish(up_active)
         else:
-            runner.run(CommandSpec("warm-up", (kast, "up"), timeout_seconds=args.transition_timeout))
+            require_success(
+                runner.run(
+                    CommandSpec(
+                        "warm-up",
+                        (kast, "workspace", "ensure"),
+                        timeout_seconds=args.transition_timeout,
+                    )
+                )
+            )
         for spec in plan:
-            if spec.name in {"cold-up", "cold-observer", "refresh", "refresh-observer"}:
+            if spec.name in {"cold-up", "cold-observer", "workspace-refresh", "refresh-observer"}:
                 continue
-            runner.run(spec)
-        refresh = next(spec for spec in plan if spec.name == "refresh")
+            require_success(runner.run(spec))
+        refresh = next(spec for spec in plan if spec.name == "workspace-refresh")
         observer = next(spec for spec in plan if spec.name == "refresh-observer")
         refresh_active = runner.begin(refresh)
         observer_active = runner.begin(observer)
@@ -1408,7 +1537,11 @@ def parser() -> argparse.ArgumentParser:
     capture_parser.add_argument("--sample-interval", type=float, default=1.0)
     capture_parser.add_argument("--transition-timeout", type=float, default=420.0)
     capture_parser.add_argument("--restart-runtime", action="store_true", help="stop the exact-root runtime and cold-start it with KAST_IDEA_TRACE=true")
-    capture_parser.add_argument("--exercise-plans", action="store_true", help="exercise mutation planning and invalid apply/recover without applying a valid plan")
+    capture_parser.add_argument(
+        "--exercise-plans",
+        action="store_true",
+        help="exercise mutation planning without applying a plan",
+    )
     capture_parser.add_argument("--keep-session", action="store_true", help="leave the completed tmux session available for attachment")
     capture_parser.add_argument("--dry-run", action="store_true", help="print the command matrix without touching tmux or Kast state")
     analyze_parser = commands.add_parser("analyze", help="replay an existing evidence bundle without a live runtime")

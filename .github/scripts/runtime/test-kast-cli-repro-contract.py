@@ -3,15 +3,32 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 RUNNER = Path(__file__).with_name("kast-cli-repro.py")
+
+
+def load_runner_module():
+    module_name = "kast_cli_repro_contract_subject"
+    existing = sys.modules.get(module_name)
+    if existing is not None:
+        return existing
+    spec = importlib.util.spec_from_file_location(module_name, RUNNER)
+    if spec is None or spec.loader is None:
+        raise AssertionError("cannot load the Kast CLI reproduction runner")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 class KastCliReproContractTest(unittest.TestCase):
@@ -295,39 +312,175 @@ class KastCliReproContractTest(unittest.TestCase):
                 command for command in plan["commands"] if command["name"] == "cold-observer"
             )
             self.assertIn("__KAST_SAMPLE_EPOCH_MILLIS__", cold_observer["argv"][-1])
+            by_name = {command["name"]: command for command in plan["commands"]}
+            self.assertEqual(
+                ["file", "list", "--match", "src/Probe.kt"],
+                by_name["file-list"]["argv"][1:],
+            )
+            self.assertEqual(
+                ["symbol", "search", "--query", "example.Probe"],
+                by_name["symbol-search"]["argv"][1:],
+            )
+            self.assertEqual(
+                ["symbol", "resolve", "--query", "example.Probe"],
+                by_name["symbol-resolve"]["argv"][1:],
+            )
+            self.assertEqual(
+                ["workspace", "ensure"],
+                by_name["cold-up"]["argv"][1:],
+            )
+            symbol_show = by_name["symbol-show"]["argv"][-1]
+            graph_neighbors = by_name["graph-neighbors"]["argv"][-1]
+            self.assertIn("symbol resolve --query example.Probe", symbol_show)
+            self.assertIn('symbol show --selector "$selector"', symbol_show)
+            self.assertNotIn("--selector example.Probe", symbol_show)
+            self.assertIn("graph nodes", graph_neighbors)
+            self.assertIn('graph neighbors --node-selector "$node_selector"', graph_neighbors)
             self.assertTrue(
                 {
                     "home",
                     "help",
-                    "files",
-                    "symbol-find",
+                    "file-list",
+                    "symbol-search",
+                    "symbol-resolve",
                     "symbol-show",
-                    "symbol-refs",
-                    "symbol-callers",
-                    "symbol-callees",
-                    "symbol-implementations",
-                    "symbol-supertypes",
-                    "symbol-subtypes",
+                    "relation-references",
+                    "relation-calls-incoming",
+                    "relation-calls-outgoing",
+                    "relation-implementations",
+                    "relation-hierarchy-supertypes",
+                    "relation-hierarchy-subtypes",
                     "graph-summary",
                     "graph-nodes",
                     "graph-neighbors",
                     "graph-topology",
                     "graph-communities",
                     "graph-impact",
-                    "check",
-                    "change-rename",
-                    "change-add-file",
-                    "change-add-declaration",
-                    "change-replace",
-                    "apply-invalid",
-                    "recover-invalid",
-                    "refresh",
+                    "diagnostic-check",
+                    "change-plan-rename",
+                    "change-plan-add-file",
+                    "change-plan-add-declaration",
+                    "change-plan-replace",
+                    "workspace-refresh",
                     "refresh-observer",
                     "cold-up",
                     "cold-observer",
                 }.issubset(names),
                 names,
             )
+
+    def test_capsule_process_ownership_requires_a_path_boundary(self) -> None:
+        runner = load_runner_module()
+        root = Path("/tmp/kast")
+
+        self.assertTrue(runner.command_mentions_capsule_root("java --state /tmp/kast/cache", root))
+        self.assertFalse(
+            runner.command_mentions_capsule_root("java --state /tmp/kast-backup/cache", root)
+        )
+
+    def test_missing_tmux_is_rejected_before_ephemeral_capsule_allocation(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            workspace = Path(raw_directory)
+            source = workspace / "src" / "Probe.kt"
+            source.parent.mkdir(parents=True)
+            source.write_text("package example\nclass Probe\n", encoding="utf-8")
+            args = runner.parser().parse_args(
+                [
+                    "capture",
+                    "--workspace-root",
+                    str(workspace),
+                    "--file",
+                    "src/Probe.kt",
+                    "--symbol",
+                    "example.Probe",
+                    "--ephemeral-capsule",
+                ]
+            )
+
+            def executable(name: str):
+                return "/usr/bin/true" if name == "kast" else None
+
+            with (
+                mock.patch.object(runner.shutil, "which", side_effect=executable),
+                mock.patch.object(runner, "build_capsule", return_value=None) as build_capsule,
+                self.assertRaises(runner.ReproError),
+            ):
+                runner.capture(args)
+
+            build_capsule.assert_not_called()
+
+    def test_invalid_session_is_rejected_before_ephemeral_capsule_allocation(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            root = Path(raw_directory)
+            workspace = root / "workspace"
+            source = workspace / "src" / "Probe.kt"
+            source.parent.mkdir(parents=True)
+            source.write_text("package example\nclass Probe\n", encoding="utf-8")
+            output = root / "evidence"
+            args = runner.parser().parse_args(
+                [
+                    "capture",
+                    "--workspace-root",
+                    str(workspace),
+                    "--file",
+                    "src/Probe.kt",
+                    "--symbol",
+                    "example.Probe",
+                    "--output-dir",
+                    str(output),
+                    "--session-name",
+                    "invalid session",
+                    "--ephemeral-capsule",
+                ]
+            )
+
+            with (
+                mock.patch.object(runner.shutil, "which", return_value="/usr/bin/true"),
+                mock.patch.object(runner, "build_capsule", return_value=None) as build_capsule,
+                self.assertRaises(runner.ReproError),
+            ):
+                runner.capture(args)
+
+            build_capsule.assert_not_called()
+            self.assertFalse(output.exists())
+
+    def test_nonempty_output_is_rejected_before_ephemeral_capsule_allocation(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            root = Path(raw_directory)
+            workspace = root / "workspace"
+            source = workspace / "src" / "Probe.kt"
+            source.parent.mkdir(parents=True)
+            source.write_text("package example\nclass Probe\n", encoding="utf-8")
+            output = root / "evidence"
+            output.mkdir()
+            (output / "existing.txt").write_text("keep\n", encoding="utf-8")
+            args = runner.parser().parse_args(
+                [
+                    "capture",
+                    "--workspace-root",
+                    str(workspace),
+                    "--file",
+                    "src/Probe.kt",
+                    "--symbol",
+                    "example.Probe",
+                    "--output-dir",
+                    str(output),
+                    "--ephemeral-capsule",
+                ]
+            )
+
+            with (
+                mock.patch.object(runner.shutil, "which", return_value="/usr/bin/true"),
+                mock.patch.object(runner, "build_capsule", return_value=None) as build_capsule,
+                self.assertRaises(runner.ReproError),
+            ):
+                runner.capture(args)
+
+            build_capsule.assert_not_called()
+            self.assertEqual("keep\n", (output / "existing.txt").read_text(encoding="utf-8"))
 
     def test_ephemeral_capsule_plan_confines_install_state_and_teardown(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
