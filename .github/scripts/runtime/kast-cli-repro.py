@@ -42,6 +42,7 @@ class FindingCode(str, enum.Enum):
     CAPSULE_CONFINEMENT_VIOLATED = "CAPSULE_CONFINEMENT_VIOLATED"
     CAPSULE_PROCESS_LEAKED = "CAPSULE_PROCESS_LEAKED"
     CAPSULE_RUNTIME_STOP_FAILED = "CAPSULE_RUNTIME_STOP_FAILED"
+    OBSERVER_EVIDENCE_INCOMPLETE = "OBSERVER_EVIDENCE_INCOMPLETE"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -79,6 +80,7 @@ class CommandEvidence:
     timedOut: bool
     transcript: str
     outputBytes: int
+    completionToken: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -564,6 +566,7 @@ class TmuxCapture:
             timedOut=timed_out,
             transcript=str(transcript_path.relative_to(self.evidence)),
             outputBytes=len(transcript.encode("utf-8")),
+            completionToken=active.completion_token,
         )
         self.commands.append(evidence)
         if not self.keep_session or timed_out:
@@ -930,43 +933,60 @@ def capsule_processes(root: Path, seeds: dict[int, str] | None = None) -> dict[i
     return {pid: table[pid][1] for pid in owned}
 
 
-def alive_processes(process_ids: set[int]) -> set[int]:
-    alive: set[int] = set()
-    for process_id in process_ids:
-        try:
-            os.kill(process_id, 0)
-        except ProcessLookupError:
-            continue
-        except PermissionError as error:
-            raise ReproError(f"cannot prove capsule process ownership for PID {process_id}") from error
-        alive.add(process_id)
-    return alive
-
-
-def wait_for_process_exit(process_ids: set[int], seconds: float) -> set[int]:
+def signal_capsule_processes(
+    root: Path,
+    known: dict[int, str],
+    process_signal: signal.Signals,
+    seconds: float,
+) -> tuple[set[int], dict[int, str], dict[int, str]]:
     deadline = time.monotonic() + seconds
-    remaining = alive_processes(process_ids)
-    while remaining and time.monotonic() < deadline:
+    targeted: set[int] = set()
+    stable_empty_scans = 0
+    remaining = capsule_processes(root, known)
+    while True:
+        known.update(remaining)
+        for process_id in set(remaining) - targeted:
+            try:
+                os.kill(process_id, process_signal)
+            except ProcessLookupError:
+                pass
+            except PermissionError as error:
+                raise ReproError(
+                    f"cannot terminate capsule-owned PID {process_id}"
+                ) from error
+            targeted.add(process_id)
+        if remaining:
+            stable_empty_scans = 0
+            if time.monotonic() >= deadline:
+                break
+        else:
+            stable_empty_scans += 1
+            if stable_empty_scans >= 2:
+                break
         time.sleep(0.1)
-        remaining = alive_processes(remaining)
-    return remaining
+        remaining = capsule_processes(root, known)
+    return targeted, known, remaining
 
 
-def terminate_capsule_processes(process_ids: set[int]) -> tuple[list[int], list[int]]:
-    targeted = sorted(alive_processes(process_ids))
-    for process_id in targeted:
-        try:
-            os.kill(process_id, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-    remaining = wait_for_process_exit(set(targeted), 5.0)
-    for process_id in remaining:
-        try:
-            os.kill(process_id, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-    remaining = wait_for_process_exit(remaining, 2.0)
-    return targeted, sorted(remaining)
+def terminate_capsule_processes(
+    root: Path,
+    observed: dict[int, str],
+) -> tuple[list[int], list[int]]:
+    terminated, known, remaining = signal_capsule_processes(
+        root,
+        dict(observed),
+        signal.SIGTERM,
+        5.0,
+    )
+    if remaining:
+        killed, _, remaining = signal_capsule_processes(
+            root,
+            known,
+            signal.SIGKILL,
+            2.0,
+        )
+        terminated.update(killed)
+    return sorted(terminated), sorted(remaining)
 
 
 def config_restore_specs(kastctl: Path, workspace: Path, config: dict[str, Any]) -> list[CommandSpec]:
@@ -987,6 +1007,21 @@ def config_restore_specs(kastctl: Path, workspace: Path, config: dict[str, Any])
             argv = (*base, "unset", key, "--workspace-root", str(workspace))
         specs.append(CommandSpec(f"restore-{leaf}", argv))
     return specs
+
+
+def restore_config(
+    runner: TmuxCapture,
+    kastctl: Path,
+    workspace: Path,
+    config: dict[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+    for spec in config_restore_specs(kastctl, workspace, config):
+        try:
+            require_success(runner.run(spec))
+        except ReproError as error:
+            errors.append(str(error))
+    return errors
 
 
 def log_paths(config: dict[str, Any]) -> tuple[Path, Path]:
@@ -1262,7 +1297,10 @@ def capture(args: argparse.Namespace) -> int:
                 runner.close()
             try:
                 remaining_candidates = capsule_processes(capsule.root, observed_processes)
-                terminated, remaining = terminate_capsule_processes(set(remaining_candidates))
+                terminated, remaining = terminate_capsule_processes(
+                    capsule.root,
+                    remaining_candidates,
+                )
             except ReproError as error:
                 teardown_errors.append(str(error))
                 terminated = []
@@ -1301,11 +1339,7 @@ def capture(args: argparse.Namespace) -> int:
             )
         elif runner_started:
             if kastctl is not None and config is not None:
-                for spec in config_restore_specs(kastctl, workspace, config):
-                    try:
-                        runner.run(spec)
-                    except ReproError:
-                        pass
+                teardown_errors.extend(restore_config(runner, kastctl, workspace, config))
             runner.close()
 
         if telemetry_path is None:
@@ -1468,6 +1502,36 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     findings: list[Finding] = []
     cold_up = commands.get("cold-up")
     cold_observer = commands.get("cold-observer")
+    refresh = commands.get("workspace-refresh")
+    refresh_observer = commands.get("refresh-observer")
+    incomplete_observers: list[str] = []
+    for operation, observer, observer_name in (
+        (cold_up, cold_observer, "cold-observer"),
+        (refresh, refresh_observer, "refresh-observer"),
+    ):
+        if operation is None:
+            continue
+        if observer is None:
+            incomplete_observers.append(f"missing:{observer_name}")
+            continue
+        observer_text = transcript(directory, observer)
+        observation_kinds = {
+            kind for kind, _, _ in timed_observations(observer_text)
+        }
+        if (
+            observer.get("exitCode") != 0
+            or observer.get("timedOut") is True
+            or observation_kinds != {"HOME", "RESOLVE"}
+        ):
+            incomplete_observers.append(str(observer.get("transcript")))
+    if incomplete_observers:
+        findings.append(
+            Finding(
+                FindingCode.OBSERVER_EVIDENCE_INCOMPLETE.value,
+                "Transition observer evidence was missing, unsuccessful, or incomplete.",
+                sorted(incomplete_observers),
+            )
+        )
     if cold_up and (cold_up.get("exitCode") != 0 or cold_up.get("timedOut") is True):
         findings.append(
             Finding(
@@ -1487,8 +1551,6 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                     ["transcripts/cold-up.txt", "transcripts/cold-observer.txt"],
                 )
             )
-    refresh = commands.get("workspace-refresh")
-    refresh_observer = commands.get("refresh-observer")
     if refresh and refresh.get("exitCode") != 0:
         findings.append(
             Finding(
@@ -1511,7 +1573,10 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     framing_evidence: list[str] = []
     for command in commands.values():
         text = transcript(directory, command)
-        marker = text.find(EXIT_SENTINEL)
+        completion_token = command.get("completionToken")
+        if not isinstance(completion_token, str) or not completion_token:
+            continue
+        marker = text.find(f"{EXIT_SENTINEL}{completion_token}:")
         if marker > 0 and text[marker - 1] != "\n":
             framing_evidence.append(str(command.get("transcript")))
     if framing_evidence:
