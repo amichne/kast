@@ -16,6 +16,7 @@ import io.github.amichne.kast.idea.backend.mutation.exactFileImageCasOperation
 import io.github.amichne.kast.idea.backend.mutation.recoverMutationScratchOperation
 import io.github.amichne.kast.idea.backend.mutation.refreshOperation
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 
 internal suspend fun KastIndexerBackend.coordinatedSemanticGraph(
     query: ParsedSemanticGraphQuery,
@@ -23,7 +24,9 @@ internal suspend fun KastIndexerBackend.coordinatedSemanticGraph(
     return try {
         workspaceSemanticGate.current { semanticGraphOperation(query) }
     } catch (_: PublishedSemanticGraphIncompleteException) {
-        workspaceTransitionRequester.reconcile(WorkspaceSignal.RecoveryAudit)
+        workspaceTransitionRequester.reconcile(
+            WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit),
+        )
         workspaceSemanticGate.current { semanticGraphOperation(query) }
     }
 }
@@ -66,8 +69,28 @@ internal suspend fun KastIndexerBackend.coordinatedRefresh(
             refreshOperation(query)
         }
     }
-    workspaceTransitionRequester.reconcile(
-        if (query.filePaths.isEmpty()) WorkspaceSignal.RecoveryAudit else WorkspaceSignal.Source,
-    )
+    workspaceTransitionRequester.reconcile(refreshTransitionRequest(query))
     return workspaceSemanticGate.current { refreshOperation(query) }
+}
+
+/**
+ * Boundary transition:
+ * `(ParsedRefreshQuery, IdeaWorkspaceIdentity) -> WorkspaceTransitionRequest`.
+ *
+ * Focused refreshes retain canonical path-and-content freshness proof. A full
+ * refresh retains its recovery-audit identity without manufacturing file
+ * claims. The returned request remains opaque through coalescing: raw signals
+ * may be extracted only by ingress and worker routing, coordinator aggregation,
+ * and semantic-admission detail rendering; freshness claims may be consumed
+ * only by freshness aggregation and transition coverage.
+ */
+private fun KastIndexerBackend.refreshTransitionRequest(
+    query: ParsedRefreshQuery,
+): WorkspaceTransitionRequest = if (query.filePaths.isEmpty()) {
+    WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit)
+} else {
+    WorkspaceTransitionRequest.sourceFiles(
+        workspaceRoot = workspaceIdentity.canonicalWorkspaceRootPath,
+        paths = query.filePaths,
+    )
 }

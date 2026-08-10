@@ -3,6 +3,7 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.api.contract.RuntimeProgressStage
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
@@ -21,7 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal interface WorkspaceTransitionRequester {
-    suspend fun reconcile(signal: WorkspaceSignal): PublishedWorkspaceGenerationManifest
+    suspend fun reconcile(request: WorkspaceTransitionRequest): PublishedWorkspaceGenerationManifest
 
     suspend fun <T> mutate(
         signal: WorkspaceSignal,
@@ -36,9 +37,23 @@ internal fun routeWorkspaceSignal(
     enqueue: (WorkspaceSignal) -> Unit,
     wake: (WorkspaceSignal) -> Unit,
 ) {
+    routeWorkspaceRequest(
+        lock = lock,
+        request = WorkspaceTransitionRequest.Unkeyed(signal),
+        enqueue = { observed -> enqueue(observed.signal) },
+        wake = wake,
+    )
+}
+
+internal fun routeWorkspaceRequest(
+    lock: Any,
+    request: WorkspaceTransitionRequest,
+    enqueue: (WorkspaceTransitionRequest) -> Unit,
+    wake: (WorkspaceSignal) -> Unit,
+) {
     synchronized(lock) {
-        enqueue(signal)
-        wake(signal)
+        enqueue(request)
+        wake(request.signal)
     }
 }
 
@@ -46,10 +61,10 @@ internal fun routeWorkspaceSignal(
  * Effect-boundary transition:
  * `(IdeaIndexSemanticAdmission, ProgressAwareFutureAwaiter) -> WorkspaceTransitionIngress`.
  *
- * Retains READY publication proof while every request enqueues its freshness
- * signal and shares the single transition publication lane. Waiting consumes
- * typed progress and deadline evidence; the ordinary RPC request budget is not
- * reused as an indexing deadline.
+ * Retains READY publication proof while exact covered requests join and all
+ * other requests enqueue through the single transition publication lane.
+ * Waiting consumes typed progress and deadline evidence; the ordinary RPC
+ * request budget is not reused as an indexing deadline.
  */
 internal class WorkspaceTransitionIngress(
     private val semanticAdmission: IdeaIndexSemanticAdmission,
@@ -62,6 +77,10 @@ internal class WorkspaceTransitionIngress(
     private var binding: IngressBinding = IngressBinding.Unbound
 
     fun bind(request: (WorkspaceSignal) -> Unit) {
+        bindRequest { transition -> request(transition.signal) }
+    }
+
+    fun bindRequest(request: (WorkspaceTransitionRequest) -> Unit) {
         synchronized(lock) {
             binding = when (binding) {
                 IngressBinding.Unbound -> IngressBinding.Bound(request)
@@ -84,22 +103,12 @@ internal class WorkspaceTransitionIngress(
 
                 is WorkspaceTransitionCompletion.Blocked ->
                     waiters.toList().onEach(waiters::remove).map { waiter ->
-                        waiter to Result.failure(
-                            ConflictException(
-                                message = "Workspace reconciliation is blocked: ${completion.blocker.detail}",
-                                details = mapOf("phase" to completion.blocker.phase.name),
-                            ),
-                        )
+                        waiter to Result.failure(completion.blocker.toConflict())
                     }
 
                 is WorkspaceTransitionCompletion.Invalid ->
                     waiters.toList().onEach(waiters::remove).map { waiter ->
-                        waiter to Result.failure(
-                            ConflictException(
-                                message = "Workspace transition published an invalid completion state",
-                                details = mapOf("lifecycle" to completion.lifecycle.name),
-                            ),
-                        )
+                        waiter to Result.failure(completion.lifecycle.toInvalidCompletionConflict())
                     }
 
                 WorkspaceTransitionCompletion.InProgress -> emptyList()
@@ -110,10 +119,20 @@ internal class WorkspaceTransitionIngress(
         }
     }
 
-    override suspend fun reconcile(signal: WorkspaceSignal): PublishedWorkspaceGenerationManifest {
-        val waiter = registerInitialWaiter()
-        request(signal, waiter)
-        return awaitStable(waiter)
+    override suspend fun reconcile(
+        request: WorkspaceTransitionRequest,
+    ): PublishedWorkspaceGenerationManifest {
+        return when (val route = initialRoute(request)) {
+            is WorkspaceTransitionRoute.Enqueue -> {
+                val waiter = register(route.baseline)
+                request(request, waiter)
+                awaitStable(waiter)
+            }
+
+            is WorkspaceTransitionRoute.Join.Awaiting -> awaitStable(register(route))
+            is WorkspaceTransitionRoute.Join.Published -> route.manifest
+            is WorkspaceTransitionRoute.Rejected -> throw route.failure.toConflict()
+        }
     }
 
     override suspend fun <T> mutate(
@@ -138,12 +157,12 @@ internal class WorkspaceTransitionIngress(
             operation()
         } catch (failure: Throwable) {
             permit.close()
-            runCatching { request(signal, waiter) }
+            runCatching { request(WorkspaceTransitionRequest.Unkeyed(signal), waiter) }
             remove(waiter)
             throw failure
         }
         permit.close()
-        request(signal, waiter)
+        request(WorkspaceTransitionRequest.Unkeyed(signal), waiter)
         awaitStable(waiter)
         return result
     }
@@ -161,19 +180,34 @@ internal class WorkspaceTransitionIngress(
         }
     }
 
-    private fun registerInitialWaiter(): TransitionWaiter {
-        val status = semanticAdmission.status()
-        val route = synchronized(lock) {
-            WorkspaceTransitionRoute.derive(status, observation)
-        }
-        return when (route) {
-            is WorkspaceTransitionRoute.Enqueue -> register(route.baseline)
-            is WorkspaceTransitionRoute.Rejected -> throw route.failure.toConflict()
+    private fun initialRoute(request: WorkspaceTransitionRequest): WorkspaceTransitionRoute {
+        return synchronized(lock) {
+            WorkspaceTransitionRoute.derive(semanticAdmission.status(), observation, request)
         }
     }
 
     private fun registerAfter(baseline: PublishedWorkspaceGenerationManifest): TransitionWaiter {
         return register(PublishedWorkspaceGenerationState.Published(baseline))
+    }
+
+    private fun register(join: WorkspaceTransitionRoute.Join.Awaiting): TransitionWaiter {
+        val waiter = TransitionWaiter(join.baseline)
+        synchronized(lock) {
+            check(binding != IngressBinding.Closed) { "Workspace transition ingress is closed" }
+            when (val registration = WorkspaceTransitionJoinRegistration.derive(join, observation)) {
+                WorkspaceTransitionJoinRegistration.Awaiting -> waiters += waiter
+                is WorkspaceTransitionJoinRegistration.Published -> waiter.result.complete(registration.manifest)
+                is WorkspaceTransitionJoinRegistration.Blocked -> waiter.result.completeExceptionally(
+                    registration.blocker.toConflict(),
+                )
+
+                is WorkspaceTransitionJoinRegistration.Invalid -> waiter.result.completeExceptionally(
+                    registration.lifecycle.toInvalidCompletionConflict(),
+                )
+            }
+        }
+        reconcileReadyAdmission(waiter)
+        return waiter
     }
 
     private fun register(baseline: PublishedWorkspaceGenerationState): TransitionWaiter {
@@ -182,9 +216,14 @@ internal class WorkspaceTransitionIngress(
             check(binding != IngressBinding.Closed) { "Workspace transition ingress is closed" }
             waiters += waiter
         }
+        reconcileReadyAdmission(waiter)
+        return waiter
+    }
+
+    private fun reconcileReadyAdmission(waiter: TransitionWaiter) {
         when (val current = semanticAdmission.status()) {
             is IdeaIndexSemanticAdmission.Status.Ready -> if (
-                PublishedWorkspaceGenerationState.Published(current.generation) != baseline &&
+                PublishedWorkspaceGenerationState.Published(current.generation) != waiter.baseline &&
                 remove(waiter) == WaiterRemoval.Removed
             ) {
                 waiter.result.complete(current.generation)
@@ -194,11 +233,10 @@ internal class WorkspaceTransitionIngress(
             is IdeaIndexSemanticAdmission.Status.Failed,
             -> Unit
         }
-        return waiter
     }
 
-    private fun request(signal: WorkspaceSignal, waiter: TransitionWaiter) {
-        val request = when (val current = synchronized(lock) { binding }) {
+    private fun request(request: WorkspaceTransitionRequest, waiter: TransitionWaiter) {
+        val dispatch = when (val current = synchronized(lock) { binding }) {
             is IngressBinding.Bound -> current.request
             IngressBinding.Unbound -> {
                 remove(waiter)
@@ -211,7 +249,7 @@ internal class WorkspaceTransitionIngress(
             }
         }
         try {
-            request(signal)
+            dispatch(request)
         } catch (failure: Throwable) {
             remove(waiter)
             throw failure
@@ -344,7 +382,7 @@ internal class WorkspaceTransitionIngress(
     private sealed interface IngressBinding {
         data object Unbound : IngressBinding
 
-        data class Bound(val request: (WorkspaceSignal) -> Unit) : IngressBinding
+        data class Bound(val request: (WorkspaceTransitionRequest) -> Unit) : IngressBinding
 
         data object Closed : IngressBinding
     }
@@ -352,32 +390,6 @@ internal class WorkspaceTransitionIngress(
     private enum class WaiterRemoval {
         Removed,
         AlreadyCompleted,
-    }
-
-    private enum class WorkspaceTransitionWaitFailureCode {
-        DEADLINE_EXCEEDED,
-        INGRESS_CLOSED,
-        INTERRUPTED,
-        FUTURE_FAILED,
-        FUTURE_CANCELLED,
-        ;
-
-        companion object {
-            /**
-             * Proof transition:
-             * `RuntimeProgressAwaitFailure -> WorkspaceTransitionWaitFailureCode`.
-             *
-             * Preserves the closed progress-wait failure identity until the
-             * JSON-RPC conflict boundary serializes its enum name.
-             */
-            fun derive(failure: RuntimeProgressAwaitFailure): WorkspaceTransitionWaitFailureCode = when (failure) {
-                is RuntimeProgressAwaitFailure.DeadlineExceeded -> DEADLINE_EXCEEDED
-                is RuntimeProgressAwaitFailure.ProjectDisposed -> INGRESS_CLOSED
-                is RuntimeProgressAwaitFailure.Interrupted -> INTERRUPTED
-                is RuntimeProgressAwaitFailure.FutureFailed -> FUTURE_FAILED
-                is RuntimeProgressAwaitFailure.FutureCancelled -> FUTURE_CANCELLED
-            }
-        }
     }
 
 }

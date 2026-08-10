@@ -92,11 +92,13 @@ internal class TestWorkspaceSemanticReadAuthority(
 internal class TestWorkspaceTransitionRequester(
     private val published: PublishedWorkspaceGenerationManifest = testPublishedWorkspaceGeneration(),
     private val onReconcile:
-        suspend (io.github.amichne.kast.idea.transition.WorkspaceSignal) -> PublishedWorkspaceGenerationManifest =
+        suspend (io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest) ->
+            PublishedWorkspaceGenerationManifest =
         { published },
 ) : WorkspaceTransitionRequester {
-    override suspend fun reconcile(signal: io.github.amichne.kast.idea.transition.WorkspaceSignal):
-        PublishedWorkspaceGenerationManifest = onReconcile(signal)
+    override suspend fun reconcile(
+        request: io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest,
+    ): PublishedWorkspaceGenerationManifest = onReconcile(request)
 
     override suspend fun <T> mutate(
         signal: io.github.amichne.kast.idea.transition.WorkspaceSignal,

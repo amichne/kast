@@ -36,6 +36,7 @@ import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -324,6 +325,23 @@ class KastSemanticAdmissionRefreshTest {
         } finally {
             Files.deleteIfExists(createdFile)
         }
+    }
+
+    @Test
+    fun `focused refresh retains path keyed freshness at the transition boundary`() = runBlocking {
+        ensureProjectReady()
+        val seedFile = Path.of(seedFileFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val requests = mutableListOf<WorkspaceTransitionRequest>()
+        val requester = TestWorkspaceTransitionRequester(onReconcile = { request ->
+            requests += request
+            testPublishedWorkspaceGeneration()
+        })
+
+        backend(workspaceTransitionRequester = requester).refresh(
+            RefreshQuery(filePaths = listOf(seedFile.toString())),
+        )
+
+        assertTrue(requests.single() is WorkspaceTransitionRequest.SourceFiles)
     }
 
     @Test

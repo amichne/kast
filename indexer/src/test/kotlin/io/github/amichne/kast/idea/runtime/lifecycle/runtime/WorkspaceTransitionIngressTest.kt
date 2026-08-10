@@ -4,7 +4,9 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.idea.transition.WorkspaceSourceFreshness
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.lang.reflect.Proxy
 import java.nio.file.Path
 import java.time.Duration
@@ -34,17 +37,16 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.properties.Delegates
 
 class WorkspaceTransitionIngressTest {
+    @TempDir lateinit var workspaceRoot: Path
     @Test
     fun `workspace signal is queued before its worker wakeup`() {
         val order = mutableListOf<String>()
-
         routeWorkspaceSignal(
             lock = Any(),
             signal = WorkspaceSignal.Source,
             enqueue = { order += "queued:$it" },
             wake = { order += "wake:$it" },
         )
-
         assertEquals(
             listOf("queued:Source", "wake:Source"),
             order,
@@ -65,8 +67,9 @@ class WorkspaceTransitionIngressTest {
             publish(admission, next)
             ingress.observe(readySnapshot(next))
         }
-
-        val published = runBlocking { ingress.reconcile(WorkspaceSignal.RecoveryAudit) }
+        val published = runBlocking {
+            ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit))
+        }
 
         assertEquals(next, published)
     }
@@ -95,11 +98,25 @@ class WorkspaceTransitionIngressTest {
             ),
         )
 
-        val published = runBlocking { ingress.reconcile(WorkspaceSignal.Source) }
+        val published = runBlocking {
+            ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
+        }
 
         assertEquals(next, published)
         assertTrue(transitionRequested.get())
     }
+
+    @Test
+    fun `covered source reconciliation returns publication that won the routing race`() =
+        assertCoveredSourcePublicationRace(workspaceRoot)
+
+    @Test
+    fun `covered source reconciliation does not return a stale ready sample`() =
+        assertCoveredSourceStaleReadyRace(workspaceRoot)
+
+    @Test
+    fun `covered source join retains a blocker observed before registration`() =
+        assertCoveredSourceBlockedRegistrationRace(workspaceRoot)
 
     @Test
     fun `failed semantic admission outranks a stale active transition observation`() {
@@ -114,6 +131,7 @@ class WorkspaceTransitionIngressTest {
                     TestTransitionEventCount.derive(3),
                 ),
             ),
+            request = WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source),
         )
 
         assertTrue(route is WorkspaceTransitionRoute.Rejected)
@@ -142,7 +160,9 @@ class WorkspaceTransitionIngressTest {
         ingress = WorkspaceTransitionIngress(admission, awaiter)
         ingress.bind {}
 
-        val published = runBlocking { ingress.reconcile(WorkspaceSignal.Source) }
+        val published = runBlocking {
+            ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
+        }
 
         assertEquals(next, published)
     }
@@ -178,7 +198,9 @@ class WorkspaceTransitionIngressTest {
             ),
         )
 
-        val published = runBlocking { ingress.reconcile(WorkspaceSignal.Source) }
+        val published = runBlocking {
+            ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
+        }
 
         assertEquals(next, published)
     }
@@ -300,6 +322,7 @@ class WorkspaceTransitionIngressTest {
         published = PublishedWorkspaceGenerationState.Published(generation),
         blocker = null,
         observedEventCount = generation.generation.value,
+        activeSourceFreshness = WorkspaceSourceFreshness.Absent,
     )
 
     private fun activeSnapshot(
@@ -312,6 +335,7 @@ class WorkspaceTransitionIngressTest {
         published = PublishedWorkspaceGenerationState.Published(generation),
         blocker = null,
         observedEventCount = observedEventCount.value,
+        activeSourceFreshness = WorkspaceSourceFreshness.Unkeyed,
     )
 
     private fun testAwaiter(onPause: (Duration) -> Unit): ProgressAwareFutureAwaiter {

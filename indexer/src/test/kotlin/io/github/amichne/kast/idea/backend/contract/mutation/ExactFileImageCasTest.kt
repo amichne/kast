@@ -19,6 +19,7 @@ import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.mutation.ExactFileImageCasObserver
 import io.github.amichne.kast.idea.mutation.SecureWorkspaceMutation
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import java.nio.file.Files
 import java.nio.file.Path
@@ -364,7 +365,7 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
         var signal: WorkspaceSignal? = null
         var operationCompleted: Boolean = false
 
-        override suspend fun reconcile(signal: WorkspaceSignal): PublishedWorkspaceGenerationManifest =
+        override suspend fun reconcile(request: WorkspaceTransitionRequest): PublishedWorkspaceGenerationManifest =
             error("Unexpected standalone reconciliation")
 
         override suspend fun <T> mutate(

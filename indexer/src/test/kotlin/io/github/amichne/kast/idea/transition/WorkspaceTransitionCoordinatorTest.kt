@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
@@ -14,6 +15,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -22,6 +26,9 @@ import kotlin.concurrent.thread
 import kotlin.properties.Delegates
 
 class WorkspaceTransitionCoordinatorTest {
+    @TempDir
+    lateinit var workspaceRoot: Path
+
     @Test
     fun `relevant event withdraws readiness and one stable cycle publishes`() {
         val operations = RecordingOperations()
@@ -47,6 +54,39 @@ class WorkspaceTransitionCoordinatorTest {
         assertEquals(setOf(WorkspaceSignal.Source), coordinator.snapshot().pendingSignals)
         assertEquals(TransitionRun.Published, coordinator.reconcilePending())
         assertEquals(1, operations.reconciliations.get())
+    }
+
+    @Test
+    fun `active cycle publishes its exact source freshness claims`() {
+        val source = workspaceRoot.resolve("src/Sample.kt")
+        Files.createDirectories(source.parent)
+        Files.writeString(source, "class Sample\n")
+        val request = WorkspaceTransitionRequest.sourceFiles(
+            workspaceRoot,
+            listOf(NormalizedPath.of(source)),
+        ) as WorkspaceTransitionRequest.SourceFiles
+        val refreshStarted = CountDownLatch(1)
+        val releaseRefresh = CountDownLatch(1)
+        val coordinator = WorkspaceTransitionCoordinator(
+            RecordingOperations(onRefresh = {
+                refreshStarted.countDown()
+                releaseRefresh.await()
+            }),
+        )
+        coordinator.observe(request)
+        val transition = thread { coordinator.reconcilePending() }
+
+        try {
+            assertTrue(refreshStarted.await(1, TimeUnit.SECONDS), "source refresh did not start")
+            assertEquals(
+                WorkspaceSourceFreshness.Claimed(request.claims),
+                coordinator.snapshot().activeSourceFreshness,
+            )
+        } finally {
+            releaseRefresh.countDown()
+            transition.join(1_000)
+        }
+        assertFalse(transition.isAlive)
     }
 
     @Test
@@ -271,6 +311,7 @@ private class RecordingOperations(
     private val identities: ArrayDeque<WorkspaceStateIdentity> = ArrayDeque(),
     private val reconcile: () -> Unit = {},
     private val refreshFailure: Throwable? = null,
+    private val onRefresh: () -> Unit = {},
     private val onPrepare: (WorkspaceStateIdentity) -> Unit = {},
     private val onCommit: (PublishedWorkspaceGenerationManifest) -> GenerationPublication =
         { manifest -> GenerationPublication.Published(WorkspaceGenerationCommit(manifest)) },
@@ -283,6 +324,7 @@ private class RecordingOperations(
     override fun settle(signals: Set<WorkspaceSignal>) = Unit
 
     override fun refresh(signals: Set<WorkspaceSignal>) {
+        onRefresh()
         refreshFailure?.let { throw it }
     }
 
