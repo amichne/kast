@@ -136,8 +136,10 @@ internal class UnixDomainSocketRpcServer(
                 try {
                     client.use(::handleClient)
                 } finally {
-                    clients.remove(client)
-                    handlers.remove(Thread.currentThread())
+                    synchronized(handlerLifecycleLock) {
+                        clients.remove(client)
+                        handlers.remove(Thread.currentThread())
+                    }
                 }
             }
             when (admitHandler(client, handler)) {
