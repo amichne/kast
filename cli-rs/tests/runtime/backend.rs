@@ -15,7 +15,7 @@ fn standalone_workspace(root: &Path) {
 }
 
 #[test]
-fn up_without_an_installed_indexer_reports_the_supported_distribution() {
+fn semantic_demand_without_an_installed_indexer_reports_the_supported_distribution() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -23,24 +23,25 @@ fn up_without_an_installed_indexer_reports_the_supported_distribution() {
     std::fs::create_dir_all(&home).expect("home");
     standalone_workspace(&workspace);
 
-    let up = kast(&home, &config_home)
+    let demand = kast(&home, &config_home)
         .args([
             "--output",
             "human",
-            "developer",
-            "runtime",
-            "up",
+            "agent",
+            "symbol",
+            "--query",
+            "Foo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
         ])
         .output()
-        .expect("up");
+        .expect("semantic demand");
 
     assert!(
-        !up.status.success(),
-        "up should require an installed indexer"
+        !demand.status.success(),
+        "semantic demand should require an installed indexer"
     );
-    let stderr = String::from_utf8_lossy(&up.stderr);
+    let stderr = String::from_utf8_lossy(&demand.stderr);
     assert!(stderr.contains("- Code: NO_INDEXER_AVAILABLE"), "{stderr}");
     assert!(
         stderr.contains("supportedDistribution") && stderr.contains("linux-indexer-tarball"),
