@@ -69,79 +69,26 @@ fi
 [[ "$executable_helper_output" == *'test signal helper is unavailable in executable mode'* ]] \
   || die 'executable helper rejection did not report the production boundary'
 
-require "$release" 'real-repository-indexing:' \
-  'release workflow must own the real-repository indexing gate'
-require "$release" 'fail-fast: false' \
-  'repository matrix failures must not cancel remaining repositories'
-require "$release" 'ktorio/ktor-samples.git' \
-  'release gate must include a self-contained official Ktor sample'
-reject "$release" 'ktorio/ktor.git' \
-  'release gate must not use the Ktor included-build probe'
-require "$release" 'AleksK1NG/Kotlin-Clean-Architecture-CQRS.git' \
-  'release gate must include a Java 21 Kotlin Spring project'
-reject "$release" 'spring-projects/spring-boot.git' \
-  'release gate must not import the full Spring Boot monorepo'
-require "$release" 'square/okhttp.git' \
-  'release gate must include a Kotlin Multiplatform integration repository'
-require "$release" \
-  'graph_file: httpbin/src/main/kotlin/io/ktor/samples/httpbin/Server.kt' \
-  'Ktor must use a pinned compiler graph probe'
-require "$release" \
-  'graph_file: src/main/kotlin/com/alexander/bryksin/kotlinspringcleanarchitecture/KotlinSpringCleanArchitectureApplication.kt' \
-  'Spring must use a pinned compiler graph probe'
-require "$release" \
-  'graph_file: okcurl/src/main/kotlin/okhttp3/curl/Main.kt' \
-  'OkHttp must use a pinned compiler graph probe'
-
-relationship_setting() {
-  local name="$1"
-  awk -v name="$name" '
-    $1 == "-" && $2 == "name:" {
-      if (selected) exit
-      selected = ($3 == name)
-      next
-    }
-    selected && $1 == "relationships_enabled:" { print $2; exit }
-  ' "$release"
-}
-
-for repository_name in ktor spring-boot okhttp; do
-  [[ "$(relationship_setting "$repository_name")" == true ]] \
-    || die "$repository_name must complete relationship indexing"
-done
-
-# shellcheck disable=SC2016 # GitHub expressions are matched literally.
-require "$release" 'setup-bundle-linux-x64-${{ github.run_id }}' \
-  'release gate must test the built release bundle'
-require "$release" 'Set up Gradle Java 17 toolchain' \
-  'release gate must install the Ktor sample toolchain'
-reject "$release" 'set-default:' \
-  'release gate must use only supported setup-java inputs'
-require "$release" 'Restore Java 21 Kast runtime' \
-  'release gate must restore the Java 21 Kast runtime after installing the Gradle toolchain'
-gradle_java_line="$(grep -nF 'Set up Gradle Java 17 toolchain' "$release" | cut -d: -f1)"
-kast_java_line="$(grep -nF 'Restore Java 21 Kast runtime' "$release" | cut -d: -f1)"
-[[ "$gradle_java_line" -lt "$kast_java_line" ]] \
-  || die 'release gate must restore Java 21 after installing the Java 17 Gradle toolchain'
-# shellcheck disable=SC2016
-require "$release" 'GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}' \
-  'release gate must bind the installed Gradle toolchain'
-reject "$release" 'GRADLE_OPTS=' \
-  'Gradle toolchain paths must not depend on a gradlew-only variable'
-require "$release" "--stable-bundle \"\$stable_bundle\"" \
-  'release gate must pass the verified latest-stable bundle'
-require "$release" "--candidate-bundle \"\$candidate_bundle\"" \
-  'release gate must pass the candidate bundle'
-require "$release" "--evidence-output \"\$evidence_output\"" \
-  'release gate must persist comparative evidence'
-require "$release" "real-repository-indexing-\${{ matrix.name }}-\${{ github.run_id }}" \
-  'release gate must retain evidence for every repository'
-reject "$release" "if: \${{ false }}" \
-  'real-repository release indexing must be enabled'
-require "$release" 'needs.real-repository-indexing.result' \
-  'release publication must require repository indexing'
-require "$release" '.github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py aggregate-release' \
-  'release aggregation must use the executable strict nested-evidence validator'
+reject "$release" 'prepare-real-repository-indexing:' \
+  'release workflow must not prepare external-repository indexing'
+reject "$release" 'real-repository-indexing:' \
+  'release workflow must not run external-repository indexing'
+reject "$release" 'ktorio/ktor-samples.git' \
+  'release workflow must not include the Ktor indexing probe'
+reject "$release" 'AleksK1NG/Kotlin-Clean-Architecture-CQRS.git' \
+  'release workflow must not include the Spring indexing probe'
+reject "$release" 'square/okhttp.git' \
+  'release workflow must not include the OkHttp indexing probe'
+reject "$release" 'scripts/release/benchmark-real-repositories.sh' \
+  'release workflow must not invoke the standalone indexing benchmark'
+reject "$release" 'needs.real-repository-indexing.result' \
+  'release publication must not depend on external-repository indexing'
+reject "$release" '.github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py aggregate-release' \
+  'release workflow must not aggregate absent comparative indexing evidence'
+reject "$release" 'kast-real-repository-indexing-' \
+  'release workflow must not publish external-repository indexing evidence'
+reject "$release" 'comparativePerformance' \
+  'release metadata must not claim comparative indexing performance'
 
 require "$benchmark" 'readonly COLD_INDEX_LIMIT_MILLIS=2700000' \
   'real repositories must have a 45-minute cold-index bound'

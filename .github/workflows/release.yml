@@ -219,14 +219,12 @@ jobs:
       - build-openapi-spec
       - build-agent-resources
       - build-setup-bundles
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-openapi-spec.result == 'success' &&
       needs.build-agent-resources.result == 'success' &&
-      needs.build-setup-bundles.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -273,14 +271,12 @@ jobs:
       - build-openapi-spec
       - build-agent-resources
       - build-setup-bundles
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-openapi-spec.result == 'success' &&
       needs.build-agent-resources.result == 'success' &&
-      needs.build-setup-bundles.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
@@ -552,14 +548,12 @@ jobs:
       - build-openapi-spec
       - build-agent-resources
       - build-setup-bundles
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-openapi-spec.result == 'success' &&
       needs.build-agent-resources.result == 'success' &&
-      needs.build-setup-bundles.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -726,137 +720,6 @@ jobs:
           platform: ${{ matrix.platform }}
           tag: ${{ needs.prepare-release.outputs.release_tag }}
 
-  prepare-real-repository-indexing:
-    name: Prepare real-repository comparison bundles
-    needs:
-      - prepare-release
-      - build-setup-bundles
-    if: >-
-      always() &&
-      needs.prepare-release.result == 'success' &&
-      needs.build-setup-bundles.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      stable_tag: ${{ steps.comparison-bundles.outputs.stable_tag }}
-      stable_digest: ${{ steps.comparison-bundles.outputs.stable_digest }}
-      candidate_digest: ${{ steps.comparison-bundles.outputs.candidate_digest }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Download canonical candidate Linux setup bundle
-        uses: actions/download-artifact@v7
-        with:
-          name: setup-bundle-linux-x64-${{ github.run_id }}
-          path: candidate-bundle
-
-      - name: Resolve and verify comparison bundles
-        id: comparison-bundles
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          candidate_tag="${{ needs.prepare-release.outputs.release_tag }}"
-          candidate_asset="kast-linux-x64-${candidate_tag}.tar.gz"
-          candidate_bundle="candidate-bundle/${candidate_asset}"
-          candidate_sidecar="${candidate_bundle}.sha256"
-          [[ -f "$candidate_bundle" ]] \
-            || { echo "Candidate Linux setup bundle not found: $candidate_bundle" >&2; exit 1; }
-          [[ -f "$candidate_sidecar" ]] \
-            || { echo "Candidate Linux setup checksum not found: $candidate_sidecar" >&2; exit 1; }
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger candidate-bundle/provenance/build-ledger-setup-linux-x64.json \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind release-setup-linux-x64 \
-            --artifact "release-setup-linux-x64=${candidate_bundle}"
-          (cd candidate-bundle && sha256sum -c "${candidate_asset}.sha256")
-          candidate_digest="$(sha256sum "$candidate_bundle" | awk '{print $1}')"
-
-          gh api --paginate --slurp \
-            "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            >stable-release-pages.json
-          stable_tag="$(jq -er --arg candidate "$candidate_tag" '
-            [
-              .[][]
-              | select(.draft == false)
-              | select(.prerelease == false)
-              | select(.tag_name != $candidate)
-              | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
-              | select(.published_at != null)
-            ]
-            | sort_by(.published_at)
-            | last
-            | .tag_name
-          ' stable-release-pages.json)" \
-            || { echo "Latest published stable release is unavailable" >&2; exit 1; }
-          stable_asset="kast-linux-x64-${stable_tag}.tar.gz"
-          stable_bundle="stable-bundle/${stable_asset}"
-          mkdir -p stable-bundle
-          gh release download "$stable_tag" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern "$stable_asset" \
-            --pattern "${stable_asset}.sha256" \
-            --dir stable-bundle
-          (cd stable-bundle && sha256sum -c "${stable_asset}.sha256")
-          stable_digest="$(sha256sum "$stable_bundle" | awk '{print $1}')"
-
-          mkdir -p comparison-bundles/stable comparison-bundles/candidate
-          cp "$stable_bundle" "${stable_bundle}.sha256" comparison-bundles/stable/
-          cp "$candidate_bundle" "$candidate_sidecar" comparison-bundles/candidate/
-          python3 - \
-            comparison-bundles/identity.json \
-            "$stable_tag" "$stable_asset" "$stable_digest" \
-            "$candidate_tag" "$candidate_asset" "$candidate_digest" \
-            "$GITHUB_SHA" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-
-          (
-              output,
-              stable_tag,
-              stable_asset,
-              stable_digest,
-              candidate_tag,
-              candidate_asset,
-              candidate_digest,
-              candidate_sha,
-          ) = sys.argv[1:]
-          payload = {
-              "schemaVersion": 1,
-              "stable": {
-                  "tag": stable_tag,
-                  "assetName": stable_asset,
-                  "sha256": stable_digest,
-              },
-              "candidate": {
-                  "tag": candidate_tag,
-                  "gitSha": candidate_sha,
-                  "assetName": candidate_asset,
-                  "sha256": candidate_digest,
-              },
-          }
-          Path(output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          {
-            printf 'stable_tag=%s\n' "$stable_tag"
-            printf 'stable_digest=%s\n' "$stable_digest"
-            printf 'candidate_digest=%s\n' "$candidate_digest"
-          } >>"$GITHUB_OUTPUT"
-
-      - name: Retain verified comparison bundles
-        uses: actions/upload-artifact@v6
-        with:
-          name: real-repository-comparison-bundles-${{ github.run_id }}
-          path: comparison-bundles/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
-
   publish-setup-bundles:
     name: Publish setup bundle (${{ matrix.platform }})
     needs:
@@ -864,14 +727,12 @@ jobs:
       - build-openapi-spec
       - build-agent-resources
       - build-setup-bundles
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-openapi-spec.result == 'success' &&
       needs.build-agent-resources.result == 'success' &&
-      needs.build-setup-bundles.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -893,135 +754,6 @@ jobs:
         with:
           platform: ${{ matrix.platform }}
           tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-
-  real-repository-indexing:
-    name: Index ${{ matrix.name }}
-    needs:
-      - prepare-release
-      - prepare-real-repository-indexing
-    if: >-
-      always() &&
-      needs.prepare-release.result == 'success' &&
-      needs.prepare-real-repository-indexing.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 150
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: ktor
-            repository: https://github.com/ktorio/ktor-samples.git
-            revision: c89f051e1183455eda8b26146555a1b5ed23d18c
-            graph_file: httpbin/src/main/kotlin/io/ktor/samples/httpbin/Server.kt
-            relationships_enabled: true
-          - name: spring-boot
-            repository: https://github.com/AleksK1NG/Kotlin-Clean-Architecture-CQRS.git
-            revision: d523770246f2ddb586868e4a9e55cafce7e0d6f8
-            graph_file: src/main/kotlin/com/alexander/bryksin/kotlinspringcleanarchitecture/KotlinSpringCleanArchitectureApplication.kt
-            relationships_enabled: true
-          - name: okhttp
-            repository: https://github.com/square/okhttp.git
-            revision: 0960b47ec28a02e893499d2a7e53bf462a62875e
-            graph_file: okcurl/src/main/kotlin/okhttp3/curl/Main.kt
-            relationships_enabled: true
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Set up Gradle Java 17 toolchain
-        id: gradle-java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Restore Java 21 Kast runtime
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Restore repository object cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ runner.temp }}/kast-real-repository-cache
-          key: kast-real-repository-${{ matrix.name }}-${{ matrix.revision }}
-
-      - name: Download verified comparison bundles
-        uses: actions/download-artifact@v7
-        with:
-          name: real-repository-comparison-bundles-${{ github.run_id }}
-          path: comparison-bundles
-
-      - name: Verify comparison bundle identity
-        id: bundles
-        shell: bash
-        run: |
-          set -euo pipefail
-          candidate_tag="${{ needs.prepare-release.outputs.release_tag }}"
-          stable_tag="${{ needs.prepare-real-repository-indexing.outputs.stable_tag }}"
-          stable_digest="${{ needs.prepare-real-repository-indexing.outputs.stable_digest }}"
-          candidate_digest="${{ needs.prepare-real-repository-indexing.outputs.candidate_digest }}"
-          stable_asset="kast-linux-x64-${stable_tag}.tar.gz"
-          candidate_asset="kast-linux-x64-${candidate_tag}.tar.gz"
-          stable_bundle="$PWD/comparison-bundles/stable/${stable_asset}"
-          candidate_bundle="$PWD/comparison-bundles/candidate/${candidate_asset}"
-          [[ "$(sha256sum "$stable_bundle" | awk '{print $1}')" == "$stable_digest" ]] \
-            || { echo "Stable comparison bundle digest changed" >&2; exit 1; }
-          [[ "$(sha256sum "$candidate_bundle" | awk '{print $1}')" == "$candidate_digest" ]] \
-            || { echo "Candidate comparison bundle digest changed" >&2; exit 1; }
-          (cd comparison-bundles/stable && sha256sum -c "${stable_asset}.sha256")
-          (cd comparison-bundles/candidate && sha256sum -c "${candidate_asset}.sha256")
-          jq -e \
-            --arg stable_tag "$stable_tag" \
-            --arg stable_digest "$stable_digest" \
-            --arg candidate_tag "$candidate_tag" \
-            --arg candidate_digest "$candidate_digest" \
-            --arg candidate_sha "$GITHUB_SHA" '
-              .schemaVersion == 1
-              and .stable.tag == $stable_tag
-              and .stable.sha256 == $stable_digest
-              and .candidate.tag == $candidate_tag
-              and .candidate.sha256 == $candidate_digest
-              and .candidate.gitSha == $candidate_sha
-            ' comparison-bundles/identity.json >/dev/null
-          printf 'stable_bundle=%s\n' "$stable_bundle" >>"$GITHUB_OUTPUT"
-          printf 'candidate_bundle=%s\n' "$candidate_bundle" >>"$GITHUB_OUTPUT"
-
-      - name: Index pinned repository
-        shell: bash
-        env:
-          GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}
-        run: |
-          set -euo pipefail
-          stable_bundle="${{ steps.bundles.outputs.stable_bundle }}"
-          candidate_bundle="${{ steps.bundles.outputs.candidate_bundle }}"
-          evidence_output="$PWD/benchmark-evidence/${{ matrix.name }}.json"
-          mkdir -p "$(dirname "$evidence_output")"
-          scripts/release/benchmark-real-repositories.sh \
-            --name "${{ matrix.name }}" \
-            --repository "${{ matrix.repository }}" \
-            --revision "${{ matrix.revision }}" \
-            --graph-file "${{ matrix.graph_file }}" \
-            --relationships-enabled "${{ matrix.relationships_enabled }}" \
-            --stable-bundle "$stable_bundle" \
-            --candidate-bundle "$candidate_bundle" \
-            --evidence-output "$evidence_output" \
-            --cache-root "${{ runner.temp }}/kast-real-repository-cache"
-
-      - name: Retain comparative indexing evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: real-repository-indexing-${{ matrix.name }}-${{ github.run_id }}
-          path: benchmark-evidence/${{ matrix.name }}.json
-          if-no-files-found: error
-          retention-days: 30
-
   quarantine-failed-release-artifacts:
     name: Quarantine failed release artifacts
     needs:
@@ -1031,8 +763,6 @@ jobs:
       - build-agent-resources
       - build-indexer
       - build-setup-bundles
-      - prepare-real-repository-indexing
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
@@ -1041,9 +771,7 @@ jobs:
         needs.build-cli.result != 'success' ||
         needs.build-agent-resources.result != 'success' ||
         needs.build-indexer.result != 'success' ||
-        needs.build-setup-bundles.result != 'success' ||
-        needs.prepare-real-repository-indexing.result != 'success' ||
-        needs.real-repository-indexing.result != 'success'
+        needs.build-setup-bundles.result != 'success'
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1059,11 +787,7 @@ jobs:
           mapfile -t artifact_ids < <(
             gh api --paginate \
               "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
-              --jq '
-                .artifacts[]
-                | select(.name | startswith("real-repository-indexing-") | not)
-                | .id
-              '
+              --jq '.artifacts[] | .id'
           )
           for artifact_id in "${artifact_ids[@]}"; do
             gh api --method DELETE \
@@ -1078,16 +802,12 @@ jobs:
       - publish-openapi-spec
       - publish-agent-resources
       - publish-setup-bundles
-      - prepare-real-repository-indexing
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.publish-openapi-spec.result == 'success' &&
       needs.publish-agent-resources.result == 'success' &&
-      needs.publish-setup-bundles.result == 'success' &&
-      needs.prepare-real-repository-indexing.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.publish-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1108,36 +828,6 @@ jobs:
           pattern: setup-bundle-provenance-*-${{ github.run_id }}
           merge-multiple: true
 
-      - name: Download comparative indexing evidence
-        uses: actions/download-artifact@v7
-        with:
-          path: comparative-indexing
-          pattern: real-repository-indexing-*-${{ github.run_id }}
-          merge-multiple: true
-
-      - name: Aggregate comparative indexing evidence
-        env:
-          RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
-          STABLE_TAG: ${{ needs.prepare-real-repository-indexing.outputs.stable_tag }}
-          STABLE_DIGEST: ${{ needs.prepare-real-repository-indexing.outputs.stable_digest }}
-          CANDIDATE_DIGEST: ${{ needs.prepare-real-repository-indexing.outputs.candidate_digest }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          performance_asset="dist/kast-real-repository-indexing-${RELEASE_TAG}.json"
-          mkdir -p dist
-          .github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py aggregate-release \
-            --evidence-root comparative-indexing \
-            --output "$performance_asset" \
-            --release-tag "$RELEASE_TAG" \
-            --release-sha "$GITHUB_SHA" \
-            --stable-tag "$STABLE_TAG" \
-            --stable-digest "$STABLE_DIGEST" \
-            --candidate-digest "$CANDIDATE_DIGEST" \
-            --repository-spec 'ktor|https://github.com/ktorio/ktor-samples.git|c89f051e1183455eda8b26146555a1b5ed23d18c|httpbin/src/main/kotlin/io/ktor/samples/httpbin/Server.kt' \
-            --repository-spec 'spring-boot|https://github.com/AleksK1NG/Kotlin-Clean-Architecture-CQRS.git|d523770246f2ddb586868e4a9e55cafce7e0d6f8|src/main/kotlin/com/alexander/bryksin/kotlinspringcleanarchitecture/KotlinSpringCleanArchitectureApplication.kt' \
-            --repository-spec 'okhttp|https://github.com/square/okhttp.git|0960b47ec28a02e893499d2a7e53bf462a62875e|okcurl/src/main/kotlin/okhttp3/curl/Main.kt'
-
       - name: Assemble combined provenance
         shell: bash
         run: |
@@ -1147,33 +837,6 @@ jobs:
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             provenance-openapi \
             provenance-setup
-          performance_asset="dist/kast-real-repository-indexing-${{ needs.prepare-release.outputs.release_tag }}.json"
-          python3 - \
-            dist/build-provenance.json \
-            "$performance_asset" \
-            "${{ needs.prepare-real-repository-indexing.outputs.stable_tag }}" \
-            "${{ needs.prepare-real-repository-indexing.outputs.stable_digest }}" \
-            "${{ needs.prepare-real-repository-indexing.outputs.candidate_digest }}" \
-            "$GITHUB_SHA" <<'PY'
-          import hashlib
-          import json
-          import sys
-          from pathlib import Path
-
-          provenance_path, performance_path, stable_tag, stable_digest, candidate_digest, sha = sys.argv[1:]
-          provenance = json.loads(Path(provenance_path).read_text(encoding="utf-8"))
-          performance_asset = Path(performance_path)
-          provenance["comparativePerformance"] = {
-              "assetName": performance_asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(performance_asset.read_bytes()).hexdigest(),
-              "stable": {"tag": stable_tag, "sha256": stable_digest},
-              "candidate": {"gitSha": sha, "sha256": candidate_digest},
-          }
-          Path(provenance_path).write_text(
-              json.dumps(provenance, indent=2) + "\n",
-              encoding="utf-8",
-          )
-          PY
 
       - name: Generate SHA256SUMS
         env:
@@ -1207,12 +870,6 @@ jobs:
             --assets release-metadata/assets.json \
             --sidecars release-metadata/sidecars \
             --output dist/SHA256SUMS
-          performance_asset="dist/kast-real-repository-indexing-${tag}.json"
-          performance_digest="$(sha256sum "$performance_asset" | awk '{print $1}')"
-          printf '%s  %s\n' \
-            "$performance_digest" "$(basename "$performance_asset")" \
-            >>dist/SHA256SUMS
-          LC_ALL=C sort -k2,2 -o dist/SHA256SUMS dist/SHA256SUMS
 
       - name: Retain release metadata
         uses: actions/upload-artifact@v6
@@ -1220,7 +877,6 @@ jobs:
           name: release-metadata-${{ github.run_id }}
           path: |
             dist/build-provenance.json
-            dist/kast-real-repository-indexing-${{ needs.prepare-release.outputs.release_tag }}.json
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 30
@@ -1253,8 +909,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          performance_asset="dist/kast-real-repository-indexing-${tag}.json"
-          for asset in "$performance_asset" dist/build-provenance.json dist/SHA256SUMS; do
+          for asset in dist/build-provenance.json dist/SHA256SUMS; do
             .github/scripts/release/upload-immutable-release-asset.sh \
               --tag "$tag" \
               --asset "$asset"
@@ -1311,16 +966,3 @@ jobs:
           scripts/release/verify-release-state.sh \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             --repository "${{ github.repository }}"
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          performance_asset="kast-real-repository-indexing-${tag}.json"
-          work="$(mktemp -d "${RUNNER_TEMP}/kast-release-performance.XXXXXX")"
-          trap 'find "$work" -depth -delete' EXIT
-          gh release download "$tag" \
-            --repo "${{ github.repository }}" \
-            --dir "$work" \
-            --pattern "$performance_asset" \
-            --pattern SHA256SUMS
-          checksum_line="$(awk -v asset="$performance_asset" '$2 == asset { print }' "$work/SHA256SUMS")"
-          [[ -n "$checksum_line" ]] \
-            || { echo "Published checksum manifest omits $performance_asset" >&2; exit 1; }
-          (cd "$work" && printf '%s\n' "$checksum_line" | sha256sum -c -)
