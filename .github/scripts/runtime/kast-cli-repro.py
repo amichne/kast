@@ -1508,6 +1508,8 @@ def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, 
         raise ReproError("evidence manifest root must be an object")
     if manifest.get("schemaVersion") != SCHEMA_VERSION:
         raise ReproError(f"unsupported evidence schema: {manifest.get('schemaVersion')!r}")
+    if "capsule" in manifest and not isinstance(manifest["capsule"], dict):
+        raise ReproError("evidence manifest capsule proof must be an object")
     commands = manifest.get("commands")
     if not isinstance(commands, list):
         raise ReproError("evidence manifest commands must be an array")

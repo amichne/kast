@@ -573,6 +573,28 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertNotIn("Traceback", result.stderr)
 
+    def test_nonobject_capsule_proof_is_structured_invalid_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["capsule"] = []
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("capsule", error["error"])
+
     def test_failed_observer_subcommand_cannot_replay_as_clean(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
