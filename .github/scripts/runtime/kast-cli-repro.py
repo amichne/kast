@@ -1204,6 +1204,19 @@ def live_capture_preflight(args: argparse.Namespace, workspace: Path) -> LiveCap
     return LiveCapturePreflight(output, session)
 
 
+def require_runtime_restart_authority(
+    *,
+    restart_requested: bool,
+    capsule: CapsuleContext | None,
+    dry_run: bool,
+) -> None:
+    if not dry_run and capsule is None and not restart_requested:
+        raise ReproError(
+            "--restart-runtime is required for live non-capsule capture because "
+            "telemetry settings bind when the runtime starts"
+        )
+
+
 def discard_unstarted_ephemeral_capsule(capsule: CapsuleContext | None) -> None:
     if capsule is None or capsule.mode != "EPHEMERAL" or not capsule.root.exists():
         return
@@ -1241,6 +1254,11 @@ def capture(args: argparse.Namespace) -> int:
     host_kast = host_kast or args.kast
     preflight = None if args.dry_run else live_capture_preflight(args, workspace)
     capsule = build_capsule(args, workspace, host_kast, dry_run=args.dry_run)
+    require_runtime_restart_authority(
+        restart_requested=args.restart_runtime,
+        capsule=capsule,
+        dry_run=args.dry_run,
+    )
     kast = str(capsule.kast) if capsule is not None else host_kast
     plan = command_plan(
         kast,
@@ -1338,34 +1356,23 @@ def capture(args: argparse.Namespace) -> int:
                 ),
             )
         ))
-        if args.restart_runtime or capsule is not None:
-            require_success(
-                runner.run(
-                    CommandSpec(
-                        "runtime-stop",
-                        (
-                            str(kastctl), "--output", "json", "developer", "runtime", "stop",
-                            "--workspace-root", str(workspace),
-                        ),
-                        timeout_seconds=args.transition_timeout,
-                    )
+        require_success(
+            runner.run(
+                CommandSpec(
+                    "runtime-stop",
+                    (
+                        str(kastctl), "--output", "json", "developer", "runtime", "stop",
+                        "--workspace-root", str(workspace),
+                    ),
+                    timeout_seconds=args.transition_timeout,
                 )
             )
-            cold_up = next(spec for spec in plan if spec.name == "cold-up")
-            cold_observer = next(spec for spec in plan if spec.name == "cold-observer")
-            up_active = runner.begin(cold_up)
-            observer_active = runner.begin(cold_observer)
-            finish_observed_operation(runner, up_active, observer_active)
-        else:
-            require_success(
-                runner.run(
-                    CommandSpec(
-                        "warm-up",
-                        (kast, "workspace", "ensure"),
-                        timeout_seconds=args.transition_timeout,
-                    )
-                )
-            )
+        )
+        cold_up = next(spec for spec in plan if spec.name == "cold-up")
+        cold_observer = next(spec for spec in plan if spec.name == "cold-observer")
+        up_active = runner.begin(cold_up)
+        observer_active = runner.begin(cold_observer)
+        finish_observed_operation(runner, up_active, observer_active)
         for spec in plan:
             if spec.name in {"cold-up", "cold-observer", "workspace-refresh", "refresh-observer"}:
                 continue
@@ -1702,6 +1709,20 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             "evidence manifest is missing required scenario commands: "
             + ", ".join(missing_commands)
         )
+    invalid_status_commands = sorted(
+        name
+        for name in required_commands
+        if (
+            not isinstance(commands[name].get("exitCode"), int)
+            or isinstance(commands[name].get("exitCode"), bool)
+            or not isinstance(commands[name].get("timedOut"), bool)
+        )
+    )
+    if invalid_status_commands:
+        raise ReproError(
+            "required scenario commands have invalid status evidence: "
+            + ", ".join(invalid_status_commands)
+        )
     failed_commands = sorted(
         name
         for name in REQUIRED_SUCCESSFUL_SCENARIO_COMMANDS
@@ -1780,7 +1801,7 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                     ["transcripts/cold-up.txt", "transcripts/cold-observer.txt"],
                 )
             )
-    if refresh and refresh.get("exitCode") != 0:
+    if refresh and (refresh.get("exitCode") != 0 or refresh.get("timedOut") is True):
         findings.append(
             Finding(
                 FindingCode.REFRESH_DID_NOT_CONVERGE.value,
@@ -1800,8 +1821,10 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                 )
             )
     framing_evidence: list[str] = []
+    transcript_sizes: dict[str, int] = {}
     for name, command in commands.items():
         text = transcript(directory, command)
+        transcript_sizes[name] = len(text.encode("utf-8"))
         completion_token = command.get("completionToken")
         if not isinstance(completion_token, str) or not completion_token:
             if name in required_commands:
@@ -1842,11 +1865,10 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             )
         )
     oversized = [
-        f"{name}:{command.get('outputBytes')}"
-        for name, command in commands.items()
+        f"{name}:{transcript_sizes[name]}"
+        for name in commands
         if name in {"graph-nodes", "graph-topology", "graph-communities"}
-        and isinstance(command.get("outputBytes"), int)
-        and command["outputBytes"] > DEFAULT_OUTPUT_BUDGET_BYTES
+        and transcript_sizes[name] > DEFAULT_OUTPUT_BUDGET_BYTES
     ]
     if oversized:
         findings.append(
@@ -1962,7 +1984,11 @@ def parser() -> argparse.ArgumentParser:
     capture_parser.add_argument("--samples", type=int, default=20)
     capture_parser.add_argument("--sample-interval", type=float, default=1.0)
     capture_parser.add_argument("--transition-timeout", type=float, default=420.0)
-    capture_parser.add_argument("--restart-runtime", action="store_true", help="stop the exact-root runtime and cold-start it with KAST_IDEA_TRACE=true")
+    capture_parser.add_argument(
+        "--restart-runtime",
+        action="store_true",
+        help="required for live non-capsule capture; stop and cold-start the exact-root runtime with telemetry enabled",
+    )
     capture_parser.add_argument(
         "--exercise-plans",
         action="store_true",

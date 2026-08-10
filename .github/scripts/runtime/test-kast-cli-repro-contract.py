@@ -147,7 +147,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 ),
                 command(
                     "graph-nodes",
-                    terminated,
+                    "x" * 30_001 + "\n::kast-repro-exit=0\n",
                     started=1000,
                     finished=1100,
                     output_bytes=139_205,
@@ -585,6 +585,37 @@ class KastCliReproContractTest(unittest.TestCase):
             error = json.loads(result.stderr)
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("graph-topology", error["error"])
+
+    def test_transition_timeout_status_must_be_boolean(self) -> None:
+        for timed_out in (None, "false"):
+            with self.subTest(timed_out=timed_out), tempfile.TemporaryDirectory() as raw_directory:
+                directory = Path(raw_directory)
+                self.write_evidence(directory, incident=False)
+                manifest_path = directory / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                refresh = next(
+                    command
+                    for command in manifest["commands"]
+                    if command["name"] == "workspace-refresh"
+                )
+                if timed_out is None:
+                    refresh.pop("timedOut")
+                else:
+                    refresh["timedOut"] = timed_out
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = self.run_runner(
+                    "analyze", "--evidence-dir", str(directory), "--format", "json"
+                )
+
+                self.assertEqual(2, result.returncode)
+                self.assertEqual("", result.stdout)
+                error = json.loads(result.stderr)
+                self.assertEqual("INVALID_EVIDENCE", error["status"])
+                self.assertIn("workspace-refresh", error["error"])
 
     def test_nonobject_manifest_is_structured_invalid_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
@@ -1113,6 +1144,32 @@ class KastCliReproContractTest(unittest.TestCase):
         self.assertEqual(1, len(errors))
         self.assertIn("restore-enabled", errors[0])
 
+    def test_live_non_capsule_capture_requires_runtime_restart_authority(self) -> None:
+        runner = load_runner_module()
+
+        with self.assertRaisesRegex(runner.ReproError, "--restart-runtime is required"):
+            runner.require_runtime_restart_authority(
+                restart_requested=False,
+                capsule=None,
+                dry_run=False,
+            )
+
+        runner.require_runtime_restart_authority(
+            restart_requested=False,
+            capsule=mock.sentinel.capsule,
+            dry_run=False,
+        )
+        runner.require_runtime_restart_authority(
+            restart_requested=True,
+            capsule=None,
+            dry_run=False,
+        )
+        runner.require_runtime_restart_authority(
+            restart_requested=False,
+            capsule=None,
+            dry_run=True,
+        )
+
     def test_generic_exit_text_does_not_drive_newline_analysis(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -1132,6 +1189,40 @@ class KastCliReproContractTest(unittest.TestCase):
 
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual([], json.loads(result.stdout)["findings"])
+
+    def test_graph_budget_uses_transcript_bytes_not_manifest_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            graph_nodes = next(
+                command
+                for command in manifest["commands"]
+                if command["name"] == "graph-nodes"
+            )
+            transcript_path = directory / str(graph_nodes["transcript"])
+            transcript_path.write_text(
+                "x" * 30_001
+                + "\n"
+                + f"::kast-repro-exit={graph_nodes['completionToken']}:0:310\n",
+                encoding="utf-8",
+            )
+            graph_nodes["outputBytes"] = 1
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertEqual(
+                ["DEFAULT_OUTPUT_EXCEEDS_BUDGET"],
+                [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+            )
 
     def test_failed_cold_start_is_not_a_green_replay(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
