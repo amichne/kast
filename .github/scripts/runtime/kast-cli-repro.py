@@ -24,6 +24,7 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_BUDGET_BYTES = 30_000
+OBSERVER_COMPLETION_GRACE_SECONDS = 30.0
 EXIT_SENTINEL = "::kast-repro-exit="
 OBSERVATION_EXIT_SENTINEL = "__KAST_OBSERVATION_EXIT_CODE__="
 CAPSULE_STATE_ENVIRONMENT_KEYS = (
@@ -430,6 +431,11 @@ def command_plan(
     transition_timeout: float,
 ) -> list[CommandSpec]:
     observer = observer_script(kast, symbol, samples, sample_interval)
+    observer_timeout = (
+        transition_timeout
+        + samples * sample_interval
+        + OBSERVER_COMPLETION_GRACE_SECONDS
+    )
     commands = [
         CommandSpec("home", (kast,)),
         CommandSpec("help", (kast, "--help")),
@@ -527,7 +533,11 @@ def command_plan(
                 (kast, "workspace", "refresh", "--file", file_path),
                 timeout_seconds=transition_timeout,
             ),
-            CommandSpec("refresh-observer", ("/bin/bash", "-lc", observer), timeout_seconds=transition_timeout),
+            CommandSpec(
+                "refresh-observer",
+                ("/bin/bash", "-lc", observer),
+                timeout_seconds=observer_timeout,
+            ),
         ]
     )
     if restart_runtime:
@@ -539,7 +549,11 @@ def command_plan(
                     environment=(("KAST_IDEA_TRACE", "true"),),
                     timeout_seconds=transition_timeout,
                 ),
-                CommandSpec("cold-observer", ("/bin/bash", "-lc", observer), timeout_seconds=transition_timeout),
+                CommandSpec(
+                    "cold-observer",
+                    ("/bin/bash", "-lc", observer),
+                    timeout_seconds=observer_timeout,
+                ),
             ]
         )
     return commands
@@ -1752,6 +1766,77 @@ def capture(args: argparse.Namespace) -> int:
     return exit_code
 
 
+def required_command_argv_is_valid(name: str, argv: Any) -> bool:
+    if not isinstance(argv, list) or not argv or not all(
+        isinstance(value, str) and bool(value) for value in argv
+    ):
+        return False
+    direct_patterns: dict[str, tuple[str | None, ...]] = {
+        "runtime-stop": (
+            "--output", "json", "developer", "runtime", "stop",
+            "--workspace-root", None,
+        ),
+        "capsule-runtime-stop": (
+            "--output", "json", "developer", "runtime", "stop",
+            "--workspace-root", None,
+        ),
+        "home": (),
+        "help": ("--help",),
+        "file-list": ("file", "list", "--match", None),
+        "symbol-search": ("symbol", "search", "--query", None),
+        "symbol-resolve": ("symbol", "resolve", "--query", None),
+        "graph-summary": ("graph", "summary", "--scope", "symbol"),
+        "graph-nodes": ("graph", "nodes"),
+        "graph-topology": ("graph", "topology", "--scope", "symbol"),
+        "graph-communities": ("graph", "communities", "--scope", "symbol"),
+        "diagnostic-check": ("diagnostic", "check", "--file", None),
+        "workspace-refresh": ("workspace", "refresh", "--file", None),
+        "cold-up": ("workspace", "ensure"),
+    }
+    pattern = direct_patterns.get(name)
+    if pattern is not None:
+        arguments = argv[1:]
+        return len(arguments) == len(pattern) and all(
+            expected is None or actual == expected
+            for actual, expected in zip(arguments, pattern)
+        )
+    if len(argv) != 3 or argv[:2] != ["/bin/bash", "-lc"]:
+        return False
+    script = argv[2]
+    if name in {"cold-observer", "refresh-observer"}:
+        return all(
+            marker in script
+            for marker in (
+                "__KAST_OBSERVATION__=HOME",
+                "__KAST_OBSERVATION__=RESOLVE",
+                " symbol resolve --query ",
+            )
+        )
+    issued_operations = {
+        "symbol-show": " symbol show --selector ",
+        "relation-references": " relation references --selector ",
+        "relation-calls-incoming": " relation calls incoming --selector ",
+        "relation-calls-outgoing": " relation calls outgoing --selector ",
+        "relation-implementations": " relation implementations --selector ",
+        "relation-hierarchy-supertypes": " relation hierarchy supertypes --selector ",
+        "relation-hierarchy-subtypes": " relation hierarchy subtypes --selector ",
+        "graph-impact": " graph impact --selector ",
+    }
+    if name in issued_operations:
+        return (
+            "resolved=$(" in script
+            and " symbol resolve --query " in script
+            and issued_operations[name] in script
+        )
+    if name == "graph-neighbors":
+        return (
+            "nodes=$(" in script
+            and " graph nodes" in script
+            and " graph neighbors --node-selector " in script
+        )
+    return False
+
+
 def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     manifest_path = directory / "manifest.json"
     try:
@@ -1804,12 +1889,22 @@ def read_manifest(directory: Path) -> tuple[dict[str, Any], dict[str, dict[str, 
     commands = manifest.get("commands")
     if not isinstance(commands, list):
         raise ReproError("evidence manifest commands must be an array")
+    argv_required = set(REQUIRED_SCENARIO_COMMANDS)
+    if isinstance(capsule, dict):
+        argv_required.add("capsule-runtime-stop")
     indexed: dict[str, dict[str, Any]] = {}
     for command in commands:
         if not isinstance(command, dict) or not isinstance(command.get("name"), str):
             raise ReproError("every evidence command must have a string name")
         if command["name"] in indexed:
             raise ReproError(f"duplicate evidence command: {command['name']}")
+        if (
+            command["name"] in argv_required
+            and not required_command_argv_is_valid(command["name"], command.get("argv"))
+        ):
+            raise ReproError(
+                f"required command {command['name']} has invalid operation argv"
+            )
         indexed[command["name"]] = command
     return manifest, indexed
 

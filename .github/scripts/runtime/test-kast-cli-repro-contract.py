@@ -45,6 +45,66 @@ REQUIRED_SCENARIO_COMMANDS = (
 )
 
 
+def scenario_argv(name: str) -> list[str]:
+    direct = {
+        "runtime-stop": [
+            "kastctl", "--output", "json", "developer", "runtime", "stop",
+            "--workspace-root", "/tmp/workspace",
+        ],
+        "capsule-runtime-stop": [
+            "kastctl", "--output", "json", "developer", "runtime", "stop",
+            "--workspace-root", "/tmp/workspace",
+        ],
+        "home": ["kast"],
+        "help": ["kast", "--help"],
+        "file-list": ["kast", "file", "list", "--match", "src/Probe.kt"],
+        "symbol-search": ["kast", "symbol", "search", "--query", "example.Probe"],
+        "symbol-resolve": ["kast", "symbol", "resolve", "--query", "example.Probe"],
+        "graph-summary": ["kast", "graph", "summary", "--scope", "symbol"],
+        "graph-nodes": ["kast", "graph", "nodes"],
+        "graph-topology": ["kast", "graph", "topology", "--scope", "symbol"],
+        "graph-communities": ["kast", "graph", "communities", "--scope", "symbol"],
+        "diagnostic-check": ["kast", "diagnostic", "check", "--file", "src/Probe.kt"],
+        "workspace-refresh": ["kast", "workspace", "refresh", "--file", "src/Probe.kt"],
+        "cold-up": ["kast", "workspace", "ensure"],
+    }
+    if name in direct:
+        return direct[name]
+    issued = {
+        "symbol-show": "symbol show",
+        "relation-references": "relation references",
+        "relation-calls-incoming": "relation calls incoming",
+        "relation-calls-outgoing": "relation calls outgoing",
+        "relation-implementations": "relation implementations",
+        "relation-hierarchy-supertypes": "relation hierarchy supertypes",
+        "relation-hierarchy-subtypes": "relation hierarchy subtypes",
+        "graph-impact": "graph impact",
+    }
+    if name in issued:
+        return [
+            "/bin/bash",
+            "-lc",
+            f"resolved=$(kast --output json symbol resolve --query example.Probe); "
+            f"selector=example-selector; kast {issued[name]} --selector \"$selector\"",
+        ]
+    if name == "graph-neighbors":
+        return [
+            "/bin/bash",
+            "-lc",
+            "nodes=$(kast --output json graph nodes); "
+            "node_selector=example-node; kast graph neighbors --node-selector \"$node_selector\"",
+        ]
+    if name in {"cold-observer", "refresh-observer"}:
+        return [
+            "/bin/bash",
+            "-lc",
+            "printf __KAST_OBSERVATION__=HOME; kast; "
+            "printf __KAST_OBSERVATION__=RESOLVE; "
+            "kast symbol resolve --query example.Probe",
+        ]
+    return ["kast", name]
+
+
 def load_runner_module():
     module_name = "kast_cli_repro_contract_subject"
     existing = sys.modules.get(module_name)
@@ -97,7 +157,7 @@ class KastCliReproContractTest(unittest.TestCase):
             path.write_text(text, encoding="utf-8")
             return {
                 "name": name,
-                "argv": ["kast", name],
+                "argv": scenario_argv(name),
                 "startedAtEpochMillis": started,
                 "finishedAtEpochMillis": finished,
                 "exitCode": exit_code,
@@ -267,7 +327,7 @@ class KastCliReproContractTest(unittest.TestCase):
         manifest["commands"].append(
             {
                 "name": name,
-                "argv": ["kastctl", name],
+                "argv": scenario_argv(name),
                 "startedAtEpochMillis": started,
                 "finishedAtEpochMillis": finished,
                 "exitCode": exit_code,
@@ -1070,6 +1130,32 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertEqual("INVALID_EVIDENCE", error["status"])
             self.assertIn("graph-topology", error["error"])
 
+    def test_required_command_requires_operation_bound_argv(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            topology = next(
+                command for command in manifest["commands"]
+                if command["name"] == "graph-topology"
+            )
+            topology["argv"] = ["kast", "--help"]
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+            error = json.loads(result.stderr)
+            self.assertEqual("INVALID_EVIDENCE", error["status"])
+            self.assertIn("graph-topology", error["error"])
+
     def test_required_command_requires_exact_nonce_bound_completion_frame(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -1480,7 +1566,7 @@ class KastCliReproContractTest(unittest.TestCase):
         for relative_symlink in (Path("kast-home"), Path("kast-home/releases")):
             with (
                 self.subTest(relative_symlink=relative_symlink),
-                tempfile.TemporaryDirectory(dir="/private/tmp") as raw_directory,
+                tempfile.TemporaryDirectory() as raw_directory,
             ):
                 base = Path(raw_directory)
                 root = base / "capsule"
@@ -1512,6 +1598,7 @@ class KastCliReproContractTest(unittest.TestCase):
                         "discover_idea_host",
                         return_value=base / "idea-host",
                     ),
+                    mock.patch.object(runner.os, "fsencode", return_value=b"short"),
                     self.assertRaisesRegex(runner.ReproError, "state .* escaped"),
                 ):
                     runner.build_capsule(args, workspace, "kast", dry_run=False)
@@ -1539,6 +1626,10 @@ class KastCliReproContractTest(unittest.TestCase):
             with self.assertRaisesRegex(runner.ReproError, "symlink escaped"):
                 runner.require_contained_capsule_state_symlinks(root, state_paths)
 
+    @unittest.skipUnless(
+        Path("/private/tmp").is_dir(),
+        "macOS /private/tmp is required for ephemeral capsule allocation",
+    )
     def test_ephemeral_capsule_is_removed_when_post_allocation_validation_fails(self) -> None:
         runner = load_runner_module()
         with tempfile.TemporaryDirectory() as raw_directory:
@@ -1916,6 +2007,15 @@ class KastCliReproContractTest(unittest.TestCase):
             self.assertIn("KAST_REPRO_OBSERVER_STOP", cold_observer["argv"][-1])
             self.assertNotIn("for i in $(seq", cold_observer["argv"][-1])
             by_name = {command["name"]: command for command in plan["commands"]}
+            runner = load_runner_module()
+            for required_name in REQUIRED_SCENARIO_COMMANDS:
+                self.assertTrue(
+                    runner.required_command_argv_is_valid(
+                        required_name,
+                        by_name[required_name]["argv"],
+                    ),
+                    required_name,
+                )
             for stateful_name in (
                 "telemetry-enable",
                 "telemetry-verbose",
@@ -1938,6 +2038,7 @@ class KastCliReproContractTest(unittest.TestCase):
                 ["symbol", "resolve", "--query", "example.Probe"],
                 by_name["symbol-resolve"]["argv"][1:],
             )
+
             self.assertEqual(
                 ["workspace", "ensure"],
                 by_name["cold-up"]["argv"][1:],
@@ -1981,6 +2082,29 @@ class KastCliReproContractTest(unittest.TestCase):
                 }.issubset(names),
                 names,
             )
+
+    def test_observer_deadlines_include_post_operation_handshake_grace(self) -> None:
+        runner = load_runner_module()
+        plan = runner.command_plan(
+            "kast",
+            "src/Probe.kt",
+            "example.Probe",
+            restart_runtime=True,
+            mutation_probe=None,
+            samples=20,
+            sample_interval=1.0,
+            transition_timeout=420.0,
+        )
+        by_name = {command.name: command for command in plan}
+
+        self.assertGreater(
+            by_name["cold-observer"].timeout_seconds,
+            by_name["cold-up"].timeout_seconds,
+        )
+        self.assertGreater(
+            by_name["refresh-observer"].timeout_seconds,
+            by_name["workspace-refresh"].timeout_seconds,
+        )
 
     def test_mutation_plan_probe_rejects_non_top_level_symbol_queries(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
