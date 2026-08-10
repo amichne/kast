@@ -1,0 +1,10 @@
+{
+  "capturedAtUtc": "2026-08-09T23:32:32Z",
+  "java": "openjdk version \"25.0.3\" 2026-04-21",
+  "kastVersion": "kast 0.22.0-18-g60dcf69d0",
+  "logicalCpuCount": 10,
+  "macOS": "26.5.2",
+  "machine": "arm64",
+  "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+  "python": "3.14.5"
+}
