@@ -32,6 +32,7 @@ class ReproError(Exception):
 
 class FindingCode(str, enum.Enum):
     READY_DURING_PENDING_UP = "READY_DURING_PENDING_UP"
+    COLD_START_DID_NOT_CONVERGE = "COLD_START_DID_NOT_CONVERGE"
     GENERIC_CONFLICT_DURING_REFRESH = "GENERIC_CONFLICT_DURING_REFRESH"
     REFRESH_DID_NOT_CONVERGE = "REFRESH_DID_NOT_CONVERGE"
     MISSING_TRAILING_NEWLINE = "MISSING_TRAILING_NEWLINE"
@@ -64,6 +65,7 @@ class ActiveCommand:
     spec: CommandSpec
     window_id: str
     started_at_epoch_millis: int
+    completion_token: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -122,6 +124,12 @@ class CapsuleContext:
 class LiveCapturePreflight:
     output: Path
     session: str
+
+
+@dataclasses.dataclass(frozen=True)
+class MutationProbeIdentity:
+    package_name: str
+    declaration_name: str
 
 
 def epoch_millis() -> int:
@@ -256,19 +264,42 @@ def issued_graph_node_command(name: str, kast: str) -> CommandSpec:
     return CommandSpec(name, ("/bin/bash", "-lc", script))
 
 
+def mutation_probe_identity(source: Path, symbol: str) -> MutationProbeIdentity:
+    try:
+        content = source.read_text(encoding="utf-8")
+    except OSError as error:
+        raise ReproError(f"cannot read --file for mutation planning: {error}") from error
+    package = re.search(
+        r"(?m)^\s*package\s+"
+        r"((?:[A-Za-z_][A-Za-z0-9_]*\.)*[A-Za-z_][A-Za-z0-9_]*)\s*;?\s*$",
+        content,
+    )
+    declaration = (
+        re.fullmatch(
+            rf"{re.escape(package.group(1))}\.([A-Za-z_][A-Za-z0-9_]*)",
+            symbol,
+        )
+        if package is not None
+        else None
+    )
+    if package is None or declaration is None:
+        raise ReproError(
+            "--exercise-plans requires a top-level declaration from the --file package"
+        )
+    return MutationProbeIdentity(package.group(1), declaration.group(1))
+
+
 def command_plan(
     kast: str,
     file_path: str,
     symbol: str,
     *,
     restart_runtime: bool,
-    exercise_plans: bool,
+    mutation_probe: MutationProbeIdentity | None,
     samples: int,
     sample_interval: float,
     transition_timeout: float,
 ) -> list[CommandSpec]:
-    short_name = symbol.rsplit(".", 1)[-1]
-    package_name = symbol.rsplit(".", 1)[0]
     probe_path = (Path(file_path).parent / "KastCliReproProbe.kt").as_posix()
     observer = observer_script(kast, symbol, samples, sample_interval)
     commands = [
@@ -317,19 +348,28 @@ def command_plan(
         issued_symbol_command("graph-impact", kast, symbol, ("graph", "impact")),
         CommandSpec("diagnostic-check", (kast, "diagnostic", "check", "--file", file_path)),
     ]
-    if exercise_plans:
+    if mutation_probe is not None:
         commands.extend(
             [
                 issued_symbol_command(
                     "change-plan-rename",
                     kast,
                     symbol,
-                    ("change", "plan", "rename", "--name", f"{short_name}ReproProbe"),
+                    (
+                        "change",
+                        "plan",
+                        "rename",
+                        "--name",
+                        f"{mutation_probe.declaration_name}ReproProbe",
+                    ),
                 ),
                 CommandSpec(
                     "change-plan-add-file",
                     (kast, "change", "plan", "add-file", "--file", probe_path),
-                    stdin=f"package {package_name}\n\ninternal object KastCliReproProbe",
+                    stdin=(
+                        f"package {mutation_probe.package_name}\n\n"
+                        "internal object KastCliReproProbe"
+                    ),
                 ),
                 CommandSpec(
                     "change-plan-add-declaration",
@@ -341,7 +381,7 @@ def command_plan(
                     kast,
                     symbol,
                     ("change", "plan", "replace"),
-                    stdin=f"class {short_name}ReproProbe",
+                    stdin=f"class {mutation_probe.declaration_name}ReproProbe",
                 ),
             ]
         )
@@ -418,6 +458,8 @@ class TmuxCapture:
 
     def begin(self, spec: CommandSpec) -> ActiveCommand:
         command = shlex.join(spec.argv)
+        completion_token = uuid.uuid4().hex
+        completion_marker = f"{EXIT_SENTINEL}{completion_token}:"
         environment = dict(self.base_environment)
         environment.update(dict(spec.environment))
         if environment:
@@ -427,14 +469,15 @@ class TmuxCapture:
             command = f"env {environment} {command}"
         if spec.stdin is not None:
             command = f"printf %s {shlex.quote(spec.stdin)} | {command}"
-        shell = (
-            "set +e; "
-            f"{command}; "
-            "status=$?; "
-            f"printf '{EXIT_SENTINEL}%s\\n' \"$status\"; "
-            "exec sleep 2147483647"
+        completion_wrapper = (
+            "import subprocess,time;"
+            f"status=subprocess.run(['/bin/bash','-lc',{command!r}]).returncode;"
+            "completed_at=time.time_ns()//1000000;"
+            f"print({completion_marker!r}+str(status)+':'+str(completed_at),flush=True)"
         )
+        shell = f"python3 -c {shlex.quote(completion_wrapper)}; exec sleep 2147483647"
         window_name = re.sub(r"[^A-Za-z0-9_-]", "-", spec.name)[:40]
+        started_at_epoch_millis = epoch_millis()
         result = run_checked(
             "tmux",
             "new-window",
@@ -450,13 +493,19 @@ class TmuxCapture:
             str(self.workspace),
             f"/bin/bash -lc {shlex.quote(shell)}",
         )
-        return ActiveCommand(spec, result.stdout.strip(), epoch_millis())
+        return ActiveCommand(
+            spec,
+            result.stdout.strip(),
+            started_at_epoch_millis,
+            completion_token,
+        )
 
     def finish(self, active: ActiveCommand) -> CommandEvidence:
         deadline = time.monotonic() + active.spec.timeout_seconds
         timed_out = False
         transcript = ""
         exit_code: int | None = None
+        completed_at_epoch_millis: int | None = None
         while True:
             capture = subprocess.run(
                 ["tmux", "capture-pane", "-p", "-J", "-S", "-", "-t", active.window_id],
@@ -467,9 +516,15 @@ class TmuxCapture:
             if capture.returncode != 0:
                 raise ReproError(f"tmux lost capture window for {active.spec.name}")
             transcript = capture.stdout
-            match = re.search(rf"{re.escape(EXIT_SENTINEL)}([0-9]+)", transcript)
+            match = re.search(
+                rf"{re.escape(EXIT_SENTINEL)}{re.escape(active.completion_token)}:"
+                r"([0-9]+):([0-9]+)\r?$",
+                transcript,
+                re.MULTILINE,
+            )
             if match is not None:
                 exit_code = int(match.group(1))
+                completed_at_epoch_millis = int(match.group(2))
                 break
             if time.monotonic() >= deadline:
                 timed_out = True
@@ -495,7 +550,11 @@ class TmuxCapture:
             name=active.spec.name,
             argv=list(active.spec.argv),
             startedAtEpochMillis=active.started_at_epoch_millis,
-            finishedAtEpochMillis=epoch_millis(),
+            finishedAtEpochMillis=(
+                completed_at_epoch_millis
+                if completed_at_epoch_millis is not None
+                else epoch_millis()
+            ),
             exitCode=resolved_exit_code,
             timedOut=timed_out,
             transcript=str(transcript_path.relative_to(self.evidence)),
@@ -1013,6 +1072,11 @@ def capture(args: argparse.Namespace) -> int:
     source = (workspace / file_path).resolve(strict=True)
     if workspace not in source.parents or source.suffix != ".kt":
         raise ReproError("--file must resolve to a Kotlin file inside the workspace")
+    mutation_probe = (
+        mutation_probe_identity(source, args.symbol)
+        if args.exercise_plans
+        else None
+    )
     host_kast = shutil.which(args.kast)
     if host_kast is None and not args.dry_run:
         raise ReproError(f"Kast executable is unavailable: {args.kast}")
@@ -1025,7 +1089,7 @@ def capture(args: argparse.Namespace) -> int:
         file_path.as_posix(),
         args.symbol,
         restart_runtime=args.restart_runtime or capsule is not None,
-        exercise_plans=args.exercise_plans,
+        mutation_probe=mutation_probe,
         samples=args.samples,
         sample_interval=args.sample_interval,
         transition_timeout=args.transition_timeout,
@@ -1327,20 +1391,34 @@ def overlaps(first: dict[str, Any], second: dict[str, Any]) -> bool:
     return values[0] < values[3] and values[2] < values[1]
 
 
-def ready_sample_before(observer_text: str, finished_at_epoch_millis: int) -> bool:
+def timed_samples(observer_text: str) -> list[tuple[str, int]]:
     sample_pattern = re.compile(
         r"(?ms)^__KAST_SAMPLE__=\d+\n(.*?)(?=^__KAST_SAMPLE__=\d+\n|\Z)"
     )
     timestamp_pattern = re.compile(r"(?m)^__KAST_SAMPLE_EPOCH_MILLIS__=(\d+)$")
+    samples: list[tuple[str, int]] = []
     for sample in sample_pattern.findall(observer_text):
         timestamp = timestamp_pattern.search(sample)
-        if (
-            timestamp is not None
-            and int(timestamp.group(1)) < finished_at_epoch_millis
-            and re.search(r"(?m)^ready: true$", sample)
-        ):
-            return True
-    return False
+        if timestamp is not None:
+            samples.append((sample, int(timestamp.group(1))))
+    return samples
+
+
+def ready_sample_before(observer_text: str, finished_at_epoch_millis: int) -> bool:
+    return any(
+        timestamp < finished_at_epoch_millis
+        and re.search(r"(?m)^ready: true$", sample)
+        for sample, timestamp in timed_samples(observer_text)
+    )
+
+
+def conflict_sample_before(observer_text: str, finished_at_epoch_millis: int) -> bool:
+    return any(
+        timestamp < finished_at_epoch_millis
+        and "error: CONFLICT" in sample
+        and "Run `kast --help`" in sample
+        for sample, timestamp in timed_samples(observer_text)
+    )
 
 
 def telemetry_missing_fields(directory: Path, manifest: dict[str, Any]) -> list[str]:
@@ -1378,6 +1456,14 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
     findings: list[Finding] = []
     cold_up = commands.get("cold-up")
     cold_observer = commands.get("cold-observer")
+    if cold_up and (cold_up.get("exitCode") != 0 or cold_up.get("timedOut") is True):
+        findings.append(
+            Finding(
+                FindingCode.COLD_START_DID_NOT_CONVERGE.value,
+                "Cold-start workspace ensure did not complete successfully.",
+                [str(cold_up.get("transcript"))],
+            )
+        )
     if cold_up and cold_observer and overlaps(cold_up, cold_observer):
         observer_text = transcript(directory, cold_observer)
         finished_at = cold_up.get("finishedAtEpochMillis")
@@ -1399,9 +1485,10 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
                 [str(refresh.get("transcript"))],
             )
         )
-    if refresh_observer:
+    if refresh and refresh_observer and overlaps(refresh, refresh_observer):
         observer_text = transcript(directory, refresh_observer)
-        if "error: CONFLICT" in observer_text and "Run `kast --help`" in observer_text:
+        finished_at = refresh.get("finishedAtEpochMillis")
+        if isinstance(finished_at, int) and conflict_sample_before(observer_text, finished_at):
             findings.append(
                 Finding(
                     FindingCode.GENERIC_CONFLICT_DURING_REFRESH.value,
@@ -1548,7 +1635,7 @@ def parser() -> argparse.ArgumentParser:
     capture_parser.add_argument(
         "--exercise-plans",
         action="store_true",
-        help="exercise mutation planning without applying a plan",
+        help="exercise mutation planning for a top-level --symbol without applying a plan",
     )
     capture_parser.add_argument("--keep-session", action="store_true", help="leave the completed tmux session available for attachment")
     capture_parser.add_argument("--dry-run", action="store_true", help="print the command matrix without touching tmux or Kast state")

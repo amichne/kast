@@ -97,8 +97,9 @@ class KastCliReproContractTest(unittest.TestCase):
                 ),
                 command(
                     "refresh-observer",
-                    "ready: false\nruntime: INDEXING\nerror: CONFLICT\n"
+                    "__KAST_SAMPLE__=1\nready: false\nruntime: INDEXING\nerror: CONFLICT\n"
                     "message: Semantic operation started while the workspace was not READY\n"
+                    "__KAST_SAMPLE_EPOCH_MILLIS__=700\n"
                     "next: \"Run `kast --help` for valid commands and arguments.\"\n"
                     "::kast-repro-exit=0\n",
                     started=620,
@@ -278,6 +279,89 @@ class KastCliReproContractTest(unittest.TestCase):
             capture.finish.call_args_list,
         )
 
+    def test_command_completion_uses_a_nonce_and_the_wrapper_timestamp(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            evidence = directory / "evidence"
+            (evidence / "transcripts").mkdir(parents=True)
+            capture = runner.TmuxCapture("session", directory, evidence, keep_session=False)
+            active = runner.ActiveCommand(
+                runner.CommandSpec("probe", ("kast", "symbol", "show")),
+                "%1",
+                100,
+                "nonce",
+            )
+            collision = subprocess.CompletedProcess(
+                [],
+                0,
+                "source preview ::kast-repro-exit=9\n",
+                "",
+            )
+            completion = subprocess.CompletedProcess(
+                [],
+                0,
+                "source preview ::kast-repro-exit=9"
+                "::kast-repro-exit=nonce:0:234\n",
+                "",
+            )
+            killed = subprocess.CompletedProcess([], 0, "", "")
+
+            with (
+                mock.patch.object(
+                    runner.subprocess,
+                    "run",
+                    side_effect=[collision, completion, killed],
+                ),
+                mock.patch.object(runner.time, "sleep"),
+            ):
+                command = capture.finish(active)
+
+            self.assertEqual(0, command.exitCode)
+            self.assertEqual(234, command.finishedAtEpochMillis)
+
+    def test_failed_cold_start_is_not_a_green_replay(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            cold_up = next(command for command in manifest["commands"] if command["name"] == "cold-up")
+            cold_up["exitCode"] = 1
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+            result = self.run_runner("analyze", "--evidence-dir", str(directory), "--format", "json")
+
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertEqual(
+                ["COLD_START_DID_NOT_CONVERGE"],
+                [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+            )
+
+    def test_conflict_after_refresh_completion_is_not_attributed_to_refresh(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            observer = next(
+                command for command in manifest["commands"] if command["name"] == "refresh-observer"
+            )
+            observer["startedAtEpochMillis"] = 205
+            observer["finishedAtEpochMillis"] = 260
+            (directory / observer["transcript"]).write_text(
+                "__KAST_SAMPLE__=1\nready: false\nerror: CONFLICT\n"
+                "next: Run `kast --help`\n"
+                "__KAST_SAMPLE_EPOCH_MILLIS__=250\n::kast-repro-exit=0\n",
+                encoding="utf-8",
+            )
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+            result = self.run_runner("analyze", "--evidence-dir", str(directory), "--format", "json")
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual([], json.loads(result.stdout)["findings"])
+
     def test_telemetry_fields_distributed_across_requests_are_incomplete(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -385,6 +469,33 @@ class KastCliReproContractTest(unittest.TestCase):
                 }.issubset(names),
                 names,
             )
+
+    def test_mutation_plan_probe_rejects_non_top_level_symbol_queries(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            workspace = Path(raw_directory)
+            source = workspace / "src" / "Probe.kt"
+            source.parent.mkdir(parents=True)
+            source.write_text("package example\nclass Probe\n", encoding="utf-8")
+
+            for query in ("example.Widget.render()", "example.Widget.Nested"):
+                with self.subTest(query=query):
+                    result = self.run_runner(
+                        "capture",
+                        "--workspace-root",
+                        str(workspace),
+                        "--file",
+                        "src/Probe.kt",
+                        "--symbol",
+                        query,
+                        "--exercise-plans",
+                        "--dry-run",
+                    )
+
+                    self.assertEqual(2, result.returncode)
+                    self.assertIn(
+                        "--exercise-plans requires a top-level declaration from the --file package",
+                        result.stderr,
+                    )
 
     def test_capsule_process_ownership_requires_a_path_boundary(self) -> None:
         runner = load_runner_module()
