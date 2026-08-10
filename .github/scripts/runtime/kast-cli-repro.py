@@ -1507,7 +1507,24 @@ def timed_observations(observer_text: str) -> list[TimedObservation]:
 def observation_has_expected_outcome(observation: TimedObservation) -> bool:
     return observation.exit_code == 0 or (
         observation.kind == ObservationKind.RESOLVE
-        and re.search(r"(?m)^error: [A-Z][A-Z0-9_]*$", observation.text) is not None
+        and re.search(r"(?m)^error: CONFLICT$", observation.text) is not None
+    )
+
+
+def observation_completed_during(
+    operation: dict[str, Any],
+    observations: list[TimedObservation],
+) -> bool:
+    started = operation.get("startedAtEpochMillis")
+    finished = operation.get("finishedAtEpochMillis")
+    if not all(
+        isinstance(value, int) and not isinstance(value, bool)
+        for value in (started, finished)
+    ):
+        raise ReproError("command timing fields must be integers")
+    return any(
+        started <= observation.finished_at_epoch_millis < finished
+        for observation in observations
     )
 
 
@@ -1602,6 +1619,7 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             or observer.get("timedOut") is True
             or observation_kinds != {ObservationKind.HOME, ObservationKind.RESOLVE}
             or not overlaps(operation, observer)
+            or not observation_completed_during(operation, observations)
             or not all(observation_has_expected_outcome(item) for item in observations)
         ):
             incomplete_observers.append(str(observer.get("transcript")))

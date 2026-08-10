@@ -141,10 +141,10 @@ class KastCliReproContractTest(unittest.TestCase):
                     "cold-observer",
                     "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: false\n"
                     "__KAST_OBSERVATION_EXIT_CODE__=0\n"
-                    "__KAST_OBSERVATION_EPOCH_MILLIS__=125\n"
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=108\n"
                     "__KAST_OBSERVATION__=RESOLVE\nresult: missing\n"
                     "__KAST_OBSERVATION_EXIT_CODE__=0\n"
-                    "__KAST_OBSERVATION_EPOCH_MILLIS__=126\n::kast-repro-exit=0\n",
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=109\n::kast-repro-exit=0\n",
                     started=105,
                     finished=130,
                 ),
@@ -153,10 +153,10 @@ class KastCliReproContractTest(unittest.TestCase):
                     "refresh-observer",
                     "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: true\n"
                     "__KAST_OBSERVATION_EXIT_CODE__=0\n"
-                    "__KAST_OBSERVATION_EPOCH_MILLIS__=225\n"
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=208\n"
                     "__KAST_OBSERVATION__=RESOLVE\nresult: resolved\n"
                     "__KAST_OBSERVATION_EXIT_CODE__=0\n"
-                    "__KAST_OBSERVATION_EPOCH_MILLIS__=226\n::kast-repro-exit=0\n",
+                    "__KAST_OBSERVATION_EPOCH_MILLIS__=209\n::kast-repro-exit=0\n",
                     started=205,
                     finished=230,
                 ),
@@ -288,10 +288,16 @@ class KastCliReproContractTest(unittest.TestCase):
             observer["startedAtEpochMillis"] = 120
             observer["finishedAtEpochMillis"] = 300
             (directory / observer["transcript"]).write_text(
-                "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: true\n"
+                "__KAST_SAMPLE__=1\n__KAST_OBSERVATION__=HOME\nready: false\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=0\n"
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=150\n"
+                "__KAST_OBSERVATION__=RESOLVE\nresult: missing\n"
+                "__KAST_OBSERVATION_EXIT_CODE__=0\n"
+                "__KAST_OBSERVATION_EPOCH_MILLIS__=160\n"
+                "__KAST_SAMPLE__=2\n__KAST_OBSERVATION__=HOME\nready: true\n"
                 "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                 "__KAST_OBSERVATION_EPOCH_MILLIS__=250\n"
-                "__KAST_OBSERVATION__=RESOLVE\n"
+                "__KAST_OBSERVATION__=RESOLVE\nresult: resolved\n"
                 "__KAST_OBSERVATION_EXIT_CODE__=0\n"
                 "__KAST_OBSERVATION_EPOCH_MILLIS__=260\n"
                 f"::kast-repro-exit={observer['completionToken']}:0:300\n",
@@ -450,6 +456,34 @@ class KastCliReproContractTest(unittest.TestCase):
                 [finding["code"] for finding in json.loads(result.stdout)["findings"]],
             )
 
+    def test_unexpected_typed_observer_failure_cannot_replay_as_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+            observer = next(
+                command for command in manifest["commands"]
+                if command["name"] == "cold-observer"
+            )
+            transcript_path = directory / str(observer["transcript"])
+            transcript_path.write_text(
+                transcript_path.read_text(encoding="utf-8").replace(
+                    "result: missing\n__KAST_OBSERVATION_EXIT_CODE__=0\n",
+                    "error: INTERNAL\n__KAST_OBSERVATION_EXIT_CODE__=1\n",
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertEqual(
+                ["OBSERVER_EVIDENCE_INCOMPLETE"],
+                [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+            )
+
     def test_non_overlapping_observer_cannot_replay_as_clean(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
             directory = Path(raw_directory)
@@ -464,6 +498,34 @@ class KastCliReproContractTest(unittest.TestCase):
             observer["finishedAtEpochMillis"] = 130
             manifest_path.write_text(
                 json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_runner(
+                "analyze", "--evidence-dir", str(directory), "--format", "json"
+            )
+
+            self.assertEqual(1, result.returncode, result.stderr)
+            self.assertEqual(
+                ["OBSERVER_EVIDENCE_INCOMPLETE"],
+                [finding["code"] for finding in json.loads(result.stdout)["findings"]],
+            )
+
+    def test_observer_without_a_sample_during_transition_cannot_replay_as_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            directory = Path(raw_directory)
+            self.write_evidence(directory, incident=False)
+            manifest_path = directory / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            observer = next(
+                command for command in manifest["commands"]
+                if command["name"] == "cold-observer"
+            )
+            transcript_path = directory / str(observer["transcript"])
+            transcript_path.write_text(
+                transcript_path.read_text(encoding="utf-8")
+                .replace("__KAST_OBSERVATION_EPOCH_MILLIS__=108", "__KAST_OBSERVATION_EPOCH_MILLIS__=125")
+                .replace("__KAST_OBSERVATION_EPOCH_MILLIS__=109", "__KAST_OBSERVATION_EPOCH_MILLIS__=126"),
                 encoding="utf-8",
             )
 
