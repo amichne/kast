@@ -44,7 +44,7 @@ pub(super) fn unified_refresh(paths: &[serde_json::Value]) -> serde_json::Value 
         "removedFileCount": removed_files.len(),
         "attemptCount": 1,
         "elapsedMillis": 1,
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     })
 }
 
@@ -69,7 +69,7 @@ pub(super) fn unified_diagnostics(paths: &[serde_json::Value]) -> serde_json::Va
         "skippedFileCount": 0,
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     })
 }
 
@@ -142,7 +142,7 @@ pub(super) fn unified_postcondition(authority: &serde_json::Value) -> serde_json
         "currentGeneration": 8,
         "postimages": postimages,
         "evidence": evidence,
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     })
 }
 

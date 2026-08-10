@@ -55,7 +55,7 @@ pub(crate) fn spawn_scripted_indexer_backend(
         socket_path,
         "indexer",
         1,
-        false,
+        true,
         vec![],
         None,
         None,

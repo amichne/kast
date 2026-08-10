@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::ReferenceCoverageState;
+    use crate::runtime::{ReferenceCoverageState, RuntimeReadiness, RuntimeReadinessLane};
     use serde_json::json;
 
     #[test]
@@ -9,9 +9,6 @@ mod tests {
         let root = Path::new("/workspace");
         let mut status = RuntimeStatusResponse {
             state: RuntimeState::Ready,
-            healthy: true,
-            active: true,
-            indexing: false,
             backend_name: "indexer".to_string(),
             backend_version: "test".to_string(),
             workspace_root: root.display().to_string(),
@@ -19,17 +16,17 @@ mod tests {
             warnings: Vec::new(),
             source_module_names: vec!["main".to_string()],
             dependent_module_names_by_source_module_name: serde_json::Map::new(),
-            reference_index_ready: true,
             reference_coverage_state: ReferenceCoverageState::Complete,
             reference_coverage_limitations: vec![],
             published_workspace_generation: None,
+            readiness: RuntimeReadiness::ready(),
             schema_version: crate::SCHEMA_VERSION,
         };
 
         assert!(semantic_status_ready(root, &status));
-        status.reference_index_ready = false;
+        status.readiness.references = RuntimeReadinessLane::Blocked;
         assert!(semantic_status_ready(root, &status));
-        status.reference_index_ready = true;
+        status.readiness.references = RuntimeReadinessLane::Ready;
         status.source_module_names.clear();
         assert!(semantic_status_ready(root, &status));
         status.source_module_names.push("main".to_string());

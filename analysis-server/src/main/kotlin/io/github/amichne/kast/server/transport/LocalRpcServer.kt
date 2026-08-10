@@ -285,9 +285,6 @@ internal fun processRpcStream(
             writer.write(response.response)
             writer.newLine()
             writer.flush()
-            if (response.runAfterFlushAction()) {
-                return
-            }
         }
     }
 }

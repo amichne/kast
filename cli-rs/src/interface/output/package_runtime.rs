@@ -16,6 +16,7 @@ fn print_ubuntu_debian_bundle_package(result: &SetupBundlePackageResult) -> Resu
     print_markdown(&document.into_string())
 }
 
+#[allow(dead_code)]
 pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast status");
@@ -90,6 +91,7 @@ fn ready_target_label(target: ReadyTarget) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast up");
@@ -112,6 +114,7 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
+#[allow(dead_code)]
 pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     let lifecycle_count = result
@@ -147,6 +150,7 @@ pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
+#[allow(dead_code)]
 pub fn print_restart_result(result: &WorkspaceRestartResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     let lifecycle_count = result
@@ -184,6 +188,7 @@ pub fn print_restart_result(result: &WorkspaceRestartResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
+#[allow(dead_code)]
 pub fn print_capabilities(value: &Value) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast capabilities");

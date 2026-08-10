@@ -43,12 +43,6 @@ pub enum Command {
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
-    /// Start or resume the workspace backend and indexing.
-    Start(RuntimeArgs),
-    /// Check the current workspace status.
-    Status(RuntimeArgs),
-    /// Stop indexing and the workspace backend.
-    Stop(RuntimeArgs),
     /// Explore a guided semantic story from this Kotlin repository.
     Demo(PublicDemoArgs),
     /// Send one JSON-RPC request through Kast's canonical machine surface.
@@ -60,6 +54,9 @@ pub enum Command {
     Doctor(DoctorArgs),
     /// Agent setup, readiness, and pipe-friendly semantic requests.
     Agent(AgentArgs),
+    /// Internal service-manager entrypoint.
+    #[command(name = "__runtime-service-entrypoint", hide = true)]
+    RuntimeServiceEntrypoint(RuntimeServiceEntrypointArgs),
 }
 
 #[derive(Debug, Args, Clone)]

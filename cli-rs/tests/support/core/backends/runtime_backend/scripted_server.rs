@@ -1,3 +1,9 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScriptedRuntimeAuthority {
+    PublishExact,
+    ReuseRegistered,
+}
+
 #[allow(clippy::too_many_arguments)]
 fn spawn_scripted_backend_with_additional_runtime_status_requests(
     home: &Path,
@@ -14,6 +20,7 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
     scratch_crash_gate: Option<ScriptedScratchCrashGate>,
     additional_runtime_status_requests: usize,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
+    runtime_authority: ScriptedRuntimeAuthority,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     assert!(invocation_count > 0, "scripted backend needs an invocation");
     let descriptor_dir = default_descriptor_dir(home);
@@ -22,24 +29,26 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     let workspace = std::fs::canonicalize(workspace).expect("canonical scripted workspace");
+    publish_scripted_workspace_capabilities(&workspace);
     let listener = UnixListener::bind(socket_path).expect("bind scripted backend");
-    std::fs::write(
-        descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
+    let exact_test_runtime = match runtime_authority {
+        ScriptedRuntimeAuthority::PublishExact => Some(publish_exact_test_runtime(
+            home,
             &workspace,
             socket_path,
             backend_name,
             "scripted-test",
-        )]))
-        .expect("descriptor json"),
-    )
-    .expect("descriptor");
+            &descriptor_dir,
+        )),
+        ScriptedRuntimeAuthority::ReuseRegistered => None,
+    };
     listener
         .set_nonblocking(true)
         .expect("nonblocking scripted backend");
     let server_workspace = workspace;
     let server_backend_name = backend_name.to_string();
     thread::spawn(move || {
+        let _exact_test_runtime = exact_test_runtime;
         let mut requests = Vec::new();
         let mut mutation_gate = mutation_gate;
         let mut scratch_crash_gate = scratch_crash_gate;
@@ -83,15 +92,18 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
                 "runtime/status" => {
                     let mut status = serde_json::json!({
                         "state": "READY",
-                        "healthy": true,
-                        "active": true,
-                        "indexing": false,
                         "backendName": server_backend_name.as_str(),
                         "backendVersion": "scripted-test",
                         "workspaceRoot": server_workspace.display().to_string(),
-                        "sourceModuleNames": if semantic_ready { vec![":fixture"] } else { vec![] },
-                        "referenceIndexReady": semantic_ready,
-                        "schemaVersion": 6
+                        "sourceModuleNames": [":fixture"],
+                        "readiness": {
+                            "runtime": {"type": "READY"},
+                            "model": {"type": "READY"},
+                            "references": {"type": if semantic_ready { "READY" } else { "BLOCKED" }},
+                            "semanticGraph": {"type": if semantic_ready { "READY" } else { "BLOCKED" }},
+                            "mutation": {"type": "READY"}
+                        },
+                        "schemaVersion": 7
                     });
                     if let Some(published) =
                         published_workspace_generation_for_test(&server_workspace)
@@ -120,7 +132,7 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 }),
                 _ => {
                     if matches!(
@@ -238,4 +250,18 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
         }
         requests
     })
+}
+
+include!("scripted_server/exact_runtime.rs");
+
+pub(crate) fn publish_scripted_workspace_capabilities(workspace: &Path) {
+    let database = workspace_database_path_for_test(workspace);
+    if !database.is_file() {
+        crate::support::metrics::seed_source_index(workspace);
+    }
+    let connection = rusqlite::Connection::open(&database).expect("scripted source index");
+    connection
+        .execute("UPDATE schema_version SET generation = 1 WHERE generation = 0", [])
+        .expect("scripted source revision");
+    publish_workspace_database_for_test(workspace);
 }

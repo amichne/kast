@@ -57,39 +57,14 @@ fn workspace_files_args(workspace_root: PathBuf) -> AgentWorkspaceFilesArgs {
     }
 }
 
-fn ready_result(workspace_root: &Path, status: Option<&RuntimeStatusResponse>) -> Option<UpResult> {
-    let status = status?;
-    semantic_status_ready(workspace_root, status).then(|| UpResult {
-        root: workspace_root.display().to_string(),
-        ready: true,
-        runtime: "READY",
-        backend: status.backend_name.clone(),
-        reference_index_ready: status.reference_index_ready,
-        source_module_count: status.source_module_names.len(),
-        next: vec![
-            "kast workspace refresh",
-            "kast file list",
-            "kast symbol search --query <query>",
-        ],
-    })
-}
-
+#[cfg(test)]
 fn semantic_status_ready(workspace_root: &Path, status: &RuntimeStatusResponse) -> bool {
     config::normalize(PathBuf::from(&status.workspace_root))
         == config::normalize(workspace_root.to_path_buf())
         && status.state == RuntimeState::Ready
-        && status.healthy
-        && status.active
-        && !status.indexing
-}
-
-fn runtime_state_name(state: &RuntimeState) -> &'static str {
-    match state {
-        RuntimeState::Starting => "STARTING",
-        RuntimeState::Indexing => "INDEXING",
-        RuntimeState::Ready => "READY",
-        RuntimeState::Degraded => "DEGRADED",
-    }
+        && status.healthy()
+        && status.active()
+        && !status.indexing()
 }
 
 fn public_file_collection(value: &Value) -> Result<Value> {

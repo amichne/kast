@@ -23,7 +23,6 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
         preview_content.as_ref().map(TemporaryPreviewContent::path),
         false,
         None,
-        None,
     )?)?;
     if preview.get("ok") != Some(&Value::Bool(true)) {
         return agent_adapter::print_backend_failure(operation, preview, output_format);

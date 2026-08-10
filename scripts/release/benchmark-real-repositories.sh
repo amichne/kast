@@ -201,14 +201,34 @@ kastctl_operation() {
   case "$arguments" in
     *' setup '*) printf 'setup\n' ;;
     *' config '*) printf 'config\n' ;;
-    *' developer runtime up '*) printf 'runtime-up\n' ;;
-    *' developer runtime status '*) printf 'runtime-status\n' ;;
-    *' developer runtime stop '*) printf 'runtime-stop\n' ;;
+    *' developer inspect lifecycle '*) printf 'lifecycle-inspect\n' ;;
     *' agent workspace-files '*) printf 'workspace-files\n' ;;
     *' agent graph '*' --operation refresh '*) printf 'graph-refresh\n' ;;
     *' agent graph '*' --operation summary '*) printf 'graph-summary\n' ;;
     *) printf 'kastctl\n' ;;
   esac
+}
+
+run_kast_with_cold_budget() {
+  local deadline
+  if [[ -n "${benchmark_command_deadline_override:-}" ]]; then
+    deadline="$benchmark_command_deadline_override"
+  elif [[ "${benchmark_cold_budget_active:-false}" == true ]]; then
+    [[ -n "${benchmark_cold_deadline_monotonic_ms:-}" ]] \
+      || { printf 'error: active cold-phase budget has no deadline\n' >&2; return 2; }
+    deadline="$benchmark_cold_deadline_monotonic_ms"
+  else
+    deadline="$(role_command_deadline)"
+  fi
+  run_supervised_command "$deadline" semantic-demand \
+    env \
+      HOME="$benchmark_user_dir" \
+      KAST_HOME="$benchmark_kast_home" \
+      KAST_CACHE_HOME="$benchmark_cache_dir" \
+      GRADLE_USER_HOME="$benchmark_gradle_dir" \
+      KAST_WORKSPACE_ID="release-benchmark-$name-$benchmark_role" \
+      KAST_BENCHMARK_RUN_ID="$benchmark_run_marker" \
+      "$active_kast" "$@"
 }
 
 run_kastctl_with_cold_budget() {
@@ -317,26 +337,14 @@ try:
 except (OSError, json.JSONDecodeError):
     raise SystemExit(1)
 result = payload.get("result", payload)
-runtime = result.get("runtime") if isinstance(result, dict) else None
+epoch = result.get("epoch") if isinstance(result, dict) else None
 if (
-    isinstance(runtime, dict)
-    and runtime.get("state") in {"STARTING", "INDEXING", "READY"}
-    and isinstance(runtime.get("ownership"), dict)
-    and runtime["ownership"].get("assessment") == "OWNED"
-):
-    raise SystemExit(0)
-
-# v0.21.6 has no layered ownership projection. Its endpoint-backed status is
-# admissible only after the selected process is alive and reachable.
-selected = result.get("selected") if isinstance(result, dict) else None
-if not isinstance(selected, dict):
-    raise SystemExit(1)
-status = selected.get("runtimeStatus")
-if (
-    selected.get("pidAlive") is True
-    and selected.get("reachable") is True
-    and isinstance(status, dict)
-    and status.get("state") in {"INDEXING", "READY"}
+    isinstance(result, dict)
+    and result.get("state") == "Epoch"
+    and isinstance(epoch, dict)
+    and epoch.get("phase") in {"STARTING", "MODEL_READY", "RUNTIME_AVAILABLE"}
+    and isinstance(epoch.get("runtime_instance_id"), str)
+    and epoch.get("runtime_instance_id")
 ):
     raise SystemExit(0)
 raise SystemExit(1)
@@ -1878,7 +1886,7 @@ benchmark_progress_sample_impl() {
   benchmark_last_status_file="$status_file"
   if [[ "$phase" == BASELINE ]]; then
     printf '{}\n' >"$status_file"
-  elif run_kastctl_with_cold_budget --output json developer runtime status \
+  elif run_kastctl_with_cold_budget --output json developer inspect lifecycle \
       --workspace-root "$workspace" >"$status_file" 2>/dev/null; then
     status_exit=0
   else
@@ -2084,27 +2092,6 @@ with samples_file.open("a", encoding="utf-8") as handle:
 PY
 }
 
-runtime_stop_was_proven() {
-  local output="$1"
-  run_supervised_command "$(role_command_deadline)" runtime-stop-proof \
-    "$BENCHMARK_PYTHON_BIN" - "$output" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-try:
-    payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-except (OSError, json.JSONDecodeError):
-    raise SystemExit(1)
-result = payload.get("result", payload)
-if not isinstance(result, dict):
-    raise SystemExit(1)
-if result.get("stopped") is True or result.get("stoppedCount", 0) > 0:
-    raise SystemExit(0)
-raise SystemExit(1)
-PY
-}
-
 terminate_owned_processes() {
   local deadline result_file
   deadline=$(($(monotonic_millis) + TEARDOWN_COMMAND_LIMIT_MILLIS))
@@ -2116,25 +2103,6 @@ terminate_owned_processes() {
     --result-json "$result_file" \
     --term-grace-millis 5000 \
     --kill-grace-millis 2000
-}
-
-stop_runtime_and_prove() {
-  local stop_result=0 stop_output="$benchmark_run_dir/runtime-stop.json" stop_deadline
-  if [[ "$benchmark_runtime_invoked" == true ]]; then
-    stop_deadline=$(($(monotonic_millis) + TEARDOWN_COMMAND_LIMIT_MILLIS))
-    benchmark_command_deadline_override="$stop_deadline" \
-      run_json_command "$stop_output" developer runtime stop \
-        --workspace-root "$workspace" || stop_result=$?
-    if ((stop_result == 0)) \
-        && ! benchmark_command_deadline_override="$stop_deadline" \
-          runtime_stop_was_proven "$stop_output"; then
-      print_file_stderr "$stop_output"
-      printf 'error: runtime stop did not prove that a runtime stopped\n' >&2
-      stop_result=1
-    fi
-  fi
-  terminate_owned_processes || stop_result=1
-  return "$stop_result"
 }
 
 finalize_run_evidence() {
@@ -2417,7 +2385,7 @@ finish_role() {
   trap - EXIT
   set +e
   benchmark_cold_budget_active=false
-  stop_runtime_and_prove
+  terminate_owned_processes
   teardown_result=$?
   if ((teardown_result == 0)); then
     teardown_proven=true
@@ -2486,7 +2454,6 @@ run_bundle_benchmark() {
   benchmark_last_status_file=
   benchmark_last_status_observed_epoch=
   benchmark_last_status_observed_monotonic=
-  benchmark_runtime_invoked=false
   benchmark_cold_budget_active=false
   benchmark_worktree_added=false
   benchmark_semantic_correctness=false
@@ -2494,6 +2461,7 @@ run_bundle_benchmark() {
   workspace=
   scoped_graph_file=
   active_kastctl=
+  active_kast=
   poll_seconds="${KAST_RELEASE_INDEX_POLL_SECONDS:-5}"
   identity_timeout_ms="${KAST_RELEASE_IDENTITY_TIMEOUT_MS:-$IDENTITY_CAPTURE_LIMIT_MILLIS}"
   [[ "$poll_seconds" =~ ^[0-9]+$ ]] \
@@ -2548,8 +2516,11 @@ run_bundle_benchmark() {
       KAST_BENCHMARK_RUN_ID="$benchmark_run_marker" \
       "$bundle_bin" --output json setup --source "$bundle_root" >/dev/null
   active_kastctl="$benchmark_kast_home/current/libexec/kastctl"
+  active_kast="$benchmark_kast_home/current/bin/kast"
   [[ -x "$active_kastctl" ]] \
     || { printf 'error: setup did not install kastctl for %s\n' "$benchmark_role" >&2; return 1; }
+  [[ -x "$active_kast" ]] \
+    || { printf 'error: setup did not install kast for %s\n' "$benchmark_role" >&2; return 1; }
   record_phase setup "$phase_started_epoch" "$phase_started_monotonic"
 
   phase_started_epoch="$(epoch_millis)"
@@ -2573,10 +2544,7 @@ run_bundle_benchmark() {
   cold_started_monotonic="$(monotonic_millis)"
   benchmark_cold_deadline_monotonic_ms=$((cold_started_monotonic + wait_timeout_ms))
   benchmark_cold_budget_active=true
-  benchmark_runtime_invoked=true
-  run_json_command "$benchmark_run_dir/runtime.json" developer runtime up \
-    --workspace-root "$workspace" \
-    --wait-timeout-ms "$wait_timeout_ms" &
+  run_kast_with_cold_budget up >"$benchmark_run_dir/runtime.toon" &
   runtime_command_pid=$!
   while kill -0 "$runtime_command_pid" >/dev/null 2>&1; do
     benchmark_progress_sample RUNTIME_ADMISSION

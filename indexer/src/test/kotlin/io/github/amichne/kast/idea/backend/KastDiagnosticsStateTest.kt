@@ -4,6 +4,7 @@ import io.github.amichne.kast.idea.diagnostics.*
 
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.RuntimeReadiness
 import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import io.github.amichne.kast.api.contract.ReferenceCoverageState
@@ -79,12 +80,10 @@ class KastDiagnosticsStateTest {
     fun `reference index readiness changes only its layered readiness lane`() {
         val readyBackend = RuntimeStatusResponse(
             state = RuntimeState.READY,
-            healthy = true,
-            active = true,
-            indexing = false,
             backendName = "indexer",
             backendVersion = "test",
             workspaceRoot = "/workspace",
+            readiness = RuntimeReadiness.ready(),
         )
 
         val indexing = readyBackend.withReferenceIndex(
@@ -106,7 +105,7 @@ class KastDiagnosticsStateTest {
             ),
         )
 
-        assertFalse(indexing.referenceIndexReady)
+        assertFalse(indexing.readiness.references is RuntimeReadinessLane.Ready)
         assertTrue(indexing.readiness.runtime is RuntimeReadinessLane.Ready)
         assertTrue(indexing.readiness.references is RuntimeReadinessLane.InProgress)
         assertEquals(ReferenceCoverageState.QUALIFIED, indexing.referenceCoverageState)
@@ -114,21 +113,21 @@ class KastDiagnosticsStateTest {
             listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS),
             indexing.referenceCoverageLimitations,
         )
-        assertTrue(ready.referenceIndexReady)
+        assertTrue(ready.readiness.references is RuntimeReadinessLane.Ready)
         assertTrue(ready.readiness.references is RuntimeReadinessLane.Ready)
         assertEquals(ReferenceCoverageState.QUALIFIED, readyWithBoundaries.referenceCoverageState)
         assertEquals(
             listOf(ReferenceCoverageLimitation.NONCRITICAL_STAGE_GAP),
             readyWithBoundaries.referenceCoverageLimitations,
         )
-        assertTrue(readyWithBoundaries.healthy)
-        assertTrue(readyWithBoundaries.referenceIndexReady)
+        assertFalse(readyWithBoundaries.readiness.runtime is RuntimeReadinessLane.Blocked)
+        assertTrue(readyWithBoundaries.readiness.references is RuntimeReadinessLane.Ready)
         assertEquals(ReferenceCoverageState.INCOMPLETE, degraded.referenceCoverageState)
         assertEquals(
             listOf(ReferenceCoverageLimitation.CRITICAL_STAGE_GAP),
             degraded.referenceCoverageLimitations,
         )
-        assertTrue(degraded.healthy)
+        assertFalse(degraded.readiness.runtime is RuntimeReadinessLane.Blocked)
 
         assertThrows<IllegalArgumentException> {
             readyBackend.withReferenceIndex(

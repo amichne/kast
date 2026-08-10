@@ -137,11 +137,18 @@ reject "$benchmark" 'ps eww' \
   'production ownership discovery must not classify from a stale ps snapshot'
 require "$benchmark" 'run_kastctl_with_cold_budget()' \
   'every cold-phase Kast call must share the remaining monotonic budget'
+reject "$benchmark" 'developer runtime up' \
+  'semantic demand must replace the retired runtime-up authority'
+reject "$benchmark" 'developer runtime status' \
+  'lifecycle sampling must use the sole read-only inspection command'
+reject "$benchmark" 'developer runtime stop' \
+  'idle policy owns shutdown; the benchmark must not request it'
+require "$benchmark" 'developer inspect lifecycle' \
+  'benchmark lifecycle evidence must come from read-only inspection'
+require "$benchmark" 'run_kast_with_cold_budget up' \
+  'cold runtime admission must begin with public semantic demand'
 require "$benchmark" 'readonly TEARDOWN_COMMAND_LIMIT_MILLIS=30000' \
   'runtime teardown must have a fixed command deadline so evidence finalization cannot hang'
-# shellcheck disable=SC2016
-require "$benchmark" 'benchmark_command_deadline_override="$stop_deadline"' \
-  'runtime stop must be bounded before evidence finalization'
 # shellcheck disable=SC2016
 reject "$benchmark" '"$runtime_command_pid" "$runtime_command_start_identity" 50 20 || true' \
   'runtime timeout must fail closed when atomic teardown cannot be proven'
@@ -161,10 +168,8 @@ reject "$benchmark" "repository_worktree=\"\$scratch/repository\"" \
   'stable and candidate must not share one repository worktree'
 require "$benchmark" "benchmark_repository_worktree=\"\$benchmark_run_dir/repository\"" \
   'each role must receive its own clean repository worktree'
-require "$benchmark" 'runtime_stop_was_proven()' \
-  'runtime stop must validate typed stop evidence'
 require "$benchmark" 'processTeardownProven' \
-  'run evidence must report process teardown proof'
+  'run evidence must report supervised benchmark-process teardown proof'
 require "$benchmark" 'worktreeRemoved' \
   'run evidence must report worktree removal proof'
 reject "$benchmark" "kastctl developer runtime stop --workspace-root \"\$workspace\" >/dev/null 2>&1 || true" \
@@ -1123,23 +1128,23 @@ PY
   fi
 fi
 
-printf '%s\n' '{"selected":{"pidAlive":true,"reachable":true,"runtimeStatus":{"state":"INDEXING"}}}' \
+printf '%s\n' '{"state":"Epoch","epoch":{"runtime_instance_id":"epoch-1","phase":"MODEL_READY"}}' \
   >"$scratch/admitted-status.json"
 runtime_is_durably_admitted "$scratch/admitted-status.json" \
-  || die 'INDEXING runtime was not recognized as durably admitted'
-printf '%s\n' '{"ok":true,"result":{"runtime":{"state":"STARTING","ownership":{"assessment":"OWNED"}}}}' \
+  || die 'MODEL_READY epoch was not recognized as durably admitted'
+printf '%s\n' '{"state":"Epoch","epoch":{"runtime_instance_id":"epoch-2","phase":"STARTING"}}' \
   >"$scratch/service-starting-status.json"
 runtime_is_durably_admitted "$scratch/service-starting-status.json" \
-  || die 'service-owned STARTING runtime was not recognized as durably admitted'
-printf '%s\n' '{"ok":true,"result":{"runtime":{"state":"STARTING","ownership":{"assessment":"CONFLICT"}}}}' \
+  || die 'STARTING epoch was not recognized as durably admitted'
+printf '%s\n' '{"state":"Blocked","blocker":{"code":"RUNTIME_OWNERSHIP_AMBIGUOUS"}}' \
   >"$scratch/ambiguous-starting-status.json"
 if runtime_is_durably_admitted "$scratch/ambiguous-starting-status.json"; then
   die 'ambiguous STARTING runtime was recognized as durably admitted'
 fi
-printf '%s\n' '{"selected":{"pidAlive":true,"reachable":false,"runtimeStatus":{"state":"INDEXING"}}}' \
+printf '%s\n' '{"state":"Absent"}' \
   >"$scratch/unreachable-status.json"
 if runtime_is_durably_admitted "$scratch/unreachable-status.json"; then
-  die 'unreachable runtime was recognized as durably admitted'
+  die 'absent runtime was recognized as durably admitted'
 fi
 
 graph_refresh_attempt_file="$scratch/graph-refresh-attempts"
@@ -1190,6 +1195,7 @@ SH
 chmod 700 "$fake_kastctl"
 export graph_refresh_attempt_file graph_refresh_scenario
 active_kastctl="$fake_kastctl"
+active_kast="$fake_kastctl"
 benchmark_user_dir="$scratch/fake-user"
 benchmark_kast_home="$scratch/fake-kast-home"
 benchmark_cache_dir="$scratch/fake-kast-cache"
@@ -1218,7 +1224,7 @@ for hanging_call in status workspace; do
       KAST_RELEASE_COMMAND_KILL_GRACE_MILLIS=500 \
       benchmark_cold_budget_active=true \
       benchmark_cold_deadline_monotonic_ms="$hanging_deadline" \
-      run_kastctl_with_cold_budget developer runtime status \
+      run_kastctl_with_cold_budget developer inspect lifecycle \
       >"$scratch/hanging-status.json" 2>/dev/null
   else
       KAST_BENCHMARK_TEST_SIGNAL_HELPER="$test_signal_helper" \

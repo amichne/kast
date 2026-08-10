@@ -25,40 +25,40 @@
       "rpcBindings": [],
       "rpcMethods": [],
       "successors": [
-        "workspace.ensure"
+        "workspace.up",
+        "workspace.refresh",
+        "file.list",
+        "symbol.search",
+        "diagnostic.check"
       ]
     },
     {
-      "capability": "WORKSPACE_RUNTIME",
+      "capability": "SEMANTIC_DEMAND",
       "cli": {
         "segments": [
-          "workspace",
-          "ensure"
+          "up"
         ],
-        "syntax": "kast workspace ensure"
+        "syntax": "kast up"
       },
       "evidence": [
         "runtimeReady",
-        "referenceIndexReady"
+        "currentSource"
       ],
       "examples": [
-        "kast workspace ensure"
+        "kast up"
       ],
       "failureType": "workspace",
-      "id": "workspace.ensure",
+      "id": "workspace.up",
       "paging": {
         "type": "unpaged"
       },
-      "requestType": "workspaceEnsure",
+      "requestType": "workspaceUp",
       "resultDiscriminators": [
-        "workspace-ready"
+        "workspace-up"
       ],
-      "resultType": "workspaceReady",
+      "resultType": "workspaceUp",
       "rpcBindings": [],
-      "rpcMethods": [
-        "runtime/status",
-        "capabilities"
-      ],
+      "rpcMethods": [],
       "successors": [
         "workspace.refresh",
         "file.list",

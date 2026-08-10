@@ -156,7 +156,7 @@ fn public_output_flag_selects_json() {
     assert!(output.status.success(), "{output:?}");
     let value: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("public JSON output");
-    assert_eq!(value["schemaVersion"], 2, "{value:#}");
+    assert_eq!(value["schemaVersion"], 3, "{value:#}");
     assert_eq!(value["operation"], "workspace.home", "{value:#}");
     assert_eq!(value["status"], "complete", "{value:#}");
     assert_eq!(value["result"]["type"], "home", "{value:#}");
@@ -222,7 +222,7 @@ fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
             .trim(),
     )
     .expect("first graph page TOON");
-    assert_eq!(first["schemaVersion"], 2, "{first:#}");
+    assert_eq!(first["schemaVersion"], 3, "{first:#}");
     assert_eq!(first["operation"], "graph.nodes", "{first:#}");
     assert_eq!(first["status"], "complete", "{first:#}");
     assert_eq!(first["result"]["type"], "graph-nodes", "{first:#}");

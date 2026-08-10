@@ -269,7 +269,7 @@ internal fun RuntimeStatusResponse.withReferenceIndex(
         ),
     )
     val readiness = covered.readiness.copy(references = referenceLane)
-    return covered.copy(readiness = readiness, ready = readiness.summary.toWireBoolean())
+    return covered.copy(readiness = readiness)
 }
 
 /**

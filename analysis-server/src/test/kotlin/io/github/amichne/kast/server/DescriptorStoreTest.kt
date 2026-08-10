@@ -11,6 +11,11 @@ import io.github.amichne.kast.api.client.RuntimeWorkspaceRoot
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.client.ServerInstanceOwnership
 import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseKind
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
+import io.github.amichne.kast.api.contract.RuntimeLeaseSchedule
+import io.github.amichne.kast.api.contract.RuntimeLeaseScheduler
+import io.github.amichne.kast.api.contract.RuntimeStopPermit
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -176,6 +181,41 @@ class DescriptorStoreTest {
         assertEquals("[]", Files.readString(registryTarget))
     }
 
+    @Test
+    fun `stop permit is admitted only while exact registration process epoch and socket survive`() {
+        val bindPath = tempDir.resolve("run/stop.sock")
+        val socketPath = RuntimeSocketPath.of(bindPath)
+        val store = DescriptorStore(DescriptorRegistryPath.of(tempDir.resolve("instances/daemons.json")))
+        val request = launchRequest(socketPath, readEffectiveProcessOwnerUid(tempDir))
+        val launched = store.launchEndpoint(request) { bindTestEndpoint(socketPath, bindPath) }
+        var scheduled: (() -> Unit)? = null
+        val registry = RuntimeCapabilityLeaseRegistry(
+            epoch = request.runtimeInstanceId,
+            scheduler = RuntimeLeaseScheduler { _, action ->
+                scheduled = action
+                RuntimeLeaseSchedule { scheduled = null }
+            },
+        )
+        var permit: RuntimeStopPermit? = null
+        registry.onStopPermit { permit = it }
+
+        try {
+            registry.acquire(RuntimeCapabilityLeaseKind.REQUEST).close()
+            checkNotNull(scheduled).invoke()
+            val issued = checkNotNull(permit)
+            assertEquals(StopIdentityAdmission.Admitted, store.admitStop(issued, launched.descriptor))
+
+            launched.server.close()
+            assertEquals(StopIdentityAdmission.Rejected, store.admitStop(issued, launched.descriptor))
+
+            store.delete(launched.descriptor)
+            assertEquals(StopIdentityAdmission.Rejected, store.admitStop(issued, launched.descriptor))
+        } finally {
+            registry.close()
+            launched.server.close()
+        }
+    }
+
     private fun launchRequest(
         socketPath: RuntimeSocketPath,
         effectiveOwner: EffectiveProcessOwnerUid,
@@ -187,7 +227,9 @@ class DescriptorStoreTest {
         runtimeInstanceId = RuntimeInstanceId.create(),
         processIdentity = RuntimeProcessIdentity(
             processId = ProcessId.current(),
-            processStartEpochMillis = ProcessStartEpochMillis.of(1),
+            processStartEpochMillis = ProcessStartEpochMillis.of(
+                ProcessHandle.current().info().startInstant().orElseThrow().toEpochMilli(),
+            ),
         ),
         effectiveProcessOwnerUid = effectiveOwner,
     )

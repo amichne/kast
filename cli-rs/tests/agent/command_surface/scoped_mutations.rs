@@ -226,15 +226,15 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
             "issue-392-replace",
         ])
         .output()
-        .expect("replace declaration without workspace lease");
+        .expect("replace declaration with an internal capability lease");
     assert!(
         !apply.status.success(),
-        "replace submission must require a workspace lease: stdout={}, stderr={}",
+        "the exhausted fixture must fail after internal lease acquisition: stdout={}, stderr={}",
         String::from_utf8_lossy(&apply.stdout),
         String::from_utf8_lossy(&apply.stderr),
     );
-    let apply: Value = serde_json::from_slice(&apply.stdout).expect("lease error json");
-    assert_eq!(apply["error"]["code"], "WORKSPACE_LEASE_REQUIRED");
+    let apply: Value = serde_json::from_slice(&apply.stdout).expect("terminal error json");
+    assert_ne!(apply["error"]["code"], "WORKSPACE_LEASE_REQUIRED");
 }
 
 #[test]

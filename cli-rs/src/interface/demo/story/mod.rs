@@ -93,8 +93,12 @@ pub fn run_public(args: PublicDemoArgs, output_format: OutputFormat) -> Result<i
         io::stdin().is_terminal(),
         io::stdout().is_terminal(),
     );
-    let (snapshot, connection) = public_demo_snapshot(&db, !interactive)?;
-    db.request.published_read.revalidate()?;
+    let snapshot_and_connection = public_demo_snapshot(&db, !interactive)?;
+    let (snapshot, connection) = db
+        .request
+        .published_read
+        .revalidate()?
+        .finish(snapshot_and_connection);
     if interactive {
         return run_public_demo_tui(Some(db), snapshot, connection);
     }
@@ -258,7 +262,7 @@ fn detect_demo_backend(request: &DemoRequest) -> (Option<DemoBackendConnection>,
     let reference_index_ready = selected
         .runtime_status
         .as_ref()
-        .is_some_and(|status| status.reference_index_ready);
+        .is_some_and(|status| status.reference_index_ready());
     (
         Some(DemoBackendConnection {
             summary: DemoBackendSummary {

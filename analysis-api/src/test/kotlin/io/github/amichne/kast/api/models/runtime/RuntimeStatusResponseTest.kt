@@ -1,10 +1,7 @@
 package io.github.amichne.kast.api.contract
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.time.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -27,7 +24,6 @@ class RuntimeStatusResponseTest {
         val response = Json.decodeFromString<RuntimeStatusResponse>(
             runtimeStatusJson(
                 """
-                "referenceIndexReady": true,
                 "referenceCoverageState": "QUALIFIED",
                 "referenceCoverageLimitations": ["NONCRITICAL_STAGE_GAP"],
                 """.trimIndent(),
@@ -41,26 +37,17 @@ class RuntimeStatusResponseTest {
             response.referenceCoverage.limitations,
         )
         val encoded = Json.encodeToJsonElement(RuntimeStatusResponse.serializer(), response).jsonObject
-        assertTrue(encoded.getValue("referenceIndexReady").jsonPrimitive.boolean)
-        assertEquals("QUALIFIED", encoded.getValue("referenceCoverageState").jsonPrimitive.content)
-        assertEquals(
-            listOf("NONCRITICAL_STAGE_GAP"),
-            encoded.getValue("referenceCoverageLimitations").jsonArray.map { it.jsonPrimitive.content },
-        )
+        assertFalse("referenceIndexReady" in encoded)
         assertFalse("referenceCoverage" in encoded)
     }
 
     @Test
-    fun `serialization derives coverage for legacy readiness-only payloads`() {
-        val ready = Json.decodeFromString<RuntimeStatusResponse>(legacyRuntimeStatusJson(referenceIndexReady = true))
-        val unavailable = Json.decodeFromString<RuntimeStatusResponse>(
-            legacyRuntimeStatusJson(referenceIndexReady = false),
-        )
-
-        assertEquals(ReferenceCoverageState.COMPLETE, ready.referenceCoverage.state)
-        assertTrue(ready.referenceCoverage.indexReady)
-        assertEquals(ReferenceCoverageState.UNAVAILABLE, unavailable.referenceCoverage.state)
-        assertFalse(unavailable.referenceCoverage.indexReady)
+    fun `legacy boolean lifecycle fields are rejected`() {
+        assertThrows<Exception> {
+            Json { ignoreUnknownKeys = false }.decodeFromString<RuntimeStatusResponse>(
+                runtimeStatusJson("\"healthy\": true,"),
+            )
+        }
     }
 
     @Test
@@ -69,6 +56,9 @@ class RuntimeStatusResponseTest {
             generation = 7,
             identity = "workspace-state",
             sourceIndexGeneration = 19,
+            sourceRevision = 19,
+            referenceRevision = 19,
+            graphPublication = PublishedGraphEvidenceStatus.Ready(19),
             sourceIndexSchemaVersion = 3,
             databaseFile = "source-index.db",
             repositoryOverlayFile = "repository-overlay.json",
@@ -76,13 +66,11 @@ class RuntimeStatusResponseTest {
         )
         val response = RuntimeStatusResponse(
             state = RuntimeState.READY,
-            healthy = true,
-            active = true,
-            indexing = false,
             backendName = "indexer",
             backendVersion = "test",
             workspaceRoot = "/workspace",
             publishedWorkspaceGeneration = published,
+            readiness = RuntimeReadiness.ready(),
         )
 
         val encoded = Json.encodeToString(RuntimeStatusResponse.serializer(), response)
@@ -94,7 +82,11 @@ class RuntimeStatusResponseTest {
     @Test
     fun `layered readiness keeps runtime model graph and references distinct`() {
         val response = Json.decodeFromString<RuntimeStatusResponse>(
-            legacyRuntimeStatusJson(referenceIndexReady = false),
+            runtimeStatusJson(
+                "\"referenceCoverageState\": \"UNAVAILABLE\",\n" +
+                    "\"referenceCoverageLimitations\": [],",
+                references = "BLOCKED",
+            ),
         )
 
         assertTrue(response.readiness.runtime is RuntimeReadinessLane.Ready)
@@ -102,38 +94,13 @@ class RuntimeStatusResponseTest {
         assertTrue(response.readiness.semanticGraph is RuntimeReadinessLane.Ready)
         assertTrue(response.readiness.references is RuntimeReadinessLane.Blocked)
         assertEquals(RuntimeReadinessSummary.NotReady, response.readiness.summary)
-        assertFalse(response.ready)
+        assertEquals(RuntimeReadinessSummary.NotReady, response.readiness.summary)
     }
 
     @Test
-    fun `runtime status rejects a legacy ready bit that contradicts layered readiness`() {
-        val readiness = RuntimeReadiness(
-            runtime = RuntimeReadinessLane.Ready,
-            model = RuntimeReadinessLane.Ready,
-            references = RuntimeReadinessLane.Ready,
-            semanticGraph = RuntimeReadinessLane.Ready,
-            mutation = RuntimeReadinessLane.Ready,
-        )
-
-        val failure = assertThrows<RuntimeStatusConsistencyException> {
-            RuntimeStatusResponse(
-                state = RuntimeState.READY,
-                healthy = true,
-                active = true,
-                indexing = false,
-                backendName = "indexer",
-                backendVersion = "test",
-                workspaceRoot = "/workspace",
-                referenceIndexReady = true,
-                readiness = readiness,
-                ready = false,
-            )
-        }.failure
-
-        assertEquals(
-            RuntimeStatusConsistencyFailure.ReadySummaryMismatch(RuntimeReadinessSummary.Ready, false),
-            failure,
-        )
+    fun `runtime status requires tagged readiness lanes`() {
+        val payload = runtimeStatusJson("").replace(Regex(",?\\s*\"readiness\"[\\s\\S]*?\n  },\n  \"schemaVersion\""), "\n  \"schemaVersion\"")
+        assertThrows<Exception> { Json.decodeFromString<RuntimeStatusResponse>(payload) }
     }
 
     @Test
@@ -145,7 +112,7 @@ class RuntimeStatusResponseTest {
         val actualLane = RuntimeReadinessLane.inProgress(RuntimeProgressStage.SOURCE_INDEX)
         val readiness = RuntimeReadiness(
             runtime = RuntimeReadinessLane.Ready,
-            model = RuntimeReadinessLane.Ready,
+            model = RuntimeReadinessLane.inProgress(RuntimeProgressStage.GRADLE_IMPORT),
             references = actualLane,
             semanticGraph = RuntimeReadinessLane.Ready,
             mutation = RuntimeReadinessLane.Ready,
@@ -154,17 +121,12 @@ class RuntimeStatusResponseTest {
         val failure = assertThrows<RuntimeStatusConsistencyException> {
             RuntimeStatusResponse(
                 state = RuntimeState.INDEXING,
-                healthy = true,
-                active = true,
-                indexing = true,
                 backendName = "indexer",
                 backendVersion = "test",
                 workspaceRoot = "/workspace",
-                referenceIndexReady = coverage.indexReady,
                 referenceCoverageState = coverage.state,
                 referenceCoverageLimitations = coverage.limitations,
                 readiness = readiness,
-                ready = false,
             )
         }.failure
 
@@ -204,6 +166,9 @@ class RuntimeStatusResponseTest {
                 generation = 1,
                 identity = "workspace-state",
                 sourceIndexGeneration = 1,
+                sourceRevision = 1,
+                referenceRevision = 1,
+                graphPublication = PublishedGraphEvidenceStatus.Ready(1),
                 sourceIndexSchemaVersion = 1,
                 databaseFile = "../source-index.db",
                 publishedAtEpochMillis = 1,
@@ -211,32 +176,21 @@ class RuntimeStatusResponseTest {
         }
     }
 
-    private fun runtimeStatusJson(coverageFacts: String): String =
+    private fun runtimeStatusJson(coverageFacts: String, references: String = "READY"): String =
         """
         {
           "state": "READY",
-          "healthy": true,
-          "active": true,
-          "indexing": false,
           "backendName": "indexer",
           "backendVersion": "test",
           "workspaceRoot": "/workspace",
           $coverageFacts
-          "schemaVersion": 1
-        }
-        """.trimIndent()
-
-    private fun legacyRuntimeStatusJson(referenceIndexReady: Boolean): String =
-        """
-        {
-          "state": "READY",
-          "healthy": true,
-          "active": true,
-          "indexing": false,
-          "backendName": "indexer",
-          "backendVersion": "test",
-          "workspaceRoot": "/workspace",
-          "referenceIndexReady": $referenceIndexReady,
+          "readiness": {
+            "runtime": {"type": "READY"},
+            "model": {"type": "READY"},
+            "references": {"type": "$references"},
+            "semanticGraph": {"type": "READY"},
+            "mutation": {"type": "READY"}
+          },
           "schemaVersion": 1
         }
         """.trimIndent()

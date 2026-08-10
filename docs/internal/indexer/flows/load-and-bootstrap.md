@@ -14,9 +14,9 @@ code_sources:
 
 # Indexer Load and Bootstrap
 
-Public demand begins with `kast workspace ensure` or a semantic command from
-the canonical workspace root. The runtime layer inspects only exact-root
-candidates and passes them through one admission boundary.
+Public demand begins with the semantic command the caller actually needs. The
+runtime layer inspects only exact-root candidates and passes them through one
+admission boundary; no separate ensure or lifecycle prerequisite exists.
 
 ```mermaid
 sequenceDiagram
@@ -32,14 +32,14 @@ sequenceDiagram
     Registry-->>Admission: identity, health, endpoint, readiness
     alt one eligible healthy indexer
         Admission-->>Agent: reuse admitted identity
-    else no eligible indexer
+    else absent or proven dead
         Admission->>Launcher: start release-matched indexer
         Launcher->>Indexer: isolated config, system, log, and VFS
         Indexer->>Indexer: open root and settle Gradle model
         Indexer->>Registry: publish complete identity
         Registry-->>Admission: healthy exact-root candidate
         Admission-->>Agent: admit new identity
-    else conflict
+    else conflict, ambiguity, or failed replacement
         Admission-->>Agent: typed failure before semantic work
     end
 ```

@@ -218,23 +218,27 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             .then(|| snapshot.composition_digest().to_string()),
         schema_version: SCHEMA_VERSION,
     };
-    if let Err(error) = semantic_read.revalidate() {
-        return error_envelope(
-            "agent/workspace-files".to_string(),
-            None,
-            AgentError::from_cli_error(error),
-        );
-    }
+    let result = project_workspace_files_result(
+        result,
+        &args.view,
+        &matching,
+        cardinality,
+        snapshot.kind_coverage(),
+        filter_coverage,
+        index_evidence_complete,
+    );
+    let result = match semantic_read.revalidate() {
+        Ok(proof) => proof.finish(result),
+        Err(error) => {
+            return error_envelope(
+                "agent/workspace-files".to_string(),
+                None,
+                AgentError::from_cli_error(error),
+            );
+        }
+    };
     result_envelope(
         "agent/workspace-files".to_string(),
-        project_workspace_files_result(
-            result,
-            &args.view,
-            &matching,
-            cardinality,
-            snapshot.kind_coverage(),
-            filter_coverage,
-            index_evidence_complete,
-        ),
+        result,
     )
 }

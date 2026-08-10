@@ -63,7 +63,7 @@ pub(crate) fn preflight_runtime_setup(
     if intent == RuntimeSetupIntent::ForceReset && has_runtime_artifact {
         return Err(CliError::new(
             "SETUP_RUNTIME_NOT_QUIESCENT",
-            "Forced setup cannot delete Kast state while a runtime registration or descriptor exists. Run `kastctl developer runtime repair --workspace-root <root> --execute`, then stop the runtime.",
+            "Forced setup cannot delete Kast state while a runtime registration or descriptor exists. The exact owned epoch must become absent through automatic idle shutdown before setup can continue.",
         ));
     }
 

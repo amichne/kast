@@ -3,8 +3,7 @@ include!("read/readiness.rs");
 pub(crate) fn semantic_graph_refresh_plan(
     workspace_root: &Path,
 ) -> Result<SemanticGraphRefreshPlan> {
-    let semantic_read =
-        runtime::semantic_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
+    let semantic_read = runtime::semantic_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
     let snapshot = read_coverage_from_published(
         workspace_root,
         RepositoryScope {
@@ -14,7 +13,7 @@ pub(crate) fn semantic_graph_refresh_plan(
         true,
         semantic_read.published(),
     )?;
-    semantic_read.revalidate()?;
+    let snapshot = semantic_read.revalidate()?.finish(snapshot);
     let (file_paths, removed_file_paths) = plan_semantic_graph_refresh_files(
         &snapshot.files,
         &snapshot.semantic_scope,
@@ -85,7 +84,7 @@ pub(crate) fn semantic_graph_read_admission(
     workspace_root: &Path,
 ) -> Result<SemanticGraphReadAdmission> {
     let semantic_read =
-        runtime::semantic_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
+        runtime::semantic_graph_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
     let snapshot = read_coverage_from_published(
         workspace_root,
         RepositoryScope {
@@ -95,7 +94,7 @@ pub(crate) fn semantic_graph_read_admission(
         false,
         semantic_read.published(),
     )?;
-    semantic_read.revalidate()?;
+    let snapshot = semantic_read.revalidate()?.finish(snapshot);
     let evidence = SemanticGraphEvidenceCoverage {
         total: snapshot.coverage.counts.total,
         indexed: snapshot.coverage.counts.indexed,

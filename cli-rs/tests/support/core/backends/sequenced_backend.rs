@@ -13,36 +13,39 @@ pub(crate) fn spawn_sequenced_indexer_backend(
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     let workspace = std::fs::canonicalize(workspace).expect("canonical sequenced workspace");
+    publish_scripted_workspace_capabilities(&workspace);
     let published = published_workspace_generation_for_test(&workspace);
     let responses = responses
         .into_iter()
         .map(|(method, mut result)| {
-            if method == "runtime/status"
-                && result.get("publishedWorkspaceGeneration").is_none()
-                && let Some(published) = &published
-            {
-                result["publishedWorkspaceGeneration"] = published.clone();
+            if method == "runtime/status" {
+                if result.get("sourceModuleNames").is_none() {
+                    result["sourceModuleNames"] = serde_json::json!([":fixture"]);
+                }
+                if result.get("publishedWorkspaceGeneration").is_none()
+                    && let Some(published) = &published
+                {
+                    result["publishedWorkspaceGeneration"] = published.clone();
+                }
             }
             (method, result)
         })
         .collect::<Vec<_>>();
     let listener = UnixListener::bind(socket_path).expect("bind sequenced backend");
-    std::fs::write(
-        descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
-            &workspace,
-            socket_path,
-            "indexer",
-            "scripted-test",
-        )]))
-        .expect("descriptor json"),
-    )
-    .expect("descriptor");
+    let exact_test_runtime = publish_exact_test_runtime(
+        home,
+        &workspace,
+        socket_path,
+        "indexer",
+        "scripted-test",
+        &descriptor_dir,
+    );
     listener
         .set_nonblocking(true)
         .expect("nonblocking sequenced backend");
 
     thread::spawn(move || {
+        let _exact_test_runtime = exact_test_runtime;
         let mut requests = Vec::with_capacity(responses.len());
         for (expected_method, result) in responses {
             let idle_deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);

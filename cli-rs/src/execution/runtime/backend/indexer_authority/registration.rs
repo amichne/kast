@@ -132,8 +132,8 @@ pub(super) fn service_workspace_directory(config: &KastConfig, root: &Path) -> P
         .join(workspace_key(root))
 }
 
-pub(super) fn prepare_service_registration(
-    request: &SemanticRuntimeRequest,
+pub(super) fn prepare_service_registration<C: RequiredCapability>(
+    request: &SemanticRuntimeRequest<C>,
     mut daemon_args: DaemonStartArgs,
 ) -> Result<PreparedServiceRegistration> {
     let runtime_instance_id = Uuid::new_v4();
@@ -180,8 +180,8 @@ pub(super) fn prepare_service_registration(
     })
 }
 
-fn prepare_service_registration_in(
-    request: &SemanticRuntimeRequest,
+fn prepare_service_registration_in<C: RequiredCapability>(
+    request: &SemanticRuntimeRequest<C>,
     daemon_args: &DaemonStartArgs,
     workspace_key: &str,
     runtime_instance_id: Uuid,

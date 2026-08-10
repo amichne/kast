@@ -26,10 +26,10 @@ const EXPECTED_OPERATION_IDS: [&str; 28] = [
     "symbol.resolve",
     "symbol.search",
     "symbol.show",
-    "workspace.ensure",
     "workspace.externalize",
     "workspace.home",
     "workspace.refresh",
+    "workspace.up",
 ];
 
 #[test]
@@ -194,13 +194,13 @@ fn public_result_schema_is_closed_without_repeating_failure_algebra() {
 
     for valid in [
         serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "operation": "symbol.resolve",
             "status": "complete",
             "result": {"type": "resolved"}
         }),
         serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "operation": "change.apply",
             "status": "rejected",
             "result": {
@@ -214,25 +214,25 @@ fn public_result_schema_is_closed_without_repeating_failure_algebra() {
 
     for invalid in [
         serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "operation": "symbol.resolve",
             "status": "rejected",
             "result": {"type": "resolved"}
         }),
         serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "operation": "symbol.resolve",
             "status": "complete",
             "result": {"type": "rejected", "failure": {"type": "invalid-input"}}
         }),
         serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "operation": "symbol.resolve",
             "status": "complete",
             "result": {"type": "graph-nodes"}
         }),
         serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "operation": "symbol.resolve",
             "status": "complete",
             "result": {}
@@ -322,7 +322,6 @@ fn current_public_artifacts_contain_no_retired_routes_or_aliases() {
         manifest_dir.join("protocol/golden/public-workflow.json"),
     ];
     let retired = [
-        "kast up",
         "kast refresh",
         "kast files",
         "kast check",

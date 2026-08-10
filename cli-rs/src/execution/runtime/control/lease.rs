@@ -1,5 +1,5 @@
-const WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 2;
-const WORKSPACE_LEASE_TOKEN_VERSION: &str = "kl2";
+const WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 3;
+const WORKSPACE_LEASE_TOKEN_VERSION: &str = "kl3";
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -74,20 +74,24 @@ pub struct WorkspaceLeaseRuntimeIdentity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct WorkspaceLeaseReleaseReceipt {
-    pub released_at: String,
-    pub runtime_stopped: bool,
-    pub reason: WorkspaceLeaseReleaseReason,
+#[serde(
+    tag = "outcome",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+pub enum WorkspaceLeaseReleaseReceipt {
+    RuntimeIdlePolicy { released_at: String },
+    RecoveredAbandonedOwner { released_at: String },
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum WorkspaceLeaseReleaseReason {
-    OwnedRuntimeStopped,
-    BorrowedRuntimePreserved,
-    ExactRuntimeUnavailable,
-    RecoveredAbandonedOwner,
+impl WorkspaceLeaseReleaseReceipt {
+    pub(crate) fn released_at(&self) -> &str {
+        match self {
+            Self::RuntimeIdlePolicy { released_at }
+            | Self::RecoveredAbandonedOwner { released_at } => released_at,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

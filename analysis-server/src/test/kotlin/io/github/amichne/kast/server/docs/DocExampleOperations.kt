@@ -49,8 +49,6 @@ internal fun buildOperations(
     // System operations (no params)
     ops += "health" to request("health")
     ops += "runtimeStatus" to request("runtime/status")
-    ops += "runtimeShutdown" to request("runtime/shutdown")
-    ops += "runtimeRestart" to request("runtime/restart")
     ops += "capabilities" to request("capabilities")
 
     // Read operations

@@ -18,7 +18,9 @@ internal fun docsSchemaSerializers(): Map<String, KSerializer<*>> = mapOf(
     "RuntimeReadinessProgress" to RuntimeReadinessProgress.serializer(),
     "RuntimeProgressStage" to RuntimeProgressStage.serializer(),
     "PublishedWorkspaceGenerationStatus" to PublishedWorkspaceGenerationStatus.serializer(),
-    "RuntimeLifecycleResponse" to RuntimeLifecycleResponse.serializer(),
+    "PublishedGraphEvidenceStatus" to PublishedGraphEvidenceStatus.serializer(),
+    "PublishedGraphEvidenceStatus.Ready" to PublishedGraphEvidenceStatus.Ready.serializer(),
+    "PublishedGraphEvidenceStatus.Blocked" to PublishedGraphEvidenceStatus.Blocked.serializer(),
     "BackendCapabilities" to BackendCapabilities.serializer(),
     // Shared types
     "FilePosition" to FilePosition.serializer(),

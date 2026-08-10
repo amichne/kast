@@ -7,8 +7,6 @@ pub struct AgentArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum AgentCommand {
-    /// Acquire, inspect, or release an exact-root semantic workspace lease.
-    Lease(AgentLeaseArgs),
     /// Verify backend health, runtime state, and capabilities.
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
@@ -49,16 +47,13 @@ pub enum AgentCommand {
 
 #[derive(Debug, Args, Clone, Default)]
 pub struct AgentRuntimeArgs {
-    /// Absolute workspace root for daemon lifecycle and RPC commands.
+    /// Absolute workspace root for semantic commands.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Opaque workspace lease acquired for this exact root and backend.
-    #[arg(long = "lease-id")]
-    pub lease_id: Option<AgentWorkspaceLeaseId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AgentWorkspaceLeaseId(String);
+pub(crate) struct AgentWorkspaceLeaseId(String);
 
 impl AgentWorkspaceLeaseId {
     pub(crate) fn as_str(&self) -> &str {
@@ -81,40 +76,16 @@ impl std::str::FromStr for AgentWorkspaceLeaseId {
     }
 }
 
-#[derive(Debug, Args, Clone)]
-pub struct AgentLeaseArgs {
-    #[command(subcommand)]
-    pub command: AgentLeaseCommand,
+#[derive(Debug, Clone)]
+pub(crate) struct AgentLeaseAcquireArgs {
+    pub(crate) workspace_root: PathBuf,
+    pub(crate) wait_timeout_ms: u64,
 }
 
-#[derive(Debug, Subcommand, Clone)]
-pub enum AgentLeaseCommand {
-    /// Acquire a READY lease for one exact semantic workspace root.
-    Acquire(AgentLeaseAcquireArgs),
-    /// Inspect a lease without changing runtime ownership.
-    Status(AgentLeaseAccessArgs),
-    /// Release a lease and stop only the exact runtime it started.
-    Release(AgentLeaseAccessArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct AgentLeaseAcquireArgs {
-    /// Absolute semantic workspace root to bind.
-    #[arg(long)]
-    pub workspace_root: PathBuf,
-    /// Maximum time to settle the runtime to READY.
-    #[arg(long, default_value_t = crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS, hide = true)]
-    pub wait_timeout_ms: u64,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct AgentLeaseAccessArgs {
-    /// Opaque lease identifier returned by `lease acquire`.
-    #[arg(long = "lease-id")]
-    pub lease_id: AgentWorkspaceLeaseId,
-    /// Absolute semantic workspace root the lease must bind.
-    #[arg(long)]
-    pub workspace_root: PathBuf,
+#[derive(Debug, Clone)]
+pub(crate) struct AgentLeaseAccessArgs {
+    pub(crate) lease_id: AgentWorkspaceLeaseId,
+    pub(crate) workspace_root: PathBuf,
 }
 
 #[derive(Debug, Args, Clone)]

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `52`.
+Catalog version: `dev`. Methods: `50`.
 
 #### Method families
 
@@ -52,7 +52,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
-| `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
+| `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/plan-replacement`<br>`raw/plan-add-file`<br>`raw/plan-add-declaration`<br>`raw/exact-file-image-cas`<br>`raw/exact-file-observation`<br>`raw/inspect-mutation-scratch`<br>`raw/recover-mutation-scratch`<br>`raw/verify-mutation-postcondition`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
@@ -85,8 +85,6 @@ uses a discriminated response envelope.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `health` | `system` | backend | Basic health check | none | none | `HealthResponse` | single result |
 | `runtime/status` | `system` | backend | Detailed runtime state including indexing progress | none | none | `RuntimeStatusResponse` | single result |
-| `runtime/shutdown` | `system` | backend | Ask the runtime host to shut down after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
-| `runtime/restart` | `system` | backend | Ask the runtime host to restart after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
 | `mutation/submit` | `mutation` | backend | Execute an idempotent semantic mutation and return its terminal result | `type`<br>`RENAME`: `idempotencyKey`, `request`<br>`ADD_FILE`: `idempotencyKey`, `request`<br>`ADD_DECLARATION`: `idempotencyKey`, `request`<br>`ADD_IMPLEMENTATION`: `idempotencyKey`, `request`<br>`ADD_STATEMENT`: `idempotencyKey`, `request`<br>`REPLACE_DECLARATION`: `idempotencyKey`, `request` | none | `KastMutationExecutionResult` | single result |
 | `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
@@ -155,24 +153,6 @@ Response type: `HealthResponse`.
 No request parameters.
 
 Response type: `RuntimeStatusResponse`.
-
-</details>
-
-<details markdown="1">
-<summary><code>runtime/shutdown</code> - Ask the runtime host to shut down after this response is flushed</summary>
-
-No request parameters.
-
-Response type: `RuntimeLifecycleResponse`.
-
-</details>
-
-<details markdown="1">
-<summary><code>runtime/restart</code> - Ask the runtime host to restart after this response is flushed</summary>
-
-No request parameters.
-
-Response type: `RuntimeLifecycleResponse`.
 
 </details>
 
@@ -314,7 +294,7 @@ Notes:
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
 | `selectorHandle` | `string` | yes | no |  |
-| `family` | `string` | yes | no | `REFERENCES`<br>`CALLERS`<br>`CALLEES`<br>`IMPLEMENTATIONS`<br>`HIERARCHY`<br>`IMPACT`<br>`RENAME`<br>`REPLACE_DECLARATION` |
+| `family` | `string` | yes | no | `REFERENCES`<br>`CALLERS`<br>`CALLEES`<br>`IMPLEMENTATIONS`<br>`HIERARCHY`<br>`IMPACT`<br>`RENAME`<br>`REPLACE_DECLARATION`<br>`IDENTITY` |
 
 Response type: `KastSelectorIdentityResponse`.
 Result variants: `AVAILABLE`, `SELECTOR_HANDLE_REJECTED`.

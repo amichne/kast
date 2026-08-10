@@ -72,7 +72,6 @@ object DocExampleGenerator {
             val dispatcher = RpcAnalysisDispatcher(
                 backend = mutationFixture.backend,
                 config = AnalysisServerConfig(),
-                lifecycleController = RuntimeLifecycleController { {} },
             )
 
             val greetDeclarationOffset = sampleContent.indexOf("greet")

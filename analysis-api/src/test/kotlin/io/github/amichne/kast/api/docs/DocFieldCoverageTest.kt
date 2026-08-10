@@ -44,7 +44,9 @@ class DocFieldCoverageTest {
         "RuntimeReadinessLane.Blocked" to RuntimeReadinessLane.Blocked.serializer(),
         "RuntimeReadinessProgress" to RuntimeReadinessProgress.serializer(),
         "PublishedWorkspaceGenerationStatus" to PublishedWorkspaceGenerationStatus.serializer(),
-        "RuntimeLifecycleResponse" to RuntimeLifecycleResponse.serializer(),
+        "PublishedGraphEvidenceStatus" to PublishedGraphEvidenceStatus.serializer(),
+        "PublishedGraphEvidenceStatus.Ready" to PublishedGraphEvidenceStatus.Ready.serializer(),
+        "PublishedGraphEvidenceStatus.Blocked" to PublishedGraphEvidenceStatus.Blocked.serializer(),
         "BackendCapabilities" to BackendCapabilities.serializer(),
 
         // Shared types

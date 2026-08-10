@@ -59,7 +59,7 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
                     RepositorySnapshotPublication.Unmanaged,
                 )
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(initial, publications::add),
             waitForNextPass = { waitCount++ == 0 },
             isCancelled = { false },

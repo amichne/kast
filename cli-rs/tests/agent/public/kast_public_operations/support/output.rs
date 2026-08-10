@@ -16,7 +16,7 @@ pub(crate) fn decode_envelope(output: &Output) -> Value {
 
 pub(crate) fn decode(output: &Output) -> Value {
     let value = decode_envelope(output);
-    if value["schemaVersion"] == 2 && value["result"].is_object() {
+    if value["schemaVersion"] == 3 && value["result"].is_object() {
         if value["result"]["type"] == "rejected" && value["result"]["failure"].is_object() {
             value["result"]["failure"].clone()
         } else {

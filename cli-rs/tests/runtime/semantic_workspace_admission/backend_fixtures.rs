@@ -14,8 +14,23 @@ fn run_git_clone(source: &Path, destination: &Path) {
     );
 }
 
-fn write_runtime_descriptor(home: &Path, workspace: &Path, socket_path: &Path, backend: &str) {
-    write_runtime_descriptors(home, &[(workspace, socket_path, backend)]);
+fn write_runtime_descriptor(
+    home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    backend: &str,
+) -> ExactTestRuntimeProcess {
+    let descriptor_dir = default_descriptor_dir(home);
+    std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    publish_scripted_workspace_capabilities(workspace);
+    publish_exact_test_runtime(
+        home,
+        workspace,
+        socket_path,
+        backend,
+        "admission-test",
+        &descriptor_dir,
+    )
 }
 
 fn write_stale_runtime_descriptor(
@@ -72,6 +87,7 @@ impl ObservedSemanticBackend {
             .expect("nonblocking listener");
         let stop = Arc::new(AtomicBool::new(false));
         let thread_stop = Arc::clone(&stop);
+        let published = published_workspace_generation_for_test(&workspace);
         let thread = thread::spawn(move || {
             let mut methods = vec![];
             while !thread_stop.load(Ordering::Acquire) {
@@ -101,18 +117,25 @@ impl ObservedSemanticBackend {
                         "backendVersion": "admission-test",
                         "schemaVersion": api_schema_version()
                     }),
-                    "runtime/status" => serde_json::json!({
-                        "state": "READY",
-                        "healthy": true,
-                        "active": true,
-                        "indexing": false,
-                        "backendName": backend_name,
-                        "backendVersion": "admission-test",
-                        "workspaceRoot": workspace.display().to_string(),
-                        "sourceModuleNames": [":fixture"],
-                        "referenceIndexReady": true,
-                        "schemaVersion": api_schema_version()
-                    }),
+                    "runtime/status" => {
+                        let mut status = serde_json::json!({
+                            "state": "READY",
+                            "backendName": backend_name,
+                            "backendVersion": "admission-test",
+                            "workspaceRoot": workspace.display().to_string(),
+                            "sourceModuleNames": [":fixture"],
+                            "readiness": {
+                                "runtime": {"type": "READY"}, "model": {"type": "READY"},
+                                "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
+                                "mutation": {"type": "READY"}
+                            },
+                            "schemaVersion": api_schema_version()
+                        });
+                        if let Some(published) = &published {
+                            status["publishedWorkspaceGeneration"] = published.clone();
+                        }
+                        status
+                    }
                     "capabilities" => serde_json::json!({
                         "backendName": backend_name,
                         "backendVersion": "admission-test",
@@ -181,6 +204,8 @@ fn spawn_verify_backend(
     listener
         .set_nonblocking(true)
         .expect("nonblocking listener");
+    let published = published_workspace_generation_for_test(&workspace)
+        .expect("verify semantic workspace publication");
     thread::spawn(move || {
         let mut methods = Vec::with_capacity(expected_requests);
         let deadline = Instant::now() + Duration::from_secs(10);
@@ -217,14 +242,16 @@ fn spawn_verify_backend(
                 }),
                 "runtime/status" => serde_json::json!({
                     "state": "READY",
-                    "healthy": true,
-                    "active": true,
-                    "indexing": false,
                     "backendName": backend_name,
                     "backendVersion": "admission-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "sourceModuleNames": [":analysis-api", ":indexer"],
-                    "referenceIndexReady": false,
+                    "readiness": {
+                        "runtime": {"type": "READY"}, "model": {"type": "READY"},
+                        "references": {"type": "BLOCKED"}, "semanticGraph": {"type": "READY"},
+                        "mutation": {"type": "READY"}
+                    },
+                    "publishedWorkspaceGeneration": published.clone(),
                     "schemaVersion": api_schema_version()
                 }),
                 "capabilities" => serde_json::json!({

@@ -87,8 +87,9 @@ pub(super) fn register(manager: &ServiceManagerRegistration) -> Result<()> {
     }
 }
 
-pub(super) fn start(
+pub(super) fn start<C: RequiredCapability>(
     registration: &ValidatedServiceRegistration,
+    _permit: &StartingEpoch<C>,
 ) -> Result<ServiceManagerObservation> {
     match &registration.receipt.manager {
         ServiceManagerRegistration::Test { state_path, .. } => {

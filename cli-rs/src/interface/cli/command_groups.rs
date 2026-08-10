@@ -7,8 +7,6 @@ pub struct DeveloperArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum DeveloperCommand {
-    /// Manage backend runtime lifecycle.
-    Runtime(RuntimeCommandArgs),
     /// Inspect local Kast state, catalogs, demos, and source-index metrics.
     Inspect(InspectArgs),
     /// Build, activate, and validate release artifacts.
@@ -29,6 +27,8 @@ pub struct InspectArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum InspectCommand {
+    /// Inspect exact-root lifecycle evidence without causing a transition.
+    Lifecycle(LifecycleInspectArgs),
     /// Inspect manifest-backed Kast path resolution.
     Paths(PathsArgs),
     /// Query source-index metrics directly from SQLite.
@@ -38,6 +38,13 @@ pub enum InspectCommand {
     },
     /// Validate catalog requests and checked-in sample payloads.
     Catalog(ValidateArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct LifecycleInspectArgs {
+    /// Exact workspace root to inspect. Defaults to the current workspace.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

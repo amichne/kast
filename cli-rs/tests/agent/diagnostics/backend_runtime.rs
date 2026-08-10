@@ -1,18 +1,20 @@
-fn write_descriptor(home: &Path, workspace: &Path, socket_path: &Path) {
+fn write_descriptor(
+    home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+) -> ExactTestRuntimeProcess {
     let descriptor_dir = default_descriptor_dir(home);
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     let workspace = workspace.canonicalize().expect("canonical workspace");
-    std::fs::write(
-        descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&json!([runtime_descriptor_for_test(
-            &workspace,
-            socket_path,
-            "indexer",
-            "diagnostics-test",
-        )]))
-        .expect("descriptor JSON"),
+    publish_scripted_workspace_capabilities(&workspace);
+    publish_exact_test_runtime(
+        home,
+        &workspace,
+        socket_path,
+        "indexer",
+        "diagnostics-test",
+        &descriptor_dir,
     )
-    .expect("descriptor");
 }
 
 fn bind_listener(socket_path: &Path) -> UnixListener {
@@ -30,6 +32,8 @@ fn spawn_fake_backend(
     expected_requests: usize,
 ) -> std::thread::JoinHandle<Vec<Value>> {
     let workspace = workspace.canonicalize().expect("canonical workspace");
+    let published = published_workspace_generation_for_test(&workspace)
+        .expect("published diagnostics workspace generation");
     listener
         .set_nonblocking(true)
         .expect("nonblocking listener");
@@ -63,12 +67,18 @@ fn spawn_fake_backend(
             let result = match method.as_str() {
                 "runtime/status" => json!({
                     "state": "READY",
-                    "healthy": true,
-                    "active": true,
-                    "indexing": false,
                     "backendName": "indexer",
                     "backendVersion": "diagnostics-test",
                     "workspaceRoot": workspace.display().to_string(),
+                    "sourceModuleNames": [":fixture"],
+                    "readiness": {
+                        "runtime": {"type": "READY"},
+                        "model": {"type": "READY"},
+                        "references": {"type": "READY"},
+                        "semanticGraph": {"type": "READY"},
+                        "mutation": {"type": "READY"}
+                    },
+                    "publishedWorkspaceGeneration": published.clone(),
                     "schemaVersion": api_schema_version()
                 }),
                 "capabilities" => json!({

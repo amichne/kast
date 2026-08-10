@@ -125,7 +125,7 @@ fn run_single_json_scenario(
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
     let listener = bind_listener(&socket_path);
-    write_descriptor(&home, &workspace, &socket_path);
+    let _exact_runtime = write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),

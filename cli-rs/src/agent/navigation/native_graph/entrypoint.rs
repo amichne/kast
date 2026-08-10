@@ -36,7 +36,7 @@ fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
         return execute_agent_native_graph_refresh(args);
     }
     let semantic_read = if args.database.is_none() {
-        match runtime::semantic_workspace_read_ready(args.runtime.workspace_root.clone()) {
+        match runtime::semantic_graph_workspace_read_ready(args.runtime.workspace_root.clone()) {
             Ok(read) => Some(read),
             Err(error) => {
                 return error_envelope(
@@ -51,18 +51,24 @@ fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
     };
     match native_graph_result(
         &args,
-        semantic_read.as_ref().map(runtime::SemanticWorkspaceRead::published),
+        semantic_read
+            .as_ref()
+            .map(runtime::SemanticWorkspaceRead::published_graph),
     ) {
         Ok(result) => {
-            if let Some(read) = &semantic_read
-                && let Err(error) = read.revalidate()
-            {
-                return error_envelope(
-                    "agent/graph".to_string(),
-                    None,
-                    AgentError::from_cli_error(error),
-                );
-            }
+            let result = match &semantic_read {
+                Some(read) => match read.revalidate() {
+                    Ok(proof) => proof.finish(result),
+                    Err(error) => {
+                        return error_envelope(
+                            "agent/graph".to_string(),
+                            None,
+                            AgentError::from_cli_error(error),
+                        );
+                    }
+                },
+                None => result,
+            };
             result_envelope("agent/graph".to_string(), result)
         }
         Err(error) => error_envelope("agent/graph".to_string(), None, error),

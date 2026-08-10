@@ -6,10 +6,42 @@ fn inspect_indexer_workspace(
     inspect_indexer_workspace_with_config(workspace_root, &config, stale_descriptor_policy)
 }
 
+fn inspect_indexer_workspace_status_only(
+    workspace_root: &Path,
+    config: &KastConfig,
+) -> Result<WorkspaceInspection> {
+    inspect_indexer_workspace_with_probe(
+        workspace_root,
+        config,
+        StaleDescriptorPolicy::Preserve,
+        RuntimeInspectionProbe::StatusOnly,
+    )
+}
+
 fn inspect_indexer_workspace_with_config(
     workspace_root: &Path,
     config: &KastConfig,
     stale_descriptor_policy: StaleDescriptorPolicy,
+) -> Result<WorkspaceInspection> {
+    inspect_indexer_workspace_with_probe(
+        workspace_root,
+        config,
+        stale_descriptor_policy,
+        RuntimeInspectionProbe::SemanticAdmission,
+    )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RuntimeInspectionProbe {
+    StatusOnly,
+    SemanticAdmission,
+}
+
+fn inspect_indexer_workspace_with_probe(
+    workspace_root: &Path,
+    config: &KastConfig,
+    stale_descriptor_policy: StaleDescriptorPolicy,
+    probe: RuntimeInspectionProbe,
 ) -> Result<WorkspaceInspection> {
     let descriptor_directory = config.paths.descriptor_dir.clone();
     let registered = find_indexer_descriptors(&descriptor_directory, workspace_root)?;
@@ -19,6 +51,7 @@ fn inspect_indexer_workspace_with_config(
             &descriptor_directory,
             descriptor,
             stale_descriptor_policy,
+            probe,
         )?);
     }
     candidates.sort_by(|a, b| {
@@ -33,6 +66,7 @@ fn inspect_descriptor(
     descriptor_directory: &Path,
     registered: RegisteredDescriptor,
     stale_descriptor_policy: StaleDescriptorPolicy,
+    probe: RuntimeInspectionProbe,
 ) -> Result<RuntimeCandidateStatus> {
     let pid_alive = is_process_alive(registered.descriptor.pid);
     if !pid_alive {
@@ -56,12 +90,12 @@ fn inspect_descriptor(
     }
 
     let socket_path = Path::new(&registered.descriptor.socket_path);
-    let status_result = rpc::request::<RuntimeStatusWireResponse>(
+    let status_result = rpc::request::<RuntimeStatusResponse>(
         socket_path,
         "runtime/status",
         Value::Object(Default::default()),
     )
-    .and_then(RuntimeStatusWireResponse::into_status)
+    .and_then(RuntimeStatusResponse::validate_protocol)
     .and_then(|status| {
         validate_runtime_status_identity(&registered.descriptor, &status)?;
         Ok(status)
@@ -70,7 +104,9 @@ fn inspect_descriptor(
         Ok(status) => (Some(status), None),
         Err(error) => (None, Some(error.message)),
     };
-    let capabilities = if runtime_status.is_some() {
+    let capabilities = if runtime_status.is_some()
+        && probe == RuntimeInspectionProbe::SemanticAdmission
+    {
         rpc::request::<Value>(
             socket_path,
             "capabilities",
@@ -117,15 +153,15 @@ fn validate_runtime_status_identity(
 
 fn is_servable(status: &RuntimeStatusResponse) -> bool {
     matches!(status.state, RuntimeState::Ready | RuntimeState::Indexing)
-        && status.healthy
-        && status.active
+        && status.healthy()
+        && status.active()
 }
 
 fn is_ready(status: &RuntimeStatusResponse) -> bool {
     matches!(status.state, RuntimeState::Ready)
-        && status.healthy
-        && status.active
-        && !status.indexing
+        && status.healthy()
+        && status.active()
+        && !status.indexing()
 }
 
 fn find_indexer_descriptors(

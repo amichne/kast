@@ -1,6 +1,6 @@
 enum RegisteredServiceObservation {
-    Live(ServiceOwnedRuntime),
-    Dead(DeadServiceRuntime),
+    Live(Box<ServiceOwnedRuntime>),
+    Dead(Box<DeadServiceRuntime>),
 }
 
 fn observe_registered_service(
@@ -125,18 +125,21 @@ fn observe_registered_service(
     }
     let descriptor = matching_descriptor(descriptors, &registration, Some(&process))?;
     let socket = socket_for_registration(&registration, descriptor.as_ref(), descriptors)?;
+    if matches!(
+        socket,
+        SocketObservation::OwnedByOtherExact { .. } | SocketObservation::PresentUnproven { .. }
+    ) {
+        return Err(ownership_error(
+            "A live registration does not own the observed runtime socket.",
+        ));
+    }
     if Path::new(&registration.launch.workspace_root) != root {
         return Err(ownership_error("Service registration changed workspace root."));
     }
-    Ok(RegisteredServiceObservation::Live(ServiceOwnedRuntime {
-        workspace_root: root.to_path_buf(),
+    Ok(RegisteredServiceObservation::Live(Box::new(ServiceOwnedRuntime {
         registration,
-        manager,
-        process,
-        descriptor,
-        socket,
         proven_dead: ProvenDeadRuntimeOwnership::default(),
-    }))
+    })))
 }
 
 fn dead_registration(
@@ -152,13 +155,13 @@ fn dead_registration(
             "A dead registration has an unproven socket path.",
         ));
     }
-    Ok(RegisteredServiceObservation::Dead(DeadServiceRuntime {
+    Ok(RegisteredServiceObservation::Dead(Box::new(DeadServiceRuntime {
         registration,
         process_claim,
         active,
         descriptor,
         socket,
-    }))
+    })))
 }
 
 fn matching_descriptor(
@@ -207,10 +210,7 @@ enum LegacyRuntimeObservation {
     Dead(DeadLegacyRuntime),
 }
 
-fn observe_legacy_runtime(
-    descriptor: RegisteredDescriptor,
-    root: &Path,
-) -> Result<LegacyRuntimeObservation> {
+fn observe_legacy_runtime(descriptor: RegisteredDescriptor) -> Result<LegacyRuntimeObservation> {
     let process = observe_descriptor_process(&descriptor.descriptor)?;
     let socket = socket_for_descriptor(&descriptor.descriptor)?;
     if matches!(socket, SocketObservation::PresentUnproven { .. }) {
@@ -232,10 +232,7 @@ fn observe_legacy_runtime(
         DescriptorProcessObservation::Exact(process) => {
             validate_descriptor_process(&descriptor.descriptor, &process)?;
             Ok(LegacyRuntimeObservation::Live(LegacyOwnedRuntime {
-                workspace_root: root.to_path_buf(),
-                process,
                 descriptor,
-                socket,
                 proven_dead: ProvenDeadRuntimeOwnership::default(),
             }))
         }

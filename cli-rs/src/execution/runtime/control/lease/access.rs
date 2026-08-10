@@ -1,7 +1,3 @@
-pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceLeaseResult> {
-    workspace_lease_acquire_with_owner(args, WorkspaceLeaseOwnerScope::CallerSession)
-}
-
 pub(crate) fn workspace_lease_acquire_process_owned(
     args: AgentLeaseAcquireArgs,
 ) -> Result<WorkspaceLeaseResult> {
@@ -39,7 +35,7 @@ fn workspace_lease_acquire_with_owner(
         let owner = lease_owner_identity(owner_scope)?;
         let acquired_at = crate::manifest::current_timestamp();
 
-        let finalization = (|| {
+        (|| {
             let final_installation =
                 lease_installation_identity(admission.workspace_root(), admission.backend())?;
             if final_installation != initial_installation {
@@ -86,17 +82,8 @@ fn workspace_lease_acquire_with_owner(
                 None,
                 None,
             ))
-        })();
-
-        if finalization.is_err() && ownership == WorkspaceLeaseOwnership::Started {
-            let _ = stop_exact_runtime(admission.workspace_root(), &runtime);
-        }
-        finalization
+        })()
     })
-}
-
-pub fn workspace_lease_status(args: AgentLeaseAccessArgs) -> Result<WorkspaceLeaseResult> {
-    access_workspace_lease(args, WorkspaceLeaseAccess::Status)
 }
 
 pub fn workspace_lease_release(args: AgentLeaseAccessArgs) -> Result<WorkspaceLeaseResult> {
@@ -128,7 +115,6 @@ pub fn validate_workspace_lease_for_command(
 
 #[derive(Clone, Copy)]
 enum WorkspaceLeaseAccess {
-    Status,
     Release,
     Validate,
 }
@@ -177,7 +163,7 @@ fn access_workspace_lease(
                         WorkspaceLeaseState::Abandoned,
                         Some(WorkspaceLeaseFailureReason::OwnerAbandoned),
                     )),
-                    WorkspaceLeaseAccess::Status | WorkspaceLeaseAccess::Validate => {
+                    WorkspaceLeaseAccess::Validate => {
                         Ok(workspace_lease_result(
                             args.lease_id.as_str().to_string(),
                             WorkspaceLeaseState::Abandoned,
@@ -209,7 +195,7 @@ fn access_workspace_lease(
                             Some(receipt),
                         ))
                     }
-                    WorkspaceLeaseAccess::Status | WorkspaceLeaseAccess::Validate => {
+                    WorkspaceLeaseAccess::Validate => {
                         let (state, failure) = observe_active_binding(&binding)?;
                         Ok(workspace_lease_result(
                             args.lease_id.as_str().to_string(),

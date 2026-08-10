@@ -33,7 +33,7 @@ fn graph_summary_uses_the_canonical_deterministic_toon_protocol() {
     );
     let decoded: serde_json::Value =
         toon_format::decode_default(rendered.trim()).expect("graph summary is valid TOON");
-    assert_eq!(decoded["schemaVersion"], 2, "{decoded:#}");
+    assert_eq!(decoded["schemaVersion"], 3, "{decoded:#}");
     assert_eq!(decoded["operation"], "graph.summary", "{decoded:#}");
     assert_eq!(decoded["status"], "complete", "{decoded:#}");
     assert_eq!(decoded["result"]["type"], "graph-summary", "{decoded:#}");

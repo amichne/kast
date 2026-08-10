@@ -6,54 +6,6 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.WorkspaceWriteSession
 import kotlinx.serialization.Serializable
 
-internal const val WORKSPACE_DATABASE_FILE = "source-index.db"
-internal const val WORKSPACE_REPOSITORY_OVERLAY_FILE = "repository-overlay.json"
-
-@Serializable
-enum class RepositoryOverlayPublication {
-    ABSENT,
-    ATTACHED,
-    ;
-
-    /** Raw nullable extraction is confined to SQLite and runtime-status serialization. */
-    fun serializedFileName(): String? = when (this) {
-        ABSENT -> null
-        ATTACHED -> WORKSPACE_REPOSITORY_OVERLAY_FILE
-    }
-
-    companion object {
-        /**
-         * Proof transition: `String? -> RepositoryOverlayPublicationResolution`.
-         *
-         * Derives the closed overlay-publication state from SQLite storage.
-         * Only absence and the canonical `repository-overlay.json` filename are
-         * valid. Rejection is finite [RepositoryOverlayPublicationFailure]
-         * data. Raw nullable data is accepted only at the SQLite boundary.
-         */
-        fun fromSerializedFileName(raw: String?): RepositoryOverlayPublicationResolution = when (raw) {
-            null -> RepositoryOverlayPublicationResolution.Resolved(ABSENT)
-            WORKSPACE_REPOSITORY_OVERLAY_FILE -> RepositoryOverlayPublicationResolution.Resolved(ATTACHED)
-            else -> RepositoryOverlayPublicationResolution.Rejected(
-                RepositoryOverlayPublicationFailure.UnknownFile(raw),
-            )
-        }
-    }
-}
-
-sealed interface RepositoryOverlayPublicationFailure {
-    data class UnknownFile(val value: String) : RepositoryOverlayPublicationFailure
-}
-
-sealed interface RepositoryOverlayPublicationResolution {
-    data class Resolved(
-        val publication: RepositoryOverlayPublication,
-    ) : RepositoryOverlayPublicationResolution
-
-    data class Rejected(
-        val failure: RepositoryOverlayPublicationFailure,
-    ) : RepositoryOverlayPublicationResolution
-}
-
 @Serializable
 @JvmInline
 value class PublicationEpochMillis private constructor(val value: Long) {
@@ -122,6 +74,11 @@ data class PublishedWorkspaceGenerationManifest(
     val generation: WorkspaceSemanticGeneration,
     val identity: PublishedWorkspaceIdentity,
     val sourceIndexGeneration: SourceIndexGeneration,
+    val sourceRevision: EvidenceRevision = EvidenceRevision.fromSourceIndexGeneration(sourceIndexGeneration),
+    val referenceRevision: EvidenceRevision = EvidenceRevision.fromSourceIndexGeneration(sourceIndexGeneration),
+    val graphPublication: GraphEvidencePublication = GraphEvidencePublication.Ready(
+        EvidenceRevision.fromSourceIndexGeneration(sourceIndexGeneration),
+    ),
     val sourceIndexSchemaVersion: SourceIndexSchemaVersion,
     val publishedAt: PublicationEpochMillis,
     val repositoryOverlay: RepositoryOverlayPublication,
@@ -156,6 +113,28 @@ data class PublishedWorkspaceGenerationManifest(
                     WorkspacePublicationRecordFailure.InvalidSchemaVersion(record.sourceIndexSchemaVersion),
                 )
             }
+            val sourceRevision = when (val resolution = EvidenceRevision.fromPersisted(record.sourceRevision)) {
+                is EvidenceRevisionResolution.Resolved -> resolution.revision
+                is EvidenceRevisionResolution.Rejected ->
+                    return rejected(WorkspacePublicationRecordFailure.NegativeEvidenceRevision)
+            }
+            val referenceRevision = when (val resolution = EvidenceRevision.fromPersisted(record.referenceRevision)) {
+                is EvidenceRevisionResolution.Resolved -> resolution.revision
+                is EvidenceRevisionResolution.Rejected ->
+                    return rejected(WorkspacePublicationRecordFailure.NegativeEvidenceRevision)
+            }
+            val graphPublication = when {
+                record.graphRevision != null && record.graphBlocker == null -> when (
+                    val resolution = EvidenceRevision.fromPersisted(record.graphRevision)
+                ) {
+                    is EvidenceRevisionResolution.Resolved -> GraphEvidencePublication.Ready(resolution.revision)
+                    is EvidenceRevisionResolution.Rejected ->
+                        return rejected(WorkspacePublicationRecordFailure.InvalidGraphPublication)
+                }
+                record.graphRevision == null && record.graphBlocker == GraphEvidenceBlocker.INDEXING_FAILED.name ->
+                    GraphEvidencePublication.Blocked(GraphEvidenceBlocker.INDEXING_FAILED)
+                else -> return rejected(WorkspacePublicationRecordFailure.InvalidGraphPublication)
+            }
             if (record.publishedAtEpochMillis < 0) {
                 return rejected(
                     WorkspacePublicationRecordFailure.NegativePublicationTime(record.publishedAtEpochMillis),
@@ -174,6 +153,9 @@ data class PublishedWorkspaceGenerationManifest(
                     generation = WorkspaceSemanticGeneration(record.generation),
                     identity = PublishedWorkspaceIdentity(record.identity),
                     sourceIndexGeneration = SourceIndexGeneration(record.sourceIndexGeneration),
+                    sourceRevision = sourceRevision,
+                    referenceRevision = referenceRevision,
+                    graphPublication = graphPublication,
                     sourceIndexSchemaVersion = SourceIndexSchemaVersion(record.sourceIndexSchemaVersion),
                     publishedAt = PublicationEpochMillis.fromClock(record.publishedAtEpochMillis),
                     repositoryOverlay = overlay,
@@ -190,6 +172,10 @@ internal data class SerializedWorkspacePublication(
     val generation: Long,
     val identity: String,
     val sourceIndexGeneration: Long,
+    val sourceRevision: Long,
+    val referenceRevision: Long,
+    val graphRevision: Long?,
+    val graphBlocker: String?,
     val sourceIndexSchemaVersion: Int,
     val publishedAtEpochMillis: Long,
     val repositoryOverlayFile: String?,
@@ -201,6 +187,10 @@ sealed interface WorkspacePublicationRecordFailure {
     data class BlankIdentity(val value: String) : WorkspacePublicationRecordFailure
 
     data class NegativeSourceIndexGeneration(val value: Long) : WorkspacePublicationRecordFailure
+
+    data object NegativeEvidenceRevision : WorkspacePublicationRecordFailure
+
+    data object InvalidGraphPublication : WorkspacePublicationRecordFailure
 
     data class InvalidSchemaVersion(val value: Int) : WorkspacePublicationRecordFailure
 
@@ -263,6 +253,8 @@ sealed interface WorkspacePublicationCommitFailure {
         val expected: SourceIndexGeneration,
         val actual: SourceIndexGeneration,
     ) : WorkspacePublicationCommitFailure
+
+    data object EvidenceRevisionMismatch : WorkspacePublicationCommitFailure
 
     data class RevisionMoved(
         val expected: WorkspaceSemanticGeneration,
@@ -344,12 +336,14 @@ class WorkspaceGenerationStore(
     fun prepare(
         candidate: OpenWorkspaceGeneration,
         identity: PublishedWorkspaceIdentity,
+        graphBlocker: GraphEvidenceBlocker? = null,
     ): PreparedWorkspaceGeneration {
         requireOwned(candidate.owner)
         val manifest = store.prepareWorkspacePublication(
             session = candidate.write,
             identity = identity,
             publishedAt = publicationClock(),
+            graphBlocker = graphBlocker,
         )
         return PreparedWorkspaceGeneration(candidate.write, candidate.owner, manifest)
     }

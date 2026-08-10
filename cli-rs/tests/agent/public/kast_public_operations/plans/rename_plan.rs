@@ -159,7 +159,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         "affectedFiles": [declaration_file, reference_file],
         "proof": proof,
         "fileImages": file_images.clone(),
-        "schemaVersion": 6
+        "schemaVersion": 7
     });
     let socket = fixture.path().join("rename-authority.sock");
     let backend = spawn_scripted_indexer_backend(

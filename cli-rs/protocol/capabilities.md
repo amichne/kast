@@ -14,7 +14,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        5 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
+        3 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
 
     ??? info "health — Basic health check"
 
@@ -41,9 +41,6 @@ category. Expand any operation to see its input and output schemas.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin state: RuntimeState` | Current runtime state: STARTING, INDEXING, READY, or DEGRADED. |
-            | `#!kotlin healthy: Boolean` | True when the daemon is responsive and not in an error state. |
-            | `#!kotlin active: Boolean` | True when the daemon has an active workspace session. |
-            | `#!kotlin indexing: Boolean` | True when the daemon is currently indexing the workspace. |
             | `#!kotlin backendName: String` | Identifier of the analysis backend. |
             | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
@@ -51,46 +48,10 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin warnings: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
             | `#!kotlin sourceModuleNames: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
             | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
-            | `#!kotlin referenceIndexReady: Boolean` :material-information-outline:{ title="Default: false" } | True when committed symbol-reference evidence is queryable, including qualified evidence. |
-            | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE when referenceIndexReady is true; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
+            | `#!kotlin readiness: RuntimeReadiness` | Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes. |
+            | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE for a ready reference lane; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
             | `#!kotlin referenceCoverageLimitations: List<ReferenceCoverageLimitation>` :material-information-outline:{ title="Default: emptyList()" } | Typed limitations that qualify or prevent persisted reference evidence. |
             | `#!kotlin publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus?` :material-information-outline:{ title="Default: null" } | Exact immutable workspace generation admitted for semantic reads, or null outside generation-backed READY. |
-            | `#!kotlin readiness: RuntimeReadiness` :material-information-outline:{ title="Default: derived from legacy runtime and reference fields" } | Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes. |
-            | `#!kotlin ready: Boolean?` | Compatibility summary. True only when every readiness lane is ready. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-
-    ??? info "runtime/shutdown — Request runtime host shutdown after the response is flushed"
-
-        === "Input"
-
-            _No parameters._
-        === "Output: RuntimeLifecycleResponse"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
-            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
-            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
-            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
-            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
-            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-
-    ??? info "runtime/restart — Request runtime host restart after the response is flushed"
-
-        === "Input"
-
-            _No parameters._
-        === "Output: RuntimeLifecycleResponse"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
-            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
-            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
-            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
-            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
-            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "capabilities — Advertised read and mutation capabilities"

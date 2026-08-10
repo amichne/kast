@@ -1,5 +1,10 @@
 package io.github.amichne.kast.api.continuation
 
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLease
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseKind
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
+import java.util.IdentityHashMap
+
 class ServerHeldContinuationStore<
     Token : Any,
     Query : Any,
@@ -11,17 +16,31 @@ class ServerHeldContinuationStore<
     tokenIssuer: ContinuationTokenIssuer<Token>,
     stateDisposer: ContinuationStateDisposer<State>,
     clock: ContinuationClock = ContinuationClock.System,
+    private val leaseRegistry: RuntimeCapabilityLeaseRegistry? = null,
 ) : AutoCloseable {
+    private val continuationLeases = IdentityHashMap<State, RuntimeCapabilityLease>()
     private val ownership = ContinuationStoreOwnership<Token, Query, State, Projection>(
         capacity = capacity,
         timeToLive = timeToLive,
         tokenIssuer = tokenIssuer,
-        stateDisposer = stateDisposer,
+        stateDisposer = ContinuationStateDisposer { state ->
+            try {
+                stateDisposer.dispose(state)
+            } finally {
+                synchronized(continuationLeases) { continuationLeases.remove(state) }?.close()
+            }
+        },
         clock = clock,
     )
 
-    fun issue(query: Query, state: State): ContinuationIssueResult<Token> =
-        when (val preparation = ownership.prepareIssue(query, state)) {
+    fun issue(query: Query, state: State): ContinuationIssueResult<Token> {
+        leaseRegistry?.acquire(RuntimeCapabilityLeaseKind.CONTINUATION)?.let { lease ->
+            synchronized(continuationLeases) {
+                check(continuationLeases.put(state, lease) == null) { "Continuation state is already owned" }
+            }
+        }
+        return try {
+            when (val preparation = ownership.prepareIssue(query, state)) {
             is ContinuationIssuePreparation.Prepared -> completeIssuePublication(preparation)
             is ContinuationIssuePreparation.Rejected -> {
                 ownership.disposeRegistered(preparation.disposal)
@@ -33,7 +52,12 @@ class ServerHeldContinuationStore<
                 disposeFailure?.let(preparation.failure::addSuppressed)
                 throw preparation.failure
             }
+            }
+        } catch (failure: Throwable) {
+            synchronized(continuationLeases) { continuationLeases.remove(state) }?.close()
+            throw failure
         }
+    }
 
     private fun completeIssuePublication(
         preparation: ContinuationIssuePreparation.Prepared<Token, Query, State>,

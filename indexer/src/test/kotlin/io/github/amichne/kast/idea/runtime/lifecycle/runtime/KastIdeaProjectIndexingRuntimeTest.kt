@@ -63,7 +63,9 @@ class KastIdeaProjectIndexingRuntimeTest {
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             indexStore = store,
             semanticAdmission = readyAdmission(project),
-            semanticGraphIndexer = { _, _, _ -> error("graph unavailable") },
+            semanticGraphIndexer = SemanticGraphIndexingTransition {
+                GraphLaneOutcome.Blocked(GraphLaneBlocker.INDEXING_FAILED)
+            },
             runProjectIndexing = { _, graph ->
                 graph(
                     IndexedSourceIdentifiers(
@@ -86,7 +88,7 @@ class KastIdeaProjectIndexingRuntimeTest {
             indexing.start()
             indexing.awaitTermination()
             assertEquals(1, referencesRan.get())
-            assertEquals(listOf(250L), retryDelays)
+            assertEquals(listOf(300_000L), retryDelays)
         } finally {
             indexing.cancel()
             store.close()
@@ -109,7 +111,10 @@ class KastIdeaProjectIndexingRuntimeTest {
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             indexStore = store,
             semanticAdmission = readyAdmission(project),
-            semanticGraphIndexer = { scope, _, _ -> observed.set(scope) },
+            semanticGraphIndexer = SemanticGraphIndexingTransition { input ->
+                observed.set(input.sourceIdentifiers)
+                GraphLaneOutcome.Committed
+            },
             runProjectIndexing = { _, graph ->
                 graph(
                     IndexedSourceIdentifiers(

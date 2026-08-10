@@ -89,7 +89,7 @@ pub(super) fn unified_add_file_plan(
             },
             "postimageSha256": sha256,
         },
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     })
 }
 
@@ -210,7 +210,7 @@ pub(super) fn unified_scratch_inspect(workspace: &Path, params: &serde_json::Val
     serde_json::json!({
         "mutationAttemptId": params["mutationAttemptId"],
         "observations": observations,
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     })
 }
 
@@ -306,7 +306,7 @@ pub(super) fn unified_scratch_recover(workspace: &Path, params: &serde_json::Val
         "outcome": "RESTORED_PREIMAGE",
         "targetState": target_state,
         "scratchObservations": observations,
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     });
     if let Some(target_sha256) = target_sha256 {
         result

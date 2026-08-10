@@ -19,11 +19,31 @@ pub(crate) struct PublishedWorkspaceGenerationManifest {
     pub(crate) generation: u64,
     pub(crate) identity: String,
     pub(crate) source_index_generation: u64,
+    pub(crate) source_revision: u64,
+    pub(crate) reference_revision: u64,
+    pub(crate) graph_publication: PublishedGraphEvidence,
     pub(crate) source_index_schema_version: i64,
     pub(crate) database_file: String,
     pub(crate) published_at_epoch_millis: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) repository_overlay_file: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum PublishedGraphEvidence {
+    Ready {
+        revision: u64,
+    },
+    Blocked {
+        blocker: PublishedGraphEvidenceBlocker,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum PublishedGraphEvidenceBlocker {
+    IndexingFailed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,6 +146,10 @@ fn read_database_publication(database: &Path) -> Result<PublishedWorkspaceGenera
         .query_row(
             "SELECT publication.revision, publication.identity,
                     publication.source_index_generation,
+                    publication.source_revision,
+                    publication.reference_revision,
+                    publication.graph_revision,
+                    publication.graph_blocker,
                     publication.source_index_schema_version,
                     publication.published_at_epoch_millis,
                     publication.repository_overlay_file,
@@ -142,9 +166,13 @@ fn read_database_publication(database: &Path) -> Result<PublishedWorkspaceGenera
                     row.get::<_, i64>(2)?,
                     row.get::<_, i64>(3)?,
                     row.get::<_, i64>(4)?,
-                    row.get::<_, Option<String>>(5)?,
-                    row.get::<_, i64>(6)?,
+                    row.get::<_, Option<i64>>(5)?,
+                    row.get::<_, Option<String>>(6)?,
                     row.get::<_, i64>(7)?,
+                    row.get::<_, i64>(8)?,
+                    row.get::<_, Option<String>>(9)?,
+                    row.get::<_, i64>(10)?,
+                    row.get::<_, i64>(11)?,
                 ))
             },
         )
@@ -172,13 +200,29 @@ fn read_database_publication(database: &Path) -> Result<PublishedWorkspaceGenera
         ));
     }
     let source_index_generation = non_negative_u64(row.2, "source-index generation")?;
-    let published_at_epoch_millis = non_negative_u64(row.4, "publication time")?;
-    if row.3 != row.6 || source_index_generation != non_negative_u64(row.7, "schema generation")? {
+    let source_revision = non_negative_u64(row.3, "source revision")?;
+    let reference_revision = non_negative_u64(row.4, "reference revision")?;
+    let graph_publication = match (row.5, row.6.as_deref()) {
+        (Some(revision), None) => PublishedGraphEvidence::Ready {
+            revision: non_negative_u64(revision, "graph revision")?,
+        },
+        (None, Some("INDEXING_FAILED")) => PublishedGraphEvidence::Blocked {
+            blocker: PublishedGraphEvidenceBlocker::IndexingFailed,
+        },
+        _ => {
+            return Err(invalid_publication(
+                "Graph publication must be exactly ready or blocked",
+            ));
+        }
+    };
+    let published_at_epoch_millis = non_negative_u64(row.8, "publication time")?;
+    if row.7 != row.10 || source_index_generation != non_negative_u64(row.11, "schema generation")?
+    {
         return Err(CliError::new(
             "PUBLISHED_WORKSPACE_MISMATCH",
             format!(
                 "Workspace publication identity {}:{} does not match database identity {}:{}.",
-                row.3, source_index_generation, row.6, row.7
+                row.7, source_index_generation, row.10, row.11
             ),
         ));
     }
@@ -186,10 +230,13 @@ fn read_database_publication(database: &Path) -> Result<PublishedWorkspaceGenera
         generation: revision,
         identity: row.1,
         source_index_generation,
-        source_index_schema_version: row.3,
+        source_revision,
+        reference_revision,
+        graph_publication,
+        source_index_schema_version: row.7,
         database_file: WORKSPACE_DATABASE_FILE.to_string(),
         published_at_epoch_millis,
-        repository_overlay_file: row.5,
+        repository_overlay_file: row.9,
     })
 }
 

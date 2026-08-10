@@ -194,7 +194,7 @@ fn assert_canonical_machine_failure(
         _ => unreachable!("closed test format"),
     };
     assert!(
-        value["schemaVersion"] == 2 && value["status"] == "rejected"
+        value["schemaVersion"] == 3 && value["status"] == "rejected"
             || value["error"].is_string()
                 && value["message"].is_string()
                 && value["next"].is_string(),

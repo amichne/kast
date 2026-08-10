@@ -11,6 +11,7 @@ import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.client.ServerInstanceOwnership
 import io.github.amichne.kast.api.client.SocketOwnerUid
 import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
+import io.github.amichne.kast.api.contract.RuntimeStopPermit
 import io.github.amichne.kast.api.io.KastFileOperations
 import io.github.amichne.kast.api.io.LocalDiskFileOperations
 import java.net.StandardProtocolFamily
@@ -64,6 +65,43 @@ class DescriptorStore(
 
     fun delete(descriptor: ServerInstanceDescriptor) {
         registry.delete(descriptor)
+    }
+
+    /**
+     * Proof transition: `(RuntimeStopPermit, ServerInstanceDescriptor?) -> StopIdentityAdmission`.
+     *
+     * Admits shutdown only while registration, process identity, descriptor,
+     * socket inode, and runtime epoch still exactly match the issued permit.
+     * Rejection is closed [StopIdentityAdmission] data; raw filesystem and
+     * process observations remain inside this service boundary.
+     */
+    internal fun admitStop(
+        permit: RuntimeStopPermit,
+        expected: ServerInstanceDescriptor?,
+    ): StopIdentityAdmission {
+        val descriptor = expected ?: return StopIdentityAdmission.Rejected
+        val ownership = descriptor.ownership as? ServerInstanceOwnership.Owned
+            ?: return StopIdentityAdmission.Rejected
+        if (ownership.runtimeInstanceId.value != permit.epoch.value) return StopIdentityAdmission.Rejected
+        val first = registry.descriptors().singleOrNull { it.socketPath == descriptor.socketPath }
+            ?: return StopIdentityAdmission.Rejected
+        if (first != descriptor) return StopIdentityAdmission.Rejected
+        val process = ProcessHandle.of(ownership.processIdentity.processId.value).orElse(null)
+            ?: return StopIdentityAdmission.Rejected
+        val start = process.info().startInstant().orElse(null) ?: return StopIdentityAdmission.Rejected
+        if (!process.isAlive || start.toEpochMilli() != ownership.processIdentity.processStartEpochMillis.value) {
+            return StopIdentityAdmission.Rejected
+        }
+        val actualSocket = runCatching { readBoundSocketEvidence(descriptor.socketPath.toPath()) }.getOrNull()
+            ?: return StopIdentityAdmission.Rejected
+        if (actualSocket.socketFileIdentity != ownership.socketFileIdentity ||
+            actualSocket.socketOwnerUid != ownership.ownerUid
+        ) return StopIdentityAdmission.Rejected
+        return if (registry.descriptors().singleOrNull { it.socketPath == descriptor.socketPath } == first) {
+            StopIdentityAdmission.Admitted
+        } else {
+            StopIdentityAdmission.Rejected
+        }
     }
 
     internal fun <T : LocalRpcServer> launchEndpoint(
@@ -176,6 +214,11 @@ class DescriptorStore(
     private companion object {
         val endpointLaunchGuards = ConcurrentHashMap<String, Any>()
     }
+}
+
+internal sealed interface StopIdentityAdmission {
+    data object Admitted : StopIdentityAdmission
+    data object Rejected : StopIdentityAdmission
 }
 
 internal fun SocketOwnerUid.isOwnedBy(effectiveOwnerUid: EffectiveProcessOwnerUid): Boolean =

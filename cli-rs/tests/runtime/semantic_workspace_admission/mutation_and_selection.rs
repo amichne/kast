@@ -1,6 +1,6 @@
 #[cfg(target_os = "macos")]
 #[test]
-fn automatic_applied_mutation_checks_workspace_authority_before_backend_discovery() {
+fn automatic_applied_mutation_acquires_internal_authority_before_dispatch() {
     let fixture = tempfile::tempdir().expect("automatic mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -10,7 +10,7 @@ fn automatic_applied_mutation_checks_workspace_authority_before_backend_discover
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
     let indexer_listener = bind_semantic_listener(&indexer_socket);
-    write_runtime_descriptor(&home, &workspace, &indexer_socket, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &indexer_socket, "indexer");
     let indexer = ObservedSemanticBackend::spawn(indexer_listener, workspace.clone(), "indexer");
 
     let mutation = kast(&home, &config_home)
@@ -32,19 +32,15 @@ fn automatic_applied_mutation_checks_workspace_authority_before_backend_discover
         .output()
         .expect("automatic mutation");
 
-    assert!(!mutation.status.success(), "unprepared mutation must fail");
-    let output: serde_json::Value =
-        serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
-    assert_eq!(
-        output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
-        "{output:#}"
-    );
-    assert!(indexer.finish().is_empty(), "indexer must not be contacted");
+    assert!(mutation.status.success(), "semantic demand must acquire authority");
+    let observed = indexer.finish();
+    assert!(observed.contains(&"runtime/status".to_string()), "{observed:?}");
+    assert!(observed.contains(&"mutation/submit".to_string()), "{observed:?}");
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn default_applied_mutation_maps_every_public_family_to_missing_workspace_authority() {
+fn default_applied_mutation_maps_every_public_family_to_unavailable_semantic_demand() {
     let fixture = tempfile::tempdir().expect("default mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -72,15 +68,12 @@ fn default_applied_mutation_maps_every_public_family_to_missing_workspace_author
         assert!(!mutation.status.success(), "unprepared mutation must fail");
         let output: serde_json::Value =
             serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
-        assert_eq!(
-            output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
-            "{output:#}"
-        );
+        assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE", "{output:#}");
     }
 }
 
 #[test]
-fn applied_indexer_mutation_requires_a_workspace_lease_before_rpc() {
+fn applied_indexer_mutation_automatically_holds_internal_authority() {
     let fixture = tempfile::tempdir().expect("prepared mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -90,7 +83,7 @@ fn applied_indexer_mutation_requires_a_workspace_lease_before_rpc() {
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "indexer");
 
     let mutation = kast(&home, &config_home)
@@ -113,13 +106,10 @@ fn applied_indexer_mutation_requires_a_workspace_lease_before_rpc() {
         .expect("prepared mutation");
 
     let observed_methods = backend.finish();
-    assert!(!mutation.status.success(), "lease-free mutation must fail");
-    let output: serde_json::Value =
-        serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
-    assert_eq!(output["error"]["code"], "WORKSPACE_LEASE_REQUIRED");
+    assert!(mutation.status.success(), "semantic mutation demand must succeed");
     assert!(
-        observed_methods.is_empty(),
-        "lease rejection must precede RPC: {observed_methods:?}"
+        observed_methods.contains(&"mutation/submit".to_string()),
+        "mutation demand did not reach RPC: {observed_methods:?}"
     );
 }
 
@@ -200,7 +190,7 @@ fn descriptor_cannot_make_non_gradle_root_supported() {
 
     assert!(!verify.status.success(), "non-Gradle root must fail");
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
+    assert_eq!(output["error"]["code"], "UNSUPPORTED_WORKSPACE");
 }
 
 include!("mutation_and_selection/selection.rs");

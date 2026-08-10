@@ -8,12 +8,9 @@
     },
     {
       "bindings": [],
-      "methods": [
-        "runtime/status",
-        "capabilities"
-      ],
-      "operation": "workspace.ensure",
-      "requestType": "workspaceEnsure"
+      "methods": [],
+      "operation": "workspace.up",
+      "requestType": "workspaceUp"
     },
     {
       "bindings": [

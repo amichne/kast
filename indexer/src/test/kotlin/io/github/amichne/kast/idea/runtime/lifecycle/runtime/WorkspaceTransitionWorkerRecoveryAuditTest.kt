@@ -42,7 +42,8 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             override fun prepare(
                 open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication,
                 identity: WorkspaceStateIdentity,
-            ) = delegate.prepare(open, identity)
+                graphBlocker: io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker?,
+            ) = delegate.prepare(open, identity, graphBlocker)
             override fun commit(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) =
                 delegate.commit(prepared)
 
@@ -64,7 +65,7 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             captureCandidate = { _, _ ->
                 WorkspaceReconciliationCandidate(identity, null, RepositorySnapshotPublication.Unmanaged)
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = publication,
             waitForNextPass = { waitCount++ == 0 },
             isCancelled = { false },
@@ -107,7 +108,7 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             },
             runIndexingPass = { _, _, _ ->
                 indexingPasses.incrementAndGet()
-                IndexingPassResult(KastSourceIndexSummary(), null)
+                IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed)
             },
             workspaceGenerationPublication = publication,
             waitForNextPass = { waitCount++ == 0 },
@@ -153,7 +154,7 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
                     RepositorySnapshotPublication.Unmanaged,
                 )
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(initial, publications::add),
             waitForNextPass = { waitCount++ == 0 },
             isCancelled = { false },

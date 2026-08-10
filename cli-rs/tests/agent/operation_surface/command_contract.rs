@@ -141,8 +141,6 @@ fn applied_add_file_submits_typed_mutation_request() {
         Some(mutation_result(false)),
         false,
     );
-    let lease_id = acquire_workspace_lease(&binary, &home, &config_home, &workspace);
-
     let output = kast_at(&binary, &home, &config_home)
         .args([
             "--output",
@@ -158,8 +156,6 @@ fn applied_add_file_submits_typed_mutation_request() {
             "--apply",
             "--idempotency-key",
             "issue-333-add-file",
-            "--lease-id",
-            &lease_id,
         ])
         .output()
         .expect("submit mutation");

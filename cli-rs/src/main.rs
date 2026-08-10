@@ -168,6 +168,7 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
             install::install_agent_resources(&harnesses)?;
             Ok(0)
         }
+        KastCommand::Up => agent_adapter::run_up(output_format),
         KastCommand::Workspace(args) => agent_adapter::run_workspace(args, output_format),
         KastCommand::File(args) => agent_adapter::run_file(args, output_format),
         KastCommand::Symbol(args) => agent_adapter::run_symbol(args, output_format),
@@ -204,7 +205,7 @@ fn kast_home(root: PathBuf) -> Result<KastHome> {
                     reference_index_ready = selected
                         .runtime_status
                         .as_ref()
-                        .is_some_and(|runtime| runtime.reference_index_ready);
+                        .is_some_and(|runtime| runtime.reference_index_ready());
                     runtime_state = selected
                         .runtime_status
                         .as_ref()
@@ -220,14 +221,10 @@ fn kast_home(root: PathBuf) -> Result<KastHome> {
         }
     }
     let ready = runtime_state == "READY" && reference_index_ready;
-    let next = if ready {
-        vec![
-            "kast workspace refresh".to_string(),
-            "kast symbol search --query <query>".to_string(),
-        ]
-    } else {
-        vec!["kast workspace ensure".to_string()]
-    };
+    let next = vec![
+        "kast workspace refresh".to_string(),
+        "kast symbol search --query <query>".to_string(),
+    ];
     Ok(KastHome {
         bin: display_invoked_executable(),
         description: "Compiler-backed Kotlin knowledge and changes for coding agents.",

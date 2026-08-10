@@ -104,6 +104,7 @@ internal class SourceIndexSnapshotStore(
         session: WorkspaceWriteSession,
         identity: PublishedWorkspaceIdentity,
         publishedAt: PublicationEpochMillis,
+        graphBlocker: GraphEvidenceBlocker?,
     ): PublishedWorkspaceGenerationManifest = state.inspectWorkspaceWrite(session) { conn ->
         val sourceIndexGeneration = state.readGenerationInTransaction(conn)
         val moduleProgress = state.readTable(SourceIndexReadTable.MODULE_INDEX_PROGRESS)
@@ -144,6 +145,12 @@ internal class SourceIndexSnapshotStore(
             },
             identity = identity,
             sourceIndexGeneration = readiness.sourceIndexGeneration,
+            sourceRevision = EvidenceRevision.fromSourceIndexGeneration(readiness.sourceIndexGeneration),
+            referenceRevision = EvidenceRevision.fromSourceIndexGeneration(readiness.sourceIndexGeneration),
+            graphPublication = graphBlocker?.let(GraphEvidencePublication::Blocked)
+                ?: GraphEvidencePublication.Ready(
+                    EvidenceRevision.fromSourceIndexGeneration(readiness.sourceIndexGeneration),
+                ),
             sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
             publishedAt = publishedAt,
             repositoryOverlay = state.repositoryOverlayPublication,
@@ -176,12 +183,17 @@ internal class SourceIndexSnapshotStore(
         conn.prepareStatement(
             """INSERT INTO workspace_publication(
                    singleton, revision, identity, source_index_generation,
+                   source_revision, reference_revision, graph_revision, graph_blocker,
                    source_index_schema_version, published_at_epoch_millis, repository_overlay_file
-               ) VALUES (1, ?, ?, ?, ?, ?, ?)
+               ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(singleton) DO UPDATE SET
                    revision = excluded.revision,
                    identity = excluded.identity,
                    source_index_generation = excluded.source_index_generation,
+                   source_revision = excluded.source_revision,
+                   reference_revision = excluded.reference_revision,
+                   graph_revision = excluded.graph_revision,
+                   graph_blocker = excluded.graph_blocker,
                    source_index_schema_version = excluded.source_index_schema_version,
                    published_at_epoch_millis = excluded.published_at_epoch_millis,
                    repository_overlay_file = excluded.repository_overlay_file""",
@@ -189,9 +201,21 @@ internal class SourceIndexSnapshotStore(
             statement.setLong(1, commit.manifest.generation.value)
             statement.setString(2, commit.manifest.identity.value)
             statement.setLong(3, commit.manifest.sourceIndexGeneration.value)
-            statement.setInt(4, commit.manifest.sourceIndexSchemaVersion.value)
-            statement.setLong(5, commit.manifest.publishedAt.value)
-            statement.setString(6, commit.manifest.repositoryOverlay.serializedFileName())
+            statement.setLong(4, commit.manifest.sourceRevision.value)
+            statement.setLong(5, commit.manifest.referenceRevision.value)
+            when (val graph = commit.manifest.graphPublication) {
+                is GraphEvidencePublication.Ready -> {
+                    statement.setLong(6, graph.revision.value)
+                    statement.setNull(7, java.sql.Types.VARCHAR)
+                }
+                is GraphEvidencePublication.Blocked -> {
+                    statement.setNull(6, java.sql.Types.BIGINT)
+                    statement.setString(7, graph.blocker.name)
+                }
+            }
+            statement.setInt(8, commit.manifest.sourceIndexSchemaVersion.value)
+            statement.setLong(9, commit.manifest.publishedAt.value)
+            statement.setString(10, commit.manifest.repositoryOverlay.serializedFileName())
             check(statement.executeUpdate() == 1) { "Workspace publication row was not written" }
         }
         commit.manifest
@@ -199,7 +223,8 @@ internal class SourceIndexSnapshotStore(
 
     private fun readWorkspacePublicationInTransaction(conn: Connection): PublishedWorkspaceGenerationState =
         conn.prepareStatement(
-            """SELECT revision, identity, source_index_generation, source_index_schema_version,
+            """SELECT revision, identity, source_index_generation, source_revision, reference_revision,
+                      graph_revision, graph_blocker, source_index_schema_version,
                       published_at_epoch_millis, repository_overlay_file
                FROM workspace_publication
                WHERE singleton = 1""",
@@ -212,6 +237,10 @@ internal class SourceIndexSnapshotStore(
                             generation = rows.getLong("revision"),
                             identity = rows.getString("identity"),
                             sourceIndexGeneration = rows.getLong("source_index_generation"),
+                            sourceRevision = rows.getLong("source_revision"),
+                            referenceRevision = rows.getLong("reference_revision"),
+                            graphRevision = rows.getLong("graph_revision").let { if (rows.wasNull()) null else it },
+                            graphBlocker = rows.getString("graph_blocker"),
                             sourceIndexSchemaVersion = rows.getInt("source_index_schema_version"),
                             publishedAtEpochMillis = rows.getLong("published_at_epoch_millis"),
                             repositoryOverlayFile = rows.getString("repository_overlay_file"),
@@ -281,6 +310,12 @@ internal class SourceIndexSnapshotStore(
                 manifest.sourceIndexGeneration,
                 sourceIndexGeneration,
             ),
+        )
+        manifest.sourceRevision.value != sourceIndexGeneration.value ||
+            manifest.referenceRevision.value != sourceIndexGeneration.value ||
+            (manifest.graphPublication as? GraphEvidencePublication.Ready)?.revision?.value
+                ?.let { it != sourceIndexGeneration.value } == true -> WorkspacePublicationCommitResolution.Rejected(
+            WorkspacePublicationCommitFailure.EvidenceRevisionMismatch,
         )
         manifest.generation != expectedRevision -> WorkspacePublicationCommitResolution.Rejected(
             WorkspacePublicationCommitFailure.RevisionMoved(expectedRevision, manifest.generation),

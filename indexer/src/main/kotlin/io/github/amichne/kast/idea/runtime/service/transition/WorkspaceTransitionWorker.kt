@@ -21,6 +21,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.idea.transition.WorkspaceWakeup
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import java.util.concurrent.CancellationException
 import java.time.Duration
@@ -126,7 +127,6 @@ internal class WorkspaceTransitionWorker(
                     cycleResult = attempted.getOrThrow()
                     candidate
                 }
-                cycleResult?.graphFailure?.let { throw it }
                 requireActive()
                 return reconciledIdentity
             }
@@ -141,7 +141,11 @@ internal class WorkspaceTransitionWorker(
                 identity: WorkspaceStateIdentity,
             ): PreparedWorkspacePublication {
                 requireActive()
-                return workspaceGenerationPublication.prepare(open, identity)
+                val graphBlocker = when (checkNotNull(cycleResult).graphOutcome) {
+                    GraphLaneOutcome.Committed -> null
+                    is GraphLaneOutcome.Blocked -> GraphEvidenceBlocker.INDEXING_FAILED
+                }
+                return workspaceGenerationPublication.prepare(open, identity, graphBlocker)
             }
 
             override fun commitPublication(prepared: PreparedWorkspacePublication): GenerationPublication {

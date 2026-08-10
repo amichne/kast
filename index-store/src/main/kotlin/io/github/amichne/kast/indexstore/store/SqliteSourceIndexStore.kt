@@ -101,10 +101,12 @@ class SqliteSourceIndexStore private constructor(
         session: WorkspaceWriteSession,
         identity: PublishedWorkspaceIdentity,
         publishedAt: PublicationEpochMillis,
+        graphBlocker: GraphEvidenceBlocker?,
     ): PublishedWorkspaceGenerationManifest = snapshots.prepareWorkspacePublication(
         session = session,
         identity = identity,
         publishedAt = publishedAt,
+        graphBlocker = graphBlocker,
     )
 
     fun commitWorkspacePublication(

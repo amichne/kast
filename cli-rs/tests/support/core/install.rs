@@ -10,6 +10,12 @@ pub(crate) fn kast_at(binary: &Path, home: &Path, config_home: &Path) -> Command
         .arg0("kastctl")
         .env("HOME", home)
         .env("KAST_CONFIG_HOME", config_home);
+    let test_manager_root = default_install_root(home).join("state/runtime/test-manager");
+    if test_manager_root.is_dir() {
+        command
+            .env("KAST_TEST_ALLOW_RUNTIME_SERVICE_MANAGER", "1")
+            .env("KAST_TEST_RUNTIME_SERVICE_MANAGER_ROOT", test_manager_root);
+    }
     command
 }
 
@@ -27,7 +33,7 @@ pub(crate) fn published_semantic_command(
 }
 
 pub(crate) fn published_semantic_command_for_reads(
-    command: Command,
+    mut command: Command,
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -40,6 +46,10 @@ pub(crate) fn published_semantic_command_for_reads(
     let backend = spawn_open_published_semantic_read_backend(
         home, config_home, workspace, &socket,
     );
+    let test_manager_root = default_install_root(home).join("state/runtime/test-manager");
+    command
+        .env("KAST_TEST_ALLOW_RUNTIME_SERVICE_MANAGER", "1")
+        .env("KAST_TEST_RUNTIME_SERVICE_MANAGER_ROOT", test_manager_root);
     PublishedSemanticCommand {
         command,
         backend: Some(backend),
@@ -112,6 +122,7 @@ pub(crate) fn install_manifest_path(home: &Path) -> PathBuf {
 
 pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_home: &Path) {
     let install_root = default_install_root(home);
+    move_preinstall_workspace_fixtures_into_receipt_data_root(&install_root);
     let control_binary = default_libexec_dir(home).join("kastctl");
     let agent_binary = default_bin_dir(home).join("kast");
     let config_root = install_root.join("current/config");
@@ -175,6 +186,22 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
         .expect("install manifest JSON"),
     )
     .expect("install manifest");
+}
+
+fn move_preinstall_workspace_fixtures_into_receipt_data_root(install_root: &Path) {
+    let preinstall_workspaces = install_root.join("state/data/workspaces");
+    if !preinstall_workspaces.is_dir() {
+        return;
+    }
+    let receipt_workspaces = install_root.join("state/workspaces");
+    assert!(
+        !receipt_workspaces.exists(),
+        "fixture cannot merge pre-install and receipt-backed workspace roots"
+    );
+    std::fs::create_dir_all(receipt_workspaces.parent().expect("workspace data parent"))
+        .expect("workspace data parent");
+    std::fs::rename(&preinstall_workspaces, &receipt_workspaces)
+        .expect("move pre-install workspace fixtures into receipt data root");
 }
 
 pub(crate) fn write_active_kast_for_test(home: &Path, config_home: &Path) -> PathBuf {
@@ -264,19 +291,27 @@ pub(crate) fn published_workspace_generation_for_test(
     .ok()?;
     connection
         .query_row(
-            "SELECT revision, identity, source_index_generation, source_index_schema_version,
+            "SELECT revision, identity, source_index_generation, source_revision, reference_revision,
+                    graph_revision, graph_blocker, source_index_schema_version,
                     published_at_epoch_millis, repository_overlay_file
              FROM workspace_publication WHERE singleton = 1",
             [],
             |row| {
-                let overlay: Option<String> = row.get(5)?;
+                let overlay: Option<String> = row.get(9)?;
                 let mut manifest = serde_json::json!({
                     "generation": row.get::<_, i64>(0)?,
                     "identity": row.get::<_, String>(1)?,
                     "sourceIndexGeneration": row.get::<_, i64>(2)?,
-                    "sourceIndexSchemaVersion": row.get::<_, i64>(3)?,
+                    "sourceRevision": row.get::<_, i64>(3)?,
+                    "referenceRevision": row.get::<_, i64>(4)?,
+                    "graphPublication": if let Some(revision) = row.get::<_, Option<i64>>(5)? {
+                        serde_json::json!({"type": "READY", "revision": revision})
+                    } else {
+                        serde_json::json!({"type": "BLOCKED", "blocker": row.get::<_, String>(6)?})
+                    },
+                    "sourceIndexSchemaVersion": row.get::<_, i64>(7)?,
                     "databaseFile": "source-index.db",
-                    "publishedAtEpochMillis": row.get::<_, i64>(4)?,
+                    "publishedAtEpochMillis": row.get::<_, i64>(8)?,
                 });
                 if let Some(overlay) = overlay {
                     manifest["repositoryOverlayFile"] = serde_json::json!(overlay);

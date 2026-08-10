@@ -6,7 +6,6 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.kastConfigHome
-import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPreparation
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
@@ -46,9 +45,7 @@ internal class KastIdeaProjectIndexing(
     ),
     private val snapshotPreparation: RepositorySnapshotPreparation = RepositorySnapshotPreparation.Unmanaged,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
-    private val semanticGraphIndexer:
-        (IndexedSourceIdentifiers, GraphIndexingBatchSize, IdeaIndexSemanticAdmission.ReconciliationToken) -> Unit =
-        { _, _, _ -> },
+    private val semanticGraphIndexer: SemanticGraphIndexingTransition = SemanticGraphIndexingTransition.disabled(),
     private val runProjectIndexing: ((KastConfig, (IndexedSourceIdentifiers) -> Unit) -> Unit)? = null,
     private val waitForNextPass: ((Long) -> Boolean)? = null,
     private val eventWakeup: WorkspaceEventWakeup = WorkspaceEventWakeup(),

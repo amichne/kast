@@ -61,7 +61,6 @@ mod agent_file_path_tests {
         let fixture = PathFixture::with_file("src/App.kt");
         let runtime = AgentRuntimeArgs {
             workspace_root: None,
-            lease_id: None,
         };
         let normalizer = AgentFilePathNormalizer::from_runtime(&runtime)
             .expect("current-directory normalizer");
@@ -224,7 +223,6 @@ mod agent_file_path_tests {
         fn normalizer(&self) -> AgentFilePathNormalizer {
             AgentFilePathNormalizer::from_runtime(&AgentRuntimeArgs {
                 workspace_root: Some(self.workspace.clone()),
-                lease_id: None,
             })
             .expect("normalizer")
         }

@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 fn print_candidate(
     document: &mut MarkdownDocument,
     title: &str,
@@ -25,9 +26,9 @@ fn print_candidate(
             "- Runtime state: `{}`",
             runtime_state(status.state.clone())
         );
-        mdln!(document, "- Active: {}", yes_no(status.active));
-        mdln!(document, "- Healthy: {}", yes_no(status.healthy));
-        mdln!(document, "- Indexing: {}", yes_no(status.indexing));
+        mdln!(document, "- Active: {}", yes_no(status.active()));
+        mdln!(document, "- Healthy: {}", yes_no(status.healthy()));
+        mdln!(document, "- Indexing: {}", yes_no(status.indexing()));
         print_source_modules(document, &status.source_module_names);
         if let Some(message) = &status.message {
             mdln!(document, "- Message: {message}");
@@ -39,6 +40,7 @@ fn print_candidate(
     }
 }
 
+#[allow(dead_code)]
 fn print_source_modules(document: &mut MarkdownDocument, module_names: &[String]) {
     let modules = normalized_modules(module_names);
     if modules.is_empty() {
@@ -65,6 +67,7 @@ fn print_source_modules(document: &mut MarkdownDocument, module_names: &[String]
     }
 }
 
+#[allow(dead_code)]
 fn normalized_modules(module_names: &[String]) -> Vec<Vec<String>> {
     module_names
         .iter()
@@ -74,6 +77,7 @@ fn normalized_modules(module_names: &[String]) -> Vec<Vec<String>> {
         .collect()
 }
 
+#[allow(dead_code)]
 fn normalize_module_name(module_name: &str) -> Option<Vec<String>> {
     let trimmed = module_name.trim();
     if trimmed.is_empty() {
@@ -94,11 +98,13 @@ fn normalize_module_name(module_name: &str) -> Option<Vec<String>> {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Default)]
 struct ModuleTree {
     children: BTreeMap<String, ModuleTree>,
 }
 
+#[allow(dead_code)]
 impl ModuleTree {
     fn insert(&mut self, path: &[String]) {
         let Some((first, rest)) = path.split_first() else {
@@ -120,6 +126,7 @@ impl ModuleTree {
     }
 }
 
+#[allow(dead_code)]
 fn runtime_state(state: RuntimeState) -> &'static str {
     match state {
         RuntimeState::Starting => "STARTING",

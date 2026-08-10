@@ -12,5 +12,5 @@ include!("cli/workspace/runtime.rs");
 include!("cli/codex.rs");
 include!("cli/command_groups.rs");
 include!("cli/support/conversions.rs");
-include!("cli/support/shared.rs");
 include!("cli/support/helpers.rs");
+include!("cli/support/shared.rs");

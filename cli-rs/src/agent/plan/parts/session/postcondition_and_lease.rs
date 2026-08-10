@@ -119,7 +119,7 @@ struct MutationLeaseReceipt {
     schema_version: u32,
 }
 
-const MUTATION_LEASE_RECEIPT_SCHEMA_VERSION: u32 = 1;
+const MUTATION_LEASE_RECEIPT_SCHEMA_VERSION: u32 = 2;
 const MUTATION_LEASE_BINDING_DOMAIN: &str = "kast-mutation-lease-binding-v1";
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -186,21 +186,10 @@ impl MutationLeaseBindingSha256 {
 impl MutationLeaseReceipt {
     fn validate_for(&self, plan_id: Uuid, workspace_root: &Path) -> Result<()> {
         let descriptor = &self.runtime.descriptor;
-        let release_is_closed = match (self.ownership, self.release_receipt.reason) {
-            (
-                WorkspaceLeaseOwnership::Borrowed,
-                runtime::WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved,
-            ) => !self.release_receipt.runtime_stopped,
-            (
-                WorkspaceLeaseOwnership::Started,
-                runtime::WorkspaceLeaseReleaseReason::OwnedRuntimeStopped,
-            ) => self.release_receipt.runtime_stopped,
-            (
-                WorkspaceLeaseOwnership::Started,
-                runtime::WorkspaceLeaseReleaseReason::ExactRuntimeUnavailable,
-            ) => !self.release_receipt.runtime_stopped,
-            _ => false,
-        };
+        let release_is_closed = matches!(
+            self.release_receipt,
+            WorkspaceLeaseReleaseReceipt::RuntimeIdlePolicy { .. }
+        );
         if self.schema_version != MUTATION_LEASE_RECEIPT_SCHEMA_VERSION
             || self.plan_id != plan_id
             || self.workspace_root != workspace_root
@@ -208,7 +197,7 @@ impl MutationLeaseReceipt {
             || self.backend_name != crate::cli::BackendName::Indexer
             || self.state != WorkspaceLeaseState::Released
             || self.acquired_at.trim().is_empty()
-            || self.release_receipt.released_at.trim().is_empty()
+            || self.release_receipt.released_at().trim().is_empty()
             || !release_is_closed
             || self.runtime.descriptor_path.trim().is_empty()
             || descriptor.workspace_root != workspace_root.display().to_string()

@@ -20,14 +20,15 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Config(args) => run_config(args.command, output_format),
         Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
-        Command::Start(args) => run_runtime(cli::RuntimeCommand::Up(args), output_format),
-        Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
-        Command::Stop(args) => run_runtime(cli::RuntimeCommand::Stop(args), output_format),
         Command::Demo(args) => demo::run_public(args, output_format),
         Command::Rpc(args) => run_rpc(args, output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args.into(), output_format),
         Command::Agent(args) => run_agent(args, output_format),
+        Command::RuntimeServiceEntrypoint(args) => {
+            runtime::service_entrypoint(args)?;
+            Ok(0)
+        }
     }
 }
 
@@ -127,16 +128,8 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
 fn context_command_hints() -> Vec<ContextCommandHint> {
     vec![
         ContextCommandHint {
-            command: "kastctl start --workspace-root <repo>".to_string(),
-            purpose: "Start or resume the workspace backend and indexing.".to_string(),
-        },
-        ContextCommandHint {
-            command: "kastctl status --workspace-root <repo>".to_string(),
-            purpose: "Inspect backend and indexing state.".to_string(),
-        },
-        ContextCommandHint {
-            command: "kastctl stop --workspace-root <repo>".to_string(),
-            purpose: "Stop indexing and the workspace backend.".to_string(),
+            command: "kastctl developer inspect lifecycle --workspace-root <repo>".to_string(),
+            purpose: "Inspect lifecycle evidence without starting or stopping a runtime.".to_string(),
         },
         ContextCommandHint {
             command: "kastctl config list --workspace-root <repo>".to_string(),
@@ -234,75 +227,8 @@ fn current_executable_argument() -> String {
         .unwrap_or_else(|| "kast".to_string())
 }
 
-fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Result<i32> {
-    match command {
-        cli::RuntimeCommand::Up(args) => {
-            let result = runtime::workspace_ensure(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_workspace_ensure(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Status(args) => {
-            let result = runtime::workspace_status(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_workspace_status(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Stop(args) => {
-            let result = runtime::workspace_stop(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_stop_result(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Restart(args) => {
-            let result = runtime::workspace_restart(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_restart_result(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Capabilities(args) => {
-            let result = runtime::capabilities(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_capabilities(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Repair(args) => {
-            let result = runtime::workspace_repair(args)?;
-            output::print_structured(
-                &result,
-                if output_format.is_structured() {
-                    output_format
-                } else {
-                    OutputFormat::Toon
-                },
-            )?;
-            Ok(0)
-        }
-        cli::RuntimeCommand::ServiceEntrypoint(args) => {
-            runtime::service_entrypoint(args)?;
-            Ok(0)
-        }
-    }
-}
-
 fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
-        cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
         cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
         cli::DeveloperCommand::Release(args) => run_release(args.command, output_format),
         cli::DeveloperCommand::AgentHook(args) => {
@@ -314,6 +240,13 @@ fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) ->
 
 fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
+        cli::InspectCommand::Lifecycle(args) => {
+            output::print_structured(
+                &runtime::inspect_lifecycle(args.workspace_root),
+                if output_format.is_structured() { output_format } else { OutputFormat::Toon },
+            )?;
+            Ok(0)
+        }
         cli::InspectCommand::Paths(args) => run_paths(args, output_format),
         cli::InspectCommand::Metrics { command } => metrics::run(command, output_format),
         cli::InspectCommand::Catalog(args) => run_validate(args),

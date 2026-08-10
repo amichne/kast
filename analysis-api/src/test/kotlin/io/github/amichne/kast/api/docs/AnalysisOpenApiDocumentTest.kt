@@ -29,8 +29,6 @@ class AnalysisOpenApiDocumentTest {
         val expectedMethods = listOf(
             "health",
             "runtime/status",
-            "runtime/shutdown",
-            "runtime/restart",
             "capabilities",
             "raw/resolve",
             "raw/references",
@@ -150,8 +148,6 @@ class AnalysisOpenApiDocumentTest {
         val systemPaths = listOf(
             "/rpc/health",
             "/rpc/runtime-status",
-            "/rpc/runtime-shutdown",
-            "/rpc/runtime-restart",
             "/rpc/capabilities",
         )
         systemPaths.forEach { path ->

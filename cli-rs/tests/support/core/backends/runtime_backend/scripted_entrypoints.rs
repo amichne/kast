@@ -15,7 +15,7 @@ pub(crate) fn spawn_scripted_indexer_backend_for_invocations(
         socket_path,
         "indexer",
         invocation_count,
-        false,
+        true,
         vec![],
         None,
         None,
@@ -49,6 +49,7 @@ pub(crate) fn spawn_scripted_indexer_backend_for_published_workspace_read(
         None,
         1,
         scripted_results,
+        ScriptedRuntimeAuthority::PublishExact,
     )
 }
 
@@ -123,7 +124,7 @@ fn spawn_registered_scripted_backend(
     scratch_crash_gate: Option<ScriptedScratchCrashGate>,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
-    let backend = spawn_scripted_backend(
+    let backend = spawn_scripted_backend_with_additional_runtime_status_requests(
         home,
         config_home,
         workspace,
@@ -136,7 +137,9 @@ fn spawn_registered_scripted_backend(
         mutation_gate,
         keepalive_until,
         scratch_crash_gate,
+        0,
         scripted_results,
+        ScriptedRuntimeAuthority::ReuseRegistered,
     );
     publish_registered_runtime_descriptor(home, workspace, socket_path, backend_name);
     backend
@@ -226,6 +229,7 @@ pub(super) fn spawn_scripted_backend(
         scratch_crash_gate,
         0,
         scripted_results,
+        ScriptedRuntimeAuthority::PublishExact,
     )
 }
 
@@ -260,6 +264,7 @@ pub(crate) fn spawn_published_semantic_read_backend_for_reads(
         None,
         read_count,
         vec![],
+        ScriptedRuntimeAuthority::PublishExact,
     )
 }
 
@@ -286,5 +291,6 @@ pub(crate) fn spawn_ready_scripted_indexer_backend_for_invocations(
         None,
         invocation_count.saturating_mul(3),
         scripted_results,
+        ScriptedRuntimeAuthority::PublishExact,
     )
 }

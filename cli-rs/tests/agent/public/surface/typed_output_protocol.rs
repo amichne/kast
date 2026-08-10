@@ -33,7 +33,7 @@ fn json_and_toon_encode_the_same_canonical_result() {
     .expect("canonical TOON public home");
 
     assert_eq!(toon, json);
-    assert_eq!(json["schemaVersion"], 2);
+    assert_eq!(json["schemaVersion"], 3);
     assert_eq!(json["operation"], "workspace.home");
     assert_eq!(json["status"], "complete");
     assert_eq!(json["result"]["type"], "home");

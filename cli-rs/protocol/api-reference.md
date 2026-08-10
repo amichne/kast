@@ -13,7 +13,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        5 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
+        3 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
 
     ??? example "health — Basic health check"
 
@@ -55,7 +55,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendName": "fake",
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -74,9 +74,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin state: RuntimeState` | Current runtime state: STARTING, INDEXING, READY, or DEGRADED. |
-            | `#!kotlin healthy: Boolean` | True when the daemon is responsive and not in an error state. |
-            | `#!kotlin active: Boolean` | True when the daemon has an active workspace session. |
-            | `#!kotlin indexing: Boolean` | True when the daemon is currently indexing the workspace. |
             | `#!kotlin backendName: String` | Identifier of the analysis backend. |
             | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
@@ -84,12 +81,10 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin warnings: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
             | `#!kotlin sourceModuleNames: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
             | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
-            | `#!kotlin referenceIndexReady: Boolean` :material-information-outline:{ title="Default: false" } | True when committed symbol-reference evidence is queryable, including qualified evidence. |
-            | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE when referenceIndexReady is true; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
+            | `#!kotlin readiness: RuntimeReadiness` | Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes. |
+            | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE for a ready reference lane; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
             | `#!kotlin referenceCoverageLimitations: List<ReferenceCoverageLimitation>` :material-information-outline:{ title="Default: emptyList()" } | Typed limitations that qualify or prevent persisted reference evidence. |
             | `#!kotlin publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus?` :material-information-outline:{ title="Default: null" } | Exact immutable workspace generation admitted for semantic reads, or null outside generation-backed READY. |
-            | `#!kotlin readiness: RuntimeReadiness` :material-information-outline:{ title="Default: derived from legacy runtime and reference fields" } | Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes. |
-            | `#!kotlin ready: Boolean?` | Compatibility summary. True only when every readiness lane is ready. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
@@ -112,18 +107,12 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "result": {
                     "state": "READY",
-                    "healthy": true,
-                    "active": true,
-                    "indexing": false,
                     "backendName": "fake",
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
                     "warnings": [],
                     "sourceModuleNames": [],
                     "dependentModuleNamesBySourceModuleName": {},
-                    "referenceIndexReady": false,
-                    "referenceCoverageState": "UNAVAILABLE",
-                    "referenceCoverageLimitations": [],
                     "readiness": {
                         "runtime": {
                             "type": "READY"
@@ -132,7 +121,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "type": "READY"
                         },
                         "references": {
-                            "type": "BLOCKED"
+                            "type": "READY"
                         },
                         "semanticGraph": {
                             "type": "READY"
@@ -141,129 +130,14 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "type": "READY"
                         }
                     },
-                    "ready": false,
-                    "schemaVersion": 6
+                    "referenceCoverageState": "COMPLETE",
+                    "referenceCoverageLimitations": [],
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
             }
             ```
-
-    ??? example "runtime/shutdown — Request runtime host shutdown after the response is flushed"
-
-        Requests that the runtime host shut down the current indexer after returning a JSON-RPC response. The top-level `kast stop` command also handles stale endpoint state.
-
-        === "Input"
-
-            _No parameters._
-        === "Output: RuntimeLifecycleResponse"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
-            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
-            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
-            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
-            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
-            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "Internal protocol"
-
-            ```text
-            JSON-RPC method: runtime/shutdown
-            Params: {}
-            ```
-        === "Request"
-
-            ```json
-            {
-                "method": "runtime/shutdown",
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        === "Response"
-
-            ```json
-            {
-                "result": {
-                    "accepted": true,
-                    "action": "SHUTDOWN",
-                    "backendName": "fake",
-                    "backendVersion": "0.1.0-test",
-                    "workspaceRoot": "/workspace",
-                    "message": "Runtime shutdown accepted; action will run after this response is flushed.",
-                    "schemaVersion": 6
-                },
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        !!! note "Behavioral notes"
-
-            - The response is flushed before the lifecycle action runs, so callers can observe an accepted request.
-            - Hosts without lifecycle support return a capability-not-supported JSON-RPC error.
-            - Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and cleanup.
-
-        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
-
-    ??? example "runtime/restart — Request runtime host restart after the response is flushed"
-
-        Requests that the runtime host restart the current indexer after returning a JSON-RPC response. The top-level `kast restart` command also waits for readiness.
-
-        === "Input"
-
-            _No parameters._
-        === "Output: RuntimeLifecycleResponse"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
-            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
-            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
-            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
-            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
-            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "Internal protocol"
-
-            ```text
-            JSON-RPC method: runtime/restart
-            Params: {}
-            ```
-        === "Request"
-
-            ```json
-            {
-                "method": "runtime/restart",
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        === "Response"
-
-            ```json
-            {
-                "result": {
-                    "accepted": true,
-                    "action": "RESTART",
-                    "backendName": "fake",
-                    "backendVersion": "0.1.0-test",
-                    "workspaceRoot": "/workspace",
-                    "message": "Runtime restart accepted; action will run after this response is flushed.",
-                    "schemaVersion": 6
-                },
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        !!! note "Behavioral notes"
-
-            - The response is flushed before the lifecycle action runs, so callers can observe an accepted request.
-            - Hosts without lifecycle support return a capability-not-supported JSON-RPC error.
-            - Prefer the top-level `kast restart` command for operator workflows; it combines the host lifecycle request with readiness waiting.
-
-        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 
     ??? example "capabilities — Advertised read and mutation capabilities"
 
@@ -344,7 +218,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "continuationTtlMillis": 60000,
                         "continuationCapacity": 256
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -426,7 +300,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "documentation": "/** Greets the provided name. */",
                         "containingDeclaration": "sample"
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -549,7 +423,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "limitations": []
                         }
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -676,7 +550,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxChildrenPerNodeReached": false,
                         "filesVisited": 1
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -800,7 +674,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxDepthReached": 1,
                         "truncated": false
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -861,7 +735,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "result": {
                     "insertionOffset": 56,
                     "filePath": "/workspace/src/Sample.kt",
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -954,7 +828,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "type": "EXACT",
                         "totalCount": 0
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1036,7 +910,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "children": []
                         }
                     ],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1165,7 +1039,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             ]
                         }
                     ],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1244,7 +1118,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "truncated": false,
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1323,7 +1197,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "snapshotToken": "00000000-0000-4000-8000-000000000002",
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1567,7 +1441,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1625,7 +1499,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "result": {
                     "actions": [],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1701,7 +1575,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1860,7 +1734,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             }
                         ]
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2034,7 +1908,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             }
                         }
                     ],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2162,7 +2036,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         },
                         "postimageSha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2308,7 +2182,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         },
                         "postimageSha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2483,7 +2357,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "occurrences": []
                         }
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2610,7 +2484,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "status": "COMMITTED",
                     "previousSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
                     "resultSha256": "b95525cb10f61f05f8d701ea043b498d31551050ae5ba67eea1bf59a6370f9f5",
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2705,7 +2579,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "state": "ABSENT"
                         }
                     ],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2821,7 +2695,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "state": "ABSENT"
                         }
                     ],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2881,7 +2755,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "edits": [],
                     "fileHashes": [],
                     "affectedFiles": [],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2968,7 +2842,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     ],
                     "createdFiles": [],
                     "deletedFiles": [],
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -3064,7 +2938,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "removedFileCount": 0,
                     "attemptCount": 1,
                     "elapsedMillis": 0,
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 },
                 "id": 1,
                 "jsonrpc": "2.0"

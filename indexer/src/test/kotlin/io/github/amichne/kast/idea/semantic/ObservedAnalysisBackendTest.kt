@@ -5,6 +5,8 @@ import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.RuntimeReadiness
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.result.CallRelationsResult
@@ -32,12 +34,10 @@ class ObservedAnalysisBackendTest {
     fun `enriched runtime state is also recorded for the UI`() = runBlocking {
         val ready = RuntimeStatusResponse(
             state = RuntimeState.READY,
-            healthy = true,
-            active = true,
-            indexing = false,
             backendName = "indexer",
             backendVersion = "test",
             workspaceRoot = "/workspace",
+            readiness = RuntimeReadiness.ready(),
         )
         val delegate = RecordingRelationshipBackend(
             calls = emptyCallRelationsResult(),
@@ -55,7 +55,7 @@ class ObservedAnalysisBackendTest {
 
             val status = observed.runtimeStatus()
             assertEquals(RuntimeState.READY, status.state)
-            assertFalse(status.referenceIndexReady)
+            assertFalse(status.readiness.references is RuntimeReadinessLane.Ready)
             assertEquals(KastBackendUiState.READY, diagnostics.snapshot().backendState)
             assertEquals(KastIndexState.FAILED, diagnostics.snapshot().indexSummary.state)
         } finally {

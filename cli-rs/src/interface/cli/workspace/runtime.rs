@@ -107,16 +107,6 @@ pub struct DaemonStartArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct RuntimeRepairArgs {
-    /// Canonical workspace root whose runtime ownership should be inspected.
-    #[arg(long)]
-    pub workspace_root: PathBuf,
-    /// Apply the exact revalidated repair plan. The default is read-only.
-    #[arg(long)]
-    pub execute: bool,
-}
-
-#[derive(Debug, Args, Clone)]
 pub struct RuntimeServiceEntrypointArgs {
     /// Immutable service launch registration.
     #[arg(long)]
@@ -124,55 +114,4 @@ pub struct RuntimeServiceEntrypointArgs {
     /// Lowercase SHA-256 digest of the registration bytes.
     #[arg(long)]
     pub registration_sha256: String,
-}
-
-#[derive(Debug, Args, Clone)]
-#[command(disable_help_subcommand = true)]
-pub struct RuntimeCommandArgs {
-    #[command(subcommand)]
-    pub command: RuntimeCommand,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum RuntimeCommand {
-    /// Start or warm the workspace daemon.
-    #[command(
-        after_help = "Examples:\n  kast developer runtime up --workspace-root \"$PWD\" --accept-indexing\n  kast developer runtime up --workspace-root /workspace --accept-indexing"
-    )]
-    Up(RuntimeArgs),
-    /// Check what backends are running.
-    Status(RuntimeArgs),
-    /// Stop the workspace daemon.
-    Stop(RuntimeArgs),
-    /// Stop every matching runtime and start it again.
-    Restart(RuntimeArgs),
-    /// Print the advertised capabilities for the workspace backend.
-    Capabilities(RuntimeArgs),
-    /// Inspect or apply a precise runtime-ownership repair.
-    Repair(RuntimeRepairArgs),
-    /// Validate one service registration and replace this process with its indexer.
-    #[command(name = "service-entrypoint", hide = true)]
-    ServiceEntrypoint(RuntimeServiceEntrypointArgs),
-}
-
-#[cfg(test)]
-mod runtime_args_tests {
-    use super::*;
-
-    #[test]
-    fn runtime_up_uses_bounded_default_timeout() {
-        let cli = Cli::try_parse_from(["kast", "developer", "runtime", "up"])
-            .expect("runtime up arguments");
-        let Some(Command::Developer(DeveloperArgs {
-            command:
-                DeveloperCommand::Runtime(RuntimeCommandArgs {
-                    command: RuntimeCommand::Up(args),
-                }),
-        })) = cli.command
-        else {
-            panic!("expected developer runtime up command");
-        };
-
-        assert_eq!(args.wait_timeout_ms, 360_000);
-    }
 }

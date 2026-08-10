@@ -172,7 +172,10 @@ fn query_direct(request: &MetricsRequest) -> DirectResult<DirectMetricsQueryResu
     };
     result.and_then(|value| {
         if let Some(read) = &request.published_read {
-            read.revalidate().map_err(DirectMetricsError::Query)?;
+            return read
+                .revalidate()
+                .map_err(DirectMetricsError::Query)
+                .map(|proof| proof.finish(value));
         }
         Ok(value)
     })

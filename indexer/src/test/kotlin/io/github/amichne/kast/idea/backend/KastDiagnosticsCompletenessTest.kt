@@ -10,6 +10,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.junit5.TestApplication
 import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
@@ -21,6 +22,7 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -308,7 +310,7 @@ internal class KastDiagnosticsCompletenessTest : KastDiagnosticsCompletenessFixt
         }
 
         assertEquals(RuntimeState.INDEXING, runtime.state)
-        assertTrue(runtime.healthy)
+        assertFalse(runtime.readiness.runtime is RuntimeReadinessLane.Blocked)
         assertEquals(SemanticAnalysisOutcome.INCOMPLETE, diagnostics.semanticOutcome)
         assertEquals(FileAnalysisState.PENDING_INDEX, diagnostics.fileStatuses.single().state)
         assertEquals(0, diagnostics.analyzedFileCount)

@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.continuation.ContinuationCapacity
 import io.github.amichne.kast.api.continuation.ContinuationTtl
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import java.nio.file.Path
 import java.time.Duration
 import kotlin.math.ln
@@ -20,6 +21,7 @@ data class AnalysisServerConfig(
     val continuationCapacity: Int = 256,
     val descriptorDirectory: Path? = null,
     val runtimeInstanceId: RuntimeInstanceId? = null,
+    val runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry? = null,
     val workspaceFileCount: Int = 0,
     val workspaceFileCountProvider: (() -> Int)? = null,
 ) {

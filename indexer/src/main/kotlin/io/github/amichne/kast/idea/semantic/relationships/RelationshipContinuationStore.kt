@@ -11,6 +11,7 @@ import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
 import io.github.amichne.kast.api.continuation.ContinuationTransition
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import io.github.amichne.kast.api.contract.result.CallRelation
 import io.github.amichne.kast.api.contract.result.CallRelationsResult
 import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
@@ -29,23 +30,28 @@ import java.util.UUID
 
 internal class RelationshipContinuationStore(
     limits: ServerLimits,
+    runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry? = null,
 ) : AutoCloseable {
     private val callerStore = TypedRelationshipStore<CallQuery, CallRelation>(
         family = RelationTraversalFamily.CALLERS,
         limits = limits,
+        runtimeCapabilityLeases = runtimeCapabilityLeases,
     )
     private val calleeStore = TypedRelationshipStore<CallQuery, CallRelation>(
         family = RelationTraversalFamily.CALLEES,
         limits = limits,
+        runtimeCapabilityLeases = runtimeCapabilityLeases,
     )
     private val implementationStore =
         TypedRelationshipStore<ImplementationQuery, ImplementationRelation>(
             family = RelationTraversalFamily.IMPLEMENTATIONS,
             limits = limits,
+            runtimeCapabilityLeases = runtimeCapabilityLeases,
         )
     private val hierarchyStore = TypedRelationshipStore<HierarchyQuery, TypeHierarchyRelation>(
         family = RelationTraversalFamily.HIERARCHY,
         limits = limits,
+        runtimeCapabilityLeases = runtimeCapabilityLeases,
     )
 
     data class CallQuery(
@@ -141,6 +147,7 @@ internal class RelationshipContinuationStore(
     private class TypedRelationshipStore<Query : Any, Record : Any>(
         private val family: RelationTraversalFamily,
         limits: ServerLimits,
+        runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry?,
     ) : AutoCloseable {
         private val store = ServerHeldContinuationStore<
             String,
@@ -152,6 +159,7 @@ internal class RelationshipContinuationStore(
             timeToLive = limits.typedContinuationTtl,
             tokenIssuer = ContinuationTokenIssuer { UUID.randomUUID().toString() },
             stateDisposer = ContinuationStateDisposer { },
+            leaseRegistry = runtimeCapabilityLeases,
         )
 
         fun page(

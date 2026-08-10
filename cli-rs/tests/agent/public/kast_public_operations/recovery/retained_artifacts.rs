@@ -92,7 +92,7 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
         present_receipt["outcome"], "RECOVERY_REQUIRED",
         "{present_receipt:#}"
     );
-    assert_eq!(present_receipt["schemaVersion"], 6, "{present_receipt:#}");
+    assert_eq!(present_receipt["schemaVersion"], 7, "{present_receipt:#}");
     assert!(
         present_requests.iter().all(|request| {
             !matches!(
@@ -253,7 +253,7 @@ fn public_recover_blocks_on_a_retained_add_file_rollback_artifact() {
         present_receipt["outcome"], "RECOVERY_REQUIRED",
         "{present_receipt:#}"
     );
-    assert_eq!(present_receipt["schemaVersion"], 6, "{present_receipt:#}");
+    assert_eq!(present_receipt["schemaVersion"], 7, "{present_receipt:#}");
     assert!(
         present_requests.iter().all(|request| {
             !matches!(
@@ -281,7 +281,7 @@ fn public_recover_blocks_on_a_retained_add_file_rollback_artifact() {
     let absent_requests = absent_backend.join().expect("absent recovery backend");
     let receipt = decode(&absent);
     assert_eq!(receipt["outcome"], "ROLLED_BACK", "{receipt:#}");
-    assert_eq!(receipt["schemaVersion"], 6, "{receipt:#}");
+    assert_eq!(receipt["schemaVersion"], 7, "{receipt:#}");
     assert!(
         absent_requests.iter().all(|request| {
             !matches!(

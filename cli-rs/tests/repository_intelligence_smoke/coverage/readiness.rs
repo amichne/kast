@@ -1,14 +1,15 @@
 fn ready_runtime(workspace: &std::path::Path) -> serde_json::Value {
     serde_json::json!({
         "state": "READY",
-        "healthy": true,
-        "active": true,
-        "indexing": false,
         "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "sourceModuleNames": ["app"],
-        "referenceIndexReady": true,
+        "readiness": {
+            "runtime": {"type": "READY"}, "model": {"type": "READY"},
+            "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
+            "mutation": {"type": "READY"}
+        },
         "schemaVersion": api_schema_version()
     })
 }
@@ -108,7 +109,9 @@ fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() 
         .args([
             "--output",
             "json",
-            "status",
+            "developer",
+            "inspect",
+            "lifecycle",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
@@ -123,21 +126,9 @@ fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() 
     let result: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("status JSON");
 
-    assert_eq!(result["selected"]["ready"], true, "{result}");
-    assert_eq!(
-        result["selected"]["runtimeStatus"]["state"],
-        "READY",
-        "{result}"
-    );
-    assert_eq!(
-        result["selected"]["runtimeStatus"]["healthy"],
-        true,
-        "{result}"
-    );
-    assert_eq!(result["semanticGraph"]["state"], "INCOMPLETE", "{result}");
-    assert_eq!(result["semanticGraph"]["total"], 1, "{result}");
-    assert_eq!(result["semanticGraph"]["pending"], 1, "{result}");
-    assert_eq!(result["semanticGraph"]["stale"], 0, "{result}");
+    assert_eq!(result["state"], "Epoch", "{result}");
+    assert_eq!(result["epoch"]["phase"], "RUNTIME_AVAILABLE", "{result}");
+    assert_eq!(result["capabilities"], serde_json::json!(["SOURCE", "REFERENCE"]), "{result}");
 }
 
 #[test]
@@ -155,14 +146,17 @@ fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing()
                 "runtime/status",
                 serde_json::json!({
                     "state": "INDEXING",
-                    "healthy": true,
-                    "active": true,
-                    "indexing": true,
                     "backendName": "indexer",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "sourceModuleNames": ["app"],
-                    "referenceIndexReady": false,
+                    "readiness": {
+                        "runtime": {"type": "READY"},
+                        "model": {"type": "IN_PROGRESS", "progress": {}},
+                        "references": {"type": "BLOCKED"},
+                        "semanticGraph": {"type": "IN_PROGRESS", "progress": {}},
+                        "mutation": {"type": "BLOCKED"}
+                    },
                     "schemaVersion": api_schema_version()
                 }),
             ),
@@ -174,7 +168,9 @@ fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing()
         .args([
             "--output",
             "json",
-            "status",
+            "developer",
+            "inspect",
+            "lifecycle",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
@@ -189,13 +185,9 @@ fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing()
     let result: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("indexing status JSON");
 
-    assert_eq!(result["selected"]["ready"], false, "{result}");
-    assert_eq!(
-        result["selected"]["runtimeStatus"]["state"],
-        "INDEXING",
-        "{result}"
-    );
-    assert_eq!(result["semanticGraph"]["state"], "UNAVAILABLE", "{result}");
+    assert_eq!(result["state"], "Epoch", "{result}");
+    assert_eq!(result["epoch"]["phase"], "MODEL_READY", "{result}");
+    assert_eq!(result["capabilities"], serde_json::json!([]), "{result}");
 }
 
 #[test]
@@ -242,11 +234,6 @@ fn verify_fails_incomplete_semantic_graph_coverage_without_discarding_runtime_ev
 
     assert_eq!(result["ok"], false, "{result}");
     assert_eq!(result["result"]["runtime"]["state"], "READY", "{result}");
-    assert_eq!(
-        result["result"]["runtime"]["healthy"],
-        true,
-        "{result}"
-    );
     assert_eq!(
         result["result"]["semanticGraph"]["state"],
         "INCOMPLETE",

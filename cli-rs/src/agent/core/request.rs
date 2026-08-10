@@ -7,27 +7,6 @@ fn execute_request_with_session(
     session: Option<&runtime::RawRpcSession>,
 ) -> AgentEnvelope {
     let mutation_session = if request.operation == AgentOperation::AppliedMutation {
-        let Some(lease_id) = request.runtime.lease_id.as_ref() else {
-            return error_envelope(
-                request.method,
-                Some(request.request),
-                agent_error(
-                    "WORKSPACE_LEASE_REQUIRED",
-                    "Applied semantic mutations require an authenticated exact-root workspace lease.",
-                ),
-            );
-        };
-        let validated_lease = match runtime::validate_workspace_lease_for_command(
-            lease_id,
-            request.runtime.workspace_root.as_deref(),
-        ) {
-            Ok(lease) => lease,
-            Err(error) => return error_envelope(
-                request.method,
-                Some(request.request),
-                AgentError::from_cli_error(error),
-            ),
-        };
         let admission = match runtime::semantic_mutation_workspace_route(
             request.runtime.workspace_root.clone(),
         ) {
@@ -49,16 +28,6 @@ fn execute_request_with_session(
             }
         };
         let required_capability = applied_mutation_capability(&request.request);
-        if !validated_lease.authorizes(&admission) {
-            return error_envelope(
-                request.method,
-                Some(request.request),
-                agent_error(
-                    "WORKSPACE_LEASE_RUNTIME_REPLACED",
-                    "The admitted indexer is not the exact runtime authenticated by the workspace lease.",
-                ),
-            );
-        }
         if !admission.supports_mutation(required_capability) {
             return error_envelope(
                 request.method,

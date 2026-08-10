@@ -14,18 +14,6 @@ internal fun openApiPaths(): Map<String, Any?> = linkedMapOf(
         method = "runtime/status",
         responseSchema = "RuntimeStatusResponse",
     ),
-    "/rpc/runtime-shutdown" to systemMethod(
-        operationId = "runtimeShutdown",
-        summary = "Request runtime host shutdown after the response is flushed",
-        method = "runtime/shutdown",
-        responseSchema = "RuntimeLifecycleResponse",
-    ),
-    "/rpc/runtime-restart" to systemMethod(
-        operationId = "runtimeRestart",
-        summary = "Request runtime host restart after the response is flushed",
-        method = "runtime/restart",
-        responseSchema = "RuntimeLifecycleResponse",
-    ),
     "/rpc/capabilities" to systemMethod(
         operationId = "capabilities",
         summary = "Advertised read and mutation capabilities",

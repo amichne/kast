@@ -22,7 +22,7 @@ Every result contains `schemaVersion`, `operation`, `status`, and `result.type`.
 | Operation | CLI syntax | Request type | Result type | Paging |
 | --- | --- | --- | --- | --- |
 | `workspace.home` | `kast` | `workspaceHome` | `workspaceHome` | unpaged |
-| `workspace.ensure` | `kast workspace ensure` | `workspaceEnsure` | `workspaceReady` | unpaged |
+| `workspace.up` | `kast up` | `workspaceUp` | `workspaceUp` | unpaged |
 | `workspace.refresh` | `kast workspace refresh --file src/main/kotlin/example/Widget.kt` | `workspaceRefresh` | `workspaceRefresh` | unpaged |
 | `workspace.externalize` | `kast workspace externalize --failure-id $FAILURE_ID` | `workspaceExternalize` | `externalization` | unpaged |
 | `file.list` | `kast file list --match '**/*.kt'` | `fileList` | `files` | continuation (fileList) |

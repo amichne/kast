@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import io.github.amichne.kast.server.AnalysisServerConfig
 
 internal sealed interface IndexerAdmission {
@@ -31,9 +32,11 @@ internal fun indexerAnalysisServerConfig(
     limits: ServerLimits,
     config: KastConfig,
     workspaceFileCountProvider: () -> Int,
+    runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry,
 ): AnalysisServerConfig = AnalysisServerConfig(
     transport = transport,
     runtimeInstanceId = runtimeInstanceId,
+    runtimeCapabilityLeases = runtimeCapabilityLeases,
     requestTimeoutMillis = limits.requestTimeoutMillis,
     maxResults = limits.maxResults,
     maxConcurrentRequests = limits.maxConcurrentRequests,

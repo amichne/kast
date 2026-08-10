@@ -26,29 +26,22 @@ pub(crate) fn spawn_open_published_semantic_read_backend(
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     let workspace = std::fs::canonicalize(workspace).expect("canonical published workspace");
     let listener = UnixListener::bind(socket_path).expect("bind published semantic backend");
-    std::fs::write(
-        descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
-            &workspace,
-            socket_path,
-            "indexer",
-            "scripted-test",
-        )]))
-        .expect("descriptor JSON"),
-    )
-    .expect("descriptor");
+    let exact_test_runtime = publish_exact_test_runtime(
+        home,
+        &workspace,
+        socket_path,
+        "indexer",
+        "scripted-test",
+        &descriptor_dir,
+    );
     listener
         .set_nonblocking(true)
         .expect("nonblocking published semantic backend");
-    let published = published_workspace_generation_for_test(&workspace).unwrap_or_else(|| {
-        panic!(
-            "published workspace generation for {}",
-            workspace.display()
-        )
-    });
+    let published = published_workspace_generation_for_test(&workspace);
     let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let server_stop = std::sync::Arc::clone(&stop);
     let handle = thread::spawn(move || {
+        let _exact_test_runtime = exact_test_runtime;
         let mut requests = Vec::new();
         while !server_stop.load(std::sync::atomic::Ordering::Acquire) {
             let (mut stream, _) = match listener.accept() {
@@ -68,19 +61,27 @@ pub(crate) fn spawn_open_published_semantic_read_backend(
             let request: serde_json::Value =
                 serde_json::from_str(&request_line).expect("request JSON");
             let result = match request["method"].as_str().expect("request method") {
-                "runtime/status" => serde_json::json!({
-                    "state": "READY",
-                    "healthy": true,
-                    "active": true,
-                    "indexing": false,
-                    "backendName": "indexer",
-                    "backendVersion": "scripted-test",
-                    "workspaceRoot": workspace.display().to_string(),
-                    "sourceModuleNames": [":fixture"],
-                    "referenceIndexReady": true,
-                    "publishedWorkspaceGeneration": published.clone(),
-                    "schemaVersion": 6
-                }),
+                "runtime/status" => {
+                    let mut status = serde_json::json!({
+                        "state": "READY",
+                        "backendName": "indexer",
+                        "backendVersion": "scripted-test",
+                        "workspaceRoot": workspace.display().to_string(),
+                        "sourceModuleNames": [":fixture"],
+                        "readiness": {
+                            "runtime": {"type": "READY"},
+                            "model": {"type": "READY"},
+                            "references": {"type": "READY"},
+                            "semanticGraph": {"type": "READY"},
+                            "mutation": {"type": "READY"}
+                        },
+                        "schemaVersion": 7
+                    });
+                    if let Some(published) = &published {
+                        status["publishedWorkspaceGeneration"] = published.clone();
+                    }
+                    status
+                }
                 "capabilities" => serde_json::json!({
                     "backendName": "indexer",
                     "backendVersion": "scripted-test",
@@ -92,7 +93,7 @@ pub(crate) fn spawn_open_published_semantic_read_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 6
+                    "schemaVersion": 7
                 }),
                 method => panic!("unexpected published semantic method: {method}"),
             };
@@ -161,6 +162,6 @@ pub(crate) fn runtime_descriptor_for_process_test(
         "transport": "uds",
         "socketPath": socket_path.display().to_string(),
         "pid": pid,
-        "schemaVersion": 6
+        "schemaVersion": 7
     })
 }

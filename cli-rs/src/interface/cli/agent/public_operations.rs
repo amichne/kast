@@ -6,8 +6,6 @@ pub struct KastWorkspaceArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum KastWorkspaceCommand {
-    /// Start or reuse the exact workspace and wait for semantic evidence.
-    Ensure,
     /// Refresh changed semantic evidence or selected Kotlin files.
     Refresh {
         /// Files to retry even when their content is unchanged.

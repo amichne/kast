@@ -77,7 +77,12 @@ internal fun kastRuntimeReadiness(
         is IdeaIndexSemanticAdmission.Status.Ready -> RuntimeReadinessLane.Ready
     }
     return RuntimeReadiness(
-        runtime = RuntimeReadinessLane.Ready,
+        runtime = when (observation.admission) {
+            is IdeaIndexSemanticAdmission.Status.Failed -> RuntimeReadinessLane.Blocked
+            is IdeaIndexSemanticAdmission.Status.Pending,
+            is IdeaIndexSemanticAdmission.Status.Ready,
+            -> RuntimeReadinessLane.Ready
+        },
         model = model,
         references = RuntimeReadinessLane.Blocked,
         semanticGraph = graph,

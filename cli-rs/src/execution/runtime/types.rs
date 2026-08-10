@@ -29,12 +29,9 @@ pub struct RuntimeSocketFileIdentity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RuntimeStatusResponse {
     pub state: RuntimeState,
-    pub healthy: bool,
-    pub active: bool,
-    pub indexing: bool,
     pub backend_name: String,
     pub backend_version: String,
     pub workspace_root: String,
@@ -47,41 +44,86 @@ pub struct RuntimeStatusResponse {
     #[serde(default, skip_serializing_if = "serde_json::Map::is_empty")]
     pub dependent_module_names_by_source_module_name: serde_json::Map<String, Value>,
     #[serde(default)]
-    pub reference_index_ready: bool,
-    #[serde(default)]
     pub reference_coverage_state: ReferenceCoverageState,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub reference_coverage_limitations: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub published_workspace_generation:
         Option<crate::published_workspace::PublishedWorkspaceGenerationManifest>,
+    pub readiness: RuntimeReadiness,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct RuntimeStatusWireResponse {
-    #[serde(flatten)]
-    status: RuntimeStatusResponse,
-    #[serde(default)]
-    readiness: Option<Value>,
-    #[serde(default)]
-    ready: Option<bool>,
+pub struct RuntimeReadiness {
+    pub runtime: RuntimeReadinessLane,
+    pub model: RuntimeReadinessLane,
+    pub references: RuntimeReadinessLane,
+    pub semantic_graph: RuntimeReadinessLane,
+    pub mutation: RuntimeReadinessLane,
 }
 
-impl RuntimeStatusWireResponse {
-    fn into_status(mut self) -> Result<RuntimeStatusResponse> {
-        if self.ready.is_some() != self.readiness.is_some() {
+impl RuntimeReadiness {
+    #[cfg(test)]
+    pub(crate) fn ready() -> Self {
+        Self {
+            runtime: RuntimeReadinessLane::Ready,
+            model: RuntimeReadinessLane::Ready,
+            references: RuntimeReadinessLane::Ready,
+            semantic_graph: RuntimeReadinessLane::Ready,
+            mutation: RuntimeReadinessLane::Ready,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum RuntimeReadinessLane {
+    Ready,
+    InProgress { progress: Value },
+    Blocked,
+}
+
+impl RuntimeStatusResponse {
+    pub(crate) fn validate_protocol(self) -> Result<Self> {
+        let aligned = match self.state {
+            RuntimeState::Starting => matches!(self.readiness.runtime, RuntimeReadinessLane::InProgress { .. }),
+            RuntimeState::Indexing => matches!(self.readiness.runtime, RuntimeReadinessLane::Ready)
+                && matches!(self.readiness.model, RuntimeReadinessLane::InProgress { .. }),
+            RuntimeState::Ready => matches!(self.readiness.runtime, RuntimeReadinessLane::Ready)
+                && matches!(self.readiness.model, RuntimeReadinessLane::Ready),
+            RuntimeState::Degraded => matches!(self.readiness.runtime, RuntimeReadinessLane::Blocked)
+                || matches!(self.readiness.model, RuntimeReadinessLane::Blocked),
+        };
+        if !aligned {
             return Err(CliError::new(
                 "RUNTIME_STATUS_INVALID",
-                "Runtime status must publish readiness lanes and their aggregate together.",
+                "Runtime epoch state contradicts its tagged readiness lanes.",
             ));
         }
-        if self.ready == Some(false) {
-            self.status.indexing = true;
-        }
-        Ok(self.status)
+        Ok(self)
+    }
+
+    pub fn healthy(&self) -> bool {
+        !matches!(self.readiness.runtime, RuntimeReadinessLane::Blocked)
+    }
+
+    pub fn active(&self) -> bool {
+        matches!(self.readiness.runtime, RuntimeReadinessLane::Ready)
+    }
+
+    pub fn indexing(&self) -> bool {
+        matches!(self.readiness.model, RuntimeReadinessLane::InProgress { .. })
+    }
+
+    pub fn reference_index_ready(&self) -> bool {
+        matches!(self.readiness.references, RuntimeReadinessLane::Ready)
+    }
+
+    pub fn graph_index_ready(&self) -> bool {
+        matches!(self.readiness.semantic_graph, RuntimeReadinessLane::Ready)
     }
 }
 
@@ -119,6 +161,59 @@ pub enum RuntimeState {
     Indexing,
     Ready,
     Degraded,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(tag = "state", rename_all = "PascalCase")]
+pub enum LifecycleInspection {
+    Absent {
+        workspace_root: String,
+        schema_version: u32,
+    },
+    Epoch {
+        workspace_root: String,
+        epoch: RuntimeEpochEvidence,
+        capabilities: Vec<LifecycleCapability>,
+        schema_version: u32,
+    },
+    Blocked {
+        workspace_root: Option<String>,
+        blocker: LifecycleBlocker,
+        schema_version: u32,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeEpochEvidence {
+    pub runtime_instance_id: String,
+    pub process_id: u64,
+    pub process_start_epoch_millis: u64,
+    pub socket_file_identity: RuntimeSocketFileIdentity,
+    pub phase: RuntimeEpochPhase,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum RuntimeEpochPhase {
+    Starting,
+    ModelReady,
+    RuntimeAvailable,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum LifecycleCapability {
+    Source,
+    Reference,
+    Graph,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LifecycleBlocker {
+    pub code: String,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -173,6 +268,17 @@ pub struct WorkspaceEnsureResult {
     pub schema_version: u32,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceRestartResult {
+    pub workspace_root: String,
+    pub backend_name: String,
+    pub stop: DaemonStopResult,
+    pub ensure: WorkspaceEnsureResult,
+    pub schema_version: u32,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DaemonStopResult {
@@ -189,16 +295,6 @@ pub struct DaemonStopResult {
     pub candidates: Vec<RuntimeStopAction>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkspaceRestartResult {
-    pub workspace_root: String,
-    pub backend_name: String,
-    pub stop: DaemonStopResult,
-    pub ensure: WorkspaceEnsureResult,
     pub schema_version: u32,
 }
 

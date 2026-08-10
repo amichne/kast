@@ -14,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as FmtWrite};
 use std::io::{self, IsTerminal, Write as IoWrite};
 
+#[allow(dead_code)]
 const SOURCE_MODULE_DISPLAY_LIMIT: usize = 30;
 
 macro_rules! mdln {

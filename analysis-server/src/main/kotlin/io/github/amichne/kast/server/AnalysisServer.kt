@@ -21,7 +21,6 @@ import java.nio.file.attribute.PosixFilePermission
 class AnalysisServer(
     private val backend: CloseableAnalysisBackend,
     private val config: AnalysisServerConfig,
-    private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
 ) {
     fun start(): RunningAnalysisServer {
         val capabilities = runBlocking {
@@ -30,7 +29,6 @@ class AnalysisServer(
         val dispatcher = RpcAnalysisDispatcher(
             backend,
             config,
-            lifecycleController,
         )
         var transportServer: LocalRpcServer? = null
         var descriptor: ServerInstanceDescriptor? = null
@@ -103,6 +101,7 @@ class AnalysisServer(
                 backend = backend,
                 descriptor = descriptor,
                 descriptorStore = descriptorStore,
+                runtimeCapabilityLeases = config.runtimeCapabilityLeases,
             )
         } catch (startupFailure: Throwable) {
             listOf<() -> Unit>(

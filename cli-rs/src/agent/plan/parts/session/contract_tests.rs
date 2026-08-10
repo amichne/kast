@@ -42,8 +42,7 @@
         plan_id: Uuid,
         workspace_root: &Path,
         ownership: WorkspaceLeaseOwnership,
-        reason: runtime::WorkspaceLeaseReleaseReason,
-        runtime_stopped: bool,
+        release_receipt: WorkspaceLeaseReleaseReceipt,
     ) -> MutationLeaseReceipt {
         let process = runtime::WorkspaceLeaseProcessIdentity {
             pid: 41,
@@ -89,11 +88,7 @@
             },
             acquired_at: "unix:1".to_string(),
             state: WorkspaceLeaseState::Released,
-            release_receipt: WorkspaceLeaseReleaseReceipt {
-                released_at: "unix:2".to_string(),
-                runtime_stopped,
-                reason,
-            },
+            release_receipt,
             schema_version: MUTATION_LEASE_RECEIPT_SCHEMA_VERSION,
         }
     }
@@ -105,8 +100,9 @@
             plan_id,
             Path::new("/workspace"),
             WorkspaceLeaseOwnership::Borrowed,
-            runtime::WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved,
-            false,
+            WorkspaceLeaseReleaseReceipt::RuntimeIdlePolicy {
+                released_at: "unix:2".to_string(),
+            },
         );
 
         assert!(receipt.validate_for(plan_id, Path::new("/workspace")).is_ok());
@@ -117,57 +113,35 @@
     #[test]
     fn mutation_lease_receipt_rejects_tampered_release_semantics() {
         let plan_id = Uuid::new_v4();
-        for (reason, runtime_stopped) in [
-            (
-                runtime::WorkspaceLeaseReleaseReason::OwnedRuntimeStopped,
-                true,
-            ),
-            (
-                runtime::WorkspaceLeaseReleaseReason::ExactRuntimeUnavailable,
-                false,
-            ),
-        ] {
-            let receipt = mutation_lease_receipt(
-                plan_id,
-                Path::new("/workspace"),
-                WorkspaceLeaseOwnership::Started,
-                reason,
-                runtime_stopped,
-            );
-            assert!(receipt.validate_for(plan_id, Path::new("/workspace")).is_ok());
-        }
-        for (ownership, reason, runtime_stopped) in [
-            (
-                WorkspaceLeaseOwnership::Borrowed,
-                runtime::WorkspaceLeaseReleaseReason::OwnedRuntimeStopped,
-                true,
-            ),
-            (
-                WorkspaceLeaseOwnership::Started,
-                runtime::WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved,
-                false,
-            ),
-            (
-                WorkspaceLeaseOwnership::Started,
-                runtime::WorkspaceLeaseReleaseReason::ExactRuntimeUnavailable,
-                true,
-            ),
-            (
-                WorkspaceLeaseOwnership::Borrowed,
-                runtime::WorkspaceLeaseReleaseReason::RecoveredAbandonedOwner,
-                false,
-            ),
+        for ownership in [
+            WorkspaceLeaseOwnership::Started,
+            WorkspaceLeaseOwnership::Borrowed,
         ] {
             let receipt = mutation_lease_receipt(
                 plan_id,
                 Path::new("/workspace"),
                 ownership,
-                reason,
-                runtime_stopped,
+                WorkspaceLeaseReleaseReceipt::RuntimeIdlePolicy {
+                    released_at: "unix:2".to_string(),
+                },
+            );
+            assert!(receipt.validate_for(plan_id, Path::new("/workspace")).is_ok());
+        }
+        for ownership in [
+            WorkspaceLeaseOwnership::Started,
+            WorkspaceLeaseOwnership::Borrowed,
+        ] {
+            let receipt = mutation_lease_receipt(
+                plan_id,
+                Path::new("/workspace"),
+                ownership,
+                WorkspaceLeaseReleaseReceipt::RecoveredAbandonedOwner {
+                    released_at: "unix:2".to_string(),
+                },
             );
             assert!(
                 receipt.validate_for(plan_id, Path::new("/workspace")).is_err(),
-                "accepted {ownership:?}/{reason:?}/runtime_stopped={runtime_stopped}",
+                "accepted recovered abandoned lease as a mutation release for {ownership:?}",
             );
         }
     }
@@ -179,8 +153,9 @@
             plan_id,
             Path::new("/workspace"),
             WorkspaceLeaseOwnership::Borrowed,
-            runtime::WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved,
-            false,
+            WorkspaceLeaseReleaseReceipt::RuntimeIdlePolicy {
+                released_at: "unix:2".to_string(),
+            },
         );
         let mut wrong_runtime_root = receipt.clone();
         wrong_runtime_root.runtime.descriptor.workspace_root = "/other".to_string();
@@ -213,8 +188,9 @@
             Uuid::new_v4(),
             Path::new("/workspace"),
             WorkspaceLeaseOwnership::Borrowed,
-            runtime::WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved,
-            false,
+            WorkspaceLeaseReleaseReceipt::RuntimeIdlePolicy {
+                released_at: "unix:2".to_string(),
+            },
         );
         let private = serde_json::to_value(&receipt).expect("private lease evidence");
         assert!(private.get("leaseBindingSha256").is_some());
@@ -228,9 +204,8 @@
                 "state": "RELEASED",
                 "ownership": "BORROWED",
                 "releaseReceipt": {
+                    "outcome": "RUNTIME_IDLE_POLICY",
                     "releasedAt": "unix:2",
-                    "runtimeStopped": false,
-                    "reason": "BORROWED_RUNTIME_PRESERVED",
                 },
             }),
         );

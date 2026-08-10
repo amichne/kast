@@ -236,7 +236,7 @@ fn refresh_external_not_found_is_an_actionable_failure() {
     assert_eq!(
         external,
         json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "operation": "workspace.externalize",
             "status": "rejected",
             "result": {

@@ -118,7 +118,7 @@ fn rejected_mutation_targets_never_enter_planning_or_create_plan_artifacts() {
         assert_eq!(output.status.code(), Some(1), "{name}: {output:?}");
         let value: serde_json::Value = serde_json::from_slice(&output.stdout)
             .unwrap_or_else(|error| panic!("canonical {name} failure: {error}; {output:?}"));
-        assert_eq!(value["schemaVersion"], 2, "{name}: {value:#}");
+        assert_eq!(value["schemaVersion"], 3, "{name}: {value:#}");
         assert_eq!(value["operation"], operation, "{name}: {value:#}");
         assert_eq!(value["status"], "rejected", "{name}: {value:#}");
         assert_eq!(

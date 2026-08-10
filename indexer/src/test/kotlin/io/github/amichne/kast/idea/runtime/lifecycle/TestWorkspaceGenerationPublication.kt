@@ -42,6 +42,7 @@ internal class TestWorkspaceGenerationPublication(
     override fun prepare(
         open: OpenWorkspacePublication,
         identity: WorkspaceStateIdentity,
+        graphBlocker: io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker?,
     ): PreparedWorkspacePublication = TestPreparedWorkspacePublication(
         generation = open.testPublication().generation,
         identity = identity,
