@@ -149,6 +149,19 @@
       ]
     },
     {
+      "capability": "SEMANTIC_DEMAND",
+      "operations": [
+        {
+          "evidence": [
+            "runtimeReady",
+            "currentSource"
+          ],
+          "operation": "workspace.up",
+          "route": "kast up"
+        }
+      ]
+    },
+    {
       "capability": "SEMANTIC_GRAPH",
       "operations": [
         {
@@ -273,19 +286,6 @@
           ],
           "operation": "workspace.externalize",
           "route": "kast workspace externalize --failure-id <FAILURE_ID>"
-        }
-      ]
-    },
-    {
-      "capability": "WORKSPACE_RUNTIME",
-      "operations": [
-        {
-          "evidence": [
-            "runtimeReady",
-            "referenceIndexReady"
-          ],
-          "operation": "workspace.ensure",
-          "route": "kast workspace ensure"
         }
       ]
     }

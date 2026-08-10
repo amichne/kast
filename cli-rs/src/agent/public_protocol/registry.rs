@@ -3,7 +3,7 @@ use serde::{Serialize, Serializer};
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum OperationId {
     WorkspaceHome,
-    WorkspaceEnsure,
+    WorkspaceUp,
     WorkspaceRefresh,
     WorkspaceExternalize,
     FileList,
@@ -36,7 +36,7 @@ pub(crate) enum OperationId {
 #[serde(rename_all = "camelCase")]
 pub(crate) enum RequestType {
     WorkspaceHome,
-    WorkspaceEnsure,
+    WorkspaceUp,
     WorkspaceRefresh,
     WorkspaceExternalize,
     FileList,
@@ -62,7 +62,7 @@ pub(crate) enum RequestType {
 #[serde(rename_all = "camelCase")]
 pub(crate) enum ResultType {
     WorkspaceHome,
-    WorkspaceReady,
+    WorkspaceUp,
     WorkspaceRefresh,
     Externalization,
     Files,
@@ -99,7 +99,7 @@ pub(crate) enum FailureType {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum Capability {
     InstallationState,
-    WorkspaceRuntime,
+    SemanticDemand,
     WorkspaceRefresh,
     WorkspaceFiles,
     SymbolDiscovery,
@@ -129,7 +129,6 @@ impl Capability {
 pub(crate) enum EvidenceRequirement {
     InstallReceipt,
     RuntimeReady,
-    ReferenceIndexReady,
     CurrentSource,
     CompilerSymbol,
     ExactSelector,
@@ -244,7 +243,7 @@ macro_rules! continuation {
 #[rustfmt::skip]
 impl OperationId {
     pub(crate) const ALL: [Self; 28] = [
-        Self::WorkspaceHome, Self::WorkspaceEnsure, Self::WorkspaceRefresh,
+        Self::WorkspaceHome, Self::WorkspaceUp, Self::WorkspaceRefresh,
         Self::WorkspaceExternalize, Self::FileList, Self::SymbolSearch, Self::SymbolResolve,
         Self::SymbolShow, Self::RelationReferences, Self::RelationCallsIncoming,
         Self::RelationCallsOutgoing, Self::RelationImplementations,
@@ -262,8 +261,8 @@ impl OperationId {
     pub(crate) fn definition(self) -> OperationDefinition {
         use Paging::Unpaged;
         match self {
-            Self::WorkspaceHome => op!(WorkspaceHome, "workspace.home", [], "kast", WorkspaceHome, WorkspaceHome, ["home"], Installation, InstallationState, [InstallReceipt], Unpaged, [WorkspaceEnsure], [], []),
-            Self::WorkspaceEnsure => op!(WorkspaceEnsure, "workspace.ensure", ["workspace", "ensure"], "kast workspace ensure", WorkspaceEnsure, WorkspaceReady, ["workspace-ready"], Workspace, WorkspaceRuntime, [RuntimeReady, ReferenceIndexReady], Unpaged, [WorkspaceRefresh, FileList, SymbolSearch, DiagnosticCheck], ["runtime/status", "capabilities"], []),
+            Self::WorkspaceHome => op!(WorkspaceHome, "workspace.home", [], "kast", WorkspaceHome, WorkspaceHome, ["home"], Installation, InstallationState, [InstallReceipt], Unpaged, [WorkspaceUp, WorkspaceRefresh, FileList, SymbolSearch, DiagnosticCheck], [], []),
+            Self::WorkspaceUp => op!(WorkspaceUp, "workspace.up", ["up"], "kast up", WorkspaceUp, WorkspaceUp, ["workspace-up"], Workspace, SemanticDemand, [RuntimeReady, CurrentSource], Unpaged, [WorkspaceRefresh, FileList, SymbolSearch, DiagnosticCheck], [], []),
             Self::WorkspaceRefresh => op!(WorkspaceRefresh, "workspace.refresh", ["workspace", "refresh"], "kast workspace refresh --file src/main/kotlin/example/Widget.kt", WorkspaceRefresh, WorkspaceRefresh, ["workspace-refresh"], Workspace, WorkspaceRefresh, [RuntimeReady, CurrentSource], Unpaged, [FileList, SymbolSearch, DiagnosticCheck], ["raw/workspace-refresh", "raw/semantic-graph"], [WorkspaceKotlinPath => "filePaths"]),
             Self::WorkspaceExternalize => op!(WorkspaceExternalize, "workspace.externalize", ["workspace", "externalize"], "kast workspace externalize --failure-id <FAILURE_ID>", WorkspaceExternalize, Externalization, ["externalization"], Workspace, WorkspaceRefresh, [RuntimeReady, CurrentSource], Unpaged, [WorkspaceRefresh], ["raw/workspace-refresh"], [ExternalFailureId => "externalFailureIds"]),
             Self::FileList => op!(FileList, "file.list", ["file", "list"], "kast file list --match '**/*.kt'", FileList, Files, ["files"], PublicProtocol, WorkspaceFiles, [CurrentSource], continuation!(FileList), [FileList, SymbolSearch], ["raw/workspace-files"], [Continuation => "pageToken"]),

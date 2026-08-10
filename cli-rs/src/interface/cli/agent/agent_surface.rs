@@ -18,6 +18,8 @@ pub struct KastCli {
 pub enum KastCommand {
     #[command(name = "__internal", hide = true)]
     Internal(KastInternalArgs),
+    /// Demand source-ready semantic evidence for the exact workspace.
+    Up,
     /// Establish and refresh exact-workspace semantic evidence.
     Workspace(KastWorkspaceArgs),
     /// Discover workspace-relative Kotlin files.

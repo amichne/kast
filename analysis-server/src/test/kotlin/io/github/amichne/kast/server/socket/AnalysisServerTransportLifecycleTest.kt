@@ -2,7 +2,6 @@ package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.AnalysisTransport
-import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey

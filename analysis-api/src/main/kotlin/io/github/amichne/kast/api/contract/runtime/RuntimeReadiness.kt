@@ -22,63 +22,28 @@ data class RuntimeReadiness(
     val summary: RuntimeReadinessSummary
         get() = RuntimeReadinessSummary.derive(this)
 
-    internal companion object {
-        /**
-         * Proof transition: `LegacyRuntimeReadinessFacts -> RuntimeReadiness`.
-         *
-         * Derives five closed readiness lanes from legacy wire facts. The input
-         * aggregate is confined to runtime-status deserialization; downstream
-         * code consumes the returned layered readiness value.
-         */
-        fun fromLegacy(facts: LegacyRuntimeReadinessFacts): RuntimeReadiness {
-            val runtimeLane = when {
-                !facts.healthy || facts.state == RuntimeState.DEGRADED -> RuntimeReadinessLane.Blocked
-                facts.active -> RuntimeReadinessLane.Ready
-                else -> RuntimeReadinessLane.inProgress(RuntimeProgressStage.STARTING)
-            }
-            val modelLane = when {
-                !facts.healthy || facts.state == RuntimeState.DEGRADED -> RuntimeReadinessLane.Blocked
-                facts.state == RuntimeState.READY && !facts.indexing -> RuntimeReadinessLane.Ready
-                else -> RuntimeReadinessLane.inProgress(RuntimeProgressStage.GRADLE_IMPORT)
-            }
-            val graphLane = when {
-                !facts.healthy || facts.state == RuntimeState.DEGRADED -> RuntimeReadinessLane.Blocked
-                facts.state == RuntimeState.READY && !facts.indexing -> RuntimeReadinessLane.Ready
-                else -> RuntimeReadinessLane.inProgress(RuntimeProgressStage.SEMANTIC_GRAPH)
-            }
-            return RuntimeReadiness(
-                runtime = runtimeLane,
-                model = modelLane,
-                references = RuntimeReadinessLane.fromReferenceCoverage(facts.referenceCoverage),
-                semanticGraph = graphLane,
-                mutation = graphLane,
-            )
-        }
+    companion object {
+        fun ready(): RuntimeReadiness = RuntimeReadiness(
+            runtime = RuntimeReadinessLane.Ready,
+            model = RuntimeReadinessLane.Ready,
+            references = RuntimeReadinessLane.Ready,
+            semanticGraph = RuntimeReadinessLane.Ready,
+            mutation = RuntimeReadinessLane.Ready,
+        )
     }
 }
-
-internal data class LegacyRuntimeReadinessFacts(
-    val state: RuntimeState,
-    val healthy: Boolean,
-    val active: Boolean,
-    val indexing: Boolean,
-    val referenceCoverage: ReferenceCoverage,
-)
 
 sealed interface RuntimeReadinessSummary {
     data object Ready : RuntimeReadinessSummary
 
     data object NotReady : RuntimeReadinessSummary
 
-    /** Raw Boolean extraction is confined to legacy runtime-status serialization. */
-    fun toWireBoolean(): Boolean = this is Ready
-
     companion object {
         /**
          * Proof transition: `RuntimeReadiness -> RuntimeReadinessSummary`.
          *
-         * Collapses the five typed lanes into a closed compatibility summary;
-         * callers retain the summary instead of passing a Boolean as state.
+         * Collapses the five typed lanes into a closed exhaustive summary;
+         * callers retain the summary as proof instead of passing a Boolean.
          */
         fun derive(readiness: RuntimeReadiness): RuntimeReadinessSummary = if (
             readiness.runtime is RuntimeReadinessLane.Ready &&
@@ -185,18 +150,30 @@ internal data class RuntimeStatusConsistency private constructor(
     companion object {
         /**
          * Proof transition:
-         * `(RuntimeReadiness, ReferenceCoverage, Boolean) -> RuntimeStatusConsistencyResolution`.
+         * `(RuntimeState, RuntimeReadiness, ReferenceCoverage) -> RuntimeStatusConsistencyResolution`.
          *
          * Establishes that layered readiness agrees with both legacy reference
-         * coverage and the legacy ready bit. Mismatch is finite
-         * [RuntimeStatusConsistencyFailure] data. The Boolean is admitted only
-         * from the runtime-status wire boundary and is not propagated inward.
+         * coverage. Mismatch is finite [RuntimeStatusConsistencyFailure] data.
          */
         fun resolve(
+            state: RuntimeState,
             readiness: RuntimeReadiness,
             referenceCoverage: ReferenceCoverage,
-            ready: Boolean,
         ): RuntimeStatusConsistencyResolution {
+            val stateAligned = when (state) {
+                RuntimeState.STARTING -> readiness.runtime is RuntimeReadinessLane.InProgress
+                RuntimeState.INDEXING -> readiness.runtime is RuntimeReadinessLane.Ready &&
+                    readiness.model is RuntimeReadinessLane.InProgress
+                RuntimeState.READY -> readiness.runtime is RuntimeReadinessLane.Ready &&
+                    readiness.model is RuntimeReadinessLane.Ready
+                RuntimeState.DEGRADED -> readiness.runtime is RuntimeReadinessLane.Blocked ||
+                    readiness.model is RuntimeReadinessLane.Blocked
+            }
+            if (!stateAligned) {
+                return RuntimeStatusConsistencyResolution.Rejected(
+                    RuntimeStatusConsistencyFailure.StateMismatch(state, readiness.runtime, readiness.model),
+                )
+            }
             val referenceAlignment = when (
                 val resolution = RuntimeReadinessLane.alignWithReferenceCoverage(
                     readiness.references,
@@ -211,11 +188,6 @@ internal data class RuntimeStatusConsistency private constructor(
                 }
             }
             val summary = readiness.summary
-            if (ready != summary.toWireBoolean()) {
-                return RuntimeStatusConsistencyResolution.Rejected(
-                    RuntimeStatusConsistencyFailure.ReadySummaryMismatch(summary, ready),
-                )
-            }
             return RuntimeStatusConsistencyResolution.Verified(
                 RuntimeStatusConsistency(referenceAlignment, summary),
             )
@@ -224,14 +196,15 @@ internal data class RuntimeStatusConsistency private constructor(
 }
 
 internal sealed interface RuntimeStatusConsistencyFailure {
+    data class StateMismatch(
+        val state: RuntimeState,
+        val runtime: RuntimeReadinessLane,
+        val model: RuntimeReadinessLane,
+    ) : RuntimeStatusConsistencyFailure
     data class ReferenceCoverageMismatch(
         val failure: ReferenceReadinessAlignmentFailure,
     ) : RuntimeStatusConsistencyFailure
 
-    data class ReadySummaryMismatch(
-        val expected: RuntimeReadinessSummary,
-        val actualWireValue: Boolean,
-    ) : RuntimeStatusConsistencyFailure
 }
 
 internal sealed interface RuntimeStatusConsistencyResolution {

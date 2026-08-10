@@ -64,10 +64,10 @@ fn semantic_contract_inventory_is_complete_and_machine_testable() {
         "symbol.resolve",
         "symbol.search",
         "symbol.show",
-        "workspace.ensure",
         "workspace.externalize",
         "workspace.home",
         "workspace.refresh",
+        "workspace.up",
     ]);
     let operations = inventory["operations"]
         .as_array()

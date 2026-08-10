@@ -26,7 +26,7 @@ fn relative_file_paths_are_canonical_in_every_compact_json_view() {
     });
     let socket_path = workspace_socket_path(&workspace, temp.path());
     let listener = bind_listener(&socket_path);
-    write_descriptor(&home, &workspace, &socket_path);
+    let _exact_runtime = write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -113,7 +113,7 @@ fn canonical_relative_path_is_reported_in_every_output_format() {
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
     let listener = bind_listener(&socket_path);
-    write_descriptor(&home, &workspace, &socket_path);
+    let _exact_runtime = write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -168,7 +168,7 @@ fn deleted_relative_file_reaches_refresh_with_canonical_path() {
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
     let listener = bind_listener(&socket_path);
-    write_descriptor(&home, &workspace, &socket_path);
+    let _exact_runtime = write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -227,7 +227,7 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
     let listener = bind_listener(&socket_path);
-    write_descriptor(&home, &workspace, &socket_path);
+    let _exact_runtime = write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -280,7 +280,7 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
     let listener = bind_listener(&socket_path);
-    write_descriptor(&home, &workspace, &socket_path);
+    let _exact_runtime = write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),

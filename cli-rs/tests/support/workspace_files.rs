@@ -89,6 +89,10 @@ fn publish_workspace_connection(
                 revision INTEGER NOT NULL CHECK(revision > 0),
                 identity TEXT NOT NULL CHECK(length(identity) > 0),
                 source_index_generation INTEGER NOT NULL CHECK(source_index_generation >= 0),
+                source_revision INTEGER NOT NULL CHECK(source_revision >= 0),
+                reference_revision INTEGER NOT NULL CHECK(reference_revision >= 0),
+                graph_revision INTEGER,
+                graph_blocker TEXT,
                 source_index_schema_version INTEGER NOT NULL CHECK(source_index_schema_version > 0),
                 published_at_epoch_millis INTEGER NOT NULL CHECK(published_at_epoch_millis >= 0),
                 repository_overlay_file TEXT
@@ -113,6 +117,26 @@ fn publish_workspace_connection(
             |row| row.get(0),
         )
         .expect("next workspace publication revision");
+    let graph_ready = connection
+        .query_row(
+            "SELECT NOT EXISTS(
+                 SELECT 1
+                 FROM file_manifest manifest
+                 WHERE NOT EXISTS(
+                       SELECT 1
+                       FROM file_stage_outcomes outcome
+                       WHERE outcome.prefix_id = manifest.prefix_id
+                         AND outcome.filename = manifest.filename
+                         AND outcome.stage = 'SEMANTIC_GRAPH'
+                         AND outcome.outcome_status IN ('COMPLETE', 'LIMITED')
+                   )
+             )",
+            [],
+            |row| row.get::<_, bool>(0),
+        )
+        .unwrap_or(false);
+    let graph_revision = graph_ready.then_some(revision);
+    let graph_blocker = (!graph_ready).then_some("INDEXING_FAILED");
     let repository_overlay_file = cache_directory
         .join("repository-overlay.json")
         .is_file()
@@ -121,12 +145,17 @@ fn publish_workspace_connection(
         .execute(
             "INSERT INTO workspace_publication(
                  singleton, revision, identity, source_index_generation,
+                 source_revision, reference_revision, graph_revision, graph_blocker,
                  source_index_schema_version, published_at_epoch_millis, repository_overlay_file
-             ) VALUES (1, ?, ?, ?, ?, 1, ?)
+             ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
              ON CONFLICT(singleton) DO UPDATE SET
                  revision = excluded.revision,
                  identity = excluded.identity,
                  source_index_generation = excluded.source_index_generation,
+                 source_revision = excluded.source_revision,
+                 reference_revision = excluded.reference_revision,
+                 graph_revision = excluded.graph_revision,
+                 graph_blocker = excluded.graph_blocker,
                  source_index_schema_version = excluded.source_index_schema_version,
                  published_at_epoch_millis = excluded.published_at_epoch_millis,
                  repository_overlay_file = excluded.repository_overlay_file",
@@ -134,6 +163,10 @@ fn publish_workspace_connection(
                 revision,
                 format!("test-{schema_version}-{source_index_generation}"),
                 source_index_generation,
+                revision,
+                revision,
+                graph_revision,
+                graph_blocker,
                 schema_version,
                 repository_overlay_file,
             ],
@@ -143,6 +176,13 @@ fn publish_workspace_connection(
         "generation": revision,
         "identity": format!("test-{schema_version}-{source_index_generation}"),
         "sourceIndexGeneration": source_index_generation,
+        "sourceRevision": revision,
+        "referenceRevision": revision,
+        "graphPublication": if graph_ready {
+            serde_json::json!({"type": "READY", "revision": revision})
+        } else {
+            serde_json::json!({"type": "BLOCKED", "reason": "INDEXING_FAILED"})
+        },
         "sourceIndexSchemaVersion": schema_version,
         "databaseFile": "source-index.db",
         "publishedAtEpochMillis": 1

@@ -37,7 +37,6 @@ pub(super) fn execute(
     };
     let runtime = AgentRuntimeArgs {
         workspace_root: Some(workspace_root),
-        ..Default::default()
     };
     let limit = "200"
         .parse::<AgentRelationLimit>()

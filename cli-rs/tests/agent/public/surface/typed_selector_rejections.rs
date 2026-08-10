@@ -45,7 +45,7 @@ fn exact_routes_reject_substitutes_through_closed_selector_authentication() {
         assert_eq!(output.status.code(), Some(1), "{output:?}");
         let value: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("closed rejection JSON");
-        assert_eq!(value["schemaVersion"], 2, "{value:#}");
+        assert_eq!(value["schemaVersion"], 3, "{value:#}");
         assert_eq!(value["operation"], "symbol.show", "{value:#}");
         assert_eq!(value["status"], "rejected", "{value:#}");
         assert_eq!(value["result"]["type"], "rejected", "{value:#}");

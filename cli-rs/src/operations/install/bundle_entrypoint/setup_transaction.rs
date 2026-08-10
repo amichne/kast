@@ -34,9 +34,6 @@ fn setup_bundle(
         recover_path_projection_transaction(&targets)?;
         let mut path_projection_authority = PathProjectionAuthority::capture(&targets)?;
         path_projection_authority.require_profile(profile)?;
-        crate::runtime::retire_registered_legacy_headless_daemons(
-            &targets.resolved.descriptor_dir,
-        )?;
         if mode.is_force() {
             path_projection_authority.preserve_for_force_reset(&targets.resolved.install_root)?;
             ForceResetPlan::build(&targets, &runtime_setup_authorization)?.execute()?;

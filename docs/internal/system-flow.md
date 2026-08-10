@@ -12,14 +12,14 @@ code_sources:
   - path: cli-rs/src/interface/cli/root.rs
     symbols: [Cli, Command]
   - path: cli-rs/src/interface/entrypoint/dispatch.rs
-    symbols: [run, run_agent, run_runtime]
+    symbols: [run, run_agent, run_inspect]
   - path: cli-rs/src/operations/install/bundle_entrypoint.rs
   - path: cli-rs/src/operations/install/agent_resources.rs
   - path: cli-rs/resources/kast/codex/hooks.json
   - path: cli-rs/resources/kast/claude/hooks.json
   - path: cli-rs/resources/kast/copilot/hooks.json
   - path: cli-rs/src/execution/runtime/backend/workspace.rs
-    symbols: [workspace_ensure, workspace_status, workspace_stop]
+    symbols: [inspect_lifecycle]
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
   - path: cli-rs/src/agent/core/dispatch/commands.rs
     symbols: [run, execute]
@@ -75,16 +75,16 @@ Its command families are `kast workspace`, `kast file`, `kast symbol`,
 | Family | Commands | Boundary |
 | --- | --- | --- |
 | Orientation | `kast` | Discover the nearest Gradle root and report readiness and next actions. |
-| Indexer | `kast workspace ensure` | Reuse or create the exact-root indexer and await evidence. |
+| Indexer | Any semantic command | Acquire the required capability and reuse or create the exact-root indexer. |
 | Refresh | `kast workspace refresh` | Refresh changed or selected files. |
 | Discovery | `kast file`, `kast symbol`, `kast relation` | Enumerate files, resolve symbols, and traverse relationships. |
 | Graph | `kast graph` | Read generation-pinned topology, communities, and impact. |
 | Diagnostics | `kast diagnostic check` | Report compiler diagnostics. |
 | Mutations | `kast change plan`, `kast change apply` | Validate a plan, then apply its opaque identifier with an exact-root lease. |
 
-`libexec/kastctl` preserves the full administrative CLI for setup, process
-control, raw RPC, release, and developer automation. It is private, is not on
-`PATH`, and is not exposed to agents.
+`libexec/kastctl` preserves the full administrative CLI for setup, raw RPC,
+release operations, and read-only lifecycle inspection. The administrative CLI
+exposes no user-controlled runtime transition.
 
 ## End-to-end system flow
 
@@ -111,10 +111,10 @@ Claude, and Copilot resources locally.
 
 ### Indexer admission
 
-`kast workspace ensure` discovers the nearest Gradle workspace. It reuses an eligible healthy
-indexer bound to that canonical root. If none exists, Kast creates an isolated
-indexer. Descriptor, process, endpoint, release, health, and capability
-evidence must all match.
+A semantic command discovers the nearest Gradle workspace and declares its
+required capability. Kast reuses an eligible healthy indexer bound to that
+canonical root or creates one isolated replacement epoch. Descriptor, process,
+endpoint, release, health, and capability evidence must all match.
 
 On macOS, a supported JetBrains installation supplies compatible libraries.
 Kast does not install into, open, close, or route through the foreground
@@ -217,7 +217,7 @@ Start from the exact root:
 
 ```shell
 kast
-kast workspace ensure
+kast file list
 kast graph topology --scope symbol
 kast graph communities --scope symbol
 ```

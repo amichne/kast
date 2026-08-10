@@ -19,12 +19,16 @@ fn agent_graph_refresh_requires_ready_before_semantic_graph_rpc() {
                 "runtime/status",
                 json!({
                     "state": "INDEXING",
-                    "healthy": true,
-                    "active": true,
-                    "indexing": true,
                     "backendName": "indexer",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
+                    "readiness": {
+                        "runtime": {"type": "READY"},
+                        "model": {"type": "IN_PROGRESS", "progress": {}},
+                        "references": {"type": "BLOCKED"},
+                        "semanticGraph": {"type": "IN_PROGRESS", "progress": {}},
+                        "mutation": {"type": "BLOCKED"}
+                    },
                     "schemaVersion": api_schema_version()
                 }),
             ),

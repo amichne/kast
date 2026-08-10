@@ -10,13 +10,13 @@ use crate::cli::{
     WorkspaceRelativeGlob,
 };
 use crate::error::{CliError, Result};
+#[cfg(test)]
 use crate::runtime::{RuntimeState, RuntimeStatusResponse};
 use crate::{config, output, runtime};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
 
 include!("commands.rs");
 include!("check.rs");

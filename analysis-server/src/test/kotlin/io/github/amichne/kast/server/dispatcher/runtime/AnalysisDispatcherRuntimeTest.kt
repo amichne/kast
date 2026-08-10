@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import kotlin.io.path.readText
 
 class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
@@ -56,32 +57,44 @@ class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
     }
 
     @Test
-    fun `runtime restart schedules lifecycle action after response`() {
-        val actions = mutableListOf<RuntimeLifecycleAction>()
+    fun `semantic capability admission starts grace while lifecycle status remains observation only`() {
+        val scheduled = mutableListOf<Duration>()
+        val registry = RuntimeCapabilityLeaseRegistry(
+            epoch = io.github.amichne.kast.api.client.RuntimeInstanceId.create(),
+            scheduler = RuntimeLeaseScheduler { delay, _ ->
+                scheduled += delay
+                RuntimeLeaseSchedule {}
+            },
+        )
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(runtimeCapabilityLeases = registry),
+        )
+
+        runBlocking {
+            dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = "runtime/status"))
+        }
+        assertTrue(scheduled.isEmpty(), "Read-only lifecycle evidence must not reset idle grace")
+
+        runBlocking {
+            dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(2), method = "capabilities"))
+        }
+        assertEquals(listOf(RuntimeCapabilityLeaseRegistry.FIXED_IDLE_GRACE), scheduled)
+    }
+
+    @Test
+    fun `runtime lifecycle methods are not callable`() {
         val dispatcher = RpcAnalysisDispatcher(
             backend = FakeAnalysisBackend.sample(tempDir),
             config = AnalysisServerConfig(),
-            lifecycleController = RuntimeLifecycleController { action ->
-                { actions += action }
-            },
         )
-
-        val dispatchResult = runBlocking {
-            dispatcher.dispatchForTransport(JsonRpcRequest(id = JsonPrimitive(1), method = "runtime/restart"))
+        for (method in listOf("runtime/shutdown", "runtime/restart")) {
+            val response = runBlocking {
+                dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = method))
+            }
+            val failure = json.decodeFromString(JsonRpcErrorResponse.serializer(), response)
+            assertEquals(JSON_RPC_METHOD_NOT_FOUND, failure.error.code)
         }
-        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), dispatchResult.response)
-        val result = json.decodeFromJsonElement(
-            RuntimeLifecycleResponse.serializer(),
-            response.result,
-        )
-
-        assertEquals(RuntimeLifecycleAction.RESTART, result.action)
-        assertTrue(result.accepted)
-        assertTrue(actions.isEmpty(), "Lifecycle action must wait until the transport flushes the response")
-
-        assertTrue(dispatchResult.runAfterFlushAction())
-        assertEquals(listOf(RuntimeLifecycleAction.RESTART), actions)
-        assertFalse(dispatchResult.runAfterFlushAction())
     }
 
     @Test

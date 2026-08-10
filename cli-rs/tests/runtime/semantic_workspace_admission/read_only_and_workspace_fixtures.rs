@@ -7,7 +7,7 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
     let socket_path = fixture.socket_path("linked-symbol.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 3);
 
     let symbol = kast(&home, &config_home)
@@ -53,7 +53,7 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
     std::fs::create_dir_all(file.parent().expect("file parent")).expect("source dir");
     std::fs::write(&file, "package lib\n\nclass Foo\n").expect("source file");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 4);
     let diagnostics = kast(&home, &config_home)
         .args([
@@ -137,7 +137,7 @@ fn unsupported_project_reports_distinct_semantic_outcome() {
 
     assert!(!verify.status.success(), "unsupported project must fail");
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
+    assert_eq!(output["error"]["code"], "UNSUPPORTED_WORKSPACE");
     assert_eq!(
         output["error"]["details"]["semanticWorkspace"],
         serde_json::json!({

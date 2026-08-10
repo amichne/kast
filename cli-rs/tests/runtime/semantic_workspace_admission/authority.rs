@@ -12,7 +12,7 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 10);
 
     let verify = kast(&home, &config_home)
@@ -93,7 +93,7 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
     let socket_path = fixture.socket_path("linked-verify-views.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 15);
     let views: [&[&str]; 3] = [&[], &["--fields", "health"], &["--count"]];
 
@@ -146,7 +146,7 @@ fn unprepared_disposable_checkout_can_use_indexer_read_only_workflows() {
     std::fs::write(&source_file, "class Foo\n").expect("source file");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 12);
     let install_manifest = install_manifest_path(&home);
     let homebrew_receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
@@ -245,7 +245,7 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &primary, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &primary, &socket_path, "indexer");
     let backend = spawn_verify_backend(listener, primary, "indexer", 0);
 
     let verify = kast(&home, &config_home)
@@ -271,7 +271,7 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn missing_workspace_authority_rejects_every_indexer_mutation_before_rpc() {
+fn semantic_mutations_need_no_user_callable_workspace_authority() {
     let fixture = tempfile::tempdir().expect("mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -281,7 +281,7 @@ fn missing_workspace_authority_rejects_every_indexer_mutation_before_rpc() {
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "indexer");
     let content_file = fixture.path().join("content.kt");
     let target_file = workspace.join("src/main/kotlin/Added.kt");
@@ -305,20 +305,18 @@ fn missing_workspace_authority_rejects_every_indexer_mutation_before_rpc() {
                 .args(args)
                 .output()
                 .expect("applied mutation");
-            assert!(
-                !mutation.status.success(),
-                "unprepared mutation must fail for view={view:?}",
-            );
-            let output: serde_json::Value =
-                serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
-            assert_eq!(
-                output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
-                "view={view:?}: {output:#}",
-            );
+            if !mutation.status.success() {
+                let output: serde_json::Value =
+                    serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
+                assert_ne!(
+                    output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
+                    "view={view:?}: {output:#}",
+                );
+            }
         }
     }
     assert!(
-        backend.finish().is_empty(),
-        "authority must fail before RPC"
+        backend.finish().contains(&"mutation/submit".to_string()),
+        "semantic mutation demand did not reach RPC"
     );
 }

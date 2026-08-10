@@ -11,8 +11,7 @@ pub(crate) fn semantic_graph_readiness_for_admission(
             false,
             read.published(),
         )?;
-        read.revalidate()?;
-        Ok(snapshot)
+        Ok(read.revalidate()?.finish(snapshot))
     });
     semantic_graph_readiness_from_result(result)
 }

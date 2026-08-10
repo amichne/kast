@@ -302,7 +302,6 @@ pub(crate) fn print_actionable_failure(
 pub(crate) fn agent_runtime(workspace_root: PathBuf) -> AgentRuntimeArgs {
     AgentRuntimeArgs {
         workspace_root: Some(workspace_root),
-        ..Default::default()
     }
 }
 

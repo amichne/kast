@@ -11,21 +11,7 @@ pub(crate) fn execute_projected(command: AgentCommand) -> AgentEnvelope {
 }
 
 fn execute(command: AgentCommand) -> AgentEnvelope {
-    if let Some(runtime) = agent_command_runtime(&command)
-        && let Some(lease_id) = runtime.lease_id.as_ref()
-        && let Err(error) = runtime::validate_workspace_lease_for_command(
-            lease_id,
-            runtime.workspace_root.as_deref(),
-        )
-    {
-        return error_envelope(
-            "agent/lease/validate".to_string(),
-            None,
-            AgentError::from_cli_error(error),
-        );
-    }
     match command {
-        AgentCommand::Lease(args) => execute_agent_lease(args),
         AgentCommand::Verify(args) => execute_agent_verify(args),
         AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
         AgentCommand::Graph(args) => execute_agent_native_graph(args),
@@ -50,59 +36,6 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         ),
         AgentCommand::AddStatement(args) => execute_agent_add_statement(args),
         AgentCommand::ReplaceDeclaration(args) => execute_agent_replace_declaration(args),
-    }
-}
-
-fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
-    match command {
-        AgentCommand::Verify(args) => Some(&args.runtime),
-        AgentCommand::WorkspaceFiles(args) => Some(&args.runtime),
-        AgentCommand::Graph(args) => Some(&args.runtime),
-        AgentCommand::Repository(_) => None,
-        AgentCommand::Symbol(args) => Some(&args.runtime),
-        AgentCommand::References(args) => Some(&args.runtime),
-        AgentCommand::Callers(args) | AgentCommand::Callees(args) => Some(&args.runtime),
-        AgentCommand::Implementations(args) => Some(&args.runtime),
-        AgentCommand::Hierarchy(args) => Some(&args.runtime),
-        AgentCommand::Impact(args) => Some(&args.runtime),
-        AgentCommand::Diagnostics(args) => Some(&args.runtime),
-        AgentCommand::Rename(args) => Some(&args.runtime),
-        AgentCommand::AddFile(args) => Some(&args.runtime),
-        AgentCommand::AddDeclaration(args) | AgentCommand::AddImplementation(args) => {
-            Some(&args.runtime)
-        }
-        AgentCommand::AddStatement(args) => Some(&args.runtime),
-        AgentCommand::ReplaceDeclaration(args) => Some(&args.runtime),
-        AgentCommand::Lease(_) => None,
-    }
-}
-
-fn execute_agent_lease(args: AgentLeaseArgs) -> AgentEnvelope {
-    let (method, result) = match args.command {
-        AgentLeaseCommand::Acquire(args) => (
-            "agent/lease/acquire",
-            runtime::workspace_lease_acquire(args),
-        ),
-        AgentLeaseCommand::Status(args) => {
-            ("agent/lease/status", runtime::workspace_lease_status(args))
-        }
-        AgentLeaseCommand::Release(args) => (
-            "agent/lease/release",
-            runtime::workspace_lease_release(args),
-        ),
-    };
-    match result {
-        Ok(result) => AgentEnvelope {
-            ok: true,
-            method: method.to_string(),
-            request: None,
-            response: None,
-            result: Some(json!(result)),
-            raw_response: None,
-            error: None,
-            schema_version: SCHEMA_VERSION,
-        },
-        Err(error) => error_envelope(method.to_string(), None, AgentError::from_cli_error(error)),
     }
 }
 
@@ -161,7 +94,6 @@ fn execute_agent_repository(args: AgentRepositoryArgs) -> AgentEnvelope {
         request: json_rpc_request("repository/query", params),
         runtime: AgentRuntimeArgs {
             workspace_root: args.workspace_root,
-            lease_id: None,
         },
         full_response: true,
         operation: AgentOperation::ReadOnly,

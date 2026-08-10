@@ -68,12 +68,12 @@ fn demo_rejects_a_ready_backend_without_a_published_workspace_database() {
     assert!(!demo.status.success());
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
     assert_eq!(backend.finish().len(), 2);
-    assert_eq!(response["code"], "PUBLISHED_WORKSPACE_UNAVAILABLE");
+    assert_eq!(response["code"], "RUNTIME_NOT_READY");
     assert!(
         response["message"]
             .as_str()
-            .is_some_and(|message| message.contains("Published workspace database")),
-        "the demo must reject an unpublished workspace database: {response:#}"
+            .is_some_and(|message| message.contains("No READY Kast indexer")),
+        "semantic demand must reject an epoch without a source publication: {response:#}"
     );
 }
 

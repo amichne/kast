@@ -117,7 +117,7 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         "edit": edit,
         "proof": proof,
         "fileImages": file_images.clone(),
-        "schemaVersion": 6
+        "schemaVersion": 7
     });
     let socket = fixture.path().join("replacement-authority.sock");
     let backend = spawn_scripted_indexer_backend(

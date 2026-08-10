@@ -9,6 +9,7 @@ import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
+import io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker
 
 internal interface WorkspaceGenerationPublication {
     fun current(): PublishedWorkspaceGenerationState
@@ -23,7 +24,11 @@ internal interface WorkspaceGenerationPublication {
      * identity binding succeed. Raw SQLite state remains inside the persistent
      * publication adapter.
      */
-    fun prepare(open: OpenWorkspacePublication, identity: WorkspaceStateIdentity): PreparedWorkspacePublication
+    fun prepare(
+        open: OpenWorkspacePublication,
+        identity: WorkspaceStateIdentity,
+        graphBlocker: GraphEvidenceBlocker?,
+    ): PreparedWorkspacePublication
 
     fun commit(prepared: PreparedWorkspacePublication): WorkspaceGenerationCommit
 
@@ -42,8 +47,9 @@ internal class PersistentWorkspaceGenerationPublication(
     override fun prepare(
         open: OpenWorkspacePublication,
         identity: WorkspaceStateIdentity,
+        graphBlocker: GraphEvidenceBlocker?,
     ): PreparedWorkspacePublication = StorePreparedWorkspacePublication(
-        store.prepare(open.storeGeneration(), PublishedWorkspaceIdentity(identity.value)),
+        store.prepare(open.storeGeneration(), PublishedWorkspaceIdentity(identity.value), graphBlocker),
     )
 
     override fun commit(prepared: PreparedWorkspacePublication): WorkspaceGenerationCommit =

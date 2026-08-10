@@ -26,6 +26,7 @@ import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -186,8 +187,8 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
         ).runtimeStatus()
 
         assertEquals(RuntimeState.INDEXING, status.state)
-        assertTrue(status.healthy)
-        assertTrue(status.indexing)
+        assertFalse(status.readiness.runtime is RuntimeReadinessLane.Blocked)
+        assertTrue(status.readiness.model is RuntimeReadinessLane.InProgress)
         assertTrue(status.message.orEmpty().contains("Kotlin runtime unresolved"))
     }
 
@@ -208,8 +209,8 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
         ).runtimeStatus()
 
         assertEquals(RuntimeState.DEGRADED, status.state)
-        assertFalse(status.healthy)
-        assertFalse(status.indexing)
+        assertTrue(status.readiness.runtime is RuntimeReadinessLane.Blocked)
+        assertFalse(status.readiness.model is RuntimeReadinessLane.InProgress)
         assertTrue(status.message.orEmpty().contains("K2 diagnostics unavailable"))
     }
 

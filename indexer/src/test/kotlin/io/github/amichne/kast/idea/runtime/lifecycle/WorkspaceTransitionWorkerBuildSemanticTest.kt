@@ -63,7 +63,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             captureCandidate = { _, _ ->
                 unmanagedCandidate(WorkspaceStateIdentity("workspace-without-linked-git-directory"))
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
             waitForNextPass = { false },
             isCancelled = { false },
@@ -106,7 +106,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             captureCandidate = { _, _ ->
                 unmanagedCandidate(WorkspaceStateIdentity("unavailable-git-directory"))
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
             waitForNextPass = { false },
             isCancelled = { false },
@@ -156,7 +156,8 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             override fun prepare(
                 open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication,
                 identity: WorkspaceStateIdentity,
-            ) = delegate.prepare(open, identity).also {
+                graphBlocker: io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker?,
+            ) = delegate.prepare(open, identity, graphBlocker).also {
                 if (preparations.incrementAndGet() == 1) transition.set(inProgress)
             }
 
@@ -186,7 +187,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             captureCandidate = { _, _ ->
                 unmanagedCandidate(WorkspaceStateIdentity("final-checkout-state"))
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = publication,
             waitForNextPass = { delayMillis ->
                 waits += delayMillis
@@ -256,7 +257,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             captureCandidate = { _, _ ->
                 unmanagedCandidate(WorkspaceStateIdentity("final-checkout-state"))
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
             waitForNextPass = { delayMillis ->
                 waits += delayMillis
@@ -330,7 +331,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             captureCandidate = { _, buildInputs ->
                 unmanagedCandidate(WorkspaceStateIdentity("state-${buildInputs.value}"))
             },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
             waitForNextPass = { false },
             isCancelled = { false },

@@ -6,69 +6,37 @@ struct UpResult {
     runtime: &'static str,
     backend: String,
     reference_index_ready: bool,
+    source_revision: u64,
     source_module_count: usize,
     next: Vec<&'static str>,
 }
 
 pub(crate) fn run_up(output_format: OutputFormat) -> Result<i32> {
-    let workspace_root = config::resolve_workspace_root(None)?;
-    let mut args = crate::default_runtime_args();
-    args.workspace_root = Some(workspace_root.clone());
-    args.accept_indexing = Some(false);
-    let deadline = Instant::now() + Duration::from_millis(args.wait_timeout_ms);
-    let ensured = runtime::workspace_ensure(args.clone())?;
-    if let Some(result) = ready_result(&workspace_root, ensured.selected.runtime_status.as_ref()) {
-        return print_public_value(
-            agent::public_protocol::OperationId::WorkspaceEnsure,
-            agent::public_protocol::OperationStatus::Complete,
-            &result,
-            output_format,
-        );
-    }
-
-    let mut last_status = ensured.selected.runtime_status;
-    while Instant::now() < deadline {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        std::thread::sleep(remaining.min(Duration::from_millis(250)));
-        let status = runtime::workspace_status(args.clone())?;
-        last_status = status
-            .selected
-            .and_then(|candidate| candidate.runtime_status);
-        if let Some(result) = ready_result(&workspace_root, last_status.as_ref()) {
-            return print_public_value(
-                agent::public_protocol::OperationId::WorkspaceEnsure,
-                agent::public_protocol::OperationStatus::Complete,
-                &result,
-                output_format,
-            );
-        }
-    }
-
-    let state = last_status
-        .as_ref()
-        .map(|status| runtime_state_name(&status.state))
-        .unwrap_or("UNREACHABLE");
-    let reference_index_ready = last_status
-        .as_ref()
-        .is_some_and(|status| status.reference_index_ready);
-    let source_module_count = last_status
-        .as_ref()
-        .map_or(0, |status| status.source_module_names.len());
-    print_actionable_failure(
-        agent::public_protocol::OperationId::WorkspaceEnsure,
-        "SEMANTIC_EVIDENCE_NOT_READY",
-        &format!(
-            "The exact workspace reached {state}, but semantic evidence did not become ready within {} ms (referenceIndexReady={reference_index_ready}, sourceModuleCount={source_module_count}). Let the indexer finish, then run `kast workspace ensure` again.",
-            args.wait_timeout_ms
-        ),
-        "kast workspace ensure",
+    let ready = runtime::demand_source_ready_runtime(None)?;
+    let result = UpResult {
+        root: ready.workspace_root().display().to_string(),
+        ready: true,
+        runtime: "READY",
+        backend: ready.backend_name().to_string(),
+        reference_index_ready: ready.reference_index_ready(),
+        source_revision: ready.source_revision(),
+        source_module_count: ready.source_module_count(),
+        next: vec![
+            "kast workspace refresh",
+            "kast file list",
+            "kast symbol search --query <query>",
+        ],
+    };
+    print_public_value(
+        agent::public_protocol::OperationId::WorkspaceUp,
+        agent::public_protocol::OperationStatus::Complete,
+        &result,
         output_format,
     )
 }
 
 pub(crate) fn run_workspace(args: KastWorkspaceArgs, output_format: OutputFormat) -> Result<i32> {
     match args.command {
-        KastWorkspaceCommand::Ensure => run_up(output_format),
         KastWorkspaceCommand::Refresh { files } => run_refresh(files, output_format),
         KastWorkspaceCommand::Externalize { failure_ids } => {
             let failure_ids = match failure_ids

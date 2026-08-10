@@ -7,7 +7,7 @@ pub(super) use super::registry::OperationId;
 use super::traversal_types::RelationRecord;
 use serde::Serialize;
 
-pub(super) const PUBLIC_PROTOCOL_SCHEMA_VERSION: u32 = 2;
+pub(crate) const PUBLIC_PROTOCOL_SCHEMA_VERSION: u32 = 3;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]

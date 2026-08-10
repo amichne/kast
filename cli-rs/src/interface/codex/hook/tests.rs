@@ -178,7 +178,8 @@ mod tests {
         });
 
         assert_eq!(calls.borrow().len(), 1);
-        assert!(calls.borrow()[0].contains(&OsString::from("--accept-indexing")));
+        assert!(calls.borrow()[0].contains(&OsString::from("up")));
+        assert!(!calls.borrow()[0].contains(&OsString::from("developer")));
         assert_eq!(output, json!({}));
     }
 
@@ -199,7 +200,7 @@ mod tests {
         let workspace_argument = std::cell::RefCell::new(None);
 
         evaluate_with_runner(CodexHookEvent::SessionStart, input, |args| {
-            workspace_argument.replace(args.get(6).cloned());
+            workspace_argument.replace(args.get(4).cloned());
             Ok(String::new())
         })
         .expect("hook evaluation");

@@ -20,7 +20,7 @@ fn unavailable_error_has_one_structured_recovery_action_and_toon_stdout_discipli
     );
     let document: serde_json::Value =
         toon_format::decode_default(toon).expect("workspace-files TOON");
-    assert_eq!(document["error"]["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
+    assert_eq!(document["error"]["code"], "UNSUPPORTED_WORKSPACE");
     assert!(
         document["error"]["details"]["semanticWorkspace"]
             .get("nextActions")

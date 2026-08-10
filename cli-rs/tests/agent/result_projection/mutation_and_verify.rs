@@ -46,7 +46,6 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
             }),
         )],
     );
-    let lease_id = acquire_projection_workspace_lease(&binary, &home, &config_home, &workspace);
     let output = kast_at(&binary, &home, &config_home)
         .args([
             "--output",
@@ -62,8 +61,6 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
             "--apply",
             "--idempotency-key",
             "issue-337-rename",
-            "--lease-id",
-            &lease_id,
         ])
         .output()
         .expect("mutation");
@@ -100,12 +97,16 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let runtime = json!({
         "state": "READY",
-        "healthy": true,
-        "active": true,
-        "indexing": false,
         "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
+        "readiness": {
+            "runtime": {"type": "READY"},
+            "model": {"type": "READY"},
+            "references": {"type": "READY"},
+            "semanticGraph": {"type": "READY"},
+            "mutation": {"type": "READY"}
+        },
         "schemaVersion": api_schema_version()
     });
     let capabilities = json!({
@@ -177,37 +178,6 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     );
     assert!(stdout["result"].get("steps").is_none(), "{stdout}");
     assert_output_budget(&raw, VERIFY_LINE_BUDGET, VERIFY_TOKEN_BUDGET);
-}
-
-fn acquire_projection_workspace_lease(
-    binary: &Path,
-    home: &Path,
-    config_home: &Path,
-    workspace: &Path,
-) -> String {
-    let output = kast_at(binary, home, config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "lease",
-            "acquire",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("acquire projection workspace lease");
-    assert!(
-        output.status.success(),
-        "workspace lease acquisition should succeed: stdout={}, stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
-    let payload: Value = serde_json::from_slice(&output.stdout).expect("workspace lease JSON");
-    payload["result"]["leaseId"]
-        .as_str()
-        .expect("workspace lease id")
-        .to_string()
 }
 
 fn assert_output_budget(output: &str, line_budget: usize, token_budget: usize) {

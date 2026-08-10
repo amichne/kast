@@ -33,7 +33,7 @@ internal object WorkspaceTransitionSnapshotPublicationScenario {
                 )
             },
             runIndexingPass = { _, _, _ ->
-                IndexingPassResult(KastSourceIndexSummary(), graphFailure = null)
+                IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed)
             },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             waitForNextPass = { false },

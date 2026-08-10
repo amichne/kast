@@ -13,6 +13,7 @@ import io.github.amichne.kast.api.continuation.ContinuationTransition
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.protocol.InvalidWorkspaceFileCursorException
@@ -31,6 +32,7 @@ internal class IdeaWorkspaceFilePaging(
         ContinuationTokenIssuer(WorkspaceFileSnapshotToken::random),
     pageTokenIssuer: ContinuationTokenIssuer<WorkspaceFilePageToken> =
         ContinuationTokenIssuer(WorkspaceFilePageToken::random),
+    private val runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry? = null,
 ) : AutoCloseable {
     private val defaultPageSize = PositiveInt(limits.maxResults)
     private val snapshots = ServerHeldContinuationStore<
@@ -44,6 +46,7 @@ internal class IdeaWorkspaceFilePaging(
         tokenIssuer = snapshotTokenIssuer,
         stateDisposer = ContinuationStateDisposer { },
         clock = clock,
+        leaseRegistry = runtimeCapabilityLeases,
     )
     private val pages = ServerHeldContinuationStore<
         WorkspaceFilePageToken,
@@ -56,6 +59,7 @@ internal class IdeaWorkspaceFilePaging(
         tokenIssuer = pageTokenIssuer,
         stateDisposer = ContinuationStateDisposer { },
         clock = clock,
+        leaseRegistry = runtimeCapabilityLeases,
     )
 
     fun query(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult {

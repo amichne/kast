@@ -23,38 +23,6 @@ internal fun systemOperationDocs(): List<OperationDoc> = listOf(
                 "before running analysis commands.",
         ),
         OperationDoc(
-            operationId = "runtimeShutdown",
-            jsonRpcMethod = "runtime/shutdown",
-            summary = "Request runtime host shutdown after the response is flushed",
-            tag = "system",
-            responseSchema = "RuntimeLifecycleResponse",
-            description = "Requests that the runtime host shut down the current indexer " +
-                "after returning a JSON-RPC response. The top-level `kast stop` command " +
-                "also handles stale endpoint state.",
-            behavioralNotes = listOf(
-                "The response is flushed before the lifecycle action runs, so callers can observe an accepted request.",
-                "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
-                "Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and cleanup.",
-            ),
-            errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
-        ),
-        OperationDoc(
-            operationId = "runtimeRestart",
-            jsonRpcMethod = "runtime/restart",
-            summary = "Request runtime host restart after the response is flushed",
-            tag = "system",
-            responseSchema = "RuntimeLifecycleResponse",
-            description = "Requests that the runtime host restart the current indexer " +
-                "after returning a JSON-RPC response. The top-level `kast restart` " +
-                "command also waits for readiness.",
-            behavioralNotes = listOf(
-                "The response is flushed before the lifecycle action runs, so callers can observe an accepted request.",
-                "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
-                "Prefer the top-level `kast restart` command for operator workflows; it combines the host lifecycle request with readiness waiting.",
-            ),
-            errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
-        ),
-        OperationDoc(
             operationId = "capabilities",
             jsonRpcMethod = "capabilities",
             summary = "Advertised read and mutation capabilities",

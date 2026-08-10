@@ -106,7 +106,7 @@ fn exact_rename_plan_result() -> Value {
                     }
                 }
             ],
-            "schemaVersion": 6
+            "schemaVersion": SCHEMA_VERSION
         }
     })
 }

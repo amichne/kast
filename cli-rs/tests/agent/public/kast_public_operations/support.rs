@@ -207,7 +207,7 @@ pub(super) fn public_exact_add_file_preview(
             },
             "postimageSha256": sha256,
         },
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     })
 }
 
@@ -272,7 +272,7 @@ pub(super) fn public_exact_add_declaration_preview(
             },
             "postimageSha256": postimage_sha256,
         },
-        "schemaVersion": 6,
+        "schemaVersion": 7,
     })
 }
 
@@ -317,7 +317,7 @@ pub(super) fn independent_refresh(file: &Path) -> Value {
         "removedFileCount": 0,
         "attemptCount": 1,
         "elapsedMillis": 1,
-        "schemaVersion": 6
+        "schemaVersion": 7
     })
 }
 
@@ -369,7 +369,7 @@ pub(super) fn independent_diagnostics(
             "total": total
         },
         "cardinality": {"type": "EXACT", "totalCount": total},
-        "schemaVersion": 6
+        "schemaVersion": 7
     });
     if let Some(page) = page {
         result["page"] = page;

@@ -21,6 +21,7 @@ pub(crate) use domain::{
     ExternalFailureId, PlanId, RecoveryId, SymbolSelector, WorkspaceKotlinPath,
 };
 pub(crate) use protocol::OperationStatus;
+pub(crate) use protocol::PUBLIC_PROTOCOL_SCHEMA_VERSION;
 pub(crate) use protocol::ProtocolEnvelope;
 use protocol::ProtocolFailure;
 pub(crate) use registry::{
@@ -180,7 +181,6 @@ pub(crate) fn authenticate_mutation_selector(
         .map_err(|reason| Box::new(invalid_input(operation, "selector", reason)))?;
     let runtime = crate::cli::AgentRuntimeArgs {
         workspace_root: Some(workspace_root),
-        ..Default::default()
     };
     execution::authenticate_selector(&runtime, selector, family)
         .map_err(|failure| Box::new(ProtocolEnvelope::rejected(operation, failure)))

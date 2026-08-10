@@ -4,7 +4,7 @@
 _kast_typed_operations() {
   local -a operations
   operations=(
-    'workspace ensure:workspace.ensure'
+    'up:workspace.up'
     'workspace refresh:workspace.refresh'
     'workspace externalize:workspace.externalize'
     'file list:file.list'

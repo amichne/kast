@@ -19,6 +19,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuati
 import io.github.amichne.kast.api.protocol.InvalidWorkspaceFilesPageTokenException
 import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
 import java.io.Closeable
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 
 internal class WorkspaceFilesContinuationService(
     capacity: ContinuationCapacity,
@@ -26,6 +27,7 @@ internal class WorkspaceFilesContinuationService(
     tokenIssuer: ContinuationTokenIssuer<WorkspaceFilesPublicPageToken> =
         ContinuationTokenIssuer(WorkspaceFilesPublicPageToken::random),
     clock: ContinuationClock = ContinuationClock.System,
+    leaseRegistry: RuntimeCapabilityLeaseRegistry? = null,
 ) : Closeable {
     private val store = ServerHeldContinuationStore<
         WorkspaceFilesPublicPageToken,
@@ -38,6 +40,7 @@ internal class WorkspaceFilesContinuationService(
         tokenIssuer = tokenIssuer,
         stateDisposer = ContinuationStateDisposer { },
         clock = clock,
+        leaseRegistry = leaseRegistry,
     )
 
     fun execute(query: WorkspaceFilesContinuationQuery.Parsed): WorkspaceFilesContinuationResult = when (query) {

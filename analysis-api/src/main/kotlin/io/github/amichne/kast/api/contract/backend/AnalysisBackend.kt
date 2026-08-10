@@ -44,12 +44,10 @@ interface AnalysisBackend {
         val capabilities = capabilities()
         return RuntimeStatusResponse(
             state = RuntimeState.READY,
-            healthy = true,
-            active = true,
-            indexing = false,
             backendName = capabilities.backendName,
             backendVersion = capabilities.backendVersion,
             workspaceRoot = capabilities.workspaceRoot,
+            readiness = RuntimeReadiness.ready(),
         )
     }
 

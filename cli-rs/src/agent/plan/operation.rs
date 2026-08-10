@@ -104,10 +104,8 @@ impl PreparedOperation {
         content_file: Option<&Path>,
         apply: bool,
         idempotency_key: Option<String>,
-        lease_id: Option<AgentWorkspaceLeaseId>,
     ) -> Result<AgentCommand> {
-        let mut runtime = agent_adapter::agent_runtime(workspace_root);
-        runtime.lease_id = lease_id;
+        let runtime = agent_adapter::agent_runtime(workspace_root);
         let mutation = AgentMutationApplyArgs {
             apply,
             idempotency_key,

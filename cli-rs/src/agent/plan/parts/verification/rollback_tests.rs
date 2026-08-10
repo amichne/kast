@@ -1,4 +1,5 @@
     use super::*;
+    use crate::SCHEMA_VERSION;
 
     fn transition(preimage: ExactMutationPreimage) -> ExactMutationTransition {
         ExactMutationTransition {
@@ -84,7 +85,7 @@
             "removedFileCount": 0,
             "attemptCount": 1,
             "elapsedMillis": 1,
-            "schemaVersion": 6
+            "schemaVersion": SCHEMA_VERSION
         }))
         .expect("closed refresh evidence");
         let transitions = [transition(ExactMutationPreimage::Present {
@@ -116,7 +117,7 @@
             "removedFileCount": 1,
             "attemptCount": 1,
             "elapsedMillis": 1,
-            "schemaVersion": 6
+            "schemaVersion": SCHEMA_VERSION
         }))
         .expect("closed removal evidence");
         let transitions = [transition(ExactMutationPreimage::Absent)];

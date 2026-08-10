@@ -53,8 +53,8 @@ import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
 import io.github.amichne.kast.api.contract.result.MutationScratchInspectResult
 import io.github.amichne.kast.api.contract.result.MutationScratchRecoveryResult
 import io.github.amichne.kast.api.contract.result.SemanticGraphResult
-import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.ServerLimits
@@ -114,6 +114,7 @@ internal class KastIndexerBackend(
     internal val workspaceIndexingProgress: WorkspaceIndexingProgressSink = WorkspaceIndexingProgressAuthority(),
     internal val workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority,
     internal val workspaceTransitionRequester: WorkspaceTransitionRequester,
+    internal val runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry? = null,
     internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
         IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
     },
@@ -178,6 +179,7 @@ internal class KastIndexerBackend(
         timeToLive = limits.typedContinuationTtl,
         tokenIssuer = ContinuationTokenIssuer(ReferencePageToken::random),
         stateDisposer = ContinuationStateDisposer(ReferenceContinuationState::close),
+        leaseRegistry = runtimeCapabilityLeases,
     )
     internal val diagnosticContinuations = SharedContinuationStore<
         DiagnosticPageToken,
@@ -189,8 +191,9 @@ internal class KastIndexerBackend(
         timeToLive = limits.typedContinuationTtl,
         tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
         stateDisposer = ContinuationStateDisposer { },
+        leaseRegistry = runtimeCapabilityLeases,
     )
-    internal val relationshipContinuations = RelationshipContinuationStore(limits)
+    internal val relationshipContinuations = RelationshipContinuationStore(limits, runtimeCapabilityLeases)
     internal val workspaceFilePaging = IdeaWorkspaceFilePaging(
         workspaceId = sharedWorkspaceIdentity.canonicalWorkspaceId,
         inventory = IdeaProjectModelWorkspaceFileInventory(
@@ -199,6 +202,7 @@ internal class KastIndexerBackend(
             workspaceModelReader = workspaceModelReader,
         ),
         limits = limits,
+        runtimeCapabilityLeases = runtimeCapabilityLeases,
     )
     internal val ideaReadAccess = object : ReadAccessScope {
         override fun <T> run(action: () -> T): T =
@@ -268,40 +272,7 @@ internal class KastIndexerBackend(
         limits = limits,
     )
 
-    override suspend fun runtimeStatus(): RuntimeStatusResponse {
-        val caps = capabilities()
-        val isDumb = DumbService.isDumb(project)
-        val admission = workspaceSemanticReadAuthority.status()
-        val state = when {
-            admission is IdeaIndexSemanticAdmission.Status.Failed -> RuntimeState.DEGRADED
-            isDumb || admission is IdeaIndexSemanticAdmission.Status.Pending -> RuntimeState.INDEXING
-            else -> RuntimeState.READY
-        }
-        val moduleNames = ModuleManager.getInstance(project).modules.map { it.name }.sorted()
-        val modelObservation = IdeaModelReadinessObservation.fromIdeaState(isDumb, moduleNames.size)
-        val readiness = kastRuntimeReadiness(KastRuntimeReadinessObservation(admission, modelObservation))
-        return RuntimeStatusResponse(
-            state = state,
-            healthy = state != RuntimeState.DEGRADED,
-            active = true,
-            indexing = state == RuntimeState.INDEXING,
-            backendName = caps.backendName,
-            backendVersion = caps.backendVersion,
-            workspaceRoot = caps.workspaceRoot,
-            message = when {
-                admission is IdeaIndexSemanticAdmission.Status.Failed ->
-                    "IDEA compiler-backed semantic admission failed: ${admission.detail}"
-                isDumb -> "IDEA is indexing — analysis results may be incomplete"
-                admission is IdeaIndexSemanticAdmission.Status.Pending ->
-                    "IDEA compiler-backed semantic admission is pending: ${admission.detail}"
-                else -> "Kast compiler-backed indexer is ready"
-            },
-            sourceModuleNames = moduleNames,
-            publishedWorkspaceGeneration = (admission as? IdeaIndexSemanticAdmission.Status.Ready)?.generation?.toRuntimeStatus(),
-            readiness = readiness,
-            ready = readiness.summary.toWireBoolean(),
-        )
-    }
+    override suspend fun runtimeStatus(): RuntimeStatusResponse = runtimeStatusEvidence()
 
     override suspend fun health(): HealthResponse {
         val caps = capabilities()

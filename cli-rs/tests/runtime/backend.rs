@@ -3,6 +3,7 @@
 #[path = "../support/mod.rs"]
 mod support;
 
+use std::os::unix::process::CommandExt;
 use support::*;
 
 fn standalone_workspace(root: &Path) {
@@ -15,7 +16,7 @@ fn standalone_workspace(root: &Path) {
 }
 
 #[test]
-fn up_without_an_installed_indexer_reports_the_supported_distribution() {
+fn semantic_demand_without_an_installed_indexer_returns_a_typed_blocker() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -23,28 +24,26 @@ fn up_without_an_installed_indexer_reports_the_supported_distribution() {
     std::fs::create_dir_all(&home).expect("home");
     standalone_workspace(&workspace);
 
-    let up = kast(&home, &config_home)
-        .args([
-            "--output",
-            "human",
-            "developer",
-            "runtime",
-            "up",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-        ])
+    let demand = kast(&home, &config_home)
+        .arg0("kast")
+        .current_dir(&workspace)
+        .args(["--output", "json", "symbol", "resolve", "--query", "Foo"])
         .output()
-        .expect("up");
+        .expect("semantic demand");
 
     assert!(
-        !up.status.success(),
-        "up should require an installed indexer"
+        !demand.status.success(),
+        "semantic demand should require an installed indexer"
     );
-    let stderr = String::from_utf8_lossy(&up.stderr);
-    assert!(stderr.contains("- Code: NO_INDEXER_AVAILABLE"), "{stderr}");
-    assert!(
-        stderr.contains("supportedDistribution") && stderr.contains("linux-indexer-tarball"),
-        "stderr should identify the supported private indexer distribution: {stderr}",
+    let output: serde_json::Value =
+        serde_json::from_slice(&demand.stdout).expect("semantic demand JSON");
+    assert_eq!(output["schemaVersion"], 3, "{output:#}");
+    assert_eq!(output["operation"], "symbol.resolve", "{output:#}");
+    assert_eq!(output["status"], "rejected", "{output:#}");
+    assert_eq!(output["result"]["type"], "rejected", "{output:#}");
+    assert_eq!(
+        output["result"]["failure"]["code"], "NO_INDEXER_AVAILABLE",
+        "{output:#}",
     );
 }
 

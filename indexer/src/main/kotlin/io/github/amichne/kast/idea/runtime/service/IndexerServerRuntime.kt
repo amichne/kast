@@ -15,13 +15,13 @@ import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.client.WorkspaceRepository
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
-import io.github.amichne.kast.server.RuntimeLifecycleController
 import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
@@ -32,7 +32,6 @@ object IndexerServerRuntime {
         workspaceRoot: Path,
         socketPath: Path = defaultSocketPath(workspaceRoot),
         config: KastConfig = KastConfig.load(workspaceRoot),
-        lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
         startProjectIndexing: Boolean = true,
     ): RunningIndexer {
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
@@ -45,7 +44,6 @@ object IndexerServerRuntime {
             workspaceIdentity = workspaceIdentity,
             transport = AnalysisTransport.UnixDomainSocket(socketPath),
             config = config,
-            lifecycleController = lifecycleController,
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
             registrationProof = null,
             runtimeInstanceId = null,
@@ -57,7 +55,6 @@ object IndexerServerRuntime {
         workspaceRoot: Path,
         transport: AnalysisTransport,
         config: KastConfig = KastConfig.load(workspaceRoot),
-        lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
         startProjectIndexing: Boolean = true,
     ): RunningIndexer {
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
@@ -70,7 +67,6 @@ object IndexerServerRuntime {
             workspaceIdentity = workspaceIdentity,
             transport = transport,
             config = config,
-            lifecycleController = lifecycleController,
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
             registrationProof = null,
             runtimeInstanceId = null,
@@ -95,7 +91,6 @@ object IndexerServerRuntime {
             workspaceIdentity = workspaceIdentity,
             transport = transport,
             config = config,
-            lifecycleController = RuntimeLifecycleController.Unavailable,
             indexAdmission = IndexerAdmission.fromStartIndexing(true),
             registrationProof = registrationProof,
             runtimeInstanceId = runtimeInstanceId,
@@ -107,11 +102,14 @@ object IndexerServerRuntime {
         workspaceIdentity: IdeaWorkspaceIdentity,
         transport: AnalysisTransport,
         config: KastConfig,
-        lifecycleController: RuntimeLifecycleController,
         indexAdmission: IndexerAdmission,
         registrationProof: GitWorktreeRegistrationProof?,
         runtimeInstanceId: RuntimeInstanceId?,
     ): RunningIndexer {
+        val admittedRuntimeInstanceId = runtimeInstanceId ?: RuntimeInstanceId.create()
+        val runtimeCapabilityLeases = RuntimeCapabilityLeaseRegistry(
+            admittedRuntimeInstanceId,
+        )
         KastStructuredTrace.event(
             eventName = "indexer.runtime.start_requested",
             project = project,
@@ -196,6 +194,7 @@ object IndexerServerRuntime {
                 workspaceIndexingScopeCache = indexingScopeCache,
                 workspaceSemanticReadAuthority = semanticAdmission,
                 workspaceTransitionRequester = transitionIngress,
+                runtimeCapabilityLeases = runtimeCapabilityLeases,
             )
             pluginBackend = startedPluginBackend
             ObservedAnalysisBackend(
@@ -220,12 +219,12 @@ object IndexerServerRuntime {
                 backend = backend,
                 config = indexerAnalysisServerConfig(
                     transport = transport,
-                    runtimeInstanceId = runtimeInstanceId,
+                    runtimeInstanceId = admittedRuntimeInstanceId,
                     limits = limits,
                     config = config,
                     workspaceFileCountProvider = manifestFileCountProvider,
+                    runtimeCapabilityLeases = runtimeCapabilityLeases,
                 ),
-                lifecycleController = lifecycleController,
             ).start()
         } catch (failure: Throwable) {
             listOf<() -> Unit>(backend::close, sourceIndexStore::close).forEach { cleanupPhase ->
@@ -263,9 +262,10 @@ object IndexerServerRuntime {
                     transitionIngress = transitionIngress,
                     snapshotPreparation = snapshotPreparation,
                     scopeCache = indexingScopeCache,
-                    semanticGraphIndexer = { scope, batchSize, reconciliationToken ->
+                    semanticGraphIndexer = SemanticGraphIndexingTransition { input ->
+                        val scope = input.sourceIdentifiers
                         if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
-                            startedPluginBackend.updateSemanticGraphBatchSize(batchSize)
+                            startedPluginBackend.updateSemanticGraphBatchSize(input.batchSize)
                             runBlocking {
                                 startedPluginBackend.reconcileSemanticGraph(
                                     ParsedSemanticGraphQuery(
@@ -276,10 +276,11 @@ object IndexerServerRuntime {
                                             .map { path -> path.absolute },
                                         expectedGeneration = null,
                                     ),
-                                    reconciliationToken,
+                                    input.reconciliationToken,
                                 )
                             }
                         }
+                        GraphLaneOutcome.Committed
                     },
             )
             projectIndexing = startedProjectIndexing

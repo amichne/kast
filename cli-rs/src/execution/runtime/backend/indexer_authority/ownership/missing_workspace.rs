@@ -25,6 +25,7 @@ impl WorkspaceRootCandidate {
         }
     }
 
+    #[allow(dead_code)]
     pub(in super::super) fn path(&self) -> &Path {
         match self {
             Self::ExistingCanonical(root) | Self::MissingNormalized(root) => root,
@@ -61,12 +62,6 @@ impl RegisteredWorkspaceRoot {
                     registrations,
                 })
             }
-        }
-    }
-
-    pub(in super::super) fn path(&self) -> &Path {
-        match self {
-            Self::ExistingCanonical(root) | Self::MissingRegistered { root, .. } => root,
         }
     }
 

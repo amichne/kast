@@ -2,7 +2,7 @@
 
 <!-- Generated from the typed public operation registry. -->
 
-1. Establish evidence with `kast workspace ensure`.
+1. Establish evidence with `kast file list --match '**/*.kt'`.
 2. Discover uncertainty with `kast symbol search --query Widget` or resolve exact text with `kast symbol resolve --query 'example.Widget.render()'`.
 3. Copy the emitted selector verbatim into `kast symbol show --selector <SELECTOR>` and `kast relation references --selector <SELECTOR>`.
 4. Repeat a paged operation with its own returned `--continuation`; never move it to another operation.

@@ -27,15 +27,14 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import java.io.Closeable
+import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseKind
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
-    private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
     private val json: Json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -45,7 +44,6 @@ class RpcAnalysisDispatcher(
     private val methodRouter = RpcMethodRouter(
         backend = backend,
         config = config,
-        lifecycleController = lifecycleController,
         json = json,
     )
     private val lifecycleLock = ReentrantLock()
@@ -57,7 +55,7 @@ class RpcAnalysisDispatcher(
     suspend fun dispatch(request: JsonRpcRequest): String = dispatchForTransport(request).response
 
     internal suspend fun dispatchForTransport(request: JsonRpcRequest): RpcDispatchResult =
-        withDispatchAdmission {
+        withDispatchAdmission(request.method) {
             dispatchAdmitted(request)
         }
 
@@ -85,7 +83,6 @@ class RpcAnalysisDispatcher(
                             result = routed.result.result,
                         ),
                     ),
-                    afterResponseAction = routed.result.afterResponseAction,
                 )
 
                 is RpcRoutedDispatch.DeadlineExceeded -> RpcDispatchResult(
@@ -210,7 +207,7 @@ class RpcAnalysisDispatcher(
         methodRouter.close()
     }
 
-    private suspend fun <T> withDispatchAdmission(block: suspend () -> T): T {
+    private suspend fun <T> withDispatchAdmission(method: String, block: suspend () -> T): T {
         val job = currentCoroutineContext()[Job]
             ?: error("RPC dispatch requires a coroutine job")
         lifecycleLock.withLock {
@@ -219,9 +216,12 @@ class RpcAnalysisDispatcher(
             }
             activeDispatches += job
         }
+        val lease = if (method in READ_ONLY_OBSERVATION_METHODS) null else
+            config.runtimeCapabilityLeases?.acquire(RuntimeCapabilityLeaseKind.REQUEST)
         return try {
             block()
         } finally {
+            lease?.close()
             lifecycleLock.withLock {
                 activeDispatches -= job
                 if (activeDispatches.isEmpty()) {
@@ -229,6 +229,10 @@ class RpcAnalysisDispatcher(
                 }
             }
         }
+    }
+
+    private companion object {
+        val READ_ONLY_OBSERVATION_METHODS = setOf("runtime/status", "health")
     }
 }
 
@@ -242,16 +246,7 @@ private sealed interface RpcRoutedDispatch {
 
 internal class RpcDispatchResult(
     val response: String,
-    afterResponseAction: (() -> Unit)? = null,
-) {
-    private val afterResponseAction = AtomicReference(afterResponseAction)
-
-    fun runAfterFlushAction(): Boolean {
-        val action = afterResponseAction.getAndSet(null) ?: return false
-        runCatching(action)
-        return true
-    }
-}
+)
 
 private fun timeoutJsonRpcError(
     request: JsonRpcRequest,

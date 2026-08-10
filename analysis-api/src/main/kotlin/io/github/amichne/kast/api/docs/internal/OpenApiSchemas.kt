@@ -22,7 +22,9 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     registry.register("RuntimeReadinessProgress", RuntimeReadinessProgress.serializer())
     registry.register("RuntimeProgressStage", RuntimeProgressStage.serializer())
     registry.register("PublishedWorkspaceGenerationStatus", PublishedWorkspaceGenerationStatus.serializer())
-    registry.register("RuntimeLifecycleResponse", RuntimeLifecycleResponse.serializer())
+    registry.register("PublishedGraphEvidenceStatus", PublishedGraphEvidenceStatus.serializer())
+    registry.register("PublishedGraphEvidenceStatus.Ready", PublishedGraphEvidenceStatus.Ready.serializer())
+    registry.register("PublishedGraphEvidenceStatus.Blocked", PublishedGraphEvidenceStatus.Blocked.serializer())
     registry.register("BackendCapabilities", BackendCapabilities.serializer())
 
     // Shared types

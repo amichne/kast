@@ -136,8 +136,10 @@ internal class UnixDomainSocketRpcServer(
                 try {
                     client.use(::handleClient)
                 } finally {
-                    clients.remove(client)
-                    handlers.remove(Thread.currentThread())
+                    synchronized(handlerLifecycleLock) {
+                        clients.remove(client)
+                        handlers.remove(Thread.currentThread())
+                    }
                 }
             }
             when (admitHandler(client, handler)) {
@@ -285,9 +287,6 @@ internal fun processRpcStream(
             writer.write(response.response)
             writer.newLine()
             writer.flush()
-            if (response.runAfterFlushAction()) {
-                return
-            }
         }
     }
 }

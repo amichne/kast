@@ -1,5 +1,5 @@
-fn parse_admitted_capabilities(
-    request: &SemanticRuntimeRequest,
+fn parse_admitted_capabilities<C: RequiredCapability>(
+    request: &SemanticRuntimeRequest<C>,
     candidate: &RuntimeCandidateStatus,
 ) -> std::result::Result<AdmittedIndexerCapabilities, SemanticRuntimeRejection> {
     let capabilities = candidate.capabilities.as_ref().ok_or_else(|| {
@@ -104,18 +104,6 @@ pub(super) fn runtime_identity_mismatch() -> CliError {
     )
 }
 
-pub(super) fn descriptor_process_identity_is_live(
-    descriptor: &ServerInstanceDescriptor,
-) -> bool {
-    descriptor
-        .process_start_epoch_millis
-        .filter(|value| *value > 0)
-        .is_some_and(|expected| {
-            process_start_epoch_seconds(descriptor.pid)
-                .is_ok_and(|observed| expected / 1_000 == observed)
-        })
-}
-
 fn process_start_epoch_seconds(pid: u64) -> Result<u64> {
     if pid == 0 || pid > i32::MAX as u64 {
         return Err(runtime_identity_mismatch());
@@ -148,25 +136,51 @@ fn process_start_epoch_seconds(pid: u64) -> Result<u64> {
     }
 }
 
-fn current_socket_file_identity(path: &str) -> Result<Option<RuntimeSocketFileIdentity>> {
+fn current_socket_file_identity(path: &str) -> Result<RuntimeSocketFileIdentity> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
 
         let metadata = fs::metadata(path)?;
-        Ok(Some(RuntimeSocketFileIdentity {
+        Ok(RuntimeSocketFileIdentity {
             device: metadata.dev(),
             inode: metadata.ino(),
-        }))
+        })
     }
     #[cfg(not(unix))]
     {
         let _ = path;
-        Ok(None)
+        Err(runtime_identity_mismatch())
     }
 }
 
-fn validate_admitted_runtime_current(admission: &AdmittedIndexerRuntime) -> Result<()> {
+fn runtime_epoch_identity(descriptor: &ServerInstanceDescriptor) -> Result<RuntimeEpochIdentity> {
+    let runtime_instance_id = descriptor
+        .runtime_instance_id
+        .as_ref()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(runtime_identity_mismatch)?;
+    let process_start_epoch_millis = descriptor
+        .process_start_epoch_millis
+        .filter(|value| *value > 0)
+        .ok_or_else(runtime_identity_mismatch)?;
+    let socket = descriptor
+        .socket_file_identity
+        .as_ref()
+        .filter(|identity| identity.inode > 0)
+        .ok_or_else(runtime_identity_mismatch)?;
+    Ok(RuntimeEpochIdentity::from_validated_parts(
+        RuntimeEpochId::from_validated(runtime_instance_id.clone()),
+        descriptor.pid,
+        process_start_epoch_millis,
+        socket.device,
+        socket.inode,
+    ))
+}
+
+fn validate_admitted_runtime_current<C: RequiredCapability>(
+    admission: &AdmittedIndexerRuntime<C>,
+) -> Result<RevalidatedRuntimeEpoch<'_, C>> {
     let expected = &admission.candidate.descriptor;
     let registered = read_descriptors(&admission.config.paths.descriptor_dir)?;
     if !registered.iter().any(|descriptor| descriptor == expected)
@@ -183,7 +197,19 @@ fn validate_admitted_runtime_current(admission: &AdmittedIndexerRuntime) -> Resu
         ));
     }
     validate_descriptor_owner(expected)?;
-    Ok(())
+    let observed_identity = runtime_epoch_identity(expected)?;
+    if &observed_identity != admission.lifecycle.identity()
+        || admission.lifecycle.root().as_path() != admission.workspace_root
+    {
+        return Err(CliError::new(
+            "RUNTIME_IDENTITY_REPLACED",
+            "The admitted runtime epoch no longer matches its typestate authority.",
+        ));
+    }
+    Ok(RevalidatedRuntimeEpoch {
+        admission,
+        observed_identity,
+    })
 }
 
 include!("ownership/start.rs");
@@ -250,7 +276,7 @@ fn indexer_conflict_rejection(
     SemanticRuntimeRejection {
         code: "INDEXER_CONFLICT",
         message: format!(
-            "More than one healthy indexer owns the exact workspace root {}. Stop the conflicting runtime before retrying.",
+            "More than one healthy indexer owns the exact workspace root {}.",
             workspace_root.display()
         ),
         supported_distribution: None,
@@ -316,7 +342,11 @@ fn unavailable_evidence(
         workspace_root: workspace_root.display().to_string(),
         workspace_kind,
         source_module_names: vec![],
-        limitations: vec![SemanticWorkspaceLimitation::SourceModulesUnavailable],
+        limitations: vec![if workspace_kind == SemanticWorkspaceKind::UnsupportedProject {
+            SemanticWorkspaceLimitation::UnsupportedProject
+        } else {
+            SemanticWorkspaceLimitation::SourceModulesUnavailable
+        }],
         evidence_quality: SemanticEvidenceQuality::Unavailable,
         backend_candidates: vec![],
     }

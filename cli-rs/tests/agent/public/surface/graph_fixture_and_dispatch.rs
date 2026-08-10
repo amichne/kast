@@ -168,7 +168,7 @@ fn public_graph_exposes_read_only_topology() {
                 .trim(),
         )
         .expect("graph projection is valid TOON");
-        assert_eq!(decoded["schemaVersion"], 2, "{decoded:#}");
+        assert_eq!(decoded["schemaVersion"], 3, "{decoded:#}");
         assert_eq!(decoded["operation"], operation_id, "{decoded:#}");
         assert_eq!(decoded["status"], "complete", "{decoded:#}");
         assert_eq!(decoded["result"]["type"], result_type, "{decoded:#}");

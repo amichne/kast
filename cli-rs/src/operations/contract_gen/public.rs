@@ -97,7 +97,7 @@ fn request_type_schema(request: crate::agent::public_protocol::RequestType) -> V
     let continuation = || serde_json::json!({"type": "string", "format": "kast-continuation"});
     let path = || serde_json::json!({"type": "string", "format": "workspace-kotlin-path"});
     let fields: Vec<(&str, Value, bool)> = match request {
-        WorkspaceHome | WorkspaceEnsure => Vec::new(),
+        WorkspaceHome | WorkspaceUp => Vec::new(),
         WorkspaceRefresh => vec![("files", serde_json::json!({"type": "array", "items": path()}), false)],
         WorkspaceExternalize => vec![("failureIds", serde_json::json!({"type": "array", "minItems": 1, "items": {"type": "string", "format": "kast-external-failure-id"}}), true)],
         FileList => vec![("match", string(), false), ("continuation", continuation(), false)],
@@ -174,7 +174,7 @@ fn public_result_schema(
         "additionalProperties": false,
         "required": ["schemaVersion", "operation", "status", "result"],
         "properties": {
-            "schemaVersion": {"const": 2},
+            "schemaVersion": {"const": crate::agent::public_protocol::PUBLIC_PROTOCOL_SCHEMA_VERSION},
             "operation": {"enum": definitions.iter().map(|definition| definition.id).collect::<Vec<_>>()},
             "status": {"enum": ["complete", "qualified", "rejected"]},
             "result": {"type": "object"},
@@ -307,7 +307,7 @@ fn render_public_runbook(
     use crate::agent::public_protocol::OperationId;
     format!(
         "# Typed public protocol runbook\n\n<!-- Generated from the typed public operation registry. -->\n\n1. Establish evidence with `{}`.\n2. Discover uncertainty with `{}` or resolve exact text with `{}`.\n3. Copy the emitted selector verbatim into `{}` and `{}`.\n4. Repeat a paged operation with its own returned `--continuation`; never move it to another operation.\n5. Create a selector-bound plan with `{}`. Apply only its returned plan ID with `{}`.\n\nThe workflow rejects qualified names, locations, paths, offsets, graph node selectors, stale selectors, wrong-root selectors, and cross-operation continuations before semantic execution or mutation planning.\n",
-        syntax(OperationId::WorkspaceEnsure), syntax(OperationId::SymbolSearch),
+        syntax(OperationId::FileList), syntax(OperationId::SymbolSearch),
         syntax(OperationId::SymbolResolve), syntax(OperationId::SymbolShow),
         syntax(OperationId::RelationReferences), syntax(OperationId::ChangePlanRename),
         syntax(OperationId::ChangeApply),

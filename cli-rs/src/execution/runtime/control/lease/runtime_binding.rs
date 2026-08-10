@@ -6,7 +6,8 @@ fn ensure_lease_runtime(
     if !admission.candidate().ready {
         let deadline = Instant::now() + Duration::from_millis(wait_timeout_ms);
         while Instant::now() < deadline {
-            admission.validate_current()?;
+            let epoch = admission.validate_current()?;
+            let _source = epoch.capability_ready()?;
             let inspection =
                 inspect_indexer_workspace(admission.workspace_root(), StaleDescriptorPolicy::Preserve)?;
             if let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
@@ -48,8 +49,8 @@ fn lease_runtime_result(
         workspace_root: admission.workspace_root().display().to_string(),
         descriptor_directory: admission.config().paths.descriptor_dir.display().to_string(),
         path_resolution,
-        started: admission.started(),
-        log_file: admission.started().then(|| {
+        started: admission.origin() == indexer_authority::RuntimeAdmissionOrigin::Started,
+        log_file: (admission.origin() == indexer_authority::RuntimeAdmissionOrigin::Started).then(|| {
             daemon_log_file(admission.config(), admission.workspace_root(), admission.backend())
                 .display()
                 .to_string()
@@ -288,28 +289,8 @@ fn observe_active_binding(
 }
 
 fn release_active_binding(binding: &WorkspaceLeaseBinding) -> Result<WorkspaceLeaseReleaseReceipt> {
-    let (runtime_stopped, reason) = match binding.ownership {
-        WorkspaceLeaseOwnership::Borrowed => {
-            (false, WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved)
-        }
-        WorkspaceLeaseOwnership::Started => {
-            if stop_exact_runtime(&binding.workspace_root, &binding.runtime)? {
-                (true, WorkspaceLeaseReleaseReason::OwnedRuntimeStopped)
-            } else {
-                (false, WorkspaceLeaseReleaseReason::ExactRuntimeUnavailable)
-            }
-        }
-    };
-    Ok(WorkspaceLeaseReleaseReceipt {
+    require_current_lease_owner(&binding.owner)?;
+    Ok(WorkspaceLeaseReleaseReceipt::RuntimeIdlePolicy {
         released_at: crate::manifest::current_timestamp(),
-        runtime_stopped,
-        reason,
     })
-}
-
-fn stop_exact_runtime(
-    workspace_root: &Path,
-    expected: &WorkspaceLeaseRuntimeIdentity,
-) -> Result<bool> {
-    indexer_authority::stop_exact_owned_runtime(workspace_root, expected)
 }

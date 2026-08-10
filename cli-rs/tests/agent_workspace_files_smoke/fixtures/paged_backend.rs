@@ -73,12 +73,14 @@ fn spawn_paged_workspace_files_backend_with_completion(
 fn workspace_files_runtime_status(workspace: &std::path::Path) -> serde_json::Value {
     serde_json::json!({
         "state": "READY",
-        "healthy": true,
-        "active": true,
-        "indexing": false,
         "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
+        "readiness": {
+            "runtime": {"type": "READY"}, "model": {"type": "READY"},
+            "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
+            "mutation": {"type": "READY"}
+        },
         "schemaVersion": api_schema_version()
     })
 }

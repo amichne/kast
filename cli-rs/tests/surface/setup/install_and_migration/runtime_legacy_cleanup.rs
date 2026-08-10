@@ -88,7 +88,7 @@ fn ordinary_setup_removes_retired_public_plugins_without_controlling_the_ide() {
 }
 
 #[test]
-fn ordinary_setup_retires_an_owned_legacy_headless_daemon() {
+fn ordinary_setup_does_not_control_an_owned_legacy_headless_daemon() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
@@ -98,7 +98,7 @@ fn ordinary_setup_retires_an_owned_legacy_headless_daemon() {
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     let socket_path = temp.path().join("legacy-headless.sock");
     let listener = UnixListener::bind(&socket_path).expect("legacy runtime socket");
-    let server = spawn_legacy_headless_status_server(listener, workspace.clone());
+    let _listener = listener;
     let (pid, reaped) = spawn_reapable_process();
     let current_socket = temp.path().join("current.sock");
     let _current_listener = UnixListener::bind(&current_socket).expect("current runtime socket");
@@ -115,6 +115,8 @@ fn ordinary_setup_retires_an_owned_legacy_headless_daemon() {
         serde_json::json!({"futureDescriptor": {"schemaVersion": 999}}),
     ];
     write_legacy_headless_descriptor(&home, &workspace, &socket_path, pid, None, &preserved);
+    let registry_path = default_descriptor_dir(&home).join("daemons.json");
+    let registry_before = std::fs::read(&registry_path).expect("descriptor registry");
 
     let output = setup(&home, &kast_home, &source);
     let stopped_by_setup = reaped
@@ -132,40 +134,28 @@ fn ordinary_setup_retires_an_owned_legacy_headless_daemon() {
         let _ = current_reaped.recv_timeout(std::time::Duration::from_secs(1));
     }
     assert!(
-        server.finish(),
-        "setup did not inspect the owned legacy runtime: stopped={stopped_by_setup}, stdout={}, stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
-
-    assert!(
         output.status.success(),
-        "setup should retire the owned legacy runtime: stdout={}, stderr={}",
+        "setup must remain independent of runtime lifecycle: stdout={}, stderr={}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
     assert!(
-        stopped_by_setup,
+        !stopped_by_setup,
         "setup stopped the registered legacy process"
     );
     assert!(
         !current_stopped_by_setup,
         "setup preserved the current indexer process"
     );
-    let remaining: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(default_descriptor_dir(&home).join("daemons.json"))
-            .expect("remaining registry"),
-    )
-    .expect("remaining registry JSON");
     assert_eq!(
-        remaining,
-        serde_json::Value::Array(preserved),
-        "setup removes only the retired descriptor",
+        std::fs::read(registry_path).expect("unchanged descriptor registry"),
+        registry_before,
+        "setup changed runtime evidence",
     );
 }
 
 #[test]
-fn ordinary_setup_rejects_an_unproven_legacy_headless_daemon() {
+fn ordinary_setup_does_not_inspect_an_unproven_legacy_headless_daemon() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
@@ -191,13 +181,7 @@ fn ordinary_setup_rejects_an_unproven_legacy_headless_daemon() {
         let _ = reaped.recv_timeout(std::time::Duration::from_secs(1));
     }
 
-    assert!(
-        !output.status.success(),
-        "unproven process identity must block setup"
-    );
-    let result: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("typed setup failure");
-    assert_eq!(result["code"], "RUNTIME_IDENTITY_MISMATCH");
+    assert!(output.status.success(), "setup must not inspect runtime identity");
     assert!(
         !stopped_by_setup,
         "setup did not signal an unproven process"
@@ -228,7 +212,7 @@ fn ordinary_setup_rejects_a_malformed_runtime_registry_without_activating() {
 
     assert!(
         !output.status.success(),
-        "malformed registry must block setup"
+        "ambiguous runtime evidence must block setup"
     );
     let result: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("typed setup failure");
@@ -239,7 +223,7 @@ fn ordinary_setup_rejects_a_malformed_runtime_registry_without_activating() {
     );
     assert!(
         !kast_home.join("current").exists(),
-        "setup did not activate a release"
+        "setup activated despite ambiguous runtime evidence"
     );
 }
 

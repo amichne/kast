@@ -34,9 +34,7 @@ pub(super) fn render_definition(
         .join("launch.json");
     let arguments = [
         launch.launcher_path.as_str(),
-        "developer",
-        "runtime",
-        "service-entrypoint",
+        "__runtime-service-entrypoint",
         "--registration",
         registration
             .to_str()

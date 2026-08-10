@@ -11,37 +11,83 @@ mod repair;
 #[path = "indexer_authority/service_manager.rs"]
 mod service_manager;
 
+use super::lifecycle_typestate::{
+    CanonicalWorkspaceRoot, CapabilityRequirement, Demand,
+    LifecycleBlocker as TypestateLifecycleBlocker, RequiredCapability, RuntimeAvailable,
+    RuntimeEpochId, RuntimeEpochIdentity, SourceCapability, SourceRevision, StartingEpoch,
+};
 use ownership::{RuntimeOwnershipSnapshot, reconcile_runtime_ownership};
 pub(crate) use registration::{
     RuntimeSetupAuthorization, RuntimeSetupIntent, preflight_runtime_setup,
 };
 use registration::{prepare_service_registration, publish_active_registration};
-pub(crate) use repair::{service_entrypoint, workspace_repair};
+pub(crate) use repair::service_entrypoint;
 
-pub(super) fn stop_workspace_runtime(args: RuntimeArgs) -> Result<DaemonStopResult> {
-    repair::stop_workspace_runtime(args)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum LifecycleOwnershipObservation {
+    Absent,
+    ExactOwned { runtime_instance_id: String },
+    Blocked { code: &'static str, message: String },
 }
 
-pub(super) fn stop_exact_owned_runtime(
+pub(crate) fn inspect_lifecycle_ownership(
+    config: &KastConfig,
     workspace_root: &Path,
-    expected: &WorkspaceLeaseRuntimeIdentity,
-) -> Result<bool> {
-    repair::stop_exact_owned_runtime(workspace_root, expected)
+) -> Result<LifecycleOwnershipObservation> {
+    Ok(match reconcile_runtime_ownership(config, workspace_root)? {
+        RuntimeOwnershipSnapshot::Absent(_) => LifecycleOwnershipObservation::Absent,
+        RuntimeOwnershipSnapshot::ServiceOwned(owned) if owned.proven_dead.is_empty() => {
+            LifecycleOwnershipObservation::ExactOwned {
+                runtime_instance_id: owned.registration.receipt.runtime_instance_id.to_string(),
+            }
+        }
+        RuntimeOwnershipSnapshot::ServiceOwned(_) | RuntimeOwnershipSnapshot::ProvenDead(_) => {
+            LifecycleOwnershipObservation::Blocked {
+                code: "RUNTIME_OWNERSHIP_PROVEN_DEAD",
+                message: "Proven-dead owned runtime evidence awaits the next semantic demand."
+                    .to_string(),
+            }
+        }
+        RuntimeOwnershipSnapshot::LegacyOwned(_) | RuntimeOwnershipSnapshot::Conflict(_) => {
+            LifecycleOwnershipObservation::Blocked {
+                code: "RUNTIME_OWNERSHIP_CONFLICT",
+                message: "Runtime evidence does not establish one reusable exact-owned epoch."
+                    .to_string(),
+            }
+        }
+        RuntimeOwnershipSnapshot::Ambiguous(ambiguity) => LifecycleOwnershipObservation::Blocked {
+            code: "RUNTIME_OWNERSHIP_AMBIGUOUS",
+            message: ambiguity.reason,
+        },
+    })
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AdmittedIndexerRuntime {
+pub(crate) struct AdmittedIndexerRuntime<C: RequiredCapability = SourceCapability> {
     workspace_root: PathBuf,
     workspace_kind: SemanticWorkspaceKind,
     config: KastConfig,
     candidate: RuntimeCandidateStatus,
     capabilities: AdmittedIndexerCapabilities,
-    started: bool,
+    lifecycle: RuntimeAvailable<C>,
+    origin: RuntimeAdmissionOrigin,
     process_identity: WorkspaceLeaseProcessIdentity,
-    observed_socket_file_identity: Option<RuntimeSocketFileIdentity>,
+    observed_socket_file_identity: RuntimeSocketFileIdentity,
 }
 
-impl AdmittedIndexerRuntime {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RuntimeAdmissionOrigin {
+    Reused,
+    Started,
+}
+
+#[derive(Debug)]
+pub(crate) struct RevalidatedRuntimeEpoch<'a, C: RequiredCapability = SourceCapability> {
+    admission: &'a AdmittedIndexerRuntime<C>,
+    observed_identity: RuntimeEpochIdentity,
+}
+
+impl<C: RequiredCapability> AdmittedIndexerRuntime<C> {
     pub(crate) fn workspace_root(&self) -> &Path {
         &self.workspace_root
     }
@@ -72,12 +118,42 @@ impl AdmittedIndexerRuntime {
             .contains(&capability)
     }
 
-    pub(crate) fn started(&self) -> bool {
-        self.started
+    pub(crate) fn origin(&self) -> RuntimeAdmissionOrigin {
+        self.origin
     }
 
-    pub(crate) fn validate_current(&self) -> Result<()> {
+    pub(crate) fn validate_current(&self) -> Result<RevalidatedRuntimeEpoch<'_, C>> {
         validate_admitted_runtime_current(self)
+    }
+}
+
+impl<C: RequiredCapability> RevalidatedRuntimeEpoch<'_, C> {
+    pub(crate) fn identity(&self) -> &RuntimeEpochIdentity {
+        &self.observed_identity
+    }
+
+    pub(crate) fn capability_ready(&self) -> Result<C::Ready> {
+        debug_assert_eq!(self.identity(), self.admission.lifecycle.identity());
+        let status = self
+            .admission
+            .candidate
+            .runtime_status
+            .as_ref()
+            .ok_or_else(capability_unavailable)?;
+        let publication = status
+            .published_workspace_generation
+            .as_ref()
+            .ok_or_else(capability_unavailable)?;
+        require_capability_publication::<C>(status, publication)?;
+        let revision = SourceRevision::positive(publication.source_revision)
+            .map_err(|_| capability_unavailable())?;
+        Ok(C::finish(
+            self.admission
+                .lifecycle
+                .clone()
+                .model_ready()
+                .source_ready(revision),
+        ))
     }
 }
 
@@ -108,7 +184,8 @@ impl SupportedIndexerDistribution {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct SemanticRuntimeRequest {
+pub(crate) struct SemanticRuntimeRequest<C: RequiredCapability = SourceCapability> {
+    pub(crate) demand: Demand<C>,
     pub(crate) workspace_root: PathBuf,
     pub(crate) config: KastConfig,
     pub(crate) workspace_kind: SemanticWorkspaceKind,
@@ -207,121 +284,7 @@ pub(super) fn plan_legacy_backend_migration(
     ))
 }
 
-pub(super) fn admit_indexer_runtime(
-    request: SemanticRuntimeRequest,
-) -> std::result::Result<AdmittedIndexerRuntime, SemanticRuntimeRejection> {
-    match admitted_candidate(&request) {
-        Ok(candidate) => construct_admitted_runtime(request, candidate, false),
-        Err(rejection)
-            if request.availability == SemanticRuntimeAvailability::StartIfMissing
-                && matches!(rejection.code, "NO_INDEXER_AVAILABLE" | "RUNTIME_NOT_READY") =>
-        {
-            start_indexer_runtime(request)
-        }
-        Err(rejection) => Err(rejection),
-    }
-}
-
-fn admitted_candidate(
-    request: &SemanticRuntimeRequest,
-) -> std::result::Result<RuntimeCandidateStatus, SemanticRuntimeRejection> {
-    let inspection = inspect_indexer_workspace_with_config(
-        &request.workspace_root,
-        &request.config,
-        StaleDescriptorPolicy::Preserve,
-    )
-    .map_err(|error| {
-        runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
-    })?;
-    let reachable_candidates = inspection
-        .candidates
-        .into_iter()
-        .filter(|candidate| candidate.runtime_status.as_ref().is_some_and(is_servable))
-        .collect::<Vec<_>>();
-    if reachable_candidates.len() > 1 {
-        return Err(indexer_conflict_rejection(
-            &request.workspace_root,
-            request.workspace_kind,
-            &reachable_candidates,
-        ));
-    }
-    let candidate = reachable_candidates.into_iter().next().filter(|candidate| {
-        candidate.runtime_status.as_ref().is_some_and(|status| {
-            if request.accept_indexing {
-                is_servable(status)
-            } else {
-                is_ready(status)
-            }
-        })
-    });
-    candidate.ok_or_else(|| {
-        unavailable_rejection(
-            &request.workspace_root,
-            request.workspace_kind,
-            request.accept_indexing,
-        )
-    })
-}
-
-fn construct_admitted_runtime(
-    request: SemanticRuntimeRequest,
-    candidate: RuntimeCandidateStatus,
-    started: bool,
-) -> std::result::Result<AdmittedIndexerRuntime, SemanticRuntimeRejection> {
-    let descriptor = &candidate.descriptor;
-    let runtime_status = candidate.runtime_status.as_ref().ok_or_else(|| {
-        unavailable_rejection(
-            &request.workspace_root,
-            request.workspace_kind,
-            request.accept_indexing,
-        )
-    })?;
-    let canonical_descriptor_root =
-        canonical_existing_root(&descriptor.workspace_root).map_err(|error| {
-            runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
-        })?;
-    let canonical_status_root =
-        canonical_existing_root(&runtime_status.workspace_root).map_err(|error| {
-            runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
-        })?;
-    if canonical_descriptor_root != request.workspace_root
-        || canonical_status_root != request.workspace_root
-        || descriptor.backend_name != BackendName::Indexer.canonical()
-        || runtime_status.backend_name != BackendName::Indexer.canonical()
-        || descriptor.backend_version != runtime_status.backend_version
-        || descriptor.schema_version != SCHEMA_VERSION
-        || runtime_status.schema_version != SCHEMA_VERSION
-        || !candidate.pid_alive
-        || !runtime_status.healthy
-        || !runtime_status.active
-    {
-        return Err(runtime_identity_rejection(
-            &request.workspace_root,
-            request.workspace_kind,
-        ));
-    }
-    validate_descriptor_owner(descriptor).map_err(|error| {
-        runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
-    })?;
-    let process_identity = process_identity(descriptor.pid).map_err(|error| {
-        runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
-    })?;
-    let observed_socket_file_identity = current_socket_file_identity(&descriptor.socket_path)
-        .map_err(|error| {
-            runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
-        })?;
-    let capabilities = parse_admitted_capabilities(&request, &candidate)?;
-    Ok(AdmittedIndexerRuntime {
-        workspace_root: request.workspace_root,
-        workspace_kind: request.workspace_kind,
-        config: request.config,
-        candidate,
-        capabilities,
-        started,
-        process_identity,
-        observed_socket_file_identity,
-    })
-}
+include!("indexer_authority/ownership/admission.rs");
 
 include!("indexer_authority/runtime.rs");
 

@@ -86,7 +86,7 @@ fn graph_nodes_and_neighbors_use_a_distinct_node_selector() {
 #[test]
 fn typed_top_level_grammar_retires_ambiguous_shortcuts() {
     for args in [
-        &["workspace", "ensure", "--help"][..],
+        &["up", "--help"][..],
         &["workspace", "refresh", "--help"][..],
         &["file", "list", "--help"][..],
         &["diagnostic", "check", "--help"][..],
@@ -104,7 +104,7 @@ fn typed_top_level_grammar_retires_ambiguous_shortcuts() {
         );
     }
 
-    for retired in ["up", "refresh", "files", "check", "apply", "recover"] {
+    for retired in ["refresh", "files", "check", "apply", "recover"] {
         let output = named("kast")
             .args([retired, "--help"])
             .output()
@@ -247,7 +247,7 @@ fn one_issued_selector_round_trips_verbatim_through_every_relation_consumer() {
         );
         let value: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("canonical relation JSON");
-        assert_eq!(value["schemaVersion"], 2, "{value:#}");
+        assert_eq!(value["schemaVersion"], 3, "{value:#}");
         assert_eq!(value["operation"], operation, "{value:#}");
         assert_eq!(value["status"], "complete", "{value:#}");
         assert_eq!(value["result"]["selector"], selector, "{value:#}");
@@ -341,7 +341,7 @@ fn graph_impact_authenticates_one_selector_and_returns_a_canonical_page() {
     );
     let value: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("canonical impact JSON");
-    assert_eq!(value["schemaVersion"], 2, "{value:#}");
+    assert_eq!(value["schemaVersion"], 3, "{value:#}");
     assert_eq!(value["operation"], "graph.impact", "{value:#}");
     assert_eq!(value["status"], "complete", "{value:#}");
     assert_eq!(value["result"]["type"], "impact", "{value:#}");

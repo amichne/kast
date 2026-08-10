@@ -24,8 +24,8 @@ Copy Kast-issued selectors, continuations, plan IDs, and recovery IDs verbatim. 
 
 | Operation | Command | Valid successors |
 | --- | --- | --- |
-| `workspace.home` | `kast` | workspace.ensure |
-| `workspace.ensure` | `kast workspace ensure` | workspace.refresh, file.list, symbol.search, diagnostic.check |
+| `workspace.home` | `kast` | workspace.up, workspace.refresh, file.list, symbol.search, diagnostic.check |
+| `workspace.up` | `kast up` | workspace.refresh, file.list, symbol.search, diagnostic.check |
 | `workspace.refresh` | `kast workspace refresh --file src/main/kotlin/example/Widget.kt` | file.list, symbol.search, diagnostic.check |
 | `workspace.externalize` | `kast workspace externalize --failure-id <FAILURE_ID>` | workspace.refresh |
 | `file.list` | `kast file list --match '**/*.kt'` | file.list, symbol.search |

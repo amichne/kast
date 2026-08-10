@@ -147,12 +147,9 @@ fn session_start_with_runner(
     let args = [
         OsString::from("--output"),
         OsString::from("json"),
-        OsString::from("developer"),
-        OsString::from("runtime"),
         OsString::from("up"),
         OsString::from("--workspace-root"),
         workspace.as_os_str().to_os_string(),
-        OsString::from("--accept-indexing"),
     ];
     match runner(&args) {
         Ok(_) => json!({}),

@@ -17,6 +17,10 @@ impl WorkspaceIndexFixture {
                     revision INTEGER NOT NULL CHECK(revision > 0),
                     identity TEXT NOT NULL CHECK(length(identity) > 0),
                     source_index_generation INTEGER NOT NULL CHECK(source_index_generation >= 0),
+                    source_revision INTEGER NOT NULL CHECK(source_revision >= 0),
+                    reference_revision INTEGER NOT NULL CHECK(reference_revision >= 0),
+                    graph_revision INTEGER,
+                    graph_blocker TEXT,
                     source_index_schema_version INTEGER NOT NULL CHECK(source_index_schema_version > 0),
                     published_at_epoch_millis INTEGER NOT NULL CHECK(published_at_epoch_millis >= 0),
                     repository_overlay_file TEXT

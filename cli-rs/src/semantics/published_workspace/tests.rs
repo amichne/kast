@@ -213,11 +213,16 @@ impl Fixture {
             .execute(
                 "INSERT INTO workspace_publication(
                      singleton, revision, identity, source_index_generation,
+                     source_revision, reference_revision, graph_revision, graph_blocker,
                      source_index_schema_version, published_at_epoch_millis, repository_overlay_file
-                 ) VALUES (1, ?1, 'workspace-state-one', ?2, ?3, 1, ?4)
+                 ) VALUES (1, ?1, 'workspace-state-one', ?2, ?2, ?2, ?2, NULL, ?3, 1, ?4)
                  ON CONFLICT(singleton) DO UPDATE SET
                      revision = excluded.revision,
                      source_index_generation = excluded.source_index_generation,
+                     source_revision = excluded.source_revision,
+                     reference_revision = excluded.reference_revision,
+                     graph_revision = excluded.graph_revision,
+                     graph_blocker = excluded.graph_blocker,
                      repository_overlay_file = excluded.repository_overlay_file",
                 rusqlite::params![
                     i64::try_from(revision).unwrap(),
@@ -275,6 +280,10 @@ const PUBLICATION_SCHEMA: &str =
          revision INTEGER NOT NULL,
          identity TEXT NOT NULL,
          source_index_generation INTEGER NOT NULL,
+         source_revision INTEGER NOT NULL,
+         reference_revision INTEGER NOT NULL,
+         graph_revision INTEGER,
+         graph_blocker TEXT,
          source_index_schema_version INTEGER NOT NULL,
          published_at_epoch_millis INTEGER NOT NULL,
          repository_overlay_file TEXT

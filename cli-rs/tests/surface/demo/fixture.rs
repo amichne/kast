@@ -30,23 +30,21 @@ fn spawn_ready_demo_backend(
     }
     let server_workspace = workspace.canonicalize().expect("canonical workspace");
     let listener = UnixListener::bind(socket_path).expect("bind fake backend");
-    std::fs::write(
-        descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
-            &server_workspace,
-            socket_path,
-            "indexer",
-            "demo-test",
-        )]))
-        .expect("descriptor JSON"),
-    )
-    .expect("descriptor");
+    let exact_test_runtime = publish_exact_test_runtime(
+        home,
+        &server_workspace,
+        socket_path,
+        "indexer",
+        "demo-test",
+        &descriptor_dir,
+    );
 
     listener.set_nonblocking(true).expect("nonblocking backend");
     let published_generation = published_workspace_generation_for_test(&server_workspace);
     let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let server_stop = std::sync::Arc::clone(&stop);
     let handle = thread::spawn(move || {
+        let _exact_test_runtime = exact_test_runtime;
         let mut requests = Vec::new();
         while !server_stop.load(std::sync::atomic::Ordering::Acquire) {
             let (mut stream, _) = match listener.accept() {
@@ -66,14 +64,15 @@ fn spawn_ready_demo_backend(
                 "runtime/status" => {
                     let mut status = serde_json::json!({
                         "state": "READY",
-                        "healthy": true,
-                        "active": true,
-                        "indexing": false,
                         "backendName": "indexer",
                         "backendVersion": "demo-test",
                         "workspaceRoot": server_workspace.display().to_string(),
                         "sourceModuleNames": [":fixture"],
-                        "referenceIndexReady": true,
+                        "readiness": {
+                            "runtime": {"type": "READY"}, "model": {"type": "READY"},
+                            "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
+                            "mutation": {"type": "READY"}
+                        },
                         "schemaVersion": api_schema_version()
                     });
                     if let Some(published_generation) = &published_generation {

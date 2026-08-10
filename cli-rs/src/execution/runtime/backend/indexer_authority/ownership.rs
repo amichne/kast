@@ -29,21 +29,13 @@ pub(super) struct AbsentRuntimeOwnership {
 
 #[derive(Debug, Clone)]
 pub(super) struct ServiceOwnedRuntime {
-    pub workspace_root: PathBuf,
     pub registration: ValidatedServiceRegistration,
-    pub manager: ServiceManagerObservation,
-    pub process: ObservedProcess,
-    pub descriptor: Option<RegisteredDescriptor>,
-    pub socket: SocketObservation,
     pub proven_dead: ProvenDeadRuntimeOwnership,
 }
 
 #[derive(Debug, Clone)]
 pub(super) struct LegacyOwnedRuntime {
-    pub workspace_root: PathBuf,
-    pub process: ObservedProcess,
     pub descriptor: RegisteredDescriptor,
-    pub socket: SocketObservation,
     pub proven_dead: ProvenDeadRuntimeOwnership,
 }
 
@@ -234,8 +226,8 @@ fn reconcile_validated_runtime_ownership(
             &canonical_root,
             active.as_ref(),
         ) {
-            Ok(RegisteredServiceObservation::Live(owned)) => live.push(owned),
-            Ok(RegisteredServiceObservation::Dead(owned)) => dead.push(owned),
+            Ok(RegisteredServiceObservation::Live(owned)) => live.push(*owned),
+            Ok(RegisteredServiceObservation::Dead(owned)) => dead.push(*owned),
             Err(error) => {
                 return Ok(RuntimeOwnershipSnapshot::Ambiguous(
                     RuntimeOwnershipAmbiguity {
@@ -274,7 +266,7 @@ fn reconcile_validated_runtime_ownership(
                 .as_ref()
                 .is_some_and(|id| caller_registered_ids.contains_descriptor_id(id))
         })
-        .map(|descriptor| observe_legacy_runtime(descriptor, &canonical_root))
+        .map(observe_legacy_runtime)
         .collect::<Result<Vec<_>>>()?;
     let mut live_legacy = Vec::new();
     let mut dead_legacy = Vec::new();

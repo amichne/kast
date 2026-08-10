@@ -3,7 +3,7 @@
   "inventoryKind": "BASELINE_AND_MIGRATION_LEDGER",
   "operations": [
     {"id": "workspace.home", "currentRoute": "kast", "inputs": [], "outputs": ["workspace.home.result"]},
-    {"id": "workspace.ensure", "currentRoute": "kast workspace ensure", "inputs": [], "outputs": ["workspace.ensure.result"]},
+    {"id": "workspace.up", "currentRoute": "kast up", "inputs": [], "outputs": ["workspace.up.result"]},
     {"id": "workspace.refresh", "currentRoute": "kast workspace refresh --file src/main/kotlin/example/Widget.kt", "inputs": ["workspace.refresh.path"], "outputs": ["workspace.refresh.result", "workspace.refresh.failure-id"]},
     {"id": "workspace.externalize", "currentRoute": "kast workspace externalize --failure-id <FAILURE_ID>", "inputs": ["workspace.externalize.failure-id"], "outputs": ["workspace.externalize.result"]},
     {"id": "file.list", "currentRoute": "kast file list --match '**/*.kt'", "inputs": ["file.list.pattern", "file.list.continuation"], "outputs": ["file.list.result", "file.list.path", "file.list.continuation-output"]},
@@ -49,19 +49,19 @@
       "consumers": []
     },
     {
-      "id": "workspace.ensure.result",
-      "publicTerm": "status",
-      "operation": "workspace.ensure",
+      "id": "workspace.up.result",
+      "publicTerm": "source-ready runtime",
+      "operation": "workspace.up",
       "direction": "OUTPUT",
-      "rustType": "UpResult",
+      "rustType": "SourceReadyRuntime -> UpResult",
       "wireType": "TOON object {root, ready, runtime, backend, referenceIndexReady, sourceModuleCount, next[]}",
       "parser": null,
-      "normalization": "canonical workspace root display",
+      "normalization": "semantic demand refines exact-root admission into source-ready epoch evidence",
       "default": null,
-      "constraint": "emitted only after semantic runtime readiness",
-      "authority": "cli-rs/src/agent/adapter/commands.rs::run_up",
+      "constraint": "issued only for a READY exact-root epoch with committed source evidence",
+      "authority": "cli-rs/src/execution/runtime/backend/workspace_admission.rs::demand_source_ready_runtime",
       "classification": "EVIDENCE",
-      "producers": ["workspace.ensure"],
+      "producers": ["workspace.up"],
       "consumers": []
     },
     {

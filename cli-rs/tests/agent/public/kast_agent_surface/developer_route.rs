@@ -26,7 +26,7 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
     assert!(stdout.contains("next["), "{stdout}");
     let decoded: serde_json::Value =
         toon_format::decode_default(stdout.trim()).expect("home output is valid TOON");
-    assert_eq!(decoded["schemaVersion"], 2);
+    assert_eq!(decoded["schemaVersion"], 3);
     assert_eq!(decoded["operation"], "workspace.home");
     assert_eq!(decoded["status"], "complete");
     assert_eq!(decoded["result"]["type"], "home");

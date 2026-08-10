@@ -12,30 +12,52 @@ code.
 
 ## Decision
 
-Kast admits one healthy indexer for one canonical workspace root. The admitted
-indexer is the only semantic server and the only persistent source-index
-writer. Reads, mutations, graph refresh, reference indexing, readiness,
-leases, and lifecycle operations use the same identity.
+Semantic demand is the only lifecycle authority. There is no public start,
+stop, restart, ensure, repair, or lease transition. The sole lifecycle command,
+`kastctl developer inspect lifecycle`, observes an exact root and reports
+`Absent`, `Epoch`, or `Blocked`; inspection cannot advance state.
 
-Normal demand starts at the public interface:
+Each admitted workspace and runtime is an immutable epoch. The allowed graph is:
 
 ```text
-cd <canonical-workspace-root>
-kast up
+Demand<C> -> WorkspaceAdmitted -> OwnershipObserved
+Absent/ProvenDead -> LaunchPermit -> StartingEpoch -> RuntimeAvailable
+ExactOwned -> RevalidatedEpoch -> RuntimeAvailable
+RuntimeAvailable -> ModelReady -> SourceReady<N>
+SourceReady<N> -> ReferenceReady<N>
+SourceReady<N> -> GraphReady<N>
 ```
 
-Kast reuses an eligible healthy exact-root indexer. If none exists, it creates
-an isolated indexer with its own configuration, system, log, descriptor,
-socket, and VFS paths. On macOS, a supported IntelliJ IDEA or Android Studio
-installation supplies compatible runtime libraries. Its foreground process is
-not inspected or controlled.
+Every node may terminate in a closed typed blocker. Automatic recovery removes
+only proven-dead owned evidence and attempts one replacement epoch. Conflict,
+ambiguity, unsupported roots, identity movement, and failed replacement are
+terminal for that demand.
+
+Source, reference, and graph lanes advance independently within the same
+workspace epoch. Source revision N remains usable if graph revision N is
+blocked. Graph operations fail closed until graph N commits and never expose
+graph N-1 as current.
+
+Authenticated requests and server-held continuations own internal capability
+leases. When the registry becomes empty, a fixed five-minute grace begins.
+Only the matching still-empty registry may issue a one-shot stop permit, and
+shutdown revalidates process, registration, descriptor, and socket identity.
+Demand during grace supersedes the permit. Later demand creates a new epoch;
+the graph never cycles an old epoch.
+
+Kast reuses an eligible healthy exact-root indexer or creates an isolated
+indexer with its own configuration, system, log, descriptor, socket, and VFS
+paths. On macOS, a supported IntelliJ IDEA or Android Studio installation
+supplies compatible runtime libraries. Its foreground process is not inspected
+or controlled.
 
 The internal indexer payload stays inside the release and is never installed
 into a foreground application. Releases contain no public IntelliJ extension,
 update feed, signing task, verification task, archive, or publication job.
 
-Runtime readiness, semantic graph coverage, and reference coverage remain
-separate typed facts. `READY` does not imply complete persisted graph coverage.
+Runtime availability, model readiness, source readiness, reference readiness,
+and graph readiness are separate proof-carrying facts. No aggregate Boolean or
+call order may stand in for one of these states.
 
 ## Source and proof
 

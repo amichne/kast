@@ -9,10 +9,10 @@ fn current_process_descriptor(socket_path: &Path) -> ServerInstanceDescriptor {
         runtime_instance_id: Some("runtime-instance".to_string()),
         process_start_epoch_millis: Some(1),
         owner_uid: Some(u64::from(unsafe { libc::geteuid() })),
-        socket_file_identity: current_socket_file_identity(
-            socket_path.to_str().expect("UTF-8 socket path"),
-        )
-        .expect("socket identity"),
+        socket_file_identity: Some(
+            current_socket_file_identity(socket_path.to_str().expect("UTF-8 socket path"))
+                .expect("socket identity"),
+        ),
         transport: "uds".to_string(),
         socket_path: socket_path.display().to_string(),
         pid: u64::from(std::process::id()),

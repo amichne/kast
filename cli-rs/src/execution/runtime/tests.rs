@@ -5,12 +5,16 @@ mod runtime_status_wire_tests {
     fn status(extra: Value) -> Value {
         let mut status = serde_json::json!({
             "state": "READY",
-            "healthy": true,
-            "active": true,
-            "indexing": false,
             "backendName": "indexer",
             "backendVersion": "test",
-            "workspaceRoot": "/workspace"
+            "workspaceRoot": "/workspace",
+            "readiness": {
+                "runtime": {"type": "READY"},
+                "model": {"type": "READY"},
+                "references": {"type": "READY"},
+                "semanticGraph": {"type": "READY"},
+                "mutation": {"type": "READY"}
+            }
         });
         status.as_object_mut().expect("status object").extend(
             extra
@@ -22,41 +26,33 @@ mod runtime_status_wire_tests {
     }
 
     #[test]
-    fn aggregate_not_ready_blocks_legacy_admission_without_discarding_status() {
-        let wire: RuntimeStatusWireResponse = serde_json::from_value(status(serde_json::json!({
-            "readiness": {"runtime": {"type": "READY"}},
-            "ready": false
-        })))
-        .expect("runtime status wire response");
+    fn tagged_lanes_are_the_only_runtime_state_authority() {
+        let status: RuntimeStatusResponse = serde_json::from_value(status(serde_json::json!({})))
+            .expect("runtime status response");
 
-        let normalized = wire.into_status().expect("normalized runtime status");
-
-        assert!(normalized.indexing);
-        assert_eq!(normalized.state, RuntimeState::Ready);
+        assert!(status.healthy());
+        assert!(status.active());
+        assert!(!status.indexing());
     }
 
     #[test]
-    fn aggregate_and_readiness_lanes_must_be_published_together() {
-        let wire: RuntimeStatusWireResponse = serde_json::from_value(status(serde_json::json!({
-            "ready": false
-        })))
-        .expect("runtime status wire response");
+    fn legacy_boolean_state_is_rejected() {
+        let result = serde_json::from_value::<RuntimeStatusResponse>(status(serde_json::json!({
+            "healthy": true
+        })));
 
-        let error = wire.into_status().expect_err("incomplete readiness wire evidence");
-
-        assert_eq!(error.code, "RUNTIME_STATUS_INVALID");
+        assert!(result.is_err());
     }
 
     #[test]
-    fn legacy_runtime_status_remains_compatible() {
-        let wire: RuntimeStatusWireResponse = serde_json::from_value(status(serde_json::json!({
+    fn absent_readiness_lanes_are_rejected() {
+        let mut value = status(serde_json::json!({
             "sourceModuleNames": [":fixture"],
-            "referenceIndexReady": true,
-            "schemaVersion": 6
-        })))
-        .expect("legacy runtime status");
+            "schemaVersion": 7
+        }));
+        value.as_object_mut().expect("status object").remove("readiness");
 
-        assert!(!wire.into_status().expect("legacy status").indexing);
+        assert!(serde_json::from_value::<RuntimeStatusResponse>(value).is_err());
     }
 
     #[test]

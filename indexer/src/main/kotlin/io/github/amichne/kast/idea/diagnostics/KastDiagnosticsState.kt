@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import java.nio.file.Path
 import java.time.Instant
@@ -95,7 +96,7 @@ internal class KastDiagnosticsState(
     fun recordRuntimeStatus(status: RuntimeStatusResponse): KastActivityEvent? {
         current = current.copy(
             backendState = when {
-                !status.healthy -> KastBackendUiState.DEGRADED
+                status.readiness.runtime is RuntimeReadinessLane.Blocked -> KastBackendUiState.DEGRADED
                 status.state == RuntimeState.INDEXING -> KastBackendUiState.INDEXING
                 status.state == RuntimeState.READY -> KastBackendUiState.READY
                 status.state == RuntimeState.STARTING -> KastBackendUiState.STARTING

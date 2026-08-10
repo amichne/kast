@@ -37,14 +37,17 @@ class KastIndexerLaunchOptionsTest {
     fun `starter owns runtime until it stops`() {
         val caller = Thread.currentThread()
         var runtimeThread: Thread? = null
-        val starter = KastIndexerApplicationStarter {
-            runtimeThread = Thread.currentThread()
-        }
+        var termination: IndexerProcessTermination? = null
+        val starter = KastIndexerApplicationStarter(
+            runRuntime = { runtimeThread = Thread.currentThread() },
+            terminateProcess = { termination = it },
+        )
 
         assertEquals(ApplicationStarter.NOT_IN_EDT, starter.requiredModality)
         starter.main(listOf(KastIndexerApplicationStarter.COMMAND_NAME, "--workspace-root=/tmp/project"))
 
         assertSame(caller, runtimeThread)
+        assertEquals(IndexerProcessTermination.Stopped, termination)
     }
 
     @Test

@@ -3,7 +3,12 @@ fn typed_public_kast(home: &Path, config_home: &Path, workspace: &Path) -> Comma
     command
         .current_dir(workspace)
         .env("HOME", home)
-        .env("KAST_CONFIG_HOME", config_home);
+        .env("KAST_CONFIG_HOME", config_home)
+        .env("KAST_TEST_ALLOW_RUNTIME_SERVICE_MANAGER", "1")
+        .env(
+            "KAST_TEST_RUNTIME_SERVICE_MANAGER_ROOT",
+            support::default_install_root(home).join("state/runtime/test-manager"),
+        );
     command
 }
 
@@ -35,7 +40,7 @@ fn typed_protocol_toon(output: std::process::Output) -> serde_json::Value {
 }
 
 fn assert_protocol_shape(value: &serde_json::Value, operation: &str, result_type: &str) {
-    assert_eq!(value["schemaVersion"], 2, "{value:#}");
+    assert_eq!(value["schemaVersion"], 3, "{value:#}");
     assert_eq!(value["operation"], operation, "{value:#}");
     assert_eq!(value["status"], "complete", "{value:#}");
     assert_eq!(value["result"]["type"], result_type, "{value:#}");

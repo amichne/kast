@@ -259,12 +259,6 @@
       ],
       "type": "object"
     },
-    "workspaceEnsure": {
-      "additionalProperties": false,
-      "properties": {},
-      "required": [],
-      "type": "object"
-    },
     "workspaceExternalize": {
       "additionalProperties": false,
       "properties": {
@@ -301,6 +295,12 @@
       },
       "required": [],
       "type": "object"
+    },
+    "workspaceUp": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
     }
   },
   "$id": "https://kast.michne.com/protocol/public-request.schema.json",
@@ -326,10 +326,10 @@
       "additionalProperties": false,
       "properties": {
         "operation": {
-          "const": "workspace.ensure"
+          "const": "workspace.up"
         },
         "request": {
-          "$ref": "#/$defs/workspaceEnsure"
+          "$ref": "#/$defs/workspaceUp"
         }
       },
       "required": [

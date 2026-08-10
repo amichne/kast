@@ -35,11 +35,11 @@ descriptors, sockets, and locks.
 **Consequence:** Git worktrees remain isolated, and project-local files cannot
 become a second path authority.
 
-## Start only on explicit demand
+## Start only on semantic demand
 
-**Decision:** `kast workspace ensure` and semantic commands admit or create the
-exact-root indexer. Foreground editor events are not lifecycle inputs. Kast
-does not add continuous supervision.
+**Decision:** Semantic commands admit or create the exact-root indexer and
+acquire their required internal capability. Foreground editor events and
+explicit lifecycle commands are not lifecycle inputs.
 
 **Consequence:** After a crash, the next explicit demand admits or creates a
 replacement.

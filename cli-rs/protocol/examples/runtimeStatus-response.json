@@ -1,18 +1,12 @@
 {
     "result": {
         "state": "READY",
-        "healthy": true,
-        "active": true,
-        "indexing": false,
         "backendName": "fake",
         "backendVersion": "0.1.0-test",
         "workspaceRoot": "/workspace",
         "warnings": [],
         "sourceModuleNames": [],
         "dependentModuleNamesBySourceModuleName": {},
-        "referenceIndexReady": false,
-        "referenceCoverageState": "UNAVAILABLE",
-        "referenceCoverageLimitations": [],
         "readiness": {
             "runtime": {
                 "type": "READY"
@@ -21,7 +15,7 @@
                 "type": "READY"
             },
             "references": {
-                "type": "BLOCKED"
+                "type": "READY"
             },
             "semanticGraph": {
                 "type": "READY"
@@ -30,8 +24,9 @@
                 "type": "READY"
             }
         },
-        "ready": false,
-        "schemaVersion": 6
+        "referenceCoverageState": "COMPLETE",
+        "referenceCoverageLimitations": [],
+        "schemaVersion": 7
     },
     "id": 1,
     "jsonrpc": "2.0"

@@ -61,9 +61,10 @@ fn native_graph_refresh_scope_snapshot(
     })();
     let _ = connection.execute_batch(if result.is_ok() { "COMMIT" } else { "ROLLBACK" });
     let snapshot = result?;
-    semantic_read
+    let snapshot = semantic_read
         .revalidate()
-        .map_err(AgentError::from_cli_error)?;
+        .map_err(AgentError::from_cli_error)?
+        .finish(snapshot);
     Ok(snapshot)
 }
 

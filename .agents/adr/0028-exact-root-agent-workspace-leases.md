@@ -11,20 +11,25 @@ an indexer Kast started and one it borrowed.
 
 ## Decision
 
-Private `kastctl agent lease acquire`, `status`, and `release` remain available
-for administrative control of one canonical workspace root and indexer.
-Acquisition requires an exact `READY` indexer and binds an authenticated lease
-to the active installation generation, runtime descriptor, process identity,
-owner process identity, and workspace. Public `kast apply <PLAN_ID>` acquires
-and releases its own lease. A public caller does not supply a lease identifier.
+Lease acquisition and release are internal capabilities with no callable CLI
+surface. Semantic demand acquires the capability required by the operation and
+binds it to the active installation generation, immutable runtime epoch,
+process identity, socket identity, and exact workspace. Public mutation
+operations consume that internal capability. A caller cannot supply, inspect,
+or release a lease identifier.
 
 Only one live lease exists for an exact root and indexer identity. PID alone is
 not identity; process-start evidence prevents reuse mistakes. No expiry or
 heartbeat is inferred.
 
-A released or recovered lease stops a process only when the lease started it
-and the current descriptor and process identity still match. A borrowed
-indexer remains running. Release is idempotent and records its reason.
+Operations performed under a mutation lease acquire authenticated runtime
+request capabilities; server-held continuations acquire continuation
+capabilities in the same runtime registry. Releasing or recovering the client
+mutation lease cannot stop the runtime. Only after every request and
+continuation capability ends does the fixed five-minute grace begin. Its
+one-shot stop permit is admissible only while the runtime epoch, registration,
+descriptor, process, and socket identities still match. New semantic demand
+supersedes the permit.
 
 Public apply and recovery also hold one operating-system-backed exclusive lock
 for the exact plan. The private `0600` lock file remains durable, while process

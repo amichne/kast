@@ -1,12 +1,100 @@
 #[path = "../support/mod.rs"]
 mod support;
 
+use std::os::unix::process::CommandExt;
 use support::*;
 
 fn help_lists_command(stdout: &str, command: &str) -> bool {
     stdout
         .lines()
         .any(|line| line.split_whitespace().next() == Some(command))
+}
+
+fn public_kast(home: &Path, config_home: &Path) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
+    command
+        .arg0("kast")
+        .env("HOME", home)
+        .env("KAST_CONFIG_HOME", config_home);
+    command
+}
+
+#[test]
+fn lifecycle_surface_is_semantic_demand_only() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let control_help = kast(&home, &config_home)
+        .arg("--help")
+        .output()
+        .expect("control help");
+    assert!(control_help.status.success());
+    let control_stdout = String::from_utf8_lossy(&control_help.stdout);
+    for retired in ["start", "status", "stop"] {
+        assert!(
+            !help_lists_command(&control_stdout, retired),
+            "retired lifecycle command remained in help: {retired}: {control_stdout}"
+        );
+    }
+
+    for retired in [
+        ["start", "--help"].as_slice(),
+        ["status", "--help"].as_slice(),
+        ["stop", "--help"].as_slice(),
+        ["developer", "runtime", "--help"].as_slice(),
+        ["agent", "lease", "--help"].as_slice(),
+    ] {
+        let output = kast(&home, &config_home)
+            .args(retired)
+            .output()
+            .expect("retired lifecycle command");
+        assert!(
+            !output.status.success(),
+            "retired lifecycle command remained callable: {retired:?}"
+        );
+    }
+
+    let inspect = kast(&home, &config_home)
+        .args(["developer", "inspect", "lifecycle", "--help"])
+        .output()
+        .expect("lifecycle inspection help");
+    assert!(
+        inspect.status.success(),
+        "{}",
+        String::from_utf8_lossy(&inspect.stderr)
+    );
+    let inspect_stdout = String::from_utf8_lossy(&inspect.stdout);
+    assert!(
+        inspect_stdout.contains("--workspace-root"),
+        "{inspect_stdout}"
+    );
+    for forbidden in ["--execute", "--accept-indexing", "--force", "--repair"] {
+        assert!(
+            !inspect_stdout.contains(forbidden),
+            "inspection exposed transition authority {forbidden}: {inspect_stdout}"
+        );
+    }
+
+    let workspace_help = public_kast(&home, &config_home)
+        .args(["workspace", "--help"])
+        .output()
+        .expect("public workspace help");
+    assert!(workspace_help.status.success());
+    let workspace_stdout = String::from_utf8_lossy(&workspace_help.stdout);
+    assert!(
+        !help_lists_command(&workspace_stdout, "ensure"),
+        "workspace ensure remained in help: {workspace_stdout}"
+    );
+    let ensure = public_kast(&home, &config_home)
+        .args(["workspace", "ensure"])
+        .output()
+        .expect("retired workspace ensure");
+    assert!(
+        !ensure.status.success(),
+        "workspace ensure remained callable"
+    );
 }
 
 #[test]
@@ -24,7 +112,7 @@ fn control_context_suggests_only_control_entrypoint() {
         .expect("help");
     assert!(help.status.success());
     let stdout = String::from_utf8_lossy(&help.stdout);
-    for command in ["start", "status", "stop"] {
+    for command in ["developer", "agent", "config"] {
         assert!(
             help_lists_command(&stdout, command),
             "missing {command}: {stdout}"
@@ -42,9 +130,7 @@ fn control_context_suggests_only_control_entrypoint() {
     assert!(context.status.success());
     let stdout = String::from_utf8_lossy(&context.stdout);
     for command in [
-        "kastctl start --workspace-root <repo>",
-        "kastctl status --workspace-root <repo>",
-        "kastctl stop --workspace-root <repo>",
+        "kastctl developer inspect lifecycle --workspace-root <repo>",
         "kastctl config list --workspace-root <repo>",
         "kastctl agent verify --workspace-root <repo>",
         "kastctl agent symbol --query <name> --workspace-root <repo>",
@@ -86,7 +172,6 @@ fn public_cli_exposes_setup_and_no_retired_install_mutators() {
         "version",
         "setup",
         "ready",
-        "status",
         "rpc",
         "developer",
         "agent",
@@ -157,46 +242,11 @@ fn agent_surface_keeps_semantic_commands() {
 }
 
 #[test]
-fn operational_help_exposes_canonical_runtime_and_graph_recipes() {
+fn operational_help_exposes_semantic_graph_recipes_without_lifecycle_prerequisites() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
-
-    let runtime = kast(&home, &config_home)
-        .args(["developer", "runtime", "up", "--help"])
-        .output()
-        .expect("runtime up help");
-    assert!(runtime.status.success());
-    let runtime_stdout = String::from_utf8_lossy(&runtime.stdout);
-    for expected in [
-        "--accept-indexing",
-        "kast developer runtime up --workspace-root \"$PWD\" --accept-indexing",
-    ] {
-        assert!(
-            runtime_stdout.contains(expected),
-            "missing {expected}: {runtime_stdout}"
-        );
-    }
-    let retired_selector = ["--", "backend"].concat();
-    assert!(
-        !runtime_stdout.contains(&retired_selector),
-        "retired selector remains in runtime help: {runtime_stdout}"
-    );
-
-    let rejected = kast(&home, &config_home)
-        .args([
-            "developer",
-            "runtime",
-            "up",
-            &format!("{retired_selector}=indexer"),
-        ])
-        .output()
-        .expect("retired runtime selector");
-    assert!(
-        !rejected.status.success(),
-        "retired selector remained callable"
-    );
 
     let graph = kast(&home, &config_home)
         .args(["agent", "graph", "--help"])

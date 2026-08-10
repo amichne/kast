@@ -42,15 +42,8 @@ fn recover_or_reject_existing_lease(
             );
             return Err(error);
         }
-        let runtime_stopped = if binding.ownership == WorkspaceLeaseOwnership::Started {
-            stop_exact_runtime(&binding.workspace_root, &binding.runtime)?
-        } else {
-            false
-        };
-        let receipt = WorkspaceLeaseReleaseReceipt {
+        let receipt = WorkspaceLeaseReleaseReceipt::RecoveredAbandonedOwner {
             released_at: crate::manifest::current_timestamp(),
-            runtime_stopped,
-            reason: WorkspaceLeaseReleaseReason::RecoveredAbandonedOwner,
         };
         write_workspace_lease_record(
             &entry.path(),

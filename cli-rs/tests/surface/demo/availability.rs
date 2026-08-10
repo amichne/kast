@@ -166,11 +166,13 @@ fn unsupported_demo_reports_the_supported_workspace_authority() {
 
     assert!(!demo.status.success());
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
-    assert_eq!(response["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
+    assert_eq!(response["code"], "UNSUPPORTED_WORKSPACE");
     let message = response["message"].as_str().expect("message");
     assert!(
-        message.contains("settings.gradle(.kts)") && message.contains("build.gradle(.kts)"),
-        "remediation should identify a supported Kotlin Gradle workspace: {response:#}"
+        message.contains("UnsupportedRoot")
+            && !message.contains("workspace ensure")
+            && !message.contains("runtime up"),
+        "the closed lifecycle blocker must not suggest explicit lifecycle authority: {response:#}"
     );
 }
 

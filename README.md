@@ -25,7 +25,7 @@ After installation, `kast` is the agent interface:
 
 ```console
 kast
-kast workspace ensure
+kast up
 kast workspace refresh
 kast symbol search --query '<query>'
 kast graph summary --scope symbol

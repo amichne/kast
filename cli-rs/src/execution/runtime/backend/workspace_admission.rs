@@ -86,9 +86,118 @@ impl SemanticWorkspaceRejection {
     }
 }
 
-pub(crate) enum SemanticWorkspaceRoute {
-    Admitted(Box<SemanticWorkspaceAdmission>),
+pub(crate) enum SemanticWorkspaceRoute<C: lifecycle_typestate::RequiredCapability = lifecycle_typestate::SourceCapability> {
+    Admitted(Box<AdmittedIndexerRuntime<C>>),
     Rejected(SemanticWorkspaceRejection),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SourceReadyRuntime {
+    source: lifecycle_typestate::SourceReady<lifecycle_typestate::SourceCapability>,
+    backend_name: String,
+    references: ReferenceLaneEvidence,
+    source_module_count: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReferenceLaneEvidence {
+    Ready,
+    Blocked,
+}
+
+impl SourceReadyRuntime {
+    pub(crate) fn workspace_root(&self) -> &Path {
+        self.source.runtime().root().as_path()
+    }
+
+    pub(crate) fn backend_name(&self) -> &str {
+        &self.backend_name
+    }
+
+    pub(crate) fn reference_index_ready(&self) -> bool {
+        matches!(self.references, ReferenceLaneEvidence::Ready)
+    }
+
+    pub(crate) fn source_module_count(&self) -> usize {
+        self.source_module_count
+    }
+
+    pub(crate) fn source_revision(&self) -> u64 {
+        self.source.revision().value()
+    }
+}
+
+pub(crate) fn demand_source_ready_runtime(
+    requested_workspace_root: Option<PathBuf>,
+) -> Result<SourceReadyRuntime> {
+    let route = semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, false, false),
+        indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
+        lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
+    )?;
+    let admission = match route {
+        SemanticWorkspaceRoute::Admitted(admission) => admission,
+        SemanticWorkspaceRoute::Rejected(rejection) => return Err(rejection.into_cli_error()),
+    };
+    let epoch = admission.validate_current()?;
+    let source = epoch.capability_ready()?;
+    let status = admission
+        .candidate()
+        .runtime_status
+        .as_ref()
+        .ok_or_else(|| {
+            CliError::new(
+                "SOURCE_READY_EVIDENCE_MISSING",
+                "Source-ready admission returned no runtime epoch evidence.",
+            )
+        })?;
+    if status.state != RuntimeState::Ready
+        || !status.active()
+        || status.indexing()
+        || status.source_module_names.is_empty()
+    {
+        return Err(CliError::new(
+            "SOURCE_READY_EVIDENCE_INVALID",
+            "Source-ready admission returned an epoch without committed source evidence.",
+        ));
+    }
+    Ok(SourceReadyRuntime {
+        source,
+        backend_name: status.backend_name.clone(),
+        references: if status.reference_index_ready() {
+            ReferenceLaneEvidence::Ready
+        } else {
+            ReferenceLaneEvidence::Blocked
+        },
+        source_module_count: status.source_module_names.len(),
+    })
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ReferenceReadyRuntime {
+    ready: lifecycle_typestate::ReferenceReady<lifecycle_typestate::ReferenceCapability>,
+}
+
+impl ReferenceReadyRuntime {
+    pub(crate) fn workspace_root(&self) -> &Path {
+        self.ready.source().runtime().root().as_path()
+    }
+}
+
+pub(crate) fn demand_reference_ready_runtime(
+    requested_workspace_root: Option<PathBuf>,
+) -> Result<ReferenceReadyRuntime> {
+    let route = semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, false, false),
+        indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
+        lifecycle_typestate::Demand::<lifecycle_typestate::ReferenceCapability>::new(),
+    )?;
+    let admission = match route {
+        SemanticWorkspaceRoute::Admitted(admission) => admission,
+        SemanticWorkspaceRoute::Rejected(rejection) => return Err(rejection.into_cli_error()),
+    };
+    let ready = admission.validate_current()?.capability_ready()?;
+    Ok(ReferenceReadyRuntime { ready })
 }
 
 pub(crate) fn semantic_workspace_route(
@@ -97,6 +206,7 @@ pub(crate) fn semantic_workspace_route(
     semantic_workspace_route_with_availability(
         semantic_runtime_args(requested_workspace_root, true, false),
         indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
+        lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
     )
 }
 
@@ -106,6 +216,7 @@ pub(crate) fn semantic_workspace_route_reuse_only(
     semantic_workspace_route_with_availability(
         semantic_runtime_args(requested_workspace_root, true, true),
         indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
+        lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
     )
 }
 
@@ -117,7 +228,11 @@ pub(crate) fn semantic_workspace_route_for_runtime(
     } else {
         indexer_authority::SemanticRuntimeAvailability::StartIfMissing
     };
-    semantic_workspace_route_with_availability(args, availability)
+    semantic_workspace_route_with_availability(
+        args,
+        availability,
+        lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
+    )
 }
 
 pub(crate) fn semantic_workspace_route_ready(
@@ -126,13 +241,25 @@ pub(crate) fn semantic_workspace_route_ready(
     semantic_workspace_route_with_availability(
         semantic_runtime_args(requested_workspace_root, false, true),
         indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
+        lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
     )
 }
 
-fn semantic_workspace_route_with_availability(
+pub(crate) fn semantic_graph_workspace_route_ready(
+    requested_workspace_root: Option<PathBuf>,
+) -> Result<SemanticWorkspaceRoute<lifecycle_typestate::GraphCapability>> {
+    semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, false, true),
+        indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
+        lifecycle_typestate::Demand::<lifecycle_typestate::GraphCapability>::new(),
+    )
+}
+
+fn semantic_workspace_route_with_availability<C: lifecycle_typestate::RequiredCapability>(
     args: RuntimeArgs,
     availability: indexer_authority::SemanticRuntimeAvailability,
-) -> Result<SemanticWorkspaceRoute> {
+    demand: lifecycle_typestate::Demand<C>,
+) -> Result<SemanticWorkspaceRoute<C>> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
     let workspace_root = fs::canonicalize(&workspace_root).map_err(|error| {
         CliError::new(
@@ -146,11 +273,16 @@ fn semantic_workspace_route_with_availability(
     let config = KastConfig::load(&workspace_root)?;
     let workspace_kind = classify_semantic_workspace(&workspace_root);
     if !is_gradle_workspace(&workspace_root) {
-        return Ok(SemanticWorkspaceRoute::Rejected(
-            unsupported_workspace_rejection(&workspace_root),
-        ));
+        return Ok(SemanticWorkspaceRoute::Rejected(semantic_workspace_rejection(
+            indexer_authority::lifecycle_blocker_rejection(
+                &workspace_root,
+                SemanticWorkspaceKind::UnsupportedProject,
+                lifecycle_typestate::LifecycleBlocker::UnsupportedRoot,
+            ),
+        )));
     }
     let request = indexer_authority::SemanticRuntimeRequest {
+        demand,
         workspace_root,
         config,
         workspace_kind,
@@ -184,13 +316,13 @@ pub(crate) fn compiler_backed_workspace_evidence(
         return None;
     }
     let mut limitations = vec![];
-    if runtime_status.indexing {
+    if runtime_status.indexing() {
         limitations.push(SemanticWorkspaceLimitation::RuntimeIndexing);
     }
     if runtime_status.source_module_names.is_empty() {
         limitations.push(SemanticWorkspaceLimitation::SourceModulesUnavailable);
     }
-    if !runtime_status.reference_index_ready {
+    if !runtime_status.reference_index_ready() {
         limitations.push(SemanticWorkspaceLimitation::ReferenceIndexUnavailable);
     }
     Some(SemanticWorkspaceEvidence {
@@ -264,24 +396,4 @@ fn is_gradle_workspace(workspace_root: &Path) -> bool {
     ]
     .iter()
     .any(|marker| workspace_root.join(marker).is_file())
-}
-
-fn unsupported_workspace_rejection(workspace_root: &Path) -> SemanticWorkspaceRejection {
-    SemanticWorkspaceRejection {
-        code: "SEMANTIC_WORKSPACE_UNSUPPORTED",
-        message: format!(
-            "{} is not a supported Kotlin Gradle workspace. Select a workspace containing settings.gradle(.kts) or build.gradle(.kts).",
-            workspace_root.display()
-        ),
-        supported_distribution: None,
-        evidence: SemanticWorkspaceEvidence {
-            backend_name: Some(BackendName::Indexer.canonical().to_string()),
-            workspace_root: workspace_root.display().to_string(),
-            workspace_kind: SemanticWorkspaceKind::UnsupportedProject,
-            source_module_names: vec![],
-            limitations: vec![SemanticWorkspaceLimitation::UnsupportedProject],
-            evidence_quality: SemanticEvidenceQuality::Unavailable,
-            backend_candidates: vec![],
-        },
-    }
 }
