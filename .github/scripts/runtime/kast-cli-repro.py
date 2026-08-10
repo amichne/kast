@@ -1199,7 +1199,7 @@ def restore_config_and_runtime(
 def telemetry_output_path(config: dict[str, Any], workspace: Path) -> Path:
     output = config.get("effective", {}).get("telemetry", {}).get("outputFile")
     if isinstance(output, str) and output:
-        configured = Path(output).expanduser()
+        configured = Path(output)
         return (configured if configured.is_absolute() else workspace / configured).resolve()
     config_path = Path(str(config.get("configPath", "")))
     return (config_path.parent / "telemetry" / "idea-spans.jsonl").resolve()
@@ -1303,6 +1303,22 @@ def discard_unstarted_ephemeral_capsule(capsule: CapsuleContext | None) -> None:
     ):
         raise ReproError("refused to clean an unrecognized ephemeral capsule root")
     shutil.rmtree(capsule.root)
+
+
+def ephemeral_capsule_is_safely_deletable(
+    capsule: CapsuleContext | None,
+    proof: dict[str, Any] | None,
+    teardown_errors: list[str],
+) -> bool:
+    return (
+        capsule is not None
+        and capsule.mode == "EPHEMERAL"
+        and proof is not None
+        and proof.get("runtimeStopped") is True
+        and proof.get("installationContained") is True
+        and proof.get("stateContained") is True
+        and not teardown_errors
+    )
 
 
 def capture(args: argparse.Namespace) -> int:
@@ -1557,15 +1573,10 @@ def capture(args: argparse.Namespace) -> int:
             copy_delta(idea_log_path, trace_offset, output / "idea-trace.log")
         write_manifest(output, workspace, session, runner.commands, capsule_proof)
 
-        if (
-            capsule is not None
-            and capsule.mode == "EPHEMERAL"
-            and capsule_proof is not None
-            and capsule_proof["runtimeStopped"] is True
-            and capsule_proof.get("installationContained") is True
-            and capsule_proof["stateContained"] is True
-            and capture_failure is None
-            and not teardown_errors
+        if ephemeral_capsule_is_safely_deletable(
+            capsule,
+            capsule_proof,
+            teardown_errors,
         ):
             temp_root = Path("/private/tmp").resolve()
             if (

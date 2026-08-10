@@ -1166,6 +1166,44 @@ class KastCliReproContractTest(unittest.TestCase):
                 telemetry,
             )
 
+    def test_telemetry_output_treats_tilde_as_a_workspace_relative_path(self) -> None:
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory() as raw_directory:
+            workspace = Path(raw_directory) / "workspace"
+            workspace.mkdir()
+            config = {
+                "effective": {
+                    "telemetry": {"outputFile": "~/telemetry/custom-spans.jsonl"},
+                },
+            }
+
+            telemetry = runner.telemetry_output_path(config, workspace)
+
+            self.assertEqual(
+                (workspace / "~" / "telemetry" / "custom-spans.jsonl").resolve(),
+                telemetry,
+            )
+
+    def test_safe_ephemeral_cleanup_does_not_depend_on_capture_success(self) -> None:
+        runner = load_runner_module()
+        capsule = runner.CapsuleContext(
+            "EPHEMERAL",
+            Path("/private/tmp/kast-capsule-contract"),
+            Path("/bundle"),
+            {},
+            Path("/bootstrap-kastctl"),
+            Path("/idea-host"),
+        )
+        proof = {
+            "runtimeStopped": True,
+            "installationContained": True,
+            "stateContained": True,
+        }
+
+        self.assertTrue(
+            runner.ephemeral_capsule_is_safely_deletable(capsule, proof, [])
+        )
+
     def test_capsule_rejects_configured_telemetry_output_outside_its_root(self) -> None:
         runner = load_runner_module()
         with tempfile.TemporaryDirectory() as raw_directory:
