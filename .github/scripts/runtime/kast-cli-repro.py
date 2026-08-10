@@ -547,6 +547,16 @@ def require_success(command: CommandEvidence) -> None:
         )
 
 
+def finish_observed_operation(
+    runner: TmuxCapture,
+    operation: ActiveCommand,
+    observer: ActiveCommand,
+) -> tuple[CommandEvidence, CommandEvidence]:
+    operation_evidence = runner.finish(operation)
+    observer_evidence = runner.finish(observer)
+    return operation_evidence, observer_evidence
+
+
 def discover_developer_cli(
     kast: str,
     workspace: Path,
@@ -1121,8 +1131,7 @@ def capture(args: argparse.Namespace) -> int:
             cold_observer = next(spec for spec in plan if spec.name == "cold-observer")
             up_active = runner.begin(cold_up)
             observer_active = runner.begin(cold_observer)
-            runner.finish(observer_active)
-            runner.finish(up_active)
+            finish_observed_operation(runner, up_active, observer_active)
         else:
             require_success(
                 runner.run(
@@ -1141,8 +1150,7 @@ def capture(args: argparse.Namespace) -> int:
         observer = next(spec for spec in plan if spec.name == "refresh-observer")
         refresh_active = runner.begin(refresh)
         observer_active = runner.begin(observer)
-        runner.finish(observer_active)
-        runner.finish(refresh_active)
+        finish_observed_operation(runner, refresh_active, observer_active)
     except ReproError as error:
         capture_failure = error
     except OSError as error:
@@ -1377,11 +1385,11 @@ def analyze(directory: Path) -> tuple[dict[str, Any], int]:
             findings.append(
                 Finding(
                     FindingCode.READY_DURING_PENDING_UP.value,
-                    "The public home reported READY while `kast up` was still pending.",
+                    "The public home reported READY while `kast workspace ensure` was still pending.",
                     ["transcripts/cold-up.txt", "transcripts/cold-observer.txt"],
                 )
             )
-    refresh = commands.get("refresh")
+    refresh = commands.get("workspace-refresh")
     refresh_observer = commands.get("refresh-observer")
     if refresh and refresh.get("exitCode") != 0:
         findings.append(

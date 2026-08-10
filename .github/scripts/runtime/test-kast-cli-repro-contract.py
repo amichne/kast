@@ -87,7 +87,7 @@ class KastCliReproContractTest(unittest.TestCase):
                     finished=300,
                 ),
                 command(
-                    "refresh",
+                    "workspace-refresh",
                     "error: WORKSPACE_RECONCILIATION_REQUIRED\n"
                     "next: \"Run `kast --help` for valid commands and arguments.\"\n"
                     "::kast-repro-exit=1\n",
@@ -120,7 +120,7 @@ class KastCliReproContractTest(unittest.TestCase):
             commands = [
                 command("cold-up", terminated, started=100, finished=110),
                 command("cold-observer", "ready: false\n::kast-repro-exit=0\n", started=120, finished=130),
-                command("refresh", terminated, started=200, finished=210),
+                command("workspace-refresh", terminated, started=200, finished=210),
                 command("refresh-observer", "ready: false\n::kast-repro-exit=0\n", started=220, finished=230),
                 command("graph-nodes", terminated, started=300, finished=310, output_bytes=2_000),
             ]
@@ -260,6 +260,23 @@ class KastCliReproContractTest(unittest.TestCase):
 
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual([], json.loads(result.stdout)["findings"])
+
+    def test_observed_operation_records_operation_completion_before_observer(self) -> None:
+        runner = load_runner_module()
+        capture = mock.Mock()
+        operation = mock.sentinel.operation
+        observer = mock.sentinel.observer
+        operation_evidence = mock.sentinel.operation_evidence
+        observer_evidence = mock.sentinel.observer_evidence
+        capture.finish.side_effect = [operation_evidence, observer_evidence]
+
+        evidence = runner.finish_observed_operation(capture, operation, observer)
+
+        self.assertEqual((operation_evidence, observer_evidence), evidence)
+        self.assertEqual(
+            [mock.call(operation), mock.call(observer)],
+            capture.finish.call_args_list,
+        )
 
     def test_telemetry_fields_distributed_across_requests_are_incomplete(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
