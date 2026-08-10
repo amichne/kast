@@ -65,7 +65,9 @@ internal data class WorkspaceSourceFreshnessClaims private constructor(
      * `-> WorkspaceSourceFreshnessCoverage`.
      *
      * Coverage exists only when the active cycle contains the exact content or
-     * tombstone identity for every requested canonical source path.
+     * tombstone identity for every requested canonical source path. The result
+     * may be unpacked only by [WorkspaceSourceFreshness.coverageOf]; raw source
+     * identities remain private to this claims owner.
      */
     fun coverageOf(requested: WorkspaceSourceFreshnessClaims): WorkspaceSourceFreshnessCoverage =
         if (requested.claimsByPath.all { (path, content) -> claimsByPath[path] == content }) {
@@ -178,6 +180,12 @@ internal sealed interface WorkspaceSourceFreshness {
      * Proof transition:
      * `(active WorkspaceSourceFreshness, WorkspaceTransitionRequest)`
      * `-> WorkspaceSourceFreshnessCoverage`.
+     *
+     * [WorkspaceSourceFreshnessCoverage.Covered] proves that every requested
+     * canonical source path has the same exact content or tombstone identity in
+     * the active cycle, so joining cannot omit newer requested work. The result
+     * may be unpacked only by transition-route admission; raw claims remain
+     * opaque outside freshness aggregation and coverage.
      */
     fun coverageOf(request: WorkspaceTransitionRequest): WorkspaceSourceFreshnessCoverage =
         if (this is Claimed && request is WorkspaceTransitionRequest.SourceFiles) {
