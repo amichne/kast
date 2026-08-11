@@ -37,10 +37,6 @@ class WorkspaceIndexingScopeTest {
             listOf("generated/keep.kt", "src/main/App.kt"),
             scope.includedPaths.map { it.relative.value },
         )
-        assertEquals(
-            listOf("generated/Drop.kt", "module/fixtures/Fixture.kt"),
-            scope.ignoredPaths.map { workspace.relativize(it).toString() },
-        )
     }
 
     @Test
@@ -63,7 +59,6 @@ class WorkspaceIndexingScopeTest {
             listOf("!important.kt", "#important.kt"),
             scope.includedPaths.map { it.relative.value },
         )
-        assertEquals(listOf("ordinary.kt"), scope.ignoredPaths.map(::relative))
     }
 
     @Test
@@ -100,6 +95,7 @@ class WorkspaceIndexingScopeTest {
             "src/main/App.kt",
             "src/test/AppTest.kt",
             "build/generated/Generated.kt",
+            "cli-rs/target/debug/generated/Generated.kt",
             ".gradle/cache/Cache.kt",
             "out/classes/Output.kt",
             ".idea/metadata/Idea.kt",
@@ -111,15 +107,28 @@ class WorkspaceIndexingScopeTest {
         val scope = WorkspaceIndexingScope.resolve(workspace, config, candidates)
 
         assertEquals(listOf("src/main/App.kt"), scope.includedPaths.map { it.relative.value })
+    }
+
+    @Test
+    fun `large excluded output scope does not remain retained after resolution`() {
+        val outputCandidates = List(20_000) { index ->
+            workspace.resolve("cli-rs/target/debug/incremental/$index/Generated.kt")
+        }
+        val sourceCandidates = List(64) { index ->
+            workspace.resolve("module-$index/src/main/kotlin/Source$index.kt")
+        }
+
+        val scope = WorkspaceIndexingScope.resolve(
+            workspace,
+            KastConfig.defaults().indexing,
+            outputCandidates + sourceCandidates,
+        )
+
+        assertEquals(64, scope.includedPaths.size)
         assertEquals(
-            listOf(
-                ".gradle/cache/Cache.kt",
-                ".idea/metadata/Idea.kt",
-                "build/generated/Generated.kt",
-                "out/classes/Output.kt",
-                "src/test/AppTest.kt",
-            ),
-            scope.ignoredPaths.map(::relative),
+            false,
+            WorkspaceIndexingScope::class.java.declaredFields.any { field -> field.name == "ignoredPaths" },
+            "Excluded build outputs must not be retained for the reconciliation lifetime",
         )
     }
 
@@ -134,7 +143,6 @@ class WorkspaceIndexingScopeTest {
         )
 
         assertEquals(listOf("nested/App.kt"), scope.includedPaths.map { it.relative.value })
-        assertEquals(listOf("App.kt"), scope.ignoredPaths.map(::relative))
     }
 
     @Test
@@ -170,7 +178,6 @@ class WorkspaceIndexingScopeTest {
         )
 
         assertEquals(listOf("src/main/Other.kt"), fallback.includedPaths.map { it.relative.value })
-        assertEquals(listOf("generated/New.kt"), fallback.ignoredPaths.map(::relative))
     }
 
     private fun candidates(vararg paths: String): List<Path> = paths.map { relative ->
@@ -179,6 +186,4 @@ class WorkspaceIndexingScopeTest {
             path.writeText("class Fixture\n")
         }
     }
-
-    private fun relative(path: Path): String = workspace.relativize(path).toString()
 }

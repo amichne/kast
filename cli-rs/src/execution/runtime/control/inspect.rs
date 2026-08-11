@@ -90,16 +90,18 @@ fn inspect_descriptor(
     }
 
     let socket_path = Path::new(&registered.descriptor.socket_path);
-    let status_result = rpc::request::<RuntimeStatusResponse>(
+    let status_response = rpc::request::<RuntimeStatusResponse>(
         socket_path,
         "runtime/status",
         Value::Object(Default::default()),
-    )
-    .and_then(RuntimeStatusResponse::validate_protocol)
-    .and_then(|status| {
-        validate_runtime_status_identity(&registered.descriptor, &status)?;
-        Ok(status)
-    });
+    );
+    let reachable = status_response.is_ok();
+    let status_result = status_response
+        .and_then(RuntimeStatusResponse::validate_protocol)
+        .and_then(|status| {
+            validate_runtime_status_identity(&registered.descriptor, &status)?;
+            Ok(status)
+        });
     let (runtime_status, error_message) = match status_result {
         Ok(status) => (Some(status), None),
         Err(error) => (None, Some(error.message)),
@@ -121,7 +123,7 @@ fn inspect_descriptor(
         descriptor_path: registered.id,
         descriptor: registered.descriptor,
         pid_alive: true,
-        reachable: runtime_status.is_some(),
+        reachable,
         ready,
         runtime_status,
         capabilities,

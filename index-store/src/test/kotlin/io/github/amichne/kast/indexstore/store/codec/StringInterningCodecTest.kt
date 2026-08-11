@@ -17,6 +17,7 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
 import java.sql.Statement
+import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicInteger
 
 class StringInterningCodecTest {
@@ -127,6 +128,63 @@ class StringInterningCodecTest {
             )
 
             assertTrue(resolution is ReadOnlyInterningAliasResolution.Rejected)
+        }
+    }
+
+    @Test
+    fun `large workspace and repository vocabularies retain one bidirectional cache`() {
+        Class.forName("org.sqlite.JDBC")
+        val base = workspaceRoot.resolve("repository-base.db")
+        val workspaceCount = 25_000
+        val repositoryCount = 25_000
+        DriverManager.getConnection("jdbc:sqlite:$base").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE)")
+            }
+            insertNames(connection, "repository", repositoryCount)
+        }
+        DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE)")
+                statement.execute("ATTACH DATABASE '${base.toAbsolutePath()}' AS repository_base")
+            }
+            insertNames(connection, "workspace", workspaceCount)
+            val codec = StringInterningCodec(StringInterningDomain.FQ_NAME)
+
+            codec.loadAll(connection)
+            assertEquals(
+                ReadOnlyInterningAliasResolution.Loaded,
+                codec.loadReadOnlyAliases(connection, AttachedSqliteDatabase.REPOSITORY_BASE),
+            )
+
+            val retainedMappings = codec.javaClass.declaredFields
+                .filter { field -> ConcurrentMap::class.java.isAssignableFrom(field.type) }
+                .sumOf { field ->
+                    field.isAccessible = true
+                    (field.get(codec) as ConcurrentMap<*, *>).size
+                }
+            assertEquals(
+                2 * (workspaceCount + repositoryCount),
+                retainedMappings,
+                "Each interned value should occupy only the forward and reverse cache",
+            )
+        }
+    }
+
+    private fun insertNames(connection: Connection, prefix: String, count: Int) {
+        val ownsTransaction = connection.autoCommit
+        if (ownsTransaction) connection.autoCommit = false
+        try {
+            connection.prepareStatement("INSERT INTO fq_names(fq_name) VALUES (?)").use { statement ->
+                repeat(count) { index ->
+                    statement.setString(1, "$prefix.example.type$index")
+                    statement.addBatch()
+                }
+                statement.executeBatch()
+            }
+            if (ownsTransaction) connection.commit()
+        } finally {
+            if (ownsTransaction) connection.autoCommit = true
         }
     }
 

@@ -92,30 +92,19 @@ pub(crate) enum SemanticWorkspaceRoute<C: lifecycle_typestate::RequiredCapabilit
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct SourceReadyRuntime {
-    source: lifecycle_typestate::SourceReady<lifecycle_typestate::SourceCapability>,
+pub(crate) struct ReferenceReadyRuntime {
+    ready: lifecycle_typestate::ReferenceReady<lifecycle_typestate::ReferenceCapability>,
     backend_name: String,
-    references: ReferenceLaneEvidence,
     source_module_count: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ReferenceLaneEvidence {
-    Ready,
-    Blocked,
-}
-
-impl SourceReadyRuntime {
+impl ReferenceReadyRuntime {
     pub(crate) fn workspace_root(&self) -> &Path {
-        self.source.runtime().root().as_path()
+        self.ready.source().runtime().root().as_path()
     }
 
     pub(crate) fn backend_name(&self) -> &str {
         &self.backend_name
-    }
-
-    pub(crate) fn reference_index_ready(&self) -> bool {
-        matches!(self.references, ReferenceLaneEvidence::Ready)
     }
 
     pub(crate) fn source_module_count(&self) -> usize {
@@ -123,64 +112,7 @@ impl SourceReadyRuntime {
     }
 
     pub(crate) fn source_revision(&self) -> u64 {
-        self.source.revision().value()
-    }
-}
-
-pub(crate) fn demand_source_ready_runtime(
-    requested_workspace_root: Option<PathBuf>,
-) -> Result<SourceReadyRuntime> {
-    let route = semantic_workspace_route_with_availability(
-        semantic_runtime_args(requested_workspace_root, false, false),
-        indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
-        lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
-    )?;
-    let admission = match route {
-        SemanticWorkspaceRoute::Admitted(admission) => admission,
-        SemanticWorkspaceRoute::Rejected(rejection) => return Err(rejection.into_cli_error()),
-    };
-    let epoch = admission.validate_current()?;
-    let source = epoch.capability_ready()?;
-    let status = admission
-        .candidate()
-        .runtime_status
-        .as_ref()
-        .ok_or_else(|| {
-            CliError::new(
-                "SOURCE_READY_EVIDENCE_MISSING",
-                "Source-ready admission returned no runtime epoch evidence.",
-            )
-        })?;
-    if status.state != RuntimeState::Ready
-        || !status.active()
-        || status.indexing()
-        || status.source_module_names.is_empty()
-    {
-        return Err(CliError::new(
-            "SOURCE_READY_EVIDENCE_INVALID",
-            "Source-ready admission returned an epoch without committed source evidence.",
-        ));
-    }
-    Ok(SourceReadyRuntime {
-        source,
-        backend_name: status.backend_name.clone(),
-        references: if status.reference_index_ready() {
-            ReferenceLaneEvidence::Ready
-        } else {
-            ReferenceLaneEvidence::Blocked
-        },
-        source_module_count: status.source_module_names.len(),
-    })
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct ReferenceReadyRuntime {
-    ready: lifecycle_typestate::ReferenceReady<lifecycle_typestate::ReferenceCapability>,
-}
-
-impl ReferenceReadyRuntime {
-    pub(crate) fn workspace_root(&self) -> &Path {
-        self.ready.source().runtime().root().as_path()
+        self.ready.source().revision().value()
     }
 }
 
@@ -189,7 +121,7 @@ pub(crate) fn demand_reference_ready_runtime(
 ) -> Result<ReferenceReadyRuntime> {
     let route = semantic_workspace_route_with_availability(
         semantic_runtime_args(requested_workspace_root, false, false),
-        indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
+        indexer_authority::SemanticRuntimeAvailability::StartIfMissingOrAwaitCapability,
         lifecycle_typestate::Demand::<lifecycle_typestate::ReferenceCapability>::new(),
     )?;
     let admission = match route {
@@ -197,7 +129,32 @@ pub(crate) fn demand_reference_ready_runtime(
         SemanticWorkspaceRoute::Rejected(rejection) => return Err(rejection.into_cli_error()),
     };
     let ready = admission.validate_current()?.capability_ready()?;
-    Ok(ReferenceReadyRuntime { ready })
+    let status = admission
+        .candidate()
+        .runtime_status
+        .as_ref()
+        .ok_or_else(|| {
+            CliError::new(
+                "REFERENCE_READY_EVIDENCE_MISSING",
+                "Reference-ready admission returned no runtime epoch evidence.",
+            )
+        })?;
+    if status.state != RuntimeState::Ready
+        || !status.active()
+        || status.indexing()
+        || status.source_module_names.is_empty()
+        || !status.reference_index_ready()
+    {
+        return Err(CliError::new(
+            "REFERENCE_READY_EVIDENCE_INVALID",
+            "Reference-ready admission returned an epoch without committed source and reference evidence.",
+        ));
+    }
+    Ok(ReferenceReadyRuntime {
+        ready,
+        backend_name: status.backend_name.clone(),
+        source_module_count: status.source_module_names.len(),
+    })
 }
 
 pub(crate) fn semantic_workspace_route(
@@ -205,7 +162,7 @@ pub(crate) fn semantic_workspace_route(
 ) -> Result<SemanticWorkspaceRoute> {
     semantic_workspace_route_with_availability(
         semantic_runtime_args(requested_workspace_root, true, false),
-        indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
+        semantic_demand_availability(),
         lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
     )
 }
@@ -226,7 +183,7 @@ pub(crate) fn semantic_workspace_route_for_runtime(
     let availability = if args.no_auto_start.unwrap_or(false) {
         indexer_authority::SemanticRuntimeAvailability::ReuseOnly
     } else {
-        indexer_authority::SemanticRuntimeAvailability::StartIfMissing
+        indexer_authority::SemanticRuntimeAvailability::StartIfMissingOrAwaitCapability
     };
     semantic_workspace_route_with_availability(
         args,
@@ -245,14 +202,18 @@ pub(crate) fn semantic_workspace_route_ready(
     )
 }
 
-pub(crate) fn semantic_graph_workspace_route_ready(
+pub(crate) fn semantic_graph_workspace_route(
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<SemanticWorkspaceRoute<lifecycle_typestate::GraphCapability>> {
     semantic_workspace_route_with_availability(
-        semantic_runtime_args(requested_workspace_root, false, true),
-        indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
+        semantic_runtime_args(requested_workspace_root, false, false),
+        semantic_demand_availability(),
         lifecycle_typestate::Demand::<lifecycle_typestate::GraphCapability>::new(),
     )
+}
+
+const fn semantic_demand_availability() -> indexer_authority::SemanticRuntimeAvailability {
+    indexer_authority::SemanticRuntimeAvailability::StartIfMissing
 }
 
 fn semantic_workspace_route_with_availability<C: lifecycle_typestate::RequiredCapability>(

@@ -186,10 +186,16 @@ pub(crate) fn semantic_workspace_read_ready(
     raw_rpc_session_ready(requested_workspace_root)?.semantic_read()
 }
 
-pub(crate) fn semantic_graph_workspace_read_ready(
+pub(crate) fn semantic_workspace_read(
+    requested_workspace_root: Option<PathBuf>,
+) -> Result<SemanticWorkspaceRead> {
+    raw_rpc_session(requested_workspace_root)?.semantic_read()
+}
+
+pub(crate) fn semantic_graph_workspace_read(
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<SemanticWorkspaceRead<lifecycle_typestate::GraphCapability>> {
-    raw_rpc_session_from_route(semantic_graph_workspace_route_ready(requested_workspace_root)?)?
+    raw_rpc_session_from_route(semantic_graph_workspace_route(requested_workspace_root)?)?
         .semantic_read()
 }
 
@@ -362,4 +368,23 @@ fn published_runtime_status_unavailable() -> CliError {
         "PUBLISHED_WORKSPACE_UNAVAILABLE",
         "The READY indexer runtime did not advertise its published workspace generation.",
     )
+}
+
+#[cfg(test)]
+mod semantic_demand_entrypoint_tests {
+    use super::*;
+
+    #[test]
+    fn graph_and_source_reads_expose_start_capable_semantic_demand_entrypoints() {
+        assert_eq!(
+            semantic_demand_availability(),
+            indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
+        );
+        let _source_demand: fn(Option<PathBuf>) -> Result<SemanticWorkspaceRead> =
+            semantic_workspace_read;
+        let _graph_demand: fn(
+            Option<PathBuf>,
+        ) -> Result<SemanticWorkspaceRead<lifecycle_typestate::GraphCapability>> =
+            semantic_graph_workspace_read;
+    }
 }

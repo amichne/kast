@@ -3,7 +3,7 @@ include!("read/readiness.rs");
 pub(crate) fn semantic_graph_refresh_plan(
     workspace_root: &Path,
 ) -> Result<SemanticGraphRefreshPlan> {
-    let semantic_read = runtime::semantic_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
+    let semantic_read = runtime::semantic_workspace_read(Some(workspace_root.to_path_buf()))?;
     let snapshot = read_coverage_from_published(
         workspace_root,
         RepositoryScope {
@@ -84,7 +84,7 @@ pub(crate) fn semantic_graph_read_admission(
     workspace_root: &Path,
 ) -> Result<SemanticGraphReadAdmission> {
     let semantic_read =
-        runtime::semantic_graph_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
+        runtime::semantic_graph_workspace_read(Some(workspace_root.to_path_buf()))?;
     let snapshot = read_coverage_from_published(
         workspace_root,
         RepositoryScope {

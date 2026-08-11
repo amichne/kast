@@ -23,7 +23,7 @@ fn native_graph_refresh_scope_snapshot(
     args: &AgentNativeGraphArgs,
 ) -> std::result::Result<NativeGraphRefreshScopeSnapshot, AgentError> {
     let workspace_root = native_graph_workspace_root(args)?;
-    let semantic_read = runtime::semantic_workspace_read_ready(Some(workspace_root.clone()))
+    let semantic_read = runtime::semantic_workspace_read(Some(workspace_root.clone()))
         .map_err(AgentError::from_cli_error)?;
     let published = semantic_read.published();
     let database = native_graph_database_path(args, Some(published))?;

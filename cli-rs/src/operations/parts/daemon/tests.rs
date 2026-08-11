@@ -191,15 +191,12 @@ mod tests {
         let resources = contents.join("Resources");
         let java = contents.join("jbr/Contents/Home/bin/java");
         let boot_jar = contents.join("lib/platform-loader.jar");
-        let kotlin_jps = contents.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
         std::fs::create_dir(&workspace).unwrap();
         std::fs::create_dir_all(&resources).unwrap();
         std::fs::create_dir_all(java.parent().unwrap()).unwrap();
         std::fs::create_dir_all(boot_jar.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
         std::fs::write(&java, "fixture").unwrap();
         std::fs::write(&boot_jar, "fixture").unwrap();
-        write_kotlin_jps_fixture(&kotlin_jps);
         std::fs::write(
             resources.join("product-info.json"),
             serde_json::to_vec(&serde_json::json!({
@@ -210,7 +207,7 @@ mod tests {
                     "arch": if cfg!(target_arch = "aarch64") { "aarch64" } else { "x86_64" },
                     "javaExecutablePath": "../jbr/Contents/Home/bin/java",
                     "bootClassPathJarNames": ["platform-loader.jar"],
-                    "additionalJvmArguments": ["-Dfixture.product=true"],
+                    "additionalJvmArguments": ["-Dfixture.product=true", "-Xmx8192m"],
                     "mainClass": "com.intellij.idea.Main"
                 }]
             }))
@@ -227,6 +224,7 @@ mod tests {
             .join("current/lib/backends/indexer/current/idea-home/plugins/kast-indexer/lib");
         std::fs::create_dir_all(&payload).unwrap();
         std::fs::write(payload.join("kast-indexer.jar"), "fixture").unwrap();
+        write_kotlin_jps_fixture(&payload.join("kotlin-jps-plugin.jar"));
         let args = DaemonStartArgs {
             workspace_root: Some(workspace.clone()),
             runtime_libs_dir: None,
@@ -263,6 +261,14 @@ mod tests {
         );
         assert!(command.contains(&"com.intellij.idea.Main".to_string()));
         assert!(command.contains(&"kast-indexer".to_string()));
+        assert_eq!(
+            command
+                .iter()
+                .filter(|argument| argument.starts_with("-Xmx"))
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            vec!["-Xmx2048m"],
+        );
         assert!(!command.contains(&"-Didea.force.use.core.classloader=true".to_string()));
         let sidecar_root = config
             .paths
@@ -287,11 +293,8 @@ mod tests {
     fn installed_idea_preflight_rejects_missing_kotlin_jps_dependency() {
         let temp = tempfile::tempdir().unwrap();
         let error = preflight_installed_idea_semantic_runtime(
-            &temp.path().join("idea-home"),
-            &temp.path().join("idea-system"),
-        )
-        .unwrap_err();
-
+            &temp.path().join("kast-indexer"), &temp.path().join("idea-system"),
+        ).unwrap_err();
         assert_eq!(error.code, "INDEXER_DEPENDENCY_UNAVAILABLE");
         assert!(error.message.contains("kotlin-jps-plugin"));
     }
@@ -300,16 +303,13 @@ mod tests {
     #[test]
     fn installed_idea_preflight_rejects_truncated_kotlin_jps_dependency() {
         let temp = tempfile::tempdir().unwrap();
-        let idea_home = temp.path().join("idea-home");
-        let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+        let payload_plugin = temp.path().join("kast-indexer");
+        let kotlin_jps = payload_plugin.join("lib/kotlin-jps-plugin.jar");
         std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
         std::fs::write(&kotlin_jps, b"PK\x03\x04fixture").unwrap();
-
         let error = preflight_installed_idea_semantic_runtime(
-            &idea_home,
-            &temp.path().join("idea-system"),
-        )
-        .unwrap_err();
+            &payload_plugin, &temp.path().join("idea-system"),
+        ).unwrap_err();
 
         assert_eq!(error.code, "INDEXER_DEPENDENCY_INVALID");
         assert!(error.message.contains(&kotlin_jps.display().to_string()));
@@ -319,16 +319,16 @@ mod tests {
     #[test]
     fn installed_idea_preflight_rejects_corrupt_plugin_cache() {
         let temp = tempfile::tempdir().unwrap();
-        let idea_home = temp.path().join("idea-home");
+        let payload_plugin = temp.path().join("kast-indexer");
         let idea_system = temp.path().join("idea-system");
-        let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+        let kotlin_jps = payload_plugin.join("lib/kotlin-jps-plugin.jar");
         let cache = idea_system.join("plugins/pluginsXMLIds.json");
         std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
         std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
         write_kotlin_jps_fixture(&kotlin_jps);
         std::fs::write(&cache, "not-json").unwrap();
 
-        let error = preflight_installed_idea_semantic_runtime(&idea_home, &idea_system).unwrap_err();
+        let error = preflight_installed_idea_semantic_runtime(&payload_plugin, &idea_system).unwrap_err();
 
         assert_eq!(error.code, "INDEXER_CACHE_INVALID");
         assert!(error.message.contains(&cache.display().to_string()));

@@ -311,6 +311,9 @@ include!("parts/package/filesystem.rs");
 mod sidecar_tests {
     use super::*;
 
+    const KOTLIN_JPS_SIDECAR_PATH: &str =
+        "idea-home/plugins/kast-indexer/lib/kotlin-jps-plugin.jar";
+
     #[test]
     fn macos_bundle_stages_only_the_indexer_payload() {
         let temp = tempfile::tempdir().expect("tempdir");
@@ -328,6 +331,7 @@ mod sidecar_tests {
             "payload",
         )
         .expect("payload");
+        fs::write(source.join(KOTLIN_JPS_SIDECAR_PATH), "Kotlin JPS").expect("Kotlin JPS payload");
 
         stage_indexer_for_platform(&source, &target, "macos-arm64").expect("stage sidecar");
 
@@ -336,6 +340,13 @@ mod sidecar_tests {
             target
                 .join("idea-home/plugins/kast-indexer/lib/kast-indexer.jar")
                 .is_file()
+        );
+        assert_eq!(
+            fs::read_to_string(
+                target.join("idea-home/plugins/kast-indexer/lib/kotlin-jps-plugin.jar"),
+            )
+            .expect("bundled Kotlin JPS payload"),
+            "Kotlin JPS",
         );
         assert!(!target.join("runtime-libs").exists());
         assert!(!target.join("idea-home/lib").exists());

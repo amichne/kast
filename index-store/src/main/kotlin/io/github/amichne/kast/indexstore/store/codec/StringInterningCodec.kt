@@ -48,16 +48,10 @@ internal class StringInterningCodec(
     private val idColumn = domain.idColumn
     private val valueColumn = domain.valueColumn
     @Volatile
-    private var valueToId = ConcurrentHashMap<String, Int>()
+    private var effectiveValueToId = ConcurrentHashMap<String, Int>()
 
     @Volatile
-    private var idToValue = ConcurrentHashMap<Int, String>()
-
-    @Volatile
-    private var readValueToId = ConcurrentHashMap<String, Int>()
-
-    @Volatile
-    private var readIdToValue = ConcurrentHashMap<Int, String>()
+    private var effectiveIdToValue = ConcurrentHashMap<Int, String>()
 
     @Volatile
     private var loaded = false
@@ -97,10 +91,8 @@ internal class StringInterningCodec(
                 }
             }
         }
-        valueToId = loadedValues
-        idToValue = loadedIds
-        readValueToId = ConcurrentHashMap(loadedValues)
-        readIdToValue = ConcurrentHashMap(loadedIds)
+        effectiveValueToId = loadedValues
+        effectiveIdToValue = loadedIds
         loaded = true
     }
 
@@ -119,8 +111,6 @@ internal class StringInterningCodec(
         database: AttachedSqliteDatabase,
     ): ReadOnlyInterningAliasResolution {
         ensureLoaded(conn)
-        val values = ConcurrentHashMap(readValueToId)
-        val ids = ConcurrentHashMap(readIdToValue)
         conn.createStatement().use { statement ->
             statement.executeQuery("SELECT $idColumn, $valueColumn FROM $database.$tableName").use { rows ->
                 while (rows.next()) {
@@ -134,16 +124,14 @@ internal class StringInterningCodec(
                         ?: return ReadOnlyInterningAliasResolution.Rejected(
                             ReadOnlyInterningAliasFailure.MissingSourceValue(domain, sourceId),
                         )
-                    if (!values.containsKey(value)) {
+                    if (!effectiveValueToId.containsKey(value)) {
                         val effectiveId = Math.negateExact(sourceId)
-                        values[value] = effectiveId
-                        ids[effectiveId] = value
+                        effectiveIdToValue[effectiveId] = value
+                        effectiveValueToId[value] = effectiveId
                     }
                 }
             }
         }
-        readValueToId = values
-        readIdToValue = ids
         return ReadOnlyInterningAliasResolution.Loaded
     }
 
@@ -152,16 +140,14 @@ internal class StringInterningCodec(
         value: String,
     ): Int {
         ensureLoaded(conn)
-        valueToId[value]?.let { return it }
+        idFor(value)?.let { return it }
         conn.prepareStatement("INSERT OR IGNORE INTO $tableName ($valueColumn) VALUES (?)").use { stmt ->
             stmt.setString(1, value)
             stmt.executeUpdate()
         }
         val id = selectId(conn, value)
-        valueToId[value] = id
-        idToValue[id] = value
-        readValueToId[value] = id
-        readIdToValue[id] = value
+        effectiveIdToValue[id] = value
+        effectiveValueToId[value] = id
         return id
     }
 
@@ -171,7 +157,7 @@ internal class StringInterningCodec(
     ) {
         ensureLoaded(conn)
         val missingValues = ArrayList<String>(values.size)
-        values.filterTo(missingValues) { !valueToId.containsKey(it) }
+        values.filterTo(missingValues) { idFor(it) == null }
         if (missingValues.isEmpty()) return
         conn.prepareStatement("INSERT OR IGNORE INTO $tableName ($valueColumn) VALUES (?)").use { stmt ->
             for (value in missingValues) {
@@ -184,9 +170,9 @@ internal class StringInterningCodec(
     }
 
     fun resolve(id: Int): String =
-        readIdToValue[id] ?: throw IllegalStateException("Missing interned string in $tableName for $idColumn=$id")
+        effectiveIdToValue[id] ?: throw IllegalStateException("Missing interned string in $tableName for $idColumn=$id")
 
-    fun idFor(value: String): Int? = valueToId[value]
+    fun idFor(value: String): Int? = effectiveValueToId[value]?.takeIf { id -> id > 0 }
 
     /**
      * Proof transition: `String -> InternedStringReadIdResolution`.
@@ -195,7 +181,7 @@ internal class StringInterningCodec(
      * attached repository read authority. Absence is explicit; the raw SQLite
      * ID is extracted only while constructing or binding a query.
      */
-    fun idForRead(value: String): InternedStringReadIdResolution = readValueToId[value]
+    fun idForRead(value: String): InternedStringReadIdResolution = effectiveValueToId[value]
         ?.let(::InternedStringReadId)
         ?.let(InternedStringReadIdResolution::Resolved)
         ?: InternedStringReadIdResolution.Unavailable
@@ -221,16 +207,16 @@ internal class StringInterningCodec(
                     while (rs.next()) {
                         val id = rs.getInt(1)
                         val value = rs.getString(2)
-                        valueToId[value] = id
-                        idToValue[id] = value
-                        readValueToId[value] = id
-                        readIdToValue[id] = value
+                        effectiveIdToValue[id] = value
+                        effectiveValueToId[value] = id
                     }
                 }
             }
             start = end
         }
-        check(values.all(valueToId::containsKey)) { "Failed to load newly interned values from $tableName" }
+        check(values.all { value -> idFor(value) != null }) {
+            "Failed to load newly interned values from $tableName"
+        }
     }
 
     private fun selectId(

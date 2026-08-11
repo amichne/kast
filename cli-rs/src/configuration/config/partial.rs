@@ -25,6 +25,7 @@ struct PartialServer {
 #[serde(rename_all = "camelCase")]
 struct PartialIndexer {
     host_command: Option<PathBuf>,
+    max_heap_megabytes: Option<IndexerMaxHeapMegabytes>,
 }
 
 #[derive(Debug, Default, Deserialize)]

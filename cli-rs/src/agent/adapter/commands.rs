@@ -12,13 +12,13 @@ struct UpResult {
 }
 
 pub(crate) fn run_up(output_format: OutputFormat) -> Result<i32> {
-    let ready = runtime::demand_source_ready_runtime(None)?;
+    let ready = runtime::demand_reference_ready_runtime(None)?;
     let result = UpResult {
         root: ready.workspace_root().display().to_string(),
         ready: true,
         runtime: "READY",
         backend: ready.backend_name().to_string(),
-        reference_index_ready: ready.reference_index_ready(),
+        reference_index_ready: true,
         source_revision: ready.source_revision(),
         source_module_count: ready.source_module_count(),
         next: vec![

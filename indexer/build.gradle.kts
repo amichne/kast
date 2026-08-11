@@ -305,6 +305,7 @@ val indexerPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.class",
     "io/github/amichne/kast/shared/analysis/PsiReferenceScanner.class",
     "io/github/amichne/kast/idea/IndexerServerRuntime.class",
+    "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
 )
 
 val indexerPluginRuntimeJarPrefixes = listOf(
@@ -326,8 +327,13 @@ tasks.named<Sync>("syncPortableDist") {
     from(indexerPluginJar) {
         into("idea-home/plugins/kast-indexer/lib")
     }
-    from(indexerPluginRuntime) {
-        into("idea-home/plugins/kast-indexer/lib")
+    into("idea-home/plugins/kast-indexer/lib") {
+        from(indexerPluginRuntime)
+        from(
+            extractedIdeaDistributionDirectory.file(
+                "plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar",
+            ),
+        )
     }
     dependsOn("syncRuntimeLibs")
     dependsOn(extractIdeaDistribution)

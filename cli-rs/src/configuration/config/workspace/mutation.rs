@@ -73,6 +73,7 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec::positive("server.requestTimeoutMillis"),
     ConfigFieldSpec::positive("server.maxConcurrentRequests"),
     ConfigFieldSpec::new("indexer.hostCommand", ConfigValueType::String),
+    ConfigFieldSpec::positive("indexer.maxHeapMegabytes"),
     ConfigFieldSpec::new("codex.hooks.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.sessionStart", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.postToolUse", ConfigValueType::Boolean),

@@ -207,7 +207,7 @@ internal class SqliteSourceIndexStoreState(
                     stmt.execute("PRAGMA busy_timeout=5000")
                     stmt.execute("PRAGMA cache_size=-64000")
                     stmt.execute("PRAGMA mmap_size=268435456")
-                    stmt.execute("PRAGMA temp_store=MEMORY")
+                    stmt.execute("PRAGMA temp_store=FILE")
                     stmt.execute("PRAGMA foreign_keys=ON")
                 }
                 when (val attachment = repositoryOverlay.attachBase(conn)) {
