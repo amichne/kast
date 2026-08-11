@@ -15,6 +15,8 @@ import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
+import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -36,12 +38,12 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `initial reconciliation audits unobserved VFS state before indexing`() {
+    fun `initial reconciliation reuses the imported Gradle model`() {
         val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
         val refreshedSignals = mutableListOf<Set<WorkspaceSignal>>()
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = stableBuildInputs,
+            initialProjectModelAuthority = readyInitialProjectModel(stableBuildInputs),
             resolveBuildSemanticInputIdentity = { stableBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = WorkspaceEventWakeup(),
@@ -64,7 +66,42 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         worker.run()
 
         assertEquals(
-            listOf(setOf(WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic)),
+            listOf(setOf(WorkspaceSignal.InitialProjectModel)),
+            refreshedSignals,
+        )
+    }
+
+    @Test
+    fun `initial reconciliation refreshes Gradle when build inputs moved after bootstrap`() {
+        val importedBuildInputs = BuildSemanticInputIdentity("imported-build-inputs")
+        val movedBuildInputs = BuildSemanticInputIdentity("moved-build-inputs")
+        val refreshedSignals = mutableListOf<Set<WorkspaceSignal>>()
+        val worker = WorkspaceTransitionWorker(
+            initialConfig = KastConfig.defaults(),
+            initialProjectModelAuthority = readyInitialProjectModel(importedBuildInputs),
+            resolveBuildSemanticInputIdentity = { movedBuildInputs },
+            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+            eventWakeup = WorkspaceEventWakeup(),
+            refreshWorkspace = refreshedSignals::add,
+            loadLiveConfig = { it },
+            captureCandidate = { _, buildInputs ->
+                unmanagedCandidate(WorkspaceStateIdentity("initial-${buildInputs.value}"))
+            },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
+            waitForNextPass = { false },
+            isCancelled = { false },
+            onConfigFallback = {},
+            onCompleted = {},
+            onFailure = { throw it },
+            onTransition = {},
+        )
+
+        worker.requestInitialReconciliation()
+        worker.run()
+
+        assertEquals(
+            listOf(setOf(WorkspaceSignal.InitialProjectModel, WorkspaceSignal.BuildSemantic)),
             refreshedSignals,
         )
     }
@@ -87,7 +124,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val failures = mutableListOf<Throwable>()
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = stableBuildInputs,
+            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
             resolveBuildSemanticInputIdentity = { stableBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = WorkspaceEventWakeup(),
@@ -130,7 +167,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val failures = mutableListOf<Throwable>()
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = stableBuildInputs,
+            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
             resolveBuildSemanticInputIdentity = { stableBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = WorkspaceEventWakeup(),
@@ -211,7 +248,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val waits = mutableListOf<Long>()
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = stableBuildInputs,
+            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
             resolveBuildSemanticInputIdentity = { stableBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = eventWakeup,
@@ -281,7 +318,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val waitCount = AtomicInteger()
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = stableBuildInputs,
+            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
             resolveBuildSemanticInputIdentity = { stableBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = eventWakeup,
@@ -356,7 +393,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val publications = mutableListOf<WorkspaceStateIdentity>()
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = importedBuildInputs,
+            initialProjectModelAuthority = stableInitialProjectModel(importedBuildInputs),
             resolveBuildSemanticInputIdentity = { currentBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = WorkspaceEventWakeup(),
@@ -400,6 +437,9 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         git(repository, "commit", "-m", "initial")
         return repository
     }
+
+    private fun stableInitialProjectModel(identity: BuildSemanticInputIdentity): InitialProjectModelAuthority =
+        readyInitialProjectModel(identity)
 
     private fun git(directory: Path, vararg arguments: String) {
         runGitCommand(directory, *arguments)

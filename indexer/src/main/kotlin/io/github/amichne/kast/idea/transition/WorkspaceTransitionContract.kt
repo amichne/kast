@@ -29,6 +29,8 @@ internal enum class WorkspaceLifecycle {
 }
 
 internal enum class WorkspaceSignal {
+    /** Initial reconciliation over the compiler-ready project model imported before worker construction. */
+    InitialProjectModel,
     Source,
     BuildSemantic,
     Configuration,

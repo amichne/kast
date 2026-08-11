@@ -16,6 +16,7 @@ import io.github.amichne.kast.api.client.fields.PathsLogsDir
 import io.github.amichne.kast.api.client.fields.PathsSocketDir
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreAccess
 import java.nio.file.Files
@@ -76,6 +77,7 @@ class IndexerServerRuntimeTest {
             config = config,
             registrationProof = null,
             runtimeInstanceId = runtimeInstanceId,
+            initialProjectModelAuthority = InitialProjectModelAuthority.Unverified,
         ).use { runtime ->
             assertEquals("indexer", runtime.backend.capabilities().backendName)
             assertEquals("indexer", runtime.backend.runtimeStatus().backendName)

@@ -8,6 +8,7 @@ import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import java.lang.reflect.Proxy
@@ -19,7 +20,7 @@ internal object WorkspaceTransitionSnapshotPublicationScenario {
         val completed = mutableListOf<CompletedWorkspaceReconciliation>()
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = buildInputs,
+            initialProjectModelAuthority = readyInitialProjectModel(buildInputs),
             resolveBuildSemanticInputIdentity = { buildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = WorkspaceEventWakeup(),

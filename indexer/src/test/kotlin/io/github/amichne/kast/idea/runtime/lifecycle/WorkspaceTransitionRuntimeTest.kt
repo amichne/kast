@@ -1,17 +1,34 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.newvfs.NewVirtualFile
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
+import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
+import io.github.amichne.kast.idea.transition.CompilerSourceRootAuthorities
+import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.idea.transition.IdeaCompilerVisibleSourceIdentityResolver
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
+import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
@@ -22,6 +39,8 @@ class WorkspaceTransitionRuntimeTest {
     companion object {
         private val projectFixture: TestFixture<Project> = projectFixture()
     }
+
+    private val moduleFixture: TestFixture<Module> = projectFixture.moduleFixture("refresh-scope")
 
     @TempDir
     lateinit var tempDir: Path
@@ -39,6 +58,14 @@ class WorkspaceTransitionRuntimeTest {
         assertEquals(
             WorkspaceRefreshPlan.ObservedVfs,
             workspaceRefreshPlan(setOf(WorkspaceSignal.Configuration)),
+        )
+        assertEquals(
+            WorkspaceRefreshPlan.GlobalVfs,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.InitialProjectModel)),
+        )
+        assertEquals(
+            WorkspaceRefreshPlan.GlobalVfsThenGradle,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.InitialProjectModel, WorkspaceSignal.BuildSemantic)),
         )
         assertEquals(
             WorkspaceRefreshPlan.GlobalVfsThenGradle,
@@ -61,7 +88,127 @@ class WorkspaceTransitionRuntimeTest {
     }
 
     @Test
-    fun `buffered source event cannot bypass initial recovery audit`() {
+    fun `VFS refresh scope retains every external authority and removes nested scans`() {
+        val buildRoot = tempDir.resolve("build-root").toAbsolutePath().normalize()
+        val workspaceRoot = buildRoot.resolve("modules/app")
+        val externalSource = tempDir.resolve("external-source")
+        val externalClasspath = tempDir.resolve("artifacts/compiler-plugin.jar")
+        val workspaceConfigDirectory = tempDir.resolve("workspace-state")
+        val globalConfigDirectory = tempDir.resolve("global-state")
+        val scope = WorkspaceVfsObservationScope(
+            workspaceRoot = workspaceRoot,
+            buildSemanticRoot = buildRoot,
+            configurationFiles = setOf(
+                workspaceConfigDirectory.resolve("config.toml"),
+                globalConfigDirectory.resolve("config.toml"),
+            ),
+            compilerSourceRoots = { setOf(buildRoot.resolve("shared-source"), externalSource) },
+            classpathRoots = { setOf(externalClasspath) },
+        )
+
+        assertEquals(
+            setOf(buildRoot, externalSource, externalClasspath, workspaceConfigDirectory, globalConfigDirectory),
+            WorkspaceVfsRefreshScope.from(scope).roots,
+        )
+    }
+
+    @Test
+    fun `configured unresolved source root remains a refresh authority`() {
+        val externalSourceRoot = tempDir.resolve("external-configured-source").toAbsolutePath().normalize()
+        val module = moduleFixture.get()
+        ApplicationManager.getApplication().invokeAndWait {
+            ApplicationManager.getApplication().runWriteAction {
+                ModuleRootModificationUtil.updateModel(module) { model ->
+                    model.addContentEntry(VfsUtilCore.pathToUrl(externalSourceRoot.parent.toString()))
+                        .addSourceFolder(VfsUtilCore.pathToUrl(externalSourceRoot.toString()), false)
+                }
+            }
+        }
+
+        assertTrue(Files.notExists(externalSourceRoot))
+        assertFalse(externalSourceRoot in IdeaCompilerVisibleSourceIdentityResolver.sourceRoots(projectFixture.get()))
+        assertTrue(externalSourceRoot in CompilerSourceRootAuthorities.from(projectFixture.get()).roots)
+    }
+
+    @Test
+    fun `workspace VFS refresh applies a watcher-backed descendant change`() {
+        val diskRoot = tempDir.resolve("watcher-backed-change")
+        Files.createDirectories(diskRoot)
+        val virtualRoot = checkNotNull(
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(diskRoot),
+        ) as NewVirtualFile
+        assertTrue(virtualRoot.children.isEmpty())
+        val created = diskRoot.resolve("NewSource.kt")
+        Files.writeString(created, "class NewSource")
+        virtualRoot.markDirty()
+        assertNull(LocalFileSystem.getInstance().findFileByPathIfCached(created.toString()))
+        val scope = WorkspaceVfsRefreshScope.from(
+            WorkspaceVfsObservationScope(
+                workspaceRoot = diskRoot,
+                configurationFiles = emptySet(),
+            ),
+        )
+
+        refreshWorkspaceVfs(CoordinatedVfsRefreshAuthority(), scope)
+
+        assertNotNull(LocalFileSystem.getInstance().findFileByPathIfCached(created.toString()))
+    }
+
+    @Test
+    fun `initial project model applies watcher dirty state before reconciliation`() {
+        val diskRoot = tempDir.resolve("initial-watcher-change")
+        Files.createDirectories(diskRoot)
+        val virtualRoot = checkNotNull(
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(diskRoot),
+        ) as NewVirtualFile
+        val created = diskRoot.resolve("BeforeObserver.kt")
+        Files.writeString(created, "class BeforeObserver")
+        virtualRoot.markDirty()
+        assertNull(LocalFileSystem.getInstance().findFileByPathIfCached(created.toString()))
+        val project = projectFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, diskRoot)
+        val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity).also { it.ensureSchema() }
+        val buildInputs = BuildSemanticInputIdentity("stable-initial-build")
+        val scope = WorkspaceVfsObservationScope(
+            workspaceRoot = diskRoot,
+            configurationFiles = emptySet(),
+        )
+        val refreshAuthority = CoordinatedVfsRefreshAuthority()
+        val indexing = KastIdeaProjectIndexing(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            config = KastConfig.defaults(),
+            indexStore = store,
+            semanticAdmission = readyAdmission(project),
+            initialProjectModelAuthority = readyInitialProjectModel(buildInputs),
+            workspaceVfsObservationScope = scope,
+            observeWorkspaceEvents = { _, _, _ -> AutoCloseable {} },
+            refreshWorkspace = { _, _, signals ->
+                assertEquals(setOf(WorkspaceSignal.InitialProjectModel), signals)
+                refreshWorkspaceVfs(refreshAuthority, WorkspaceVfsRefreshScope.from(scope))
+            },
+            runProjectIndexing = { _, _ -> },
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
+            waitForNextPass = { false },
+            resolveWorkspaceStateIdentity = {
+                assertNotNull(LocalFileSystem.getInstance().findFileByPathIfCached(created.toString()))
+                WorkspaceStateIdentity("fresh-initial-state")
+            },
+            resolveBuildSemanticInputIdentity = { buildInputs },
+        )
+
+        try {
+            indexing.start()
+            indexing.awaitTermination()
+        } finally {
+            indexing.cancel()
+            store.close()
+        }
+    }
+
+    @Test
+    fun `buffered source event cannot bypass initial project model reconciliation`() {
         val project = projectFixture.get()
         waitUntilIndexesAreReady(project)
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, tempDir.resolve("buffered-source"))
@@ -73,6 +220,7 @@ class WorkspaceTransitionRuntimeTest {
             config = KastConfig.defaults(),
             indexStore = store,
             semanticAdmission = readyAdmission(project),
+            initialProjectModelAuthority = readyInitialProjectModel(BuildSemanticInputIdentity("stable")),
             observeWorkspaceEvents = { _, _, observer ->
                 observer(WorkspaceSignal.Source)
                 AutoCloseable {}
@@ -82,6 +230,7 @@ class WorkspaceTransitionRuntimeTest {
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             waitForNextPass = { false },
             resolveWorkspaceStateIdentity = { WorkspaceStateIdentity("stable") },
+            resolveBuildSemanticInputIdentity = { BuildSemanticInputIdentity("stable") },
         )
 
         try {
@@ -89,7 +238,7 @@ class WorkspaceTransitionRuntimeTest {
             indexing.awaitTermination()
 
             assertEquals(
-                listOf(setOf(WorkspaceSignal.Source, WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic)),
+                listOf(setOf(WorkspaceSignal.Source, WorkspaceSignal.InitialProjectModel)),
                 refreshedSignals,
             )
         } finally {

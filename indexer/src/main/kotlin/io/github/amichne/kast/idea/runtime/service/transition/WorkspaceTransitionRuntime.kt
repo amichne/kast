@@ -1,17 +1,53 @@
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFileManager
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
+import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridge
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 internal val RECOVERY_AUDIT_DELAY: Duration = Duration.ofMinutes(5)
+
+internal class WorkspaceVfsRefreshScope private constructor(
+    val roots: Set<Path>,
+) {
+    companion object {
+        /**
+         * Proof transition: `WorkspaceVfsObservationScope -> WorkspaceVfsRefreshScope`.
+         *
+         * Establishes that every filesystem authority capable of changing the
+         * workspace's semantic identity is covered by one minimal recursive
+         * refresh root. Nested authorities are removed without discarding their
+         * coverage. Raw compiler and classpath root providers are extracted only
+         * at this transition boundary; [WorkspaceVfsRefreshScope.roots] may be
+         * extracted only at the [LocalFileSystem] refresh boundary.
+         */
+        fun from(scope: WorkspaceVfsObservationScope): WorkspaceVfsRefreshScope {
+            val candidates = buildSet {
+                add(scope.workspaceRoot)
+                add(scope.buildSemanticRoot)
+                scope.configurationFiles.mapNotNullTo(this) { path -> path.parent }
+                addAll(scope.compilerSourceRoots())
+                addAll(scope.classpathRoots())
+            }.mapTo(linkedSetOf()) { path -> path.toAbsolutePath().normalize() }
+            val minimalRoots = candidates
+                .sortedWith(compareBy<Path>({ it.nameCount }, Path::toString))
+                .filterTo(linkedSetOf()) { candidate ->
+                    candidates.none { other ->
+                        other != candidate &&
+                            other.nameCount < candidate.nameCount &&
+                            candidate.startsWith(other)
+                    }
+                }
+            return WorkspaceVfsRefreshScope(minimalRoots)
+        }
+    }
+}
 
 internal sealed interface WorkspaceRefreshPlan {
     data object ObservedVfs : WorkspaceRefreshPlan
@@ -27,20 +63,27 @@ internal sealed interface WorkspaceRefreshPlan {
  * Proof transition: `Set<WorkspaceSignal> -> WorkspaceRefreshPlan`.
  *
  * Establishes the exact refresh authority carried by already-observed VFS
- * signals. Explicit source refresh and recovery retain global VFS discovery
- * authority. Signals whose only production ingress is the VFS observer reuse
- * that proof, and build-semantic observation requests Gradle model refresh.
- * Raw signal membership is interpreted only at this transition boundary.
+ * signals. Explicit source refresh and recovery apply IntelliJ-tracked changes
+ * recursively across every scoped filesystem authority that can affect
+ * workspace semantics, rather than scanning every VFS root registered in the
+ * process or forcing clean roots dirty. Signals whose only production ingress
+ * is the VFS observer reuse that proof, and build-semantic observation requests
+ * Gradle model refresh. Raw signal membership is interpreted only at this
+ * transition boundary.
  */
 internal fun workspaceRefreshPlan(
     signals: Set<WorkspaceSignal>,
 ): WorkspaceRefreshPlan = when {
     WorkspaceSignal.RecoveryAudit in signals -> WorkspaceRefreshPlan.GlobalVfsThenGradle
+    WorkspaceSignal.InitialProjectModel in signals && WorkspaceSignal.BuildSemantic in signals ->
+        WorkspaceRefreshPlan.GlobalVfsThenGradle
     WorkspaceSignal.Source in signals && WorkspaceSignal.BuildSemantic in signals ->
         WorkspaceRefreshPlan.GlobalVfsThenGradle
     WorkspaceSignal.RecoveryProbe in signals && WorkspaceSignal.BuildSemantic in signals ->
         WorkspaceRefreshPlan.GlobalVfsThenGradle
-    WorkspaceSignal.Source in signals || WorkspaceSignal.RecoveryProbe in signals -> WorkspaceRefreshPlan.GlobalVfs
+    WorkspaceSignal.Source in signals ||
+        WorkspaceSignal.RecoveryProbe in signals ||
+        WorkspaceSignal.InitialProjectModel in signals -> WorkspaceRefreshPlan.GlobalVfs
     WorkspaceSignal.BuildSemantic in signals -> WorkspaceRefreshPlan.ObservedVfsThenGradle
     else -> WorkspaceRefreshPlan.ObservedVfs
 }
@@ -50,24 +93,32 @@ internal fun refreshWorkspaceModels(
     gradleBuildRoot: Path,
     signals: Set<WorkspaceSignal>,
     vfsRefreshAuthority: CoordinatedVfsRefreshAuthority,
+    vfsObservationScope: WorkspaceVfsObservationScope,
 ) {
     when (workspaceRefreshPlan(signals)) {
         WorkspaceRefreshPlan.ObservedVfs -> Unit
         WorkspaceRefreshPlan.ObservedVfsThenGradle -> refreshGradleModel(project, gradleBuildRoot)
-        WorkspaceRefreshPlan.GlobalVfs -> refreshGlobalVfs(vfsRefreshAuthority)
+        WorkspaceRefreshPlan.GlobalVfs -> refreshWorkspaceVfs(
+            vfsRefreshAuthority,
+            WorkspaceVfsRefreshScope.from(vfsObservationScope),
+        )
         WorkspaceRefreshPlan.GlobalVfsThenGradle -> {
-            refreshGlobalVfs(vfsRefreshAuthority)
+            refreshWorkspaceVfs(
+                vfsRefreshAuthority,
+                WorkspaceVfsRefreshScope.from(vfsObservationScope),
+            )
             refreshGradleModel(project, gradleBuildRoot)
         }
     }
     GradleProjectImportBridge.awaitGradleModelSettlement(project)
 }
 
-private fun refreshGlobalVfs(authority: CoordinatedVfsRefreshAuthority) {
+internal fun refreshWorkspaceVfs(
+    authority: CoordinatedVfsRefreshAuthority,
+    scope: WorkspaceVfsRefreshScope,
+) {
     authority.runGlobalRefresh {
-        ApplicationManager.getApplication().invokeAndWait {
-            VirtualFileManager.getInstance().syncRefresh()
-        }
+        LocalFileSystem.getInstance().refreshNioFiles(scope.roots, false, true) {}
     }
 }
 

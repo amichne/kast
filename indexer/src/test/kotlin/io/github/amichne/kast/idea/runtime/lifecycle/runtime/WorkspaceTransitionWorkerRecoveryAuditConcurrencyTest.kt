@@ -9,6 +9,8 @@ import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
+import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
@@ -41,7 +43,7 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
         var waitCount = 0
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = buildInputs,
+            initialProjectModelAuthority = stableInitialProjectModel(buildInputs),
             resolveBuildSemanticInputIdentity = { buildInputs },
             semanticAdmission = admission,
             eventWakeup = WorkspaceEventWakeup(),
@@ -103,7 +105,7 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
         val publication = TestWorkspaceGenerationPublication(initial)
         val worker = WorkspaceTransitionWorker(
             initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = buildInputs,
+            initialProjectModelAuthority = stableInitialProjectModel(buildInputs),
             resolveBuildSemanticInputIdentity = { buildInputs },
             semanticAdmission = admission,
             eventWakeup = WorkspaceEventWakeup(),
@@ -153,3 +155,6 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
         }
     } as Project
 }
+
+private fun stableInitialProjectModel(identity: BuildSemanticInputIdentity): InitialProjectModelAuthority =
+    readyInitialProjectModel(identity)

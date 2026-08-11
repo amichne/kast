@@ -7,6 +7,9 @@ import io.github.amichne.kast.indexer.gradle.settlement.GradleModelReadiness
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementEvidence
 import io.github.amichne.kast.indexer.project.IdeaIndexState
 import io.github.amichne.kast.indexer.project.ProjectLifecycleState
+import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.indexer.project.WorkspaceKind
+import java.nio.file.Path
 import java.lang.reflect.Proxy
 import java.time.Duration
 
@@ -58,3 +61,19 @@ internal fun projectStub(): Project =
             else -> null
         }
     } as Project
+
+internal fun readyInitialProjectModel(identity: BuildSemanticInputIdentity): InitialProjectModelAuthority {
+    val bootstrap = GradleProjectBootstrap(
+        configureGradleImport = {},
+        waitForProjectModel = { settlementEvidence() },
+        inspectProjectModel = { modelReadiness(moduleNames = listOf(":app")) },
+        canLinkGradleProject = { _, _ -> true },
+        hasLinkedGradleProject = { _, _ -> true },
+        captureBuildSemanticInputIdentity = { _, _ -> identity },
+    )
+    return bootstrap.bootstrapProject(
+        project = projectStub(),
+        workspaceRoot = Path.of("/test-workspace"),
+        workspaceKind = WorkspaceKind.GRADLE,
+    ).initialProjectModelAuthority
+}
