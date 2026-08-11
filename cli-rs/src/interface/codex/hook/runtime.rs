@@ -206,31 +206,74 @@ fn diagnostics_args(workspace: &Path, path: &str) -> [OsString; 8] {
     ]
 }
 
+use crate::bundle::{AGENT_CLI_BUNDLE_PATH, CONTROL_CLI_BUNDLE_PATH};
+
+enum HookKastCommand<'a> {
+    PublicUp(PathBuf, &'a Path),
+    Control(PathBuf, &'a [OsString]),
+}
+
+fn route_hook_command(control: PathBuf, args: &[OsString]) -> Result<HookKastCommand<'_>> {
+    match args.get(2).and_then(|argument| argument.to_str()) {
+        Some("up") => {
+            if args.len() != 5
+                || args[0] != "--output"
+                || args[1] != "json"
+                || args[3] != "--workspace-root"
+                || !Path::new(&args[4]).is_absolute()
+            {
+                return Err(CliError::new(
+                    "CODEX_HOOK_COMMAND_ROUTE_UNSUPPORTED",
+                    "Kast SessionStart requires an exact absolute workspace for public `up`.",
+                ));
+            }
+            let public = control
+                .parent()
+                .and_then(Path::parent)
+                .filter(|_| control.is_absolute() && control.ends_with(CONTROL_CLI_BUNDLE_PATH))
+                .map(|root| root.join(AGENT_CLI_BUNDLE_PATH))
+                .filter(|path| path.is_file())
+                .ok_or_else(|| {
+                    CliError::new(
+                        "CODEX_HOOK_PUBLIC_ENTRYPOINT_UNAVAILABLE",
+                        format!("Kast SessionStart public entrypoint is unavailable for {}.", control.display()),
+                    )
+                })?;
+            Ok(HookKastCommand::PublicUp(public, Path::new(&args[4])))
+        }
+        Some("status" | "agent") => Ok(HookKastCommand::Control(control, args)),
+        _ => Err(CliError::new(
+            "CODEX_HOOK_COMMAND_ROUTE_UNSUPPORTED",
+            "The Kast hook requested an unknown public or control operation.",
+        )),
+    }
+}
+
 fn run_kast(args: &[OsString]) -> Result<String> {
-    let binary = std::env::current_exe()?;
-    let output = Command::new(&binary).args(args).output()?;
+    let command = route_hook_command(std::env::current_exe()?, args)?;
+    let (binary, routed_args) = match command {
+        HookKastCommand::PublicUp(binary, workspace) => {
+            Command::new(binary)
+                .args(&args[..3])
+                .current_dir(workspace)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()?;
+            return Ok(String::new());
+        }
+        HookKastCommand::Control(binary, args) => (binary, args),
+    };
+    let output = Command::new(&binary).args(routed_args).output()?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if output.status.success() {
         return Ok(stdout);
     }
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     let message = if stderr.is_empty() { stdout } else { stderr };
-    let mut error = CliError::new(
+    Err(CliError::new(
         "CODEX_HOOK_COMMAND_FAILED",
-        format!(
-            "{} exited with {}: {message}",
-            binary.display(),
-            output.status
-        ),
-    );
-    error.details.insert(
-        "command".to_string(),
-        args.iter()
-            .map(|argument| argument.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(" "),
-    );
-    Err(error)
+        format!("{} {routed_args:?} exited with {}: {message}", binary.display(), output.status),
+    ))
 }
 
 fn advisory_result(label: &str, result: Result<String>) -> String {

@@ -269,3 +269,120 @@ fn session_activation_requires_provider_and_resource_root_identity() {
     );
     assert_copilot_tool_blocked(&denied, "resource-root identity is required");
 }
+
+#[test]
+fn codex_session_start_routes_up_through_public_entrypoint() {
+    let fixture = tempfile::tempdir().expect("temporary Codex SessionStart fixture");
+    let workspace = fixture.path().join("workspace");
+    fs::create_dir(&workspace).expect("create workspace");
+    fs::write(workspace.join("settings.gradle.kts"), "").expect("write workspace marker");
+
+    let provider_bin = fixture.path().join("provider-bin");
+    fs::create_dir(&provider_bin).expect("create provider bin directory");
+    write_provider(&provider_bin.join("codex"));
+    let mut path_entries = vec![provider_bin];
+    path_entries.extend(std::env::split_paths(
+        &std::env::var_os("PATH").unwrap_or_else(|| OsString::from("/usr/bin:/bin")),
+    ));
+
+    let kast_home = fixture.path().join("kast");
+    let install = kast()
+        .args(["__internal", "resources", "install", "--harness", "codex"])
+        .env(
+            "PATH",
+            std::env::join_paths(path_entries).expect("provider PATH"),
+        )
+        .env("HOME", fixture.path().join("home"))
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_PROVIDER_LOG", fixture.path().join("providers.log"))
+        .output()
+        .expect("materialize Codex resources");
+    assert!(
+        install.status.success(),
+        "Codex resource install: {install:?}"
+    );
+
+    install_control_binary(&kast_home);
+    let canonical_workspace = fs::canonicalize(&workspace).expect("canonical workspace");
+    let public_invocation = fixture.path().join("public-invocation");
+    let plugin_root = installed_plugin_root(&kast_home, "codex");
+    let command = hook_command(
+        &plugin_root,
+        "hooks/hooks.json",
+        "/hooks/SessionStart/0/hooks/0/command",
+    );
+    let unavailable = run_hook(
+        &command,
+        &workspace,
+        &kast_home,
+        &plugin_root,
+        session_start_input(&workspace),
+    );
+    let unavailable: serde_json::Value =
+        serde_json::from_slice(&unavailable.stdout).expect("parse unavailable entrypoint response");
+    assert!(
+        unavailable
+            .pointer("/hookSpecificOutput/additionalContext")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|context| context.contains("CODEX_HOOK_PUBLIC_ENTRYPOINT_UNAVAILABLE")),
+        "missing typed unavailable entrypoint response: {unavailable}",
+    );
+
+    let public_binary = kast_home.join("current/bin/kast");
+    fs::create_dir_all(public_binary.parent().expect("public binary parent"))
+        .expect("create public binary parent");
+    fs::write(
+        &public_binary,
+        format!(
+            r#"#!/usr/bin/env bash
+set -euo pipefail
+test "$#" -eq 3
+test "$1" = "--output"
+test "$2" = "json"
+test "$3" = "up"
+test "$(pwd -P)" = "{}"
+printf 'started\n' > "{}"
+sleep 5
+printf '%s\n' '{{"status":"ready"}}'
+"#,
+            canonical_workspace.display(),
+            public_invocation.display(),
+        ),
+    )
+    .expect("write public Kast test double");
+    fs::set_permissions(&public_binary, fs::Permissions::from_mode(0o755))
+        .expect("make public Kast test double executable");
+
+    let started = std::time::Instant::now();
+    let output = run_hook(
+        &command,
+        &workspace,
+        &kast_home,
+        &plugin_root,
+        session_start_input(&workspace),
+    );
+
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(2),
+        "SessionStart waited for public semantic readiness",
+    );
+    for _ in 0..100 {
+        if public_invocation.is_file() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(
+        public_invocation.is_file(),
+        "public `kast up` was not launched"
+    );
+    assert!(
+        output.status.success(),
+        "Codex SessionStart hook: {output:?}"
+    );
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&output.stdout)
+            .expect("parse Codex SessionStart response"),
+        serde_json::json!({}),
+    );
+}
