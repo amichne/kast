@@ -36,6 +36,40 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
     lateinit var tempDir: Path
 
     @Test
+    fun `initial reconciliation audits unobserved VFS state before indexing`() {
+        val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
+        val refreshedSignals = mutableListOf<Set<WorkspaceSignal>>()
+        val worker = WorkspaceTransitionWorker(
+            initialConfig = KastConfig.defaults(),
+            initialModelBuildSemanticIdentity = stableBuildInputs,
+            resolveBuildSemanticInputIdentity = { stableBuildInputs },
+            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+            eventWakeup = WorkspaceEventWakeup(),
+            refreshWorkspace = refreshedSignals::add,
+            loadLiveConfig = { it },
+            captureCandidate = { _, _ ->
+                unmanagedCandidate(WorkspaceStateIdentity("initial-workspace"))
+            },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
+            waitForNextPass = { false },
+            isCancelled = { false },
+            onConfigFallback = {},
+            onCompleted = {},
+            onFailure = { throw it },
+            onTransition = {},
+        )
+
+        worker.requestInitialReconciliation()
+        worker.run()
+
+        assertEquals(
+            listOf(setOf(WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic)),
+            refreshedSignals,
+        )
+    }
+
+    @Test
     fun `missing linked-worktree Git directory does not block reconciliation`() {
         val repository = committedRepository()
         val workspace = tempDir.resolve("broken-linked-worktree")

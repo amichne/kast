@@ -27,29 +27,41 @@ class WorkspaceTransitionRuntimeTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `recovery probe skips Gradle while explicit recovery audit forces it`() {
+    fun `refresh plan preserves discovery and avoids duplicate observed VFS refresh`() {
         assertEquals(
-            WorkspaceModelRefreshRequirement.VfsOnly,
-            workspaceModelRefreshRequirement(setOf(WorkspaceSignal.RecoveryProbe)),
+            WorkspaceRefreshPlan.GlobalVfs,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.RecoveryProbe)),
         )
         assertEquals(
-            WorkspaceModelRefreshRequirement.Gradle,
-            workspaceModelRefreshRequirement(setOf(WorkspaceSignal.RecoveryAudit)),
+            WorkspaceRefreshPlan.GlobalVfs,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.Source)),
         )
         assertEquals(
-            WorkspaceModelRefreshRequirement.Gradle,
-            workspaceModelRefreshRequirement(setOf(WorkspaceSignal.BuildSemantic)),
+            WorkspaceRefreshPlan.ObservedVfs,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.Configuration)),
         )
         assertEquals(
-            WorkspaceModelRefreshRequirement.Gradle,
-            workspaceModelRefreshRequirement(
+            WorkspaceRefreshPlan.GlobalVfsThenGradle,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.RecoveryAudit)),
+        )
+        assertEquals(
+            WorkspaceRefreshPlan.ObservedVfsThenGradle,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.BuildSemantic)),
+        )
+        assertEquals(
+            WorkspaceRefreshPlan.GlobalVfsThenGradle,
+            workspaceRefreshPlan(
                 setOf(WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic),
             ),
+        )
+        assertEquals(
+            WorkspaceRefreshPlan.GlobalVfsThenGradle,
+            workspaceRefreshPlan(setOf(WorkspaceSignal.Source, WorkspaceSignal.BuildSemantic)),
         )
     }
 
     @Test
-    fun `buffered source event cannot bypass initial build semantic refresh`() {
+    fun `buffered source event cannot bypass initial recovery audit`() {
         val project = projectFixture.get()
         waitUntilIndexesAreReady(project)
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, tempDir.resolve("buffered-source"))
@@ -76,7 +88,10 @@ class WorkspaceTransitionRuntimeTest {
             indexing.start()
             indexing.awaitTermination()
 
-            assertEquals(listOf(setOf(WorkspaceSignal.Source, WorkspaceSignal.BuildSemantic)), refreshedSignals)
+            assertEquals(
+                listOf(setOf(WorkspaceSignal.Source, WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic)),
+                refreshedSignals,
+            )
         } finally {
             indexing.cancel()
             store.close()
@@ -142,7 +157,7 @@ class WorkspaceTransitionRuntimeTest {
             },
             refreshWorkspace = { _, _, _ ->
                 if (refreshPass.incrementAndGet() == 1) {
-                    observed.get().invoke(WorkspaceSignal.Source)
+                    observed.get().invoke(WorkspaceSignal.BuildSemantic)
                 }
             },
             runProjectIndexing = { _, _ -> },

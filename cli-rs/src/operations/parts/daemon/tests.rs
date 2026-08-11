@@ -3,17 +3,34 @@ mod tests {
     use super::*;
     use std::io::Write;
     #[cfg(target_os = "macos")]
-    fn write_kotlin_jps_fixture(path: &Path) {
+    fn write_jar_fixture(path: &Path, entry_names: &[&str]) {
         let file = fs::File::create(path).expect("Kotlin JPS fixture");
         let mut archive = zip::ZipWriter::new(file);
-        archive
-            .start_file(
-                "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
-                zip::write::SimpleFileOptions::default(),
-            )
-            .expect("Kotlin builder entry");
-        archive.write_all(b"fixture").expect("Kotlin builder bytes");
+        for entry_name in entry_names {
+            archive
+                .start_file(*entry_name, zip::write::SimpleFileOptions::default())
+                .expect("jar fixture entry");
+            archive.write_all(b"fixture").expect("jar fixture bytes");
+        }
         archive.finish().expect("Kotlin JPS archive");
+    }
+
+    #[cfg(target_os = "macos")]
+    fn write_installed_kotlin_jps_fixture(idea_home: &Path) -> PathBuf {
+        let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+        fs::create_dir_all(kotlin_jps.parent().expect("Kotlin JPS directory"))
+            .expect("Kotlin JPS directory");
+        write_jar_fixture(
+            &kotlin_jps,
+            &["org/jetbrains/kotlin/jps/build/KotlinBuilder.class"],
+        );
+        let compiler_common =
+            idea_home.join("plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar");
+        write_jar_fixture(
+            &compiler_common,
+            &["org/jetbrains/kotlin/cli/common/arguments/Freezable.class"],
+        );
+        kotlin_jps
     }
 
     #[test]
@@ -197,6 +214,7 @@ mod tests {
         std::fs::create_dir_all(boot_jar.parent().unwrap()).unwrap();
         std::fs::write(&java, "fixture").unwrap();
         std::fs::write(&boot_jar, "fixture").unwrap();
+        write_installed_kotlin_jps_fixture(&contents);
         std::fs::write(
             resources.join("product-info.json"),
             serde_json::to_vec(&serde_json::json!({
@@ -223,8 +241,10 @@ mod tests {
             .install_root
             .join("current/lib/backends/indexer/current/idea-home/plugins/kast-indexer/lib");
         std::fs::create_dir_all(&payload).unwrap();
-        std::fs::write(payload.join("kast-indexer.jar"), "fixture").unwrap();
-        write_kotlin_jps_fixture(&payload.join("kotlin-jps-plugin.jar"));
+        write_jar_fixture(
+            &payload.join("kast-indexer.jar"),
+            &["io/github/amichne/kast/idea/IndexerServerRuntime.class"],
+        );
         let args = DaemonStartArgs {
             workspace_root: Some(workspace.clone()),
             runtime_libs_dir: None,
@@ -290,11 +310,42 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
+    fn installed_idea_preflight_rejects_platform_kotlin_class_in_renamed_payload_jar() {
+        let temp = tempfile::tempdir().unwrap();
+        let payload_plugin = temp.path().join("kast-indexer");
+        let idea_home = temp.path().join("idea-home");
+        write_installed_kotlin_jps_fixture(&idea_home);
+        let renamed_payload_jar = payload_plugin.join("lib/renamed-support.jar");
+        std::fs::create_dir_all(renamed_payload_jar.parent().unwrap()).unwrap();
+        write_jar_fixture(
+            &renamed_payload_jar,
+            &["org/jetbrains/kotlin/cli/common/arguments/Freezable.class"],
+        );
+
+        let error = preflight_installed_idea_semantic_runtime(
+            &payload_plugin,
+            &idea_home,
+            &temp.path().join("idea-system"),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "INDEXER_DEPENDENCY_CONFLICT");
+        assert!(error.message.contains("classloader"));
+        assert!(error.message.contains("renamed-support.jar"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
     fn installed_idea_preflight_rejects_missing_kotlin_jps_dependency() {
         let temp = tempfile::tempdir().unwrap();
+        let payload_plugin = temp.path().join("kast-indexer");
+        std::fs::create_dir_all(payload_plugin.join("lib")).unwrap();
         let error = preflight_installed_idea_semantic_runtime(
-            &temp.path().join("kast-indexer"), &temp.path().join("idea-system"),
-        ).unwrap_err();
+            &payload_plugin,
+            &temp.path().join("idea-home"),
+            &temp.path().join("idea-system"),
+        )
+        .unwrap_err();
         assert_eq!(error.code, "INDEXER_DEPENDENCY_UNAVAILABLE");
         assert!(error.message.contains("kotlin-jps-plugin"));
     }
@@ -304,12 +355,17 @@ mod tests {
     fn installed_idea_preflight_rejects_truncated_kotlin_jps_dependency() {
         let temp = tempfile::tempdir().unwrap();
         let payload_plugin = temp.path().join("kast-indexer");
-        let kotlin_jps = payload_plugin.join("lib/kotlin-jps-plugin.jar");
+        let idea_home = temp.path().join("idea-home");
+        let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+        std::fs::create_dir_all(payload_plugin.join("lib")).unwrap();
         std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
         std::fs::write(&kotlin_jps, b"PK\x03\x04fixture").unwrap();
         let error = preflight_installed_idea_semantic_runtime(
-            &payload_plugin, &temp.path().join("idea-system"),
-        ).unwrap_err();
+            &payload_plugin,
+            &idea_home,
+            &temp.path().join("idea-system"),
+        )
+        .unwrap_err();
 
         assert_eq!(error.code, "INDEXER_DEPENDENCY_INVALID");
         assert!(error.message.contains(&kotlin_jps.display().to_string()));
@@ -317,18 +373,51 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
+    fn installed_idea_preflight_rejects_missing_freezable_in_host_plugin() {
+        let temp = tempfile::tempdir().unwrap();
+        let payload_plugin = temp.path().join("kast-indexer");
+        let idea_home = temp.path().join("idea-home");
+        let kotlin_jps = idea_home.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+        let compiler_common =
+            idea_home.join("plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar");
+        std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(payload_plugin.join("lib")).unwrap();
+        write_jar_fixture(
+            &kotlin_jps,
+            &["org/jetbrains/kotlin/jps/build/KotlinBuilder.class"],
+        );
+        write_jar_fixture(&compiler_common, &["fixture/Unrelated.class"]);
+
+        let error = preflight_installed_idea_semantic_runtime(
+            &payload_plugin,
+            &idea_home,
+            &temp.path().join("idea-system"),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "INDEXER_DEPENDENCY_INVALID");
+        assert!(error.message.contains(&compiler_common.display().to_string()));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
     fn installed_idea_preflight_rejects_corrupt_plugin_cache() {
         let temp = tempfile::tempdir().unwrap();
         let payload_plugin = temp.path().join("kast-indexer");
+        let idea_home = temp.path().join("idea-home");
         let idea_system = temp.path().join("idea-system");
-        let kotlin_jps = payload_plugin.join("lib/kotlin-jps-plugin.jar");
         let cache = idea_system.join("plugins/pluginsXMLIds.json");
-        std::fs::create_dir_all(kotlin_jps.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(payload_plugin.join("lib")).unwrap();
         std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-        write_kotlin_jps_fixture(&kotlin_jps);
+        write_installed_kotlin_jps_fixture(&idea_home);
         std::fs::write(&cache, "not-json").unwrap();
 
-        let error = preflight_installed_idea_semantic_runtime(&payload_plugin, &idea_system).unwrap_err();
+        let error = preflight_installed_idea_semantic_runtime(
+            &payload_plugin,
+            &idea_home,
+            &idea_system,
+        )
+        .unwrap_err();
 
         assert_eq!(error.code, "INDEXER_CACHE_INVALID");
         assert!(error.message.contains(&cache.display().to_string()));

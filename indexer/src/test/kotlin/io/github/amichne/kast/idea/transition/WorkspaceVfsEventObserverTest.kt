@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
@@ -28,12 +29,14 @@ class WorkspaceVfsEventObserverTest {
         val dependencyLock = virtualFile(root.resolve("gradle.lockfile"))
         val workspaceMetadata = virtualFile(root.resolve(".idea/workspace.xml"))
         val observed = mutableListOf<WorkspaceSignal>()
+        val refreshAuthority = CoordinatedVfsRefreshAuthority()
         val observer = WorkspaceVfsEventObserver.subscribe(
             project = projectFixture.get(),
             scope = WorkspaceVfsObservationScope(
                 workspaceRoot = root,
                 configurationFiles = emptySet(),
             ),
+            refreshAuthority = refreshAuthority,
             observed = observed::add,
         )
 
@@ -52,6 +55,40 @@ class WorkspaceVfsEventObserverTest {
                 listOf(WorkspaceSignal.SemanticEnvironment, WorkspaceSignal.BuildSemantic),
                 observed,
             )
+
+            observed.clear()
+            refreshAuthority.runGlobalRefresh {
+                projectFixture.get().messageBus
+                    .syncPublisher(VirtualFileManager.VFS_CHANGES_BG)
+                    .after(listOf(contentChange(dependencyLock, fromRefresh = true)))
+            }
+            assertEquals(emptyList<WorkspaceSignal>(), observed)
+
+            refreshAuthority.runGlobalRefresh {
+                projectFixture.get().messageBus
+                    .syncPublisher(VirtualFileManager.VFS_CHANGES_BG)
+                    .after(listOf(contentChange(dependencyLock)))
+            }
+            assertEquals(listOf(WorkspaceSignal.BuildSemantic), observed)
+
+            observed.clear()
+            refreshAuthority.runGlobalRefresh {
+                projectFixture.get().messageBus
+                    .syncPublisher(VirtualFileManager.VFS_CHANGES_BG)
+                    .after(
+                        listOf(
+                            contentChange(dependencyLock, fromRefresh = true),
+                            contentChange(dependencyLock),
+                        ),
+                    )
+            }
+            assertEquals(listOf(WorkspaceSignal.BuildSemantic), observed)
+
+            observed.clear()
+            projectFixture.get().messageBus
+                .syncPublisher(VirtualFileManager.VFS_CHANGES_BG)
+                .after(listOf(contentChange(dependencyLock, fromRefresh = true)))
+            assertEquals(listOf(WorkspaceSignal.BuildSemantic), observed)
         } finally {
             observer.close()
         }
@@ -64,6 +101,14 @@ class WorkspaceVfsEventObserverTest {
         checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file))
     }
 
-    private fun contentChange(file: com.intellij.openapi.vfs.VirtualFile): VFileContentChangeEvent =
-        VFileContentChangeEvent(this, file, file.modificationStamp, file.modificationStamp + 1)
+    private fun contentChange(
+        file: com.intellij.openapi.vfs.VirtualFile,
+        fromRefresh: Boolean = false,
+    ): VFileContentChangeEvent =
+        VFileContentChangeEvent(
+            if (fromRefresh) VFileEvent.REFRESH_REQUESTOR else this,
+            file,
+            file.modificationStamp,
+            file.modificationStamp + 1,
+        )
 }

@@ -23,6 +23,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
 import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
+import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -53,12 +54,16 @@ internal class KastIdeaProjectIndexing(
         workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("config.toml"),
         kastConfigHome().resolve("config.toml"),
     ),
+    private val vfsRefreshAuthority: CoordinatedVfsRefreshAuthority = CoordinatedVfsRefreshAuthority(),
     private val observeWorkspaceEvents:
         (Project, WorkspaceVfsObservationScope, (WorkspaceSignal) -> Unit) -> AutoCloseable =
         { observedProject, observedScope, observed ->
-            WorkspaceVfsEventObserver.subscribe(observedProject, observedScope, observed)
+            WorkspaceVfsEventObserver.subscribe(observedProject, observedScope, vfsRefreshAuthority, observed)
         },
-    private val refreshWorkspace: (Project, Path, Set<WorkspaceSignal>) -> Unit = ::refreshWorkspaceModels,
+    private val refreshWorkspace: (Project, Path, Set<WorkspaceSignal>) -> Unit =
+        { refreshedProject, refreshRoot, signals ->
+            refreshWorkspaceModels(refreshedProject, refreshRoot, signals, vfsRefreshAuthority)
+        },
     private val resolveWorkspaceStateIdentity: (() -> WorkspaceStateIdentity)? = null,
     private val resolveBuildSemanticInputIdentity: (() -> BuildSemanticInputIdentity)? = null,
     private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),

@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridge
 import java.nio.file.Path
 import java.time.Duration
@@ -12,35 +13,68 @@ import java.util.concurrent.CompletableFuture
 
 internal val RECOVERY_AUDIT_DELAY: Duration = Duration.ofMinutes(5)
 
-internal enum class WorkspaceModelRefreshRequirement {
-    VfsOnly,
-    Gradle,
+internal sealed interface WorkspaceRefreshPlan {
+    data object ObservedVfs : WorkspaceRefreshPlan
+
+    data object ObservedVfsThenGradle : WorkspaceRefreshPlan
+
+    data object GlobalVfs : WorkspaceRefreshPlan
+
+    data object GlobalVfsThenGradle : WorkspaceRefreshPlan
 }
 
-internal fun workspaceModelRefreshRequirement(
+/**
+ * Proof transition: `Set<WorkspaceSignal> -> WorkspaceRefreshPlan`.
+ *
+ * Establishes the exact refresh authority carried by already-observed VFS
+ * signals. Explicit source refresh and recovery retain global VFS discovery
+ * authority. Signals whose only production ingress is the VFS observer reuse
+ * that proof, and build-semantic observation requests Gradle model refresh.
+ * Raw signal membership is interpreted only at this transition boundary.
+ */
+internal fun workspaceRefreshPlan(
     signals: Set<WorkspaceSignal>,
-): WorkspaceModelRefreshRequirement = if (
-    WorkspaceSignal.BuildSemantic in signals || WorkspaceSignal.RecoveryAudit in signals
-) {
-    WorkspaceModelRefreshRequirement.Gradle
-} else {
-    WorkspaceModelRefreshRequirement.VfsOnly
+): WorkspaceRefreshPlan = when {
+    WorkspaceSignal.RecoveryAudit in signals -> WorkspaceRefreshPlan.GlobalVfsThenGradle
+    WorkspaceSignal.Source in signals && WorkspaceSignal.BuildSemantic in signals ->
+        WorkspaceRefreshPlan.GlobalVfsThenGradle
+    WorkspaceSignal.RecoveryProbe in signals && WorkspaceSignal.BuildSemantic in signals ->
+        WorkspaceRefreshPlan.GlobalVfsThenGradle
+    WorkspaceSignal.Source in signals || WorkspaceSignal.RecoveryProbe in signals -> WorkspaceRefreshPlan.GlobalVfs
+    WorkspaceSignal.BuildSemantic in signals -> WorkspaceRefreshPlan.ObservedVfsThenGradle
+    else -> WorkspaceRefreshPlan.ObservedVfs
 }
 
 internal fun refreshWorkspaceModels(
     project: Project,
     gradleBuildRoot: Path,
     signals: Set<WorkspaceSignal>,
+    vfsRefreshAuthority: CoordinatedVfsRefreshAuthority,
 ) {
-    ApplicationManager.getApplication().invokeAndWait {
-        VirtualFileManager.getInstance().syncRefresh()
-    }
-    if (workspaceModelRefreshRequirement(signals) == WorkspaceModelRefreshRequirement.Gradle) {
-        val refresh = CompletableFuture<Void>()
-        IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, gradleBuildRoot, refresh)
-        GradleProjectImportBridge.awaitGradleRefresh(project, refresh)
+    when (workspaceRefreshPlan(signals)) {
+        WorkspaceRefreshPlan.ObservedVfs -> Unit
+        WorkspaceRefreshPlan.ObservedVfsThenGradle -> refreshGradleModel(project, gradleBuildRoot)
+        WorkspaceRefreshPlan.GlobalVfs -> refreshGlobalVfs(vfsRefreshAuthority)
+        WorkspaceRefreshPlan.GlobalVfsThenGradle -> {
+            refreshGlobalVfs(vfsRefreshAuthority)
+            refreshGradleModel(project, gradleBuildRoot)
+        }
     }
     GradleProjectImportBridge.awaitGradleModelSettlement(project)
+}
+
+private fun refreshGlobalVfs(authority: CoordinatedVfsRefreshAuthority) {
+    authority.runGlobalRefresh {
+        ApplicationManager.getApplication().invokeAndWait {
+            VirtualFileManager.getInstance().syncRefresh()
+        }
+    }
+}
+
+private fun refreshGradleModel(project: Project, gradleBuildRoot: Path) {
+    val refresh = CompletableFuture<Void>()
+    IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, gradleBuildRoot, refresh)
+    GradleProjectImportBridge.awaitGradleRefresh(project, refresh)
 }
 
 @JvmInline

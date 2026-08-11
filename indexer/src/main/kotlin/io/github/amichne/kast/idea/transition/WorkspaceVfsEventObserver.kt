@@ -7,6 +7,82 @@ import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
+
+internal sealed interface WorkspaceVfsSignalAdmission {
+    data class Required(val signal: WorkspaceSignal) : WorkspaceVfsSignalAdmission
+
+    data object SubsumedByGlobalRefresh : WorkspaceVfsSignalAdmission
+}
+
+internal sealed interface WorkspaceVfsEventOrigin {
+    data object Refresh : WorkspaceVfsEventOrigin
+
+    data object ExternalOrProgrammatic : WorkspaceVfsEventOrigin
+
+    companion object {
+        /**
+         * Boundary transition: `VFileEvent -> WorkspaceVfsEventOrigin`.
+         *
+         * Preserves IntelliJ's refresh-origin provenance as a closed domain
+         * state. Raw [VFileEvent.isFromRefresh] extraction is permitted only
+         * at this VFS observer boundary.
+         */
+        fun from(event: VFileEvent): WorkspaceVfsEventOrigin =
+            if (event.isFromRefresh) Refresh else ExternalOrProgrammatic
+    }
+}
+
+internal data class WorkspaceVfsSignalObservation(
+    val signal: WorkspaceSignal,
+    val origin: WorkspaceVfsEventOrigin,
+)
+
+private data class WorkspaceVfsPathObservation(
+    val path: Path,
+    val origin: WorkspaceVfsEventOrigin,
+)
+
+internal class CoordinatedVfsRefreshAuthority {
+    private val activeGlobalRefreshes = AtomicInteger()
+
+    /**
+     * Proof transition: `WorkspaceVfsSignalObservation -> WorkspaceVfsSignalAdmission`.
+     *
+     * Establishes whether the signal requires a later transition or was
+     * refresh-originated and delivered while the coordinated global refresh
+     * was already making that VFS state current. The closed admission result
+     * preserves non-refresh events as required work. Raw atomic refresh state
+     * is interpreted only at this observer boundary.
+     */
+    fun admit(observation: WorkspaceVfsSignalObservation): WorkspaceVfsSignalAdmission =
+        if (
+            activeGlobalRefreshes.get() > 0 &&
+            observation.origin == WorkspaceVfsEventOrigin.Refresh
+        ) {
+            WorkspaceVfsSignalAdmission.SubsumedByGlobalRefresh
+        } else {
+            WorkspaceVfsSignalAdmission.Required(observation.signal)
+        }
+
+    /**
+     * Runs [effect] inside the coordinated global-VFS effect scope.
+     *
+     * This is an effect boundary, not a validation transition. It provides the
+     * temporal authority consumed by [admit]; refresh-origin provenance remains
+     * a separate requirement before any observation can be subsumed.
+     */
+    fun <T> runGlobalRefresh(effect: () -> T): T {
+        activeGlobalRefreshes.incrementAndGet()
+        return try {
+            effect()
+        } finally {
+            check(activeGlobalRefreshes.decrementAndGet() >= 0) {
+                "Coordinated global VFS refresh authority underflowed"
+            }
+        }
+    }
+}
 
 internal class WorkspaceVfsObservationScope(
     workspaceRoot: Path,
@@ -101,6 +177,7 @@ internal class WorkspaceVfsEventObserver private constructor(
         fun subscribe(
             project: Project,
             scope: WorkspaceVfsObservationScope,
+            refreshAuthority: CoordinatedVfsRefreshAuthority = CoordinatedVfsRefreshAuthority(),
             observed: (WorkspaceSignal) -> Unit,
         ): WorkspaceVfsEventObserver {
             val classifier = WorkspaceVfsSignalClassifier(scope)
@@ -110,8 +187,22 @@ internal class WorkspaceVfsEventObserver private constructor(
                 object : BulkFileListenerBackgroundable {
                     override fun after(events: List<VFileEvent>) {
                         events.asSequence()
-                            .flatMap(VFileEvent::affectedPaths)
-                            .mapNotNull(classifier::classify)
+                            .flatMap { event ->
+                                val origin = WorkspaceVfsEventOrigin.from(event)
+                                event.affectedPaths().map { path -> WorkspaceVfsPathObservation(path, origin) }
+                            }
+                            .mapNotNull { observation ->
+                                classifier.classify(observation.path)?.let { signal ->
+                                    WorkspaceVfsSignalObservation(signal, observation.origin)
+                                }
+                            }
+                            .map(refreshAuthority::admit)
+                            .mapNotNull { admission ->
+                                when (admission) {
+                                    is WorkspaceVfsSignalAdmission.Required -> admission.signal
+                                    WorkspaceVfsSignalAdmission.SubsumedByGlobalRefresh -> null
+                                }
+                            }
                             .distinct()
                             .forEach(observed)
                     }

@@ -42,6 +42,10 @@ fn semantic_demand_launches_an_isolated_sidecar_from_a_supported_installed_idea(
     std::fs::create_dir_all(contents.join("Resources")).expect("resources");
     std::fs::create_dir_all(contents.join("bin")).expect("bin");
     std::fs::create_dir_all(contents.join("lib")).expect("lib");
+    let kotlin_jps = contents.join("plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar");
+    let compiler_common = contents.join("plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar");
+    std::fs::create_dir_all(kotlin_jps.parent().expect("Kotlin JPS directory"))
+        .expect("Kotlin JPS directory");
     std::fs::create_dir_all(java.parent().expect("JBR bin")).expect("JBR");
     std::fs::write(contents.join("Resources/build.txt"), "IU-262.1\n").expect("build");
     std::fs::write(contents.join("lib/platform-loader.jar"), b"fixture").expect("boot jar");
@@ -73,12 +77,18 @@ fn semantic_demand_launches_an_isolated_sidecar_from_a_supported_installed_idea(
     std::os::unix::fs::symlink("/bin/zsh", &java).expect("fake native JBR");
     std::fs::create_dir_all(sidecar_home.join("plugins/kast-indexer/lib"))
         .expect("sidecar payload");
-    std::fs::write(
-        sidecar_home.join("plugins/kast-indexer/lib/kast-indexer.jar"),
-        b"fixture",
-    )
-    .expect("sidecar jar");
-    write_kotlin_jps_fixture(&sidecar_home.join("plugins/kast-indexer/lib/kotlin-jps-plugin.jar"));
+    write_jar_fixture(
+        &sidecar_home.join("plugins/kast-indexer/lib/kast-indexer.jar"),
+        &["io/github/amichne/kast/idea/IndexerServerRuntime.class"],
+    );
+    write_jar_fixture(
+        &kotlin_jps,
+        &["org/jetbrains/kotlin/jps/build/KotlinBuilder.class"],
+    );
+    write_jar_fixture(
+        &compiler_common,
+        &["org/jetbrains/kotlin/cli/common/arguments/Freezable.class"],
+    );
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::write(
         config_home.join("config.toml"),
@@ -305,17 +315,16 @@ fn toml_path(path: &Path) -> String {
         .replace('"', "\\\"")
 }
 
-fn write_kotlin_jps_fixture(path: &Path) {
+fn write_jar_fixture(path: &Path, entry_names: &[&str]) {
     use std::io::Write as _;
 
     let file = std::fs::File::create(path).expect("Kotlin JPS fixture");
     let mut archive = zip::ZipWriter::new(file);
-    archive
-        .start_file(
-            "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
-            zip::write::SimpleFileOptions::default(),
-        )
-        .expect("Kotlin builder entry");
-    archive.write_all(b"fixture").expect("Kotlin builder bytes");
+    for entry_name in entry_names {
+        archive
+            .start_file(*entry_name, zip::write::SimpleFileOptions::default())
+            .expect("jar fixture entry");
+        archive.write_all(b"fixture").expect("jar fixture bytes");
+    }
     archive.finish().expect("Kotlin JPS archive");
 }

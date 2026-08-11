@@ -220,7 +220,7 @@ internal class WorkspaceTransitionWorker(
 
     fun requestInitialReconciliation() {
         semanticAdmission.dirty("initial workspace reconciliation is required")
-        coordinator.observe(WorkspaceSignal.BuildSemantic)
+        coordinator.observe(WorkspaceSignal.RecoveryAudit)
     }
 
     fun run() {

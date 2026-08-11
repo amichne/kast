@@ -17,9 +17,11 @@ import kotlin.io.path.name
 abstract class VerifyClasspathLayoutTask : DefaultTask() {
     init {
         forbiddenRuntimeJarPrefixes.convention(emptyList())
+        forbiddenPluginClassEntries.convention(emptyList())
         requiredRuntimeClassEntries.convention(emptyList())
         requiredPluginJarPrefixes.convention(emptyList())
         requiredPluginClassEntries.convention(emptyList())
+        requiredPlatformPluginClassEntries.convention(emptyList())
         allowedPluginDescriptorJarPrefixes.convention(emptyList())
         forbiddenPortableDistJarSuffixes.convention(emptyList())
     }
@@ -36,6 +38,10 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val pluginLibsDirectory: DirectoryProperty
 
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val platformPluginLibsDirectory: DirectoryProperty
+
     @get:Optional
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -45,6 +51,9 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
     abstract val forbiddenRuntimeJarPrefixes: ListProperty<String>
 
     @get:Input
+    abstract val forbiddenPluginClassEntries: ListProperty<String>
+
+    @get:Input
     abstract val requiredRuntimeClassEntries: ListProperty<String>
 
     @get:Input
@@ -52,6 +61,9 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
 
     @get:Input
     abstract val requiredPluginClassEntries: ListProperty<String>
+
+    @get:Input
+    abstract val requiredPlatformPluginClassEntries: ListProperty<String>
 
     @get:Input
     abstract val allowedPluginDescriptorJarPrefixes: ListProperty<String>
@@ -104,6 +116,20 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         val pluginLibsPath = pluginLibsDirectory.get().asFile.toPath()
         val pluginClasspathEntries = jarEntries(pluginLibsPath)
 
+        when (
+            val ownership = PluginPayloadOwnershipCheck.derive(
+                pluginLibsPath,
+                pluginClasspathEntries,
+                forbiddenPluginClassEntries.get(),
+            )
+        ) {
+            PluginPayloadOwnershipCheck.Owned -> Unit
+            is PluginPayloadOwnershipCheck.Conflicting -> throw GradleException(
+                "Indexer payload must not include platform-plugin-owned Kotlin classes: " +
+                    ownership.jarNames.joinToString(),
+            )
+        }
+
         val forbiddenPluginDescriptors = RuntimeClasspathAssertions.entriesContainingJarEntry(
             runtimeLibsDirectory = pluginLibsPath,
             classpathEntries = pluginClasspathEntries,
@@ -140,6 +166,20 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
                     missingPluginClasses.joinToString(),
             )
         }
+
+        val platformPluginLibsPath = platformPluginLibsDirectory.get().asFile.toPath()
+        val platformPluginClasspathEntries = jarEntriesRecursively(platformPluginLibsPath)
+        val missingPlatformPluginClasses = RuntimeClasspathAssertions.missingRequiredClassEntries(
+            runtimeLibsDirectory = platformPluginLibsPath,
+            classpathEntries = platformPluginClasspathEntries,
+            requiredClassEntries = requiredPlatformPluginClassEntries.get(),
+        )
+        if (missingPlatformPluginClasses.isNotEmpty()) {
+            throw GradleException(
+                "IntelliJ Kotlin plugin is missing required platform-owned classes: " +
+                    missingPlatformPluginClasses.joinToString(),
+            )
+        }
     }
 
     private fun classpathEntries(classpathPath: Path): List<String> {
@@ -162,6 +202,52 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
                 .filter { it.endsWith(".jar") }
                 .sorted()
                 .toList()
+        }
+    }
+
+    private fun jarEntriesRecursively(directory: Path): List<String> {
+        if (!Files.isDirectory(directory)) {
+            throw GradleException("IntelliJ platform plugin directory is missing: $directory")
+        }
+        return Files.walk(directory).use { paths ->
+            paths
+                .filter(Files::isRegularFile)
+                .filter { path -> path.name.endsWith(".jar") }
+                .map { path -> directory.relativize(path).joinToString("/") }
+                .sorted()
+                .toList()
+        }
+    }
+}
+
+private sealed interface PluginPayloadOwnershipCheck {
+    data object Owned : PluginPayloadOwnershipCheck
+
+    data class Conflicting(val jarNames: List<String>) : PluginPayloadOwnershipCheck
+
+    companion object {
+        /**
+         * Proof transition:
+         * `(Path, plugin jar names, forbidden platform class entries) -> PluginPayloadOwnershipCheck`.
+         *
+         * [Owned] proves that the private Kast plugin payload does not contain
+         * a configured class identity assigned to an IntelliJ platform plugin
+         * classloader, independent of the containing jar's filename.
+         * [Conflicting] is the closed expected failure and retains the exact
+         * conflicting boundary names for extraction only by the Gradle failure
+         * renderer.
+         */
+        fun derive(
+            pluginLibsDirectory: Path,
+            pluginJarNames: List<String>,
+            forbiddenPlatformClassEntries: List<String>,
+        ): PluginPayloadOwnershipCheck {
+            val conflicting = RuntimeClasspathAssertions.entriesContainingAnyJarEntry(
+                runtimeLibsDirectory = pluginLibsDirectory,
+                classpathEntries = pluginJarNames,
+                jarEntries = forbiddenPlatformClassEntries,
+            )
+            return if (conflicting.isEmpty()) Owned else Conflicting(conflicting)
         }
     }
 }
