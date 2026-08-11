@@ -20,7 +20,7 @@ reject_text() {
   [[ "$haystack" != *"$needle"* ]] || die "$message"
 }
 
-repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../../.." && pwd -P)"
 publisher="$repo_root/scripts/release/publish-performance-increment.sh"
 [[ -x "$publisher" ]] || die 'publisher is missing or not executable'
 bash -n "$publisher" || die 'publisher has invalid Bash syntax'

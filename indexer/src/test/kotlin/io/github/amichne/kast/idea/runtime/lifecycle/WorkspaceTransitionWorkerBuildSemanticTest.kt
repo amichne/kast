@@ -15,7 +15,6 @@ import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
-import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -41,25 +40,10 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
     fun `initial reconciliation reuses the imported Gradle model`() {
         val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
         val refreshedSignals = mutableListOf<Set<WorkspaceSignal>>()
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialProjectModelAuthority = readyInitialProjectModel(stableBuildInputs),
-            resolveBuildSemanticInputIdentity = { stableBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
-            eventWakeup = WorkspaceEventWakeup(),
+        val worker = worker(
+            importedBuildInputs = stableBuildInputs,
             refreshWorkspace = refreshedSignals::add,
-            loadLiveConfig = { it },
-            captureCandidate = { _, _ ->
-                unmanagedCandidate(WorkspaceStateIdentity("initial-workspace"))
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
-            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
-            waitForNextPass = { false },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
-            onFailure = { throw it },
-            onTransition = {},
+            candidateIdentity = { WorkspaceStateIdentity("initial-workspace") },
         )
 
         worker.requestInitialReconciliation()
@@ -76,25 +60,11 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val importedBuildInputs = BuildSemanticInputIdentity("imported-build-inputs")
         val movedBuildInputs = BuildSemanticInputIdentity("moved-build-inputs")
         val refreshedSignals = mutableListOf<Set<WorkspaceSignal>>()
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialProjectModelAuthority = readyInitialProjectModel(importedBuildInputs),
-            resolveBuildSemanticInputIdentity = { movedBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
-            eventWakeup = WorkspaceEventWakeup(),
+        val worker = worker(
+            importedBuildInputs = importedBuildInputs,
+            currentBuildInputs = movedBuildInputs,
             refreshWorkspace = refreshedSignals::add,
-            loadLiveConfig = { it },
-            captureCandidate = { _, buildInputs ->
-                unmanagedCandidate(WorkspaceStateIdentity("initial-${buildInputs.value}"))
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
-            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
-            waitForNextPass = { false },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
-            onFailure = { throw it },
-            onTransition = {},
+            candidateIdentity = { WorkspaceStateIdentity("initial-${it.value}") },
         )
 
         worker.requestInitialReconciliation()
@@ -122,26 +92,12 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
         val publications = mutableListOf<WorkspaceStateIdentity>()
         val failures = mutableListOf<Throwable>()
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
-            resolveBuildSemanticInputIdentity = { stableBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
-            eventWakeup = WorkspaceEventWakeup(),
+        val worker = worker(
+            importedBuildInputs = stableBuildInputs,
             gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace, registrationProof),
-            refreshWorkspace = {},
-            loadLiveConfig = { it },
-            captureCandidate = { _, _ ->
-                unmanagedCandidate(WorkspaceStateIdentity("workspace-without-linked-git-directory"))
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+            candidateIdentity = { WorkspaceStateIdentity("workspace-without-linked-git-directory") },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
-            waitForNextPass = { false },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
             onFailure = failures::add,
-            onTransition = {},
         )
 
         worker.observe(WorkspaceSignal.GitWorktree)
@@ -165,26 +121,12 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
         val publications = mutableListOf<WorkspaceStateIdentity>()
         val failures = mutableListOf<Throwable>()
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
-            resolveBuildSemanticInputIdentity = { stableBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
-            eventWakeup = WorkspaceEventWakeup(),
+        val worker = worker(
+            importedBuildInputs = stableBuildInputs,
             gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace),
-            refreshWorkspace = {},
-            loadLiveConfig = { it },
-            captureCandidate = { _, _ ->
-                unmanagedCandidate(WorkspaceStateIdentity("unavailable-git-directory"))
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+            candidateIdentity = { WorkspaceStateIdentity("unavailable-git-directory") },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
-            waitForNextPass = { false },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
             onFailure = failures::add,
-            onTransition = {},
         )
 
         worker.observe(WorkspaceSignal.GitWorktree)
@@ -246,19 +188,11 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             }
         }
         val waits = mutableListOf<Long>()
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
-            resolveBuildSemanticInputIdentity = { stableBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+        val worker = worker(
+            importedBuildInputs = stableBuildInputs,
             eventWakeup = eventWakeup,
             gitWorktreeTransitionGuard = GitWorktreeTransitionGuard(transition::get),
-            refreshWorkspace = {},
-            loadLiveConfig = { it },
-            captureCandidate = { _, _ ->
-                unmanagedCandidate(WorkspaceStateIdentity("final-checkout-state"))
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+            candidateIdentity = { WorkspaceStateIdentity("final-checkout-state") },
             workspaceGenerationPublication = publication,
             waitForNextPass = { delayMillis ->
                 waits += delayMillis
@@ -270,11 +204,6 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
                     false
                 }
             },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
-            onFailure = { throw it },
-            onTransition = {},
         )
 
         worker.observe(WorkspaceSignal.GitWorktree)
@@ -316,19 +245,12 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val releaseSecondRetry = CountDownLatch(1)
         val waits = CopyOnWriteArrayList<Long>()
         val waitCount = AtomicInteger()
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialProjectModelAuthority = stableInitialProjectModel(stableBuildInputs),
-            resolveBuildSemanticInputIdentity = { stableBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+        val worker = worker(
+            importedBuildInputs = stableBuildInputs,
             eventWakeup = eventWakeup,
             gitWorktreeTransitionGuard = GitWorktreeTransitionGuard(transition::get),
             refreshWorkspace = refreshedSignals::add,
-            loadLiveConfig = { it },
-            captureCandidate = { _, _ ->
-                unmanagedCandidate(WorkspaceStateIdentity("final-checkout-state"))
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+            candidateIdentity = { WorkspaceStateIdentity("final-checkout-state") },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
             waitForNextPass = { delayMillis ->
                 waits += delayMillis
@@ -346,11 +268,6 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
                     else -> false
                 }
             },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
-            onFailure = { throw it },
-            onTransition = {},
         )
 
         fun stream(signal: WorkspaceSignal) {
@@ -365,7 +282,6 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             repeat(1_000) { stream(WorkspaceSignal.Source) }
             releaseFirstRetry.countDown()
             assertTrue(secondRetry.await(1, TimeUnit.SECONDS), "quiet checkout gap did not request another retry")
-
             assertTrue(publications.isEmpty(), "an intermediate checkout state became current")
             assertTrue(refreshedSignals.isEmpty(), "an active checkout reached refresh")
 
@@ -391,25 +307,12 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val currentBuildInputs = BuildSemanticInputIdentity("changed-build-inputs")
         val refreshedSignals = mutableListOf<Set<WorkspaceSignal>>()
         val publications = mutableListOf<WorkspaceStateIdentity>()
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialProjectModelAuthority = stableInitialProjectModel(importedBuildInputs),
-            resolveBuildSemanticInputIdentity = { currentBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
-            eventWakeup = WorkspaceEventWakeup(),
+        val worker = worker(
+            importedBuildInputs = importedBuildInputs,
+            currentBuildInputs = currentBuildInputs,
             refreshWorkspace = refreshedSignals::add,
-            loadLiveConfig = { it },
-            captureCandidate = { _, buildInputs ->
-                unmanagedCandidate(WorkspaceStateIdentity("state-${buildInputs.value}"))
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+            candidateIdentity = { WorkspaceStateIdentity("state-${it.value}") },
             workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
-            waitForNextPass = { false },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
-            onFailure = { throw it },
-            onTransition = {},
         )
 
         worker.observe(WorkspaceSignal.Source)
@@ -427,6 +330,36 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         WorkspaceTransitionSnapshotPublicationScenario.verify()
     }
 
+    private fun worker(
+        importedBuildInputs: BuildSemanticInputIdentity,
+        currentBuildInputs: BuildSemanticInputIdentity = importedBuildInputs,
+        eventWakeup: WorkspaceEventWakeup = WorkspaceEventWakeup(),
+        gitWorktreeTransitionGuard: GitWorktreeTransitionGuard = GitWorktreeTransitionGuard.stable(),
+        refreshWorkspace: (Set<WorkspaceSignal>) -> Unit = {},
+        candidateIdentity: (BuildSemanticInputIdentity) -> WorkspaceStateIdentity,
+        workspaceGenerationPublication: WorkspaceGenerationPublication = TestWorkspaceGenerationPublication(),
+        waitForNextPass: (Long) -> Boolean = { false },
+        onFailure: (Throwable) -> Unit = { throw it },
+    ) = WorkspaceTransitionWorker(
+        initialConfig = KastConfig.defaults(),
+        initialProjectModelAuthority = readyInitialProjectModel(importedBuildInputs),
+        resolveBuildSemanticInputIdentity = { currentBuildInputs },
+        semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+        eventWakeup = eventWakeup,
+        gitWorktreeTransitionGuard = gitWorktreeTransitionGuard,
+        refreshWorkspace = refreshWorkspace,
+        loadLiveConfig = { it },
+        captureCandidate = { _, buildInputs -> unmanagedCandidate(candidateIdentity(buildInputs)) },
+        runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), GraphLaneOutcome.Committed) },
+        workspaceGenerationPublication = workspaceGenerationPublication,
+        waitForNextPass = waitForNextPass,
+        isCancelled = { false },
+        onConfigFallback = {},
+        onCompleted = {},
+        onFailure = onFailure,
+        onTransition = {},
+    )
+
     private fun committedRepository(): Path {
         val repository = tempDir.resolve("repository").also(Files::createDirectories)
         git(repository, "init")
@@ -437,9 +370,6 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         git(repository, "commit", "-m", "initial")
         return repository
     }
-
-    private fun stableInitialProjectModel(identity: BuildSemanticInputIdentity): InitialProjectModelAuthority =
-        readyInitialProjectModel(identity)
 
     private fun git(directory: Path, vararg arguments: String) {
         runGitCommand(directory, *arguments)
