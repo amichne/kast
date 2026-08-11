@@ -305,6 +305,10 @@ val indexerPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.class",
     "io/github/amichne/kast/shared/analysis/PsiReferenceScanner.class",
     "io/github/amichne/kast/idea/IndexerServerRuntime.class",
+)
+
+val platformKotlinPluginOwnedClassEntries = listOf(
+    "org/jetbrains/kotlin/cli/common/arguments/Freezable.class",
     "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
 )
 
@@ -329,11 +333,6 @@ tasks.named<Sync>("syncPortableDist") {
     }
     into("idea-home/plugins/kast-indexer/lib") {
         from(indexerPluginRuntime)
-        from(
-            extractedIdeaDistributionDirectory.file(
-                "plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar",
-            ),
-        )
     }
     dependsOn("syncRuntimeLibs")
     dependsOn(extractIdeaDistribution)
@@ -349,17 +348,23 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
     val pluginLibsDirectory = portableDistDirectory.map {
         it.dir("idea-home/plugins/kast-indexer/lib")
     }
+    val platformPluginLibsDirectory = portableDistDirectory.map {
+        it.dir("idea-home/plugins/Kotlin/lib")
+    }
     this.portableDistDirectory.set(portableDistDirectory)
     this.runtimeLibsDirectory.set(runtimeLibsDirectory)
     runtimeClasspathFile.set(runtimeLibsDirectory.map { it.file("classpath.txt") })
     this.pluginLibsDirectory.set(pluginLibsDirectory)
+    this.platformPluginLibsDirectory.set(platformPluginLibsDirectory)
     forbiddenPortableDistJarSuffixes.set(listOf("-all.jar"))
     forbiddenRuntimeJarPrefixes.set(
         indexerPluginRuntimeJarPrefixes + "indexer-${project.version}-plugin",
     )
+    forbiddenPluginClassEntries.set(platformKotlinPluginOwnedClassEntries)
     requiredRuntimeClassEntries.set(indexerRuntimeRequiredClassEntries)
     requiredPluginJarPrefixes.set(indexerPluginRuntimeJarPrefixes + "indexer-")
     requiredPluginClassEntries.set(indexerPluginRequiredClassEntries)
+    requiredPlatformPluginClassEntries.set(platformKotlinPluginOwnedClassEntries)
     allowedPluginDescriptorJarPrefixes.set(listOf("indexer-"))
 }
 

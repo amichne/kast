@@ -5,6 +5,8 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.vfs.StandardFileSystems
+import com.intellij.openapi.vfs.VfsUtilCore
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.idea.IdeaWorkspaceModuleIdentity
@@ -18,6 +20,34 @@ internal value class CompilerVisibleSourceIdentity private constructor(val value
     companion object {
         fun hash(records: Iterable<String>): CompilerVisibleSourceIdentity =
             CompilerVisibleSourceIdentity(FileHashing.sha256(records.joinToString("\n")))
+    }
+}
+
+@JvmInline
+internal value class CompilerSourceRootAuthorities private constructor(val roots: Set<Path>) {
+    companion object {
+        /**
+         * Proof transition: `Project -> CompilerSourceRootAuthorities`.
+         *
+         * Establishes the complete set of local compiler source-root authorities
+         * configured in IntelliJ module models, including roots whose directories
+         * do not yet exist and therefore have no `VirtualFile`. Non-local VFS
+         * protocols are outside this filesystem authority. Raw [Path] values may
+         * be extracted only at the [WorkspaceVfsObservationScope] boundary.
+         */
+        fun from(project: Project): CompilerSourceRootAuthorities =
+            CompilerSourceRootAuthorities(
+                ApplicationManager.getApplication().runReadAction<Set<Path>> {
+                    ModuleManager.getInstance(project).modules
+                        .asSequence()
+                        .filterNot(Module::isDisposed)
+                        .flatMap { module ->
+                            ModuleRootManager.getInstance(module).sourceRootUrls.asSequence()
+                        }
+                        .mapNotNull(::localConfiguredSourceRootPath)
+                        .toCollection(linkedSetOf())
+                },
+            )
     }
 }
 
@@ -113,6 +143,12 @@ internal object IdeaCompilerVisibleSourceIdentityResolver {
     private fun record(vararg fields: String): String = buildString {
         fields.forEach { field -> append(field.length).append(':').append(field) }
     }
+}
+
+private fun localConfiguredSourceRootPath(sourceRootUrl: String): Path? {
+    val protocol = sourceRootUrl.substringBefore("://", missingDelimiterValue = "")
+    if (protocol != StandardFileSystems.FILE_PROTOCOL) return null
+    return Path.of(VfsUtilCore.urlToPath(sourceRootUrl)).toAbsolutePath().normalize()
 }
 
 private enum class CompilerSourceLanguage {

@@ -215,7 +215,8 @@ object KastIndexerRuntime {
         }
         try {
             GradleProjectImportBridge.configureIndexerApplication()
-            val project = projectOpener.openProject(workspaceRoot)
+            val openedProject = projectOpener.openProject(workspaceRoot)
+            val project = openedProject.project
             val indexerRuntime = IndexerServerRuntime.startWithRegistrationProof(
                 project = project,
                 workspaceRoot = workspaceRoot,
@@ -223,6 +224,7 @@ object KastIndexerRuntime {
                 config = config,
                 registrationProof = registrationProof,
                 runtimeInstanceId = runtimeInstanceId,
+                initialProjectModelAuthority = openedProject.initialProjectModelAuthority,
             )
             val status = runBlocking { indexerRuntime.backend.runtimeStatus() }
             check(status.backendName == "indexer") {

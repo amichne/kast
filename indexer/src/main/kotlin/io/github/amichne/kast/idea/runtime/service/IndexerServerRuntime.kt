@@ -18,6 +18,7 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
+import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
@@ -47,6 +48,7 @@ object IndexerServerRuntime {
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
             registrationProof = null,
             runtimeInstanceId = null,
+            initialProjectModelAuthority = InitialProjectModelAuthority.Unverified,
         )
     }
 
@@ -70,6 +72,7 @@ object IndexerServerRuntime {
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
             registrationProof = null,
             runtimeInstanceId = null,
+            initialProjectModelAuthority = InitialProjectModelAuthority.Unverified,
         )
     }
 
@@ -80,6 +83,7 @@ object IndexerServerRuntime {
         config: KastConfig,
         registrationProof: GitWorktreeRegistrationProof?,
         runtimeInstanceId: RuntimeInstanceId?,
+        initialProjectModelAuthority: InitialProjectModelAuthority,
     ): RunningIndexer {
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
             project = project,
@@ -94,6 +98,7 @@ object IndexerServerRuntime {
             indexAdmission = IndexerAdmission.fromStartIndexing(true),
             registrationProof = registrationProof,
             runtimeInstanceId = runtimeInstanceId,
+            initialProjectModelAuthority = initialProjectModelAuthority,
         )
     }
 
@@ -105,6 +110,7 @@ object IndexerServerRuntime {
         indexAdmission: IndexerAdmission,
         registrationProof: GitWorktreeRegistrationProof?,
         runtimeInstanceId: RuntimeInstanceId?,
+        initialProjectModelAuthority: InitialProjectModelAuthority,
     ): RunningIndexer {
         val admittedRuntimeInstanceId = runtimeInstanceId ?: RuntimeInstanceId.create()
         val runtimeCapabilityLeases = RuntimeCapabilityLeaseRegistry(
@@ -257,6 +263,7 @@ object IndexerServerRuntime {
                     diagnostics = diagnostics,
                     indexStore = sourceIndexStore,
                     semanticAdmission = semanticAdmission,
+                    initialProjectModelAuthority = initialProjectModelAuthority,
                     gitWorktreeRegistrationProof = registrationProof,
                     indexingProgress = indexingProgress,
                     transitionIngress = transitionIngress,

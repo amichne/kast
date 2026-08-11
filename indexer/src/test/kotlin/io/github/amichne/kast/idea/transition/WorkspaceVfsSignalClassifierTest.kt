@@ -17,6 +17,38 @@ class WorkspaceVfsSignalClassifierTest {
     )
 
     @Test
+    fun `coordinated global refresh subsumes only refresh-originated signals inside its effect`() {
+        val authority = CoordinatedVfsRefreshAuthority()
+        val refreshObservation = WorkspaceVfsSignalObservation(
+            WorkspaceSignal.GitWorktree,
+            WorkspaceVfsEventOrigin.Refresh,
+        )
+        val externalObservation = WorkspaceVfsSignalObservation(
+            WorkspaceSignal.GitWorktree,
+            WorkspaceVfsEventOrigin.ExternalOrProgrammatic,
+        )
+
+        assertEquals(
+            WorkspaceVfsSignalAdmission.Required(WorkspaceSignal.GitWorktree),
+            authority.admit(refreshObservation),
+        )
+        authority.runGlobalRefresh {
+            assertEquals(
+                WorkspaceVfsSignalAdmission.SubsumedByGlobalRefresh,
+                authority.admit(refreshObservation),
+            )
+            assertEquals(
+                WorkspaceVfsSignalAdmission.Required(WorkspaceSignal.GitWorktree),
+                authority.admit(externalObservation),
+            )
+        }
+        assertEquals(
+            WorkspaceVfsSignalAdmission.Required(WorkspaceSignal.GitWorktree),
+            authority.admit(refreshObservation),
+        )
+    }
+
+    @Test
     fun `classifies source build scope and Git worktree signals`() {
         assertEquals(WorkspaceSignal.Source, classifier.classify(root.resolve("src/main/App.kt")))
         assertEquals(WorkspaceSignal.BuildSemantic, classifier.classify(root.resolve("build.gradle.kts")))

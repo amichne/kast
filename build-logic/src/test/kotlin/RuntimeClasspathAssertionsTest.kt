@@ -105,6 +105,47 @@ class RuntimeClasspathAssertionsTest {
     }
 
     @Test
+    fun `renamed jar containing a platform Kotlin class is reported`(@TempDir pluginLibs: Path) {
+        writeJar(
+            pluginLibs.resolve("renamed-support.jar"),
+            "org/jetbrains/kotlin/cli/common/arguments/Freezable.class",
+        )
+
+        val entries = RuntimeClasspathAssertions.entriesContainingAnyJarEntry(
+            runtimeLibsDirectory = pluginLibs,
+            classpathEntries = listOf("renamed-support.jar"),
+            jarEntries = listOf(
+                "org/jetbrains/kotlin/cli/common/arguments/Freezable.class",
+                "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
+            ),
+        )
+
+        assertEquals(listOf("renamed-support.jar"), entries)
+    }
+
+    @Test
+    fun `missing platform Kotlin class is reported from platform plugin jars`(@TempDir pluginLibs: Path) {
+        writeJar(
+            pluginLibs.resolve("jps/kotlin-jps-plugin.jar"),
+            "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
+        )
+
+        val missing = RuntimeClasspathAssertions.missingRequiredClassEntries(
+            runtimeLibsDirectory = pluginLibs,
+            classpathEntries = listOf("jps/kotlin-jps-plugin.jar"),
+            requiredClassEntries = listOf(
+                "org/jetbrains/kotlin/jps/build/KotlinBuilder.class",
+                "org/jetbrains/kotlin/cli/common/arguments/Freezable.class",
+            ),
+        )
+
+        assertEquals(
+            listOf("org/jetbrains/kotlin/cli/common/arguments/Freezable.class"),
+            missing,
+        )
+    }
+
+    @Test
     fun `portable distribution jars with forbidden suffixes are reported`(@TempDir portableDist: Path) {
         Files.createDirectories(portableDist.resolve("libs"))
         Files.createDirectories(portableDist.resolve("runtime-libs"))

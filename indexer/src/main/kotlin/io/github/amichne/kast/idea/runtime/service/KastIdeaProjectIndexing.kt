@@ -9,10 +9,11 @@ import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPreparation
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
+import io.github.amichne.kast.idea.transition.CompilerSourceRootAuthorities
 import io.github.amichne.kast.idea.transition.IdeaGradleWorkspaceModelIdentityResolver
-import io.github.amichne.kast.idea.transition.IdeaCompilerVisibleSourceIdentityResolver
 import io.github.amichne.kast.idea.transition.IdeaJavaCompilerIdentityResolver
 import io.github.amichne.kast.idea.transition.IdeaKotlinCompilerIdentityResolver
+import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentityResolver
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
@@ -23,6 +24,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
 import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
+import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -37,6 +39,7 @@ internal class KastIdeaProjectIndexing(
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
+    private val initialProjectModelAuthority: InitialProjectModelAuthority = InitialProjectModelAuthority.Unverified,
     private val gitWorktreeRegistrationProof: GitWorktreeRegistrationProof? = null,
     private val indexingProgress: WorkspaceIndexingProgressAuthority = WorkspaceIndexingProgressAuthority(),
     private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(
@@ -53,12 +56,34 @@ internal class KastIdeaProjectIndexing(
         workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("config.toml"),
         kastConfigHome().resolve("config.toml"),
     ),
+    private val workspaceVfsObservationScope: WorkspaceVfsObservationScope = WorkspaceVfsObservationScope(
+        workspaceRoot = workspaceIdentity.workspaceRootPath,
+        buildSemanticRoot = workspaceIdentity.workspaceIdentity.gradleRoot?.root?.toJavaPath()
+            ?: workspaceIdentity.workspaceRootPath,
+        configurationFiles = workspaceConfigurationFiles,
+        compilerSourceRoots = { CompilerSourceRootAuthorities.from(project).roots },
+        classpathRoots = {
+            BuildClasspathFingerprintResolver.contentRoots(project) +
+                IdeaKotlinCompilerIdentityResolver.artifactRoots(project) +
+                IdeaJavaCompilerIdentityResolver.artifactRoots(project, workspaceIdentity.workspaceIdentity)
+        },
+    ),
+    private val vfsRefreshAuthority: CoordinatedVfsRefreshAuthority = CoordinatedVfsRefreshAuthority(),
     private val observeWorkspaceEvents:
         (Project, WorkspaceVfsObservationScope, (WorkspaceSignal) -> Unit) -> AutoCloseable =
         { observedProject, observedScope, observed ->
-            WorkspaceVfsEventObserver.subscribe(observedProject, observedScope, observed)
+            WorkspaceVfsEventObserver.subscribe(observedProject, observedScope, vfsRefreshAuthority, observed)
         },
-    private val refreshWorkspace: (Project, Path, Set<WorkspaceSignal>) -> Unit = ::refreshWorkspaceModels,
+    private val refreshWorkspace: (Project, Path, Set<WorkspaceSignal>) -> Unit =
+        { refreshedProject, refreshRoot, signals ->
+            refreshWorkspaceModels(
+                refreshedProject,
+                refreshRoot,
+                signals,
+                vfsRefreshAuthority,
+                workspaceVfsObservationScope,
+            )
+        },
     private val resolveWorkspaceStateIdentity: (() -> WorkspaceStateIdentity)? = null,
     private val resolveBuildSemanticInputIdentity: (() -> BuildSemanticInputIdentity)? = null,
     private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
@@ -66,17 +91,6 @@ internal class KastIdeaProjectIndexing(
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val gradleBuildRoot: Path = workspaceIdentity.workspaceIdentity.gradleRoot?.root?.toJavaPath()
         ?: workspaceRoot
-    private val workspaceVfsObservationScope = WorkspaceVfsObservationScope(
-        workspaceRoot = workspaceRoot,
-        buildSemanticRoot = gradleBuildRoot,
-        configurationFiles = workspaceConfigurationFiles,
-        compilerSourceRoots = { IdeaCompilerVisibleSourceIdentityResolver.sourceRoots(project) },
-        classpathRoots = {
-            BuildClasspathFingerprintResolver.contentRoots(project) +
-                IdeaKotlinCompilerIdentityResolver.artifactRoots(project) +
-                IdeaJavaCompilerIdentityResolver.artifactRoots(project, workspaceIdentity.workspaceIdentity)
-        },
-    )
     private val buildSemanticInputIdentityResolver = BuildSemanticInputIdentityResolver(
         buildSemanticRoot = gradleBuildRoot,
         isCancelled = ::isCancelled,
@@ -259,7 +273,7 @@ internal class KastIdeaProjectIndexing(
         )
         val worker = WorkspaceTransitionWorker(
             initialConfig = config,
-            initialModelBuildSemanticIdentity = currentBuildSemanticInputIdentity(),
+            initialProjectModelAuthority = initialProjectModelAuthority,
             resolveBuildSemanticInputIdentity = ::currentBuildSemanticInputIdentity,
             semanticAdmission = semanticAdmission,
             eventWakeup = eventWakeup,

@@ -9,6 +9,7 @@ import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInProgressExc
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.idea.transition.OpenWorkspacePublication
 import io.github.amichne.kast.idea.transition.PreparedWorkspacePublication
 import io.github.amichne.kast.idea.transition.TransitionRun
@@ -28,7 +29,7 @@ import java.time.Duration
 
 internal class WorkspaceTransitionWorker(
     initialConfig: KastConfig,
-    initialModelBuildSemanticIdentity: BuildSemanticInputIdentity,
+    initialProjectModelAuthority: InitialProjectModelAuthority,
     private val resolveBuildSemanticInputIdentity: () -> BuildSemanticInputIdentity,
     private val semanticAdmission: IdeaIndexSemanticAdmission,
     private val eventWakeup: WorkspaceEventWakeup,
@@ -54,7 +55,14 @@ internal class WorkspaceTransitionWorker(
     private var publishedReconciliation: PendingCompletedWorkspaceReconciliation =
         PendingCompletedWorkspaceReconciliation.Absent
     private var consecutiveFailures = ConsecutiveIndexingFailures.none()
-    private var modelBuildSemanticIdentity = initialModelBuildSemanticIdentity
+    private var modelBuildSemanticIdentity = initialProjectModelAuthority.fold(
+        onUnverified = resolveBuildSemanticInputIdentity,
+        onImported = { importedModel -> importedModel },
+    )
+    private val initialReconciliationSignal = initialProjectModelAuthority.fold(
+        onUnverified = { WorkspaceSignal.RecoveryAudit },
+        onImported = { WorkspaceSignal.InitialProjectModel },
+    )
 
     private val coordinator = WorkspaceTransitionCoordinator(
         operations = object : WorkspaceTransitionOperations {
@@ -218,9 +226,14 @@ internal class WorkspaceTransitionWorker(
         }
     }
 
+    /**
+     * Starts reconciliation from the project model identity captured at worker construction.
+     * The refresh transition still promotes the pass to [WorkspaceSignal.BuildSemantic]
+     * when the current build inputs have moved since that capture.
+     */
     fun requestInitialReconciliation() {
         semanticAdmission.dirty("initial workspace reconciliation is required")
-        coordinator.observe(WorkspaceSignal.BuildSemantic)
+        coordinator.observe(initialReconciliationSignal)
     }
 
     fun run() {
@@ -362,21 +375,6 @@ internal class WorkspaceTransitionWorker(
         return current
     }
 }
-
-private enum class WorkspaceWorkerWaitOutcome {
-    Continue,
-    Interrupted,
-}
-
-internal class BuildSemanticInputsMovedDuringRefreshException(
-    val before: BuildSemanticInputIdentity,
-    val after: BuildSemanticInputIdentity,
-) : IllegalStateException("Build-semantic inputs moved during Gradle refresh")
-
-internal class BuildSemanticModelStaleException(
-    val imported: BuildSemanticInputIdentity,
-    val current: BuildSemanticInputIdentity,
-) : IllegalStateException("Build-semantic inputs do not match the imported Gradle model")
 
 private sealed interface RecoveryAuditOutcome {
     data object Current : RecoveryAuditOutcome
