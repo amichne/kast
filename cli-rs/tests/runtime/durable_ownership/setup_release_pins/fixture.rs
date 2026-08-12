@@ -34,7 +34,7 @@ impl PinnedRuntimeService {
         let runtime_command = vec![
             "/bin/sh".to_string(),
             "-c".to_string(),
-            "trap 'exit 0' TERM; read fixture_value".to_string(),
+            "trap 'exit 0' TERM; read fixture_value || exit 0".to_string(),
             "kast-runtime-fixture".to_string(),
             format!("--socket-path={}", socket_path.display()),
         ];
@@ -162,6 +162,12 @@ impl PinnedRuntimeService {
             )
             .output()
             .expect("setup with registered runtime")
+    }
+
+    fn complete_idle_shutdown(&mut self) {
+        drop(self.process.stdin.take());
+        let status = self.process.wait().expect("runtime idle shutdown");
+        assert!(status.success(), "runtime idle shutdown status: {status}");
     }
 
     fn is_live(&mut self) -> bool {

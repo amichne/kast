@@ -261,7 +261,7 @@ fn assert_activation_blocked(output: &Output, harness: &str, mismatch: &str) {
         "expectedVersion",
         "detectedDigest",
         "expectedDigest",
-        &format!("kast __internal resources install --harness {harness}"),
+        &format!("kast __internal resources install --force --harness {harness}"),
     ] {
         assert!(
             message.contains(expected),

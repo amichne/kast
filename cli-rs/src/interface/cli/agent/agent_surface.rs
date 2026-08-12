@@ -56,6 +56,9 @@ pub struct KastResourcesArgs {
 #[derive(Debug, Subcommand)]
 pub enum KastResourcesCommand {
     Install {
+        /// Replace existing Kast plugin and marketplace configuration.
+        #[arg(long)]
+        force: bool,
         #[arg(
             long = "harness",
             required = true,

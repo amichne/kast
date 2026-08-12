@@ -162,10 +162,13 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
         KastCommand::Internal(cli::KastInternalArgs {
             command:
                 cli::KastInternalCommand::Resources(cli::KastResourcesArgs {
-                    command: cli::KastResourcesCommand::Install { harnesses },
+                    command: cli::KastResourcesCommand::Install { force, harnesses },
                 }),
         }) => {
-            install::install_agent_resources(&harnesses)?;
+            install::install_agent_resources(
+                &harnesses,
+                install::AgentResourceInstallMode::from_force_flag(force),
+            )?;
             Ok(0)
         }
         KastCommand::Up => agent_adapter::run_up(output_format),
