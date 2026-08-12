@@ -1,106 +1,132 @@
-# Analysis API agent guide
+# Analysis API module guide
 
-`analysis-api` owns the shared backend contract. Anything in this unit must
-stay host-agnostic so the transport and runtime layers can share it.
+`analysis-api` is the host-neutral contract at the base of the Kotlin runtime.
+It publishes `kast-analysis-api` and the reusable test-fixtures variant. This
+guide applies to the module except where the narrower
+[test-fixtures guide](src/testFixtures/AGENTS.md) supplies local rules.
 
-## Ownership
+## Module map
 
-Keep this unit small, stable, and reusable across every runtime host.
+- `api/client` owns workspace identity, active-install path resolution, runtime
+  descriptors, launch options, and typed configuration. `client/fields` holds
+  constrained configuration values grouped by concern.
+- `api/continuation` owns the generic server-held continuation state machine:
+  token issue, lease/consume, reissue, invalidation, disposal, capacity, TTL,
+  and close.
+- `api/contract/backend` defines `AnalysisBackend`, transport choices,
+  capabilities, limits, health, and explicit backend closeability.
+- `api/contract/query` and `api/contract/result` are the raw backend request and
+  response families for analysis, workspace discovery, relationships, and
+  mutation planning/execution evidence.
+- `api/contract/skill` is the public agent-oriented request/response surface.
+  It composes typed selectors and backend results without owning host work.
+- `api/contract/runtime` models layered readiness, lifecycle DAG edges,
+  capability leases, stop permits, and runtime status.
+- `api/contract/selector`, `source`, and `symbol` own exact identities, opaque
+  handles, normalized paths, file images/hashes, locations, and symbol kinds.
+- `api/protocol` owns JSON-RPC envelopes, stable API errors, and protocol
+  exceptions. `api/validation` parses boundary models into stronger query and
+  source types before backend use.
+- `api/docs` derives OpenAPI and Markdown from the contract registry.
+- `src/main/resources/contracts` contains checked-in contract resources;
+  `src/test` proves serialization, validation, continuation, config, runtime,
+  docs, and mutation evidence.
 
-- Keep this module host-agnostic. Runtime-specific dependencies belong in
-  runtime host modules.
-- Own `AnalysisBackend`, serializable request and response models,
-  `AnalysisTransport`, JSON-RPC wire models, descriptor discovery helpers,
-  `ServerLaunchOptions`, shared error types, capability enums,
-  `ServerInstanceDescriptor`, and edit-plan validation semantics.
-- Own the validated `RuntimeImplementationVersion` value carried by runtime
-  descriptors. Installed-host compatibility belongs to the single indexer
-  manifest under `packaging/indexer/`, not to a runtime implementation matrix.
-- Keep shared startup helpers quiet for callers. `KastConfig.load`,
-  descriptor discovery, and similar shared entry points report through typed
-  results because CLI JSON commands and indexer startup use these APIs inside
-  machine-readable or UI-sensitive flows.
-- Keep file-path rules explicit. Edit queries, rename hashes, workspace roots,
-  and descriptor socket paths must stay absolute and normalized.
-- Treat `SCHEMA_VERSION`, serialized field changes, and descriptor transport
-  fields as protocol changes. Update callers, tests, and docs together when
-  the wire contract moves.
-- `DiagnosticsResult.fileHashes` owns one ordered hash for every analyzed file.
-  A complete diagnostics result is invalid when a requested file lacks its
-  same-read-epoch hash; continuation pages retain that immutable hash set.
-- Keep materially edited public skill request and query models in matching
-  files under `contract/skill`; direct sealed response variants stay with
-  their sealed response root in its matching file.
-- Relationship contracts carry one complete `SymbolIdentity` anchor. Exact
-  success and indexed fallback require canonical declaration file and
-  non-negative start offset. Identity mismatch carries a non-null actual
-  identity; absence at the anchor is subject-not-found.
-- Keep #337 `ReferencePageToken` and traversal handles opaque and
-  host-agnostic. Source, provider position, returned-before proof, query,
-  subject, semantic generation, PSI, and traversal frontier are runtime state
-  and must not enter this module's wire types.
-- Relationship state consumes the shared `continuation` package introduced by
-  #338. Domain state extends `ContinuationOwnedState`, callers receive only a
-  `ContinuationProjection`, and runtime adapters use the generic store's typed
-  single-use `Complete`/`Reissue` transition, explicit disposer, TTL/capacity,
-  and close lifecycle. Do not create a second generic continuation store in a
-  runtime module or return an owning state object from lease/consume APIs.
-- Each relationship response root owns its degraded-reason enum. Shared
-  stringly or cross-family degradation codes are prohibited. A continuation
-  page must prove `KNOWN_MINIMUM >= returnedBefore + returnedCount + 1`, even
-  though returned-before remains backend-private.
-- Each response root also owns closed `UNSUPPORTED_SUBJECT_KIND`. Preserve the
-  selector and verified subject; command-family kind admission happens before
-  provider/index work. Cursor-invalid `UNKNOWN_HANDLE` covers every canonical
-  handle absent from the current runtime. Cursor-stale reasons require
-  positively recognized retained state, such as a generation mismatch or
-  retained expiry; wire types must not pretend a UUID proves its issuer.
-- `ReferenceOccurrence` owns containing-symbol evidence. Keep
-  `KastScaffoldReferences` in its same-named file and never adapt occurrences
-  back to bare locations.
-- Keep edit application deterministic. Preserve conflict detection,
-  non-overlapping range validation, and partial-apply reporting through any
-  redesign.
-- Shared server-held continuation stores own issued state until removal. Keep
-  token/query namespaces typed, require an explicit state disposer, and dispose
-  exactly once on expiry, eviction, replacement, query mismatch, explicit
-  completion/invalidation, terminal consume, callback failure, and server
-  shutdown. Lease/consume APIs must not return owning closeable state. A
-  single-use callback returns only typed `Complete(output)` or
-  `Reissue(output, nextQuery)`: complete disposes, while reissue atomically
-  moves the same owned state behind a fresh handle without closing it. Claimed
-  state remains store-owned through callback/shutdown races, and store close
-  waits for claimed callbacks to exit and dispose; #337 IDEA
-  traversal resources use this same lifecycle owner across pages.
-- Use the explicit `CloseableAnalysisBackend` contract for server-owned backend
-  lifetime. Do not discover closeability with a runtime cast or give runtime
-  and server two independent owners.
-- Keep public workspace-file continuation state distinct from raw backend
-  snapshot/page state. The issue/consume identity binds the exact normalized
-  root, backend, filters, projection, and limit; the owned state additionally
-  binds the composition digest, last relative path, and cumulative count.
-  Tokens are canonical random UUID handles. Keep the owned state and consumed
-  projection as different nominal types so the generic store cannot return an
-  owning state object.
+## Dependency boundary
 
-## Verification
+- This module is below `analysis-server`, `index-store`, and `indexer`. It must
+  not import IntelliJ/PSI, SQLite/JDBC, transport-server, process-control, or
+  host-specific implementation types.
+- Coroutines and serialization are contract-support dependencies, not license
+  to run host effects in model code.
+- `analysis-server` may expose this module's types through its API.
+  `index-store` may use its normalized identities. `indexer` implements
+  `AnalysisBackend` and supplies host evidence.
+- The Rust CLI consumes the serialized protocol and generated artifacts under
+  `cli-rs/protocol`. Kotlin package names are not the cross-language contract;
+  serialized names, field sets, variants, schema versions, and generated
+  schemas are.
+- The checked-in version sources are
+  `cli-rs/protocol/api-schema-version.txt` and
+  `cli-rs/protocol/install-receipt-schema-version.txt`.
+  `generateProtocolSchemaVersions` is the sole Kotlin generator for their
+  constants.
 
-Validate the contract locally before you rely on downstream failures.
+## Contract invariants
 
-- Run `./gradlew :analysis-api:test` for local changes.
-- Runtime compatibility changes also require
-  `.github/scripts/runtime/test-runtime-compatibility-contract.sh`; regenerate the
-  checked-in OpenAPI components through
-  `./gradlew :analysis-api:generateOpenApiSpec`.
-- If you change public models, capabilities, or descriptor schema, also run
-  `./gradlew :analysis-server:test`.
-- For public workspace-file continuation changes, start with
-  `WorkspaceFilesContinuationContractTest` and
-  `WorkspaceFilesContinuationServiceTest`; prove wire validation, exact-query
-  single-use consumption, TTL/capacity invalidation, and state-free issue
-  responses.
-- If you change shared config loading, descriptor discovery, or other
-  startup-facing helpers, also run `./gradlew :indexer:test` when the
-  IntelliJ Platform artifacts for the pinned host version are available.
-- For a continuation-lifecycle or cross-module workspace contract change, final
-  acceptance also requires `./gradlew test`.
+- Keep raw strings, numbers, nullable platform values, JSON models, and paths
+  at their owning boundary. Parsing or validation must return a stronger type
+  or a closed expected failure; callers must retain that proof.
+- `AnalysisBackend` receives parsed query types. Adding an operation requires
+  aligned capability advertisement, backend method, router mapping, protocol
+  docs, examples, and tests. Optional backend operations must fail through the
+  established explicit unsupported-capability boundary.
+- Treat every serialized field, serial name, default, enum/sealed variant,
+  `SCHEMA_VERSION` use, descriptor field, and opaque-token shape as protocol
+  state. Update generators and consumers in the same change.
+- Keep workspace roots, edit paths, descriptor paths, socket paths, and file
+  identities absolute and normalized at the typed boundary. Derive state roots
+  through `WorkspaceIdentity` and the active CLI receipt; do not establish a
+  parallel data-path authority.
+- Selector handles, relationship traversal handles, and page tokens are opaque
+  capabilities. Never reconstruct identity, issuer, generation, provider
+  position, or traversal frontier from display data or a UUID.
+- Relationship success retains one complete `SymbolIdentity` anchor. Exact or
+  indexed fallback needs a canonical declaration file and non-negative start
+  offset. Subject absence, identity mismatch, unsupported subject kind,
+  unknown handle, and stale retained state stay distinct closed outcomes.
+- Relationship result families own their degradation reason types. Preserve
+  containing-symbol evidence in `ReferenceOccurrence` and preserve bounded
+  cardinality evidence across continuation pages.
+- `ServerHeldContinuationStore` remains the single generic owner of held
+  continuation state. Owned state and projections are different nominal types.
+  Complete consumes and disposes; reissue atomically moves the same state to a
+  fresh handle; expiry, eviction, invalidation, callback failure, terminal
+  consume, and close dispose exactly once.
+- Public workspace-file continuation binds the normalized root, backend,
+  filters, projection, limit, composition digest, last path, and cumulative
+  count. The public token carries no resumable state and consumption is
+  single-use.
+- Runtime readiness has separate runtime, Gradle-model, reference, semantic
+  graph, and mutation lanes. Preserve the typed lifecycle DAG and capability
+  lease/stop-permit proof; an aggregate Boolean or call order is not authority.
+- Diagnostics results retain one same-read-epoch hash for every analyzed file,
+  including continuation pages. Never synthesize or reuse missing hash
+  evidence.
+- Exact mutation plans bind the admitted selector/owner, semantic generation,
+  source range, exact preimage hash or file image, declaration signature, and
+  complete compiler evidence required by that operation. Application and
+  postcondition responses must not downgrade those facts to success flags.
+- Keep edit application deterministic: normalized UTF-16 offsets,
+  non-overlapping sorted edits, exact preimage/postimage replay, conflict
+  detection, and explicit partial or rejected outcomes.
+- `CloseableAnalysisBackend` is the server-owned backend lifetime contract.
+  Do not recover ownership with runtime casts or introduce a second closer.
+
+## Change routing
+
+- Configuration, install-root, descriptor, or workspace-identity changes start
+  in `client` and require the corresponding CLI/install contract checks.
+- Backend operation or wire-model changes start in `contract` and
+  `validation`, then flow outward to server routing, indexer implementation,
+  Rust protocol mapping, generated docs, and fixtures.
+- Generic token/store lifecycle changes start in `continuation`. Operation-
+  specific continuation identity and projection stay with their result family.
+- OpenAPI and Markdown generators describe source contracts; do not hand-edit a
+  generated artifact to compensate for a missing model or registry entry.
+
+## Verification ladder
+
+1. Run the narrowest test class, for example:
+   `./gradlew :analysis-api:test --tests '<fully.qualified.TestClass>'`.
+2. Run `./gradlew :analysis-api:test`.
+3. For public models, backend methods, descriptors, configuration, or
+   continuation behavior, run `./gradlew :analysis-server:test`.
+4. For OpenAPI or capability documentation, run
+   `./gradlew :analysis-api:generateOpenApiSpec :analysis-api:generateDocPages`
+   and the focused docs tests; use `:analysis-api:checkDocsBuild` when the site
+   rendering contract changed.
+5. For runtime compatibility, active-install paths, or host-facing contracts,
+   run the owning shell contract and affected `:indexer:test` class.
+6. Run `./gradlew test` when the change crosses more than one downstream
+   module.

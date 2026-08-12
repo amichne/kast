@@ -152,3 +152,73 @@ Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio
 libraries to the isolated process. It is not a semantic backend and its open
 or closed foreground state is irrelevant. Do not control a foreground IDE to
 repair Kast. Resolve the typed indexer blocker instead.
+
+## Gradle topology
+
+`settings.gradle.kts` is the project-membership authority. The main build has
+four subprojects and one included build:
+
+| Project | Broad owner | Direct project dependencies | Local guide |
+| --- | --- | --- | --- |
+| `:analysis-api` | Host-neutral contracts, validation, config, docs, and fixtures | None | `analysis-api/AGENTS.md` |
+| `:index-store` | SQLite evidence, stages, snapshots, generations, and overlays | `:analysis-api` | `index-store/AGENTS.md` |
+| `:analysis-server` | JSON-RPC admission, routing, transport, and server orchestration | `:analysis-api` as API; `:index-store` as implementation | `analysis-server/AGENTS.md` |
+| `:indexer` | Isolated IntelliJ/K2 runtime and backend | All three Kotlin library modules | `indexer/AGENTS.md` |
+| included `build-logic` | `kast.*` conventions and reusable Gradle task types | Version catalog; no product project | `build-logic/AGENTS.md` |
+
+`analysis-api/src/testFixtures` is an independently consumed Gradle source-set
+variant with its own nearer `AGENTS.md`. The Rust `cli-rs` crate is outside the
+Gradle project graph and follows `cli-rs/AGENTS.md`.
+
+## Dependency direction
+
+Keep dependencies pointed toward host-neutral evidence:
+
+```text
+indexer -> analysis-server -> analysis-api
+   |             |
+   +-----------> index-store -> analysis-api
+```
+
+`build-logic` configures the graph but does not become a product dependency.
+The repository root orchestrates generated protocol/docs output, portable
+indexer packaging, and the Rust development CLI; it must not become a shared
+domain-code module.
+
+## Progressive instruction disclosure
+
+- Start with this file, then read the nearest `AGENTS.md` for every path in
+  scope. Nearer guides add local ownership and proof; they do not weaken this
+  repository contract.
+- Keep leaf guidance about exact types, state machines, files, and focused
+  tests. Module guides describe local subsystem maps, dependency boundaries,
+  durable invariants, and widening verification. This root describes only
+  repository-wide policy and topology.
+- Every project root named by `include` or `includeBuild` must own an
+  `AGENTS.md`. Add a nearer guide for an independently consumed source set or a
+  distinct nested owner only when it has invariants or verification that would
+  otherwise make its parent misleading.
+- Do not copy the same rule into every level. Move a rule to the narrowest
+  common owner and let parents link downward.
+- When code moves between owners, update the affected leaf/module guides in
+  the same change and verify that every named path, symbol, task, and authority
+  still exists.
+
+## Repository verification
+
+Use widening proof and stop at the first ring that fully covers the change:
+
+1. Run the focused test class or task named by the nearest module guide.
+2. Run the owning module's `test` or `check` task.
+3. Run direct consumers when a public contract, storage schema, convention,
+   runtime payload, or lifecycle boundary changed.
+4. Run `./gradlew projects` to confirm project-guide coverage after changing
+   settings or project layout.
+5. Run `./gradlew test` for cross-module Kotlin behavior and `./gradlew build`
+   when conventions, publication, or packaging changed.
+6. Run `python3 .github/scripts/check-repository-shape.py --root .` on the
+   final tracked tree. Governed files may have at most 400 physical lines and
+   governed directories at most 10 direct children.
+7. Run the owning shell/Rust contracts as well when generated protocol,
+   installation, CLI lifecycle, runtime compatibility, or distribution layout
+   crosses the Gradle boundary.

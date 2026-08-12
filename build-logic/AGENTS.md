@@ -1,43 +1,64 @@
-# Build logic agent guide
+# Build logic guide
 
-`build-logic` owns the `kast.*` convention plugins and the reusable Gradle
-tasks that shape every module in the repo.
+`build-logic` is an included Gradle build. It owns the `kast.*` convention
+plugins and reusable task types that configure every Kotlin module. Treat this
+guide as a local delta from the repository guide: product behavior remains in
+the consuming projects.
 
-## Ownership
+## Module map
 
-Assume every edit in this unit can affect the whole repo.
+- `src/main/kotlin/kast.*.gradle.kts` contains the precompiled convention
+  plugins for Kotlin libraries, serialization, publishing, applications, and
+  test fixtures.
+- `support/publishing` owns Maven coordinates, metadata, signing, and target
+  selection.
+- `support/tasks` owns IDEA distribution extraction, test-tag selection,
+  generated protocol versions, runtime library synchronization, classpath
+  layout proof, indexer-version generation, and wrapper scripts.
+- `src/test/kotlin` contains task and convention contract tests.
 
-- Keep this unit focused on shared build behavior: toolchains, test setup,
-  fat-jar packaging, runtime-lib syncing, wrapper generation, and reusable
-  dependency bundles.
-- `kast.runtime-app` is the shared packaging contract for app modules. Keep
-  task names and output layout stable across every consumer.
-- `SyncRuntimeLibsTask` and `WriteWrapperScriptTask` define the runtime-libs
-  and wrapper layout that `kast.sh`, `kast`, and portable dist packaging
-  expect.
-- Product behavior and workspace-specific runtime logic belong in application,
-  indexer, or CLI modules.
-- Treat version bumps and plugin changes as cross-repo work. A small edit here
-  can alter every module's compile, test, or packaging behavior.
-- Java 21 and shared version-catalog linkage are the build baseline.
-- `packaging/homebrew/release-state.json` is the checked-in source-index schema
-  authority. `WriteSourceIndexSchemaVersionTask` generates the Kotlin constant
-  from it; do not add a second Kotlin literal or let generated output drift from
-  the Rust build-script value.
+## Dependency boundary
 
-## Verification
+- This build imports the repository version catalog from
+  `../gradle/libs.versions.toml` and targets Java/Kotlin 21.
+- It may configure main-build projects, but it must not depend on their product
+  classes or encode workspace-specific runtime policy.
+- Convention-plugin IDs and registered task names are consumed across project
+  boundaries. Renaming or changing their output layout is a repository-wide
+  contract change.
+- `kast.runtime-app` provides generic application packaging. `indexer` owns the
+  additional private-plugin/runtime split required by its IntelliJ host.
 
-Validate both the immediate target and the wider build impact.
+## Shared invariants
 
-- For test-tag selection behavior, run
-  `./gradlew -p build-logic test --tests DefaultTestTagSelectionTest`.
-- Convention plugin test filtering supports `-PincludeTags=<tag1,tag2>` and
-  `-PexcludeTags=<tag1,tag2>`. Default runs skip `concurrency`,
-  `performance`, and `parity`; explicit include tags select those suites.
-- Run the affected module tasks that consume the changed convention, starting
-  with `./gradlew :indexer:syncRuntimeLibs :indexer:portableDistZip`
-  for runtime-lib or portable distribution changes.
-- For significant build-logic edits, run `./gradlew build`.
-- For source-index schema generation, run
-  `./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest`
-  and the Rust `source_index_schema_version_smoke` alignment test.
+- `kast.kotlin-library` owns JUnit Platform setup and the default exclusion of
+  `concurrency`, `performance`, and `parity`. Explicit
+  `-PincludeTags=...` selects those suites; `-PexcludeTags=...` adds exclusions.
+- `SyncRuntimeLibsTask` writes deterministic runtime jars and
+  `classpath.txt`. `WriteWrapperScriptTask` atomically writes the launcher that
+  resolves the application jar.
+- `VerifyClasspathLayoutTask` proves class ownership, required entries,
+  descriptor placement, and the absence of forbidden fat jars. Keep semantic
+  class-entry checks stronger than filename conventions.
+- `ExtractIdeaDistributionTask` rejects zip-slip paths and replaces a
+  versioned extraction atomically.
+- Protocol constants are generated from the three checked-in files under
+  `cli-rs/protocol/`: `api-schema-version.txt`,
+  `install-receipt-schema-version.txt`, and
+  `source-index-schema-version.txt`. Never add a second literal authority.
+- Publishing configuration must reject missing or blank artifact metadata and
+  preserve explicit local, snapshot, release, and GitHub target behavior.
+
+## Verification ladder
+
+1. Run the focused task test, for example:
+   `./gradlew -p build-logic test --tests DefaultTestTagSelectionTest`,
+   `WriteProtocolSchemaVersionsTaskTest`,
+   `WriteSourceIndexSchemaVersionTaskTest`, or
+   `RuntimeClasspathAssertionsTest`.
+2. Run `./gradlew -p build-logic test`.
+3. Exercise the narrowest consumer task. Runtime-layout changes require
+   `./gradlew :indexer:verifyPortableDistLayout :indexer:portableDistZip`;
+   protocol-generation changes require the owning module generator.
+4. Run `./gradlew build` when a convention plugin, toolchain, dependency
+   bundle, test policy, publishing rule, or shared task contract changed.

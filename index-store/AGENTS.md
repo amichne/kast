@@ -1,88 +1,121 @@
-# Index store agent guide
+# Index store module guide
 
-`index-store` owns the indexer-private SQLite source index, workspace cache
-persistence, and hydration APIs used by the Kast indexer.
-The database is not a public compatibility surface. Its location follows the
-active CLI receipt under
-`.agents/adr/0031-cli-install-and-data-authority.md`; no backend or plugin may
-derive a competing workspace database path.
+`index-store` owns the runtime-agnostic persistence model for source,
+relationship, semantic-graph, workspace-generation, repository-snapshot, and
+worktree-overlay evidence. It publishes `kast-index-store`. The database is an
+internal cross-process contract, not a public user API.
 
-## Ownership
+## Module map
 
-Keep this unit focused on storage concerns and schema continuity.
+- `api/index` owns workspace-relative source paths, file updates, stage state,
+  compiler-proven package evidence, and build-qualified Gradle project/source-
+  set identities.
+- `api/reference` owns declarations, exact reference targets, generated/indexed
+  pages, edge kinds, and `SourceIndexGeneration`.
+- `api/graph` and `api/stage` own semantic-graph updates/snapshots and durable
+  per-file stage transitions.
+- `indexing` contains reference-index orchestration independent of a concrete
+  compiler host.
+- `store/SqliteSourceIndexStore.kt` is the façade. `store/sqlite` partitions
+  inventory, lifecycle/transactions, overlays, pending work, references,
+  schema, semantic graph, and stage storage.
+- `store/codec` owns path and FQ-name interning; `store/jdbc` owns explicit
+  SQLite driver bootstrap.
+- `snapshot` owns repository snapshot identity, manifests, publication,
+  retention, content shards, workspace-generation typestate, and overlay
+  selection.
+- `src/test` is organized around the same storage owners: source, stage,
+  schema, lifecycle, overlay, semantic graph, snapshot, and generation.
 
-- Keep SQLite schema, migrations, interning codecs, and hydration helpers here.
-  `packaging/homebrew/release-state.json` owns the checked-in schema version;
-  generated Kotlin/Rust `SOURCE_INDEX_SCHEMA_VERSION` values, table layouts,
-  and query columns must stay aligned. Version 8 is required for workspace-file
-  project/source-set and package-provenance reads; version 7 must reset/rebuild.
-- Treat `schema_version.generation` as the source-index change token. Increment
-  it in the same write transaction as candidate-bearing tables, module index
-  progress, or pending-update applied state so read-only consumers can prove a
-  stable snapshot without changing the schema.
-- Keep `module_index_progress` and unapplied `pending_updates` truthful. A
-  readable row set is not complete index evidence while the initialized
-  progress set is empty/incomplete, indexed counts differ from totals, or
-  updates remain pending.
-- Persist project-model Gradle ownership only as non-null association rows in
-  `file_gradle_projects`, produced from linked Gradle model evidence. The build
-  root is workspace-relative, and each file may retain multiple owners, so root
-  and included builds with the same project path remain distinct. Legacy
-  `file_metadata.module_path` is an unqualified symbol/metrics label; never
-  promote an IDEA fallback from it into Gradle identity.
-- Persist structured Gradle source-set evidence only in non-null
-  `file_gradle_source_sets` rows keyed by build root, project path, and source-set
-  name. Legacy `file_metadata.source_set` is an unproven label and cannot
-  satisfy workspace source-set filters.
-- Persist package provenance explicitly. `PROVEN_ROOT`, `PROVEN_NAMED`, and
-  `UNPROVEN` must agree with `package_fq_id` constraints; nullable or failed
-  parser output is `UNPROVEN` with a typed reason, never root. Proven states
-  cannot carry an unproven reason. Canonical package names come from
-  Kotlin PSI/compiler evidence, including escaped/backticked/Unicode names.
-- Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access.
-  IDEA and other plugin classloaders require explicit driver registration.
-- Keep this unit runtime-agnostic. The indexer may use IntelliJ/Kotlin PSI,
-  but it must convert package semantics to host-neutral
-  `IndexedPackageEvidence` before constructing `FileIndexUpdate`; no PSI type
-  crosses into this module. CLI process management and JSON-RPC transport code
-  live in their CLI and server owners.
-- Treat schema resets, additive migrations, and cache hydration changes as
-  contract-sensitive. Backend-hosted Kotlin may read SQLite for semantic
-  operations, process hydration, or targeted indexer/cache behavior. Existing
-  Rust operational readers use the same CLI-owned path; do not add another
-  cross-process path or schema authority.
-- Return paged index evidence and its generation atomically under the same
-  store lock. Every committed transition that can change indexed declarations,
-  references, manifests, or reconciliation state must advance the generation;
-  consumers use it to reject stale continuation pages.
-- The production `declarations` key is `(fq_id, prefix_id, filename)` and writes
-  replace that row. It cannot prove uniqueness of same-FQ overloads in one
-  file. Never use an FQ declaration-row count as callable overload proof.
-- `symbol_references.targetPath` and `targetOffset` are optional evidence.
-  Exact indexed relationship reads require the selected canonical target path
-  and one non-null target offset; FQ-only or null/mixed target anchors must fail
-  closed or fall back before a continuation source is bound.
+## Dependency boundary
 
-## Verification
+- The module depends on `analysis-api` for normalized workspace, path, query,
+  and result types and on `sqlite-jdbc` for persistence.
+- It must not import IntelliJ, Kotlin PSI/compiler, server transport, CLI
+  process-management, or foreground IDE types. Hosts convert evidence to
+  `FileIndexUpdate`, `IndexedPackageEvidence`, graph, stage, and reference
+  values before calling this module.
+- `analysis-server` declares an implementation dependency, but storage
+  ownership remains here. `indexer` is the read/write host; Rust readers use
+  the same schema through the CLI-owned workspace path.
+- Resolve the database through `WorkspaceIdentity`, whose roots come from the
+  active CLI receipt. No backend or plugin may derive a competing database
+  location.
+- `cli-rs/protocol/source-index-schema-version.txt` is the sole checked-in
+  schema-version authority. Build logic generates the Kotlin constant and
+  `cli-rs/build.rs` generates the Rust constant from that file.
 
-Prove storage changes here before relying on higher-level runtime tests.
+## Storage invariants
 
-- Run `./gradlew :index-store:test`.
-- For page/generation changes, also run `./gradlew :indexer:test` to prove
-  production continuation invalidation rather than only store-local behavior.
-- For generation/progress/pending changes, prove rollback atomicity and
-  before/after generation behavior in `SqliteSourceIndexStoreTest`.
-- For build-qualified identity changes, prove schema migration/reset,
-  root-versus-included-build round trips, multiple owners per file, identical
-  project paths in different builds, malformed identity rejection, legacy
-  fallback isolation, and transactional generation change.
-- For schema/provenance changes, prove release-state/Kotlin/Rust version
-  alignment, version-7 rejection/reset, required version-8 structures, a custom
-  `integrationTest` source root, and no null-to-root package collapse.
-- If you change schema bootstrap, connection setup, or hydration reads, exercise
-  `SqliteSourceIndexStoreTest` and the affected indexer tests.
-- Final acceptance for the cross-module workspace discovery contract also runs
-  `./gradlew test`.
-- Exact-reference and impact changes also require production-store overload,
-  null-offset, and target-anchor regression cases in
-  `SqliteSourceIndexStoreTest`.
+- `SqliteSourceIndexStoreAccess.READ_ONLY` must never obtain a writer lease,
+  initialize schema, mutate interning tables, attach writable repository state,
+  or repair data. Read/write access has one exact database writer lease.
+- Register `sqlite-jdbc` inside this module before `DriverManager` access;
+  plugin classloaders do not make implicit JDBC discovery reliable.
+- Keep schema tables, required columns/nullability, primary/foreign keys,
+  constraints, indexes, Kotlin queries, and Rust readers aligned. Older,
+  malformed, or partially compatible schemas fail closed through the owning
+  reset/rebuild boundary.
+- `schema_version.generation` is the source-index change token. Every committed
+  transition that can change source candidates, declarations, references,
+  semantic graph, manifests, stage progress, pending application state, or
+  overlay visibility must advance it in the same transaction.
+- Workspace publication is a typed transaction:
+  `OpenWorkspaceGeneration -> PreparedWorkspaceGeneration -> commit`.
+  Candidates are owner-bound, rollback/discard is explicit, and publication
+  becomes visible only after source, reference, graph/blocker, schema,
+  compatibility, and identity evidence agree.
+- Keep `module_index_progress`, file-stage rows, failures, and unapplied
+  pending updates truthful. Readable rows do not prove completeness while
+  initialized work is absent/incomplete, counts differ, stages remain pending,
+  or a graph blocker is retained.
+- Gradle ownership exists only as non-null association rows keyed by
+  workspace-relative build root plus project path, with source-set name for
+  source-set evidence. A file may have multiple owners. Never promote legacy
+  `file_metadata.module_path` or `source_set` labels into proven identity.
+- Package provenance is closed:
+  `ProvenRoot`, `ProvenNamed(CanonicalName)`, or
+  `Unproven(reason)`. Failed/absent parsing is never the root package, and no
+  PSI type crosses the module boundary.
+- Exact indexed relationship reads require FQ name, canonical declaration
+  path, and non-negative declaration offset. FQ-only, null, or mixed anchors
+  cannot satisfy exactness.
+- The declaration row key cannot prove uniqueness of same-FQ overloads within
+  one file. Do not use declaration-row count as callable-overload proof.
+- Page results and their generation must be observed under the same store
+  authority. A consumer must be able to reject a page after generation drift.
+- Repository snapshots are immutable evidence keyed by Git tree, build
+  classpath fingerprint, schema compatibility, and producer version. Publish
+  complete data and manifest atomically; never move `latest-good` to an
+  incomplete candidate.
+- A worktree overlay may attach only a validated immutable repository snapshot
+  with the exact current schema. It owns explicit tombstones and writable
+  workspace deltas; attached base tables and interning aliases stay read-only.
+  Missing, malformed, mismatched, symlinked, or ambiguous snapshot evidence is
+  a typed rejection, never workspace-only fallback presented as attached.
+- Snapshot retention and garbage collection must preserve current publication,
+  latest-good, active overlays, and explicit pins before deleting unowned
+  content.
+
+## Change routing
+
+- Add domain values and store-facing DTOs under `api` before adding raw
+  primitives to the façade.
+- Keep SQL with the smallest owner under `store/sqlite`. The façade delegates;
+  it must not become a second implementation of each store.
+- Snapshot and overlay changes usually cross `snapshot`, `sqlite/lifecycle`,
+  `sqlite/overlay`, and indexer publication. Verify all four boundaries.
+- A schema change always includes the version source, generated Kotlin/Rust
+  alignment, schema validation, reset/migration behavior, and affected readers.
+
+## Verification ladder
+
+1. Run the focused class, for example:
+   `./gradlew :index-store:test --tests '<fully.qualified.TestClass>'`.
+2. Run `./gradlew :index-store:test`.
+3. Schema changes also require the build-logic generator test and Rust
+   `source_index_schema_version_smoke` alignment test.
+4. Snapshot, overlay, generation, page, reference, stage, or completeness
+   changes require the matching `:indexer:test` class that exercises the
+   production host.
+5. Run `./gradlew test` for a cross-module storage contract change.
