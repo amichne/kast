@@ -124,3 +124,31 @@ fn force_setup_with_a_registered_runtime_changes_no_install_state() {
     assert_eq!(test_path_sha256(&kast_home.join("state")), state_before);
     assert!(runtime.is_live(), "force setup terminated the runtime");
 }
+
+#[test]
+fn force_setup_reclaims_proven_dead_runtime_after_idle_shutdown() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let source = write_install_bundle_source(temp.path(), "v1.0.0");
+    assert!(setup(&home, &kast_home, &source).status.success());
+    let mut runtime = PinnedRuntimeService::new(temp.path(), &kast_home);
+    runtime.complete_idle_shutdown();
+
+    let forced = runtime.run({
+        let mut command = setup_command(&home, &kast_home, &source);
+        command.arg("--force");
+        command
+    });
+
+    assert!(
+        forced.status.success(),
+        "force should reclaim exact proven-dead runtime evidence: stdout={}, stderr={}",
+        String::from_utf8_lossy(&forced.stdout),
+        String::from_utf8_lossy(&forced.stderr),
+    );
+    assert!(
+        !runtime.registration.exists(),
+        "forced setup retained the proven-dead registration"
+    );
+}

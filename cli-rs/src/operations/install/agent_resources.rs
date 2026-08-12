@@ -54,84 +54,7 @@ struct AgentResourceDigestOverrides<'a> {
     developer_skill: &'a str,
 }
 
-pub fn install_agent_resources(requested: &[KastHarness]) -> Result<()> {
-    let selected = [KastHarness::Codex, KastHarness::Claude, KastHarness::Copilot]
-        .into_iter()
-        .filter(|harness| requested.contains(harness))
-        .collect::<Vec<_>>();
-    let mut failures = Vec::new();
-    for harness in selected {
-        if let Err(message) = install_agent_harness(harness) {
-            failures.push(format!("{}: {message}", harness_name(harness)));
-        }
-    }
-    if failures.is_empty() {
-        return Ok(());
-    }
-    Err(CliError::new(
-        "KAST_AGENT_RESOURCE_INSTALL_FAILED",
-        format!(
-            "Agent resources could not be installed for {}.",
-            failures.join("; ")
-        ),
-    ))
-}
-
-fn install_agent_harness(harness: KastHarness) -> std::result::Result<(), String> {
-    let marketplace_root = materialize_agent_harness(harness).map_err(|error| error.to_string())?;
-    let root = marketplace_root.display().to_string();
-    let commands = match harness {
-        KastHarness::Codex => vec![
-            vec![
-                "plugin".to_string(),
-                "marketplace".to_string(),
-                "add".to_string(),
-                root,
-                "--json".to_string(),
-            ],
-            vec![
-                "plugin".to_string(),
-                "add".to_string(),
-                "kast@kast".to_string(),
-                "--json".to_string(),
-            ],
-        ],
-        KastHarness::Claude => vec![
-            vec![
-                "plugin".to_string(),
-                "marketplace".to_string(),
-                "add".to_string(),
-                root,
-                "--scope".to_string(),
-                "user".to_string(),
-            ],
-            vec![
-                "plugin".to_string(),
-                "install".to_string(),
-                "kast@kast".to_string(),
-                "--scope".to_string(),
-                "user".to_string(),
-            ],
-        ],
-        KastHarness::Copilot => vec![
-            vec![
-                "plugin".to_string(),
-                "marketplace".to_string(),
-                "add".to_string(),
-                root,
-            ],
-            vec![
-                "plugin".to_string(),
-                "install".to_string(),
-                "kast@kast".to_string(),
-            ],
-        ],
-    };
-    for args in commands {
-        run_agent_harness_command(harness, &args)?;
-    }
-    Ok(())
-}
+include!("bundle_entrypoint/agent_resource_install.rs");
 
 fn run_agent_harness_command(
     harness: KastHarness,
@@ -248,7 +171,7 @@ pub(crate) fn validate_agent_harness_activation(
     let expected_version = crate::cli::version();
     let expected_digest = agent_resources_digest();
     let repair_command = format!(
-        "kast __internal resources install --harness {}",
+        "kast __internal resources install --force --harness {}",
         harness_name(harness)
     );
     let read_resource = |relative: &str| {

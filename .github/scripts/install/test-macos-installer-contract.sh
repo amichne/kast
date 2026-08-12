@@ -77,9 +77,11 @@ assert_selected_harnesses() {
 run_installer
 grep -Fqx -- "setup --source $bundle" "$log"
 assert_selected_harnesses codex claude copilot
+! grep -Fq -- '--force' "$agent_log"
 
 run_installer --force
 grep -Fqx -- "setup --source $bundle --force" "$log"
+grep -Fq -- '__internal resources install --force' "$agent_log"
 
 for harness in codex claude copilot; do
   run_installer --harness "$harness"

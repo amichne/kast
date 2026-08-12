@@ -20,8 +20,11 @@ pub(crate) struct RuntimeSetupAuthorization {
 #[derive(Debug)]
 struct RuntimeSetupDescriptors {
     registry_has_entries: bool,
+    registry_has_unclassified_entries: bool,
     indexers: Vec<ServerInstanceDescriptor>,
 }
+
+include!("setup/force_reset.rs");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RegistrationPublicationTemporary {
@@ -59,14 +62,6 @@ pub(crate) fn preflight_runtime_setup(
 ) -> Result<RuntimeSetupAuthorization> {
     let service_roots = registered_service_roots(paths)?;
     let descriptors = runtime_setup_descriptors(paths)?;
-    let has_runtime_artifact = !service_roots.is_empty() || descriptors.registry_has_entries;
-    if intent == RuntimeSetupIntent::ForceReset && has_runtime_artifact {
-        return Err(CliError::new(
-            "SETUP_RUNTIME_NOT_QUIESCENT",
-            "Forced setup cannot delete Kast state while a runtime registration or descriptor exists. The exact owned epoch must become absent through automatic idle shutdown before setup can continue.",
-        ));
-    }
-
     let descriptor_roots = descriptors
         .indexers
         .iter()
@@ -78,14 +73,30 @@ pub(crate) fn preflight_runtime_setup(
             .entry(candidate.path().to_path_buf())
             .or_insert(candidate);
     }
-    let mut pinned_release_roots = BTreeSet::new();
+    let mut observations = Vec::new();
     for (_, candidate) in roots {
         let config = KastConfig::load(candidate.path())?;
         let root = RegisteredWorkspaceRoot::admit(&config, candidate)?;
-        collect_runtime_pins(
-            reconcile_registered_runtime_ownership(&config, &root)?,
-            &mut pinned_release_roots,
-        )?;
+        let ownership =
+            reconcile_registered_runtime_ownership(&config, &root).map_err(|error| {
+                if intent == RuntimeSetupIntent::ForceReset {
+                    force_runtime_reconciliation_blocked(error)
+                } else {
+                    error
+                }
+            })?;
+        observations.push((config, ownership));
+    }
+    if intent == RuntimeSetupIntent::ForceReset {
+        return ProvenDeadSetupCleanup::admit(
+            observations,
+            descriptors.registry_has_unclassified_entries,
+        )?
+        .execute(paths);
+    }
+    let mut pinned_release_roots = BTreeSet::new();
+    for (_, ownership) in observations {
+        collect_runtime_pins(ownership, &mut pinned_release_roots)?;
     }
 
     let authorization = RuntimeSetupAuthorization {
@@ -237,20 +248,22 @@ fn runtime_setup_descriptors(
     let entries =
         super::super::super::read_descriptor_elements(&paths.descriptor_dir.join("daemons.json"))?;
     let registry_has_entries = !entries.is_empty();
-    let indexers = entries
-        .into_iter()
-        .filter(|value| {
-            value.get("backendName").and_then(Value::as_str)
-                == Some(BackendName::Indexer.canonical())
-        })
-        .map(|value| {
-            serde_json::from_value(value).map_err(|error| {
+    let mut registry_has_unclassified_entries = false;
+    let mut indexers = Vec::new();
+    for value in entries {
+        if value.get("backendName").and_then(Value::as_str)
+            == Some(BackendName::Indexer.canonical())
+        {
+            indexers.push(serde_json::from_value(value).map_err(|error| {
                 setup_preflight_error(&format!("Runtime descriptor is invalid: {error}"))
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
+            })?);
+        } else {
+            registry_has_unclassified_entries = true;
+        }
+    }
     Ok(RuntimeSetupDescriptors {
         registry_has_entries,
+        registry_has_unclassified_entries,
         indexers,
     })
 }
@@ -350,41 +363,5 @@ fn setup_preflight_error(message: &str) -> CliError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn missing_service_root_keeps_typed_identity_deleted_workspace_registration_review_regression()
-    {
-        let parent = tempfile::tempdir().expect("workspace parent");
-        let missing = parent.path().join("missing");
-        let candidate = registered_setup_root(missing.to_str().expect("workspace path"))
-            .expect("missing registered root candidate");
-        let replacement = parent.path().join("replacement");
-        fs::create_dir(&replacement).expect("replacement root");
-        std::os::unix::fs::symlink(&replacement, &missing).expect("replacement symlink");
-
-        assert!(
-            matches!(candidate, WorkspaceRootCandidate::MissingNormalized(root) if root == missing)
-        );
-    }
-
-    #[test]
-    fn missing_descriptor_root_stays_blocked_deleted_workspace_registration_review_regression() {
-        let root = tempfile::tempdir()
-            .expect("workspace parent")
-            .path()
-            .join("missing");
-
-        let error = descriptor_setup_root(root.to_str().expect("workspace path"), &BTreeMap::new())
-            .expect_err("descriptor-only missing root must block setup");
-
-        assert_eq!(error.code, "SETUP_RUNTIME_PREFLIGHT_BLOCKED");
-    }
-
-    #[test]
-    fn publication_temporary_requires_v4_uuid_review_regression() {
-        assert!(canonical_uuid("11111111-1111-4111-8111-111111111111").is_some());
-        assert!(canonical_uuid("11111111-1111-1111-8111-111111111111").is_none());
-    }
-}
+#[path = "setup/tests.rs"]
+mod tests;

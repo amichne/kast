@@ -42,7 +42,8 @@ Options:
   --source PATH      Install a local bundle directory or tar.gz archive.
   --version VERSION  Install an exact release instead of the latest release.
   --snapshot         Install the latest snapshot build.
-  --force            Remove prior Kast-owned state before reinstalling.
+  --force            Remove prior Kast-owned state, configuration, and selected
+                     harness resources before reinstalling.
   -h, --help         Show this help.
 
 Environment:
@@ -186,10 +187,13 @@ run_quiet() {
 }
 
 install_agent_harnesses() {
+  local replace="$1"
+  shift
   (($# > 0)) || return 0
   local agent_path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
   local harness
   local -a args=(__internal resources install)
+  ((replace == 0)) || args+=(--force)
   [[ -x "$agent_path" ]] || die "installed Kast agent CLI is missing: $agent_path"
   for harness in "$@"; do
     args+=(--harness "$harness")
@@ -284,7 +288,7 @@ main() {
     ui_step "Refreshing the local development installation"
     run_quiet "${gradle_args[@]}" || die "local development setup failed"
     ui_success "Local development installation refreshed"
-    install_agent_harnesses "${selected_harnesses[@]}"
+    install_agent_harnesses "$development_clean" "${selected_harnesses[@]}"
     active_agent="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
     [[ -x "$active_agent" ]] || die "installed Kast agent CLI is missing: $active_agent"
     ui_step "Building the repository database"
@@ -331,7 +335,7 @@ main() {
   ((force == 0)) || setup_args+=(--force)
   run_quiet "${setup_args[@]}" || die "Kast setup failed"
   ui_success "Kast installed"
-  install_agent_harnesses "${selected_harnesses[@]}"
+  install_agent_harnesses "$force" "${selected_harnesses[@]}"
   finish_install standard
 }
 
