@@ -393,6 +393,13 @@ jobs:
           cache-read-only: false
           cache-cleanup: on-success
 
+      - name: Verify Kotlin architecture
+        run: >
+          ./scripts/ci-gradle-retry.sh
+          ./gradlew
+          verifyKastArchitecture
+          --configuration-cache
+
       - name: Test JVM modules and indexer
         run: >
           ./scripts/ci-gradle-retry.sh

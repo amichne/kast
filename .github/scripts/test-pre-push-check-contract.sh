@@ -32,6 +32,15 @@ if match is None or command not in match.group(1):
     raise SystemExit("the static workflow-contracts job must own the pre-push contract")
 if "- name: Test pre-push check contract" not in match.group(1):
     raise SystemExit("the pre-push contract must have a named CI step")
+architecture_command = "verifyKastArchitecture"
+if workflow.count(architecture_command) != 1:
+    raise SystemExit("CI must invoke the Kotlin architecture gate exactly once")
+build_job = re.search(
+    r"(?ms)^  build-and-test-linux:\n(.*?)(?=^  [a-zA-Z0-9_-]+:\n|\Z)",
+    workflow,
+)
+if build_job is None or architecture_command not in build_job.group(1):
+    raise SystemExit("the JVM build job must own the Kotlin architecture gate")
 PY
 
 scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-pre-push-contract.XXXXXX")"
@@ -98,12 +107,21 @@ if [[ "${PRE_PUSH_FAIL_GIT_STATUS:-}" == true && "${1:-}" == status ]]; then
 fi
 exec "$PRE_PUSH_REAL_GIT" "$@"
 SH
+cat >"${fixture}/gradlew" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'gradle' >>"$PRE_PUSH_COMMAND_LOG"
+printf ' %s' "$@" >>"$PRE_PUSH_COMMAND_LOG"
+printf '\n' >>"$PRE_PUSH_COMMAND_LOG"
+[[ "${PRE_PUSH_FAIL_GATE:-}" != kast-architecture ]]
+SH
 chmod +x \
   "${fixture}/.githooks/pre-push" \
   "${fixture}/.github/scripts/test-repository-shape-contract.sh" \
   "${fixture}/.github/scripts/ci/test-rust-agent-tooling-contract.sh" \
   "${fixture}/scripts/pre-push-check.sh" \
   "${fixture}/scripts/install-git-hooks.sh" \
+  "${fixture}/gradlew" \
   "${fake_bin}/cargo" \
   "${fake_bin}/git" \
   "${fake_bin}/python3"
@@ -117,6 +135,7 @@ git -C "$fixture" add \
   .github/scripts/ci/test-rust-agent-tooling-contract.sh \
   .github/scripts/test-repository-shape-contract.sh \
   baseline.txt \
+  gradlew \
   scripts/install-git-hooks.sh \
   scripts/pre-push-check.sh
 git -C "$fixture" commit -qm 'baseline'
@@ -139,6 +158,7 @@ cargo fmt --version
 cargo clippy --version
 shape-contract
 python3 .github/scripts/check-repository-shape.py --root .
+gradle verifyKastArchitecture --configuration-cache
 rust-tooling-contract
 cargo deny --manifest-path cli-rs/Cargo.toml --locked --all-features --config cli-rs/.config/deny.toml check
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
@@ -209,6 +229,7 @@ fi
 for failing_gate in \
   shape-contract \
   repository-shape-checker \
+  kast-architecture \
   rust-tooling-contract \
   cargo-deny \
   cargo-fmt \

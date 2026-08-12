@@ -1,0 +1,95 @@
+package support.architecture
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.io.TempDir
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
+import java.nio.file.Files
+import java.nio.file.Path
+
+class JvmEffectScannerTest {
+    @Test
+    fun `filesystem mutation is derived from compiled bytecode`(@TempDir temporary: Path) {
+        val classFile = copyClassFile(FilesMutationFixture::class.java, temporary)
+
+        val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
+            JvmEffectScanner.scan(ModuleId.INDEXER, listOf(classFile)),
+        )
+
+        assertTrue(
+            scanned.effects.any { effect ->
+                effect.effect == ForbiddenEffect.FILESYSTEM_WRITE &&
+                    effect.target.owner == JvmClassName("java/nio/file/Files") &&
+                    effect.target.name == JvmMemberName("deleteIfExists")
+            },
+        )
+    }
+
+    @Test
+    fun `malformed class is a closed scan failure`(@TempDir temporary: Path) {
+        val malformed = temporary.resolve("Malformed.class")
+        Files.writeString(malformed, "not bytecode")
+
+        val failed = assertInstanceOf<BytecodeScanOutcome.Failed>(
+            JvmEffectScanner.scan(ModuleId.INDEXER, listOf(malformed)),
+        )
+
+        assertEquals(listOf(BytecodeScanFailure.MalformedClass(malformed)), failed.failures)
+    }
+
+    @Test
+    fun `source mutation authority is derived from caller and target bytecode`(@TempDir temporary: Path) {
+        val classFile = sourceMutationClassFile(temporary)
+
+        val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
+            JvmEffectScanner.scan(ModuleId.ANALYSIS_API, listOf(classFile)),
+        )
+
+        assertTrue(scanned.effects.any { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
+    }
+
+    private fun copyClassFile(type: Class<*>, temporary: Path): Path {
+        val resource = "/${type.name.replace('.', '/')}.class"
+        val target = temporary.resolve("${type.simpleName}.class")
+        type.getResourceAsStream(resource).use { input ->
+            requireNotNull(input) { "missing fixture bytecode: $resource" }
+            Files.copy(input, target)
+        }
+        return target
+    }
+
+    private fun sourceMutationClassFile(temporary: Path): Path {
+        val bytecode = ClassWriter(0).apply {
+            visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "fixture/mutation/SourceWriter", null, "java/lang/Object", null)
+            visitMethod(
+                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+                "delete",
+                "(Ljava/nio/file/Path;)Z",
+                null,
+                null,
+            ).apply {
+                visitCode()
+                visitVarInsn(Opcodes.ALOAD, 0)
+                visitMethodInsn(
+                    Opcodes.INVOKESTATIC,
+                    "java/nio/file/Files",
+                    "deleteIfExists",
+                    "(Ljava/nio/file/Path;)Z",
+                    false,
+                )
+                visitInsn(Opcodes.IRETURN)
+                visitMaxs(1, 1)
+                visitEnd()
+            }
+            visitEnd()
+        }.toByteArray()
+        return temporary.resolve("SourceWriter.class").also { Files.write(it, bytecode) }
+    }
+
+    private class FilesMutationFixture {
+        fun delete(path: Path): Boolean = Files.deleteIfExists(path)
+    }
+}

@@ -1,0 +1,153 @@
+package support.architecture.projection
+
+import support.architecture.EffectObservation
+import support.architecture.LegacyAllowance
+import support.architecture.LegacyViolationKey
+import support.architecture.MutationDeliveryOwner
+import support.architecture.ValidatedArchitecturePolicy
+
+object ArchitectureProjection {
+    fun render(policy: ValidatedArchitecturePolicy): String = buildString {
+        append("{\n")
+        append("  \"schemaVersion\": 2,\n")
+        append("  \"policyAuthority\": \"KOTLIN\",\n")
+        append("  \"policySource\": \"build-logic/src/main/kotlin/support/architecture\",\n")
+        append("  \"enforcementScope\": \"REPOSITORY_WIDE\",\n")
+        append("  \"workflowScope\": \"MUTATION\",\n")
+        append("  \"modules\": [\n")
+        policy.moduleOrder.forEachIndexed { index, id ->
+            val module = policy.modules.getValue(id)
+            append("    {\n")
+            append("      \"id\": ").appendQuoted(id.name).append(",\n")
+            append("      \"projectPath\": ").appendQuoted(id.projectPath).append(",\n")
+            append("      \"lifecycle\": ").appendQuoted(module.lifecycle.name).append(",\n")
+            append("      \"role\": ").appendQuoted(module.role.name).append(",\n")
+            append("      \"allowedProjectDependencies\": ")
+                .appendStringArray(module.allowedProjectDependencies.map { it.projectPath }.sorted())
+                .append(",\n")
+            append("      \"allowedEffects\": ")
+                .appendStringArray(module.allowedEffects.map(Enum<*>::name).sorted())
+                .append("\n")
+            append("    }").appendComma(index, policy.moduleOrder.lastIndex).append("\n")
+        }
+        append("  ],\n")
+        append("  \"mutationRuntimeProcesses\": [\n")
+        policy.mutationRuntimeProcessOrder.forEachIndexed { index, id ->
+            val process = policy.mutationRuntimeProcesses.getValue(id)
+            append("    {\n")
+            append("      \"id\": ").appendQuoted(id.name).append(",\n")
+            append("      \"name\": ").appendQuoted(process.name).append(",\n")
+            append("      \"dependsOn\": ")
+                .appendStringArray(process.dependsOn.map(Enum<*>::name).sorted())
+                .append(",\n")
+            append("      \"owners\": ")
+                .appendStringArray(process.owners.map { it.projectPath }.sorted())
+                .append(",\n")
+            append("      \"effects\": ")
+                .appendStringArray(process.effects.map(Enum<*>::name).sorted())
+                .append(",\n")
+            append("      \"cost\": ").appendQuoted(process.cost).append("\n")
+            append("    }").appendComma(index, policy.mutationRuntimeProcessOrder.lastIndex).append("\n")
+        }
+        append("  ],\n")
+        append("  \"mutationDeliveryTasks\": [\n")
+        policy.mutationDeliveryOrder.forEachIndexed { index, id ->
+            val task = policy.mutationDeliveryTasks.getValue(id)
+            append("    {\n")
+            append("      \"id\": ").appendQuoted(id.name).append(",\n")
+            append("      \"phase\": ").appendQuoted(task.phase.name).append(",\n")
+            append("      \"name\": ").appendQuoted(task.name).append(",\n")
+            append("      \"dependsOn\": ")
+                .appendStringArray(task.dependsOn.map(Enum<*>::name).sorted())
+                .append(",\n")
+            append("      \"owner\": ").appendOwner(task.owner).append("\n")
+            append("    }").appendComma(index, policy.mutationDeliveryOrder.lastIndex).append("\n")
+        }
+        append("  ],\n")
+        append("  \"legacyAllowances\": [\n")
+        val allowances = policy.legacyAllowances.sortedBy(::allowanceSortKey)
+        allowances.forEachIndexed { index, allowance ->
+            append("    ").appendAllowance(allowance)
+                .appendComma(index, allowances.lastIndex)
+                .append("\n")
+        }
+        append("  ]\n")
+        append("}\n")
+    }
+}
+
+private fun StringBuilder.appendOwner(owner: MutationDeliveryOwner): StringBuilder = when (owner) {
+    MutationDeliveryOwner.BuildLogic -> append("{\"kind\": \"BUILD_LOGIC\"}")
+    MutationDeliveryOwner.EndToEndCorpus -> append("{\"kind\": \"END_TO_END_CORPUS\"}")
+    is MutationDeliveryOwner.Modules -> {
+        append("{\"kind\": \"MODULES\", \"modules\": ")
+            .appendStringArray(owner.ids.map { it.projectPath }.sorted())
+            .append("}")
+    }
+}
+
+private fun StringBuilder.appendAllowance(allowance: LegacyAllowance): StringBuilder {
+    append("{\"retirementTask\": ").appendQuoted(allowance.retirementTask.name)
+    when (val violation = allowance.violation) {
+        is LegacyViolationKey.UnapprovedProjectDependency -> {
+            append(", \"kind\": \"UNAPPROVED_PROJECT_DEPENDENCY\", \"consumer\": ")
+                .appendQuoted(violation.dependency.consumer.projectPath)
+                .append(", \"dependency\": ")
+                .appendQuoted(violation.dependency.dependency.projectPath)
+        }
+        is LegacyViolationKey.ForbiddenEffectUse -> {
+            append(", \"kind\": \"FORBIDDEN_EFFECT\", \"effect\": ")
+                .appendQuoted(violation.observation.effect.name)
+                .append(", \"module\": ")
+                .appendQuoted(violation.observation.module.projectPath)
+                .append(", \"caller\": ")
+                .appendMember(violation.observation)
+        }
+    }
+    return append("}")
+}
+
+private fun StringBuilder.appendMember(observation: EffectObservation): StringBuilder =
+    append("{\"owner\": ").appendQuoted(observation.caller.owner.internalName)
+        .append(", \"name\": ").appendQuoted(observation.caller.name.value)
+        .append(", \"descriptor\": ").appendQuoted(observation.caller.descriptor.value)
+        .append(", \"targetOwner\": ").appendQuoted(observation.target.owner.internalName)
+        .append(", \"targetName\": ").appendQuoted(observation.target.name.value)
+        .append(", \"targetDescriptor\": ").appendQuoted(observation.target.descriptor.value)
+        .append("}")
+
+private fun allowanceSortKey(allowance: LegacyAllowance): String = when (val violation = allowance.violation) {
+    is LegacyViolationKey.UnapprovedProjectDependency ->
+        "dependency|${violation.dependency.consumer.name}|${violation.dependency.dependency.name}"
+    is LegacyViolationKey.ForbiddenEffectUse -> with(violation.observation) {
+        "effect|${module.name}|${effect.name}|${caller.owner.internalName}|${caller.name.value}|" +
+            "${caller.descriptor.value}|${target.owner.internalName}|${target.name.value}|${target.descriptor.value}"
+    }
+}
+
+private fun StringBuilder.appendStringArray(values: List<String>): StringBuilder =
+    append(values.joinToString(prefix = "[", postfix = "]") { value -> "\"${value.jsonEscape()}\"" })
+
+private fun StringBuilder.appendQuoted(value: String): StringBuilder = append('"').append(value.jsonEscape()).append('"')
+
+private fun StringBuilder.appendComma(index: Int, lastIndex: Int): StringBuilder =
+    apply { if (index < lastIndex) append(',') }
+
+private fun String.jsonEscape(): String = buildString(length) {
+    this@jsonEscape.forEach { character ->
+        when (character) {
+            '\\' -> append("\\\\")
+            '"' -> append("\\\"")
+            '\b' -> append("\\b")
+            '\u000C' -> append("\\f")
+            '\n' -> append("\\n")
+            '\r' -> append("\\r")
+            '\t' -> append("\\t")
+            else -> if (character.code < 0x20) {
+                append("\\u").append(character.code.toString(16).padStart(4, '0'))
+            } else {
+                append(character)
+            }
+        }
+    }
+}

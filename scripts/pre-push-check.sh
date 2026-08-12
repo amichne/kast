@@ -85,6 +85,8 @@ run_check 'testing repository shape policy' \
   bash .github/scripts/test-repository-shape-contract.sh
 run_check 'checking repository shape' \
   python3 .github/scripts/check-repository-shape.py --root .
+run_check 'checking Kast architecture' \
+  ./gradlew verifyKastArchitecture --configuration-cache
 run_check 'testing Rust tooling policy' \
   ./.github/scripts/ci/test-rust-agent-tooling-contract.sh
 run_check 'checking Rust dependency policy' \

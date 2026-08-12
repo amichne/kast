@@ -1,5 +1,6 @@
 plugins {
     base
+    id("kast.architecture")
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
