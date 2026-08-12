@@ -2,6 +2,8 @@ use super::*;
 use std::collections::BTreeMap;
 
 const SYSTEMCTL: &str = "/usr/bin/systemctl";
+const SYSTEMD_STOP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+const SYSTEMD_STOP_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(25);
 
 pub(super) fn registration_for(
     launch: &ServiceLaunchRegistration,
@@ -191,9 +193,28 @@ fn unregister_with(
         ServiceManagerObservation::Absent => return Ok(()),
         ServiceManagerObservation::Registered => {}
         ServiceManagerObservation::Running(_) => {
-            return Err(manager_error(
-                "Cannot disable a running systemd user service.",
-            ));
+            checked_systemctl(
+                runner,
+                &["--user", "--no-pager", "stop", unit],
+                "stop the systemd user service",
+            )?;
+            let deadline = std::time::Instant::now() + SYSTEMD_STOP_TIMEOUT;
+            loop {
+                match inspect_with(manager, runner)? {
+                    ServiceManagerObservation::Absent => return Ok(()),
+                    ServiceManagerObservation::Registered => break,
+                    ServiceManagerObservation::Running(_)
+                        if std::time::Instant::now() < deadline =>
+                    {
+                        std::thread::sleep(SYSTEMD_STOP_POLL_INTERVAL);
+                    }
+                    ServiceManagerObservation::Running(_) => {
+                        return Err(manager_error(
+                            "systemd user service remained running after stop.",
+                        ));
+                    }
+                }
+            }
         }
     }
     checked_systemctl(

@@ -1,6 +1,7 @@
-const EXACT_OWNED_SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+const EXACT_OWNED_SHUTDOWN_TIMEOUT: std::time::Duration =
+    std::time::Duration::from_secs(5 * 60 + 10);
 const EXACT_OWNED_SHUTDOWN_POLL_INTERVAL: std::time::Duration =
-    std::time::Duration::from_millis(25);
+    std::time::Duration::from_millis(250);
 
 struct ExactOwnedSetupShutdown {
     config: KastConfig,
@@ -75,24 +76,6 @@ impl ForceResetCleanup {
 
 impl ExactOwnedSetupShutdown {
     fn execute(self) -> Result<()> {
-        let current = reconcile_registered_runtime_ownership(&self.config, &self.root)
-            .map_err(force_runtime_reconciliation_blocked)?;
-        match current {
-            RuntimeOwnershipSnapshot::ServiceOwned(owned)
-                if owned.registration.receipt.runtime_instance_id == self.runtime_instance_id =>
-            {
-                super::super::service_manager::unregister(&owned.registration.receipt.manager)
-                    .map_err(|error| {
-                        force_runtime_teardown_failed(self.runtime_instance_id, error)
-                    })?;
-            }
-            RuntimeOwnershipSnapshot::ProvenDead(dead) => {
-                return super::super::repair::cleanup_proven_dead(&self.config, &dead);
-            }
-            RuntimeOwnershipSnapshot::Absent(_) => return Ok(()),
-            _ => return Err(force_runtime_not_quiescent()),
-        }
-
         let deadline = std::time::Instant::now() + EXACT_OWNED_SHUTDOWN_TIMEOUT;
         loop {
             let current = reconcile_registered_runtime_ownership(&self.config, &self.root)
@@ -121,31 +104,11 @@ impl ExactOwnedSetupShutdown {
     }
 }
 
-fn force_runtime_teardown_failed(runtime_instance_id: Uuid, error: CliError) -> CliError {
-    let mut failure = CliError::new(
-        "SETUP_RUNTIME_TEARDOWN_FAILED",
-        format!(
-            "Forced setup could not unload exact-owned runtime {runtime_instance_id}."
-        ),
-    );
-    failure.details.insert(
-        "runtimeInstanceId".to_string(),
-        runtime_instance_id.to_string(),
-    );
-    failure
-        .details
-        .insert("causeCode".to_string(), error.code.to_string());
-    failure
-        .details
-        .insert("causeMessage".to_string(), error.message);
-    failure
-}
-
 fn force_runtime_teardown_timeout(runtime_instance_id: Uuid) -> CliError {
     let mut failure = CliError::new(
-        "SETUP_RUNTIME_TEARDOWN_TIMEOUT",
+        "SETUP_RUNTIME_IDLE_SHUTDOWN_TIMEOUT",
         format!(
-            "Exact-owned runtime {runtime_instance_id} remained live after its service was unloaded."
+            "Exact-owned runtime {runtime_instance_id} remained live without completing its server-permitted idle shutdown."
         ),
     );
     failure.details.insert(

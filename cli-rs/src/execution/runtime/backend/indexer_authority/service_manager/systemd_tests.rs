@@ -165,6 +165,50 @@ fn unregister_disables_an_exact_registered_link_review_regression() {
 }
 
 #[test]
+fn systemd_forced_shutdown_stops_running_unit_before_disable() {
+    let mut runner = FakeSystemctl {
+        outputs: vec![
+            service_state(
+                "loaded",
+                "active",
+                "running",
+                "42",
+                "/tmp/kast-indexer-test.service",
+            ),
+            output(true),
+            service_state(
+                "loaded",
+                "inactive",
+                "dead",
+                "0",
+                "/tmp/kast-indexer-test.service",
+            ),
+            output(true),
+            service_state("not-found", "inactive", "dead", "0", ""),
+        ]
+        .into(),
+        calls: vec![],
+    };
+
+    unregister_with(&manager(), &mut runner).unwrap();
+
+    assert_eq!(
+        runner.calls[1],
+        ["--user", "--no-pager", "stop", "kast-indexer-test.service",]
+    );
+    assert_eq!(
+        runner.calls[3],
+        [
+            "--user",
+            "--no-pager",
+            "disable",
+            "kast-indexer-test.service",
+        ]
+    );
+    assert_eq!(runner.calls.len(), 5);
+}
+
+#[test]
 fn unregister_of_an_absent_link_is_a_noop_review_regression() {
     let mut runner = FakeSystemctl {
         outputs: vec![service_state("not-found", "inactive", "dead", "0", "")].into(),

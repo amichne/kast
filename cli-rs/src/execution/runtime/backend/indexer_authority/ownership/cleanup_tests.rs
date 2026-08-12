@@ -39,7 +39,16 @@ fn live_process_claim_temporary_blocks_before_manager_mutation_final_registratio
         .expect("registered manager state JSON");
     fs::write(manager_state, &registered_state).expect("registered manager state");
 
-    let error = unregister_dead_service_manager(&fixture.registration)
+    let dead = DeadServiceRuntime {
+        registration: fixture.registration.clone(),
+        process_claim: None,
+        active: None,
+        descriptor: None,
+        socket: SocketObservation::Absent {
+            path: fixture._temp.path().join("absent.sock"),
+        },
+    };
+    let error = unregister_dead_service_manager(&dead)
         .expect_err("live process temporary must block cleanup");
 
     assert_eq!(error.code, "RUNTIME_OWNERSHIP_CHANGED");

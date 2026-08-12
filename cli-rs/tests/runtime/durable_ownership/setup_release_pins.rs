@@ -95,7 +95,7 @@ fn same_release_profile_switches_keep_a_live_release_pin_valid() {
 }
 
 #[test]
-fn force_setup_tears_down_exact_owned_prior_service() {
+fn force_setup_requires_server_issued_shutdown_permit() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
@@ -103,11 +103,25 @@ fn force_setup_tears_down_exact_owned_prior_service() {
     assert!(setup(&home, &kast_home, &source).status.success());
     let mut runtime = PinnedRuntimeService::new(temp.path(), &kast_home);
 
-    let forced = runtime.run({
+    let mut forced = runtime.spawn({
         let mut command = setup_command(&home, &kast_home, &source);
         command.arg("--force");
         command
     });
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    assert!(
+        forced.try_wait().expect("forced setup status").is_none(),
+        "forced setup bypassed the server-issued idle-shutdown permit",
+    );
+    assert!(runtime.is_live(), "forced setup signaled the prior process");
+    assert!(
+        runtime.manager_state.exists(),
+        "forced setup unloaded the service before permitted shutdown",
+    );
+
+    runtime.complete_idle_shutdown();
+    let forced = forced.wait_with_output().expect("permitted forced setup");
 
     assert!(
         forced.status.success(),

@@ -164,6 +164,19 @@ impl PinnedRuntimeService {
             .expect("setup with registered runtime")
     }
 
+    fn spawn(&self, mut command: SetupCommand) -> SetupChild {
+        command
+            .env("KAST_TEST_ALLOW_RUNTIME_SERVICE_MANAGER", "1")
+            .env(
+                "KAST_TEST_RUNTIME_SERVICE_MANAGER_STATE",
+                &self.manager_state,
+            )
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .expect("spawn setup with registered runtime")
+    }
+
     fn complete_idle_shutdown(&mut self) {
         drop(self.process.stdin.take());
         let status = self.process.wait().expect("runtime idle shutdown");
