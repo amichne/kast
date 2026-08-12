@@ -1,5 +1,5 @@
 #[test]
-fn force_setup_preserves_the_install_when_runtime_registration_state_is_malformed() {
+fn force_setup_replaces_invalid_owned_runtime_registry_noise() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
@@ -8,7 +8,6 @@ fn force_setup_preserves_the_install_when_runtime_registration_state_is_malforme
     assert!(setup(&home, &kast_home, &initial_source).status.success());
 
     let current_before = std::fs::read_link(kast_home.join("current")).expect("current release");
-    let releases_before = installed_release_names(&kast_home);
     let registration = kast_home
         .join("state/runtime/services")
         .join("malformed-workspace")
@@ -25,22 +24,19 @@ fn force_setup_preserves_the_install_when_runtime_registration_state_is_malforme
         .expect("forced setup");
 
     assert!(
-        !output.status.success(),
-        "force must fail before deleting unproven runtime state: stdout={}, stderr={}",
+        output.status.success(),
+        "force must remove invalid owned registry noise: stdout={}, stderr={}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
-    let error: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("typed setup error");
-    assert_eq!(error["code"], "SETUP_RUNTIME_PREFLIGHT_BLOCKED");
-    assert_eq!(
-        std::fs::read_link(kast_home.join("current")).expect("unchanged current release"),
+    assert_ne!(
+        std::fs::read_link(kast_home.join("current")).expect("replacement current release"),
         current_before,
+        "forced setup retained the prior release",
     );
-    assert_eq!(installed_release_names(&kast_home), releases_before);
-    assert_eq!(
-        std::fs::read(&registration).expect("preserved runtime registration"),
-        malformed,
+    assert!(
+        !registration.exists(),
+        "forced setup retained invalid owned registry noise",
     );
 }
 

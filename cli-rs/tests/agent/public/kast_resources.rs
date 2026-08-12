@@ -90,7 +90,7 @@ if [[ "$*" == *"--version"* ]]; then
 elif [[ "$*" == *"--json"* ]]; then
   printf '%s\n' '[]'
 fi
-if [[ "${KAST_TEST_FAIL_CLAUDE_INSTALL:-}" == "1" && "$provider" == "claude" && "$*" == *"plugin install"* ]]; then
+if [[ -n "${KAST_TEST_FAIL_CLAUDE_COMMAND:-}" && "$provider" == "claude" && "$*" == *"$KAST_TEST_FAIL_CLAUDE_COMMAND"* ]]; then
   exit 71
 fi
 "#,

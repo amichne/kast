@@ -124,6 +124,20 @@ pub(super) fn unregister(manager: &ServiceManagerRegistration) -> Result<()> {
     match manager {
         ServiceManagerRegistration::Test { state_path, .. } => {
             require_test_manager_enabled(Path::new(state_path))?;
+            if let ServiceManagerObservation::Running(pid) =
+                inspect_test_manager(Path::new(state_path))?
+            {
+                let pid = i32::try_from(pid)
+                    .map_err(|_| manager_error("Test service manager PID is out of range."))?;
+                if unsafe { libc::kill(pid, libc::SIGTERM) } != 0 {
+                    let error = std::io::Error::last_os_error();
+                    if error.raw_os_error() != Some(libc::ESRCH) {
+                        return Err(manager_error(&format!(
+                            "Test service manager could not stop the runtime: {error}"
+                        )));
+                    }
+                }
+            }
             match fs::remove_file(state_path) {
                 Ok(()) => Ok(()),
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),

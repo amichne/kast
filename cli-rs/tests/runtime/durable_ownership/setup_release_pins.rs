@@ -95,34 +95,35 @@ fn same_release_profile_switches_keep_a_live_release_pin_valid() {
 }
 
 #[test]
-fn force_setup_with_a_registered_runtime_changes_no_install_state() {
+fn force_setup_tears_down_exact_owned_prior_service() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
     let source = write_install_bundle_source(temp.path(), "v1.0.0");
     assert!(setup(&home, &kast_home, &source).status.success());
     let mut runtime = PinnedRuntimeService::new(temp.path(), &kast_home);
-    let current_before = std::fs::read_link(kast_home.join("current")).expect("current release");
-    let releases_before = installed_release_names(&kast_home);
-    let state_before = test_path_sha256(&kast_home.join("state"));
 
-    let blocked = runtime.run({
+    let forced = runtime.run({
         let mut command = setup_command(&home, &kast_home, &source);
         command.arg("--force");
         command
     });
 
-    assert!(!blocked.status.success(), "force deleted registered state");
-    let error: serde_json::Value =
-        serde_json::from_slice(&blocked.stdout).expect("typed setup error");
-    assert_eq!(error["code"], "SETUP_RUNTIME_NOT_QUIESCENT");
-    assert_eq!(
-        std::fs::read_link(kast_home.join("current")).expect("unchanged current release"),
-        current_before,
+    assert!(
+        forced.status.success(),
+        "force should unload the exact-owned prior service: stdout={}, stderr={}",
+        String::from_utf8_lossy(&forced.stdout),
+        String::from_utf8_lossy(&forced.stderr),
     );
-    assert_eq!(installed_release_names(&kast_home), releases_before);
-    assert_eq!(test_path_sha256(&kast_home.join("state")), state_before);
-    assert!(runtime.is_live(), "force setup terminated the runtime");
+    assert!(!runtime.is_live(), "forced setup retained the prior process");
+    assert!(
+        !runtime.registration.exists(),
+        "forced setup retained the prior registration"
+    );
+    assert!(
+        !runtime.manager_state.exists(),
+        "forced setup retained the prior service-manager state"
+    );
 }
 
 #[test]

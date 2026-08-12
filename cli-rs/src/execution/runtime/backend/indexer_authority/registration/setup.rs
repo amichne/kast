@@ -24,6 +24,13 @@ struct RuntimeSetupDescriptors {
     indexers: Vec<ServerInstanceDescriptor>,
 }
 
+#[derive(Debug)]
+struct RuntimeSetupObservation {
+    config: KastConfig,
+    root: RegisteredWorkspaceRoot,
+    ownership: RuntimeOwnershipSnapshot,
+}
+
 include!("setup/force_reset.rs");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +38,8 @@ enum RegistrationPublicationTemporary {
     Staging(Uuid),
     ActivePointer,
 }
+
+include!("setup/registry_normalization.rs");
 
 impl RuntimeSetupAuthorization {
     pub(crate) fn pinned_release_roots(&self) -> &BTreeSet<PathBuf> {
@@ -85,18 +94,22 @@ pub(crate) fn preflight_runtime_setup(
                     error
                 }
             })?;
-        observations.push((config, ownership));
+        observations.push(RuntimeSetupObservation {
+            config,
+            root,
+            ownership,
+        });
     }
     if intent == RuntimeSetupIntent::ForceReset {
-        return ProvenDeadSetupCleanup::admit(
+        return ForceResetCleanup::admit(
             observations,
             descriptors.registry_has_unclassified_entries,
         )?
         .execute(paths);
     }
     let mut pinned_release_roots = BTreeSet::new();
-    for (_, ownership) in observations {
-        collect_runtime_pins(ownership, &mut pinned_release_roots)?;
+    for observation in observations {
+        collect_runtime_pins(observation.ownership, &mut pinned_release_roots)?;
     }
 
     let authorization = RuntimeSetupAuthorization {
@@ -129,41 +142,33 @@ fn registered_service_roots(
     };
     let mut roots = BTreeMap::new();
     for workspace_entry in workspace_entries {
-        let workspace_entry = workspace_entry?;
-        if !workspace_entry.file_type()?.is_dir() {
-            return Err(setup_preflight_error(
-                "Runtime services contain an unexpected workspace entry.",
-            ));
-        }
-        let directory_workspace_key = workspace_entry.file_name().to_string_lossy().into_owned();
-        if !is_sha256(&directory_workspace_key) {
-            return Err(setup_preflight_error(
-                "Runtime services contain an invalid workspace key.",
-            ));
-        }
+        let workspace = match classify_runtime_services_entry(workspace_entry?)? {
+            RuntimeServicesEntry::Workspace(workspace) => workspace,
+            RuntimeServicesEntry::Noise(path) => {
+                remove_runtime_registry_noise(&path)?;
+                continue;
+            }
+        };
+        let RuntimeWorkspaceRegistryDirectory {
+            path: workspace_path,
+            workspace_key: directory_workspace_key,
+        } = workspace;
         let mut registration_found = false;
-        for registration_entry in fs::read_dir(workspace_entry.path())? {
-            let registration_entry = registration_entry?;
-            let name = registration_entry.file_name();
-            if name == "active.json" {
-                continue;
-            }
-            if let Some(temporary) = registration_publication_temporary(&name) {
-                recover_registration_publication_temporary(
-                    &workspace_entry.path(),
-                    &registration_entry.path(),
-                    temporary,
-                )?;
-                continue;
-            }
-            if name.to_string_lossy().starts_with('.') || !registration_entry.file_type()?.is_dir()
-            {
-                return Err(setup_preflight_error(
-                    "Runtime services contain an incomplete or unexpected registration.",
-                ));
-            }
+        for registration_entry in fs::read_dir(&workspace_path)? {
+            let registration_path = match classify_runtime_workspace_entry(registration_entry?)? {
+                RuntimeWorkspaceEntry::ActivePointer => continue,
+                RuntimeWorkspaceEntry::PublicationTemporary { path, temporary } => {
+                    recover_registration_publication_temporary(&workspace_path, &path, temporary)?;
+                    continue;
+                }
+                RuntimeWorkspaceEntry::Registration(path) => path,
+                RuntimeWorkspaceEntry::Noise(path) => {
+                    remove_runtime_registry_noise(&path)?;
+                    continue;
+                }
+            };
             let (launch, _) = read_owned_json::<ServiceLaunchRegistration>(
-                &registration_entry.path().join("launch.json"),
+                &registration_path.join("launch.json"),
             )?;
             let candidate = registered_setup_root(&launch.workspace_root)?;
             let root = candidate.path();
@@ -172,11 +177,11 @@ fn registered_service_roots(
                     "Runtime service workspace key does not match its canonical root.",
                 ));
             }
-            validate_service_registration(&registration_entry.path(), root)?;
+            validate_service_registration(&registration_path, root)?;
             registration_found = true;
             roots.entry(root.to_path_buf()).or_insert(candidate);
         }
-        if !registration_found && workspace_entry.path().join("active.json").exists() {
+        if !registration_found && workspace_path.join("active.json").exists() {
             return Err(setup_preflight_error(
                 "Runtime services contain an active pointer without a registration.",
             ));

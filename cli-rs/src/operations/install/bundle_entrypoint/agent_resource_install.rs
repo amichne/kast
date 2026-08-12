@@ -45,7 +45,7 @@ fn install_agent_harness(
     let root = marketplace_root.display().to_string();
     if mode == AgentResourceInstallMode::Replace {
         for args in agent_harness_cleanup_commands(harness) {
-            let _ = run_agent_harness_command(harness, &args);
+            run_agent_harness_command(harness, &args)?;
         }
     }
     let commands = match harness {
