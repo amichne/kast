@@ -23,4 +23,5 @@ include(
     ":analysis-server",
     ":index-store",
     ":indexer",
+    ":kernel",
 )

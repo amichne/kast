@@ -17,7 +17,7 @@ internal object KastPlatformModules {
             ModuleId.ANALYSIS_SERVER,
             ModuleId.INDEX_STORE,
         ),
-        planned(ModuleId.KERNEL, ModuleRole.KERNEL),
+        active(ModuleId.KERNEL, ModuleRole.KERNEL),
         planned(ModuleId.PROTOCOL_REGISTRY, ModuleRole.CONTRACT, ModuleId.KERNEL),
         planned(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         planned(ModuleId.WORKSPACE_SPI, ModuleRole.SPI, ModuleId.WORKSPACE_CONTRACT),

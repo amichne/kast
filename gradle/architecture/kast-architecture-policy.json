@@ -48,7 +48,7 @@
     {
       "id": "KERNEL",
       "projectPath": ":kernel",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "KERNEL",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.kernel"},
