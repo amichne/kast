@@ -111,7 +111,7 @@ private fun semanticTypeFact(
                     (resolved.element as? KtNamedDeclaration)
                         ?.fqName
                         ?.asString()
-                        ?: userType.referencedName
+                    ?: userType.referencedName
             }
         }
     return SemanticGraphTypeFact(
@@ -156,7 +156,7 @@ internal fun KtTypeReference.resolveTypeTarget(): PsiElement? =
 internal fun KtTypeReference.resolveCompilerTarget(): SemanticGraphCompilerTarget =
     PsiTreeUtil.findChildOfType(this, KtUserType::class.java)
         ?.resolveCompilerTarget()
-        ?: SemanticGraphCompilerTarget.Unresolved
+    ?: SemanticGraphCompilerTarget.Unresolved
 
 internal fun KtUserType.resolveTarget(): PsiElement? =
     (resolveCompilerTarget() as? SemanticGraphCompilerTarget.Source)?.element
@@ -167,7 +167,7 @@ internal fun KtUserType.resolveCompilerTarget(): SemanticGraphCompilerTarget = a
         ?.firstOrNull()
         ?.resolveToSymbol()
     symbol?.let { SemanticGraphCompilerTarget.resolved(it.psi) }
-        ?: SemanticGraphCompilerTarget.Unresolved
+    ?: SemanticGraphCompilerTarget.Unresolved
 }
 
 internal fun String.canonicalTypeText(): String = replace('/', '.')

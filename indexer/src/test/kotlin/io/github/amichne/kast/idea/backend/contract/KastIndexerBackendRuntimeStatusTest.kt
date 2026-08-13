@@ -28,7 +28,7 @@ class KastIndexerBackendRuntimeStatusTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `runtime status exposes the exact admitted generation only while ready`() {
+    fun `runtime status exposes exact admitted generation only while ready`() {
         val published = testPublishedWorkspaceGeneration(
             generation = WorkspaceSemanticGeneration(7),
             identity = WorkspaceStateIdentity("verified-workspace"),
