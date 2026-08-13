@@ -25,4 +25,6 @@ include(
     ":indexer",
     ":kernel",
     ":protocol:registry",
+    ":workspace:contract",
+    ":workspace:spi",
 )

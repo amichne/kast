@@ -36,16 +36,6 @@
       "allowedEffects": ["ANALYSIS_BACKEND", "FILESYSTEM_WRITE"]
     },
     {
-      "id": "INDEXER",
-      "projectPath": ":indexer",
-      "lifecycle": "ACTIVE",
-      "role": "LEGACY_HOST",
-      "cost": "LEGACY",
-      "roleConvention": {"kind": "UNMARKED_LEGACY"},
-      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":index-store"],
-      "allowedEffects": ["FILESYSTEM_WRITE"]
-    },
-    {
       "id": "KERNEL",
       "projectPath": ":kernel",
       "lifecycle": "ACTIVE",
@@ -56,19 +46,9 @@
       "allowedEffects": []
     },
     {
-      "id": "PROTOCOL_REGISTRY",
-      "projectPath": ":protocol:registry",
-      "lifecycle": "ACTIVE",
-      "role": "CONTRACT",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel"],
-      "allowedEffects": []
-    },
-    {
       "id": "WORKSPACE_CONTRACT",
       "projectPath": ":workspace:contract",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "CONTRACT",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
@@ -78,11 +58,31 @@
     {
       "id": "WORKSPACE_SPI",
       "projectPath": ":workspace:spi",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "SPI",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
       "allowedProjectDependencies": [":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "INDEXER",
+      "projectPath": ":indexer",
+      "lifecycle": "ACTIVE",
+      "role": "LEGACY_HOST",
+      "cost": "LEGACY",
+      "roleConvention": {"kind": "UNMARKED_LEGACY"},
+      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":index-store", ":workspace:spi"],
+      "allowedEffects": ["FILESYSTEM_WRITE"]
+    },
+    {
+      "id": "PROTOCOL_REGISTRY",
+      "projectPath": ":protocol:registry",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel"],
       "allowedEffects": []
     },
     {
