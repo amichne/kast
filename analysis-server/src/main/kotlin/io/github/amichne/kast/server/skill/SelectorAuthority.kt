@@ -1,19 +1,10 @@
 package io.github.amichne.kast.server.skill
 
 import io.github.amichne.kast.api.contract.*
-import io.github.amichne.kast.api.contract.query.*
-import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.api.contract.selector.*
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.protocol.*
-import io.github.amichne.kast.api.validation.FileHashing
-import io.github.amichne.kast.api.validation.parsed
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.isActive
-import java.nio.file.Files
+import io.github.amichne.kast.server.PublicSymbolReadBinding
 import java.nio.file.Path
 
 internal fun KastExactSymbolSelector.normalizedFor(
@@ -32,21 +23,13 @@ internal fun Symbol.toSymbolIdentity(): SymbolIdentity = SymbolIdentity(
     fqName = fqName,
     kind = kind,
     declarationFile = NormalizedPath.parse(location.filePath),
-    declarationStartOffset = io.github.amichne.kast.api.contract.NonNegativeInt(location.startOffset),
-    containingType = containingDeclaration,
-)
-
-internal fun Symbol.toExactSelector(): KastExactSymbolSelector = KastExactSymbolSelector(
-    fqName = fqName,
-    declarationFile = location.filePath,
-    declarationStartOffset = location.startOffset,
-    kind = kind,
+    declarationStartOffset = NonNegativeInt(location.startOffset),
     containingType = containingDeclaration,
 )
 
 internal fun SkillRpcContext.issueSelectorHandle(symbol: Symbol): String =
     when (
-        val issued = backend.selectorHandles.issue(
+        val issued = selectorHandleAuthority().issue(
             selector = symbol.toExactSelector(),
             allowedFamilies = symbol.kind.selectorOperationFamilies(),
         )
@@ -56,6 +39,12 @@ internal fun SkillRpcContext.issueSelectorHandle(symbol: Symbol): String =
             capability = "SELECTOR_HANDLES",
             message = "The semantic backend cannot issue reusable selector handles",
         )
+    }
+
+internal fun SkillRpcContext.selectorHandleAuthority(): SelectorHandleAuthority =
+    when (val binding = publicSymbolReads) {
+        PublicSymbolReadBinding.LegacyAnalysisBackend -> backend.selectorHandles
+        is PublicSymbolReadBinding.Native -> binding.selectorHandles
     }
 
 internal fun SkillRpcContext.selectSelector(
@@ -69,7 +58,7 @@ internal fun SkillRpcContext.selectSelector(
             SelectorSelection.Explicit(explicitSelector.normalizedFor(workspaceRoot))
         explicitSelector == null && selectorHandle != null -> {
             when (
-                val resolution = backend.selectorHandles.resolve(
+                val resolution = selectorHandleAuthority().resolve(
                     handle = selectorHandle,
                     workspaceRoot = workspaceRoot,
                     family = family,
@@ -95,55 +84,19 @@ internal fun KastExactSymbolSelector.toHandleSubject(): SymbolIdentity = SymbolI
     containingType = containingType,
 )
 
-internal fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily> = when (this) {
-    SymbolKind.CLASS, SymbolKind.INTERFACE -> setOf(
-        SelectorOperationFamily.IDENTITY,
-        SelectorOperationFamily.REFERENCES,
-        SelectorOperationFamily.IMPLEMENTATIONS,
-        SelectorOperationFamily.HIERARCHY,
-        SelectorOperationFamily.IMPACT,
-        SelectorOperationFamily.RENAME,
-    )
-    SymbolKind.OBJECT -> setOf(
-        SelectorOperationFamily.IDENTITY,
-        SelectorOperationFamily.REFERENCES,
-        SelectorOperationFamily.HIERARCHY,
-        SelectorOperationFamily.IMPACT,
-        SelectorOperationFamily.RENAME,
-    )
-    SymbolKind.FUNCTION -> setOf(
-        SelectorOperationFamily.IDENTITY,
-        SelectorOperationFamily.REFERENCES,
-        SelectorOperationFamily.CALLERS,
-        SelectorOperationFamily.CALLEES,
-        SelectorOperationFamily.IMPACT,
-        SelectorOperationFamily.RENAME,
-        SelectorOperationFamily.REPLACE_DECLARATION,
-    )
-    SymbolKind.PROPERTY -> setOf(
-        SelectorOperationFamily.IDENTITY,
-        SelectorOperationFamily.REFERENCES,
-        SelectorOperationFamily.IMPACT,
-        SelectorOperationFamily.RENAME,
-        SelectorOperationFamily.REPLACE_DECLARATION,
-    )
-    SymbolKind.PARAMETER -> setOf(
-        SelectorOperationFamily.IDENTITY,
-        SelectorOperationFamily.REFERENCES,
-        SelectorOperationFamily.RENAME,
-    )
-    SymbolKind.UNKNOWN -> emptySet()
-}
-
 internal fun KastExactSymbolSelector.matches(actual: SymbolIdentity): Boolean =
     fqName == actual.fqName &&
-        NormalizedPath.parse(declarationFile) == actual.declarationFile &&
-        declarationStartOffset == actual.declarationStartOffset.value &&
-        (kind == null || kind == actual.kind) &&
-        (containingType == null || containingType == actual.containingType)
+    NormalizedPath.parse(declarationFile) == actual.declarationFile &&
+    declarationStartOffset == actual.declarationStartOffset.value &&
+    (kind == null || kind == actual.kind) &&
+    (containingType == null || containingType == actual.containingType)
 
 internal suspend fun SkillRpcContext.workspaceRootFor(explicit: String?): String =
-    explicit?.takeIf(String::isNotBlank)?.normalizedAbsolutePath() ?: backend.runtimeStatus().workspaceRoot
+    explicit?.takeIf(String::isNotBlank)?.normalizedAbsolutePath()
+    ?: when (val binding = publicSymbolReads) {
+        PublicSymbolReadBinding.LegacyAnalysisBackend -> backend.runtimeStatus().workspaceRoot
+        is PublicSymbolReadBinding.Native -> binding.workspaceRoot.value
+    }
 
 internal suspend fun SkillRpcContext.requireReadCapability(capability: ReadCapability) {
     requireCapabilities(readCapabilities = setOf(capability))
@@ -178,11 +131,5 @@ internal suspend fun SkillRpcContext.requireCapabilities(
     }
 }
 
-
 internal fun String.normalizedAbsolutePath(): String =
     Path.of(this).toAbsolutePath().normalize().toString()
-
-private fun WrapperCallDirection.toCallDirection(): CallDirection = when (this) {
-    WrapperCallDirection.INCOMING -> CallDirection.INCOMING
-    WrapperCallDirection.OUTGOING -> CallDirection.OUTGOING
-}

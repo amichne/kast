@@ -43,9 +43,10 @@ not a foreground IDE plugin.
 
 ## Dependency boundary
 
-- `analysis-api`, `analysis-server`, and `index-store` are `compileOnly` inputs
-  to compilation and explicit `indexerPluginRuntime` payloads for packaging.
-  The private plugin payload owns these jars at runtime.
+- `analysis-api`, `analysis-server`, `index-store`, `symbol:contract`, and
+  `symbol:intellij` are `compileOnly` inputs and explicit
+  `indexerPluginRuntime` payloads. The private plugin payload owns these jars
+  at runtime.
 - IntelliJ core libraries belong to the launcher runtime; Kotlin, Java, Gradle,
   and other platform plugin libraries stay in the packaged IDEA home. Never
   duplicate platform-plugin-owned classes in the private Kast payload.
@@ -73,6 +74,9 @@ not a foreground IDE plugin.
   readiness. `WorkspaceSemanticGate` admits only evidence from the current
   published workspace generation; blocked or moving lanes cannot be rendered
   as ready.
+- The first public native symbol route compiles the imported model, runs one
+  bounded IntelliJ read, and returns detached definitions with generation,
+  completeness, stage, work, byte, and selector-handle evidence.
 - Workspace events enter through `WorkspaceTransitionIngress`. Coalesce
   compatible work while retaining the newest source-content freshness claims,
   build semantic identity, and recovery-audit demand. Do not start parallel

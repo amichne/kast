@@ -11,6 +11,11 @@ enum class SymbolDiscoveryKind {
     SYMBOL,
 }
 
+enum class SymbolDiscoveryMatch {
+    FUZZY,
+    EXACT_NAME,
+}
+
 enum class SymbolDiscoveryPatternFailure {
     BLANK,
     TOO_LONG,
@@ -77,4 +82,5 @@ data class SymbolDiscoveryRequest(
     val kind: SymbolDiscoveryKind,
     val pattern: SymbolDiscoveryPattern,
     val budget: SymbolDiscoveryBudget,
+    val match: SymbolDiscoveryMatch = SymbolDiscoveryMatch.FUZZY,
 )

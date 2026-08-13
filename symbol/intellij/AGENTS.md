@@ -8,8 +8,8 @@ transport, or composition.
 
 - `IntellijSearchScopeCompiler.kt` turns admitted detached ownership and operation policy into one
   request-local `GlobalSearchScope`, then gives that capability to native query work.
-- `IntellijNativeDiscoveryAdapter.kt` runs one restartable IntelliJ read and selects FILE, CLASS,
-  or current symbol Choose-by-Name contributors.
+- `IntellijNativeDiscoveryAdapter.kt` runs restartable discovery reads. Its fast adapter combines
+  Kotlin contributor discovery, exact selection, revalidation, and detached projection in one read.
 - `IntellijNativeDiscoveryQuery.kt` performs platform matching, scoped native name/element
   processing, bounded collection, deterministic ordering, qualification, and timing.
 - `IntellijDiscoveryProjection.kt` converts only already-in-scope live items into detached
@@ -29,6 +29,8 @@ transport, or composition.
 
 ## Adapter invariants
 
+- The published archive name is `symbol-intellij`; portable runtime verification depends on this
+  unambiguous module identity.
 - Compile and reject scope before a PSI or index callback starts.
 - Select roots and production/test/generated classification only from exact Gradle project-model
   ownership. Never infer classification from paths or source-set names.
@@ -44,6 +46,10 @@ transport, or composition.
   graph, or control processes.
 - Use only scoped `ChooseByNameContributorEx` processing. A legacy scope-blind contributor is an
   explicit qualified limitation, never a fallback enumeration.
+- Collect matching names before requesting elements. Nested stub-index operations can deadlock and
+  are prohibited.
+- The Kotlin fast path admits only the supported Kotlin declaration contributors. Unwrap
+  `PsiElementNavigationItem` through its target before scope and projection checks.
 - Check cancellation and dumb/project state during provider streaming. Platform cancellation must
   escape the query so the write-priority `readAction` can restart or cancel truthfully.
 - Apply record, byte, work, and elapsed limits before retaining live items; every nonterminal cap

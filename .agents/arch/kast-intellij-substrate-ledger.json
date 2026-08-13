@@ -264,6 +264,80 @@
       ]
     }
   ],
+  "performanceIncrements": [
+    {
+      "id": "kip018-native-public-fast-read-fixture",
+      "ownerTicket": "KIP-018",
+      "proofClass": "io.github.amichne.kast.idea.backend.contract.suite.NativePublicSymbolReadTest",
+      "operationSequence": [
+        "symbol-discovery",
+        "exact-definition"
+      ],
+      "fixture": "indexer-light-kotlin-fixture",
+      "state": "WARM",
+      "runtimeBuild": "261.25134.95",
+      "publishedGeneration": 1,
+      "completeness": "EXACT",
+      "qualifications": [],
+      "stageObservations": {
+        "admissionQueueNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 5678209
+        },
+        "smartModeOrTransitionWaitNanos": {
+          "state": "NOT_APPLICABLE"
+        },
+        "searchScopeCompilationNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 3477292
+        },
+        "nativeQueryNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 78057250
+        },
+        "semanticResolutionNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 6105666
+        },
+        "persistenceOrPublicationNanos": {
+          "state": "NOT_APPLICABLE"
+        },
+        "projectionSerializationNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 406424249
+        },
+        "ipcNanos": {
+          "state": "OUTSIDE_RESPONSE_BOUNDARY"
+        }
+      },
+      "workCounters": {
+        "vfsRefreshCount": 0,
+        "vfsRefreshScope": "NONE",
+        "gradleImportCount": 0,
+        "graphBuildCount": 0,
+        "sqliteWriteCount": 0,
+        "readActionCount": 1
+      },
+      "resultMeasurements": {
+        "recordCount": 1,
+        "outputBytes": 547,
+        "exactness": "EXACT"
+      },
+      "claimClass": "BOUNDED_WORK_NON_REGRESSION",
+      "comparisonEligible": false,
+      "historicalComparison": {
+        "evidenceId": "pr604-warm-symbol-discovery",
+        "outcome": "INELIGIBLE",
+        "reasons": [
+          "The historical machine identity was not recorded.",
+          "The historical semantic generation was not retained.",
+          "The historical stage timings and work counters were not retained.",
+          "The historical request and this light fixture do not share a corpus."
+        ]
+      },
+      "proofCommand": "./gradlew :indexer:test --tests '*NativePublicSymbolReadTest' --no-daemon --console=plain"
+    }
+  ],
   "referenceProjectLatencyClaims": [],
   "comparisonClaims": [],
   "proofCommands": [

@@ -9,6 +9,7 @@ internal fun SkillRpcContext.toDiscoveryCandidate(
     rank: Int,
     workspaceRoot: String,
     requestedSymbol: String,
+    selectorHandle: String? = null,
 ): KastDiscoveryCandidate {
     val params = KastResolveParams(
         workspaceRoot = workspaceRoot,
@@ -21,7 +22,7 @@ internal fun SkillRpcContext.toDiscoveryCandidate(
         rank = rank,
         confidence = candidate.score / 100.0,
         symbol = candidate.symbol,
-        selectorHandle = issueSelectorHandle(candidate.symbol),
+        selectorHandle = selectorHandle ?: issueSelectorHandle(candidate.symbol),
         reasons = candidate.reasons,
         resolveParams = params,
         nextRequest = KastNextRequest(

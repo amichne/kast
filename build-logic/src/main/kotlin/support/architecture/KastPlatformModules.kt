@@ -16,6 +16,8 @@ internal object KastPlatformModules {
             ModuleId.ANALYSIS_API,
             ModuleId.ANALYSIS_SERVER,
             ModuleId.INDEX_STORE,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.SYMBOL_INTELLIJ,
             ModuleId.WORKSPACE_SPI,
         ),
         active(ModuleId.KERNEL, ModuleRole.KERNEL),

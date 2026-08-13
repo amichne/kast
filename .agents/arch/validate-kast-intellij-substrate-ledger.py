@@ -86,6 +86,7 @@ REQUIRED_RESULT_MEASUREMENTS = {
     "cpuNanos",
     "heapBytes",
 }
+KIP018_INCREMENT_ID = "kip018-native-public-fast-read-fixture"
 
 
 def reject(code: str, message: str) -> NoReturn:
@@ -235,6 +236,94 @@ def validate_history_and_claims(ledger: dict[str, object]) -> None:
     require(not comparison_claims, "COMPARISON", "no comparable same-corpus runs are checked in")
 
 
+def validate_performance_increments(ledger: dict[str, object]) -> None:
+    increments = ledger.get("performanceIncrements")
+    require(isinstance(increments, list) and len(increments) == 1, "PERFORMANCE_INCREMENT", "exactly one increment is required")
+    increment = increments[0]
+    require(isinstance(increment, dict), "PERFORMANCE_INCREMENT", "increment is not an object")
+    require(increment.get("id") == KIP018_INCREMENT_ID, "PERFORMANCE_INCREMENT", "increment identity drift")
+    require(increment.get("ownerTicket") == "KIP-018", "PERFORMANCE_INCREMENT", "owner mismatch")
+    require(
+        increment.get("proofClass") == "io.github.amichne.kast.idea.backend.contract.suite.NativePublicSymbolReadTest",
+        "PERFORMANCE_INCREMENT",
+        "proof class mismatch",
+    )
+    require(
+        increment.get("operationSequence") == ["symbol-discovery", "exact-definition"],
+        "PERFORMANCE_INCREMENT",
+        "operation sequence mismatch",
+    )
+    require(increment.get("fixture") == "indexer-light-kotlin-fixture", "PERFORMANCE_INCREMENT", "fixture mismatch")
+    require(increment.get("state") == "WARM", "PERFORMANCE_INCREMENT", "state mismatch")
+    require(increment.get("runtimeBuild") == "261.25134.95", "PERFORMANCE_INCREMENT", "runtime build mismatch")
+    require(
+        isinstance(increment.get("publishedGeneration"), int) and int(increment["publishedGeneration"]) > 0,
+        "PERFORMANCE_INCREMENT",
+        "published generation missing",
+    )
+    require(increment.get("completeness") == "EXACT", "PERFORMANCE_INCREMENT", "completeness is not exact")
+    require(increment.get("qualifications") == [], "PERFORMANCE_INCREMENT", "qualified result cannot prove the increment")
+
+    observations = object_value(increment, "stageObservations", "PERFORMANCE_INCREMENT")
+    require(set(observations) == REQUIRED_STAGE_TIMINGS, "PERFORMANCE_INCREMENT", "stage observation set mismatch")
+    measured = {
+        "admissionQueueNanos",
+        "searchScopeCompilationNanos",
+        "nativeQueryNanos",
+        "semanticResolutionNanos",
+        "projectionSerializationNanos",
+    }
+    not_applicable = {
+        "smartModeOrTransitionWaitNanos",
+        "persistenceOrPublicationNanos",
+    }
+    for stage in measured:
+        observation = object_value(observations, stage, "PERFORMANCE_INCREMENT")
+        require(observation.get("state") == "MEASURED", "PERFORMANCE_INCREMENT", f"{stage} is not measured")
+        require(
+            isinstance(observation.get("nanoseconds"), int) and int(observation["nanoseconds"]) >= 0,
+            "PERFORMANCE_INCREMENT",
+            f"{stage} duration missing",
+        )
+    for stage in not_applicable:
+        require(
+            observations.get(stage) == {"state": "NOT_APPLICABLE"},
+            "PERFORMANCE_INCREMENT",
+            f"{stage} applicability drift",
+        )
+    require(
+        observations.get("ipcNanos") == {"state": "OUTSIDE_RESPONSE_BOUNDARY"},
+        "PERFORMANCE_INCREMENT",
+        "IPC boundary drift",
+    )
+
+    counters = object_value(increment, "workCounters", "PERFORMANCE_INCREMENT")
+    require(set(counters) == REQUIRED_WORK_COUNTERS, "PERFORMANCE_INCREMENT", "work counter set mismatch")
+    for counter in ("vfsRefreshCount", "gradleImportCount", "graphBuildCount", "sqliteWriteCount"):
+        require(counters.get(counter) == 0, "PERFORMANCE_INCREMENT", f"forbidden work observed: {counter}")
+    require(counters.get("vfsRefreshScope") == "NONE", "PERFORMANCE_INCREMENT", "refresh scope is not empty")
+    require(counters.get("readActionCount") == 1, "PERFORMANCE_INCREMENT", "read action count mismatch")
+
+    result = object_value(increment, "resultMeasurements", "PERFORMANCE_INCREMENT")
+    require(set(result) == {"recordCount", "outputBytes", "exactness"}, "PERFORMANCE_INCREMENT", "result shape mismatch")
+    require(result.get("recordCount") == 1, "PERFORMANCE_INCREMENT", "record count mismatch")
+    require(isinstance(result.get("outputBytes"), int) and int(result["outputBytes"]) > 0, "PERFORMANCE_INCREMENT", "output bytes missing")
+    require(result.get("exactness") == "EXACT", "PERFORMANCE_INCREMENT", "result exactness mismatch")
+    require(increment.get("claimClass") == "BOUNDED_WORK_NON_REGRESSION", "PERFORMANCE_INCREMENT", "claim class mismatch")
+    require(increment.get("comparisonEligible") is False, "PERFORMANCE_INCREMENT", "increment became comparison eligible")
+    comparison = object_value(increment, "historicalComparison", "PERFORMANCE_INCREMENT")
+    require(comparison.get("evidenceId") == "pr604-warm-symbol-discovery", "PERFORMANCE_INCREMENT", "historical evidence mismatch")
+    require(comparison.get("outcome") == "INELIGIBLE", "PERFORMANCE_INCREMENT", "historical comparison became eligible")
+    reasons = comparison.get("reasons")
+    require(isinstance(reasons, list) and len(reasons) >= 4, "PERFORMANCE_INCREMENT", "ineligibility reasons missing")
+    require(
+        increment.get("proofCommand")
+        == "./gradlew :indexer:test --tests '*NativePublicSymbolReadTest' --no-daemon --console=plain",
+        "PERFORMANCE_INCREMENT",
+        "proof command mismatch",
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ledger", type=Path, required=True)
@@ -253,6 +342,7 @@ def main() -> int:
     validate_measurements(ledger)
     validate_operations(ledger)
     validate_history_and_claims(ledger)
+    validate_performance_increments(ledger)
     commands = ledger.get("proofCommands")
     require(isinstance(commands, list) and len(commands) == 2, "PROOF", "proof commands missing")
     require(all(isinstance(command, str) and command.startswith("python3 .agents/arch/") for command in commands), "PROOF", "proof command is not repository-relative")

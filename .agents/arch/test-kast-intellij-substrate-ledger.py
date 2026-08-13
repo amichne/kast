@@ -100,6 +100,24 @@ def main() -> int:
             "COMPARISON",
         )
 
+        missing_increment_stage = copy.deepcopy(ledger)
+        del missing_increment_stage["performanceIncrements"][0]["stageObservations"]["nativeQueryNanos"]
+        require_rejected(
+            scratch,
+            "missing-increment-stage",
+            missing_increment_stage,
+            "PERFORMANCE_INCREMENT",
+        )
+
+        forbidden_increment_work = copy.deepcopy(ledger)
+        forbidden_increment_work["performanceIncrements"][0]["workCounters"]["sqliteWriteCount"] = 1
+        require_rejected(
+            scratch,
+            "forbidden-increment-work",
+            forbidden_increment_work,
+            "PERFORMANCE_INCREMENT",
+        )
+
     print("IntelliJ substrate source/performance ledger: ok")
     return 0
 

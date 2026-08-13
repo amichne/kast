@@ -23,10 +23,14 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
   selector's lease and retained scope.
 - `NativeRelationOutcome.kt` owns deterministic bounded relation batches and makes terminal exact
   counts structurally distinct from qualified known-minimum counts.
+- `NativeFastRead.kt` marks detached definition projections and owns their non-negative byte
+  measure.
 
 ## Dependency boundary
 
 - Production exports only `:kernel` and `:workspace:contract`.
+- The published archive name is `symbol-contract`; keep it distinct from other nested `contract`
+  projects so portable runtime assembly cannot overwrite a dependency.
 - Do not import IntelliJ, Gradle, JDBC, filesystem, process, transport, legacy backend, adapter, or
   service-locator types.
 - Readability policy never grants edit, write, or mutation authority.
@@ -35,6 +39,8 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 - Discovery candidates are suggestions, not exact selectors or mutation authority. Exact selection
   is possible only by ordinal from its owning batch; an IntelliJ adapter must then resolve that
   selection under the same root, generation, and scope before issuing an opaque selector.
+- A native definition projector returns only `NativeDetachedDefinition`. It cannot return PSI,
+  VFS, project, or search-scope objects.
 - Exact selectors retain file, range, name, qualified-identity state, runtime declaration type, and
   a deterministic fingerprint. Consumers take the selector or a revalidation proof, never
   reconstruct authority from a name, FQN, file/offset tuple, or display projection.

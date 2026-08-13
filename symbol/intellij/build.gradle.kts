@@ -7,6 +7,10 @@ plugins {
 
 group = "${rootProject.group}.symbol"
 
+base {
+    archivesName.set("symbol-intellij")
+}
+
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
 

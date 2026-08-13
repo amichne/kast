@@ -203,6 +203,8 @@ dependencies {
     compileOnly(project(":analysis-server"))
     compileOnly(project(":index-store"))
     compileOnly(project(":workspace:spi"))
+    compileOnly(project(":symbol:contract"))
+    compileOnly(project(":symbol:intellij"))
     compileOnly(libs.coroutines.core)
     compileOnly(libs.opentelemetry.api)
     compileOnly(libs.opentelemetry.sdk)
@@ -218,6 +220,8 @@ dependencies {
     indexerPluginRuntime(project(":analysis-server"))
     indexerPluginRuntime(project(":index-store"))
     indexerPluginRuntime(project(":workspace:spi"))
+    indexerPluginRuntime(project(":symbol:contract"))
+    indexerPluginRuntime(project(":symbol:intellij"))
     indexerPluginRuntime(libs.coroutines.core)
     indexerPluginRuntime(libs.opentelemetry.api)
     indexerPluginRuntime(libs.opentelemetry.sdk)
@@ -227,6 +231,8 @@ dependencies {
     testImplementation(project(":analysis-server"))
     testImplementation(project(":index-store"))
     testImplementation(project(":workspace:spi"))
+    testImplementation(project(":symbol:contract"))
+    testImplementation(project(":symbol:intellij"))
     testImplementation(libs.coroutines.core)
     testImplementation(libs.opentelemetry.api)
     testImplementation(libs.opentelemetry.sdk)
@@ -323,6 +329,8 @@ val indexerPluginRuntimeJarPrefixes = listOf(
     "analysis-api-",
     "analysis-server-",
     "index-store-",
+    "symbol-contract-",
+    "symbol-intellij-",
     "kotlinx-coroutines-core",
     "opentelemetry-",
 )

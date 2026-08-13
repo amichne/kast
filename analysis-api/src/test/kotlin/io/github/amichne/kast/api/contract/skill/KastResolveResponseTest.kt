@@ -42,6 +42,7 @@ class KastResolveResponseTest {
 
         val typedSuccess = assertInstanceOf(KastResolveSuccessResponse::class.java, success)
         assertEquals("ksh1.test-handle", typedSuccess.selectorHandle)
+        assertEquals(KastReadEvidence.LegacyCompatibility, typedSuccess.readEvidence)
         assertInstanceOf(KastResolveFailureResponse::class.java, failure)
     }
 

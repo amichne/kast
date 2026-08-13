@@ -14,6 +14,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
@@ -105,10 +106,13 @@ internal class IntellijNativeDiscoveryQuery(
             cancellationCheck = cancellationCheck,
             clock = clock,
         )
-        val matcher = NameUtil.buildMatcher(
-            "*${request.pattern.value}",
-            MatchingMode.IGNORE_CASE,
-        )
+        val fuzzyMatcher = when (request.match) {
+            SymbolDiscoveryMatch.FUZZY -> NameUtil.buildMatcher(
+                "*${request.pattern.value}",
+                MatchingMode.IGNORE_CASE,
+            )
+            SymbolDiscoveryMatch.EXACT_NAME -> null
+        }
         val parameters = FindSymbolParameters.wrap(
             request.pattern.value,
             compiledScope.nativeScope,
@@ -123,24 +127,35 @@ internal class IntellijNativeDiscoveryQuery(
                 return@forEach
             }
             try {
+                val matchingNames = mutableListOf<String>()
                 contributor.processNames(
                     Processor { name ->
                         if (!collector.admitWork()) {
                             return@Processor false
                         }
-                        if (!matcher.matches(name)) {
+                        val matches = when (request.match) {
+                            SymbolDiscoveryMatch.FUZZY -> checkNotNull(fuzzyMatcher).matches(name)
+                            SymbolDiscoveryMatch.EXACT_NAME -> name == request.pattern.value
+                        }
+                        if (!matches) {
                             return@Processor true
                         }
-                        contributor.processElementsWithName(
-                            name,
-                            Processor { item -> collector.accept(item) },
-                            parameters,
-                        )
+                        matchingNames += name
                         !collector.halted
                     },
                     compiledScope.nativeScope,
                     null,
                 )
+                matchingNames.distinct().forEach { name ->
+                    if (collector.halted) {
+                        return@forEach
+                    }
+                    contributor.processElementsWithName(
+                        name,
+                        Processor { item -> collector.accept(item) },
+                        parameters,
+                    )
+                }
             } catch (cancelled: ProcessCanceledException) {
                 throw cancelled
             } catch (cancelled: CancellationException) {

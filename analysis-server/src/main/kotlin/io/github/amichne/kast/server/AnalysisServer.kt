@@ -21,6 +21,8 @@ import java.nio.file.attribute.PosixFilePermission
 class AnalysisServer(
     private val backend: CloseableAnalysisBackend,
     private val config: AnalysisServerConfig,
+    private val publicSymbolReads: PublicSymbolReadBinding =
+        PublicSymbolReadBinding.LegacyAnalysisBackend,
 ) {
     fun start(): RunningAnalysisServer {
         val capabilities = runBlocking {
@@ -29,6 +31,7 @@ class AnalysisServer(
         val dispatcher = RpcAnalysisDispatcher(
             backend,
             config,
+            publicSymbolReads,
         )
         var transportServer: LocalRpcServer? = null
         var descriptor: ServerInstanceDescriptor? = null

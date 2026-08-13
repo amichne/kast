@@ -1,6 +1,7 @@
 package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.navigation.NavigationItem
+import com.intellij.navigation.PsiElementNavigationItem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -43,8 +44,7 @@ internal object IntellijPsiDiscoveryItemFile : IntellijDiscoveryItemFile {
     override fun find(item: NavigationItem): IntellijDiscoveryItemFileResult {
         val file = when (item) {
             is PsiFileSystemItem -> item.virtualFile
-            is PsiElement -> PsiUtilCore.getVirtualFile(item)
-            else -> null
+            else -> item.psiElement()?.let(PsiUtilCore::getVirtualFile)
         }
         return if (file == null) {
             IntellijDiscoveryItemFileResult.Unsupported
@@ -82,12 +82,13 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
             SymbolDiscoveryKind.CLASS,
             SymbolDiscoveryKind.SYMBOL,
                 -> {
-                if (item !is PsiElement) {
+                val element = item.psiElement()
+                if (element == null) {
                     return Refinement.Rejected(
                         SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET,
                     )
                 }
-                item.textOffset
+                element.textOffset
             }
         }
         val classifiedPath = nativePath(file)
@@ -105,4 +106,10 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
             rawOffset = rawOffset,
         )
     }
+}
+
+private fun NavigationItem.psiElement(): PsiElement? = when (this) {
+    is PsiElement -> this
+    is PsiElementNavigationItem -> targetElement
+    else -> null
 }

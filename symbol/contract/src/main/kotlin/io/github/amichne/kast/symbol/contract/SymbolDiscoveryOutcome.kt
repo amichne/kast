@@ -153,6 +153,7 @@ enum class SymbolDiscoveryQualification {
     PROVIDER_FAILURE,
     UNSCOPED_PROVIDER,
     UNSUPPORTED_ITEM,
+    EXACT_DEFINITION_UNAVAILABLE,
 }
 
 enum class SymbolDiscoveryQualificationFailure {

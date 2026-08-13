@@ -5,6 +5,10 @@ plugins {
 
 group = "${rootProject.group}.symbol"
 
+base {
+    archivesName.set("symbol-contract")
+}
+
 dependencies {
     api(project(":kernel"))
     api(project(":workspace:contract"))

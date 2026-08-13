@@ -5,10 +5,12 @@ import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.server.AnalysisServerConfig
+import io.github.amichne.kast.server.PublicSymbolReadBinding
 
 internal class SkillRpcContext(
     val backend: AnalysisBackend,
     val config: AnalysisServerConfig,
+    val publicSymbolReads: PublicSymbolReadBinding,
 )
 
 internal const val DEFAULT_DISCOVERY_SEARCH_LIMIT = 100

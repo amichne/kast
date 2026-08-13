@@ -9,6 +9,7 @@ import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.server.AnalysisServerConfig
+import io.github.amichne.kast.server.PublicSymbolReadBinding
 import io.github.amichne.kast.server.SkillRpcOrchestrator
 import io.github.amichne.kast.server.WorkspaceFilesContinuationService
 import io.github.amichne.kast.server.mutation.MutationExecutionService
@@ -24,9 +25,10 @@ internal data class RpcMethodResult(
 internal class RpcMethodRouter(
     internal val backend: AnalysisBackend,
     internal val config: AnalysisServerConfig,
+    internal val publicSymbolReads: PublicSymbolReadBinding,
     internal val json: Json,
 ) : Closeable {
-    internal val skillRpc = SkillRpcOrchestrator(backend, config, json)
+    internal val skillRpc = SkillRpcOrchestrator(backend, config, publicSymbolReads, json)
     internal val mutationRpc = MutationExecutionService(skillRpc)
     internal val workspaceFilesContinuation = WorkspaceFilesContinuationService(
         capacity = config.typedContinuationCapacity,
@@ -56,8 +58,8 @@ internal class RpcMethodRouter(
         )
         else -> RpcMethodResult(
             dispatchRawMethod(method, params)
-                ?: dispatchSkillMethod(method, params)
-                ?: throw UnknownRpcMethodException(method),
+            ?: dispatchSkillMethod(method, params)
+            ?: throw UnknownRpcMethodException(method),
         )
     }
 
@@ -101,13 +103,12 @@ internal class RpcMethodRouter(
         serializer: KSerializer<T>,
         params: JsonElement?,
     ): T = params?.let { json.decodeFromJsonElement(serializer, it) }
-        ?: throw ValidationException("The JSON-RPC request is missing params")
+           ?: throw ValidationException("The JSON-RPC request is missing params")
 
     internal fun <T> encode(
         serializer: KSerializer<T>,
         value: T,
     ): JsonElement = json.encodeToJsonElement(serializer, value)
-
 }
 
 internal class UnknownRpcMethodException(

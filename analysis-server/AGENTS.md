@@ -10,6 +10,8 @@ process lifecycle selection.
 - `AnalysisServer` and `AnalysisServerConfig` assemble a backend, dispatcher,
   transport, descriptor registry, limits, continuation policy, and optional
   runtime capability leases.
+- `PublicSymbolReadBinding` selects the legacy backend route or one narrow
+  native symbol reader with its exact root and selector-handle authority.
 - `DescriptorStore` owns Unix-socket bind admission, descriptor registration,
   exact endpoint ownership checks, stale endpoint removal, and stop-permit
   revalidation.
@@ -52,6 +54,9 @@ process lifecycle selection.
   capability enums, serializers, OpenAPI/docs, Rust mappings, and fixtures.
   The server transports results; it must not manufacture missing semantic
   evidence.
+- Native public discover and resolve calls use only `PublicSymbolReadBinding`.
+  Exact resolve rejects qualified coverage. The reader must issue selector
+  handles before its generation admission closes.
 - `RpcRequestWaitPolicy` is the sole deadline selector. Ordinary calls use the
   effective server deadline, semantic-graph recovery has one finite outer
   transition budget, and progress-governed mutation/refresh calls retain the

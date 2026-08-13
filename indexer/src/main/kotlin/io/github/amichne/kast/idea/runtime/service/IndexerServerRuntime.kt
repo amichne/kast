@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.idea.backend.workspace.nativePublicSymbolBinding
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
@@ -23,7 +24,6 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
-import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
@@ -231,6 +231,7 @@ object IndexerServerRuntime {
                     workspaceFileCountProvider = manifestFileCountProvider,
                     runtimeCapabilityLeases = runtimeCapabilityLeases,
                 ),
+                publicSymbolReads = checkNotNull(pluginBackend).nativePublicSymbolBinding(),
             ).start()
         } catch (failure: Throwable) {
             listOf<() -> Unit>(backend::close, sourceIndexStore::close).forEach { cleanupPhase ->
@@ -256,39 +257,39 @@ object IndexerServerRuntime {
             diagnostics.recordBackendStarted(transport)
             val startedPluginBackend = checkNotNull(pluginBackend)
             val startedProjectIndexing = KastIdeaProjectIndexing(
-                    project = project,
-                    workspaceIdentity = workspaceIdentity,
-                    config = config,
-                    workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(workspaceGenerationStore),
-                    diagnostics = diagnostics,
-                    indexStore = sourceIndexStore,
-                    semanticAdmission = semanticAdmission,
-                    initialProjectModelAuthority = initialProjectModelAuthority,
-                    gitWorktreeRegistrationProof = registrationProof,
-                    indexingProgress = indexingProgress,
-                    transitionIngress = transitionIngress,
-                    snapshotPreparation = snapshotPreparation,
-                    scopeCache = indexingScopeCache,
-                    semanticGraphIndexer = SemanticGraphIndexingTransition { input ->
-                        val scope = input.sourceIdentifiers
-                        if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
-                            startedPluginBackend.updateSemanticGraphBatchSize(input.batchSize)
-                            runBlocking {
-                                startedPluginBackend.reconcileSemanticGraph(
-                                    ParsedSemanticGraphQuery(
-                                        filePaths = scope.paths.distinct().sorted().map { path -> path.absolute },
-                                        removedFilePaths = scope.removedPaths
-                                            .distinct()
-                                            .sorted()
-                                            .map { path -> path.absolute },
-                                        expectedGeneration = null,
-                                    ),
-                                    input.reconciliationToken,
-                                )
-                            }
+                project = project,
+                workspaceIdentity = workspaceIdentity,
+                config = config,
+                workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(workspaceGenerationStore),
+                diagnostics = diagnostics,
+                indexStore = sourceIndexStore,
+                semanticAdmission = semanticAdmission,
+                initialProjectModelAuthority = initialProjectModelAuthority,
+                gitWorktreeRegistrationProof = registrationProof,
+                indexingProgress = indexingProgress,
+                transitionIngress = transitionIngress,
+                snapshotPreparation = snapshotPreparation,
+                scopeCache = indexingScopeCache,
+                semanticGraphIndexer = SemanticGraphIndexingTransition { input ->
+                    val scope = input.sourceIdentifiers
+                    if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
+                        startedPluginBackend.updateSemanticGraphBatchSize(input.batchSize)
+                        runBlocking {
+                            startedPluginBackend.reconcileSemanticGraph(
+                                ParsedSemanticGraphQuery(
+                                    filePaths = scope.paths.distinct().sorted().map { path -> path.absolute },
+                                    removedFilePaths = scope.removedPaths
+                                        .distinct()
+                                        .sorted()
+                                        .map { path -> path.absolute },
+                                    expectedGeneration = null,
+                                ),
+                                input.reconciliationToken,
+                            )
                         }
-                        GraphLaneOutcome.Committed
-                    },
+                    }
+                    GraphLaneOutcome.Committed
+                },
             )
             projectIndexing = startedProjectIndexing
             when (indexAdmission) {

@@ -2,21 +2,20 @@ package io.github.amichne.kast.server.skill
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
-import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.api.contract.selector.*
 import io.github.amichne.kast.api.contract.skill.*
-import io.github.amichne.kast.api.protocol.*
-import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.parsed
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.isActive
-import java.nio.file.Files
-import java.nio.file.Path
+import io.github.amichne.kast.server.PublicSymbolReadBinding
 
-internal suspend fun SkillRpcContext.resolve(request: KastResolveRequest): KastResolveResponse {
+internal suspend fun SkillRpcContext.resolve(request: KastResolveRequest): KastResolveResponse =
+    when (val binding = publicSymbolReads) {
+        PublicSymbolReadBinding.LegacyAnalysisBackend -> resolveWithLegacyBackend(request)
+        is PublicSymbolReadBinding.Native -> resolveWithNativeIntellij(request, binding)
+    }
+
+private suspend fun SkillRpcContext.resolveWithLegacyBackend(
+    request: KastResolveRequest,
+): KastResolveResponse {
     val workspaceRoot = workspaceRootFor(request.workspaceRoot)
     val query = KastResolveQuery(
         workspaceRoot = workspaceRoot,
@@ -89,7 +88,7 @@ internal suspend fun SkillRpcContext.selectorIdentity(
 ): KastSelectorIdentityResponse {
     val workspaceRoot = workspaceRootFor(request.workspaceRoot)
     return when (
-        val resolution = backend.selectorHandles.resolve(
+        val resolution = selectorHandleAuthority().resolve(
             handle = request.selectorHandle,
             workspaceRoot = workspaceRoot,
             family = request.family,
@@ -103,7 +102,15 @@ internal suspend fun SkillRpcContext.selectorIdentity(
     }
 }
 
-internal suspend fun SkillRpcContext.discover(request: KastDiscoverRequest): KastDiscoverResponse {
+internal suspend fun SkillRpcContext.discover(request: KastDiscoverRequest): KastDiscoverResponse =
+    when (val binding = publicSymbolReads) {
+        PublicSymbolReadBinding.LegacyAnalysisBackend -> discoverWithLegacyBackend(request)
+        is PublicSymbolReadBinding.Native -> discoverWithNativeIntellij(request, binding)
+    }
+
+private suspend fun SkillRpcContext.discoverWithLegacyBackend(
+    request: KastDiscoverRequest,
+): KastDiscoverResponse {
     val workspaceRoot = workspaceRootFor(request.workspaceRoot)
     val query = KastDiscoverQuery(
         workspaceRoot = workspaceRoot,
@@ -153,7 +160,6 @@ internal suspend fun SkillRpcContext.discover(request: KastDiscoverRequest): Kas
         logFile = placeholderLogFile(),
     )
 }
-
 
 internal suspend fun SkillRpcContext.resolveNamedSymbol(
     symbolName: String,
