@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
+import kotlin.collections.filter
 
 class KastArchitecturePolicyTest {
     @Test
@@ -86,7 +87,7 @@ class KastArchitecturePolicyTest {
                 module.id != ModuleId.PROTOCOL_REGISTRY &&
                 ModuleId.PROTOCOL_REGISTRY in module.allowedProjectDependencies
             }
-            .mapTo(mutableSetOf(), ModulePolicy::id)
+            .mapTo(mutableSetOf(), ValidatedModulePolicy::id)
 
         assertEquals(emptySet<ProjectDependencyObservation>(), outwardDependencies)
         assertEquals(emptySet<ModuleId>(), featureContractsDependingOnRegistry)
@@ -99,7 +100,7 @@ class KastArchitecturePolicyTest {
         val composition = compositions.single()
         val legacyHosts = architecture.modules.values
             .filter { it.role == ModuleRole.LEGACY_HOST }
-            .mapTo(mutableSetOf(), ModulePolicy::id)
+            .mapTo(mutableSetOf(), ValidatedModulePolicy::id)
 
         assertEquals(ModuleId.RUNTIME_COMPOSITION, composition.id)
         assertEquals(

@@ -4,6 +4,7 @@ import support.architecture.EffectObservation
 import support.architecture.LegacyAllowance
 import support.architecture.LegacyViolationKey
 import support.architecture.MutationDeliveryOwner
+import support.architecture.ModuleRoleConventionRequirement
 import support.architecture.ValidatedArchitecturePolicy
 import support.architecture.ValidatedLegacyMigrationEdge
 import support.architecture.process.MutationRuntimeAdmission
@@ -11,7 +12,7 @@ import support.architecture.process.MutationRuntimeAdmission
 object ArchitectureProjection {
     fun render(policy: ValidatedArchitecturePolicy): String = buildString {
         append("{\n")
-        append("  \"schemaVersion\": 4,\n")
+        append("  \"schemaVersion\": 5,\n")
         append("  \"policyAuthority\": \"KOTLIN\",\n")
         append("  \"policySource\": \"build-logic/src/main/kotlin/support/architecture\",\n")
         append("  \"enforcementScope\": \"REPOSITORY_WIDE\",\n")
@@ -24,6 +25,10 @@ object ArchitectureProjection {
             append("      \"projectPath\": ").appendQuoted(id.projectPath).append(",\n")
             append("      \"lifecycle\": ").appendQuoted(module.lifecycle.name).append(",\n")
             append("      \"role\": ").appendQuoted(module.role.name).append(",\n")
+            append("      \"cost\": ").appendQuoted(module.cost.name).append(",\n")
+            append("      \"roleConvention\": ")
+                .appendConventionRequirement(module.conventionRequirement)
+                .append(",\n")
             append("      \"allowedProjectDependencies\": ")
                 .appendStringArray(module.allowedProjectDependencies.map { it.projectPath }.sorted())
                 .append(",\n")
@@ -193,6 +198,17 @@ private fun StringBuilder.appendStringArray(values: List<String>): StringBuilder
 
 private fun StringBuilder.appendQuoted(value: String): StringBuilder =
     append('"').append(value.jsonEscape()).append('"')
+
+private fun StringBuilder.appendConventionRequirement(
+    requirement: ModuleRoleConventionRequirement,
+): StringBuilder = when (requirement) {
+    ModuleRoleConventionRequirement.UnmarkedLegacy ->
+        append("{\"kind\": \"UNMARKED_LEGACY\"}")
+    is ModuleRoleConventionRequirement.Required ->
+        append("{\"kind\": \"REQUIRED\", \"pluginId\": ")
+            .appendQuoted(requirement.convention.pluginId)
+            .append("}")
+}
 
 private fun StringBuilder.appendComma(
     index: Int,

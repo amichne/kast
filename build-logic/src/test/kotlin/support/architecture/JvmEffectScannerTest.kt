@@ -16,14 +16,14 @@ class JvmEffectScannerTest {
         val classFile = copyClassFile(FilesMutationFixture::class.java, temporary)
 
         val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
-            JvmEffectScanner.scan(ModuleId.INDEXER, listOf(classFile)),
+            JvmEffectScanner.scan(module(ModuleId.INDEXER), listOf(classFile)),
         )
 
         assertTrue(
             scanned.effects.any { effect ->
                 effect.effect == ForbiddenEffect.FILESYSTEM_WRITE &&
-                    effect.target.owner == JvmClassName("java/nio/file/Files") &&
-                    effect.target.name == JvmMemberName("deleteIfExists")
+                effect.target.owner == JvmClassName("java/nio/file/Files") &&
+                effect.target.name == JvmMemberName("deleteIfExists")
             },
         )
     }
@@ -34,7 +34,7 @@ class JvmEffectScannerTest {
         Files.writeString(malformed, "not bytecode")
 
         val failed = assertInstanceOf<BytecodeScanOutcome.Failed>(
-            JvmEffectScanner.scan(ModuleId.INDEXER, listOf(malformed)),
+            JvmEffectScanner.scan(module(ModuleId.INDEXER), listOf(malformed)),
         )
 
         assertEquals(listOf(BytecodeScanFailure.MalformedClass(malformed)), failed.failures)
@@ -42,16 +42,34 @@ class JvmEffectScannerTest {
 
     @Test
     fun `source mutation authority is derived from caller and target bytecode`(@TempDir temporary: Path) {
-        val classFile = sourceMutationClassFile(temporary)
+        val classFile = sourceMutationClassFile(
+            temporary,
+            "io/github/amichne/kast/api/io/LocalDiskFileOperations",
+        )
 
         val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
-            JvmEffectScanner.scan(ModuleId.ANALYSIS_API, listOf(classFile)),
+            JvmEffectScanner.scan(module(ModuleId.ANALYSIS_API), listOf(classFile)),
         )
 
         assertTrue(scanned.effects.any { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
     }
 
-    private fun copyClassFile(type: Class<*>, temporary: Path): Path {
+    @Test
+    fun `mutation package naming alone does not manufacture source authority`(@TempDir temporary: Path) {
+        val classFile = sourceMutationClassFile(temporary, "fixture/mutation/SourceWriter")
+
+        val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
+            JvmEffectScanner.scan(module(ModuleId.ANALYSIS_API), listOf(classFile)),
+        )
+
+        assertTrue(scanned.effects.any { it.effect == ForbiddenEffect.FILESYSTEM_WRITE })
+        assertTrue(scanned.effects.none { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
+    }
+
+    private fun copyClassFile(
+        type: Class<*>,
+        temporary: Path,
+    ): Path {
         val resource = "/${type.name.replace('.', '/')}.class"
         val target = temporary.resolve("${type.simpleName}.class")
         type.getResourceAsStream(resource).use { input ->
@@ -61,9 +79,16 @@ class JvmEffectScannerTest {
         return target
     }
 
-    private fun sourceMutationClassFile(temporary: Path): Path {
+    private fun module(id: ModuleId): ValidatedModulePolicy =
+        (KastArchitecturePolicy.validate() as ArchitecturePolicyValidation.Valid)
+            .architecture.modules.getValue(id)
+
+    private fun sourceMutationClassFile(
+        temporary: Path,
+        owner: String,
+    ): Path {
         val bytecode = ClassWriter(0).apply {
-            visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "fixture/mutation/SourceWriter", null, "java/lang/Object", null)
+            visit(Opcodes.V17, Opcodes.ACC_PUBLIC, owner, null, "java/lang/Object", null)
             visitMethod(
                 Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
                 "delete",
@@ -89,6 +114,7 @@ class JvmEffectScannerTest {
         return temporary.resolve("SourceWriter.class").also { Files.write(it, bytecode) }
     }
 
+    @Suppress("unused")
     private class FilesMutationFixture {
         fun delete(path: Path): Boolean = Files.deleteIfExists(path)
     }

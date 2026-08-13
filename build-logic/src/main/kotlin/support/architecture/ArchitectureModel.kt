@@ -30,6 +30,8 @@ enum class ForbiddenEffect {
     SOURCE_FILESYSTEM_WRITE,
     JDBC,
     GRADLE_IMPORT,
+    GRAPH_BUILD,
+    PROCESS_CONTROL,
     ANALYSIS_BACKEND,
 }
 
@@ -218,6 +220,23 @@ sealed interface ArchitecturePolicyFailure {
         val missing: ModuleId,
     ) : ArchitecturePolicyFailure
 
+    data class ForbiddenModuleRoleDependency(
+        val module: ModuleId,
+        val dependency: ModuleId,
+        val dependencyRole: ModuleRole,
+    ) : ArchitecturePolicyFailure
+
+    data class ForbiddenModuleCostDependency(
+        val module: ModuleId,
+        val dependency: ModuleId,
+        val dependencyCost: ModuleCost,
+    ) : ArchitecturePolicyFailure
+
+    data class ForbiddenModuleRoleEffect(
+        val module: ModuleId,
+        val effect: ForbiddenEffect,
+    ) : ArchitecturePolicyFailure
+
     data class ModuleDependencyCycle(val members: Set<ModuleId>) : ArchitecturePolicyFailure
 
     data class DuplicateMutationDeliveryTask(val id: MutationDeliveryTaskId) : ArchitecturePolicyFailure
@@ -310,7 +329,7 @@ sealed interface ArchitecturePolicyValidation {
 }
 
 class ValidatedArchitecturePolicy internal constructor(
-    val modules: Map<ModuleId, ModulePolicy>,
+    val modules: Map<ModuleId, ValidatedModulePolicy>,
     val mutationDeliveryTasks: Map<MutationDeliveryTaskId, MutationDeliveryTaskPolicy>,
     val mutationRuntimeProcesses: Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>,
     val moduleOrder: List<ModuleId>,

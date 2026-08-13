@@ -23,7 +23,7 @@ class ArchitectureProjectionTest {
         val root = Json.parseToJsonElement(first).jsonObject
 
         assertEquals(first, second)
-        assertEquals(4, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(5, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("KOTLIN", root.getValue("policyAuthority").jsonPrimitive.content)
         assertEquals("REPOSITORY_WIDE", root.getValue("enforcementScope").jsonPrimitive.content)
         assertEquals("MUTATION", root.getValue("workflowScope").jsonPrimitive.content)
@@ -33,6 +33,24 @@ class ArchitectureProjectionTest {
         assertEquals(1, root.getValue("legacyMigrationEdges").jsonArray.size)
         assertEquals(74, root.getValue("legacyAllowances").jsonArray.size)
         assertTrue(first.endsWith("\n"))
+    }
+
+    @Test
+    fun `module projection preserves validated cost and convention`() {
+        val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
+            KastArchitecturePolicy.validate(),
+        ).architecture
+        val root = Json.parseToJsonElement(ArchitectureProjection.render(architecture)).jsonObject
+        val module = root.getValue("modules").jsonArray
+            .single { item ->
+                item.jsonObject.getValue("projectPath").jsonPrimitive.content == ":symbol:intellij"
+            }
+            .jsonObject
+
+        assertEquals("BOUNDED_READ", module.getValue("cost").jsonPrimitive.content)
+        val convention = module.getValue("roleConvention").jsonObject
+        assertEquals("REQUIRED", convention.getValue("kind").jsonPrimitive.content)
+        assertEquals("kast.role.intellij-read", convention.getValue("pluginId").jsonPrimitive.content)
     }
 
     @Test

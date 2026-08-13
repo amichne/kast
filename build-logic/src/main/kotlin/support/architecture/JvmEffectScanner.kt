@@ -26,13 +26,16 @@ sealed interface BytecodeScanOutcome {
 
 object JvmEffectScanner {
     /**
-     * Proof transition: `(ModuleId, class-file paths) -> BytecodeScanOutcome.Scanned`.
+     * Proof transition: `(ValidatedModulePolicy, class-file paths) -> BytecodeScanOutcome.Scanned`.
      *
-     * Establishes an exact set of configured effect-bearing JVM references for the compiled
-     * module. [BytecodeScanOutcome.Failed] is the closed expected failure for unreadable or
+     * Establishes an exact set of JVM references governed by the validated module's role effect
+     * profile. [BytecodeScanOutcome.Failed] is the closed expected failure for unreadable or
      * malformed bytecode. Raw paths and ASM values are extracted only inside this scanner.
      */
-    fun scan(module: ModuleId, classFiles: Iterable<Path>): BytecodeScanOutcome {
+    fun scan(
+        module: ValidatedModulePolicy,
+        classFiles: Iterable<Path>,
+    ): BytecodeScanOutcome {
         val effects = linkedSetOf<EffectObservation>()
         val failures = mutableListOf<BytecodeScanFailure>()
         classFiles.sortedBy(Path::toString).forEach { classFile ->
@@ -53,7 +56,7 @@ object JvmEffectScanner {
 }
 
 private class EffectClassVisitor(
-    private val module: ModuleId,
+    private val module: ValidatedModulePolicy,
     private val effects: MutableSet<EffectObservation>,
 ) : ClassVisitor(Opcodes.ASM9) {
     private lateinit var classInternalName: String
@@ -104,10 +107,18 @@ private class EffectClassVisitor(
                 isInterface: Boolean,
             ) = record(caller, JvmMember.of(owner, name, descriptor))
 
-            override fun visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String) =
+            override fun visitFieldInsn(
+                opcode: Int,
+                owner: String,
+                name: String,
+                descriptor: String,
+            ) =
                 record(caller, JvmMember.of(owner, name, descriptor))
 
-            override fun visitTypeInsn(opcode: Int, type: String) = record(caller, typeMember(type))
+            override fun visitTypeInsn(
+                opcode: Int,
+                type: String,
+            ) = record(caller, typeMember(type))
 
             override fun visitLdcInsn(value: Any?) = recordConstant(caller, value)
 
@@ -124,7 +135,10 @@ private class EffectClassVisitor(
         }
     }
 
-    private fun recordConstant(caller: JvmMember, value: Any?) {
+    private fun recordConstant(
+        caller: JvmMember,
+        value: Any?,
+    ) {
         when (value) {
             is Type -> value.referencedInternalNames().forEach { record(caller, typeMember(it)) }
             is Handle -> recordHandle(caller, value)
@@ -137,20 +151,29 @@ private class EffectClassVisitor(
         }
     }
 
-    private fun recordHandle(caller: JvmMember, handle: Handle) {
+    private fun recordHandle(
+        caller: JvmMember,
+        handle: Handle,
+    ) {
         record(caller, JvmMember.of(handle.owner, handle.name, handle.desc))
     }
 
-    private fun recordDescriptorTypes(caller: JvmMember, descriptor: String) {
+    private fun recordDescriptorTypes(
+        caller: JvmMember,
+        descriptor: String,
+    ) {
         runCatching { Type.getType(descriptor) }
             .getOrNull()
             ?.referencedInternalNames()
             ?.forEach { record(caller, typeMember(it)) }
     }
 
-    private fun record(caller: JvmMember, target: JvmMember) {
-        EffectRules.classify(caller, target).forEach { effect ->
-            effects += EffectObservation(module, effect, caller, target)
+    private fun record(
+        caller: JvmMember,
+        target: JvmMember,
+    ) {
+        EffectRules.classify(module.role, caller, target).forEach { effect ->
+            effects += EffectObservation(module.id, effect, caller, target)
         }
     }
 
@@ -174,7 +197,11 @@ private object EffectRules {
     )
     private val psiMutators = setOf("add", "addAfter", "addBefore", "delete", "deleteChildRange", "replace")
 
-    fun classify(caller: JvmMember, target: JvmMember): Set<ForbiddenEffect> = buildSet {
+    fun classify(
+        moduleRole: ModuleRole,
+        caller: JvmMember,
+        target: JvmMember,
+    ): Set<ForbiddenEffect> = buildSet {
         val owner = target.owner.internalName
         val name = target.name.value
         if (
@@ -197,6 +224,12 @@ private object EffectRules {
         if (isGradleImportAuthority(owner, name)) {
             add(ForbiddenEffect.GRADLE_IMPORT)
         }
+        if (moduleRole != ModuleRole.LEGACY_HOST && isGraphBuildAuthority(owner, name)) {
+            add(ForbiddenEffect.GRAPH_BUILD)
+        }
+        if (moduleRole != ModuleRole.LEGACY_HOST && isProcessControlAuthority(owner, name)) {
+            add(ForbiddenEffect.PROCESS_CONTROL)
+        }
         if (
             owner == "io/github/amichne/kast/api/contract/AnalysisBackend" ||
             owner == "io/github/amichne/kast/api/contract/CloseableAnalysisBackend"
@@ -206,23 +239,46 @@ private object EffectRules {
     }
 
     private fun JvmMember.isSourceMutationSurface(): Boolean = owner.internalName.let { callerOwner ->
-        callerOwner == "io/github/amichne/kast/api/io/LocalDiskFileOperations" ||
-            callerOwner.contains("/mutation/") ||
-            callerOwner.contains("/edit/") ||
-            callerOwner.contains("/change/")
+        callerOwner == "io/github/amichne/kast/api/io/LocalDiskFileOperations"
     }
 
-    private fun isGradleImportAuthority(owner: String, name: String): Boolean =
+    private fun isGradleImportAuthority(
+        owner: String,
+        name: String,
+    ): Boolean =
         (owner == "com/intellij/openapi/externalSystem/util/ExternalSystemUtil" &&
-            name in setOf("linkExternalProject", "refreshProject")) ||
-            owner.startsWith("com/intellij/openapi/externalSystem/importing/") ||
-            owner.startsWith("org/jetbrains/plugins/gradle/service/project/open/") ||
-            (owner == "org/jetbrains/plugins/gradle/settings/GradleProjectSettings" &&
-                (name == "<init>" || name.startsWith("set"))) ||
-            (owner in setOf(
-                "org/jetbrains/plugins/gradle/settings/GradleSettings",
-                "org/jetbrains/plugins/gradle/settings/GradleSystemSettings",
-            ) && name.startsWith("set"))
+         name in setOf("linkExternalProject", "refreshProject")) ||
+        owner.startsWith("com/intellij/openapi/externalSystem/importing/") ||
+        owner.startsWith("org/jetbrains/plugins/gradle/service/project/open/") ||
+        (owner == "org/jetbrains/plugins/gradle/settings/GradleProjectSettings" &&
+         (name == "<init>" || name.startsWith("set"))) ||
+        (owner in setOf(
+            "org/jetbrains/plugins/gradle/settings/GradleSettings",
+            "org/jetbrains/plugins/gradle/settings/GradleSystemSettings",
+        ) && name.startsWith("set"))
+
+    private fun isGraphBuildAuthority(
+        owner: String,
+        name: String,
+    ): Boolean =
+        (owner == "org/gradle/tooling/ProjectConnection" &&
+         name in setOf("action", "model", "newBuild")) ||
+        owner in setOf(
+            "org/gradle/tooling/BuildActionExecuter",
+            "org/gradle/tooling/BuildLauncher",
+            "org/gradle/tooling/ModelBuilder",
+        )
+
+    private fun isProcessControlAuthority(
+        owner: String,
+        name: String,
+    ): Boolean =
+        owner == "java/lang/ProcessBuilder" ||
+        (owner == "java/lang/Runtime" && name == "exec") ||
+        (owner == "java/lang/Process" && name in setOf("destroy", "destroyForcibly")) ||
+        (owner == "java/lang/ProcessHandle" && name in setOf("destroy", "destroyForcibly")) ||
+        (owner == "com/intellij/execution/process/ProcessHandler" &&
+         name in setOf("destroyProcess", "detachProcess", "killProcess"))
 }
 
 private fun Type.referencedInternalNames(): Set<String> = when (sort) {

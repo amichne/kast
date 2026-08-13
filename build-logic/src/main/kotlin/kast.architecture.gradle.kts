@@ -1,6 +1,7 @@
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.tasks.SourceSetContainer
 import support.architecture.ArchitectureObservationParser
+import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastArchitectureProjectionTask
 import support.architecture.gradle.VerifyKastArchitectureTask
 
@@ -24,7 +25,6 @@ val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyK
     projectionFile.set(architectureProjection)
     rootDirectory.set(layout.projectDirectory)
     reportFile.set(layout.buildDirectory.file("reports/kast-architecture/verification.json"))
-    observedProjectPaths.set(subprojects.map { it.path }.sorted())
 }
 
 subprojects {
@@ -32,6 +32,7 @@ subprojects {
     pluginManager.withPlugin("java") {
         val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
         verifyKastArchitecture.configure {
+            observedProjectPaths.add(modulePath)
             compiledClassDirectories.from(mainSourceSet.map { it.output.classesDirs })
             classDirectoryOwners.addAll(
                 mainSourceSet.map { sourceSet ->
@@ -55,12 +56,28 @@ subprojects {
             }
             .distinct()
             .sorted()
+        val exportedDependencies = configurations
+            .filter { configuration -> configuration.name == "api" }
+            .flatMap { configuration ->
+                configuration.dependencies.withType(ProjectDependency::class.java).map { dependency ->
+                    "$path${ArchitectureObservationParser.EDGE_SEPARATOR}${dependency.path}"
+                }
+            }
+            .distinct()
+            .sorted()
+        val roleConventions = ModuleRoleConvention.entries
+            .filter { convention -> pluginManager.hasPlugin(convention.pluginId) }
+            .map { convention ->
+                "$path${ArchitectureObservationParser.ROLE_SEPARATOR}${convention.pluginId}"
+            }
         verifyKastArchitecture.configure {
             observedProjectDependencies.addAll(dependencies)
+            observedExportedProjectDependencies.addAll(exportedDependencies)
+            observedModuleRoleConventions.addAll(roleConventions)
         }
     }
 }
 
 private fun String.isProductionDependencyConfiguration(): Boolean =
     !contains("test", ignoreCase = true) &&
-        !contains("fixture", ignoreCase = true)
+    !contains("fixture", ignoreCase = true)

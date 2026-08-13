@@ -29,9 +29,10 @@ object ArchitecturePolicyValidator {
     /**
      * Proof transition: `ArchitecturePolicyDefinition -> ValidatedArchitecturePolicy`.
      *
-     * Establishes that every node is unique, every dependency and owner terminates at a declared
-     * node, every legacy allowance is exact, every migration is an open legacy-to-target edge
-     * with an open retirement task, and all directed graphs are acyclic.
+     * Establishes that every node is unique, every module dependency and effect is admitted by
+     * independent role and cost boundaries, every dependency and owner terminates at a declared
+     * node, every legacy allowance is exact, every migration is an open legacy-to-target edge with
+     * an open retirement task, and all directed graphs are acyclic.
      * [ArchitecturePolicyValidation.Invalid] retains every closed expected policy failure. Raw
      * graph extraction is permitted only at build-tool boundaries.
      */
@@ -43,6 +44,15 @@ object ArchitecturePolicyValidator {
             .keys
             .map(ArchitecturePolicyFailure::DuplicateModule)
         val modules = definition.modules.associateBy(ModulePolicy::id)
+        val moduleValidations = definition.modules.map { module ->
+            ModulePolicyValidator.validate(module, modules)
+        }
+        val moduleFailures = moduleValidations
+            .filterIsInstance<ModulePolicyValidation.Invalid>()
+            .flatMap(ModulePolicyValidation.Invalid::failures)
+        val validatedModules = moduleValidations
+            .filterIsInstance<ModulePolicyValidation.Valid>()
+            .associate { validation -> validation.module.id to validation.module }
         val missingModuleDependencies = definition.modules.flatMap { module ->
             module.allowedProjectDependencies
                 .filterNot(modules::containsKey)
@@ -141,6 +151,7 @@ object ArchitecturePolicyValidator {
         val failures = buildList {
             addAll(duplicateModules)
             addAll(missingModuleDependencies)
+            addAll(moduleFailures)
             moduleSort.cycle?.let { add(ArchitecturePolicyFailure.ModuleDependencyCycle(it)) }
             addAll(duplicateMutationDeliveryTasks)
             addAll(missingMutationDeliveryDependencies)
@@ -165,7 +176,7 @@ object ArchitecturePolicyValidator {
         return if (failures.isEmpty()) {
             ArchitecturePolicyValidation.Valid(
                 ValidatedArchitecturePolicy(
-                    modules = modules,
+                    modules = validatedModules,
                     mutationDeliveryTasks = mutationDeliveryTasks,
                     mutationRuntimeProcesses = mutationRuntimeProcesses,
                     moduleOrder = moduleSort.order,

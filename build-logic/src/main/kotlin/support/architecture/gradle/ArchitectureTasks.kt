@@ -50,6 +50,8 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
     init {
         observedProjectPaths.convention(emptyList())
         observedProjectDependencies.convention(emptyList())
+        observedExportedProjectDependencies.convention(emptyList())
+        observedModuleRoleConventions.convention(emptyList())
         classDirectoryOwners.convention(emptyList())
     }
 
@@ -58,6 +60,12 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     @get:Input
     abstract val observedProjectDependencies: ListProperty<String>
+
+    @get:Input
+    abstract val observedExportedProjectDependencies: ListProperty<String>
+
+    @get:Input
+    abstract val observedModuleRoleConventions: ListProperty<String>
 
     @get:Input
     abstract val classDirectoryOwners: ListProperty<String>
@@ -85,6 +93,8 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
                 policy,
                 observedProjectPaths.get(),
                 observedProjectDependencies.get(),
+                observedExportedProjectDependencies.get(),
+                observedModuleRoleConventions.get(),
             )
         ) {
             is ArchitectureObservationValidation.Valid -> parsed.graph
@@ -97,7 +107,13 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         when (
             val admission = ArchitectureAdmission.evaluate(
                 policy,
-                ObservedArchitecture(graph.modules, graph.projectDependencies, effects),
+                ObservedArchitecture(
+                    graph.modules,
+                    graph.projectDependencies,
+                    effects,
+                    graph.exportedProjectDependencies,
+                    graph.moduleRoleConventions,
+                ),
             )
         ) {
             is ArchitectureAdmission.Accepted -> writeReport(
@@ -141,7 +157,7 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     private fun scanEffects(policy: ValidatedArchitecturePolicy) =
         classDirectoryOwners.get().groupByOwner().flatMapTo(linkedSetOf()) { (projectPath, directories) ->
-            val module = policy.modules.keys.single { it.projectPath == projectPath }
+            val module = policy.modules.values.single { it.id.projectPath == projectPath }
             val classFiles = directories.flatMap(::classFiles)
             when (val scan = JvmEffectScanner.scan(module, classFiles)) {
                 is BytecodeScanOutcome.Scanned -> scan.effects
@@ -240,6 +256,31 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
         "consumer" to violation.migration.dependency.consumer.projectPath,
         "dependency" to violation.migration.dependency.dependency.projectPath,
         "retirementTask" to violation.migration.retirementTask.name,
+    )
+    is ArchitectureViolation.ForbiddenExportedProjectDependency -> finding(
+        "FORBIDDEN_EXPORTED_PROJECT_DEPENDENCY",
+        "${violation.dependency.consumer.projectPath} -> ${violation.dependency.dependency.projectPath}",
+        "consumer" to violation.dependency.consumer.projectPath,
+        "dependency" to violation.dependency.dependency.projectPath,
+    )
+    is ArchitectureViolation.MissingModuleRoleConvention -> finding(
+        "MISSING_MODULE_ROLE_CONVENTION",
+        violation.module.projectPath,
+        "module" to violation.module.projectPath,
+        "expectedPlugin" to violation.expected.pluginId,
+    )
+    is ArchitectureViolation.UnexpectedModuleRoleConvention -> finding(
+        "UNEXPECTED_MODULE_ROLE_CONVENTION",
+        violation.module.projectPath,
+        "module" to violation.module.projectPath,
+        "observedPlugin" to violation.observed.pluginId,
+    )
+    is ArchitectureViolation.MismatchedModuleRoleConvention -> finding(
+        "MISMATCHED_MODULE_ROLE_CONVENTION",
+        violation.module.projectPath,
+        "module" to violation.module.projectPath,
+        "expectedPlugin" to violation.expected.pluginId,
+        "observedPlugin" to violation.observed.pluginId,
     )
     is ArchitectureViolation.UnbaselinedLegacyViolation -> when (val key = violation.violation) {
         is LegacyViolationKey.UnapprovedProjectDependency -> finding(
