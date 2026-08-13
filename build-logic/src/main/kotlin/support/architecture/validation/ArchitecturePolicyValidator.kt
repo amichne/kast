@@ -31,10 +31,10 @@ object ArchitecturePolicyValidator {
     /**
      * Proof transition: `ArchitecturePolicyDefinition -> ValidatedArchitecturePolicy`.
      *
-     * Establishes that every node is unique, every module dependency and effect is admitted by
-     * independent role and cost boundaries, every dependency and owner terminates at a declared
-     * node, every legacy allowance is exact, every migration is an open legacy-to-target edge with
-     * an open retirement task, and all directed graphs are acyclic.
+     * Establishes that every node is unique, module direction has one complete composition owner,
+     * dependencies and effects satisfy independent role and cost boundaries, every reference
+     * terminates at a declared node, every legacy allowance is exact, every migration is an open
+     * legacy-to-target edge with an open retirement task, and all directed graphs are acyclic.
      * [ArchitecturePolicyValidation.Invalid] retains every closed expected policy failure. Raw
      * graph extraction is permitted only at build-tool boundaries.
      */
@@ -64,6 +64,38 @@ object ArchitecturePolicyValidator {
             nodes = modules.keys,
             dependencies = { modules.getValue(it).allowedProjectDependencies.filter(modules::containsKey).toSet() },
         )
+        val compositionFailures = buildList {
+            definition.modules
+                .filter { module ->
+                    module.role == ModuleRole.COMPOSITION &&
+                    module.id != ModuleId.RUNTIME_COMPOSITION
+                }
+                .forEach { module ->
+                    add(ArchitecturePolicyFailure.UnexpectedCompositionOwner(module.id))
+                }
+            val composition = modules[ModuleId.RUNTIME_COMPOSITION]
+            if (composition?.role != ModuleRole.COMPOSITION) {
+                add(ArchitecturePolicyFailure.MissingRuntimeComposition)
+            } else {
+                val expectedDependencies = modules.values
+                    .filter { module ->
+                        module.id != ModuleId.RUNTIME_COMPOSITION &&
+                        module.role != ModuleRole.LEGACY_HOST &&
+                        module.lifecycle != ModuleLifecycle.RETIRED
+                    }
+                    .mapTo(linkedSetOf(), ModulePolicy::id)
+                val missing = expectedDependencies - composition.allowedProjectDependencies
+                val unexpected = composition.allowedProjectDependencies - expectedDependencies
+                if (missing.isNotEmpty() || unexpected.isNotEmpty()) {
+                    add(
+                        ArchitecturePolicyFailure.InvalidRuntimeCompositionDependencies(
+                            missing = missing,
+                            unexpected = unexpected,
+                        ),
+                    )
+                }
+            }
+        }
 
         val duplicateMutationDeliveryTasks = definition.mutationDeliveryTasks
             .groupingBy(MutationDeliveryTaskPolicy::id)
@@ -163,6 +195,7 @@ object ArchitecturePolicyValidator {
             addAll(duplicateModules)
             addAll(missingModuleDependencies)
             addAll(moduleFailures)
+            addAll(compositionFailures)
             moduleSort.cycle?.let { add(ArchitecturePolicyFailure.ModuleDependencyCycle(it)) }
             addAll(duplicateMutationDeliveryTasks)
             addAll(missingMutationDeliveryDependencies)

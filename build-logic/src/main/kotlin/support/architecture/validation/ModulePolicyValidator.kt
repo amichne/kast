@@ -66,10 +66,10 @@ internal object ModulePolicyValidator {
     /**
      * Proof transition: `(ModulePolicy, declared ModulePolicy graph) -> ValidatedModulePolicy`.
      *
-     * Establishes that the module's direct dependencies, independent dependency costs, and allowed
-     * effects remain within its declared role boundary. [ModulePolicyValidation.Invalid] is the
-     * closed expected failure. Raw module policy construction is permitted only in the canonical
-     * architecture definition and policy tests.
+     * Establishes that the module's direct dependencies, registry direction, independent dependency
+     * costs, and allowed effects remain within its declared role boundary.
+     * [ModulePolicyValidation.Invalid] is the closed expected failure. Raw module policy
+     * construction is permitted only in the canonical architecture definition and policy tests.
      */
     fun validate(
         module: ModulePolicy,
@@ -97,6 +97,13 @@ internal object ModulePolicyValidator {
                             dependencyBoundary.cost,
                         ),
                     )
+                }
+                if (
+                    module.role == ModuleRole.CONTRACT &&
+                    module.id != ModuleId.PROTOCOL_REGISTRY &&
+                    dependencyId == ModuleId.PROTOCOL_REGISTRY
+                ) {
+                    add(ArchitecturePolicyFailure.FeatureContractDependsOnRegistry(module.id))
                 }
             }
             module.allowedEffects

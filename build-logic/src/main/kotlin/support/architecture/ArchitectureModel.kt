@@ -66,6 +66,7 @@ enum class ModuleId(val projectPath: String) {
     CHANGE_APPLY_INTELLIJ(":change:apply:intellij"),
     CHANGE_APPLY_FILESYSTEM(":change:apply:filesystem"),
     CHANGE_RECOVERY_CONTRACT(":change:recovery:contract"),
+    CHANGE_RECOVERY_SPI(":change:recovery:spi"),
     CHANGE_RECOVERY_FILESYSTEM(":change:recovery:filesystem"),
     CHANGE_RECOVERY_SERVICE(":change:recovery:service"),
     CHANGE_VERIFY_SPI(":change:verify:spi"),
@@ -237,6 +238,21 @@ sealed interface ArchitecturePolicyFailure {
     data class ForbiddenModuleRoleEffect(
         val module: ModuleId,
         val effect: ForbiddenEffect,
+    ) : ArchitecturePolicyFailure
+
+    data class FeatureContractDependsOnRegistry(
+        val featureContract: ModuleId,
+    ) : ArchitecturePolicyFailure
+
+    data object MissingRuntimeComposition : ArchitecturePolicyFailure
+
+    data class UnexpectedCompositionOwner(
+        val module: ModuleId,
+    ) : ArchitecturePolicyFailure
+
+    data class InvalidRuntimeCompositionDependencies(
+        val missing: Set<ModuleId>,
+        val unexpected: Set<ModuleId>,
     ) : ArchitecturePolicyFailure
 
     data class ModuleDependencyCycle(val members: Set<ModuleId>) : ArchitecturePolicyFailure

@@ -19,7 +19,14 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_SPI,
         ),
         active(ModuleId.KERNEL, ModuleRole.KERNEL),
-        active(ModuleId.PROTOCOL_REGISTRY, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        active(
+            ModuleId.PROTOCOL_REGISTRY,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
         active(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         active(ModuleId.WORKSPACE_SPI, ModuleRole.SPI, ModuleId.WORKSPACE_CONTRACT),
         planned(
@@ -130,14 +137,21 @@ internal object KastPlatformModules {
         ),
         planned(ModuleId.CHANGE_RECOVERY_CONTRACT, ModuleRole.CONTRACT, ModuleId.CHANGE_CONTRACT),
         planned(
+            ModuleId.CHANGE_RECOVERY_SPI,
+            ModuleRole.SPI,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
+        ),
+        planned(
             ModuleId.CHANGE_RECOVERY_FILESYSTEM,
             ModuleRole.FILESYSTEM_WRITE_ADAPTER,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_SPI,
         ),
         planned(
             ModuleId.CHANGE_RECOVERY_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_SPI,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
