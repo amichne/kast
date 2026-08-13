@@ -168,7 +168,7 @@
     {
       "id": "PROTOCOL_CONTINUATION",
       "projectPath": ":protocol:continuation",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "SERVICE",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},

@@ -74,7 +74,7 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_SPI,
         ),
-        planned(
+        active(
             ModuleId.PROTOCOL_CONTINUATION,
             ModuleRole.SERVICE,
             ModuleId.KERNEL,

@@ -24,6 +24,7 @@ include(
     ":index-store",
     ":indexer",
     ":kernel",
+    ":protocol:continuation",
     ":protocol:registry",
     ":symbol:contract",
     ":symbol:intellij",
