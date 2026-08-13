@@ -14,6 +14,10 @@ transport, or composition.
   processing, bounded collection, deterministic ordering, qualification, and timing.
 - `IntellijDiscoveryProjection.kt` converts only already-in-scope live items into detached
   generation-bound candidates.
+- `IntellijExactSelectorResolver.kt` admits the current root/generation, recompiles the discovery
+  scope, and issues or revalidates an exact selector inside one restartable read.
+- `IntellijPsiExactDeclarationLookup.kt` resolves the candidate's retained file/name/offset to one
+  scope-contained declaration and detaches exact range, qualified-identity state, and runtime type.
 
 ## Adapter invariants
 
@@ -36,10 +40,13 @@ transport, or composition.
   escape the query so the write-priority `readAction` can restart or cancel truthfully.
 - Apply record, byte, work, and elapsed limits before retaining live items; every nonterminal cap
   remains visible in the detached outcome.
+- Exact resolution must consume a batch-owned selection. Missing files/elements, scope rejection,
+  multiple matching PSI ancestors, unsupported declarations, root/generation drift, and changed
+  native evidence are distinct closed failures; never guess among collisions.
 
 ## Verification ladder
 
-1. Run `./gradlew :symbol:intellij:test --tests '*SourceRoot*PolicyTest' --tests '*NativeDiscoveryTest'`.
+1. Run `./gradlew :symbol:intellij:test --tests '*SourceRoot*PolicyTest' --tests '*NativeDiscoveryTest' --tests '*ExactSelectorResolutionTest'`.
 2. Reformat and inspect every changed Kotlin file through the exact-worktree IDEA MCP.
 3. Build the changed files through IDEA.
 4. Run `./gradlew :symbol:intellij:test`.

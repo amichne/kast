@@ -12,7 +12,11 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 - `SymbolDiscoveryCandidate.kt` owns generation-bound detached workspace/external file identity,
   declaration locations, deterministic ordering, and canonical projection size.
 - `SymbolDiscoveryOutcome.kt` owns bounded generation-bound batches, separate native/projection
-  timings, and closed qualified-completeness states.
+  timings, closed qualified-completeness states, and the exact search scope retained by a batch.
+- `ExactDeclarationSelector.kt` owns batch-ordinal declaration selection, detached native
+  declaration evidence, selector issuance, and proof of unchanged revalidation.
+- `ExactDeclarationFingerprint.kt` owns the length-prefixed canonical scope/evidence encoding and
+  opaque SHA-256 selector identity.
 
 ## Dependency boundary
 
@@ -22,14 +26,18 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 - Readability policy never grants edit, write, or mutation authority.
 - Library readability exists only on workspace-wide policy; narrower model owners cannot silently
   widen to every project library.
-- Discovery candidates are suggestions, not exact selectors or mutation authority. A later exact
-  resolution transition must consume them under the same generation.
+- Discovery candidates are suggestions, not exact selectors or mutation authority. Exact selection
+  is possible only by ordinal from its owning batch; an IntelliJ adapter must then resolve that
+  selection under the same root, generation, and scope before issuing an opaque selector.
+- Exact selectors retain file, range, name, qualified-identity state, runtime declaration type, and
+  a deterministic fingerprint. Consumers take the selector or a revalidation proof, never
+  reconstruct authority from a name, FQN, file/offset tuple, or display projection.
 - A capped, interrupted, dumb-mode, unsupported-provider, unsupported-item, or provider-failed
   query is qualified rather than complete.
 
 ## Verification ladder
 
-1. Run `./gradlew :symbol:contract:test --tests '*SourceRoot*PolicyTest' --tests '*SymbolDiscoveryContractTest'`.
+1. Run `./gradlew :symbol:contract:test --tests '*SourceRoot*PolicyTest' --tests '*SymbolDiscoveryContractTest' --tests '*ExactDeclarationSelectorContractTest'`.
 2. Run `./gradlew :symbol:contract:test`.
 3. Run direct IntelliJ adapter consumers after changing a public contract.
 4. Run `./gradlew verifyKastArchitecture --configuration-cache`.

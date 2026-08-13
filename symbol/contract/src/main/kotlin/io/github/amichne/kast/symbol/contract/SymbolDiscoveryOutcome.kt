@@ -91,6 +91,7 @@ enum class SymbolDiscoveryBatchFailure {
 @ConsistentCopyVisibility
 data class SymbolDiscoveryBatch private constructor(
     val lease: SemanticReadLease,
+    val scope: SymbolSearchScope,
     val candidates: List<SymbolDiscoveryCandidate>,
     val encodedBytes: SymbolDiscoveryByteCount,
     val examinedWorkUnits: SymbolDiscoveryWorkCount,
@@ -132,6 +133,7 @@ data class SymbolDiscoveryBatch private constructor(
             return Refinement.Refined(
                 SymbolDiscoveryBatch(
                     lease = request.scope.lease,
+                    scope = request.scope.scope,
                     candidates = candidates.toList(),
                     encodedBytes = encodedBytes,
                     examinedWorkUnits = examinedWorkUnits,
