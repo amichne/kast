@@ -54,13 +54,13 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_SPI,
         ),
-        planned(
+        active(
             ModuleId.SYMBOL_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.KERNEL,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.SYMBOL_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
             ModuleId.SYMBOL_CONTRACT,

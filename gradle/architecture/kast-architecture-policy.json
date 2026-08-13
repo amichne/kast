@@ -138,7 +138,7 @@
     {
       "id": "SYMBOL_CONTRACT",
       "projectPath": ":symbol:contract",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "CONTRACT",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
@@ -148,7 +148,7 @@
     {
       "id": "SYMBOL_INTELLIJ",
       "projectPath": ":symbol:intellij",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "INTELLIJ_READ_ADAPTER",
       "cost": "BOUNDED_READ",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},

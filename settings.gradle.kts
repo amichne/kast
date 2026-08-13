@@ -25,6 +25,8 @@ include(
     ":indexer",
     ":kernel",
     ":protocol:registry",
+    ":symbol:contract",
+    ":symbol:intellij",
     ":workspace:contract",
     ":workspace:spi",
 )
