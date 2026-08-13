@@ -17,6 +17,12 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
   declaration evidence, selector issuance, and proof of unchanged revalidation.
 - `ExactDeclarationFingerprint.kt` owns the length-prefixed canonical scope/evidence encoding and
   opaque SHA-256 selector identity.
+- `NativeRelationRequest.kt` owns the six one-hop relation families and the record, byte, work, and
+  elapsed request budget carried with one exact selector.
+- `NativeRelationFact.kt` owns exact related endpoints and occurrences bound to the subject
+  selector's lease and retained scope.
+- `NativeRelationOutcome.kt` owns deterministic bounded relation batches and makes terminal exact
+  counts structurally distinct from qualified known-minimum counts.
 
 ## Dependency boundary
 
@@ -34,10 +40,16 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
   reconstruct authority from a name, FQN, file/offset tuple, or display projection.
 - A capped, interrupted, dumb-mode, unsupported-provider, unsupported-item, or provider-failed
   query is qualified rather than complete.
+- Relation requests inherit scope only from their exact selector. They carry no raw subject,
+  independent scope, depth, or traversal state, and relation facts cannot bind endpoints issued
+  under another lease or scope.
+- An empty terminal relation batch proves absence only when the native provider completed without
+  limitations. Every cap, unresolved target, unsupported item, dumb transition, provider failure,
+  or nonterminal provider result preserves only a known minimum.
 
 ## Verification ladder
 
-1. Run `./gradlew :symbol:contract:test --tests '*SourceRoot*PolicyTest' --tests '*SymbolDiscoveryContractTest' --tests '*ExactDeclarationSelectorContractTest'`.
+1. Run `./gradlew :symbol:contract:test --tests '*SourceRoot*PolicyTest' --tests '*SymbolDiscoveryContractTest' --tests '*ExactDeclarationSelectorContractTest' --tests '*NativeRelationContractTest'`.
 2. Run `./gradlew :symbol:contract:test`.
 3. Run direct IntelliJ adapter consumers after changing a public contract.
 4. Run `./gradlew verifyKastArchitecture --configuration-cache`.

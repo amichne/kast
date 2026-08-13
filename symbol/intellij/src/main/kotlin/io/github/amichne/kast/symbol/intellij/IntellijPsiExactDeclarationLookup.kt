@@ -40,6 +40,17 @@ internal sealed interface IntellijExactDeclarationLookupResult {
     ) : IntellijExactDeclarationLookupResult
 }
 
+internal sealed interface IntellijLiveExactDeclarationLookupResult {
+    data class Found(
+        val declaration: PsiNamedElement,
+        val evidence: ExactDeclarationEvidence,
+    ) : IntellijLiveExactDeclarationLookupResult
+
+    data class Rejected(
+        val reason: IntellijExactDeclarationLookupRejection,
+    ) : IntellijLiveExactDeclarationLookupResult
+}
+
 internal fun interface IntellijExactDeclarationLookup {
     /**
      * Proof transition:
@@ -72,20 +83,40 @@ internal class IntellijPsiExactDeclarationLookup(
     override fun find(
         compiledScope: CompiledIntellijSearchScope,
         key: IntellijExactDeclarationLookupKey,
-    ): IntellijExactDeclarationLookupResult {
+    ): IntellijExactDeclarationLookupResult =
+        when (val live = findLive(compiledScope, key)) {
+            is IntellijLiveExactDeclarationLookupResult.Found ->
+                IntellijExactDeclarationLookupResult.Found(live.evidence)
+            is IntellijLiveExactDeclarationLookupResult.Rejected ->
+                rejected(live.reason)
+        }
+
+    /**
+     * Proof transition:
+     * CompiledIntellijSearchScope + IntellijExactDeclarationLookupKey to
+     * IntellijLiveExactDeclarationLookupResult.
+     *
+     * Establishes exactly one request-local live declaration plus its detached evidence, or the
+     * same closed lookup rejection as [find]. The live declaration must be consumed within the
+     * current IntelliJ read and may never cross an adapter boundary.
+     */
+    internal fun findLive(
+        compiledScope: CompiledIntellijSearchScope,
+        key: IntellijExactDeclarationLookupKey,
+    ): IntellijLiveExactDeclarationLookupResult {
         val file = when (val resolution = key.file.resolveVirtualFile()) {
             is IntellijExactVirtualFileResolution.Found -> resolution.file
             IntellijExactVirtualFileResolution.Stale ->
-                return rejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
+                return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         }
         if (!compiledScope.nativeScope.contains(file)) {
-            return rejected(IntellijExactDeclarationLookupRejection.OUTSIDE_SCOPE)
+            return liveRejected(IntellijExactDeclarationLookupRejection.OUTSIDE_SCOPE)
         }
         val psiFile = PsiManager.getInstance(project).findFile(file)
-                      ?: return rejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+                      ?: return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
         val leaf = psiFile.findElementAt(key.offset.value)
-                   ?: return rejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
-        val matches = mutableListOf<ExactDeclarationEvidence>()
+                   ?: return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
+        val matches = mutableListOf<Pair<PsiNamedElement, ExactDeclarationEvidence>>()
         var element: PsiElement? = leaf
         while (element != null) {
             val named = element as? PsiNamedElement
@@ -103,9 +134,9 @@ internal class IntellijPsiExactDeclarationLookup(
                     rawRuntimeType = named.javaClass.name,
                 )
                 when (evidence) {
-                    is Refinement.Refined -> matches += evidence.value
+                    is Refinement.Refined -> matches += named to evidence.value
                     is Refinement.Rejected ->
-                        return rejected(
+                        return liveRejected(
                             IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION,
                         )
                 }
@@ -114,9 +145,12 @@ internal class IntellijPsiExactDeclarationLookup(
         }
         val declarations = matches.distinct()
         return when (declarations.size) {
-            0 -> rejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
-            1 -> IntellijExactDeclarationLookupResult.Found(declarations.single())
-            else -> rejected(IntellijExactDeclarationLookupRejection.AMBIGUOUS_DECLARATION)
+            0 -> liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+            1 -> {
+                val (declaration, evidence) = declarations.single()
+                IntellijLiveExactDeclarationLookupResult.Found(declaration, evidence)
+            }
+            else -> liveRejected(IntellijExactDeclarationLookupRejection.AMBIGUOUS_DECLARATION)
         }
     }
 }
@@ -195,6 +229,11 @@ private fun rejected(
     reason: IntellijExactDeclarationLookupRejection,
 ): IntellijExactDeclarationLookupResult.Rejected =
     IntellijExactDeclarationLookupResult.Rejected(reason)
+
+private fun liveRejected(
+    reason: IntellijExactDeclarationLookupRejection,
+): IntellijLiveExactDeclarationLookupResult.Rejected =
+    IntellijLiveExactDeclarationLookupResult.Rejected(reason)
 
 internal fun IntellijExactDeclarationLookupRejection.toPublicRejection():
     IntellijExactSelectorRejection = when (this) {

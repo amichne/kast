@@ -76,10 +76,10 @@ internal class IntellijNativeDiscoveryAdapter(
 /**
  * Proof transition: Project to IntellijDiscoveryEnvironmentState.
  *
- * Establishes the closed request-local READY, DUMB, or DISPOSED state before and during native
- * discovery. The live [Project] may be extracted only inside the restartable IntelliJ read.
+ * Establishes the closed request-local READY, DUMB, or DISPOSED state before and during a native
+ * symbol read. The live [Project] may be extracted only inside the restartable IntelliJ read.
  */
-private fun Project.discoveryEnvironmentState(): IntellijDiscoveryEnvironmentState = when {
+internal fun Project.discoveryEnvironmentState(): IntellijDiscoveryEnvironmentState = when {
     isDisposed -> IntellijDiscoveryEnvironmentState.DISPOSED
     DumbService.getInstance(this).isDumb -> IntellijDiscoveryEnvironmentState.DUMB
     else -> IntellijDiscoveryEnvironmentState.READY

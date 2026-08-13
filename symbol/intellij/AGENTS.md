@@ -18,6 +18,14 @@ transport, or composition.
   scope, and issues or revalidates an exact selector inside one restartable read.
 - `IntellijPsiExactDeclarationLookup.kt` resolves the candidate's retained file/name/offset to one
   scope-contained declaration and detaches exact range, qualified-identity state, and runtime type.
+- `IntellijNativeRelationAdapter.kt` admits the current selector lease, recompiles its retained
+  scope, and executes one bounded relation read inside a restartable IntelliJ read action.
+- `IntellijNativeRelationQuery.kt` owns relation limits, deterministic collection, explicit
+  terminal versus nonterminal coverage, and closed provider/environment qualifications.
+- `IntellijPsiNativeRelationSearch.kt` revalidates the exact live subject and performs one-hop
+  reference, definition, or outgoing-reference traversal through native IntelliJ facilities.
+- `IntellijPsiRelationFactProjector.kt` detaches live related declarations and occurrences into
+  generation/scope-bound exact relation facts.
 
 ## Adapter invariants
 
@@ -43,10 +51,19 @@ transport, or composition.
 - Exact resolution must consume a batch-owned selection. Missing files/elements, scope rejection,
   multiple matching PSI ancestors, unsupported declarations, root/generation drift, and changed
   native evidence are distinct closed failures; never guess among collisions.
+- Relation search receives only the selector's compiled scope. Use `ReferencesSearch` for exact
+  resolved references, `DefinitionsScopedSearch` with deep traversal disabled for native
+  definitions, and bounded PSI reference walking for outgoing targets; never widen scope or accept
+  same-name text as resolution.
+- Check cancellation inside every relation processor and walker. A provider cap or halt,
+  unresolved target, unsupported item, dumb transition, or provider failure yields qualified
+  known-minimum coverage; only limitation-free terminal enumeration may yield an exact count.
+- Relation facts detach exact endpoint evidence and absolute source occurrences. Live PSI,
+  references, virtual files, and queries never survive the request-local read.
 
 ## Verification ladder
 
-1. Run `./gradlew :symbol:intellij:test --tests '*SourceRoot*PolicyTest' --tests '*NativeDiscoveryTest' --tests '*ExactSelectorResolutionTest'`.
+1. Run `./gradlew :symbol:intellij:test --tests '*SourceRoot*PolicyTest' --tests '*NativeDiscoveryTest' --tests '*ExactSelectorResolutionTest' --tests '*NativeRelationReadTest'`.
 2. Reformat and inspect every changed Kotlin file through the exact-worktree IDEA MCP.
 3. Build the changed files through IDEA.
 4. Run `./gradlew :symbol:intellij:test`.
