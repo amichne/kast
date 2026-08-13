@@ -261,12 +261,10 @@ class KastArchitecturePolicyTest {
         projectDependencies: Set<ProjectDependencyObservation> = emptySet(),
         effects: Set<EffectObservation> = emptySet(),
     ): ObservedArchitecture = ObservedArchitecture(
-        modules = setOf(
-            ModuleId.ANALYSIS_API,
-            ModuleId.ANALYSIS_SERVER,
-            ModuleId.INDEX_STORE,
-            ModuleId.INDEXER,
-        ),
+        modules = KastArchitecturePolicy.definition().modules
+            .filter { it.lifecycle == ModuleLifecycle.ACTIVE }
+            .map(ModulePolicy::id)
+            .toSet(),
         projectDependencies = projectDependencies,
         effects = effects,
     )

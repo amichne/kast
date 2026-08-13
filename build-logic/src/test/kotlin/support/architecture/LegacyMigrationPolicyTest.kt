@@ -129,7 +129,7 @@ class LegacyMigrationPolicyTest {
         val parsed = assertInstanceOf<ArchitectureObservationValidation.Invalid>(
             ArchitectureObservationParser.parse(
                 architecture,
-                rawProjectPaths = activeLegacyModules.map(ModuleId::projectPath),
+                rawProjectPaths = canonicalActiveModules.map(ModuleId::projectPath),
                 rawProjectDependencies = listOf(":analysis-server -> :symbol:*"),
             ),
         )
@@ -184,17 +184,15 @@ class LegacyMigrationPolicyTest {
     private fun observation(
         dependencies: Set<ProjectDependencyObservation>,
     ): ObservedArchitecture = ObservedArchitecture(
-        modules = activeLegacyModules + dependency.dependency,
+        modules = canonicalActiveModules + dependency.dependency,
         projectDependencies = dependencies,
         effects = emptySet(),
     )
 
     private companion object {
-        val activeLegacyModules = setOf(
-            ModuleId.ANALYSIS_API,
-            ModuleId.ANALYSIS_SERVER,
-            ModuleId.INDEX_STORE,
-            ModuleId.INDEXER,
-        )
+        val canonicalActiveModules = KastArchitecturePolicy.definition().modules
+            .filter { it.lifecycle == ModuleLifecycle.ACTIVE }
+            .map(ModulePolicy::id)
+            .toSet()
     }
 }
