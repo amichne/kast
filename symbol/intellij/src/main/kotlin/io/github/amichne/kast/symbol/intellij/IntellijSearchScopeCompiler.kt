@@ -347,7 +347,7 @@ private fun SymbolSearchScope.libraryPolicy(): SymbolLibraryPolicy = when (this)
  * [IntellijVirtualFilePath.Unavailable] state. The live [VirtualFile] and raw [Path] stay inside the
  * native scope boundary.
  */
-private fun nativePath(file: VirtualFile): IntellijVirtualFilePath = try {
+internal fun nativePath(file: VirtualFile): IntellijVirtualFilePath = try {
     IntellijVirtualFilePath.classify(file.toNioPath())
 } catch (_: UnsupportedOperationException) {
     IntellijVirtualFilePath.Unavailable

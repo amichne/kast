@@ -8,6 +8,12 @@ transport, or composition.
 
 - `IntellijSearchScopeCompiler.kt` turns admitted detached ownership and operation policy into one
   request-local `GlobalSearchScope`, then gives that capability to native query work.
+- `IntellijNativeDiscoveryAdapter.kt` runs one restartable IntelliJ read and selects FILE, CLASS,
+  or current symbol Choose-by-Name contributors.
+- `IntellijNativeDiscoveryQuery.kt` performs platform matching, scoped native name/element
+  processing, bounded collection, deterministic ordering, qualification, and timing.
+- `IntellijDiscoveryProjection.kt` converts only already-in-scope live items into detached
+  generation-bound candidates.
 
 ## Adapter invariants
 
@@ -24,10 +30,16 @@ transport, or composition.
   or other live IDE object across requests.
 - Ordinary reads do not refresh, import Gradle, write files, mutate PSI, persist evidence, build a
   graph, or control processes.
+- Use only scoped `ChooseByNameContributorEx` processing. A legacy scope-blind contributor is an
+  explicit qualified limitation, never a fallback enumeration.
+- Check cancellation and dumb/project state during provider streaming. Platform cancellation must
+  escape the query so the write-priority `readAction` can restart or cancel truthfully.
+- Apply record, byte, work, and elapsed limits before retaining live items; every nonterminal cap
+  remains visible in the detached outcome.
 
 ## Verification ladder
 
-1. Run `./gradlew :symbol:intellij:test --tests '*SourceRoot*PolicyTest'`.
+1. Run `./gradlew :symbol:intellij:test --tests '*SourceRoot*PolicyTest' --tests '*NativeDiscoveryTest'`.
 2. Reformat and inspect every changed Kotlin file through the exact-worktree IDEA MCP.
 3. Build the changed files through IDEA.
 4. Run `./gradlew :symbol:intellij:test`.
