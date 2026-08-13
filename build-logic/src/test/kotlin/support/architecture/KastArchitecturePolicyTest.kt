@@ -9,7 +9,7 @@ import kotlin.collections.filter
 
 class KastArchitecturePolicyTest {
     @Test
-    fun `planned native read slice declares its final inward dependencies`() {
+    fun `native read slice keeps its final inward dependencies while modules activate`() {
         val architecture = canonicalWithoutLegacyAllowances()
         val modulesByPath = architecture.modules.values.associateBy { it.id.projectPath }
         val expected = mapOf(
@@ -51,7 +51,10 @@ class KastArchitecturePolicyTest {
         assertTrue(":runtime:bindings:contract" !in modulesByPath)
         expected.forEach { (path, expectedPolicy) ->
             val module = modulesByPath.getValue(path)
-            assertEquals(ModuleLifecycle.PLANNED, module.lifecycle, path)
+            assertTrue(
+                module.lifecycle in setOf(ModuleLifecycle.PLANNED, ModuleLifecycle.ACTIVE),
+                path,
+            )
             assertEquals(expectedPolicy.first, module.role, path)
             assertEquals(
                 expectedPolicy.second,
