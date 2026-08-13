@@ -24,4 +24,5 @@ include(
     ":index-store",
     ":indexer",
     ":kernel",
+    ":protocol:registry",
 )

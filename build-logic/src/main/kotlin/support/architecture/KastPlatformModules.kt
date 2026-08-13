@@ -18,7 +18,7 @@ internal object KastPlatformModules {
             ModuleId.INDEX_STORE,
         ),
         active(ModuleId.KERNEL, ModuleRole.KERNEL),
-        planned(ModuleId.PROTOCOL_REGISTRY, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        active(ModuleId.PROTOCOL_REGISTRY, ModuleRole.CONTRACT, ModuleId.KERNEL),
         planned(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         planned(ModuleId.WORKSPACE_SPI, ModuleRole.SPI, ModuleId.WORKSPACE_CONTRACT),
         planned(

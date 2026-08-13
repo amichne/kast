@@ -58,7 +58,7 @@
     {
       "id": "PROTOCOL_REGISTRY",
       "projectPath": ":protocol:registry",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "CONTRACT",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
