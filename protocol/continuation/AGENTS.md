@@ -1,8 +1,9 @@
 # Protocol continuation module guide
 
-`:protocol:continuation` owns bounded host-neutral continuation state. It stores only immutable
-detached records and typed binding evidence; it does not own transport, persistence, IntelliJ
-objects, native query execution, public operation routing, or runtime composition.
+`:protocol:continuation` owns bounded host-neutral continuation and registered long-operation
+state. It stores only immutable detached records, typed binding evidence, closed lifecycle state,
+and store-owned timer signals; it does not own transport, persistence, IntelliJ objects, native
+query execution, public operation routing, operation executors, or runtime composition.
 
 ## Module map
 
@@ -17,6 +18,12 @@ objects, native query execution, public operation routing, or runtime compositio
   expiry invalidation, cancellation cleanup, and finite resource accounting.
 - `DetachedContinuationStoreState.kt` contains only the store's closed internal admission,
   lifecycle, selection, and failure-translation states.
+- `LongOperationIdentity.kt` owns copyable operation IDs and exact root, requester, runtime-epoch,
+  declared-capability, and input identities.
+- `LongOperationProtocol.kt` owns capacity/deadline/retention policy, scheduler capability,
+  cancellation policy, detached terminal results, and closed operation outcomes.
+- `RegisteredLongOperationStore.kt` owns synchronized registration, exact binding admission,
+  deadline transition, poll, completion, cancellation, terminal replay, retention, and cleanup.
 
 ## Dependency boundary
 
@@ -24,8 +31,9 @@ objects, native query execution, public operation routing, or runtime compositio
   architecture policy.
 - Never import IntelliJ, PSI, VFS, search scopes, Gradle, JDBC, filesystem, process, transport,
   JSON-RPC, legacy `analysis-api`, backend, handler, closure, or service-locator types.
-- A continuation contains detached records or a detached resumable descriptor only. It never owns
-  a live host object or callback.
+- A continuation contains detached records or a detached resumable descriptor only. A registered
+  operation contains no worker, future, approval, PSI, database transaction, or live host object.
+  Its scheduler may retain only the store-owned ID/key expiry signal required for passive cleanup.
 
 ## Continuation invariants
 
@@ -41,9 +49,23 @@ objects, native query execution, public operation routing, or runtime compositio
 - Preserve record order exactly. A continuation never sorts, filters, re-resolves, refreshes, or
   extends native results; operation adapters own any lazy native query descriptor.
 
+## Registered-operation invariants
+
+- Arm the absolute server deadline before publishing an operation ID. Binding includes the exact
+  canonical root, requester, runtime epoch, declared capability, and complete input identity.
+- The request handler never owns the operation lifetime. An external executor completes by ID;
+  request disconnect, poll frequency, and poll absence cannot cancel, renew, or extend work.
+- Running, terminal success, and terminal failure are closed states. Deadline, cancellation, and
+  execution failure remain typed and replayable until the fixed retention interval ends.
+- Capacity bounds running and retained terminal entries together. Deadline and retention timers
+  clean passively; polling is observation only.
+- Every timer callback is bound to the entry's unforgeable registration key. Expiry, poll cleanup,
+  close, and stale callbacks release an entry at most once and cannot remove a reused ID.
+
 ## Verification ladder
 
-1. Run `./gradlew :protocol:continuation:test --tests '*DetachedContinuationStoreTest'`.
+1. Run the focused store test: `*DetachedContinuationStoreTest` for paging or
+   `*RegisteredLongOperationStoreTest` for registered operations.
 2. Run `./gradlew :protocol:continuation:test`.
 3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
 4. Run direct operation consumers when they adopt this service.
