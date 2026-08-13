@@ -27,10 +27,12 @@ class WorkspaceSearchScopeSourceRootPolicyTest {
         val model = assertInstanceOf<WorkspaceSearchScopeModelCompilation.Compiled>(compilation).model
         assertEquals(
             mapOf(
-                "/workspace/build/generated/authored-by-model" to WorkspaceSourceRootProvenance.AUTHORED,
-                "/workspace/custom/generated-outside-output" to WorkspaceSourceRootProvenance.GENERATED,
+                "/workspace/build/generated/authored-by-model" to
+                    (WorkspaceSourceRootKind.PRODUCTION to WorkspaceSourceRootProvenance.AUTHORED),
+                "/workspace/custom/generated-outside-output" to
+                    (WorkspaceSourceRootKind.PRODUCTION to WorkspaceSourceRootProvenance.GENERATED),
             ),
-            model.sourceRoots.associate { it.sourceRoot.value to it.provenance },
+            model.sourceRoots.associate { it.sourceRoot.value to (it.sourceKind to it.provenance) },
         )
     }
 
@@ -56,6 +58,16 @@ class WorkspaceSearchScopeSourceRootPolicyTest {
                 assertInstanceOf<WorkspaceSearchScopeModelCompilation.Rejected>(unknown).failures,
         )
 
+        val unknownKind = WorkspaceSearchScopeModel.compile(
+            workspaceRoot(),
+            ImportedWorkspaceModelState.COMPLETE,
+            listOf(boundary(sourceKind = WorkspaceSourceRootKind.UNKNOWN)),
+        )
+        assertTrue(
+            WorkspaceSearchScopeModelFailure.UNKNOWN_SOURCE_ROOT_KIND in
+                assertInstanceOf<WorkspaceSearchScopeModelCompilation.Rejected>(unknownKind).failures,
+        )
+
         val ambiguous = WorkspaceSearchScopeModel.compile(
             workspaceRoot(),
             ImportedWorkspaceModelState.COMPLETE,
@@ -67,6 +79,19 @@ class WorkspaceSearchScopeSourceRootPolicyTest {
         assertTrue(
             WorkspaceSearchScopeModelFailure.AMBIGUOUS_SOURCE_ROOT_OWNER in
                 assertInstanceOf<WorkspaceSearchScopeModelCompilation.Rejected>(ambiguous).failures,
+        )
+
+        val incoherentKind = WorkspaceSearchScopeModel.compile(
+            workspaceRoot(),
+            ImportedWorkspaceModelState.COMPLETE,
+            listOf(
+                boundary(sourceKind = WorkspaceSourceRootKind.PRODUCTION),
+                boundary(sourceKind = WorkspaceSourceRootKind.TEST),
+            ),
+        )
+        assertTrue(
+            WorkspaceSearchScopeModelFailure.INCOHERENT_SOURCE_ROOT_KIND in
+                assertInstanceOf<WorkspaceSearchScopeModelCompilation.Rejected>(incoherentKind).failures,
         )
     }
 
@@ -80,6 +105,7 @@ class WorkspaceSearchScopeSourceRootPolicyTest {
         ideaModuleName: String = "app.main",
         gradleProjectPath: String = ":app",
         sourceRoot: String = "/workspace/app/src/main/kotlin",
+        sourceKind: WorkspaceSourceRootKind = WorkspaceSourceRootKind.PRODUCTION,
         provenance: WorkspaceSourceRootProvenance = WorkspaceSourceRootProvenance.AUTHORED,
     ): WorkspaceSourceRootBoundary = WorkspaceSourceRootBoundary(
         ideaModuleName = ideaModuleName,
@@ -87,6 +113,7 @@ class WorkspaceSearchScopeSourceRootPolicyTest {
         gradleProjectPath = gradleProjectPath,
         sourceSetName = "main",
         sourceRoot = Path.of(sourceRoot),
+        sourceKind = sourceKind,
         provenance = provenance,
     )
 }

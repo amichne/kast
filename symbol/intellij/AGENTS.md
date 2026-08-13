@@ -12,8 +12,13 @@ transport, or composition.
 ## Adapter invariants
 
 - Compile and reject scope before a PSI or index callback starts.
-- Select roots only from exact Gradle/project-model ownership. Never infer generated provenance from
-  paths.
+- Select roots and production/test/generated classification only from exact Gradle project-model
+  ownership. Never infer classification from paths or source-set names.
+- Exact-file scope must resolve to one most-specific model root. Unknown or multiply owned target
+  provenance is a closed rejection before native work.
+- Admit libraries only for an explicit workspace-wide policy through
+  `ProjectScope.getLibrariesScope`, whose platform contract is backed by project-file-index
+  library membership; never turn library readability into source or edit authority.
 - Bind every compiled capability to the request lease's canonical root and generation.
 - Keep `Project`, `VirtualFile`, and `GlobalSearchScope` internal and request-local. Retain no PSI
   or other live IDE object across requests.

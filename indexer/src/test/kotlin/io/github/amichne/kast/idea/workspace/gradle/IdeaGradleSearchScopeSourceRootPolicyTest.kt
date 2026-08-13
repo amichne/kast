@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailure
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -36,10 +37,55 @@ class IdeaGradleSearchScopeSourceRootPolicyTest {
         val compiled = assertInstanceOf<WorkspaceSearchScopeModelCompilation.Compiled>(compilation)
         assertEquals(
             setOf(
-                WorkspaceSourceRootProvenance.AUTHORED,
-                WorkspaceSourceRootProvenance.GENERATED,
+                WorkspaceSourceRootKind.PRODUCTION to WorkspaceSourceRootProvenance.AUTHORED,
+                WorkspaceSourceRootKind.PRODUCTION to WorkspaceSourceRootProvenance.GENERATED,
             ),
-            compiled.model.sourceRoots.mapTo(mutableSetOf()) { it.provenance },
+            compiled.model.sourceRoots.mapTo(mutableSetOf()) { it.sourceKind to it.provenance },
+        )
+    }
+
+    @Test
+    fun `bridge preserves production and test kind and rejects mixed model evidence`() {
+        val classified = model(
+            association(
+                ":app",
+                sourceRoot(
+                    "/workspace/app/src/main/kotlin",
+                    IdeaGradleProjectLoadBridge.GradleSourceRootProvenance.Authored(
+                        listOf(IdeaGradleProjectLoadBridge.GradleSourceRootModelEvidence.SOURCE),
+                    ),
+                ),
+                sourceRoot(
+                    "/workspace/app/src/test/kotlin",
+                    IdeaGradleProjectLoadBridge.GradleSourceRootProvenance.Authored(
+                        listOf(IdeaGradleProjectLoadBridge.GradleSourceRootModelEvidence.TEST),
+                    ),
+                ),
+            ),
+        ).toWorkspaceSearchScopeModel(workspaceRoot())
+        val compiled = assertInstanceOf<WorkspaceSearchScopeModelCompilation.Compiled>(classified)
+        assertEquals(
+            setOf(WorkspaceSourceRootKind.PRODUCTION, WorkspaceSourceRootKind.TEST),
+            compiled.model.sourceRoots.mapTo(mutableSetOf()) { it.sourceKind },
+        )
+
+        val mixed = model(
+            association(
+                ":app",
+                sourceRoot(
+                    "/workspace/shared/code",
+                    IdeaGradleProjectLoadBridge.GradleSourceRootProvenance.Authored(
+                        listOf(
+                            IdeaGradleProjectLoadBridge.GradleSourceRootModelEvidence.SOURCE,
+                            IdeaGradleProjectLoadBridge.GradleSourceRootModelEvidence.TEST,
+                        ),
+                    ),
+                ),
+            ),
+        ).toWorkspaceSearchScopeModel(workspaceRoot())
+        assertTrue(
+            WorkspaceSearchScopeModelFailure.UNKNOWN_SOURCE_ROOT_KIND in
+                assertInstanceOf<WorkspaceSearchScopeModelCompilation.Rejected>(mixed).failures,
         )
     }
 

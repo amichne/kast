@@ -14,6 +14,12 @@ enum class WorkspaceSourceRootProvenance {
     UNKNOWN,
 }
 
+enum class WorkspaceSourceRootKind {
+    PRODUCTION,
+    TEST,
+    UNKNOWN,
+}
+
 /**
  * Raw Gradle project-model source-root observation. Primitives are retained only at this
  * workspace-model boundary and are refined by [WorkspaceSearchScopeModel.compile].
@@ -24,6 +30,7 @@ data class WorkspaceSourceRootBoundary(
     val gradleProjectPath: String,
     val sourceSetName: String,
     val sourceRoot: Path,
+    val sourceKind: WorkspaceSourceRootKind,
     val provenance: WorkspaceSourceRootProvenance,
 )
 
@@ -36,8 +43,10 @@ enum class WorkspaceSearchScopeModelFailure {
     INVALID_SOURCE_SET_NAME,
     INVALID_SOURCE_ROOT,
     SOURCE_ROOT_OUTSIDE_WORKSPACE,
+    UNKNOWN_SOURCE_ROOT_KIND,
     UNKNOWN_SOURCE_ROOT_PROVENANCE,
     AMBIGUOUS_SOURCE_ROOT_OWNER,
+    INCOHERENT_SOURCE_ROOT_KIND,
     INCOHERENT_SOURCE_ROOT_PROVENANCE,
     NO_SOURCE_ROOTS,
 }
@@ -79,6 +88,7 @@ data class ModelOwnedSourceRoot internal constructor(
     val project: GradleProjectIdentity,
     val sourceSet: WorkspaceSourceSetName,
     val sourceRoot: CanonicalSourceRoot,
+    val sourceKind: WorkspaceSourceRootKind,
     val provenance: WorkspaceSourceRootProvenance,
 )
 
@@ -110,10 +120,10 @@ class WorkspaceSearchScopeModel private constructor(
          * to WorkspaceSearchScopeModelCompilation.
          *
          * A compiled result establishes complete model admission, normalized workspace-contained
-         * roots, strong build/project/source-set identities, known model provenance, and one
-         * coherent Gradle project owner per exact source root. [WorkspaceSearchScopeModelFailure]
-         * is the closed expected failure. Raw paths and names may be extracted only by the physical
-         * project-model adapter that calls this boundary.
+         * roots, strong build/project/source-set identities, known production/test kind and
+         * provenance, and one coherent Gradle project owner per exact source root.
+         * [WorkspaceSearchScopeModelFailure] is the closed expected failure. Raw paths and names
+         * may be extracted only by the physical project-model adapter that calls this boundary.
          */
         fun compile(
             workspaceRoot: CanonicalWorkspaceRoot,
@@ -140,6 +150,9 @@ class WorkspaceSearchScopeModel private constructor(
                 if (owners.map(ModelOwnedSourceRoot::project).distinct().size > 1) {
                     failures += WorkspaceSearchScopeModelFailure.AMBIGUOUS_SOURCE_ROOT_OWNER
                 }
+                if (owners.map(ModelOwnedSourceRoot::sourceKind).distinct().size > 1) {
+                    failures += WorkspaceSearchScopeModelFailure.INCOHERENT_SOURCE_ROOT_KIND
+                }
                 if (owners.map(ModelOwnedSourceRoot::provenance).distinct().size > 1) {
                     failures += WorkspaceSearchScopeModelFailure.INCOHERENT_SOURCE_ROOT_PROVENANCE
                 }
@@ -158,6 +171,7 @@ class WorkspaceSearchScopeModel private constructor(
                     { it.project.projectPath.value },
                     { it.sourceSet.value },
                     { it.module.value },
+                    { it.sourceKind.name },
                     { it.provenance.name },
                 ),
             )
@@ -171,8 +185,10 @@ class WorkspaceSearchScopeModel private constructor(
          * CanonicalWorkspaceRoot + WorkspaceSourceRootBoundary
          * to Refinement<ModelOwnedSourceRoot, Set<WorkspaceSearchScopeModelFailure>>.
          *
-         * Establishes strong model ownership for one source root without filesystem I/O. Raw
-         * extraction remains confined to [compile].
+         * Establishes strong model ownership plus known production/test kind and
+         * authored/generated provenance for one source root without filesystem I/O.
+         * [WorkspaceSearchScopeModelFailure] is the closed expected failure, and raw extraction
+         * remains confined to [compile].
          */
         private fun refineBoundary(
             workspaceRoot: CanonicalWorkspaceRoot,
@@ -208,6 +224,9 @@ class WorkspaceSearchScopeModel private constructor(
             if (boundary.provenance == WorkspaceSourceRootProvenance.UNKNOWN) {
                 failures += WorkspaceSearchScopeModelFailure.UNKNOWN_SOURCE_ROOT_PROVENANCE
             }
+            if (boundary.sourceKind == WorkspaceSourceRootKind.UNKNOWN) {
+                failures += WorkspaceSearchScopeModelFailure.UNKNOWN_SOURCE_ROOT_KIND
+            }
             if (failures.isNotEmpty()) {
                 return Refinement.Rejected(failures)
             }
@@ -225,6 +244,7 @@ class WorkspaceSearchScopeModel private constructor(
                     ),
                     sourceSet = WorkspaceSourceSetName(sourceSetName),
                     sourceRoot = CanonicalSourceRoot(boundary.sourceRoot.toString()),
+                    sourceKind = boundary.sourceKind,
                     provenance = boundary.provenance,
                 ),
             )

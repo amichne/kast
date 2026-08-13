@@ -23,9 +23,9 @@ not a foreground IDE plugin.
 - `idea/transition` owns workspace signals, freshness claims, Git worktree
   guards, semantic input identity, VFS observation, transition coordination,
   retry/block state, and publication capability interfaces.
-- `idea/workspace` owns Gradle project/source-set provenance, workspace
-  identity, file inventory/paging/snapshots, indexing scope, stage versions,
-  hydration, and project indexing.
+- `idea/workspace` owns Gradle project/source-set production/test kind and
+  authored/generated provenance, workspace identity, file inventory/paging/snapshots,
+  indexing scope, stage versions, hydration, and project indexing.
 - `idea/snapshot` binds committed Git tree and build classpath identity to
   repository snapshot publication and worktree overlay selection.
 - `idea/backend` implements `AnalysisBackend`. Its subtrees own diagnostics,

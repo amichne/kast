@@ -8,6 +8,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -16,25 +17,57 @@ import java.nio.file.Path
 
 class SymbolSearchScopeSourceRootPolicyTest {
     @Test
-    fun `read policy is generation-bound and independent from model ownership`() {
+    fun `scope target and read policies are generation-bound and independent from edit authority`() {
         val root = workspaceRoot()
         val model = compiledModel(root)
-        val project = model.sourceRoots.single().project
+        val ownedRoot = model.sourceRoots.single()
         val lease = SemanticReadLease(root, generation(11))
-
-        val authored = SymbolSearchScopeRequest(
+        val exactFile = CanonicalWorkspaceFilePath.fromCanonicalPath(
+            root,
+            Path.of("/workspace/app/src/main/kotlin/App.kt"),
+        ).refined()
+        val exact = SymbolSearchScopeRequest(
             lease = lease,
-            owner = SymbolSearchOwner.GradleProject(project),
-            readableSources = SymbolReadableSources.AUTHORED_ONLY,
+            scope = SymbolSearchScope.ExactFile(
+                file = exactFile,
+                sourceKinds = SymbolSourceKindPolicy.PRODUCTION_ONLY,
+                generatedSources = SymbolGeneratedSourcePolicy.EXCLUDE,
+            ),
         )
-        val includingGenerated = authored.copy(
-            readableSources = SymbolReadableSources.AUTHORED_AND_GENERATED,
+        val workspace = exact.copy(
+            scope = SymbolSearchScope.Workspace(
+                sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                generatedSources = SymbolGeneratedSourcePolicy.INCLUDE,
+                libraries = SymbolLibraryPolicy.INCLUDE,
+            ),
+        )
+        val module = SymbolSearchScope.Module(
+            module = ownedRoot.module,
+            sourceKinds = SymbolSourceKindPolicy.PRODUCTION_ONLY,
+            generatedSources = SymbolGeneratedSourcePolicy.EXCLUDE,
         )
 
-        assertEquals(lease, authored.lease)
-        assertEquals(SymbolSearchOwner.GradleProject(project), authored.owner)
-        assertEquals(SymbolReadableSources.AUTHORED_ONLY, authored.readableSources)
-        assertEquals(SymbolReadableSources.AUTHORED_AND_GENERATED, includingGenerated.readableSources)
+        assertEquals(lease, exact.lease)
+        assertEquals(exactFile, assertInstanceOf<SymbolSearchScope.ExactFile>(exact.scope).file)
+        assertEquals(ownedRoot.module, module.module)
+        assertEquals(
+            SymbolLibraryPolicy.INCLUDE,
+            assertInstanceOf<SymbolSearchScope.Workspace>(workspace.scope).libraries,
+        )
+    }
+
+    @Test
+    fun `exact file path rejects invalid and out-of-workspace boundary paths`() {
+        val root = workspaceRoot()
+
+        assertEquals(
+            CanonicalWorkspaceFilePathFailure.INVALID_FILE_PATH,
+            CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of("relative.kt")).rejected(),
+        )
+        assertEquals(
+            CanonicalWorkspaceFilePathFailure.FILE_OUTSIDE_WORKSPACE,
+            CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of("/other/App.kt")).rejected(),
+        )
     }
 
     private fun compiledModel(root: CanonicalWorkspaceRoot): WorkspaceSearchScopeModel {
@@ -48,6 +81,7 @@ class SymbolSearchScopeSourceRootPolicyTest {
                     gradleProjectPath = ":app",
                     sourceSetName = "main",
                     sourceRoot = Path.of("/workspace/app/src/main/kotlin"),
+                    sourceKind = WorkspaceSourceRootKind.PRODUCTION,
                     provenance = WorkspaceSourceRootProvenance.AUTHORED,
                 ),
             ),
@@ -63,5 +97,10 @@ class SymbolSearchScopeSourceRootPolicyTest {
     private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error(failure.toString())
+    }
+
+    private fun <Strong, Failure> Refinement<Strong, Failure>.rejected(): Failure = when (this) {
+        is Refinement.Refined -> error(value.toString())
+        is Refinement.Rejected -> failure
     }
 }

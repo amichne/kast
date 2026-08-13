@@ -5,8 +5,8 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 
 ## Module map
 
-- `SymbolSearchScope.kt` owns the generation-bound symbol scope request, exact model owner, and
-  authored/generated read policy.
+- `SymbolSearchScope.kt` owns the generation-bound exact-file, module, source-set, Gradle-project,
+  and workspace targets plus production/test, generated-source, and project-library read policy.
 
 ## Dependency boundary
 
@@ -14,6 +14,8 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 - Do not import IntelliJ, Gradle, JDBC, filesystem, process, transport, legacy backend, adapter, or
   service-locator types.
 - Readability policy never grants edit, write, or mutation authority.
+- Library readability exists only on workspace-wide policy; narrower model owners cannot silently
+  widen to every project library.
 
 ## Verification ladder
 
