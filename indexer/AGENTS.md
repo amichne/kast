@@ -112,6 +112,12 @@ not a foreground IDE plugin.
 - Native mutation effects preserve hard exclusions, symlink/root containment,
   durable parent/file writes, cancellation, and totalized scratch recovery.
   A successful edit is not a substitute for compiler postcondition proof.
+- The KIP-030 add-declaration physical protocol is pinned by
+  `.agents/arch/kast-add-declaration-intellij-protocol.json`. Preparation and
+  every semantic/search decision remain outside the command. The command may
+  only insert PSI, reformat whitespace, and commit the declared target; save
+  follows afterward. Headless undo, reference shortening, Android Studio, and
+  unpinned builds remain explicit unsupported evidence until separately proven.
 - Repository snapshots bind committed tree, classpath, schema, and producer
   identity. Worktree overlays retain dirty shards/tombstones and may read an
   immutable validated base only; stale or mismatched bases are revoked.
@@ -139,6 +145,9 @@ not a foreground IDE plugin.
 
 1. Run the smallest relevant class:
    `./gradlew :indexer:test --tests '<fully.qualified.TestClass>'`.
+   For KIP-030 run
+   `io.github.amichne.kast.idea.backend.contract.mutation.addition.AddDeclarationIntellijProtocolTest`
+   plus `.agents/arch/test-kast-add-declaration-intellij-protocol.py`.
 2. Run `./gradlew :indexer:test` for Kotlin/Java source changes. The pinned IDEA
    distribution and platform plugins must be available.
 3. Run excluded suites explicitly when their risk applies, for example
