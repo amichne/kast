@@ -19,6 +19,9 @@ effect.
 - `PlannedAddDeclaration` binds one exact G0, target owner and source-root provenance, exact before
   and expected after images, a singleton declared write set, operation obligations, expected
   semantic delta, verification terms, and all detached compiler evidence.
+- Revalidation admits only a coherent current observation that still matches generation, target
+  identity, owner and scope, exact content, authored provenance, and writability. Its output carries
+  exact recovery material but no write capability, and every rejection is fixed to `NOT_BEGUN`.
 - Plan identity is the SHA-256 of canonical serialized identity material. Decode rejects malformed,
   non-canonical, or tampered bytes.
 - No plan retains a path handle, file handle, PSI value, document, callback, or mutation capability.
