@@ -23,6 +23,10 @@ import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionOutcome
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
+import io.github.amichne.kast.change.contract.PlannedAddDeclaration
+import io.github.amichne.kast.change.journal.contract.PersistedAddDeclarationPlan
+import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistence
+import io.github.amichne.kast.change.plan.service.PersistAddDeclarationPlanResult
 
 internal class TestWorkspaceGenerationPublication(
     initial: PublishedWorkspaceGenerationManifest? = null,
@@ -76,6 +80,8 @@ internal class TestWorkspaceGenerationPublication(
 }
 
 internal class TestWorkspaceSemanticReadAuthority(
+    private val onReadOpened: () -> Unit = {},
+    private val onReadClosed: () -> Unit = {},
     private val currentStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready(testPublishedWorkspaceGeneration())
     },
@@ -85,10 +91,11 @@ internal class TestWorkspaceSemanticReadAuthority(
     override fun openRead(): IdeaIndexSemanticAdmission.WorkspaceReadToken {
         val ready = currentStatus() as? IdeaIndexSemanticAdmission.Status.Ready
                     ?: error("Workspace semantic generation is not READY")
+        onReadOpened()
         return IdeaIndexSemanticAdmission.WorkspaceReadToken(
             revision = TEST_REVISION,
             generation = ready.generation,
-            release = {},
+            release = onReadClosed,
         )
     }
 
@@ -167,3 +174,10 @@ internal fun testPublishedWorkspaceGeneration(
     publishedAt = PublicationEpochMillis.fromClock(1),
     repositoryOverlay = RepositoryOverlayPublication.ABSENT,
 )
+
+internal data object TestAddDeclarationPlanPersistence : AddDeclarationPlanPersistence {
+    override fun persist(plan: PlannedAddDeclaration): PersistAddDeclarationPlanResult =
+        PersistAddDeclarationPlanResult.Stored(
+            PersistedAddDeclarationPlan.awaitingApproval(plan),
+        )
+}

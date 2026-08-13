@@ -17,7 +17,14 @@ import io.github.amichne.kast.api.client.WorkspaceRepository
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
+import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceException
+import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceFailure
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
+import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournal
+import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournalOpenFailure
+import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournalOpenResult
+import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistence
+import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistenceService
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -175,6 +182,17 @@ object IndexerServerRuntime {
         }
         var pluginBackend: KastIndexerBackend? = null
         val backend = try {
+            val addDeclarationPlanPersistence = when (
+                val bootstrap = openAddDeclarationPlanPersistence(
+                    workspaceIdentity.workspaceIdentity.workspaceCacheDirectoryPath.resolve(
+                        ADD_DECLARATION_PLAN_JOURNAL_FILE_NAME,
+                    ),
+                )
+            ) {
+                is AddDeclarationPlanPersistenceBootstrap.Ready -> bootstrap.persistence
+                is AddDeclarationPlanPersistenceBootstrap.Rejected ->
+                    throw AddDeclarationPlanPersistenceException.of(bootstrap.failure)
+            }
             val startedPluginBackend = KastIndexerBackend(
                 project = project,
                 workspaceRoot = workspaceIdentity.workspaceRootPath,
@@ -201,6 +219,7 @@ object IndexerServerRuntime {
                 workspaceSemanticReadAuthority = semanticAdmission,
                 workspaceTransitionRequester = transitionIngress,
                 runtimeCapabilityLeases = runtimeCapabilityLeases,
+                addDeclarationPlanPersistence = addDeclarationPlanPersistence,
             )
             pluginBackend = startedPluginBackend
             ObservedAnalysisBackend(
@@ -327,6 +346,45 @@ object IndexerServerRuntime {
         }
     }
 }
+
+internal const val ADD_DECLARATION_PLAN_JOURNAL_FILE_NAME = "add-declaration-plans.db"
+
+internal sealed interface AddDeclarationPlanPersistenceBootstrap {
+    data class Ready(
+        val persistence: AddDeclarationPlanPersistence,
+    ) : AddDeclarationPlanPersistenceBootstrap
+
+    data class Rejected(
+        val failure: AddDeclarationPlanPersistenceFailure,
+    ) : AddDeclarationPlanPersistenceBootstrap
+}
+
+/**
+ * Proof transition: `Path -> AddDeclarationPlanPersistenceBootstrap`.
+ *
+ * A ready result establishes an initialized workspace-scoped SQLite journal whose bootstrap
+ * connection is closed and which exposes only detached plan persistence. The closed expected
+ * failure is `AddDeclarationPlanPersistenceFailure`; the raw database path is extracted only by
+ * the SQLite journal adapter.
+ */
+internal fun openAddDeclarationPlanPersistence(
+    databasePath: Path,
+): AddDeclarationPlanPersistenceBootstrap =
+    when (val opened = SqliteAddDeclarationPlanJournal.open(databasePath)) {
+        is SqliteAddDeclarationPlanJournalOpenResult.Opened ->
+            AddDeclarationPlanPersistenceBootstrap.Ready(
+                AddDeclarationPlanPersistenceService(opened.journal),
+            )
+        is SqliteAddDeclarationPlanJournalOpenResult.Rejected ->
+            AddDeclarationPlanPersistenceBootstrap.Rejected(
+                when (opened.failure) {
+                    is SqliteAddDeclarationPlanJournalOpenFailure.InvalidDatabasePath ->
+                        AddDeclarationPlanPersistenceFailure.DATABASE_PATH_INVALID
+                    SqliteAddDeclarationPlanJournalOpenFailure.StorageUnavailable ->
+                        AddDeclarationPlanPersistenceFailure.STORAGE_UNAVAILABLE
+                },
+            )
+    }
 
 private fun Throwable.indexAdmissionFailureDetail(): String =
     message?.takeIf(String::isNotBlank) ?: this::class.qualifiedName.orEmpty()

@@ -46,6 +46,7 @@ import io.github.amichne.kast.idea.backend.mutation.*
 import io.github.amichne.kast.idea.backend.workspace.*
 import io.github.amichne.kast.idea.backend.semantic.*
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistence
 import io.github.amichne.kast.workspace.spi.SemanticReadExecutor
 import io.github.amichne.kast.workspace.spi.RuntimeLivenessAuthority
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
@@ -61,6 +62,7 @@ internal class KastIndexerBackend(
     internal val mutationAttemptGate: MutationAttemptGate =
         MutationAttemptGateRegistry.forWorkspaceRoot(workspaceIdentity.canonicalWorkspaceRootPath),
     internal val exactFileImageCasObserver: ExactFileImageCasObserver = ExactFileImageCasObserver.Disabled,
+    internal val addDeclarationPlanPersistence: AddDeclarationPlanPersistence = AddDeclarationPlanPersistence.Unavailable,
     internal val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
     internal val semanticGraphStore: SqliteSourceIndexStore? = null,
     initialIndexingConfig: IndexingConfig = KastConfig.defaults().indexing,
@@ -317,7 +319,9 @@ internal class KastIndexerBackend(
         workspaceSemanticGate.current { planAddFileOperation(query) }
 
     override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult =
-        workspaceSemanticGate.current { lease -> planAddDeclarationViaBinding(query, lease) }
+        persistAddDeclarationPlanViaBinding(
+            workspaceSemanticGate.current { lease -> planAddDeclarationViaBinding(query, lease) },
+        )
 
     override suspend fun verifyMutationPostcondition(
         query: ParsedMutationPostconditionQuery,

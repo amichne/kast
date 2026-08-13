@@ -19,12 +19,16 @@ import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.ExpectedFileProof
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
+import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanJournalFailure
 import io.github.amichne.kast.change.plan.intellij.IntellijAddDeclarationPlanner
 import io.github.amichne.kast.change.plan.spi.AddDeclarationEvidenceResult
 import io.github.amichne.kast.change.plan.spi.AddDeclarationPlanningEvidenceSource
 import io.github.amichne.kast.change.plan.spi.AddDeclarationPlanningLimitation
 import io.github.amichne.kast.change.plan.spi.AddDeclarationPlanningRejection
 import io.github.amichne.kast.change.plan.spi.AddDeclarationPlanningResult
+import io.github.amichne.kast.change.plan.service.PersistAddDeclarationPlanResult
+import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceException
+import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceFailure
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
@@ -40,17 +44,16 @@ private val legacyPlanJson = Json {
 
 /**
  * Proof transition:
- * ParsedAddDeclarationPlanQuery and SemanticReadLease to AddDeclarationPlanResult.
+ * ParsedAddDeclarationPlanQuery and SemanticReadLease to PlannedAddDeclaration.
  *
- * Establishes a detached PlannedAddDeclaration through the narrow read-only planning binding, then
- * projects its digest-bound legacy compiler evidence back to the existing public result. Expected
- * failure remains closed by AdditionProofIncompleteException and AdditionProofLimitation at this
- * compatibility boundary. Raw legacy JSON is extracted only for that final projection.
+ * Establishes a detached PlannedAddDeclaration through the narrow read-only planning binding.
+ * Expected failure remains closed by AdditionProofIncompleteException and AdditionProofLimitation
+ * at this compatibility boundary. The caller must release the semantic lease before persistence.
  */
 internal suspend fun KastIndexerBackend.planAddDeclarationViaBinding(
     query: ParsedAddDeclarationPlanQuery,
     lease: SemanticReadLease,
-): AddDeclarationPlanResult {
+): PlannedAddDeclaration {
     val intent = when (
         val refinement = RawAddDeclarationPlanRequest(
             workspaceRoot = lease.workspaceRoot.value,
@@ -71,9 +74,25 @@ internal suspend fun KastIndexerBackend.planAddDeclarationViaBinding(
         legacyPlan = { planAddDeclarationOperation(query) },
     )
     return when (val result = IntellijAddDeclarationPlanner(source).plan(intent)) {
-        is AddDeclarationPlanningResult.Planned -> result.plan.toLegacyResult()
+        is AddDeclarationPlanningResult.Planned -> result.plan
         is AddDeclarationPlanningResult.Rejected -> throw result.rejection.toLegacyFailure()
     }
+}
+
+/**
+ * Proof transition: `PlannedAddDeclaration -> AddDeclarationPlanResult`.
+ *
+ * Establishes that the detached plan crossed the durable journal boundary before its legacy
+ * compiler evidence is projected. Expected failure is closed by
+ * `AddDeclarationPlanPersistenceException`; raw legacy JSON is extracted only after persistence.
+ */
+internal fun KastIndexerBackend.persistAddDeclarationPlanViaBinding(
+    plan: PlannedAddDeclaration,
+): AddDeclarationPlanResult = when (val persisted = addDeclarationPlanPersistence.persist(plan)) {
+    is PersistAddDeclarationPlanResult.Stored -> persisted.record.plan.toLegacyResult()
+    is PersistAddDeclarationPlanResult.Existing -> persisted.record.plan.toLegacyResult()
+    is PersistAddDeclarationPlanResult.JournalRejected ->
+        throw persisted.failure.toPersistenceFailure()
 }
 
 private class LegacyAddDeclarationEvidenceSource(
@@ -177,6 +196,24 @@ private fun AddDeclarationPlanningRejection.toLegacyFailure(): AdditionProofInco
         message = "Add-declaration planning was rejected by the narrow operation binding",
     )
 }
+
+private fun AddDeclarationPlanJournalFailure.toPersistenceFailure(): AddDeclarationPlanPersistenceException =
+    AddDeclarationPlanPersistenceException.of(
+        when (this) {
+            AddDeclarationPlanJournalFailure.StorageUnavailable ->
+                AddDeclarationPlanPersistenceFailure.STORAGE_UNAVAILABLE
+            AddDeclarationPlanJournalFailure.CorruptRecord ->
+                AddDeclarationPlanPersistenceFailure.CORRUPT_RECORD
+            is AddDeclarationPlanJournalFailure.PlanIdCollision ->
+                AddDeclarationPlanPersistenceFailure.PLAN_ID_COLLISION
+            is AddDeclarationPlanJournalFailure.PlanNotFound ->
+                AddDeclarationPlanPersistenceFailure.PLAN_NOT_FOUND
+            is AddDeclarationPlanJournalFailure.StateVersionExhausted ->
+                AddDeclarationPlanPersistenceFailure.STATE_VERSION_EXHAUSTED
+            is AddDeclarationPlanJournalFailure.PriorStateMismatch ->
+                AddDeclarationPlanPersistenceFailure.PRIOR_STATE_MISMATCH
+        },
+    )
 
 private fun invalidEvidence(): AddDeclarationEvidenceResult = rejected(
     AddDeclarationPlanningLimitation.EVIDENCE_CONTRACT_INVALID,

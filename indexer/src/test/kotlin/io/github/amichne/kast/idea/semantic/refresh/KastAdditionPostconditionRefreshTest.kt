@@ -56,6 +56,7 @@ internal class KastAdditionPostconditionRefreshTest : IdeaEditApplicationTestFix
         workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
         workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         workspaceModelReader = ::workspaceModel,
+        addDeclarationPlanPersistence = TestAddDeclarationPlanPersistence,
     )
 
     private fun workspaceModel(): IdeaGradleProjectLoadBridge.GradleWorkspaceModel {
@@ -124,7 +125,7 @@ internal class KastAdditionPostconditionRefreshTest : IdeaEditApplicationTestFix
                 ).parsed(),
             )
         }.exceptionOrNull() as? MutationPostconditionFailedException
-            ?: error("Expected changed add-declaration identity to fail")
+                                 ?: error("Expected changed add-declaration identity to fail")
         assertEquals(
             listOf(MutationPostconditionLimitation.DECLARATION_SET_MISMATCH),
             declarationFailure.limitations,

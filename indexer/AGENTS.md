@@ -44,7 +44,7 @@ not a foreground IDE plugin.
 ## Dependency boundary
 
 - `analysis-api`, `analysis-server`, `index-store`, `symbol:contract`,
-  `symbol:intellij`, and the operation-specific `change` planning modules are
+  `symbol:intellij`, and the operation-specific `change` planning and journal modules are
   `compileOnly` inputs and explicit
   `indexerPluginRuntime` payloads. The private plugin payload owns these jars
   at runtime.
@@ -117,6 +117,10 @@ not a foreground IDE plugin.
   obligations. The `change:contract`, `change:plan:spi`, and
   `change:plan:intellij` classpaths remain read-only and must not acquire source
   mutation authority.
+- The public add-declaration planner persists only after the semantic read lease
+  has been validated and released. Runtime composition opens the workspace-scoped
+  SQLite journal; the backend consumes only `AddDeclarationPlanPersistence` and
+  projects legacy compiler evidence only from a stored or identical existing record.
 - Native mutation effects preserve hard exclusions, symlink/root containment,
   durable parent/file writes, cancellation, and totalized scratch recovery.
   A successful edit is not a substitute for compiler postcondition proof.

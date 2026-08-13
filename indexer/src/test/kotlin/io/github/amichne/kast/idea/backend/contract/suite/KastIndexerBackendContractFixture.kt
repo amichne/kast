@@ -53,6 +53,7 @@ import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistence
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -184,6 +185,8 @@ internal abstract class KastIndexerBackendContractTestFixture {
         },
         relationshipCoverageAuthority: RelationshipCoverageAuthority =
             RelationshipCoverageAuthority.proven(),
+        addDeclarationPlanPersistenceService: AddDeclarationPlanPersistence =
+            TestAddDeclarationPlanPersistence,
     ): KastIndexerBackend = KastIndexerBackend(
         project = project,
         workspaceRoot = workspaceRoot,
@@ -198,6 +201,7 @@ internal abstract class KastIndexerBackendContractTestFixture {
         workspaceTransitionRequester = workspaceTransitionRequester,
         workspaceModelReader = workspaceModelReader,
         relationshipCoverageAuthority = relationshipCoverageAuthority,
+        addDeclarationPlanPersistence = addDeclarationPlanPersistenceService,
     )
 
     protected fun ensureProjectReady() {

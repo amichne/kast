@@ -52,8 +52,8 @@ class AddDeclarationPlanPersistenceServiceTest {
             )
         }
 
-        val result = AddDeclarationPlanPersistenceService(planner, journal)
-            .planAndPersist(plan.intent)
+        val result = AddDeclarationPlanPersistenceService(journal)
+            .planAndPersist(planner, plan.intent)
 
         assertInstanceOf<PlanAndPersistAddDeclarationResult.Stored>(result)
         assertTrue(journalObservedReleased)
@@ -66,13 +66,11 @@ class AddDeclarationPlanPersistenceServiceTest {
         val plan = plan()
         val existing = PersistedAddDeclarationPlan.awaitingApproval(plan)
         val journal = RecordingJournal { StoreAddDeclarationPlanResult.Existing(existing) }
-        val service = AddDeclarationPlanPersistenceService(
-            planner = AddDeclarationPlanner { AddDeclarationPlanningResult.Planned(plan) },
-            journal = journal,
-        )
+        val planner = AddDeclarationPlanner { AddDeclarationPlanningResult.Planned(plan) }
+        val service = AddDeclarationPlanPersistenceService(journal)
 
         val result = assertInstanceOf<PlanAndPersistAddDeclarationResult.Existing>(
-            service.planAndPersist(plan.intent),
+            service.planAndPersist(planner, plan.intent),
         )
 
         assertSame(existing, result.record)
