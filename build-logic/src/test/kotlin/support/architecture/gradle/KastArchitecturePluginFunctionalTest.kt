@@ -1,6 +1,7 @@
 package support.architecture.gradle
 
 import org.gradle.testkit.runner.GradleRunner
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -147,6 +148,18 @@ class KastArchitecturePluginFunctionalTest {
         assertTrue(reused.output.contains("OBSOLETE_LEGACY_ALLOWANCE"), reused.output)
     }
 
+    @Test
+    fun `projection generator and verifier compose without an implicit dependency`(
+        @TempDir fixture: Path,
+    ) {
+        writeFixture(fixture, "")
+
+        val result = combinedRunner(fixture).buildAndFail()
+
+        assertFalse(result.output.contains("uses this output of task"), result.output)
+        assertTrue(result.output.contains("OBSOLETE_LEGACY_ALLOWANCE"), result.output)
+    }
+
     private fun runner(fixture: Path): GradleRunner = GradleRunner.create()
         .withProjectDir(fixture.toFile())
         .withPluginClasspath()
@@ -156,6 +169,16 @@ class KastArchitecturePluginFunctionalTest {
         .withProjectDir(fixture.toFile())
         .withPluginClasspath()
         .withArguments("verifyRoleConventions", "--stacktrace")
+
+    private fun combinedRunner(fixture: Path): GradleRunner = GradleRunner.create()
+        .withProjectDir(fixture.toFile())
+        .withPluginClasspath()
+        .withArguments(
+            "generateKastArchitectureProjection",
+            "verifyKastArchitecture",
+            "--configuration-cache",
+            "--stacktrace",
+        )
 
     private fun writeFixture(
         fixture: Path,

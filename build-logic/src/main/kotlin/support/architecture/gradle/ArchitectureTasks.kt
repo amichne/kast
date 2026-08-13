@@ -48,6 +48,7 @@ abstract class GenerateKastArchitectureProjectionTask : DefaultTask() {
 @CacheableTask
 abstract class VerifyKastArchitectureTask : DefaultTask() {
     init {
+        mustRunAfter("generateKastArchitectureProjection")
         observedProjectPaths.convention(emptyList())
         observedProjectDependencies.convention(emptyList())
         observedExportedProjectDependencies.convention(emptyList())

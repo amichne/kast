@@ -1,9 +1,13 @@
 package io.github.amichne.kast.change.journal.contract
 
 import io.github.amichne.kast.change.contract.AddDeclarationKind
+import io.github.amichne.kast.change.contract.AddDeclarationMutationProgress
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidence
+import io.github.amichne.kast.change.contract.AddDeclarationRevalidationObservation
+import io.github.amichne.kast.change.contract.AddDeclarationSourceProvenance
 import io.github.amichne.kast.change.contract.AddDeclarationSourceOwner
 import io.github.amichne.kast.change.contract.AddDeclarationTargetCapability
+import io.github.amichne.kast.change.contract.AddDeclarationTargetWritability
 import io.github.amichne.kast.change.contract.AddDeclarationVerificationContract
 import io.github.amichne.kast.change.contract.DeclaredWriteSet
 import io.github.amichne.kast.change.contract.DetachedCompilerEvidence
@@ -12,6 +16,7 @@ import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.ExpectedFileProof
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
+import io.github.amichne.kast.change.contract.RevalidatedAddDeclaration
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import java.security.MessageDigest
@@ -21,6 +26,39 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 
 class AddDeclarationPlanLifecycleTest {
+    @Test
+    fun `approved matching revalidation prepares exact recovery before mutation`() {
+        val plan = plan()
+        val awaiting = PersistedAddDeclarationPlan.awaitingApproval(plan)
+        val approved = PersistedAddDeclarationPlan.approve(awaiting, approval(awaiting)).refined()
+        val command = PrepareAddDeclarationRecovery.admit(
+            approved = approved,
+            revalidated = revalidated(plan),
+        ).refined()
+
+        val prepared = RecoveryPreparedAddDeclaration.prepare(command).refined()
+
+        assertEquals(AddDeclarationPlanStage.RECOVERY_PREPARED, prepared.stage)
+        assertEquals(approved.version, prepared.priorVersion)
+        assertEquals(approved.version.next().refined(), prepared.version)
+        assertEquals(plan.expectedFile.preimage, prepared.recovery.beforeImage)
+        assertEquals(AddDeclarationMutationProgress.NOT_BEGUN, prepared.mutationProgress)
+    }
+
+    @Test
+    fun `approved plan cannot bind revalidation for another plan`() {
+        val awaiting = PersistedAddDeclarationPlan.awaitingApproval(plan())
+        val approved = PersistedAddDeclarationPlan.approve(awaiting, approval(awaiting)).refined()
+        val other = plan(proposedDeclaration = "fun other(): Int = 2")
+
+        val rejection = assertInstanceOf<
+            Refinement.Rejected<AddDeclarationRecoveryPreparationRejection>,
+            >(PrepareAddDeclarationRecovery.admit(approved, revalidated(other))).failure
+
+        assertEquals(AddDeclarationRecoveryPreparationFailure.PLAN_MISMATCH, rejection.failure)
+        assertEquals(AddDeclarationMutationProgress.NOT_BEGUN, rejection.mutationProgress)
+    }
+
     @Test
     fun `explicit PlanId-bound approval advances exactly one prior state version`() {
         val plan = plan()
@@ -85,14 +123,42 @@ class AddDeclarationPlanLifecycleTest {
         )
     }
 
-    private fun plan(): PlannedAddDeclaration {
+    private fun approval(
+        awaiting: PersistedAddDeclarationPlan.AwaitingApproval,
+    ): ApproveAddDeclarationPlan {
+        val evidence = RawAddDeclarationPlanApprovalEvidence(
+            planId = awaiting.plan.planId.value,
+            approvedBy = "agent:operator",
+            evidenceSha256 = "a".repeat(64),
+        ).refine().refined()
+        return ApproveAddDeclarationPlan.admit(
+            planId = awaiting.plan.planId,
+            expectedVersion = awaiting.version,
+            evidence = evidence,
+        ).refined()
+    }
+
+    private fun revalidated(plan: PlannedAddDeclaration): RevalidatedAddDeclaration {
+        val observation = AddDeclarationRevalidationObservation.observe(
+            generation = EvidenceGeneration.parse(plan.generation.value).refined(),
+            target = plan.target,
+            currentFile = plan.expectedFile.preimage,
+            provenance = AddDeclarationSourceProvenance.AUTHORED,
+            writability = AddDeclarationTargetWritability.WRITABLE,
+        ).refined()
+        return RevalidatedAddDeclaration.admit(plan, observation).refined()
+    }
+
+    private fun plan(
+        proposedDeclaration: String = "fun added(): Int = 1",
+    ): PlannedAddDeclaration {
         val before = "package sample\n".toByteArray()
         val after = "package sample\n\nfun added(): Int = 1\n".toByteArray()
         val intent = RawAddDeclarationPlanRequest(
             workspaceRoot = ROOT,
             targetPath = TARGET,
             expectedCurrentSha256 = hash(before),
-            proposedDeclaration = "fun added(): Int = 1",
+            proposedDeclaration = proposedDeclaration,
         ).refine().refined()
         val owner = AddDeclarationSourceOwner.admit(
             sourceRoot = "$ROOT/indexer/src/main/kotlin",

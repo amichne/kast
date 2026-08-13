@@ -258,7 +258,7 @@
     {
       "id": "CHANGE_RECOVERY_CONTRACT",
       "projectPath": ":change:recovery:contract",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "CONTRACT",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
@@ -268,7 +268,7 @@
     {
       "id": "CHANGE_RECOVERY_SPI",
       "projectPath": ":change:recovery:spi",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "SPI",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
@@ -278,7 +278,7 @@
     {
       "id": "CHANGE_RECOVERY_FILESYSTEM",
       "projectPath": ":change:recovery:filesystem",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "FILESYSTEM_WRITE_ADAPTER",
       "cost": "PHYSICAL_EFFECT",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.filesystem-write"},
@@ -288,7 +288,7 @@
     {
       "id": "CHANGE_RECOVERY_SERVICE",
       "projectPath": ":change:recovery:service",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "SERVICE",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},

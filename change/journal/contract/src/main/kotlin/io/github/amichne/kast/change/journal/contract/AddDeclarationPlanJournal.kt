@@ -66,12 +66,22 @@ sealed interface ApproveAddDeclarationPlanResult {
     ) : ApproveAddDeclarationPlanResult
 }
 
+sealed interface PrepareAddDeclarationRecoveryResult {
+    data class Prepared(
+        val record: RecoveryPreparedAddDeclaration,
+    ) : PrepareAddDeclarationRecoveryResult
+
+    data class Rejected(
+        val failure: AddDeclarationPlanJournalFailure,
+    ) : PrepareAddDeclarationRecoveryResult
+}
+
 /**
  * Durable evidence port for detached add-declaration plans.
  *
  * Implementations must revalidate canonical plan bytes on reads, use exact prior-stage/version
- * compare-and-set for approval, and release every connection, transaction, and resource before a
- * method returns. Storage is lifecycle evidence and never current semantic authority.
+ * compare-and-set for every transition, and release every connection, transaction, and resource
+ * before a method returns. Storage is lifecycle evidence and never current semantic authority.
  */
 interface AddDeclarationPlanJournal {
     fun store(plan: PlannedAddDeclaration): StoreAddDeclarationPlanResult
@@ -79,4 +89,8 @@ interface AddDeclarationPlanJournal {
     fun load(planId: AddDeclarationPlanId): LoadAddDeclarationPlanResult
 
     fun approve(command: ApproveAddDeclarationPlan): ApproveAddDeclarationPlanResult
+
+    fun prepareRecovery(
+        command: PrepareAddDeclarationRecovery,
+    ): PrepareAddDeclarationRecoveryResult
 }

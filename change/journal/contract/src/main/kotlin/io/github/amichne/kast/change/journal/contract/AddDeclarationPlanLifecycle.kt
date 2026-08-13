@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 enum class AddDeclarationPlanStage {
     AWAITING_APPROVAL,
     APPROVED,
+    RECOVERY_PREPARED,
 }
 
 enum class AddDeclarationPlanStateVersionFailure {

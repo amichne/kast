@@ -146,19 +146,19 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_CONTRACT,
             ModuleId.WORKSPACE_MUTATION_CONTRACT,
         ),
-        planned(ModuleId.CHANGE_RECOVERY_CONTRACT, ModuleRole.CONTRACT, ModuleId.CHANGE_CONTRACT),
-        planned(
+        active(ModuleId.CHANGE_RECOVERY_CONTRACT, ModuleRole.CONTRACT, ModuleId.CHANGE_CONTRACT),
+        active(
             ModuleId.CHANGE_RECOVERY_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_RECOVERY_FILESYSTEM,
             ModuleRole.FILESYSTEM_WRITE_ADAPTER,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
             ModuleId.CHANGE_RECOVERY_SPI,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_RECOVERY_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
