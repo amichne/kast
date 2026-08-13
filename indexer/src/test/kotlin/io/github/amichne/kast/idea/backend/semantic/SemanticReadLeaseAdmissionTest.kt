@@ -1,11 +1,13 @@
 package io.github.amichne.kast.idea.backend.semantic
 
+import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
 import io.github.amichne.kast.idea.testPublishedWorkspaceGeneration
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRootFailure
 import io.github.amichne.kast.workspace.spi.SemanticReadExecution
 import io.github.amichne.kast.workspace.spi.SemanticReadExecutor
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseFailure
@@ -13,14 +15,67 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
 class SemanticReadLeaseAdmissionTest {
     @Test
+    fun `production gate rejects a payload computed across publication generations`() {
+        val legacy = MutableLegacyAuthority(generation(7))
+        val gate = WorkspaceSemanticGate(
+            SemanticReadExecutor(
+                ExistingSemanticReadLeaseAuthority(
+                    legacy,
+                    workspaceRootPath = { Path.of("/workspace/root") },
+                ),
+            ),
+        )
+
+        val failure = assertThrows<ConflictException> {
+            runBlocking {
+                gate.current<String> {
+                    legacy.published = generation(8)
+                    "must-not-return"
+                }
+            }
+        }
+
+        assertEquals(
+            "Workspace moved during the semantic operation; retry against the next READY generation",
+            failure.message,
+        )
+        assertTrue(legacy.released)
+    }
+
+    @Test
+    fun `adapter rejects an unrepresentable physical workspace root before opening a read`() =
+        runBlocking {
+            val legacy = MutableLegacyAuthority(generation(7))
+            val executor = SemanticReadExecutor(
+                ExistingSemanticReadLeaseAuthority(
+                    legacy,
+                    workspaceRootPath = { Path.of("relative/workspace") },
+                ),
+            )
+
+            val result = executor.current { "must-not-run" }
+
+            assertEquals(
+                SemanticReadExecution.Rejected(
+                    SemanticReadLeaseFailure.WorkspaceRootUnrepresentable(
+                        CanonicalWorkspaceRootFailure.NOT_ABSOLUTE,
+                    ),
+                ),
+                result,
+            )
+            assertEquals(false, legacy.released)
+        }
+
+    @Test
     fun `adapter returns detached result with canonical root and published generation`() = runBlocking {
         val legacy = MutableLegacyAuthority(generation(7))
-        val root = AtomicReference(canonicalRoot("/workspace/root"))
+        val root = AtomicReference(Path.of("/workspace/root"))
         val executor = SemanticReadExecutor(
             ExistingSemanticReadLeaseAuthority(legacy, root::get),
         )
@@ -44,13 +99,13 @@ class SemanticReadLeaseAdmissionTest {
     @Test
     fun `adapter rejects root movement before returning operation result`() = runBlocking {
         val legacy = MutableLegacyAuthority(generation(7))
-        val root = AtomicReference(canonicalRoot("/workspace/root"))
+        val root = AtomicReference(Path.of("/workspace/root"))
         val executor = SemanticReadExecutor(
             ExistingSemanticReadLeaseAuthority(legacy, root::get),
         )
 
         val result = executor.current {
-            root.set(canonicalRoot("/workspace/moved"))
+            root.set(Path.of("/workspace/moved"))
             "must-not-return"
         }
 
@@ -72,7 +127,7 @@ class SemanticReadLeaseAdmissionTest {
         val executor = SemanticReadExecutor(
             ExistingSemanticReadLeaseAuthority(
                 legacy,
-                canonicalWorkspaceRoot = { canonicalRoot("/workspace/root") },
+                workspaceRootPath = { Path.of("/workspace/root") },
             ),
         )
 

@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.spi
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRootFailure
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 
 enum class SemanticReadAvailability {
@@ -29,6 +30,10 @@ sealed interface SemanticReadLeaseFailure {
 
     data class PublishedGenerationUnrepresentable(
         val observed: Long,
+    ) : SemanticReadLeaseFailure
+
+    data class WorkspaceRootUnrepresentable(
+        val failure: CanonicalWorkspaceRootFailure,
     ) : SemanticReadLeaseFailure
 
     data class LeaseClosed(

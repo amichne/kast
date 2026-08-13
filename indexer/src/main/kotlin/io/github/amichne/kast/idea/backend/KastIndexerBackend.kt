@@ -85,6 +85,7 @@ import io.github.amichne.kast.idea.backend.mutation.*
 import io.github.amichne.kast.idea.backend.workspace.*
 import io.github.amichne.kast.idea.backend.semantic.*
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.workspace.spi.SemanticReadExecutor
 
 internal class KastIndexerBackend(
     internal val project: Project,
@@ -132,7 +133,12 @@ internal class KastIndexerBackend(
     private var lastValidIndexingConfig: IndexingConfig = initialIndexingConfig
     private val psiSupport = KastIndexerPsiSupport(this)
     internal val workspaceSemanticGate = WorkspaceSemanticGate(
-        readAuthority = workspaceSemanticReadAuthority,
+        executor = SemanticReadExecutor(
+            ExistingSemanticReadLeaseAuthority(
+                delegate = workspaceSemanticReadAuthority,
+                workspaceRootPath = { workspaceIdentity.canonicalWorkspaceRootPath },
+            ),
+        ),
     )
 
     internal fun updateSemanticGraphBatchSize(batchSize: GraphIndexingBatchSize) {

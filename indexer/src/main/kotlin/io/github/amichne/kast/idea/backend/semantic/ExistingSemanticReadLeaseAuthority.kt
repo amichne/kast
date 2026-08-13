@@ -11,6 +11,7 @@ import io.github.amichne.kast.workspace.spi.SemanticReadLeaseAdmission
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseAuthority
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseFailure
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseValidation
+import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -18,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 internal class ExistingSemanticReadLeaseAuthority(
     private val delegate: WorkspaceSemanticReadAuthority,
-    private val canonicalWorkspaceRoot: () -> CanonicalWorkspaceRoot,
+    private val workspaceRootPath: () -> Path,
 ) : SemanticReadLeaseAuthority {
     /**
      * Proof transition:
@@ -30,13 +31,31 @@ internal class ExistingSemanticReadLeaseAuthority(
      * adapter.
      */
     override fun open(): SemanticReadLeaseAdmission {
-        val rootBeforeAdmission = canonicalWorkspaceRoot()
+        val rootBeforeAdmission = when (
+            val root = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRootPath())
+        ) {
+            is Refinement.Refined -> root.value
+            is Refinement.Rejected ->
+                return SemanticReadLeaseAdmission.Rejected(
+                    SemanticReadLeaseFailure.WorkspaceRootUnrepresentable(root.failure),
+                )
+        }
         val token = try {
             delegate.openRead()
         } catch (_: IllegalStateException) {
             return SemanticReadLeaseAdmission.Rejected(unavailableFailure())
         }
-        val rootAfterAdmission = canonicalWorkspaceRoot()
+        val rootAfterAdmission = when (
+            val root = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRootPath())
+        ) {
+            is Refinement.Refined -> root.value
+            is Refinement.Rejected -> {
+                token.close()
+                return SemanticReadLeaseAdmission.Rejected(
+                    SemanticReadLeaseFailure.WorkspaceRootUnrepresentable(root.failure),
+                )
+            }
+        }
         if (rootBeforeAdmission != rootAfterAdmission) {
             token.close()
             return SemanticReadLeaseAdmission.Rejected(
@@ -59,7 +78,7 @@ internal class ExistingSemanticReadLeaseAuthority(
                 SemanticReadLeaseAdmission.Admitted(
                     ExistingOpenSemanticReadLease(
                         delegate = delegate,
-                        canonicalWorkspaceRoot = canonicalWorkspaceRoot,
+                        workspaceRootPath = workspaceRootPath,
                         token = token,
                         evidence = SemanticReadLease(
                             workspaceRoot = rootAfterAdmission,
@@ -83,7 +102,7 @@ internal class ExistingSemanticReadLeaseAuthority(
 
 private class ExistingOpenSemanticReadLease(
     private val delegate: WorkspaceSemanticReadAuthority,
-    private val canonicalWorkspaceRoot: () -> CanonicalWorkspaceRoot,
+    private val workspaceRootPath: () -> Path,
     private val token: IdeaIndexSemanticAdmission.WorkspaceReadToken,
     override val evidence: SemanticReadLease,
 ) : OpenSemanticReadLease {
@@ -95,7 +114,15 @@ private class ExistingOpenSemanticReadLease(
                 SemanticReadLeaseFailure.LeaseClosed(evidence),
             )
         }
-        val observedRoot = canonicalWorkspaceRoot()
+        val observedRoot = when (
+            val root = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRootPath())
+        ) {
+            is Refinement.Refined -> root.value
+            is Refinement.Rejected ->
+                return SemanticReadLeaseValidation.Rejected(
+                    SemanticReadLeaseFailure.WorkspaceRootUnrepresentable(root.failure),
+                )
+        }
         if (observedRoot != evidence.workspaceRoot) {
             return SemanticReadLeaseValidation.Rejected(
                 SemanticReadLeaseFailure.WorkspaceRootMoved(
