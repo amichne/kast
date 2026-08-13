@@ -6,7 +6,7 @@ cost, scope, finite resource budget, and completeness policy.
 
 ## Module map
 
-- `OperationClassification.kt` owns the closed effect, cost, scope, and completeness axes.
+- `OperationClassification.kt` owns the closed lane, effect, cost, scope, and completeness axes.
 - `OperationBlocker.kt` owns common closed reasons that prevent an operation from running.
 - `OperationDefinition.kt` binds typed operation metadata to generation-bound kernel outcomes.
 - `OperationRegistry.kt` owns closed immutable registry construction and lookup.
@@ -23,6 +23,8 @@ cost, scope, finite resource budget, and completeness policy.
 
 - Every operation declares all identity, type, capability, classification, budget, and completeness
   fields without defaults.
+- Capability identity and its exact Kotlin type are both mandatory; later binding may supply only
+  that type and does not gain registry-owned execution authority.
 - Successful outcomes retain an evidence envelope whose operation ID exactly matches the
   definition. A mismatch is finite typed failure.
 - Registry construction rejects every duplicate permanent ID. Lookup returns `Found` or

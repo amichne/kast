@@ -1,6 +1,19 @@
 package io.github.amichne.kast.protocol.registry
 
 /**
+ * The closed execution lane whose authority and cost remain visible before admission.
+ */
+enum class OperationLane {
+    METADATA,
+    INDEX_LOOKUP,
+    SCOPED_SEMANTIC_READ,
+    BOUNDED_RELATION_READ,
+    REGISTERED_LONG_WORK,
+    DERIVED_WRITE,
+    SOURCE_WRITE,
+}
+
+/**
  * The strongest effect authority an operation may require from a later runtime binding.
  */
 enum class OperationEffect {

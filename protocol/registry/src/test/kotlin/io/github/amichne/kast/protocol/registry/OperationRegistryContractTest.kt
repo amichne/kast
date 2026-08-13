@@ -14,6 +14,22 @@ import org.junit.jupiter.api.Test
 
 class OperationRegistryContractTest {
     @Test
+    fun `operation lanes are closed over the seven admitted authority classes`() {
+        assertEquals(
+            listOf(
+                OperationLane.METADATA,
+                OperationLane.INDEX_LOOKUP,
+                OperationLane.SCOPED_SEMANTIC_READ,
+                OperationLane.BOUNDED_RELATION_READ,
+                OperationLane.REGISTERED_LONG_WORK,
+                OperationLane.DERIVED_WRITE,
+                OperationLane.SOURCE_WRITE,
+            ),
+            OperationLane.entries,
+        )
+    }
+
+    @Test
     fun `definition requires typed identity capability classification and budget`() {
         val definition = definition()
 
@@ -23,11 +39,28 @@ class OperationRegistryContractTest {
         assertEquals(DiscoverQualification::class, definition.qualificationType)
         assertEquals(DiscoverRejection::class, definition.rejectionType)
         assertEquals(capabilityId("symbol.read"), definition.requiredCapability)
+        assertEquals(DiscoverCapability::class, definition.capabilityType)
+        assertEquals(OperationLane.INDEX_LOOKUP, definition.lane)
         assertEquals(OperationEffect.INTELLIJ_READ, definition.effect)
         assertEquals(OperationCost.BOUNDED_READ, definition.cost)
         assertEquals(OperationScope.SYMBOL, definition.scope)
         assertEquals(resourceBudget(), definition.budget)
         assertEquals(CompletenessPolicy.QUALIFIED_ALLOWED, definition.completeness)
+    }
+
+    @Test
+    fun `binding exposes only the capability type declared by the definition`() {
+        val definition = definition()
+
+        val payload = invokeWithDeclaredCapability(
+            definition = definition,
+            capability = DiscoverCapability("io.github."),
+            request = DiscoverRequest("Example"),
+        ) { capability, request ->
+            DiscoverPayload(listOf(capability.packagePrefix + request.query))
+        }
+
+        assertEquals(DiscoverPayload(listOf("io.github.Example")), payload)
     }
 
     @Test
@@ -124,6 +157,7 @@ class OperationRegistryContractTest {
     ): OperationDefinition<
         DiscoverRequest,
         DiscoverPayload,
+        DiscoverCapability,
         DiscoverQualification,
         DiscoverRejection,
         > = OperationDefinition(
@@ -133,6 +167,8 @@ class OperationRegistryContractTest {
         qualificationType = DiscoverQualification::class,
         rejectionType = DiscoverRejection::class,
         requiredCapability = capabilityId("symbol.read"),
+        capabilityType = DiscoverCapability::class,
+        lane = OperationLane.INDEX_LOOKUP,
         effect = OperationEffect.INTELLIJ_READ,
         cost = OperationCost.BOUNDED_READ,
         scope = OperationScope.SYMBOL,
@@ -150,6 +186,22 @@ class OperationRegistryContractTest {
 
     private fun capabilityId(raw: String): CapabilityId = CapabilityId.parse(raw).refinedValue()
 
+    private fun <
+        Request : OperationRequest,
+        Payload : OperationPayload,
+        Capability : Any,
+        Qualification : OperationQualification,
+        Rejection : OperationRejection,
+        > invokeWithDeclaredCapability(
+        definition: OperationDefinition<Request, Payload, Capability, Qualification, Rejection>,
+        capability: Capability,
+        request: Request,
+        handler: (Capability, Request) -> Payload,
+    ): Payload {
+        check(definition.capabilityType.isInstance(capability))
+        return handler(capability, request)
+    }
+
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Expected refined value, got $failure")
@@ -162,6 +214,10 @@ class OperationRegistryContractTest {
     private data class DiscoverPayload(
         val symbols: List<String>,
     ) : OperationPayload
+
+    private data class DiscoverCapability(
+        val packagePrefix: String,
+    )
 
     private sealed interface DiscoverQualification : OperationQualification {
         data object Truncated : DiscoverQualification

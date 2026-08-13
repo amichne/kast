@@ -29,6 +29,7 @@ interface OperationRejection
 data class OperationDefinition<
     Request : OperationRequest,
     Payload : OperationPayload,
+    Capability : Any,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
     >(
@@ -38,6 +39,8 @@ data class OperationDefinition<
     val qualificationType: KClass<Qualification>,
     val rejectionType: KClass<Rejection>,
     val requiredCapability: CapabilityId,
+    val capabilityType: KClass<Capability>,
+    val lane: OperationLane,
     val effect: OperationEffect,
     val cost: OperationCost,
     val scope: OperationScope,
