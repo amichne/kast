@@ -9,6 +9,21 @@ import kotlin.collections.filter
 
 class KastArchitecturePolicyTest {
     @Test
+    fun `indexer composes exactly the durable planning owners introduced by KIP 032`() {
+        val dependencies = canonicalWithoutLegacyAllowances()
+            .modules
+            .getValue(ModuleId.INDEXER)
+            .allowedProjectDependencies
+        val durablePlanningOwners = setOf(
+            ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_SQLITE,
+            ModuleId.CHANGE_PLAN_SERVICE,
+        )
+
+        assertEquals(durablePlanningOwners, dependencies.intersect(durablePlanningOwners))
+    }
+
+    @Test
     fun `durable approval activates only service contract and sqlite evidence owners`() {
         val architecture = canonicalWithoutLegacyAllowances()
         val expectedOwners = setOf(
