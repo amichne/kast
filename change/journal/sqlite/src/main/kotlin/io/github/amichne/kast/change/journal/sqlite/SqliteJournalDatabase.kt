@@ -65,11 +65,18 @@ interface SqliteJournalConnectionObserver {
 
     fun closed()
 
+    fun committed(operation: SqliteJournalCommitOperation) = Unit
+
     data object Disabled : SqliteJournalConnectionObserver {
         override fun opened() = Unit
 
         override fun closed() = Unit
     }
+}
+
+enum class SqliteJournalCommitOperation {
+    APPLY_ADMISSION,
+    APPLY_COMPLETION,
 }
 
 internal class SqliteJournalConnections(
@@ -79,20 +86,21 @@ internal class SqliteJournalConnections(
     fun <T> use(block: (Connection) -> T): T {
         SqliteJournalDriver.ensureRegistered()
         val connection = DriverManager.getConnection("jdbc:sqlite:${database.path}")
-        observer.opened()
         return try {
+            observer.opened()
             connection.createStatement().use { statement ->
                 statement.execute("PRAGMA busy_timeout = 10000")
                 statement.execute("PRAGMA foreign_keys = ON")
             }
             block(connection)
         } finally {
-            try {
-                connection.close()
-            } finally {
-                observer.closed()
-            }
+            connection.close()
+            observer.closed()
         }
+    }
+
+    fun observeCommit(operation: SqliteJournalCommitOperation) {
+        observer.committed(operation)
     }
 }
 
@@ -156,6 +164,29 @@ internal fun Connection.initializeAddDeclarationPlanJournal() {
                 before_sha256 TEXT NOT NULL CHECK(length(before_sha256) = 64),
                 before_content_base64 TEXT NOT NULL,
                 mutation_progress TEXT NOT NULL CHECK(mutation_progress = 'NOT_BEGUN')
+            ) WITHOUT ROWID""",
+        )
+        statement.execute(
+            """CREATE TABLE IF NOT EXISTS add_declaration_apply (
+                plan_id TEXT PRIMARY KEY NOT NULL REFERENCES add_declaration_recovery(plan_id),
+                stage TEXT NOT NULL CHECK(stage IN ('APPLY_ADMITTED', 'APPLIED_UNVERIFIED')),
+                state_version INTEGER NOT NULL CHECK(state_version IN (3, 4)),
+                prior_stage TEXT NOT NULL,
+                prior_version INTEGER NOT NULL,
+                observed_target_path TEXT,
+                after_sha256 TEXT,
+                after_content_base64 TEXT,
+                CHECK(
+                    (stage = 'APPLY_ADMITTED' AND state_version = 3 AND
+                        prior_stage = 'RECOVERY_PREPARED' AND prior_version = 2 AND
+                        observed_target_path IS NULL AND after_sha256 IS NULL AND
+                        after_content_base64 IS NULL)
+                    OR
+                    (stage = 'APPLIED_UNVERIFIED' AND state_version = 4 AND
+                        prior_stage = 'APPLY_ADMITTED' AND prior_version = 3 AND
+                        observed_target_path IS NOT NULL AND length(after_sha256) = 64 AND
+                        after_content_base64 IS NOT NULL)
+                )
             ) WITHOUT ROWID""",
         )
     }

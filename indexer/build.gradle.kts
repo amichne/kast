@@ -193,12 +193,19 @@ tasks.named("sourcesJar") {
 }
 dependencies {
     val projectPayloads = listOf(
+        ":change:apply:intellij",
+        ":change:apply:service",
+        ":change:apply:spi",
         ":change:contract",
         ":change:journal:contract",
         ":change:journal:sqlite",
         ":change:plan:intellij",
         ":change:plan:service",
         ":change:plan:spi",
+        ":change:recovery:contract",
+        ":change:recovery:filesystem",
+        ":change:recovery:service",
+        ":change:recovery:spi",
         ":analysis-api",
         ":analysis-server",
         ":evidence:spi",
@@ -312,6 +319,9 @@ val indexerPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/api/client/ServerLaunchOptions.class",
     "io/github/amichne/kast/server/AnalysisServer.class",
     "io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.class",
+    "io/github/amichne/kast/change/apply/spi/AddDeclarationApplyExecutor.class",
+    "io/github/amichne/kast/change/apply/service/AddDeclarationApplicationService.class",
+    "io/github/amichne/kast/change/apply/intellij/IntellijAddDeclarationApplyExecutor.class",
     "io/github/amichne/kast/shared/analysis/PsiReferenceScanner.class",
     "io/github/amichne/kast/idea/IndexerServerRuntime.class",
 )
@@ -323,6 +333,8 @@ val platformKotlinPluginOwnedClassEntries = listOf(
 
 val indexerPluginRuntimeJarPrefixes = listOf(
     "analysis-api-", "analysis-server-", "index-store-",
+    "change-apply-intellij-", "change-apply-service-", "change-apply-spi-",
+    "change-recovery-contract-", "change-recovery-filesystem-", "change-recovery-service-", "change-recovery-spi-",
     "symbol-contract-", "symbol-intellij-",
     "kotlinx-coroutines-core",
     "opentelemetry-",

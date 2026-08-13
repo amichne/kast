@@ -71,6 +71,7 @@ data class AddDeclarationRevalidationObservation private constructor(
 @Serializable
 enum class AddDeclarationMutationProgress {
     NOT_BEGUN,
+    MAY_HAVE_BEGUN,
     BEGUN,
 }
 

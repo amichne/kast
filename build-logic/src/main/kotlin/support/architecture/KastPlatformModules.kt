@@ -21,6 +21,13 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_PLAN_INTELLIJ,
             ModuleId.CHANGE_PLAN_SERVICE,
             ModuleId.CHANGE_PLAN_SPI,
+            ModuleId.CHANGE_APPLY_INTELLIJ,
+            ModuleId.CHANGE_APPLY_SERVICE,
+            ModuleId.CHANGE_APPLY_SPI,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_FILESYSTEM,
+            ModuleId.CHANGE_RECOVERY_SERVICE,
+            ModuleId.CHANGE_RECOVERY_SPI,
             ModuleId.EVIDENCE_SPI,
             ModuleId.INDEX_STORE,
             ModuleId.SYMBOL_CONTRACT,
@@ -113,6 +120,7 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
         ),
         active(
             ModuleId.CHANGE_JOURNAL_SQLITE,
@@ -140,11 +148,12 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_SPI,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_APPLY_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.WORKSPACE_MUTATION_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
         ),
         active(ModuleId.CHANGE_RECOVERY_CONTRACT, ModuleRole.CONTRACT, ModuleId.CHANGE_CONTRACT),
         active(
@@ -166,22 +175,19 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_APPLY_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.CHANGE_PLAN_SPI,
             ModuleId.CHANGE_APPLY_SPI,
-            ModuleId.CHANGE_RECOVERY_CONTRACT,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
-            ModuleId.WORKSPACE_MUTATION_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_APPLY_INTELLIJ,
             ModuleRole.INTELLIJ_WRITE_ADAPTER,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_APPLY_SPI,
-            ModuleId.WORKSPACE_CONTRACT,
         ),
         planned(
             ModuleId.CHANGE_APPLY_FILESYSTEM,

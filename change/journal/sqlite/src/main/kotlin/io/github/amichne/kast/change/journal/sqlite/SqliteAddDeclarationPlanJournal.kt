@@ -3,12 +3,16 @@ package io.github.amichne.kast.change.journal.sqlite
 import io.github.amichne.kast.change.contract.AddDeclarationPlanCodec
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
-import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanJournal
+import io.github.amichne.kast.change.journal.contract.AddDeclarationApplyJournal
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanJournalFailure
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStateVersion
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
+import io.github.amichne.kast.change.journal.contract.BeginAddDeclarationApply
+import io.github.amichne.kast.change.journal.contract.BeginAddDeclarationApplyResult
+import io.github.amichne.kast.change.journal.contract.CompleteAddDeclarationApply
+import io.github.amichne.kast.change.journal.contract.CompleteAddDeclarationApplyResult
 import io.github.amichne.kast.change.journal.contract.LoadAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.PersistedAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecovery
@@ -38,9 +42,23 @@ sealed interface SqliteAddDeclarationPlanJournalOpenResult {
     ) : SqliteAddDeclarationPlanJournalOpenResult
 }
 
+internal sealed interface SqliteAddDeclarationPlanRecordLoad {
+    data class Found(
+        val record: PersistedAddDeclarationPlan,
+    ) : SqliteAddDeclarationPlanRecordLoad
+
+    data object Absent : SqliteAddDeclarationPlanRecordLoad
+
+    data object Corrupt : SqliteAddDeclarationPlanRecordLoad
+}
+
+private enum class SqliteAddDeclarationPlanRecordDecodeFailure {
+    CORRUPT,
+}
+
 class SqliteAddDeclarationPlanJournal private constructor(
     private val connections: SqliteJournalConnections,
-) : AddDeclarationPlanJournal {
+) : AddDeclarationApplyJournal {
     override fun store(plan: PlannedAddDeclaration): StoreAddDeclarationPlanResult = storageResult(
         unavailable = {
             StoreAddDeclarationPlanResult.Rejected(
@@ -60,21 +78,24 @@ class SqliteAddDeclarationPlanJournal private constructor(
                 statement.setLong(3, plan.generation.value)
                 statement.executeUpdate()
             }
-            val loaded = connection.loadRecord(plan.planId)
-            when {
-                loaded == null -> StoreAddDeclarationPlanResult.Rejected(
+            when (val loaded = connection.loadRecord(plan.planId)) {
+                SqliteAddDeclarationPlanRecordLoad.Absent,
+                SqliteAddDeclarationPlanRecordLoad.Corrupt,
+                -> StoreAddDeclarationPlanResult.Rejected(
                     AddDeclarationPlanJournalFailure.CorruptRecord,
                 )
-                loaded.plan != plan -> StoreAddDeclarationPlanResult.Rejected(
-                    AddDeclarationPlanJournalFailure.PlanIdCollision(plan.planId),
-                )
-                inserted == 1 -> StoreAddDeclarationPlanResult.Stored(
-                    loaded as? PersistedAddDeclarationPlan.AwaitingApproval
-                    ?: return@use StoreAddDeclarationPlanResult.Rejected(
-                        AddDeclarationPlanJournalFailure.CorruptRecord,
-                    ),
-                )
-                else -> StoreAddDeclarationPlanResult.Existing(loaded)
+                is SqliteAddDeclarationPlanRecordLoad.Found -> when {
+                    loaded.record.plan != plan -> StoreAddDeclarationPlanResult.Rejected(
+                        AddDeclarationPlanJournalFailure.PlanIdCollision(plan.planId),
+                    )
+                    inserted == 1 -> StoreAddDeclarationPlanResult.Stored(
+                        loaded.record as? PersistedAddDeclarationPlan.AwaitingApproval
+                            ?: return@use StoreAddDeclarationPlanResult.Rejected(
+                                AddDeclarationPlanJournalFailure.CorruptRecord,
+                            ),
+                    )
+                    else -> StoreAddDeclarationPlanResult.Existing(loaded.record)
+                }
             }
         }
     }
@@ -87,13 +108,15 @@ class SqliteAddDeclarationPlanJournal private constructor(
         },
     ) {
         connections.use { connection ->
-            connection.loadRecord(planId)?.let(LoadAddDeclarationPlanResult::Found)
-            ?: if (connection.recordExists(planId)) {
-                LoadAddDeclarationPlanResult.Rejected(
-                    AddDeclarationPlanJournalFailure.CorruptRecord,
-                )
-            } else {
-                LoadAddDeclarationPlanResult.NotFound(planId)
+            when (val loaded = connection.loadRecord(planId)) {
+                is SqliteAddDeclarationPlanRecordLoad.Found ->
+                    LoadAddDeclarationPlanResult.Found(loaded.record)
+                SqliteAddDeclarationPlanRecordLoad.Absent ->
+                    LoadAddDeclarationPlanResult.NotFound(planId)
+                SqliteAddDeclarationPlanRecordLoad.Corrupt ->
+                    LoadAddDeclarationPlanResult.Rejected(
+                        AddDeclarationPlanJournalFailure.CorruptRecord,
+                    )
             }
         }
     }
@@ -130,33 +153,35 @@ class SqliteAddDeclarationPlanJournal private constructor(
                 statement.setLong(7, command.expectedVersion.value)
                 statement.executeUpdate()
             }
-            val actual = connection.loadRecord(command.planId)
+            val loaded = connection.loadRecord(command.planId)
             if (updated == 1) {
-                val approved = actual as? PersistedAddDeclarationPlan.Approved
-                               ?: return@use ApproveAddDeclarationPlanResult.Rejected(
-                                   AddDeclarationPlanJournalFailure.CorruptRecord,
-                               )
-                ApproveAddDeclarationPlanResult.Approved(approved)
-            } else if (actual == null) {
-                if (connection.recordExists(command.planId)) {
-                    ApproveAddDeclarationPlanResult.Rejected(
+                val approved = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
+                    ?.record as? PersistedAddDeclarationPlan.Approved
+                    ?: return@use ApproveAddDeclarationPlanResult.Rejected(
                         AddDeclarationPlanJournalFailure.CorruptRecord,
                     )
-                } else {
-                    ApproveAddDeclarationPlanResult.Rejected(
-                        AddDeclarationPlanJournalFailure.PlanNotFound(command.planId),
-                    )
-                }
+                ApproveAddDeclarationPlanResult.Approved(approved)
             } else {
-                ApproveAddDeclarationPlanResult.Rejected(
-                    AddDeclarationPlanJournalFailure.PriorStateMismatch(
-                        planId = command.planId,
-                        expectedStage = AddDeclarationPlanStage.AWAITING_APPROVAL,
-                        expectedVersion = command.expectedVersion,
-                        actualStage = actual.stage,
-                        actualVersion = actual.version,
-                    ),
-                )
+                when (loaded) {
+                    SqliteAddDeclarationPlanRecordLoad.Corrupt ->
+                        ApproveAddDeclarationPlanResult.Rejected(
+                            AddDeclarationPlanJournalFailure.CorruptRecord,
+                        )
+                    SqliteAddDeclarationPlanRecordLoad.Absent ->
+                        ApproveAddDeclarationPlanResult.Rejected(
+                            AddDeclarationPlanJournalFailure.PlanNotFound(command.planId),
+                        )
+                    is SqliteAddDeclarationPlanRecordLoad.Found ->
+                        ApproveAddDeclarationPlanResult.Rejected(
+                            AddDeclarationPlanJournalFailure.PriorStateMismatch(
+                                planId = command.planId,
+                                expectedStage = AddDeclarationPlanStage.AWAITING_APPROVAL,
+                                expectedVersion = command.expectedVersion,
+                                actualStage = loaded.record.stage,
+                                actualVersion = loaded.record.version,
+                            ),
+                        )
+                }
             }
         }
     }
@@ -164,6 +189,14 @@ class SqliteAddDeclarationPlanJournal private constructor(
     override fun prepareRecovery(
         command: PrepareAddDeclarationRecovery,
     ): PrepareAddDeclarationRecoveryResult = connections.prepareRecovery(command)
+
+    override fun beginApply(
+        command: BeginAddDeclarationApply,
+    ): BeginAddDeclarationApplyResult = connections.beginApply(command)
+
+    override fun completeApply(
+        command: CompleteAddDeclarationApply,
+    ): CompleteAddDeclarationApplyResult = connections.completeApply(command)
 
     private fun <T> storageResult(
         unavailable: () -> T,
@@ -211,12 +244,13 @@ class SqliteAddDeclarationPlanJournal private constructor(
 
 /**
  * Proof transition: stored row selected by `AddDeclarationPlanId` to a revalidated
- * `PersistedAddDeclarationPlan`, or `null` when absent or corrupt.
+ * `SqliteAddDeclarationPlanRecordLoad`.
  *
- * Establishes canonical plan bytes, exact PlanId and generation, and a replayed closed lifecycle
- * transition. Raw columns are extracted only inside [ResultSet.toRecordOrNull].
+ * `Found` establishes canonical plan bytes, exact PlanId and generation, and a replayed closed
+ * lifecycle transition. `Absent` and `Corrupt` are distinct closed expected outcomes. Raw columns
+ * are extracted only inside [ResultSet.toRecord].
  */
-internal fun Connection.loadRecord(planId: AddDeclarationPlanId): PersistedAddDeclarationPlan? =
+internal fun Connection.loadRecord(planId: AddDeclarationPlanId): SqliteAddDeclarationPlanRecordLoad =
     prepareStatement(
         """SELECT p.plan_id, p.plan_bytes, p.source_generation, p.stage, p.state_version,
             p.prior_stage, p.prior_version, p.approval_plan_id, p.approval_by, p.approval_sha256,
@@ -224,69 +258,99 @@ internal fun Connection.loadRecord(planId: AddDeclarationPlanId): PersistedAddDe
             r.prior_stage AS recovery_prior_stage, r.prior_version AS recovery_prior_version,
             r.target_path AS recovery_target_path, r.before_sha256 AS recovery_before_sha256,
             r.before_content_base64 AS recovery_before_content_base64,
-            r.mutation_progress AS recovery_mutation_progress
+            r.mutation_progress AS recovery_mutation_progress,
+            a.plan_id AS apply_plan_id, a.stage AS apply_stage,
+            a.state_version AS apply_state_version, a.prior_stage AS apply_prior_stage,
+            a.prior_version AS apply_prior_version,
+            a.observed_target_path AS apply_observed_target_path,
+            a.after_sha256 AS apply_after_sha256,
+            a.after_content_base64 AS apply_after_content_base64
         FROM add_declaration_plan p
         LEFT JOIN add_declaration_recovery r ON r.plan_id = p.plan_id
+        LEFT JOIN add_declaration_apply a ON a.plan_id = p.plan_id
         WHERE p.plan_id = ?""",
     ).use { statement ->
         statement.setString(1, planId.value)
         statement.executeQuery().use { rows ->
-            if (!rows.next()) null else rows.toRecordOrNull(planId)
+            if (!rows.next()) {
+                SqliteAddDeclarationPlanRecordLoad.Absent
+            } else {
+                when (val decoded = rows.toRecord(planId)) {
+                    is Refinement.Refined -> SqliteAddDeclarationPlanRecordLoad.Found(decoded.value)
+                    is Refinement.Rejected -> SqliteAddDeclarationPlanRecordLoad.Corrupt
+                }
+            }
         }
     }
 
-internal fun Connection.recordExists(planId: AddDeclarationPlanId): Boolean =
-    prepareStatement("SELECT 1 FROM add_declaration_plan WHERE plan_id = ?").use { statement ->
-        statement.setString(1, planId.value)
-        statement.executeQuery().use(ResultSet::next)
-    }
-
 /**
- * Proof transition: one SQLite result row plus expected PlanId to `PersistedAddDeclarationPlan` or
- * `null` for any malformed, mismatched, or unsupported stored state.
+ * Proof transition: one SQLite result row plus expected PlanId to
+ * `Refinement<PersistedAddDeclarationPlan, SqliteAddDeclarationPlanRecordDecodeFailure>`.
  *
  * Establishes canonical detached plan evidence and the exact KIP-032 lifecycle transition. Raw
- * column extraction is permitted only in this record-decoder boundary.
+ * column extraction is permitted only in this record-decoder boundary; malformed, mismatched, or
+ * unsupported stored state is the closed `SqliteAddDeclarationPlanRecordDecodeFailure`.
  */
-private fun ResultSet.toRecordOrNull(expectedPlanId: AddDeclarationPlanId): PersistedAddDeclarationPlan? {
-    val storedPlanId = AddDeclarationPlanId.parse(getString("plan_id")).valueOrNull() ?: return null
-    val plan = AddDeclarationPlanCodec.decode(getString("plan_bytes")).valueOrNull() ?: return null
-    if (storedPlanId != expectedPlanId || storedPlanId != plan.planId) return null
-    if (getLong("source_generation") != plan.generation.value) return null
+private fun ResultSet.toRecord(
+    expectedPlanId: AddDeclarationPlanId,
+): Refinement<PersistedAddDeclarationPlan, SqliteAddDeclarationPlanRecordDecodeFailure> {
+    val storedPlanId = AddDeclarationPlanId.parse(getString("plan_id")).valueOrNull()
+                       ?: return corruptRecord()
+    val plan = AddDeclarationPlanCodec.decode(getString("plan_bytes")).valueOrNull()
+               ?: return corruptRecord()
+    if (storedPlanId != expectedPlanId || storedPlanId != plan.planId) return corruptRecord()
+    if (getLong("source_generation") != plan.generation.value) return corruptRecord()
     val version = AddDeclarationPlanStateVersion.parse(getLong("state_version")).valueOrNull()
-                  ?: return null
+                  ?: return corruptRecord()
     return when (getString("stage")) {
         AddDeclarationPlanStage.AWAITING_APPROVAL.name ->
-            PersistedAddDeclarationPlan.restoreAwaiting(plan, version).valueOrNull()
+            when (val restored = PersistedAddDeclarationPlan.restoreAwaiting(plan, version)) {
+                is Refinement.Refined -> Refinement.Refined(restored.value)
+                is Refinement.Rejected -> corruptRecord()
+            }
         AddDeclarationPlanStage.APPROVED.name -> {
-            if (getString("prior_stage") != AddDeclarationPlanStage.AWAITING_APPROVAL.name) return null
+            if (getString("prior_stage") != AddDeclarationPlanStage.AWAITING_APPROVAL.name) {
+                return corruptRecord()
+            }
             val priorVersionValue = getLong("prior_version")
-            if (wasNull()) return null
+            if (wasNull()) return corruptRecord()
             val priorVersion = AddDeclarationPlanStateVersion.parse(priorVersionValue).valueOrNull()
-                               ?: return null
+                               ?: return corruptRecord()
             val approval = RawAddDeclarationPlanApprovalEvidence(
-                planId = getString("approval_plan_id") ?: return null,
-                approvedBy = getString("approval_by") ?: return null,
-                evidenceSha256 = getString("approval_sha256") ?: return null,
-            ).refine().valueOrNull() ?: return null
+                planId = getString("approval_plan_id") ?: return corruptRecord(),
+                approvedBy = getString("approval_by") ?: return corruptRecord(),
+                evidenceSha256 = getString("approval_sha256") ?: return corruptRecord(),
+            ).refine().valueOrNull() ?: return corruptRecord()
             val approved = PersistedAddDeclarationPlan.restoreApproved(
                 plan = plan,
                 currentVersion = version,
                 priorVersion = priorVersion,
                 evidence = approval,
-            ).valueOrNull() ?: return null
+            ).valueOrNull() ?: return corruptRecord()
             if (getString("recovery_plan_id") == null) {
-                approved
+                Refinement.Refined(approved)
             } else {
                 when (val recovery = decodeRecoveryPrepared(expectedPlanId, approved)) {
-                    is Refinement.Refined -> recovery.value
-                    is Refinement.Rejected -> null
+                    is Refinement.Refined -> {
+                        if (getString("apply_plan_id") == null) {
+                            Refinement.Refined(recovery.value)
+                        } else {
+                            when (val apply = decodeAddDeclarationApply(expectedPlanId, recovery.value)) {
+                                is Refinement.Refined -> Refinement.Refined(apply.value)
+                                is Refinement.Rejected -> corruptRecord()
+                            }
+                        }
+                    }
+                    is Refinement.Rejected -> corruptRecord()
                 }
             }
         }
-        else -> null
+        else -> corruptRecord()
     }
 }
+
+private fun corruptRecord(): Refinement.Rejected<SqliteAddDeclarationPlanRecordDecodeFailure> =
+    Refinement.Rejected(SqliteAddDeclarationPlanRecordDecodeFailure.CORRUPT)
 
 private fun <T, F> Refinement<T, F>.valueOrNull(): T? = when (this) {
     is Refinement.Refined -> value

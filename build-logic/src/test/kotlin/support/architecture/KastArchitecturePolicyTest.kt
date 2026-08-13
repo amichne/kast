@@ -232,7 +232,7 @@ class KastArchitecturePolicyTest {
             valid.architecture.modules.getValue(ModuleId.ANALYSIS_API).lifecycle,
         )
         assertEquals(
-            ModuleLifecycle.PLANNED,
+            ModuleLifecycle.ACTIVE,
             valid.architecture.modules.getValue(ModuleId.CHANGE_APPLY_INTELLIJ).lifecycle,
         )
         assertTrue(

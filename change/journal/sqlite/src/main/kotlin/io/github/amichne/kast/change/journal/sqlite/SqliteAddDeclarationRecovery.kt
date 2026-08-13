@@ -65,32 +65,35 @@ internal fun SqliteJournalConnections.prepareRecovery(
             statement.setString(7, AddDeclarationPlanCodec.encode(command.approved.plan))
             statement.executeUpdate()
         }
-        val actual = connection.loadRecord(planId)
-        when {
-            updated == 1 -> {
-                val prepared = actual as? RecoveryPreparedAddDeclaration
-                               ?: return@use PrepareAddDeclarationRecoveryResult.Rejected(
-                                   AddDeclarationPlanJournalFailure.CorruptRecord,
-                               )
-                PrepareAddDeclarationRecoveryResult.Prepared(prepared)
+        val loaded = connection.loadRecord(planId)
+        if (updated == 1) {
+            val prepared = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
+                ?.record as? RecoveryPreparedAddDeclaration
+                ?: return@use PrepareAddDeclarationRecoveryResult.Rejected(
+                    AddDeclarationPlanJournalFailure.CorruptRecord,
+                )
+            PrepareAddDeclarationRecoveryResult.Prepared(prepared)
+        } else {
+            when (loaded) {
+                is SqliteAddDeclarationPlanRecordLoad.Found ->
+                    PrepareAddDeclarationRecoveryResult.Rejected(
+                        AddDeclarationPlanJournalFailure.PriorStateMismatch(
+                            planId = planId,
+                            expectedStage = AddDeclarationPlanStage.APPROVED,
+                            expectedVersion = command.expectedVersion,
+                            actualStage = loaded.record.stage,
+                            actualVersion = loaded.record.version,
+                        ),
+                    )
+                SqliteAddDeclarationPlanRecordLoad.Absent ->
+                    PrepareAddDeclarationRecoveryResult.Rejected(
+                        AddDeclarationPlanJournalFailure.PlanNotFound(planId),
+                    )
+                SqliteAddDeclarationPlanRecordLoad.Corrupt ->
+                    PrepareAddDeclarationRecoveryResult.Rejected(
+                        AddDeclarationPlanJournalFailure.CorruptRecord,
+                    )
             }
-            actual == null -> {
-                val failure = if (connection.recordExists(planId)) {
-                    AddDeclarationPlanJournalFailure.CorruptRecord
-                } else {
-                    AddDeclarationPlanJournalFailure.PlanNotFound(planId)
-                }
-                PrepareAddDeclarationRecoveryResult.Rejected(failure)
-            }
-            else -> PrepareAddDeclarationRecoveryResult.Rejected(
-                AddDeclarationPlanJournalFailure.PriorStateMismatch(
-                    planId = planId,
-                    expectedStage = AddDeclarationPlanStage.APPROVED,
-                    expectedVersion = command.expectedVersion,
-                    actualStage = actual.stage,
-                    actualVersion = actual.version,
-                ),
-            )
         }
     }
 } catch (_: Exception) {
@@ -186,8 +189,7 @@ internal fun ResultSet.decodeRecoveryPrepared(
         mutationProgress = progress,
     )) {
         is Refinement.Refined -> restored
-        is Refinement.Rejected ->
-            rejected(RecoveryPreparedRecordDecodeFailure.LIFECYCLE_INVALID)
+        is Refinement.Rejected -> rejected(RecoveryPreparedRecordDecodeFailure.LIFECYCLE_INVALID)
     }
 }
 

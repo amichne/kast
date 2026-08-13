@@ -76,6 +76,34 @@ sealed interface PrepareAddDeclarationRecoveryResult {
     ) : PrepareAddDeclarationRecoveryResult
 }
 
+sealed interface BeginAddDeclarationApplyResult {
+    data class Begun(
+        val record: ApplyAdmittedAddDeclaration,
+    ) : BeginAddDeclarationApplyResult
+
+    data class Rejected(
+        val failure: AddDeclarationPlanJournalFailure,
+    ) : BeginAddDeclarationApplyResult
+
+    data class CommitOutcomeUnknown(
+        val planId: AddDeclarationPlanId,
+    ) : BeginAddDeclarationApplyResult
+}
+
+sealed interface CompleteAddDeclarationApplyResult {
+    data class Completed(
+        val record: AppliedUnverifiedAddDeclaration,
+    ) : CompleteAddDeclarationApplyResult
+
+    data class Rejected(
+        val failure: AddDeclarationPlanJournalFailure,
+    ) : CompleteAddDeclarationApplyResult
+
+    data class CommitOutcomeUnknown(
+        val planId: AddDeclarationPlanId,
+    ) : CompleteAddDeclarationApplyResult
+}
+
 /**
  * Durable evidence port for detached add-declaration plans.
  *
@@ -93,4 +121,16 @@ interface AddDeclarationPlanJournal {
     fun prepareRecovery(
         command: PrepareAddDeclarationRecovery,
     ): PrepareAddDeclarationRecoveryResult
+}
+
+/**
+ * Durable lifecycle capability for a journal that can admit and close physical apply.
+ *
+ * This refines [AddDeclarationPlanJournal] without forcing planning- or recovery-only journal
+ * consumers to possess source-mutation lifecycle authority.
+ */
+interface AddDeclarationApplyJournal : AddDeclarationPlanJournal {
+    fun beginApply(command: BeginAddDeclarationApply): BeginAddDeclarationApplyResult
+
+    fun completeApply(command: CompleteAddDeclarationApply): CompleteAddDeclarationApplyResult
 }
