@@ -190,6 +190,10 @@ tasks.named("processResources") {
     dependsOn(writeIndexerVersion)
 }
 
+tasks.named("sourcesJar") {
+    dependsOn(writeIndexerVersion)
+}
+
 dependencies {
     indexerIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
