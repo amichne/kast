@@ -21,6 +21,8 @@ dependencyResolutionManagement {
 include(
     ":analysis-api",
     ":analysis-server",
+    ":evidence:contract",
+    ":evidence:spi",
     ":index-store",
     ":indexer",
     ":kernel",
@@ -29,5 +31,7 @@ include(
     ":symbol:contract",
     ":symbol:intellij",
     ":workspace:contract",
+    ":workspace:intellij",
+    ":workspace:service",
     ":workspace:spi",
 )

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea;
 
-import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import com.intellij.openapi.externalSystem.model.ProjectKeys;
@@ -15,8 +14,6 @@ import com.intellij.openapi.externalSystem.model.project.ModuleData;
 import com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager;
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager;
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
-import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode;
-import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
@@ -27,6 +24,7 @@ import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jetbrains.plugins.gradle.util.GradleModuleData;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
+import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceEffects;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -290,7 +288,8 @@ public final class IdeaGradleProjectLoadBridge {
             if (child.getData() instanceof ModuleData) {
                 continue;
             }
-            if (child.getKey().equals(ProjectKeys.CONTENT_ROOT) && child.getData() instanceof ContentRootData contentRoot) {
+            if (child.getKey().equals(ProjectKeys.CONTENT_ROOT) &&
+                child.getData() instanceof ContentRootData contentRoot) {
                 for (ExternalSystemSourceType sourceType : ExternalSystemSourceType.values()) {
                     if (sourceType.isExcluded() || sourceType.isResource()) {
                         continue;
@@ -316,7 +315,8 @@ public final class IdeaGradleProjectLoadBridge {
             if (child.getData() instanceof ModuleData) {
                 continue;
             }
-            if (child.getKey().equals(ProjectKeys.CONTENT_ROOT) && child.getData() instanceof ContentRootData contentRoot) {
+            if (child.getKey().equals(ProjectKeys.CONTENT_ROOT) &&
+                child.getData() instanceof ContentRootData contentRoot) {
                 for (ExternalSystemSourceType sourceType : ExternalSystemSourceType.values()) {
                     if (sourceType.isExcluded() || sourceType.isResource()) {
                         continue;
@@ -339,10 +339,7 @@ public final class IdeaGradleProjectLoadBridge {
         Path externalProjectPath,
         CompletableFuture<Void> importFuture
     ) {
-        GradleProjectSettings linkSettings =
-            new GradleProjectSettings(normalizePath(externalProjectPath));
-        ImportSpecBuilder importSpec = importSpec(project, importFuture);
-        ExternalSystemUtil.linkExternalProject(linkSettings, importSpec);
+        IntellijWorkspaceEffects.linkExternalGradleProject(project, externalProjectPath, importFuture);
     }
 
     public static void refreshExternalGradleProject(
@@ -350,21 +347,7 @@ public final class IdeaGradleProjectLoadBridge {
         Path externalProjectPath,
         CompletableFuture<Void> importFuture
     ) {
-        ExternalSystemUtil.refreshProject(
-            externalProjectPath.toAbsolutePath().normalize().toString(),
-            importSpec(project, importFuture)
-        );
-    }
-
-    private static ImportSpecBuilder importSpec(Project project, CompletableFuture<Void> importFuture) {
-        return new ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
-            .use(ProgressExecutionMode.IN_BACKGROUND_ASYNC)
-            .withImportProjectData(true)
-            .withActivateToolWindowOnStart(false)
-            .withActivateToolWindowOnFailure(false)
-            .dontNavigateToError()
-            .dontReportRefreshErrors()
-            .withCallback(importFuture);
+        IntellijWorkspaceEffects.refreshExternalGradleProject(project, externalProjectPath, importFuture);
     }
 
     private static boolean isImportedModelComplete(ExternalProjectInfo projectInfo) {
@@ -434,7 +417,8 @@ public final class IdeaGradleProjectLoadBridge {
                 "Gradle model supplied no source-type classification",
                 modelEvidence
             );
-        } else if (exactSourceTypes.stream().anyMatch(sourceType -> sourceType.isExcluded() || sourceType.isResource())) {
+        } else if (exactSourceTypes.stream()
+            .anyMatch(sourceType -> sourceType.isExcluded() || sourceType.isResource())) {
             provenance = new GradleSourceRootProvenance.Unknown(
                 "Gradle model supplied a non-code source-type classification",
                 modelEvidence
@@ -549,8 +533,8 @@ public final class IdeaGradleProjectLoadBridge {
 
     public sealed interface GradleSourceRootProvenance
         permits GradleSourceRootProvenance.Authored,
-            GradleSourceRootProvenance.Generated,
-            GradleSourceRootProvenance.Unknown {
+        GradleSourceRootProvenance.Generated,
+        GradleSourceRootProvenance.Unknown {
         List<GradleSourceRootModelEvidence> modelEvidence();
 
         String stableIdentity();

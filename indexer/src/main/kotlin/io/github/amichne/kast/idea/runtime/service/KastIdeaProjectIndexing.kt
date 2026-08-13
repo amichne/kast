@@ -19,9 +19,9 @@ import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentityResolver
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
 import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
@@ -59,18 +59,18 @@ internal class KastIdeaProjectIndexing(
     private val workspaceVfsObservationScope: WorkspaceVfsObservationScope = WorkspaceVfsObservationScope(
         workspaceRoot = workspaceIdentity.workspaceRootPath,
         buildSemanticRoot = workspaceIdentity.workspaceIdentity.gradleRoot?.root?.toJavaPath()
-            ?: workspaceIdentity.workspaceRootPath,
+                            ?: workspaceIdentity.workspaceRootPath,
         configurationFiles = workspaceConfigurationFiles,
         compilerSourceRoots = { CompilerSourceRootAuthorities.from(project).roots },
         classpathRoots = {
             BuildClasspathFingerprintResolver.contentRoots(project) +
-                IdeaKotlinCompilerIdentityResolver.artifactRoots(project) +
-                IdeaJavaCompilerIdentityResolver.artifactRoots(project, workspaceIdentity.workspaceIdentity)
+            IdeaKotlinCompilerIdentityResolver.artifactRoots(project) +
+            IdeaJavaCompilerIdentityResolver.artifactRoots(project, workspaceIdentity.workspaceIdentity)
         },
     ),
     private val vfsRefreshAuthority: CoordinatedVfsRefreshAuthority = CoordinatedVfsRefreshAuthority(),
     private val observeWorkspaceEvents:
-        (Project, WorkspaceVfsObservationScope, (WorkspaceSignal) -> Unit) -> AutoCloseable =
+    (Project, WorkspaceVfsObservationScope, (WorkspaceSignal) -> Unit) -> AutoCloseable =
         { observedProject, observedScope, observed ->
             WorkspaceVfsEventObserver.subscribe(observedProject, observedScope, vfsRefreshAuthority, observed)
         },
@@ -90,7 +90,7 @@ internal class KastIdeaProjectIndexing(
 ) {
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val gradleBuildRoot: Path = workspaceIdentity.workspaceIdentity.gradleRoot?.root?.toJavaPath()
-        ?: workspaceRoot
+                                        ?: workspaceRoot
     private val buildSemanticInputIdentityResolver = BuildSemanticInputIdentityResolver(
         buildSemanticRoot = gradleBuildRoot,
         isCancelled = ::isCancelled,
@@ -156,7 +156,7 @@ internal class KastIdeaProjectIndexing(
                             if (!isCancelled()) {
                                 semanticAdmission.fail(
                                     cancelledWork.message?.takeIf(String::isNotBlank)
-                                        ?: "Workspace reconciliation was cancelled",
+                                    ?: "Workspace reconciliation was cancelled",
                                 )
                                 runtimeReporter.failed(cancelledWork)
                             }

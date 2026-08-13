@@ -56,6 +56,26 @@
       "allowedEffects": []
     },
     {
+      "id": "EVIDENCE_CONTRACT",
+      "projectPath": ":evidence:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "EVIDENCE_SPI",
+      "projectPath": ":evidence:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":evidence:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
       "id": "SYMBOL_CONTRACT",
       "projectPath": ":symbol:contract",
       "lifecycle": "ACTIVE",
@@ -86,13 +106,33 @@
       "allowedEffects": []
     },
     {
+      "id": "WORKSPACE_INTELLIJ",
+      "projectPath": ":workspace:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "WORKSPACE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.workspace"},
+      "allowedProjectDependencies": [":workspace:contract", ":workspace:spi"],
+      "allowedEffects": ["GRADLE_IMPORT"]
+    },
+    {
+      "id": "WORKSPACE_SERVICE",
+      "projectPath": ":workspace:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":evidence:spi", ":workspace:contract", ":workspace:spi"],
+      "allowedEffects": []
+    },
+    {
       "id": "INDEXER",
       "projectPath": ":indexer",
       "lifecycle": "ACTIVE",
       "role": "LEGACY_HOST",
       "cost": "LEGACY",
       "roleConvention": {"kind": "UNMARKED_LEGACY"},
-      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":index-store", ":symbol:contract", ":symbol:intellij", ":workspace:spi"],
+      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":evidence:spi", ":index-store", ":symbol:contract", ":symbol:intellij", ":workspace:intellij", ":workspace:service", ":workspace:spi"],
       "allowedEffects": ["FILESYSTEM_WRITE"]
     },
     {
@@ -116,26 +156,6 @@
       "allowedEffects": []
     },
     {
-      "id": "EVIDENCE_CONTRACT",
-      "projectPath": ":evidence:contract",
-      "lifecycle": "PLANNED",
-      "role": "CONTRACT",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "EVIDENCE_SPI",
-      "projectPath": ":evidence:spi",
-      "lifecycle": "PLANNED",
-      "role": "SPI",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
-      "allowedProjectDependencies": [":evidence:contract", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
       "id": "EVIDENCE_SQLITE",
       "projectPath": ":evidence:sqlite",
       "lifecycle": "PLANNED",
@@ -144,26 +164,6 @@
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.sqlite"},
       "allowedProjectDependencies": [":evidence:contract", ":evidence:spi", ":workspace:contract"],
       "allowedEffects": ["JDBC"]
-    },
-    {
-      "id": "WORKSPACE_SERVICE",
-      "projectPath": ":workspace:service",
-      "lifecycle": "PLANNED",
-      "role": "SERVICE",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
-      "allowedProjectDependencies": [":evidence:spi", ":workspace:contract", ":workspace:spi"],
-      "allowedEffects": []
-    },
-    {
-      "id": "WORKSPACE_INTELLIJ",
-      "projectPath": ":workspace:intellij",
-      "lifecycle": "PLANNED",
-      "role": "WORKSPACE_ADAPTER",
-      "cost": "PHYSICAL_EFFECT",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.workspace"},
-      "allowedProjectDependencies": [":workspace:contract", ":workspace:spi"],
-      "allowedEffects": ["GRADLE_IMPORT"]
     },
     {
       "id": "PROTOCOL_CONTINUATION",
@@ -888,27 +888,6 @@
     {"retirementTask": "F04", "kind": "FORBIDDEN_EFFECT", "effect": "ANALYSIS_BACKEND", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/backend/KastIndexerBackend", "name": "<class>", "descriptor": "", "targetOwner": "io/github/amichne/kast/api/contract/CloseableAnalysisBackend", "targetName": "<type>", "targetDescriptor": ""}},
     {"retirementTask": "F04", "kind": "FORBIDDEN_EFFECT", "effect": "ANALYSIS_BACKEND", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/KastIndexerRuntime$run$projectName$1", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "io/github/amichne/kast/api/contract/CloseableAnalysisBackend", "targetName": "runtimeStatus", "targetDescriptor": "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;"}},
     {"retirementTask": "F04", "kind": "FORBIDDEN_EFFECT", "effect": "ANALYSIS_BACKEND", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/KastIndexerRuntime$start$status$1", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "io/github/amichne/kast/api/contract/CloseableAnalysisBackend", "targetName": "runtimeStatus", "targetDescriptor": "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<init>", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<type>", "targetDescriptor": ""}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "dontNavigateToError", "targetDescriptor": "()Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "dontReportRefreshErrors", "targetDescriptor": "()Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "use", "targetDescriptor": "(Lcom/intellij/openapi/externalSystem/service/execution/ProgressExecutionMode;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withActivateToolWindowOnFailure", "targetDescriptor": "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withActivateToolWindowOnStart", "targetDescriptor": "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withCallback", "targetDescriptor": "(Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withImportProjectData", "targetDescriptor": "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "linkExternalGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "linkExternalProject", "targetDescriptor": "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "linkExternalGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "targetOwner": "org/jetbrains/plugins/gradle/settings/GradleProjectSettings", "targetName": "<init>", "targetDescriptor": "(Ljava/lang/String;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "refreshExternalGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "refreshProject", "targetDescriptor": "(Ljava/lang/String;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "canLinkAndRefreshGradleProject", "descriptor": "(Ljava/lang/String;Lcom/intellij/openapi/project/Project;)Z", "targetOwner": "org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "targetName": "canLinkAndRefreshGradleProject", "targetDescriptor": "(Ljava/lang/String;Lcom/intellij/openapi/project/Project;Z)Z"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "configureIndexerImport", "descriptor": "(Lcom/intellij/openapi/project/Project;)V", "targetOwner": "org/jetbrains/plugins/gradle/settings/GradleSettings", "targetName": "setGradleVmOptions", "targetDescriptor": "(Ljava/lang/String;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "lambda$configureIndexerApplication$0", "descriptor": "(Ljava/lang/Boolean;)V", "targetOwner": "org/jetbrains/plugins/gradle/settings/GradleSystemSettings", "targetName": "setDownloadSources", "targetDescriptor": "(Z)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<init>", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<type>", "targetDescriptor": ""}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withCallback", "targetDescriptor": "(Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "linkExternalProject", "targetDescriptor": "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "refreshProject", "targetDescriptor": "(Ljava/lang/String;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "targetName": "createLinkSettings", "targetDescriptor": "(Ljava/nio/file/Path;Lcom/intellij/openapi/project/Project;)Lorg/jetbrains/plugins/gradle/settings/GradleProjectSettings;"}},
     {"retirementTask": "A05", "kind": "FORBIDDEN_EFFECT", "effect": "INTELLIJ_WRITE", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/backend/mutation/ExactFileImageOperationsKt$exactFileImageCasUnderFence$2", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "com/intellij/openapi/command/WriteCommandAction", "targetName": "runWriteCommandAction", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/Runnable;)V"}},
     {"retirementTask": "A05", "kind": "FORBIDDEN_EFFECT", "effect": "INTELLIJ_WRITE", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/edit/IdeaEditApplier$3", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "com/intellij/openapi/application/CoroutinesKt", "targetName": "writeAction", "targetDescriptor": "(Lkotlin/jvm/functions/Function0;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;"}},
     {"retirementTask": "A05", "kind": "FORBIDDEN_EFFECT", "effect": "INTELLIJ_WRITE", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/edit/IdeaTextEditsKt", "name": "applyTextEdits", "descriptor": "(Lio/github/amichne/kast/idea/edit/IdeaEditApplier;Lio/github/amichne/kast/api/validation/ValidatedFileEdits;Lcom/intellij/openapi/vfs/VirtualFileManager;Lcom/intellij/openapi/fileEditor/FileDocumentManager;Lcom/intellij/psi/PsiDocumentManager;Ljava/lang/String;Ljava/nio/file/Path;Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "targetOwner": "com/intellij/openapi/command/WriteCommandAction", "targetName": "runWriteCommandAction", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/Runnable;)V"}}

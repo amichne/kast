@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.Condition
 import java.util.concurrent.locks.ReentrantLock
@@ -61,7 +63,7 @@ internal class WorkspaceEventWakeup(
         lock.withLock {
             while (true) {
                 val remainingNanos = TimeUnit.MILLISECONDS.toNanos(quiescenceMillis) -
-                    (nanoTime() - lastSignalNanos).coerceAtLeast(0L)
+                                     (nanoTime() - lastSignalNanos).coerceAtLeast(0L)
                 if (remainingNanos <= 0) return@withLock
                 awaitCondition(changed, remainingNanos)
             }

@@ -31,7 +31,7 @@ class ArchitectureProjectionTest {
         assertEquals(20, root.getValue("mutationRuntimeProcesses").jsonArray.size)
         assertEquals(33, root.getValue("mutationDeliveryTasks").jsonArray.size)
         assertEquals(1, root.getValue("legacyMigrationEdges").jsonArray.size)
-        assertEquals(74, root.getValue("legacyAllowances").jsonArray.size)
+        assertEquals(53, root.getValue("legacyAllowances").jsonArray.size)
         assertTrue(first.endsWith("\n"))
     }
 

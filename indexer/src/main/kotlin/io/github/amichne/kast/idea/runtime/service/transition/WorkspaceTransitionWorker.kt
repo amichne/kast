@@ -2,28 +2,30 @@ package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.client.KastConfig
 import com.intellij.openapi.progress.ProcessCanceledException
+import io.github.amichne.kast.evidence.contract.GenerationPublication
+import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
+import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
+import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
+import io.github.amichne.kast.evidence.spi.WorkspacePublicationAuthority
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
-import io.github.amichne.kast.idea.transition.GenerationPublication
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInProgressException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
-import io.github.amichne.kast.idea.transition.OpenWorkspacePublication
-import io.github.amichne.kast.idea.transition.PreparedWorkspacePublication
-import io.github.amichne.kast.idea.transition.TransitionRun
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionCoordinator
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionOperations
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.idea.transition.WorkspaceWakeup
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.TransitionRun
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
+import io.github.amichne.kast.workspace.service.WorkspaceTransitionCoordinator
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailureClassifier
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOperations
 import java.util.concurrent.CancellationException
 import java.time.Duration
 
@@ -38,7 +40,7 @@ internal class WorkspaceTransitionWorker(
     private val loadLiveConfig: (KastConfig) -> KastConfig,
     private val captureCandidate: (KastConfig, BuildSemanticInputIdentity) -> WorkspaceReconciliationCandidate,
     private val runIndexingPass:
-        (KastConfig, WorkspaceReconciliationCandidate, IdeaIndexSemanticAdmission.ReconciliationToken) -> IndexingPassResult,
+    (KastConfig, WorkspaceReconciliationCandidate, IdeaIndexSemanticAdmission.ReconciliationToken) -> IndexingPassResult,
     private val workspaceGenerationPublication: WorkspaceGenerationPublication,
     private val waitForNextPass: ((Long) -> Boolean)?,
     private val isCancelled: () -> Boolean,
@@ -64,139 +66,152 @@ internal class WorkspaceTransitionWorker(
         onImported = { WorkspaceSignal.InitialProjectModel },
     )
 
+    private val transitionOperations = object : WorkspaceTransitionOperations {
+        override fun settle(signals: Set<WorkspaceSignal>) {
+            if (!eventWakeup.awaitQuiescence(EVENT_QUIESCENCE_MILLIS)) {
+                throw InterruptedException("Workspace transition settlement was interrupted")
+            }
+            requireStableGitWorktreeTransition()
+        }
+
+        override fun refresh(signals: Set<WorkspaceSignal>) {
+            requireStableGitWorktreeTransition()
+            semanticAdmission.dirty("workspace transition is refreshing semantic inputs")
+            cycleCandidate = null
+            cycleResult = null
+            reconciliationToken = null
+            publishedReconciliation = PendingCompletedWorkspaceReconciliation.Absent
+            val buildInputsBeforeRefresh = resolveBuildSemanticInputIdentity()
+            val requiresGradleRefresh = WorkspaceSignal.BuildSemantic in signals ||
+                                        WorkspaceSignal.RecoveryAudit in signals ||
+                                        buildInputsBeforeRefresh != modelBuildSemanticIdentity
+            val effectiveSignals = if (requiresGradleRefresh) {
+                signals + WorkspaceSignal.BuildSemantic
+            } else {
+                signals
+            }
+            refreshWorkspace(effectiveSignals)
+            if (requiresGradleRefresh) {
+                val buildInputsAfterRefresh = resolveBuildSemanticInputIdentity()
+                if (buildInputsAfterRefresh != buildInputsBeforeRefresh) {
+                    throw BuildSemanticInputsMovedDuringRefreshException(
+                        before = buildInputsBeforeRefresh,
+                        after = buildInputsAfterRefresh,
+                    )
+                }
+                modelBuildSemanticIdentity = buildInputsAfterRefresh
+            }
+            cycleConfig = try {
+                loadLiveConfig(lastValidConfig)
+            } catch (failure: Exception) {
+                onConfigFallback(failure)
+                lastValidConfig
+            }
+            requireStableGitWorktreeTransition()
+        }
+
+        override fun captureIdentity(): WorkspaceStateIdentity {
+            val currentBuildInputs = currentImportedBuildInputs()
+            val captured = captureCandidate(cycleConfig, currentBuildInputs)
+            if (reconciliationToken == null) cycleCandidate = captured
+            return captured.identity
+        }
+
+        override fun reconcile(candidate: WorkspaceStateIdentity): WorkspaceStateIdentity {
+            reconciliationToken = semanticAdmission.beginReconciliation(
+                "workspace reconciliation is active",
+            )
+            val candidateInputs = checkNotNull(cycleCandidate) { "Workspace candidate was not captured" }
+            val token = checkNotNull(reconciliationToken)
+            val attempted = runCatching { runIndexingPass(cycleConfig, candidateInputs, token) }
+            val scopeFailure = attempted.exceptionOrNull() as? IndexingScopeConfigurationException
+            val reconciledIdentity = if (scopeFailure != null && cycleConfig != lastValidConfig) {
+                onConfigFallback(scopeFailure)
+                cycleConfig = lastValidConfig
+                captureCandidate(cycleConfig, currentImportedBuildInputs()).also { fallback ->
+                    cycleCandidate = fallback
+                    cycleResult = runIndexingPass(cycleConfig, fallback, token)
+                }.identity
+            } else {
+                cycleResult = attempted.getOrThrow()
+                candidate
+            }
+            requireActive()
+            return reconciledIdentity
+        }
+    }
+
+    private val publicationAuthority = object : WorkspacePublicationAuthority {
+        override fun current() = workspaceGenerationPublication.current()
+
+        override fun begin(): OpenWorkspacePublication {
+            requireActive()
+            return workspaceGenerationPublication.begin()
+        }
+
+        override fun prepare(
+            open: OpenWorkspacePublication,
+            identity: WorkspaceStateIdentity,
+            graphPublication: WorkspaceGraphPublication,
+        ): PreparedWorkspacePublication {
+            requireActive()
+            return workspaceGenerationPublication.prepare(open, identity, graphPublication)
+        }
+
+        override fun commit(prepared: PreparedWorkspacePublication): GenerationPublication {
+            requireActive()
+            requireStableGitWorktreeTransition()
+            val result = checkNotNull(cycleResult) { "Verified transition has no indexing result" }
+            val token = checkNotNull(reconciliationToken) { "Verified transition has no admission token" }
+            var committed: WorkspacePublicationCommit? = null
+            return when (val publication = semanticAdmission.publishReady(token) {
+                requireStableGitWorktreeTransition()
+                workspaceGenerationPublication.commit(prepared).also { committed = it }
+                    .let(workspaceGenerationPublication::storedCommit)
+            }) {
+                is IdeaIndexSemanticAdmission.ReadyPublication.Admitted -> {
+                    lastValidConfig = cycleConfig
+                    publishedReconciliation = PendingCompletedWorkspaceReconciliation.Available(
+                        CompletedWorkspaceReconciliation(
+                            summary = result.summary,
+                            snapshotPublication = checkNotNull(cycleCandidate).snapshotPublication,
+                        ),
+                    )
+                    GenerationPublication.Published(checkNotNull(committed))
+                }
+
+                IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedBeforeCommit ->
+                    GenerationPublication.InvalidatedBeforeCommit
+
+                is IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedAfterCommit ->
+                    GenerationPublication.InvalidatedAfterCommit(checkNotNull(committed))
+            }
+        }
+
+        override fun discard(open: OpenWorkspacePublication) {
+            workspaceGenerationPublication.discard(open)
+        }
+
+        override fun discard(prepared: PreparedWorkspacePublication) {
+            workspaceGenerationPublication.discard(prepared)
+        }
+    }
+
     private val coordinator = WorkspaceTransitionCoordinator(
-        operations = object : WorkspaceTransitionOperations {
-            override fun settle(signals: Set<WorkspaceSignal>) {
-                if (!eventWakeup.awaitQuiescence(EVENT_QUIESCENCE_MILLIS)) {
-                    throw InterruptedException("Workspace transition settlement was interrupted")
-                }
-                requireStableGitWorktreeTransition()
-            }
-
-            override fun refresh(signals: Set<WorkspaceSignal>) {
-                requireStableGitWorktreeTransition()
-                semanticAdmission.dirty("workspace transition is refreshing semantic inputs")
-                cycleCandidate = null
-                cycleResult = null
-                reconciliationToken = null
-                publishedReconciliation = PendingCompletedWorkspaceReconciliation.Absent
-                val buildInputsBeforeRefresh = resolveBuildSemanticInputIdentity()
-                val requiresGradleRefresh = WorkspaceSignal.BuildSemantic in signals ||
-                    WorkspaceSignal.RecoveryAudit in signals ||
-                    buildInputsBeforeRefresh != modelBuildSemanticIdentity
-                val effectiveSignals = if (requiresGradleRefresh) {
-                    signals + WorkspaceSignal.BuildSemantic
-                } else {
-                    signals
-                }
-                refreshWorkspace(effectiveSignals)
-                if (requiresGradleRefresh) {
-                    val buildInputsAfterRefresh = resolveBuildSemanticInputIdentity()
-                    if (buildInputsAfterRefresh != buildInputsBeforeRefresh) {
-                        throw BuildSemanticInputsMovedDuringRefreshException(
-                            before = buildInputsBeforeRefresh,
-                            after = buildInputsAfterRefresh,
-                        )
-                    }
-                    modelBuildSemanticIdentity = buildInputsAfterRefresh
-                }
-                cycleConfig = try {
-                    loadLiveConfig(lastValidConfig)
-                } catch (failure: Exception) {
-                    onConfigFallback(failure)
-                    lastValidConfig
-                }
-                requireStableGitWorktreeTransition()
-            }
-
-            override fun captureIdentity(): WorkspaceStateIdentity {
-                val currentBuildInputs = currentImportedBuildInputs()
-                val captured = captureCandidate(cycleConfig, currentBuildInputs)
-                if (reconciliationToken == null) cycleCandidate = captured
-                return captured.identity
-            }
-
-            override fun reconcile(candidate: WorkspaceStateIdentity): WorkspaceStateIdentity {
-                reconciliationToken = semanticAdmission.beginReconciliation(
-                    "workspace reconciliation is active",
-                )
-                val candidateInputs = checkNotNull(cycleCandidate) { "Workspace candidate was not captured" }
-                val token = checkNotNull(reconciliationToken)
-                val attempted = runCatching { runIndexingPass(cycleConfig, candidateInputs, token) }
-                val scopeFailure = attempted.exceptionOrNull() as? IndexingScopeConfigurationException
-                val reconciledIdentity = if (scopeFailure != null && cycleConfig != lastValidConfig) {
-                    onConfigFallback(scopeFailure)
-                        cycleConfig = lastValidConfig
-                        captureCandidate(cycleConfig, currentImportedBuildInputs()).also { fallback ->
-                            cycleCandidate = fallback
-                            cycleResult = runIndexingPass(cycleConfig, fallback, token)
-                    }.identity
-                } else {
-                    cycleResult = attempted.getOrThrow()
-                    candidate
-                }
-                requireActive()
-                return reconciledIdentity
-            }
-
-            override fun beginPublication(): OpenWorkspacePublication {
-                requireActive()
-                return workspaceGenerationPublication.begin()
-            }
-
-            override fun preparePublication(
-                open: OpenWorkspacePublication,
-                identity: WorkspaceStateIdentity,
-            ): PreparedWorkspacePublication {
-                requireActive()
-                val graphBlocker = when (checkNotNull(cycleResult).graphOutcome) {
-                    GraphLaneOutcome.Committed -> null
-                    is GraphLaneOutcome.Blocked -> GraphEvidenceBlocker.INDEXING_FAILED
-                }
-                return workspaceGenerationPublication.prepare(open, identity, graphBlocker)
-            }
-
-            override fun commitPublication(prepared: PreparedWorkspacePublication): GenerationPublication {
-                requireActive()
-                requireStableGitWorktreeTransition()
-                val result = checkNotNull(cycleResult) { "Verified transition has no indexing result" }
-                val token = checkNotNull(reconciliationToken) { "Verified transition has no admission token" }
-                return when (val publication = semanticAdmission.publishReady(token) {
-                    requireStableGitWorktreeTransition()
-                    workspaceGenerationPublication.commit(prepared)
-                }) {
-                    is IdeaIndexSemanticAdmission.ReadyPublication.Admitted -> {
-                        lastValidConfig = cycleConfig
-                        publishedReconciliation = PendingCompletedWorkspaceReconciliation.Available(
-                            CompletedWorkspaceReconciliation(
-                                summary = result.summary,
-                                snapshotPublication = checkNotNull(cycleCandidate).snapshotPublication,
-                            ),
-                        )
-                        GenerationPublication.Published(publication.commit)
-                    }
-
-                    IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedBeforeCommit ->
-                        GenerationPublication.InvalidatedBeforeCommit
-
-                    is IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedAfterCommit ->
-                        GenerationPublication.InvalidatedAfterCommit(publication.commit)
-                }
-            }
-
-            override fun discardPublication(open: OpenWorkspacePublication) {
-                workspaceGenerationPublication.discard(open)
-            }
-
-            override fun discardPublication(prepared: PreparedWorkspacePublication) {
-                workspaceGenerationPublication.discard(prepared)
+        operations = transitionOperations,
+        publication = publicationAuthority,
+        graphPublication = {
+            when (checkNotNull(cycleResult).graphOutcome) {
+                GraphLaneOutcome.Committed -> WorkspaceGraphPublication.Ready
+                is GraphLaneOutcome.Blocked -> WorkspaceGraphPublication.IndexingBlocked
             }
         },
+        failureClassifier = WorkspaceTransitionFailureClassifier(::classifyWorkspaceTransitionFailure),
         initialPublished = workspaceGenerationPublication.current(),
         onTransition = onTransition,
-        onBlocked = { _, failure ->
-            semanticAdmission.fail(failure.message?.takeIf(String::isNotBlank) ?: failure::class.java.name)
-            onFailure(failure)
+        onBlocked = { blocker ->
+            semanticAdmission.fail(blocker.detail)
+            onFailure(blocker.toWorkerFailure())
         },
     )
 
@@ -269,11 +284,9 @@ internal class WorkspaceTransitionWorker(
     ): RecoveryAuditOutcome {
         return try {
             requireActive()
-            val published = when (val current = workspaceGenerationPublication.current()) {
-                PublishedWorkspaceGenerationState.Unpublished -> return RecoveryAuditOutcome.WorkspaceDrift
-                is PublishedWorkspaceGenerationState.Published -> current.manifest
+            if (!workspaceGenerationPublication.matches(expectedPublished)) {
+                return RecoveryAuditOutcome.WorkspaceDrift
             }
-            if (published != expectedPublished) return RecoveryAuditOutcome.WorkspaceDrift
             requireStableGitWorktreeTransition()
             refreshWorkspace(setOf(WorkspaceSignal.RecoveryProbe))
             requireStableGitWorktreeTransition()
@@ -291,8 +304,8 @@ internal class WorkspaceTransitionWorker(
                 val currentIdentity = captureCandidate(auditConfig, currentBuildInputs).identity
                 requireStableGitWorktreeTransition()
                 if (
-                    currentIdentity.value == published.identity.value &&
-                    workspaceGenerationPublication.current() == PublishedWorkspaceGenerationState.Published(published)
+                    currentIdentity.value == expectedPublished.identity.value &&
+                    workspaceGenerationPublication.matches(expectedPublished)
                 ) {
                     RecoveryAuditOutcome.Current
                 } else {
@@ -319,7 +332,7 @@ internal class WorkspaceTransitionWorker(
 
             is CancellationException,
             is ProcessCanceledException,
-            -> throw failure
+                -> throw failure
         }
     }
 
@@ -356,7 +369,7 @@ internal class WorkspaceTransitionWorker(
         when (val transition = gitWorktreeTransitionGuard.inspect()) {
             GitWorktreeTransitionStatus.Stable,
             is GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory,
-            -> Unit
+                -> Unit
             is GitWorktreeTransitionStatus.InProgress ->
                 throw GitWorktreeTransitionInProgressException(transition)
             is GitWorktreeTransitionStatus.Unavailable ->
@@ -376,23 +389,5 @@ internal class WorkspaceTransitionWorker(
     }
 }
 
-private sealed interface RecoveryAuditOutcome {
-    data object Current : RecoveryAuditOutcome
-
-    sealed interface Drift : RecoveryAuditOutcome {
-        val signal: WorkspaceSignal
-        val dirtyReason: String
-    }
-
-    data object WorkspaceDrift : Drift {
-        override val signal: WorkspaceSignal = WorkspaceSignal.RecoveryAudit
-        override val dirtyReason: String = "workspace recovery audit requires reconciliation"
-    }
-
-    data object BuildSemanticDrift : Drift {
-        override val signal: WorkspaceSignal = WorkspaceSignal.BuildSemantic
-        override val dirtyReason: String = "workspace recovery audit found build-semantic drift"
-    }
-}
 private const val EVENT_QUIESCENCE_MILLIS = 250L
 private val GIT_TRANSITION_RETRY_DELAY: Duration = Duration.ofMillis(250)

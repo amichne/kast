@@ -3,6 +3,12 @@ plugins {
     id("kast.role.contract")
 }
 
+group = "${rootProject.group}.workspace"
+
+base {
+    archivesName.set("workspace-contract")
+}
+
 dependencies {
     api(project(":kernel"))
 }

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 

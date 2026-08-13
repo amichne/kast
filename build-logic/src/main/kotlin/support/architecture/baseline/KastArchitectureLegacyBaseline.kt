@@ -40,36 +40,6 @@ internal object KastArchitectureLegacyBaseline {
         )
     }
 
-    private val gradleImportUses = LegacyEffectAllowanceScope(
-        ModuleId.INDEXER,
-        ForbiddenEffect.GRADLE_IMPORT,
-        MutationDeliveryTaskId.F03,
-    ).run {
-        listOf(
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "<init>", "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "<type>", ""),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "dontNavigateToError", "()Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "dontReportRefreshErrors", "()Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "use", "(Lcom/intellij/openapi/externalSystem/service/execution/ProgressExecutionMode;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "withActivateToolWindowOnFailure", "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "withActivateToolWindowOnStart", "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "withCallback", "(Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "importSpec", "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "withImportProjectData", "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "linkExternalGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "linkExternalProject", "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "linkExternalGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "org/jetbrains/plugins/gradle/settings/GradleProjectSettings", "<init>", "(Ljava/lang/String;)V"),
-            allow("io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "refreshExternalGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "refreshProject", "(Ljava/lang/String;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "canLinkAndRefreshGradleProject", "(Ljava/lang/String;Lcom/intellij/openapi/project/Project;)Z", "org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "canLinkAndRefreshGradleProject", "(Ljava/lang/String;Lcom/intellij/openapi/project/Project;Z)Z"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "configureIndexerImport", "(Lcom/intellij/openapi/project/Project;)V", "org/jetbrains/plugins/gradle/settings/GradleSettings", "setGradleVmOptions", "(Ljava/lang/String;)V"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "lambda\$configureIndexerApplication\$0", "(Ljava/lang/Boolean;)V", "org/jetbrains/plugins/gradle/settings/GradleSystemSettings", "setDownloadSources", "(Z)V"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "linkAndImportGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "<init>", "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "linkAndImportGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "<type>", ""),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "linkAndImportGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "withCallback", "(Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "linkAndImportGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "linkExternalProject", "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "linkAndImportGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "refreshProject", "(Ljava/lang/String;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"),
-            allow("io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "linkAndImportGradleProject", "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "createLinkSettings", "(Ljava/nio/file/Path;Lcom/intellij/openapi/project/Project;)Lorg/jetbrains/plugins/gradle/settings/GradleProjectSettings;"),
-        )
-    }
-
     private val analysisBackendUses = LegacyEffectAllowanceScope(
         ModuleId.INDEXER,
         ForbiddenEffect.ANALYSIS_BACKEND,
@@ -124,7 +94,7 @@ internal object KastArchitectureLegacyBaseline {
     }
 
     val all: List<LegacyAllowance> =
-        sourceFilesystemWrites + analysisBackendUses + gradleImportUses + intellijWrites
+        sourceFilesystemWrites + analysisBackendUses + intellijWrites
 }
 // @formatter:on
 

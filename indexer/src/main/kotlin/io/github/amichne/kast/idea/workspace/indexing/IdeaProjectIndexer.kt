@@ -27,7 +27,7 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.shared.analysis.PsiRelationshipScanResult
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 
@@ -148,7 +148,7 @@ internal class IdeaProjectIndexer(
         val missingManifestPaths = requestedPaths.minus(manifestPaths)
         check(missingManifestPaths.isEmpty()) {
             "Focused source refresh requires current manifest entries for: " +
-                missingManifestPaths.sorted().joinToString()
+            missingManifestPaths.sorted().joinToString()
         }
         val workByPath = store.pendingFileStages(FileIndexStage.SOURCE)
             .associateBy { work -> work.path }
@@ -186,7 +186,7 @@ internal class IdeaProjectIndexer(
             .mapTo(mutableSetOf()) { work -> work.path }
         val unfinishedPaths = requestedPaths.filter { path ->
             path in stillPending ||
-                store.fileStageOutcome(path, FileIndexStage.SOURCE)?.status != FileStageOutcomeStatus.COMPLETE
+            store.fileStageOutcome(path, FileIndexStage.SOURCE)?.status != FileStageOutcomeStatus.COMPLETE
         }
         check(unfinishedPaths.isEmpty()) {
             "Focused source refresh did not commit current facts for: ${unfinishedPaths.sorted().joinToString()}"
@@ -286,7 +286,8 @@ internal class IdeaProjectIndexer(
             paths = currentPaths,
             criticalPaths = scope.criticalPaths.toSet(),
             unmatchedCriticalPatterns = scope.unmatchedCriticalPatterns,
-            removedPaths = previousPaths.minus(inventoryEntries.mapTo(linkedSetOf(), FileInventoryEntry::path)).sorted(),
+            removedPaths = previousPaths.minus(inventoryEntries.mapTo(linkedSetOf(), FileInventoryEntry::path))
+                .sorted(),
         )
     }
 
@@ -304,8 +305,8 @@ internal class IdeaProjectIndexer(
     ) {
         val workByPath = (
             store.pendingFileStages(FileIndexStage.RELATIONSHIPS) +
-                store.retryableLimitedRelationshipStages()
-            )
+            store.retryableLimitedRelationshipStages()
+                         )
             .associateBy { work -> work.path }
         val pendingFilePaths = currentFilePaths.filter(workByPath::containsKey)
         if (pendingFilePaths.isEmpty()) return

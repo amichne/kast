@@ -6,8 +6,6 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType;
 import com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager;
-import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder;
-import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.observable.operation.core.ObservableOperationStatus;
@@ -41,11 +39,8 @@ import io.github.amichne.kast.indexer.gradle.settlement.RuntimeWaitLifecycle;
 import io.github.amichne.kast.api.contract.RuntimeProgressStage;
 import io.github.amichne.kast.indexer.project.IdeaIndexState;
 import io.github.amichne.kast.indexer.project.ProjectLifecycleState;
-import org.jetbrains.plugins.gradle.service.project.open.GradleProjectImportUtil;
+import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceEffects;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
-import org.jetbrains.plugins.gradle.settings.GradleSettings;
-import org.jetbrains.plugins.gradle.settings.GradleSystemSettings;
-import org.jetbrains.plugins.gradle.util.GradleConstants;
 import org.jetbrains.plugins.gradle.util.GradleImportingUtil;
 
 import java.nio.file.Path;
@@ -68,7 +63,7 @@ public final class GradleProjectImportBridge {
     }
 
     public static void configureIndexerApplication() {
-        configureIndexerApplication(enabled -> GradleSystemSettings.getInstance().setDownloadSources(enabled));
+        configureIndexerApplication(IntellijWorkspaceEffects::configureDependencySourceDownloads);
     }
 
     static void configureIndexerApplication(Consumer<Boolean> updateDownloadSources) {
@@ -76,8 +71,10 @@ public final class GradleProjectImportBridge {
     }
 
     public static void configureIndexerImport(Project project) {
-        GradleSettings settings = GradleSettings.getInstance(project);
-        settings.setGradleVmOptions(withDependencySourceDownloadsDisabled(settings.getGradleVmOptions()));
+        IntellijWorkspaceEffects.configureGradleVmOptions(
+            project,
+            withDependencySourceDownloadsDisabled(IntellijWorkspaceEffects.gradleVmOptions(project))
+        );
     }
 
     static String withDependencySourceDownloadsDisabled(String currentOptions) {
@@ -92,15 +89,11 @@ public final class GradleProjectImportBridge {
     }
 
     public static boolean canLinkAndRefreshGradleProject(String externalProjectPath, Project project) {
-        return hasLinkedGradleProject(project, externalProjectPath)
-            || GradleProjectImportUtil.canLinkAndRefreshGradleProject(externalProjectPath, project, false);
+        return IntellijWorkspaceEffects.canLinkAndRefreshGradleProject(externalProjectPath, project);
     }
 
     static boolean hasLinkedGradleProject(Project project, String externalProjectPath) {
-        return hasLinkedProject(
-            GradleSettings.getInstance(project).getLinkedProjectsSettings(),
-            externalProjectPath
-        );
+        return IntellijWorkspaceEffects.isGradleProjectLinked(project, externalProjectPath);
     }
 
     public static void linkAndImportGradleProject(Project project, String externalProjectPath) {
@@ -114,19 +107,12 @@ public final class GradleProjectImportBridge {
 
         CompletableFuture<Void> importFuture = new CompletableFuture<>();
         try {
-            ImportSpecBuilder importSpec = new ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
-                .withCallback(importFuture);
-            if (hasLinkedGradleProject(project, externalProjectPath)) {
-                ExternalSystemUtil.refreshProject(externalProjectPath, importSpec);
-            } else {
-                GradleProjectSettings linkSettings =
-                    GradleProjectImportUtil.createLinkSettings(Path.of(externalProjectPath), project);
-                ExternalSystemUtil.linkExternalProject(linkSettings, importSpec);
-            }
+            IntellijWorkspaceEffects.linkOrRefreshGradleProject(project, externalProjectPath, importFuture);
             awaitImport(importFuture, project);
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while importing Gradle project: " + externalProjectPath, error);
+            throw new IllegalStateException("Interrupted while importing Gradle project: " + externalProjectPath,
+                error);
         } catch (ExecutionException error) {
             Throwable cause = error.getCause() == null ? error : error.getCause();
             if (isGradleReloadActive(project) || isConcurrentGradleSyncFailure(cause)) {
@@ -388,5 +374,4 @@ public final class GradleProjectImportBridge {
             "Unsupported IntelliJ workspace model implementation: " + workspaceModel.getClass().getName()
         );
     }
-
 }

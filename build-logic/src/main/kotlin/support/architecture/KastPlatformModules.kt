@@ -15,9 +15,12 @@ internal object KastPlatformModules {
             ModuleRole.LEGACY_HOST,
             ModuleId.ANALYSIS_API,
             ModuleId.ANALYSIS_SERVER,
+            ModuleId.EVIDENCE_SPI,
             ModuleId.INDEX_STORE,
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.SYMBOL_INTELLIJ,
+            ModuleId.WORKSPACE_INTELLIJ,
+            ModuleId.WORKSPACE_SERVICE,
             ModuleId.WORKSPACE_SPI,
         ),
         active(ModuleId.KERNEL, ModuleRole.KERNEL),
@@ -31,13 +34,13 @@ internal object KastPlatformModules {
         ),
         active(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         active(ModuleId.WORKSPACE_SPI, ModuleRole.SPI, ModuleId.WORKSPACE_CONTRACT),
-        planned(
+        active(
             ModuleId.EVIDENCE_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.KERNEL,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.EVIDENCE_SPI,
             ModuleRole.SPI,
             ModuleId.EVIDENCE_CONTRACT,
@@ -50,14 +53,14 @@ internal object KastPlatformModules {
             ModuleId.EVIDENCE_SPI,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.WORKSPACE_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.EVIDENCE_SPI,
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_SPI,
         ),
-        planned(
+        active(
             ModuleId.WORKSPACE_INTELLIJ,
             ModuleRole.WORKSPACE_ADAPTER,
             ModuleId.WORKSPACE_CONTRACT,

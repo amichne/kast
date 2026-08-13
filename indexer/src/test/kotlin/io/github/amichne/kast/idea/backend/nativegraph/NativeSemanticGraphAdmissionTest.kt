@@ -17,7 +17,7 @@ import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -39,7 +39,10 @@ class NativeSemanticGraphAdmissionTest {
 
     private val moduleFixture = projectFixture.moduleFixture("main")
     private val sourceRootFixture = moduleFixture.sourceRootFixture()
-    private val canonicalFileFixture = sourceRootFixture.psiFileFixture("Canonical.kt", NativeSemanticGraphSources.canonical)
+    private val canonicalFileFixture = sourceRootFixture.psiFileFixture(
+        "Canonical.kt",
+        NativeSemanticGraphSources.canonical
+    )
 
     @TempDir
     lateinit var storeRoot: Path

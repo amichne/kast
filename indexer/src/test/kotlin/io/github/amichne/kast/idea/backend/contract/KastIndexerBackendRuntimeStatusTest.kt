@@ -9,7 +9,7 @@ import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
 import io.github.amichne.kast.idea.TestWorkspaceSemanticReadAuthority
 import io.github.amichne.kast.idea.TestWorkspaceTransitionRequester
 import io.github.amichne.kast.idea.testPublishedWorkspaceGeneration
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals

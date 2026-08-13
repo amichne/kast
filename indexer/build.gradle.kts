@@ -201,7 +201,10 @@ dependencies {
 
     compileOnly(project(":analysis-api"))
     compileOnly(project(":analysis-server"))
+    compileOnly(project(":evidence:spi"))
     compileOnly(project(":index-store"))
+    compileOnly(project(":workspace:intellij"))
+    compileOnly(project(":workspace:service"))
     compileOnly(project(":workspace:spi"))
     compileOnly(project(":symbol:contract"))
     compileOnly(project(":symbol:intellij"))
@@ -218,7 +221,10 @@ dependencies {
 
     indexerPluginRuntime(project(":analysis-api"))
     indexerPluginRuntime(project(":analysis-server"))
+    indexerPluginRuntime(project(":evidence:spi"))
     indexerPluginRuntime(project(":index-store"))
+    indexerPluginRuntime(project(":workspace:intellij"))
+    indexerPluginRuntime(project(":workspace:service"))
     indexerPluginRuntime(project(":workspace:spi"))
     indexerPluginRuntime(project(":symbol:contract"))
     indexerPluginRuntime(project(":symbol:intellij"))
@@ -229,7 +235,10 @@ dependencies {
 
     testImplementation(project(":analysis-api"))
     testImplementation(project(":analysis-server"))
+    testImplementation(project(":evidence:spi"))
     testImplementation(project(":index-store"))
+    testImplementation(project(":workspace:intellij"))
+    testImplementation(project(":workspace:service"))
     testImplementation(project(":workspace:spi"))
     testImplementation(project(":symbol:contract"))
     testImplementation(project(":symbol:intellij"))
@@ -326,11 +335,8 @@ val platformKotlinPluginOwnedClassEntries = listOf(
 )
 
 val indexerPluginRuntimeJarPrefixes = listOf(
-    "analysis-api-",
-    "analysis-server-",
-    "index-store-",
-    "symbol-contract-",
-    "symbol-intellij-",
+    "analysis-api-", "analysis-server-", "index-store-",
+    "symbol-contract-", "symbol-intellij-",
     "kotlinx-coroutines-core",
     "opentelemetry-",
 )
@@ -386,11 +392,8 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
 tasks.named("check") {
     dependsOn(verifyPortableDistLayout)
 }
-
 tasks.named<Zip>("portableDistZip") {
     eachFile {
-        if (relativePath.pathString == "indexer/kast-indexer") {
-            permissions { unix("755") }
-        }
+        if (relativePath.pathString == "indexer/kast-indexer") permissions { unix("755") }
     }
 }

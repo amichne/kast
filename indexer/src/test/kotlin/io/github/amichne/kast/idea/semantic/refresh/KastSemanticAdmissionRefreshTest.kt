@@ -36,7 +36,8 @@ import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.api.validation.FileHashing
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -69,7 +70,6 @@ class KastSemanticAdmissionRefreshTest {
 
             fun newlyAdmitted(): Int = 2
         """
-
     }
 
     private val projectFixture: TestFixture<Project> = projectFixture(openAfterCreation = true)
@@ -96,7 +96,7 @@ class KastSemanticAdmissionRefreshTest {
         ),
         admissionOperations: IdeaSemanticAdmissionOperations = IdeaSemanticAdmissionOperations.idea(),
         semanticGraphStore: SqliteSourceIndexStore? = null,
-        workspaceTransitionRequester: WorkspaceTransitionRequester = TestWorkspaceTransitionRequester(),
+        workspaceTransitionRequester: WorkspaceTransitionPort = TestWorkspaceTransitionRequester(),
         workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
             IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
         },
@@ -254,7 +254,7 @@ class KastSemanticAdmissionRefreshTest {
     private fun reconcilingRequester(
         store: SqliteSourceIndexStore,
         model: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
-    ): WorkspaceTransitionRequester = TestWorkspaceTransitionRequester(
+    ): WorkspaceTransitionPort = TestWorkspaceTransitionRequester(
         onReconcile = {
             ApplicationManager.getApplication().invokeAndWait {
                 VirtualFileManager.getInstance().syncRefresh()
@@ -387,7 +387,10 @@ class KastSemanticAdmissionRefreshTest {
         assertEquals(0, diagnostics.severityCounts.error)
     }
 
-    private fun commonWorkspaceRoot(first: Path, second: Path): Path =
+    private fun commonWorkspaceRoot(
+        first: Path,
+        second: Path,
+    ): Path =
         generateSequence(first) { it.parent }
             .first(second::startsWith)
 }

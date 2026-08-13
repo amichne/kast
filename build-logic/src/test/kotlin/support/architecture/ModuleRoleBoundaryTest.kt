@@ -40,7 +40,7 @@ class ModuleRoleBoundaryTest {
             ModuleRoleConventionRequirement.Required(ModuleRoleConvention.INTELLIJ_READ),
             readModule.conventionRequirement,
         )
-        assertEquals(74, architecture.legacyAllowances.size)
+        assertEquals(53, architecture.legacyAllowances.size)
     }
 
     @Test

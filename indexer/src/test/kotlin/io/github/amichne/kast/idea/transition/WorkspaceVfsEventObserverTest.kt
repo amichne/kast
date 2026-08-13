@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager

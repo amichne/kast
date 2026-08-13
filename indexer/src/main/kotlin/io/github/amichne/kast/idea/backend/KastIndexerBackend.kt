@@ -16,7 +16,7 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiModificationTracker
-import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
+import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.client.IndexingConfig
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
@@ -24,49 +24,10 @@ import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
 import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore as SharedContinuationStore
 import io.github.amichne.kast.api.validation.*
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
-import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.result.CallHierarchyResult
-import io.github.amichne.kast.api.contract.result.CallRelationsResult
-import io.github.amichne.kast.api.contract.result.CodeActionsResult
-import io.github.amichne.kast.api.contract.result.CompletionsResult
-import io.github.amichne.kast.api.contract.result.DiagnosticsResult
-import io.github.amichne.kast.api.contract.result.FileOutlineResult
-import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.result.ImplementationsResult
-import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
-import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
-import io.github.amichne.kast.api.contract.MutationCapability
-import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
-import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
-import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.result.ReplacementPlanResult
-import io.github.amichne.kast.api.contract.result.ExactFileImageResult
-import io.github.amichne.kast.api.contract.result.AddFilePlanResult
-import io.github.amichne.kast.api.contract.result.AddDeclarationPlanResult
-import io.github.amichne.kast.api.contract.result.MutationPostconditionResult
-import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
-import io.github.amichne.kast.api.contract.result.MutationScratchInspectResult
-import io.github.amichne.kast.api.contract.result.MutationScratchRecoveryResult
-import io.github.amichne.kast.api.contract.result.SemanticGraphResult
-import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
-import io.github.amichne.kast.api.contract.SearchScopeKind
-import io.github.amichne.kast.api.contract.SemanticInsertionResult
-import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.result.SymbolResult
-import io.github.amichne.kast.api.contract.SymbolVisibility
-import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
 import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
-import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
-import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
-import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.shared.analysis.visibility
@@ -87,6 +48,7 @@ import io.github.amichne.kast.idea.backend.semantic.*
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.workspace.spi.SemanticReadExecutor
 import io.github.amichne.kast.workspace.spi.RuntimeLivenessAuthority
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
 
 internal class KastIndexerBackend(
     internal val project: Project,
@@ -117,7 +79,7 @@ internal class KastIndexerBackend(
     internal val workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority,
     internal val runtimeLivenessAuthority: RuntimeLivenessAuthority =
         IdeaRuntimeLivenessAuthority(project),
-    internal val workspaceTransitionRequester: WorkspaceTransitionRequester,
+    internal val workspaceTransitionRequester: WorkspaceTransitionPort,
     internal val runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry? = null,
     internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
         IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
@@ -188,7 +150,7 @@ internal class KastIndexerBackend(
         ReferenceQueryIdentity,
         ReferenceContinuationState,
         ReferenceContinuationProjection,
-    >(
+        >(
         capacity = limits.typedContinuationCapacity,
         timeToLive = limits.typedContinuationTtl,
         tokenIssuer = ContinuationTokenIssuer(ReferencePageToken::random),
@@ -200,7 +162,7 @@ internal class KastIndexerBackend(
         DiagnosticQueryIdentity,
         DiagnosticContinuationState,
         DiagnosticContinuationProjection,
-    >(
+        >(
         capacity = limits.typedContinuationCapacity,
         timeToLive = limits.typedContinuationTtl,
         tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
@@ -296,59 +258,106 @@ internal class KastIndexerBackend(
             workspaceRoot = caps.workspaceRoot,
         )
     }
-    override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult = workspaceSemanticGate.current { resolveSymbolOperation(query) }
-    override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult = workspaceSemanticGate.current { findReferencesOperation(query) }
-    override suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult = workspaceSemanticGate.current { callHierarchyOperation(query) }
-    override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult = workspaceSemanticGate.current { callRelationsOperation(query) }
-    override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult = workspaceSemanticGate.current { typeHierarchyOperation(query) }
-    override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult = workspaceSemanticGate.current { hierarchyRelationsOperation(query) }
-    override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult = workspaceSemanticGate.current { implementationsOperation(query) }
-    override suspend fun implementationRelations(query: KastImplementationsQuery): ImplementationRelationsResult = workspaceSemanticGate.current { implementationRelationsOperation(query) }
-    override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult = workspaceSemanticGate.current { codeActionsOperation(query) }
-    override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult = workspaceSemanticGate.current { completionsOperation(query) }
-    override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult = workspaceSemanticGate.current { workspaceFilesOperation(query) }
-    override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult = coordinatedSemanticGraph(query)
+
+    override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult =
+        workspaceSemanticGate.current { resolveSymbolOperation(query) }
+
+    override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult =
+        workspaceSemanticGate.current { findReferencesOperation(query) }
+
+    override suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult =
+        workspaceSemanticGate.current { callHierarchyOperation(query) }
+
+    override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult =
+        workspaceSemanticGate.current { callRelationsOperation(query) }
+
+    override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult =
+        workspaceSemanticGate.current { typeHierarchyOperation(query) }
+
+    override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult =
+        workspaceSemanticGate.current { hierarchyRelationsOperation(query) }
+
+    override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult =
+        workspaceSemanticGate.current { implementationsOperation(query) }
+
+    override suspend fun implementationRelations(query: KastImplementationsQuery): ImplementationRelationsResult =
+        workspaceSemanticGate.current { implementationRelationsOperation(query) }
+
+    override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult =
+        workspaceSemanticGate.current { codeActionsOperation(query) }
+
+    override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult =
+        workspaceSemanticGate.current { completionsOperation(query) }
+
+    override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult =
+        workspaceSemanticGate.current { workspaceFilesOperation(query) }
+
+    override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult =
+        coordinatedSemanticGraph(query)
+
     /** Internal transition writer. External graph requests remain guarded by [WorkspaceSemanticGate.current]. */
     internal suspend fun reconcileSemanticGraph(
         query: ParsedSemanticGraphQuery,
         token: IdeaIndexSemanticAdmission.ReconciliationToken,
     ): SemanticGraphResult = semanticGraphOperation(query, token)
-    override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult = workspaceSemanticGate.current { semanticInsertionPointOperation(query) }
+
+    override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult =
+        workspaceSemanticGate.current { semanticInsertionPointOperation(query) }
+
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult =
         workspaceSemanticGate.currentWithQualifiedDumbModeEvidence { diagnosticsOperation(query) }
-    override suspend fun rename(query: ParsedRenameQuery): RenameResult = workspaceSemanticGate.current { renameOperation(query) }
+
+    override suspend fun rename(query: ParsedRenameQuery): RenameResult =
+        workspaceSemanticGate.current { renameOperation(query) }
+
     override suspend fun planReplacement(query: ParsedReplacementPlanQuery): ReplacementPlanResult =
         workspaceSemanticGate.current { planReplacementOperation(query) }
+
     override suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult =
         workspaceSemanticGate.current { planAddFileOperation(query) }
+
     override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult =
         workspaceSemanticGate.current { planAddDeclarationOperation(query) }
+
     override suspend fun verifyMutationPostcondition(
         query: ParsedMutationPostconditionQuery,
     ): MutationPostconditionResult = workspaceSemanticGate.current { verifyMutationPostconditionOperation(query) }
+
     override suspend fun observeExactFile(
         query: ParsedRawExactFileObservationQuery,
     ): RawExactFileObservationResult = workspaceSemanticGate.current { rawExactFileObservationOperation(query) }
+
     override suspend fun exactFileImageCas(query: ParsedExactFileImageQuery): ExactFileImageResult =
         coordinatedExactFileImageCas(query)
+
     override suspend fun inspectMutationScratch(
         query: ParsedMutationScratchInspectQuery,
     ): MutationScratchInspectResult = workspaceSemanticGate.current { inspectMutationScratchOperation(query) }
+
     override suspend fun recoverMutationScratch(
         query: ParsedMutationScratchRecoveryQuery,
     ): MutationScratchRecoveryResult = coordinatedMutationScratchRecovery(query)
+
     override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult = coordinatedApplyEdits(query)
-    override suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult = workspaceSemanticGate.current { optimizeImportsOperation(query) }
+    override suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult =
+        workspaceSemanticGate.current { optimizeImportsOperation(query) }
+
     override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult = coordinatedRefresh(query)
-    override suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult = workspaceSemanticGate.current { fileOutlineOperation(query) }
-    override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult = workspaceSemanticGate.current { workspaceSymbolSearchOperation(query) }
-    override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult = workspaceSemanticGate.current { workspaceSearchOperation(query) }
+    override suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult =
+        workspaceSemanticGate.current { fileOutlineOperation(query) }
+
+    override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult =
+        workspaceSemanticGate.current { workspaceSymbolSearchOperation(query) }
+
+    override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult =
+        workspaceSemanticGate.current { workspaceSearchOperation(query) }
 
     internal fun PsiReference.toReferenceOccurrence(includeUsageSiteScope: Boolean): ReferenceOccurrence? =
         psiSupport.toReferenceOccurrence(this, includeUsageSiteScope)
 
     internal fun PsiElement.containingSymbolEvidence(): ContainingSymbolEvidence =
         psiSupport.containingSymbolEvidence(this)
+
     internal fun isConcreteType(target: PsiElement): Boolean = psiSupport.isConcreteType(target)
     internal fun findKtFile(filePath: String): KtFile = psiSupport.findKtFile(filePath)
     internal fun visibilityScopedSearch(
@@ -357,7 +366,7 @@ internal class KastIndexerBackend(
     ): Pair<GlobalSearchScope, SearchScopeKind> = when (visibility) {
         SymbolVisibility.PRIVATE, SymbolVisibility.LOCAL -> {
             val file = target.containingFile as? KtFile
-                ?: return GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
+                       ?: return GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
             val vf = file.virtualFile
             GlobalSearchScope.fileScope(project, vf) to SearchScopeKind.FILE
         }
@@ -367,6 +376,7 @@ internal class KastIndexerBackend(
         SymbolVisibility.UNKNOWN ->
             GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
     }
+
     internal fun moduleWithDependentsScope(target: PsiElement): GlobalSearchScope? {
         val file = target.containingFile as? KtFile ?: return null
         val virtualFile = file.virtualFile ?: return null

@@ -9,6 +9,36 @@ import kotlin.collections.filter
 
 class KastArchitecturePolicyTest {
     @Test
+    fun `workspace transition extraction activates narrow owners and retires legacy Gradle authority`() {
+        val architecture = canonicalWithoutLegacyAllowances()
+        val expectedOwners = setOf(
+            ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.EVIDENCE_SPI,
+            ModuleId.WORKSPACE_SERVICE,
+            ModuleId.WORKSPACE_INTELLIJ,
+        )
+
+        assertTrue(
+            expectedOwners.all { owner ->
+                architecture.modules.getValue(owner).lifecycle == ModuleLifecycle.ACTIVE
+            },
+        )
+        assertTrue(
+            KastArchitecturePolicy.definition().legacyAllowances.none { allowance ->
+                val effect = allowance.violation as? LegacyViolationKey.ForbiddenEffectUse
+                effect?.observation?.module == ModuleId.INDEXER &&
+                effect.observation.effect == ForbiddenEffect.GRADLE_IMPORT
+            },
+        )
+        assertEquals(
+            setOf(ModuleId.WORKSPACE_INTELLIJ),
+            architecture.modules.values
+                .filter { module -> ForbiddenEffect.GRADLE_IMPORT in module.allowedEffects }
+                .mapTo(linkedSetOf(), ValidatedModulePolicy::id),
+        )
+    }
+
+    @Test
     fun `native read slice keeps its final inward dependencies while modules activate`() {
         val architecture = canonicalWithoutLegacyAllowances()
         val modulesByPath = architecture.modules.values.associateBy { it.id.projectPath }
@@ -137,7 +167,7 @@ class KastArchitecturePolicyTest {
             valid.architecture.mutationRuntimeProcessOrder.indexOf(MutationRuntimeProcessId.RP10) <
             valid.architecture.mutationRuntimeProcessOrder.indexOf(MutationRuntimeProcessId.RP11S),
         )
-        assertEquals(74, valid.architecture.legacyAllowances.size)
+        assertEquals(53, valid.architecture.legacyAllowances.size)
     }
 
     @Test
