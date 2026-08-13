@@ -5,9 +5,13 @@ import support.architecture.EffectObservation
 import support.architecture.ForbiddenEffect
 import support.architecture.JvmMember
 import support.architecture.LegacyAllowance
+import support.architecture.LegacyMigrationEdgePolicy
+import support.architecture.LegacyMigrationLifecycle
 import support.architecture.LegacyViolationKey
 import support.architecture.ModuleId
+import support.architecture.ProjectDependencyObservation
 
+// @formatter:off
 internal object KastArchitectureLegacyBaseline {
     private val sourceFilesystemWrites = LegacyEffectAllowanceScope(
         ModuleId.ANALYSIS_API,
@@ -121,6 +125,20 @@ internal object KastArchitectureLegacyBaseline {
 
     val all: List<LegacyAllowance> =
         sourceFilesystemWrites + analysisBackendUses + gradleImportUses + intellijWrites
+}
+// @formatter:on
+
+internal object KastArchitectureLegacyMigrations {
+    val all: List<LegacyMigrationEdgePolicy> = listOf(
+        LegacyMigrationEdgePolicy(
+            dependency = ProjectDependencyObservation(
+                consumer = ModuleId.ANALYSIS_SERVER,
+                dependency = ModuleId.RUNTIME_BINDINGS,
+            ),
+            lifecycle = LegacyMigrationLifecycle.PLANNED,
+            retirementTask = MutationDeliveryTaskId.F04,
+        ),
+    )
 }
 
 private class LegacyEffectAllowanceScope(

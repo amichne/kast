@@ -5,12 +5,13 @@ import support.architecture.LegacyAllowance
 import support.architecture.LegacyViolationKey
 import support.architecture.MutationDeliveryOwner
 import support.architecture.ValidatedArchitecturePolicy
+import support.architecture.ValidatedLegacyMigrationEdge
 import support.architecture.process.MutationRuntimeAdmission
 
 object ArchitectureProjection {
     fun render(policy: ValidatedArchitecturePolicy): String = buildString {
         append("{\n")
-        append("  \"schemaVersion\": 3,\n")
+        append("  \"schemaVersion\": 4,\n")
         append("  \"policyAuthority\": \"KOTLIN\",\n")
         append("  \"policySource\": \"build-logic/src/main/kotlin/support/architecture\",\n")
         append("  \"enforcementScope\": \"REPOSITORY_WIDE\",\n")
@@ -59,11 +60,25 @@ object ArchitectureProjection {
             append("      \"id\": ").appendQuoted(id.name).append(",\n")
             append("      \"phase\": ").appendQuoted(task.phase.name).append(",\n")
             append("      \"name\": ").appendQuoted(task.name).append(",\n")
+            append("      \"lifecycle\": ").appendQuoted(task.lifecycle.name).append(",\n")
             append("      \"dependsOn\": ")
                 .appendStringArray(task.dependsOn.map(Enum<*>::name).sorted())
                 .append(",\n")
             append("      \"owner\": ").appendOwner(task.owner).append("\n")
             append("    }").appendComma(index, policy.mutationDeliveryOrder.lastIndex).append("\n")
+        }
+        append("  ],\n")
+        append("  \"legacyMigrationEdges\": [\n")
+        val migrations = policy.legacyMigrationEdges.values.sortedWith(
+            compareBy(
+                { migration -> migration.dependency.consumer.name },
+                { migration -> migration.dependency.dependency.name },
+            ),
+        )
+        migrations.forEachIndexed { index, migration ->
+            append("    ").appendMigration(migration)
+                .appendComma(index, migrations.lastIndex)
+                .append("\n")
         }
         append("  ],\n")
         append("  \"legacyAllowances\": [\n")
@@ -76,6 +91,21 @@ object ArchitectureProjection {
         append("  ]\n")
         append("}\n")
     }
+}
+
+private fun StringBuilder.appendMigration(
+    migration: ValidatedLegacyMigrationEdge,
+): StringBuilder {
+    append("{\"consumer\": ").appendQuoted(migration.dependency.consumer.projectPath)
+        .append(", \"dependency\": ").appendQuoted(migration.dependency.dependency.projectPath)
+        .append(", \"lifecycle\": ").appendQuoted(migration.lifecycleName())
+        .append(", \"retirementTask\": ").appendQuoted(migration.retirementTask.name)
+    return append("}")
+}
+
+private fun ValidatedLegacyMigrationEdge.lifecycleName(): String = when (this) {
+    is ValidatedLegacyMigrationEdge.Planned -> "PLANNED"
+    is ValidatedLegacyMigrationEdge.Active -> "ACTIVE"
 }
 
 private fun StringBuilder.appendAdmission(admission: MutationRuntimeAdmission): StringBuilder = when (admission) {

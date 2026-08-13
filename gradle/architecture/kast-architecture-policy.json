@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "policyAuthority": "KOTLIN",
   "policySource": "build-logic/src/main/kotlin/support/architecture",
   "enforcementScope": "REPOSITORY_WIDE",
@@ -489,6 +489,7 @@
       "id": "F01",
       "phase": "FOUNDATION",
       "name": "Freeze mutation lifecycle and canonical contracts",
+      "lifecycle": "OPEN",
       "dependsOn": [],
       "owner": {"kind": "MODULES", "modules": [":change:contract"]}
     },
@@ -496,6 +497,7 @@
       "id": "F02",
       "phase": "FOUNDATION",
       "name": "Create Gradle module-role convention plugins",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01"],
       "owner": {"kind": "BUILD_LOGIC"}
     },
@@ -503,6 +505,7 @@
       "id": "F03",
       "phase": "FOUNDATION",
       "name": "Enforce dependency graph and forbidden effects",
+      "lifecycle": "OPEN",
       "dependsOn": ["F02"],
       "owner": {"kind": "BUILD_LOGIC"}
     },
@@ -510,6 +513,7 @@
       "id": "F04",
       "phase": "FOUNDATION",
       "name": "Reduce AnalysisBackend to compatibility transport",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01", "F03"],
       "owner": {"kind": "MODULES", "modules": [":runtime:server"]}
     },
@@ -517,6 +521,7 @@
       "id": "P01",
       "phase": "PLANNING",
       "name": "Classify semantic and external mutation operations",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01"],
       "owner": {"kind": "MODULES", "modules": [":change:contract"]}
     },
@@ -524,6 +529,7 @@
       "id": "P02",
       "phase": "PLANNING",
       "name": "Define stable plan and expected-file proof",
+      "lifecycle": "OPEN",
       "dependsOn": ["P01"],
       "owner": {"kind": "MODULES", "modules": [":change:contract"]}
     },
@@ -531,6 +537,7 @@
       "id": "P03",
       "phase": "PLANNING",
       "name": "Create durable plan journal",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "P02"],
       "owner": {"kind": "MODULES", "modules": [":change:journal:contract", ":change:journal:sqlite"]}
     },
@@ -538,6 +545,7 @@
       "id": "P04",
       "phase": "PLANNING",
       "name": "Extract IntelliJ semantic planning adapter",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "P02"],
       "owner": {"kind": "MODULES", "modules": [":change:plan:intellij"]}
     },
@@ -545,6 +553,7 @@
       "id": "P05",
       "phase": "PLANNING",
       "name": "Assemble deterministic plans",
+      "lifecycle": "OPEN",
       "dependsOn": ["P03", "P04"],
       "owner": {"kind": "MODULES", "modules": [":change:plan:service"]}
     },
@@ -552,6 +561,7 @@
       "id": "A01",
       "phase": "APPLY",
       "name": "Establish logical workspace mutation lease",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "P05"],
       "owner": {"kind": "MODULES", "modules": [":workspace:mutation:service"]}
     },
@@ -559,6 +569,7 @@
       "id": "A02",
       "phase": "APPLY",
       "name": "Revalidate plan, selector, hashes, ownership, and provenance",
+      "lifecycle": "OPEN",
       "dependsOn": ["A01", "P04"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:service"]}
     },
@@ -566,6 +577,7 @@
       "id": "A03",
       "phase": "APPLY",
       "name": "Prepare writable-target and recovery capabilities",
+      "lifecycle": "OPEN",
       "dependsOn": ["A02"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service"]}
     },
@@ -573,6 +585,7 @@
       "id": "A04",
       "phase": "APPLY",
       "name": "Validate public IntelliJ refactoring APIs on supported builds",
+      "lifecycle": "OPEN",
       "dependsOn": ["A03"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:intellij"]}
     },
@@ -580,6 +593,7 @@
       "id": "A05",
       "phase": "APPLY",
       "name": "Implement short PSI/refactoring write-command executor",
+      "lifecycle": "OPEN",
       "dependsOn": ["A04"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:intellij"]}
     },
@@ -587,6 +601,7 @@
       "id": "A06",
       "phase": "APPLY",
       "name": "Implement external file writer with typed target capability",
+      "lifecycle": "OPEN",
       "dependsOn": ["A03"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:filesystem"]}
     },
@@ -594,6 +609,7 @@
       "id": "A07",
       "phase": "APPLY",
       "name": "Persist affected documents and capture after-images",
+      "lifecycle": "OPEN",
       "dependsOn": ["A05", "A06"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:service"]}
     },
@@ -601,6 +617,7 @@
       "id": "A08",
       "phase": "APPLY",
       "name": "Prove declared write-set closure",
+      "lifecycle": "OPEN",
       "dependsOn": ["A07"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:service"]}
     },
@@ -608,6 +625,7 @@
       "id": "V01",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Route targeted post-write workspace transition",
+      "lifecycle": "OPEN",
       "dependsOn": ["A08"],
       "owner": {"kind": "MODULES", "modules": [":workspace:service"]}
     },
@@ -615,6 +633,7 @@
       "id": "V02",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Publish one resulting semantic generation",
+      "lifecycle": "OPEN",
       "dependsOn": ["V01"],
       "owner": {"kind": "MODULES", "modules": [":evidence:sqlite", ":workspace:service"]}
     },
@@ -622,6 +641,7 @@
       "id": "V03",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Evaluate diagnostics and operation-specific postconditions",
+      "lifecycle": "OPEN",
       "dependsOn": ["V02"],
       "owner": {"kind": "MODULES", "modules": [":change:verify:intellij"]}
     },
@@ -629,6 +649,7 @@
       "id": "V04",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Reconcile expected and observed semantic delta",
+      "lifecycle": "OPEN",
       "dependsOn": ["V03"],
       "owner": {"kind": "MODULES", "modules": [":change:verify:service"]}
     },
@@ -636,6 +657,7 @@
       "id": "V05",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Issue terminal verified receipt",
+      "lifecycle": "OPEN",
       "dependsOn": ["V04"],
       "owner": {"kind": "MODULES", "modules": [":change:journal:contract", ":change:verify:service"]}
     },
@@ -643,6 +665,7 @@
       "id": "R01",
       "phase": "RECOVERY",
       "name": "Implement automatic rollback policy",
+      "lifecycle": "OPEN",
       "dependsOn": ["A07", "V04"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service"]}
     },
@@ -650,6 +673,7 @@
       "id": "R02",
       "phase": "RECOVERY",
       "name": "Reconcile and prove rollback generation",
+      "lifecycle": "OPEN",
       "dependsOn": ["R01", "V01", "V02"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service", ":change:verify:service"]}
     },
@@ -657,6 +681,7 @@
       "id": "R03",
       "phase": "RECOVERY",
       "name": "Resume or recover after crash",
+      "lifecycle": "OPEN",
       "dependsOn": ["A03", "P03", "R01"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service"]}
     },
@@ -664,6 +689,7 @@
       "id": "M01",
       "phase": "MIGRATION",
       "name": "Route rename through plan/apply/verify",
+      "lifecycle": "OPEN",
       "dependsOn": ["R03", "V05"],
       "owner": {"kind": "MODULES", "modules": [":runtime:composition"]}
     },
@@ -671,6 +697,7 @@
       "id": "M02",
       "phase": "MIGRATION",
       "name": "Route replace/add/implementation/body/import operations",
+      "lifecycle": "OPEN",
       "dependsOn": ["M01"],
       "owner": {"kind": "MODULES", "modules": [":runtime:composition"]}
     },
@@ -678,6 +705,7 @@
       "id": "M03",
       "phase": "MIGRATION",
       "name": "Remove semantic access to generic raw apply-edits",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "M02"],
       "owner": {"kind": "MODULES", "modules": [":protocol:registry", ":runtime:server"]}
     },
@@ -685,6 +713,7 @@
       "id": "T01",
       "phase": "PROOF",
       "name": "Contract and state-machine suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01", "P02", "R03", "V05"],
       "owner": {"kind": "MODULES", "modules": [":change:contract", ":change:journal:contract", ":change:recovery:contract"]}
     },
@@ -692,6 +721,7 @@
       "id": "T02",
       "phase": "PROOF",
       "name": "IntelliJ write-protocol integration suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["A05", "A07", "V03"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:intellij", ":change:plan:intellij", ":change:verify:intellij"]}
     },
@@ -699,6 +729,7 @@
       "id": "T03",
       "phase": "PROOF",
       "name": "Concurrency, movement, and recovery fault suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["R03", "V02"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service", ":workspace:service"]}
     },
@@ -706,6 +737,7 @@
       "id": "T04",
       "phase": "PROOF",
       "name": "Performance and UI-safety suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["T02", "T03"],
       "owner": {"kind": "MODULES", "modules": [":indexer"]}
     },
@@ -713,9 +745,13 @@
       "id": "T05",
       "phase": "PROOF",
       "name": "Enterprise multi-module mutation demonstration",
+      "lifecycle": "OPEN",
       "dependsOn": ["M03", "T01", "T02", "T03", "T04"],
       "owner": {"kind": "END_TO_END_CORPUS"}
     }
+  ],
+  "legacyMigrationEdges": [
+    {"consumer": ":analysis-server", "dependency": ":runtime:bindings", "lifecycle": "PLANNED", "retirementTask": "F04"}
   ],
   "legacyAllowances": [
     {"retirementTask": "A06", "kind": "FORBIDDEN_EFFECT", "effect": "SOURCE_FILESYSTEM_WRITE", "module": ":analysis-api", "caller": {"owner": "io/github/amichne/kast/api/io/LocalDiskFileOperations", "name": "createTempFile", "descriptor": "(Ljava/lang/String;)Ljava/lang/String;", "targetOwner": "java/nio/file/Files", "targetName": "createDirectories", "targetDescriptor": "(Ljava/nio/file/Path;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;"}},

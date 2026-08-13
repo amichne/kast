@@ -1,6 +1,7 @@
 package support.architecture
 
 internal object KastMutationDelivery {
+    // @formatter:off
     val all: List<MutationDeliveryTaskPolicy> = listOf(
         task(MutationDeliveryTaskId.F01, MutationDeliveryPhase.FOUNDATION, "Freeze mutation lifecycle and canonical contracts", module(ModuleId.CHANGE_CONTRACT)),
         task(MutationDeliveryTaskId.F02, MutationDeliveryPhase.FOUNDATION, "Create Gradle module-role convention plugins", MutationDeliveryOwner.BuildLogic, MutationDeliveryTaskId.F01),
@@ -36,6 +37,7 @@ internal object KastMutationDelivery {
         task(MutationDeliveryTaskId.T04, MutationDeliveryPhase.PROOF, "Performance and UI-safety suite", module(ModuleId.INDEXER), MutationDeliveryTaskId.T02, MutationDeliveryTaskId.T03),
         task(MutationDeliveryTaskId.T05, MutationDeliveryPhase.PROOF, "Enterprise multi-module mutation demonstration", MutationDeliveryOwner.EndToEndCorpus, MutationDeliveryTaskId.M03, MutationDeliveryTaskId.T01, MutationDeliveryTaskId.T02, MutationDeliveryTaskId.T03, MutationDeliveryTaskId.T04),
     )
+    // @formatter:on
 
     private fun task(
         id: MutationDeliveryTaskId,
@@ -43,7 +45,14 @@ internal object KastMutationDelivery {
         name: String,
         owner: MutationDeliveryOwner,
         vararg dependencies: MutationDeliveryTaskId,
-    ): MutationDeliveryTaskPolicy = MutationDeliveryTaskPolicy(id, phase, name, dependencies.toSet(), owner)
+    ): MutationDeliveryTaskPolicy = MutationDeliveryTaskPolicy(
+        id = id,
+        phase = phase,
+        name = name,
+        lifecycle = MutationDeliveryTaskLifecycle.OPEN,
+        dependsOn = dependencies.toSet(),
+        owner = owner,
+    )
 
     private fun module(id: ModuleId): MutationDeliveryOwner = MutationDeliveryOwner.Modules(setOf(id))
 

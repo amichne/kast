@@ -80,10 +80,20 @@ sealed interface ArchitectureViolation {
     data class ObsoleteLegacyAllowance(
         val allowance: LegacyAllowance,
     ) : ArchitectureViolation
+
+    data class ObsoleteLegacyMigration(
+        val migration: ValidatedLegacyMigrationEdge.Active,
+    ) : ArchitectureViolation
 }
 
 sealed interface ArchitectureAdmission {
-    data class Accepted(val retainedLegacyAllowances: Set<LegacyAllowance>) : ArchitectureAdmission
+    data class Accepted(
+        val retainedLegacyAllowances: Set<LegacyAllowance>,
+        val retainedLegacyMigrations: Map<
+            ProjectDependencyObservation,
+            ValidatedLegacyMigrationEdge.Active,
+            >,
+    ) : ArchitectureAdmission
 
     data class Rejected(val violations: Set<ArchitectureViolation>) : ArchitectureAdmission
 
@@ -92,7 +102,8 @@ sealed interface ArchitectureAdmission {
          * Proof transition: `(ValidatedArchitecturePolicy, ObservedArchitecture) -> ArchitectureAdmission`.
          *
          * Establishes exact active-module presence, planned-module absence, approved direct edges,
-         * permitted effects, and equality between observed legacy violations and their allowances.
+         * permitted effects, equality between observed legacy effects and their allowances, and
+         * equality between observed temporary dependencies and active validated migrations.
          * [Rejected] is the closed expected failure. Raw Gradle paths and class-file references may
          * be extracted only before constructing [ObservedArchitecture].
          */
@@ -111,11 +122,17 @@ sealed interface ArchitectureAdmission {
                     else -> null
                 }
             }
+            val observedTemporaryDependencies = observation.projectDependencies
+                .filterNot { edge ->
+                    edge.dependency in policy.modules.getValue(edge.consumer).allowedProjectDependencies
+                }
+                .toSet()
+            val activeMigrations = policy.legacyMigrationEdges.values
+                .filterIsInstance<ValidatedLegacyMigrationEdge.Active>()
+                .associateBy(ValidatedLegacyMigrationEdge.Active::dependency)
             val observedLegacyViolations = buildSet {
-                observation.projectDependencies
-                    .filterNot { edge ->
-                        edge.dependency in policy.modules.getValue(edge.consumer).allowedProjectDependencies
-                    }
+                observedTemporaryDependencies
+                    .filterNot(activeMigrations::containsKey)
                     .mapTo(this, LegacyViolationKey::UnapprovedProjectDependency)
                 observation.effects
                     .filterNot { effect ->
@@ -130,9 +147,15 @@ sealed interface ArchitectureAdmission {
             val obsolete = policy.legacyAllowances
                 .filterNot { it.violation in observedLegacyViolations }
                 .map(ArchitectureViolation::ObsoleteLegacyAllowance)
-            val violations = (lifecycleViolations + unbaselined + obsolete).toSet()
+            val obsoleteMigrations = activeMigrations
+                .filterKeys { it !in observedTemporaryDependencies }
+                .values
+                .map(ArchitectureViolation::ObsoleteLegacyMigration)
+            val violations = (
+                lifecycleViolations + unbaselined + obsolete + obsoleteMigrations
+                             ).toSet()
             return if (violations.isEmpty()) {
-                Accepted(policy.legacyAllowances)
+                Accepted(policy.legacyAllowances, activeMigrations)
             } else {
                 Rejected(violations)
             }

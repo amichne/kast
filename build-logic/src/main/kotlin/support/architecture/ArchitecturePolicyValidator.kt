@@ -1,6 +1,7 @@
 package support.architecture
 
 import support.architecture.baseline.KastArchitectureLegacyBaseline
+import support.architecture.baseline.KastArchitectureLegacyMigrations
 import support.architecture.process.KastMutationRuntimeProcesses
 import support.architecture.process.MutationRuntimeProcessPolicy
 
@@ -10,6 +11,7 @@ object KastArchitecturePolicy {
         mutationDeliveryTasks = KastMutationDelivery.all,
         mutationRuntimeProcesses = KastMutationRuntimeProcesses.all,
         legacyAllowances = KastArchitectureLegacyBaseline.all,
+        legacyMigrationEdges = KastArchitectureLegacyMigrations.all,
     )
 
     /**
@@ -28,7 +30,8 @@ object ArchitecturePolicyValidator {
      * Proof transition: `ArchitecturePolicyDefinition -> ValidatedArchitecturePolicy`.
      *
      * Establishes that every node is unique, every dependency and owner terminates at a declared
-     * node, every legacy allowance is exact, and all directed graphs are acyclic.
+     * node, every legacy allowance is exact, every migration is an open legacy-to-target edge
+     * with an open retirement task, and all directed graphs are acyclic.
      * [ArchitecturePolicyValidation.Invalid] retains every closed expected policy failure. Raw
      * graph extraction is permitted only at build-tool boundaries.
      */
@@ -74,6 +77,21 @@ object ArchitecturePolicyValidator {
                     .toSet()
             },
         )
+        val duplicateLegacyMigrations = definition.legacyMigrationEdges
+            .groupingBy(LegacyMigrationEdgePolicy::dependency)
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+            .map(ArchitecturePolicyFailure::DuplicateLegacyMigration)
+        val migrationValidations = definition.legacyMigrationEdges.map { migration ->
+            validateLegacyMigrationEdge(migration, modules, mutationDeliveryTasks)
+        }
+        val migrationFailures = migrationValidations
+            .filterIsInstance<LegacyMigrationEdgeValidation.Invalid>()
+            .flatMap(LegacyMigrationEdgeValidation.Invalid::failures)
+        val validatedMigrations = migrationValidations
+            .filterIsInstance<LegacyMigrationEdgeValidation.Valid>()
+            .associate { validation -> validation.migration.dependency to validation.migration }
         val duplicateAllowances = definition.legacyAllowances
             .groupingBy(LegacyAllowance::violation)
             .eachCount()
@@ -91,6 +109,9 @@ object ArchitecturePolicyValidator {
         val nonExactAllowances = definition.legacyAllowances
             .filterNot { it.isExact() }
             .map(ArchitecturePolicyFailure::NonExactLegacyAllowance)
+        val dependencyAllowances = definition.legacyAllowances
+            .filter { it.violation is LegacyViolationKey.UnapprovedProjectDependency }
+            .map(ArchitecturePolicyFailure::DependencyAllowanceRequiresMigration)
         val duplicateMutationRuntimeProcesses = definition.mutationRuntimeProcesses
             .groupingBy(MutationRuntimeProcessPolicy::id)
             .eachCount()
@@ -127,10 +148,13 @@ object ArchitecturePolicyValidator {
             mutationDeliverySort.cycle?.let {
                 add(ArchitecturePolicyFailure.MutationDeliveryDependencyCycle(it))
             }
+            addAll(duplicateLegacyMigrations)
+            addAll(migrationFailures)
             addAll(duplicateAllowances)
             addAll(missingRetirementTasks)
             addAll(missingLegacyModules)
             addAll(nonExactAllowances)
+            addAll(dependencyAllowances)
             addAll(duplicateMutationRuntimeProcesses)
             addAll(missingMutationRuntimeDependencies)
             addAll(missingMutationRuntimeOwners)
@@ -148,10 +172,91 @@ object ArchitecturePolicyValidator {
                     mutationDeliveryOrder = mutationDeliverySort.order,
                     mutationRuntimeProcessOrder = mutationRuntimeSort.order,
                     legacyAllowances = definition.legacyAllowances.toSet(),
+                    legacyMigrationEdges = validatedMigrations,
                 ),
             )
         } else {
             ArchitecturePolicyValidation.Invalid(failures)
+        }
+    }
+
+    /**
+     * Proof transition: `(LegacyMigrationEdgePolicy, module policy, delivery policy) ->
+     * ValidatedLegacyMigrationEdge`.
+     *
+     * Establishes an exact non-permanent edge from one active legacy host to one non-retired
+     * target, with an existing open retirement task and an admissible Planned or Active lifecycle.
+     * [LegacyMigrationEdgeValidation.Invalid] is the closed expected failure. Raw migration policy
+     * construction is permitted only in architecture source definitions and policy tests.
+     */
+    private fun validateLegacyMigrationEdge(
+        migration: LegacyMigrationEdgePolicy,
+        modules: Map<ModuleId, ModulePolicy>,
+        tasks: Map<MutationDeliveryTaskId, MutationDeliveryTaskPolicy>,
+    ): LegacyMigrationEdgeValidation {
+        val consumer = modules[migration.dependency.consumer]
+        val dependency = modules[migration.dependency.dependency]
+        val retirementTask = tasks[migration.retirementTask]
+        val failures = buildList {
+            if (consumer == null) {
+                add(
+                    ArchitecturePolicyFailure.MissingLegacyMigrationModule(
+                        migration,
+                        migration.dependency.consumer,
+                    ),
+                )
+            }
+            if (dependency == null) {
+                add(
+                    ArchitecturePolicyFailure.MissingLegacyMigrationModule(
+                        migration,
+                        migration.dependency.dependency,
+                    ),
+                )
+            }
+            if (
+                consumer != null && dependency != null &&
+                (
+                    consumer.role != ModuleRole.LEGACY_HOST ||
+                    consumer.lifecycle != ModuleLifecycle.ACTIVE ||
+                    dependency.role == ModuleRole.LEGACY_HOST ||
+                    dependency.lifecycle == ModuleLifecycle.RETIRED
+                )
+            ) {
+                add(ArchitecturePolicyFailure.InvalidLegacyMigrationDirection(migration))
+            }
+            if (
+                consumer != null &&
+                migration.dependency.dependency in consumer.allowedProjectDependencies
+            ) {
+                add(ArchitecturePolicyFailure.PermanentLegacyMigration(migration))
+            }
+            if (retirementTask == null) {
+                add(ArchitecturePolicyFailure.MissingLegacyMigrationRetirementTask(migration))
+            } else if (retirementTask.lifecycle == MutationDeliveryTaskLifecycle.COMPLETED) {
+                add(ArchitecturePolicyFailure.CompletedLegacyMigrationRetirementTask(migration))
+            }
+            if (migration.lifecycle == LegacyMigrationLifecycle.COMPLETED) {
+                add(ArchitecturePolicyFailure.CompletedLegacyMigration(migration))
+            }
+        }
+        if (failures.isNotEmpty()) return LegacyMigrationEdgeValidation.Invalid(failures)
+        return when (migration.lifecycle) {
+            LegacyMigrationLifecycle.PLANNED -> LegacyMigrationEdgeValidation.Valid(
+                ValidatedLegacyMigrationEdge.Planned(
+                    migration.dependency,
+                    migration.retirementTask,
+                ),
+            )
+            LegacyMigrationLifecycle.ACTIVE -> LegacyMigrationEdgeValidation.Valid(
+                ValidatedLegacyMigrationEdge.Active(
+                    migration.dependency,
+                    migration.retirementTask,
+                ),
+            )
+            LegacyMigrationLifecycle.COMPLETED -> LegacyMigrationEdgeValidation.Invalid(
+                listOf(ArchitecturePolicyFailure.CompletedLegacyMigration(migration)),
+            )
         }
     }
 
@@ -214,4 +319,14 @@ object ArchitecturePolicyValidator {
         val order: List<T>,
         val cycle: Set<T>?,
     )
+
+    private sealed interface LegacyMigrationEdgeValidation {
+        data class Valid(
+            val migration: ValidatedLegacyMigrationEdge,
+        ) : LegacyMigrationEdgeValidation
+
+        data class Invalid(
+            val failures: List<ArchitecturePolicyFailure>,
+        ) : LegacyMigrationEdgeValidation
+    }
 }

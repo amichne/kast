@@ -133,6 +133,33 @@ data class LegacyAllowance(
     val retirementTask: MutationDeliveryTaskId,
 )
 
+enum class LegacyMigrationLifecycle {
+    PLANNED,
+    ACTIVE,
+    COMPLETED,
+}
+
+data class LegacyMigrationEdgePolicy(
+    val dependency: ProjectDependencyObservation,
+    val lifecycle: LegacyMigrationLifecycle,
+    val retirementTask: MutationDeliveryTaskId,
+)
+
+sealed interface ValidatedLegacyMigrationEdge {
+    val dependency: ProjectDependencyObservation
+    val retirementTask: MutationDeliveryTaskId
+
+    class Planned internal constructor(
+        override val dependency: ProjectDependencyObservation,
+        override val retirementTask: MutationDeliveryTaskId,
+    ) : ValidatedLegacyMigrationEdge
+
+    class Active internal constructor(
+        override val dependency: ProjectDependencyObservation,
+        override val retirementTask: MutationDeliveryTaskId,
+    ) : ValidatedLegacyMigrationEdge
+}
+
 enum class MutationDeliveryPhase {
     FOUNDATION,
     PLANNING,
@@ -153,6 +180,11 @@ enum class MutationDeliveryTaskId {
     T01, T02, T03, T04, T05,
 }
 
+enum class MutationDeliveryTaskLifecycle {
+    OPEN,
+    COMPLETED,
+}
+
 sealed interface MutationDeliveryOwner {
     data object BuildLogic : MutationDeliveryOwner
 
@@ -165,6 +197,7 @@ data class MutationDeliveryTaskPolicy(
     val id: MutationDeliveryTaskId,
     val phase: MutationDeliveryPhase,
     val name: String,
+    val lifecycle: MutationDeliveryTaskLifecycle,
     val dependsOn: Set<MutationDeliveryTaskId>,
     val owner: MutationDeliveryOwner,
 )
@@ -174,6 +207,7 @@ data class ArchitecturePolicyDefinition(
     val mutationDeliveryTasks: List<MutationDeliveryTaskPolicy>,
     val mutationRuntimeProcesses: List<MutationRuntimeProcessPolicy>,
     val legacyAllowances: List<LegacyAllowance> = emptyList(),
+    val legacyMigrationEdges: List<LegacyMigrationEdgePolicy> = emptyList(),
 )
 
 sealed interface ArchitecturePolicyFailure {
@@ -219,6 +253,39 @@ sealed interface ArchitecturePolicyFailure {
         val allowance: LegacyAllowance,
     ) : ArchitecturePolicyFailure
 
+    data class DependencyAllowanceRequiresMigration(
+        val allowance: LegacyAllowance,
+    ) : ArchitecturePolicyFailure
+
+    data class DuplicateLegacyMigration(
+        val dependency: ProjectDependencyObservation,
+    ) : ArchitecturePolicyFailure
+
+    data class MissingLegacyMigrationModule(
+        val migration: LegacyMigrationEdgePolicy,
+        val missing: ModuleId,
+    ) : ArchitecturePolicyFailure
+
+    data class InvalidLegacyMigrationDirection(
+        val migration: LegacyMigrationEdgePolicy,
+    ) : ArchitecturePolicyFailure
+
+    data class CompletedLegacyMigration(
+        val migration: LegacyMigrationEdgePolicy,
+    ) : ArchitecturePolicyFailure
+
+    data class MissingLegacyMigrationRetirementTask(
+        val migration: LegacyMigrationEdgePolicy,
+    ) : ArchitecturePolicyFailure
+
+    data class CompletedLegacyMigrationRetirementTask(
+        val migration: LegacyMigrationEdgePolicy,
+    ) : ArchitecturePolicyFailure
+
+    data class PermanentLegacyMigration(
+        val migration: LegacyMigrationEdgePolicy,
+    ) : ArchitecturePolicyFailure
+
     data class DuplicateMutationRuntimeProcess(val id: MutationRuntimeProcessId) : ArchitecturePolicyFailure
 
     data class MissingMutationRuntimeProcessDependency(
@@ -250,4 +317,5 @@ class ValidatedArchitecturePolicy internal constructor(
     val mutationDeliveryOrder: List<MutationDeliveryTaskId>,
     val mutationRuntimeProcessOrder: List<MutationRuntimeProcessId>,
     val legacyAllowances: Set<LegacyAllowance>,
+    val legacyMigrationEdges: Map<ProjectDependencyObservation, ValidatedLegacyMigrationEdge>,
 )

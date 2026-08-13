@@ -25,7 +25,6 @@ import support.architecture.BytecodeScanOutcome
 import support.architecture.JvmEffectScanner
 import support.architecture.KastArchitecturePolicy
 import support.architecture.LegacyViolationKey
-import support.architecture.ModuleId
 import support.architecture.ObservedArchitecture
 import support.architecture.ValidatedArchitecturePolicy
 import support.architecture.projection.ArchitectureProjection
@@ -109,6 +108,11 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
                         "The exact migration baseline remains fully observed.",
                         "count" to admission.retainedLegacyAllowances.size.toString(),
                     ),
+                    finding(
+                        "RETAINED_LEGACY_MIGRATIONS",
+                        "Every active temporary dependency remains exactly observed.",
+                        "count" to admission.retainedLegacyMigrations.size.toString(),
+                    ),
                 ),
             )
             is ArchitectureAdmission.Rejected -> fail(
@@ -170,7 +174,10 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         }
     }
 
-    private fun fail(status: String, findings: List<ArchitectureReportFinding>): Nothing {
+    private fun fail(
+        status: String,
+        findings: List<ArchitectureReportFinding>,
+    ): Nothing {
         writeReport(status, findings)
         throw GradleException(
             buildString {
@@ -180,7 +187,10 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         )
     }
 
-    private fun writeReport(status: String, findings: List<ArchitectureReportFinding>) {
+    private fun writeReport(
+        status: String,
+        findings: List<ArchitectureReportFinding>,
+    ) {
         val target = reportFile.get().asFile.toPath()
         Files.createDirectories(target.parent)
         val renderedFindings = findings.joinToString(",") { it.renderJson() }
@@ -199,7 +209,7 @@ private fun canonicalPolicy(): ValidatedArchitecturePolicy = when (val policy = 
     is ArchitecturePolicyValidation.Valid -> policy.architecture
     is ArchitecturePolicyValidation.Invalid -> throw GradleException(
         "Canonical Kast repository architecture policy is invalid:\n" +
-            policy.failures.joinToString("\n") { " - $it" },
+        policy.failures.joinToString("\n") { " - $it" },
     )
 }
 
@@ -224,6 +234,13 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
         violation.allowance.violation.toString(),
         "retirementTask" to violation.allowance.retirementTask.name,
     )
+    is ArchitectureViolation.ObsoleteLegacyMigration -> finding(
+        "OBSOLETE_LEGACY_MIGRATION",
+        violation.migration.dependency.toString(),
+        "consumer" to violation.migration.dependency.consumer.projectPath,
+        "dependency" to violation.migration.dependency.dependency.projectPath,
+        "retirementTask" to violation.migration.retirementTask.name,
+    )
     is ArchitectureViolation.UnbaselinedLegacyViolation -> when (val key = violation.violation) {
         is LegacyViolationKey.UnapprovedProjectDependency -> finding(
             "UNAPPROVED_PROJECT_DEPENDENCY",
@@ -235,8 +252,8 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
             finding(
                 "FORBIDDEN_EFFECT",
                 "${module.projectPath} ${effect.name} " +
-                    "${caller.owner.internalName}.${caller.name.value}${caller.descriptor.value} -> " +
-                    "${target.owner.internalName}.${target.name.value}${target.descriptor.value}",
+                "${caller.owner.internalName}.${caller.name.value}${caller.descriptor.value} -> " +
+                "${target.owner.internalName}.${target.name.value}${target.descriptor.value}",
                 "module" to module.projectPath,
                 "effect" to effect.name,
                 "callerOwner" to caller.owner.internalName,
@@ -272,7 +289,7 @@ private data class ArchitectureReportFinding(
         val renderedAttributes = attributes.entries.sortedBy(Map.Entry<String, String>::key)
             .joinToString(",") { (key, value) -> "\"${key.reportEscape()}\":\"${value.reportEscape()}\"" }
         return "{\"code\":\"${code.reportEscape()}\",\"message\":\"${message.reportEscape()}\"," +
-            "\"attributes\":{$renderedAttributes}}"
+               "\"attributes\":{$renderedAttributes}}"
     }
 }
 

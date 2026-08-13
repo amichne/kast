@@ -23,15 +23,34 @@ class ArchitectureProjectionTest {
         val root = Json.parseToJsonElement(first).jsonObject
 
         assertEquals(first, second)
-        assertEquals(3, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(4, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("KOTLIN", root.getValue("policyAuthority").jsonPrimitive.content)
         assertEquals("REPOSITORY_WIDE", root.getValue("enforcementScope").jsonPrimitive.content)
         assertEquals("MUTATION", root.getValue("workflowScope").jsonPrimitive.content)
         assertEquals(37, root.getValue("modules").jsonArray.size)
         assertEquals(20, root.getValue("mutationRuntimeProcesses").jsonArray.size)
         assertEquals(33, root.getValue("mutationDeliveryTasks").jsonArray.size)
+        assertEquals(1, root.getValue("legacyMigrationEdges").jsonArray.size)
         assertEquals(74, root.getValue("legacyAllowances").jsonArray.size)
         assertTrue(first.endsWith("\n"))
+    }
+
+    @Test
+    fun `migration projection preserves lifecycle and retirement task`() {
+        val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
+            KastArchitecturePolicy.validate(),
+        ).architecture
+        val root = Json.parseToJsonElement(ArchitectureProjection.render(architecture)).jsonObject
+        val migration = root.getValue("legacyMigrationEdges").jsonArray.single().jsonObject
+        val retirementTask = root.getValue("mutationDeliveryTasks").jsonArray
+            .single { task -> task.jsonObject.getValue("id").jsonPrimitive.content == "F04" }
+            .jsonObject
+
+        assertEquals(":analysis-server", migration.getValue("consumer").jsonPrimitive.content)
+        assertEquals(":runtime:bindings", migration.getValue("dependency").jsonPrimitive.content)
+        assertEquals("PLANNED", migration.getValue("lifecycle").jsonPrimitive.content)
+        assertEquals("F04", migration.getValue("retirementTask").jsonPrimitive.content)
+        assertEquals("OPEN", retirementTask.getValue("lifecycle").jsonPrimitive.content)
     }
 
     @Test
