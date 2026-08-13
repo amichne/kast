@@ -60,6 +60,8 @@ REQUIRED_ENVIRONMENT_INPUTS = {
 }
 REQUIRED_STAGE_TIMINGS = {
     "admissionQueueNanos",
+    "resourceQueueNanos",
+    "resourceAdmissionNanos",
     "smartModeOrTransitionWaitNanos",
     "searchScopeCompilationNanos",
     "nativeQueryNanos",
@@ -274,6 +276,8 @@ def validate_performance_increments(ledger: dict[str, object]) -> None:
         "projectionSerializationNanos",
     }
     not_applicable = {
+        "resourceQueueNanos",
+        "resourceAdmissionNanos",
         "smartModeOrTransitionWaitNanos",
         "persistenceOrPublicationNanos",
     }

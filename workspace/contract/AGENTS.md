@@ -10,6 +10,9 @@ physical effects.
   lease.
 - `WorkspaceSearchScopeModel.kt` owns detached, exact Gradle project/source-set/root ownership,
   model-declared production/test kind, and authored/generated provenance.
+- `WorkspaceResourcePolicy.kt` owns validated admission limits and pressure thresholds.
+- `WorkspaceResourceObservation.kt` owns detached resource observations, blockers, recovery
+  actions, and separately timed admission outcomes.
 
 ## Dependency boundary
 
@@ -26,12 +29,17 @@ physical effects.
 - A semantic read lease always carries both canonical root and published evidence generation.
 - A compiled search-scope model requires a complete imported model, known source kind and
   provenance, workspace-contained roots, and one coherent Gradle project owner per exact root.
+- Resource policy admits only validated positive limits, bounded percentages, and non-negative
+  counts. Ordinary reads are not an expensive-work kind and cannot consume an initiation slot.
+- Heap, EDT, capacity, queue, timeout, interruption, and initiation failure remain distinct typed
+  blockers with explicit recovery actions.
 - Contract values are immutable detached data and retain no live host object or callback.
 
 ## Verification ladder
 
 1. Run `./gradlew :workspace:contract:test --tests io.github.amichne.kast.workspace.contract.SemanticReadLeaseContractTest`.
 2. Run `./gradlew :workspace:contract:test --tests '*SourceRoot*PolicyTest'` after scope-model changes.
-3. Run `./gradlew :workspace:contract:test`.
-4. Run `./gradlew verifyKastArchitecture --configuration-cache`.
-5. Run direct SPI and adapter consumers after changing a public contract.
+3. Run `./gradlew :workspace:contract:test --tests '*WorkspaceResourcePolicyTest'` after resource-contract changes.
+4. Run `./gradlew :workspace:contract:test`.
+5. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+6. Run direct SPI and adapter consumers after changing a public contract.

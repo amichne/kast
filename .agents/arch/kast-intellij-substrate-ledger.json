@@ -150,6 +150,8 @@
     ],
     "stageTimings": [
       "admissionQueueNanos",
+      "resourceQueueNanos",
+      "resourceAdmissionNanos",
       "smartModeOrTransitionWaitNanos",
       "searchScopeCompilationNanos",
       "nativeQueryNanos",
@@ -283,6 +285,12 @@
         "admissionQueueNanos": {
           "state": "MEASURED",
           "nanoseconds": 5678209
+        },
+        "resourceQueueNanos": {
+          "state": "NOT_APPLICABLE"
+        },
+        "resourceAdmissionNanos": {
+          "state": "NOT_APPLICABLE"
         },
         "smartModeOrTransitionWaitNanos": {
           "state": "NOT_APPLICABLE"

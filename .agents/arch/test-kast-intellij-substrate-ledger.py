@@ -101,7 +101,7 @@ def main() -> int:
         )
 
         missing_increment_stage = copy.deepcopy(ledger)
-        del missing_increment_stage["performanceIncrements"][0]["stageObservations"]["nativeQueryNanos"]
+        del missing_increment_stage["performanceIncrements"][0]["stageObservations"]["resourceAdmissionNanos"]
         require_rejected(
             scratch,
             "missing-increment-stage",
