@@ -128,7 +128,7 @@ object ArchitecturePolicyValidator {
             .keys
             .map(ArchitecturePolicyFailure::DuplicateLegacyMigration)
         val migrationValidations = definition.legacyMigrationEdges.map { migration ->
-            validateLegacyMigrationEdge(migration, modules, mutationDeliveryTasks)
+            LegacyMigrationEdgeValidator.validate(migration, modules, mutationDeliveryTasks)
         }
         val migrationFailures = migrationValidations
             .filterIsInstance<LegacyMigrationEdgeValidation.Invalid>()
@@ -241,86 +241,6 @@ object ArchitecturePolicyValidator {
         }
     }
 
-    /**
-     * Proof transition: `(LegacyMigrationEdgePolicy, module policy, delivery policy) ->
-     * ValidatedLegacyMigrationEdge`.
-     *
-     * Establishes an exact non-permanent edge from one active legacy host to one non-retired
-     * target, with an existing open retirement task and an admissible Planned or Active lifecycle.
-     * [LegacyMigrationEdgeValidation.Invalid] is the closed expected failure. Raw migration policy
-     * construction is permitted only in architecture source definitions and policy tests.
-     */
-    private fun validateLegacyMigrationEdge(
-        migration: LegacyMigrationEdgePolicy,
-        modules: Map<ModuleId, ModulePolicy>,
-        tasks: Map<MutationDeliveryTaskId, MutationDeliveryTaskPolicy>,
-    ): LegacyMigrationEdgeValidation {
-        val consumer = modules[migration.dependency.consumer]
-        val dependency = modules[migration.dependency.dependency]
-        val retirementTask = tasks[migration.retirementTask]
-        val failures = buildList {
-            if (consumer == null) {
-                add(
-                    ArchitecturePolicyFailure.MissingLegacyMigrationModule(
-                        migration,
-                        migration.dependency.consumer,
-                    ),
-                )
-            }
-            if (dependency == null) {
-                add(
-                    ArchitecturePolicyFailure.MissingLegacyMigrationModule(
-                        migration,
-                        migration.dependency.dependency,
-                    ),
-                )
-            }
-            if (
-                consumer != null && dependency != null &&
-                (
-                    consumer.role != ModuleRole.LEGACY_HOST ||
-                    consumer.lifecycle != ModuleLifecycle.ACTIVE ||
-                    dependency.role == ModuleRole.LEGACY_HOST ||
-                    dependency.lifecycle == ModuleLifecycle.RETIRED
-                )
-            ) {
-                add(ArchitecturePolicyFailure.InvalidLegacyMigrationDirection(migration))
-            }
-            if (
-                consumer != null &&
-                migration.dependency.dependency in consumer.allowedProjectDependencies
-            ) {
-                add(ArchitecturePolicyFailure.PermanentLegacyMigration(migration))
-            }
-            if (retirementTask == null) {
-                add(ArchitecturePolicyFailure.MissingLegacyMigrationRetirementTask(migration))
-            } else if (retirementTask.lifecycle == MutationDeliveryTaskLifecycle.COMPLETED) {
-                add(ArchitecturePolicyFailure.CompletedLegacyMigrationRetirementTask(migration))
-            }
-            if (migration.lifecycle == LegacyMigrationLifecycle.COMPLETED) {
-                add(ArchitecturePolicyFailure.CompletedLegacyMigration(migration))
-            }
-        }
-        if (failures.isNotEmpty()) return LegacyMigrationEdgeValidation.Invalid(failures)
-        return when (migration.lifecycle) {
-            LegacyMigrationLifecycle.PLANNED -> LegacyMigrationEdgeValidation.Valid(
-                ValidatedLegacyMigrationEdge.Planned(
-                    migration.dependency,
-                    migration.retirementTask,
-                ),
-            )
-            LegacyMigrationLifecycle.ACTIVE -> LegacyMigrationEdgeValidation.Valid(
-                ValidatedLegacyMigrationEdge.Active(
-                    migration.dependency,
-                    migration.retirementTask,
-                ),
-            )
-            LegacyMigrationLifecycle.COMPLETED -> LegacyMigrationEdgeValidation.Invalid(
-                listOf(ArchitecturePolicyFailure.CompletedLegacyMigration(migration)),
-            )
-        }
-    }
-
     private fun MutationDeliveryOwner.moduleIds(): Set<ModuleId> = when (this) {
         MutationDeliveryOwner.BuildLogic,
         MutationDeliveryOwner.EndToEndCorpus,
@@ -380,14 +300,4 @@ object ArchitecturePolicyValidator {
         val order: List<T>,
         val cycle: Set<T>?,
     )
-
-    private sealed interface LegacyMigrationEdgeValidation {
-        data class Valid(
-            val migration: ValidatedLegacyMigrationEdge,
-        ) : LegacyMigrationEdgeValidation
-
-        data class Invalid(
-            val failures: List<ArchitecturePolicyFailure>,
-        ) : LegacyMigrationEdgeValidation
-    }
 }

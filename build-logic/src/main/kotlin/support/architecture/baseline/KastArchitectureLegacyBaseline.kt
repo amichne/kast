@@ -139,6 +139,9 @@ internal object KastArchitectureLegacyMigrations {
             retirementTask = MutationDeliveryTaskId.F04,
         ),
     )
+
+    val admittedDependencies: Set<ProjectDependencyObservation> =
+        all.mapTo(linkedSetOf(), LegacyMigrationEdgePolicy::dependency)
 }
 
 private class LegacyEffectAllowanceScope(

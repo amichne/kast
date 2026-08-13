@@ -298,6 +298,15 @@ sealed interface ArchitecturePolicyFailure {
         val dependency: ProjectDependencyObservation,
     ) : ArchitecturePolicyFailure
 
+    data class UnadmittedLegacyMigration(
+        val migration: LegacyMigrationEdgePolicy,
+    ) : ArchitecturePolicyFailure
+
+    data class InvalidLegacyMigrationTarget(
+        val migration: LegacyMigrationEdgePolicy,
+        val failures: Set<LegacyMigrationTargetFailure>,
+    ) : ArchitecturePolicyFailure
+
     data class MissingLegacyMigrationModule(
         val migration: LegacyMigrationEdgePolicy,
         val missing: ModuleId,
@@ -342,6 +351,11 @@ sealed interface ArchitecturePolicyFailure {
     data class InvalidMutationRuntimeTopology(
         val failure: MutationRuntimeTopologyFailure,
     ) : ArchitecturePolicyFailure
+}
+
+enum class LegacyMigrationTargetFailure {
+    TARGET_ROLE_NOT_INWARD,
+    TARGET_RETIRED,
 }
 
 sealed interface ArchitecturePolicyValidation {

@@ -28,6 +28,43 @@ class LegacyMigrationPolicyTest {
     }
 
     @Test
+    fun `migration ceiling permits subtraction and rejects exact growth`() {
+        val canonical = KastArchitecturePolicy.definition()
+        assertInstanceOf<ArchitecturePolicyValidation.Valid>(
+            ArchitecturePolicyValidator.validate(
+                canonical.copy(legacyMigrationEdges = emptyList()),
+            ),
+        )
+
+        val added = migration(LegacyMigrationLifecycle.PLANNED).copy(
+            dependency = ProjectDependencyObservation(
+                ModuleId.ANALYSIS_API,
+                ModuleId.SYMBOL_CONTRACT,
+            ),
+        )
+        assertFailure<ArchitecturePolicyFailure.UnadmittedLegacyMigration>(
+            canonical.copy(
+                legacyAllowances = emptyList(),
+                legacyMigrationEdges = canonical.legacyMigrationEdges + added,
+            ),
+        )
+    }
+
+    @Test
+    fun `physical adapter migration target fails closed`() {
+        val physicalTarget = migration(LegacyMigrationLifecycle.PLANNED).copy(
+            dependency = ProjectDependencyObservation(
+                ModuleId.ANALYSIS_SERVER,
+                ModuleId.EVIDENCE_SQLITE,
+            ),
+        )
+
+        assertFailure<ArchitecturePolicyFailure.InvalidLegacyMigrationTarget>(
+            definition(physicalTarget),
+        )
+    }
+
+    @Test
     fun `only an observed active migration is admitted`() {
         val plannedArchitecture = validatedDefinition(
             edge = migration(LegacyMigrationLifecycle.PLANNED),
