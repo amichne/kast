@@ -27,7 +27,7 @@ class ArchitectureProjectionTest {
         assertEquals("KOTLIN", root.getValue("policyAuthority").jsonPrimitive.content)
         assertEquals("REPOSITORY_WIDE", root.getValue("enforcementScope").jsonPrimitive.content)
         assertEquals("MUTATION", root.getValue("workflowScope").jsonPrimitive.content)
-        assertEquals(31, root.getValue("modules").jsonArray.size)
+        assertEquals(37, root.getValue("modules").jsonArray.size)
         assertEquals(20, root.getValue("mutationRuntimeProcesses").jsonArray.size)
         assertEquals(33, root.getValue("mutationDeliveryTasks").jsonArray.size)
         assertEquals(74, root.getValue("legacyAllowances").jsonArray.size)

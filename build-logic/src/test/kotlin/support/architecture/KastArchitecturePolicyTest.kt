@@ -8,6 +8,107 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class KastArchitecturePolicyTest {
     @Test
+    fun `planned native read slice declares its final inward dependencies`() {
+        val architecture = canonicalWithoutLegacyAllowances()
+        val modulesByPath = architecture.modules.values.associateBy { it.id.projectPath }
+        val expected = mapOf(
+            ":workspace:spi" to (ModuleRole.SPI to setOf(":workspace:contract")),
+            ":evidence:contract" to (
+                ModuleRole.CONTRACT to setOf(":kernel", ":workspace:contract")
+                                    ),
+            ":evidence:spi" to (
+                ModuleRole.SPI to setOf(":evidence:contract", ":workspace:contract")
+                               ),
+            ":evidence:sqlite" to (
+                ModuleRole.SQLITE_ADAPTER to
+                    setOf(":evidence:contract", ":evidence:spi", ":workspace:contract")
+                                  ),
+            ":workspace:service" to (
+                ModuleRole.SERVICE to
+                    setOf(":evidence:spi", ":workspace:contract", ":workspace:spi")
+                                    ),
+            ":workspace:intellij" to (
+                ModuleRole.WORKSPACE_ADAPTER to setOf(":workspace:contract", ":workspace:spi")
+                                     ),
+            ":symbol:contract" to (
+                ModuleRole.CONTRACT to setOf(":kernel", ":workspace:contract")
+                                  ),
+            ":symbol:intellij" to (
+                ModuleRole.INTELLIJ_READ_ADAPTER to
+                    setOf(":symbol:contract", ":workspace:contract", ":workspace:spi")
+                                  ),
+            ":protocol:continuation" to (
+                ModuleRole.SERVICE to setOf(":kernel", ":workspace:contract")
+                                        ),
+            ":runtime:bindings" to (
+                ModuleRole.CONTRACT to
+                    setOf(":change:contract", ":kernel", ":symbol:contract", ":workspace:contract")
+                                   ),
+        )
+
+        assertEquals(expected.keys, expected.keys.intersect(modulesByPath.keys))
+        assertTrue(":runtime:bindings:contract" !in modulesByPath)
+        expected.forEach { (path, expectedPolicy) ->
+            val module = modulesByPath.getValue(path)
+            assertEquals(ModuleLifecycle.PLANNED, module.lifecycle, path)
+            assertEquals(expectedPolicy.first, module.role, path)
+            assertEquals(
+                expectedPolicy.second,
+                module.allowedProjectDependencies.mapTo(mutableSetOf()) { it.projectPath },
+                path,
+            )
+        }
+    }
+
+    @Test
+    fun `canonical services and physical adapters depend only on inward boundaries`() {
+        val architecture = canonicalWithoutLegacyAllowances()
+        val inwardRoles = setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.SPI)
+        val consumers = setOf(
+            ModuleRole.SERVICE,
+            ModuleRole.INTELLIJ_READ_ADAPTER,
+            ModuleRole.INTELLIJ_WRITE_ADAPTER,
+            ModuleRole.FILESYSTEM_WRITE_ADAPTER,
+            ModuleRole.SQLITE_ADAPTER,
+            ModuleRole.WORKSPACE_ADAPTER,
+        )
+        val outwardDependencies = architecture.modules.values
+            .filter { it.role in consumers }
+            .flatMap { module ->
+                module.allowedProjectDependencies
+                    .filter { architecture.modules.getValue(it).role !in inwardRoles }
+                    .map { ProjectDependencyObservation(module.id, it) }
+            }
+            .toSet()
+        val featureContractsDependingOnRegistry = architecture.modules.values
+            .filter { module ->
+                module.role == ModuleRole.CONTRACT &&
+                module.id != ModuleId.PROTOCOL_REGISTRY &&
+                ModuleId.PROTOCOL_REGISTRY in module.allowedProjectDependencies
+            }
+            .mapTo(mutableSetOf(), ModulePolicy::id)
+
+        assertEquals(emptySet<ProjectDependencyObservation>(), outwardDependencies)
+        assertEquals(emptySet<ModuleId>(), featureContractsDependingOnRegistry)
+    }
+
+    @Test
+    fun `runtime composition is the sole complete implementation owner`() {
+        val architecture = canonicalWithoutLegacyAllowances()
+        val compositions = architecture.modules.values.filter { it.role == ModuleRole.COMPOSITION }
+        val composition = compositions.single()
+        val legacyHosts = architecture.modules.values
+            .filter { it.role == ModuleRole.LEGACY_HOST }
+            .mapTo(mutableSetOf(), ModulePolicy::id)
+
+        assertEquals(ModuleId.RUNTIME_COMPOSITION, composition.id)
+        assertEquals(
+            architecture.modules.keys - legacyHosts - ModuleId.RUNTIME_COMPOSITION,
+            composition.allowedProjectDependencies,
+        )
+    }
+
+    @Test
     fun `canonical policy is typed acyclic and migration aware`() {
         val validation = KastArchitecturePolicy.validate()
 
@@ -22,15 +123,15 @@ class KastArchitecturePolicyTest {
         )
         assertTrue(
             valid.architecture.moduleOrder.indexOf(ModuleId.CHANGE_APPLY_SPI) <
-                valid.architecture.moduleOrder.indexOf(ModuleId.CHANGE_APPLY_INTELLIJ),
+            valid.architecture.moduleOrder.indexOf(ModuleId.CHANGE_APPLY_INTELLIJ),
         )
         assertTrue(
             valid.architecture.mutationDeliveryOrder.indexOf(MutationDeliveryTaskId.F02) <
-                valid.architecture.mutationDeliveryOrder.indexOf(MutationDeliveryTaskId.F03),
+            valid.architecture.mutationDeliveryOrder.indexOf(MutationDeliveryTaskId.F03),
         )
         assertTrue(
             valid.architecture.mutationRuntimeProcessOrder.indexOf(MutationRuntimeProcessId.RP10) <
-                valid.architecture.mutationRuntimeProcessOrder.indexOf(MutationRuntimeProcessId.RP11S),
+            valid.architecture.mutationRuntimeProcessOrder.indexOf(MutationRuntimeProcessId.RP11S),
         )
         assertEquals(74, valid.architecture.legacyAllowances.size)
     }

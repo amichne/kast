@@ -41,8 +41,14 @@ enum class ModuleId(val projectPath: String) {
     KERNEL(":kernel"),
     PROTOCOL_REGISTRY(":protocol:registry"),
     WORKSPACE_CONTRACT(":workspace:contract"),
+    WORKSPACE_SPI(":workspace:spi"),
     WORKSPACE_SERVICE(":workspace:service"),
     WORKSPACE_INTELLIJ(":workspace:intellij"),
+    EVIDENCE_CONTRACT(":evidence:contract"),
+    EVIDENCE_SPI(":evidence:spi"),
+    SYMBOL_CONTRACT(":symbol:contract"),
+    SYMBOL_INTELLIJ(":symbol:intellij"),
+    PROTOCOL_CONTINUATION(":protocol:continuation"),
     CHANGE_CONTRACT(":change:contract"),
     CHANGE_PLAN_SPI(":change:plan:spi"),
     CHANGE_PLAN_INTELLIJ(":change:plan:intellij"),
@@ -62,7 +68,7 @@ enum class ModuleId(val projectPath: String) {
     CHANGE_VERIFY_INTELLIJ(":change:verify:intellij"),
     CHANGE_VERIFY_SERVICE(":change:verify:service"),
     EVIDENCE_SQLITE(":evidence:sqlite"),
-    RUNTIME_BINDINGS_CONTRACT(":runtime:bindings:contract"),
+    RUNTIME_BINDINGS(":runtime:bindings"),
     RUNTIME_COMPOSITION(":runtime:composition"),
     RUNTIME_SERVER(":runtime:server"),
 }
@@ -90,7 +96,11 @@ data class JvmMember(
     val descriptor: JvmDescriptor,
 ) {
     companion object {
-        fun of(owner: String, name: String, descriptor: String): JvmMember = JvmMember(
+        fun of(
+            owner: String,
+            name: String,
+            descriptor: String,
+        ): JvmMember = JvmMember(
             JvmClassName(owner),
             JvmMemberName(name),
             JvmDescriptor(descriptor),

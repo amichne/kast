@@ -62,11 +62,35 @@
       "allowedEffects": []
     },
     {
+      "id": "WORKSPACE_SPI",
+      "projectPath": ":workspace:spi",
+      "lifecycle": "PLANNED",
+      "role": "SPI",
+      "allowedProjectDependencies": [":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "EVIDENCE_CONTRACT",
+      "projectPath": ":evidence:contract",
+      "lifecycle": "PLANNED",
+      "role": "CONTRACT",
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "EVIDENCE_SPI",
+      "projectPath": ":evidence:spi",
+      "lifecycle": "PLANNED",
+      "role": "SPI",
+      "allowedProjectDependencies": [":evidence:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
       "id": "EVIDENCE_SQLITE",
       "projectPath": ":evidence:sqlite",
       "lifecycle": "PLANNED",
       "role": "SQLITE_ADAPTER",
-      "allowedProjectDependencies": [":workspace:contract"],
+      "allowedProjectDependencies": [":evidence:contract", ":evidence:spi", ":workspace:contract"],
       "allowedEffects": ["JDBC"]
     },
     {
@@ -74,7 +98,7 @@
       "projectPath": ":workspace:service",
       "lifecycle": "PLANNED",
       "role": "SERVICE",
-      "allowedProjectDependencies": [":evidence:sqlite", ":workspace:contract"],
+      "allowedProjectDependencies": [":evidence:spi", ":workspace:contract", ":workspace:spi"],
       "allowedEffects": []
     },
     {
@@ -82,15 +106,39 @@
       "projectPath": ":workspace:intellij",
       "lifecycle": "PLANNED",
       "role": "WORKSPACE_ADAPTER",
-      "allowedProjectDependencies": [":workspace:contract", ":workspace:service"],
+      "allowedProjectDependencies": [":workspace:contract", ":workspace:spi"],
       "allowedEffects": ["GRADLE_IMPORT"]
+    },
+    {
+      "id": "SYMBOL_CONTRACT",
+      "projectPath": ":symbol:contract",
+      "lifecycle": "PLANNED",
+      "role": "CONTRACT",
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "SYMBOL_INTELLIJ",
+      "projectPath": ":symbol:intellij",
+      "lifecycle": "PLANNED",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "allowedProjectDependencies": [":symbol:contract", ":workspace:contract", ":workspace:spi"],
+      "allowedEffects": []
+    },
+    {
+      "id": "PROTOCOL_CONTINUATION",
+      "projectPath": ":protocol:continuation",
+      "lifecycle": "PLANNED",
+      "role": "SERVICE",
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
     },
     {
       "id": "CHANGE_CONTRACT",
       "projectPath": ":change:contract",
       "lifecycle": "PLANNED",
       "role": "CONTRACT",
-      "allowedProjectDependencies": [":kernel", ":protocol:registry"],
+      "allowedProjectDependencies": [":kernel"],
       "allowedEffects": []
     },
     {
@@ -146,7 +194,7 @@
       "projectPath": ":workspace:mutation:service",
       "lifecycle": "PLANNED",
       "role": "SERVICE",
-      "allowedProjectDependencies": [":workspace:contract", ":workspace:mutation:contract", ":workspace:service"],
+      "allowedProjectDependencies": [":workspace:contract", ":workspace:mutation:contract", ":workspace:spi"],
       "allowedEffects": []
     },
     {
@@ -178,7 +226,7 @@
       "projectPath": ":change:recovery:service",
       "lifecycle": "PLANNED",
       "role": "SERVICE",
-      "allowedProjectDependencies": [":change:journal:contract", ":change:recovery:contract", ":change:recovery:filesystem", ":workspace:contract"],
+      "allowedProjectDependencies": [":change:journal:contract", ":change:recovery:contract", ":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -230,11 +278,11 @@
       "allowedEffects": []
     },
     {
-      "id": "RUNTIME_BINDINGS_CONTRACT",
-      "projectPath": ":runtime:bindings:contract",
+      "id": "RUNTIME_BINDINGS",
+      "projectPath": ":runtime:bindings",
       "lifecycle": "PLANNED",
       "role": "CONTRACT",
-      "allowedProjectDependencies": [":change:contract"],
+      "allowedProjectDependencies": [":change:contract", ":kernel", ":symbol:contract", ":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -242,7 +290,7 @@
       "projectPath": ":runtime:server",
       "lifecycle": "PLANNED",
       "role": "TRANSPORT",
-      "allowedProjectDependencies": [":change:contract", ":protocol:registry", ":runtime:bindings:contract"],
+      "allowedProjectDependencies": [":change:contract", ":protocol:registry", ":runtime:bindings"],
       "allowedEffects": ["ANALYSIS_BACKEND"]
     },
     {
@@ -250,7 +298,7 @@
       "projectPath": ":runtime:composition",
       "lifecycle": "PLANNED",
       "role": "COMPOSITION",
-      "allowedProjectDependencies": [":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:sqlite", ":kernel", ":protocol:registry", ":runtime:bindings:contract", ":runtime:server", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service"],
+      "allowedProjectDependencies": [":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:contract", ":evidence:spi", ":evidence:sqlite", ":kernel", ":protocol:continuation", ":protocol:registry", ":runtime:bindings", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service", ":workspace:spi"],
       "allowedEffects": ["ANALYSIS_BACKEND"]
     }
   ],
