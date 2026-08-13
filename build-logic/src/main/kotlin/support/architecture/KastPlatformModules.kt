@@ -15,6 +15,9 @@ internal object KastPlatformModules {
             ModuleRole.LEGACY_HOST,
             ModuleId.ANALYSIS_API,
             ModuleId.ANALYSIS_SERVER,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_PLAN_INTELLIJ,
+            ModuleId.CHANGE_PLAN_SPI,
             ModuleId.EVIDENCE_SPI,
             ModuleId.INDEX_STORE,
             ModuleId.SYMBOL_CONTRACT,
@@ -85,18 +88,18 @@ internal object KastPlatformModules {
             ModuleId.KERNEL,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.KERNEL,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_PLAN_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_PLAN_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
             ModuleId.CHANGE_CONTRACT,

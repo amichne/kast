@@ -46,6 +46,16 @@
       "allowedEffects": []
     },
     {
+      "id": "CHANGE_CONTRACT",
+      "projectPath": ":change:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
       "id": "WORKSPACE_CONTRACT",
       "projectPath": ":workspace:contract",
       "lifecycle": "ACTIVE",
@@ -53,6 +63,26 @@
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
       "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_PLAN_SPI",
+      "projectPath": ":change:plan:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":change:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_PLAN_INTELLIJ",
+      "projectPath": ":change:plan:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
+      "allowedProjectDependencies": [":change:contract", ":change:plan:spi", ":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -132,18 +162,8 @@
       "role": "LEGACY_HOST",
       "cost": "LEGACY",
       "roleConvention": {"kind": "UNMARKED_LEGACY"},
-      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":evidence:spi", ":index-store", ":symbol:contract", ":symbol:intellij", ":workspace:intellij", ":workspace:service", ":workspace:spi"],
+      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":change:contract", ":change:plan:intellij", ":change:plan:spi", ":evidence:spi", ":index-store", ":symbol:contract", ":symbol:intellij", ":workspace:intellij", ":workspace:service", ":workspace:spi"],
       "allowedEffects": ["FILESYSTEM_WRITE"]
-    },
-    {
-      "id": "CHANGE_CONTRACT",
-      "projectPath": ":change:contract",
-      "lifecycle": "PLANNED",
-      "role": "CONTRACT",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel"],
-      "allowedEffects": []
     },
     {
       "id": "PROTOCOL_REGISTRY",
@@ -173,26 +193,6 @@
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
       "allowedProjectDependencies": [":kernel", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_PLAN_SPI",
-      "projectPath": ":change:plan:spi",
-      "lifecycle": "PLANNED",
-      "role": "SPI",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
-      "allowedProjectDependencies": [":change:contract", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_PLAN_INTELLIJ",
-      "projectPath": ":change:plan:intellij",
-      "lifecycle": "PLANNED",
-      "role": "INTELLIJ_READ_ADAPTER",
-      "cost": "BOUNDED_READ",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
-      "allowedProjectDependencies": [":change:contract", ":change:plan:spi", ":workspace:contract"],
       "allowedEffects": []
     },
     {

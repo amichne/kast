@@ -43,8 +43,9 @@ not a foreground IDE plugin.
 
 ## Dependency boundary
 
-- `analysis-api`, `analysis-server`, `index-store`, `symbol:contract`, and
-  `symbol:intellij` are `compileOnly` inputs and explicit
+- `analysis-api`, `analysis-server`, `index-store`, `symbol:contract`,
+  `symbol:intellij`, and the operation-specific `change` planning modules are
+  `compileOnly` inputs and explicit
   `indexerPluginRuntime` payloads. The private plugin payload owns these jars
   at runtime.
 - IntelliJ core libraries belong to the launcher runtime; Kotlin, Java, Gradle,
@@ -109,6 +110,13 @@ not a foreground IDE plugin.
   preimage, semantic generation, signature compatibility, complete outbound
   references, and postcondition. `MutationAttemptGate` serializes one exact-
   root attempt; stale attempt IDs, images, selectors, or generations conflict.
+- Add-declaration planning crosses the legacy backend only through
+  `IntellijAddDeclarationPlanner`. It returns a detached, generation-bound
+  `PlannedAddDeclaration` with one non-empty declared write set, exact Gradle
+  ownership, canonical compiler evidence, semantic delta, and verification
+  obligations. The `change:contract`, `change:plan:spi`, and
+  `change:plan:intellij` classpaths remain read-only and must not acquire source
+  mutation authority.
 - Native mutation effects preserve hard exclusions, symlink/root containment,
   durable parent/file writes, cancellation, and totalized scratch recovery.
   A successful edit is not a substitute for compiler postcondition proof.
@@ -145,9 +153,12 @@ not a foreground IDE plugin.
 
 1. Run the smallest relevant class:
    `./gradlew :indexer:test --tests '<fully.qualified.TestClass>'`.
-   For KIP-030 run
-   `io.github.amichne.kast.idea.backend.contract.mutation.addition.AddDeclarationIntellijProtocolTest`
-   plus `.agents/arch/test-kast-add-declaration-intellij-protocol.py`.
+    For KIP-030 run
+    `io.github.amichne.kast.idea.backend.contract.mutation.addition.AddDeclarationIntellijProtocolTest`
+    plus `.agents/arch/test-kast-add-declaration-intellij-protocol.py`.
+    For KIP-031 also run `:change:contract:test`,
+    `:change:plan:intellij:test`, and
+    `io.github.amichne.kast.idea.ExactAdditionPlannerContractTest`.
 2. Run `./gradlew :indexer:test` for Kotlin/Java source changes. The pinned IDEA
    distribution and platform plugins must be available.
 3. Run excluded suites explicitly when their risk applies, for example

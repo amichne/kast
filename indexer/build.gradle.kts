@@ -175,7 +175,6 @@ application {
 
 @Suppress("UNCHECKED_CAST")
 val buildVersion: Provider<String> = extra["buildVersion"] as Provider<String>
-
 val generatedResourcesDirectory = layout.buildDirectory.dir("generated-resources")
 val writeIndexerVersion by tasks.registering(WriteIndexerVersionTask::class) {
     indexerVersion.set(version.toString())
@@ -185,7 +184,6 @@ val writeIndexerVersion by tasks.registering(WriteIndexerVersionTask::class) {
 sourceSets.main {
     resources.srcDir(generatedResourcesDirectory)
 }
-
 tasks.named("processResources") {
     dependsOn(writeIndexerVersion)
 }
@@ -193,12 +191,13 @@ tasks.named("processResources") {
 tasks.named("sourcesJar") {
     dependsOn(writeIndexerVersion)
 }
-
 dependencies {
+    compileOnly(project(":change:contract"))
+    compileOnly(project(":change:plan:intellij"))
+    compileOnly(project(":change:plan:spi"))
     indexerIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
     }
-
     compileOnly(project(":analysis-api"))
     compileOnly(project(":analysis-server"))
     compileOnly(project(":evidence:spi"))
@@ -216,9 +215,10 @@ dependencies {
     compileOnly(kotlinPluginLibs)
     compileOnly(javaPluginLibs)
     compileOnly(gradlePluginLibs)
-
     indexerLauncherRuntime(ideaLibs)
-
+    indexerPluginRuntime(project(":change:contract"))
+    indexerPluginRuntime(project(":change:plan:intellij"))
+    indexerPluginRuntime(project(":change:plan:spi"))
     indexerPluginRuntime(project(":analysis-api"))
     indexerPluginRuntime(project(":analysis-server"))
     indexerPluginRuntime(project(":evidence:spi"))
@@ -232,7 +232,9 @@ dependencies {
     indexerPluginRuntime(libs.opentelemetry.api)
     indexerPluginRuntime(libs.opentelemetry.sdk)
     indexerPluginRuntime(libs.serialization.json)
-
+    testImplementation(project(":change:contract"))
+    testImplementation(project(":change:plan:intellij"))
+    testImplementation(project(":change:plan:spi"))
     testImplementation(project(":analysis-api"))
     testImplementation(project(":analysis-server"))
     testImplementation(project(":evidence:spi"))
@@ -252,7 +254,6 @@ dependencies {
     testImplementation("com.jetbrains.intellij.platform:test-framework:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:test-framework-junit5:$ideaPlatformBuild")
 }
-
 tasks.withType<Test>().configureEach {
     dependsOn(extractIdeaDistribution)
     jvmArgs(indexerJvmArguments)

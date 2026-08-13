@@ -317,7 +317,7 @@ internal class KastIndexerBackend(
         workspaceSemanticGate.current { planAddFileOperation(query) }
 
     override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult =
-        workspaceSemanticGate.current { planAddDeclarationOperation(query) }
+        workspaceSemanticGate.current { lease -> planAddDeclarationViaBinding(query, lease) }
 
     override suspend fun verifyMutationPostcondition(
         query: ParsedMutationPostconditionQuery,

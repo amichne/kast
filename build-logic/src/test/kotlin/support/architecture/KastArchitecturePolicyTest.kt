@@ -9,6 +9,33 @@ import kotlin.collections.filter
 
 class KastArchitecturePolicyTest {
     @Test
+    fun `plan-only add declaration activates narrow owners without source-write authority`() {
+        val architecture = canonicalWithoutLegacyAllowances()
+        val expectedOwners = setOf(
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_PLAN_SPI,
+            ModuleId.CHANGE_PLAN_INTELLIJ,
+        )
+
+        assertTrue(
+            expectedOwners.all { owner ->
+                architecture.modules.getValue(owner).lifecycle == ModuleLifecycle.ACTIVE
+            },
+        )
+        assertTrue(
+            expectedOwners.all { owner ->
+                ForbiddenEffect.SOURCE_FILESYSTEM_WRITE !in
+                    architecture.modules.getValue(owner).allowedEffects
+            },
+        )
+        assertTrue(
+            expectedOwners.all { owner ->
+                owner in architecture.modules.getValue(ModuleId.INDEXER).allowedProjectDependencies
+            },
+        )
+    }
+
+    @Test
     fun `workspace transition extraction activates narrow owners and retires legacy Gradle authority`() {
         val architecture = canonicalWithoutLegacyAllowances()
         val expectedOwners = setOf(
@@ -178,7 +205,7 @@ class KastArchitecturePolicyTest {
                 ModuleId.ANALYSIS_API,
                 ModuleId.ANALYSIS_SERVER,
                 ModuleId.INDEX_STORE,
-                ModuleId.CHANGE_CONTRACT,
+                ModuleId.CHANGE_JOURNAL_CONTRACT,
             ),
             projectDependencies = emptySet(),
             effects = emptySet(),
@@ -191,7 +218,7 @@ class KastArchitecturePolicyTest {
         assertTrue(rejected.violations.contains(ArchitectureViolation.ActiveModuleMissing(ModuleId.INDEXER)))
         assertTrue(
             rejected.violations.contains(
-                ArchitectureViolation.PlannedModuleMaterialized(ModuleId.CHANGE_CONTRACT),
+                ArchitectureViolation.PlannedModuleMaterialized(ModuleId.CHANGE_JOURNAL_CONTRACT),
             ),
         )
     }

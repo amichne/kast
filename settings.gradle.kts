@@ -21,6 +21,9 @@ dependencyResolutionManagement {
 include(
     ":analysis-api",
     ":analysis-server",
+    ":change:contract",
+    ":change:plan:intellij",
+    ":change:plan:spi",
     ":evidence:contract",
     ":evidence:spi",
     ":index-store",
