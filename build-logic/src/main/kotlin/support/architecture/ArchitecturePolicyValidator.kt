@@ -69,7 +69,10 @@ object ArchitecturePolicyValidator {
         }
         val mutationDeliverySort = topologicalOrder(
             nodes = mutationDeliveryTasks.keys,
-            dependencies = { mutationDeliveryTasks.getValue(it).dependsOn.filter(mutationDeliveryTasks::containsKey).toSet() },
+            dependencies = {
+                mutationDeliveryTasks.getValue(it).dependsOn.filter(mutationDeliveryTasks::containsKey)
+                    .toSet()
+            },
         )
         val duplicateAllowances = definition.legacyAllowances
             .groupingBy(LegacyAllowance::violation)
@@ -96,7 +99,7 @@ object ArchitecturePolicyValidator {
             .map(ArchitecturePolicyFailure::DuplicateMutationRuntimeProcess)
         val mutationRuntimeProcesses = definition.mutationRuntimeProcesses.associateBy(MutationRuntimeProcessPolicy::id)
         val missingMutationRuntimeDependencies = definition.mutationRuntimeProcesses.flatMap { process ->
-            process.dependsOn
+            process.admission.orderingDependencies
                 .filterNot(mutationRuntimeProcesses::containsKey)
                 .map { ArchitecturePolicyFailure.MissingMutationRuntimeProcessDependency(process.id, it) }
         }
@@ -107,7 +110,11 @@ object ArchitecturePolicyValidator {
         }
         val mutationRuntimeSort = topologicalOrder(
             nodes = mutationRuntimeProcesses.keys,
-            dependencies = { mutationRuntimeProcesses.getValue(it).dependsOn.filter(mutationRuntimeProcesses::containsKey).toSet() },
+            dependencies = {
+                mutationRuntimeProcesses.getValue(it).admission.orderingDependencies
+                    .filter(mutationRuntimeProcesses::containsKey)
+                    .toSet()
+            },
         )
 
         val failures = buildList {
@@ -151,7 +158,7 @@ object ArchitecturePolicyValidator {
     private fun MutationDeliveryOwner.moduleIds(): Set<ModuleId> = when (this) {
         MutationDeliveryOwner.BuildLogic,
         MutationDeliveryOwner.EndToEndCorpus,
-        -> emptySet()
+            -> emptySet()
         is MutationDeliveryOwner.Modules -> ids
     }
 

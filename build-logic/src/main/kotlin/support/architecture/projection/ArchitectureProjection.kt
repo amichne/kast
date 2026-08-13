@@ -5,11 +5,12 @@ import support.architecture.LegacyAllowance
 import support.architecture.LegacyViolationKey
 import support.architecture.MutationDeliveryOwner
 import support.architecture.ValidatedArchitecturePolicy
+import support.architecture.process.MutationRuntimeAdmission
 
 object ArchitectureProjection {
     fun render(policy: ValidatedArchitecturePolicy): String = buildString {
         append("{\n")
-        append("  \"schemaVersion\": 2,\n")
+        append("  \"schemaVersion\": 3,\n")
         append("  \"policyAuthority\": \"KOTLIN\",\n")
         append("  \"policySource\": \"build-logic/src/main/kotlin/support/architecture\",\n")
         append("  \"enforcementScope\": \"REPOSITORY_WIDE\",\n")
@@ -37,9 +38,10 @@ object ArchitectureProjection {
             append("    {\n")
             append("      \"id\": ").appendQuoted(id.name).append(",\n")
             append("      \"name\": ").appendQuoted(process.name).append(",\n")
-            append("      \"dependsOn\": ")
-                .appendStringArray(process.dependsOn.map(Enum<*>::name).sorted())
+            append("      \"orderingDependencies\": ")
+                .appendStringArray(process.admission.orderingDependencies.map(Enum<*>::name).sorted())
                 .append(",\n")
+            append("      \"admission\": ").appendAdmission(process.admission).append(",\n")
             append("      \"owners\": ")
                 .appendStringArray(process.owners.map { it.projectPath }.sorted())
                 .append(",\n")
@@ -74,6 +76,37 @@ object ArchitectureProjection {
         append("  ]\n")
         append("}\n")
     }
+}
+
+private fun StringBuilder.appendAdmission(admission: MutationRuntimeAdmission): StringBuilder = when (admission) {
+    MutationRuntimeAdmission.Entry -> append("{\"kind\": \"ENTRY\"}")
+    is MutationRuntimeAdmission.After ->
+        append("{\"kind\": \"AFTER\", \"predecessor\": ")
+            .appendQuoted(admission.predecessor.name)
+            .append("}")
+    is MutationRuntimeAdmission.ApplyLane ->
+        append("{\"kind\": \"APPLY_LANE\", \"lane\": ")
+            .appendQuoted(admission.lane.name)
+            .append(", \"process\": ")
+            .appendQuoted(admission.lane.processId.name)
+            .append(", \"predecessor\": ")
+            .appendQuoted(admission.predecessor.name)
+            .append("}")
+    MutationRuntimeAdmission.SelectedApplyLaneJoin -> {
+        val lanes = MutationRuntimeAdmission.SelectedApplyLaneJoin.lanes.sortedBy(Enum<*>::name)
+        append("{\"kind\": \"SELECTED_APPLY_LANE_JOIN\", \"lanes\": [")
+        lanes.forEachIndexed { index, lane ->
+            append("{\"lane\": ").appendQuoted(lane.name)
+                .append(", \"process\": ").appendQuoted(lane.processId.name)
+                .append("}")
+                .appendComma(index, lanes.lastIndex)
+        }
+        append("]}")
+    }
+    MutationRuntimeAdmission.RecoveryInterruptAfterPreparation ->
+        append("{\"kind\": \"RECOVERY_INTERRUPT_AFTER_PREPARATION\", \"preparedBy\": ")
+            .appendQuoted(MutationRuntimeAdmission.RecoveryInterruptAfterPreparation.preparedBy.name)
+            .append("}")
 }
 
 private fun StringBuilder.appendOwner(owner: MutationDeliveryOwner): StringBuilder = when (owner) {
@@ -121,16 +154,20 @@ private fun allowanceSortKey(allowance: LegacyAllowance): String = when (val vio
         "dependency|${violation.dependency.consumer.name}|${violation.dependency.dependency.name}"
     is LegacyViolationKey.ForbiddenEffectUse -> with(violation.observation) {
         "effect|${module.name}|${effect.name}|${caller.owner.internalName}|${caller.name.value}|" +
-            "${caller.descriptor.value}|${target.owner.internalName}|${target.name.value}|${target.descriptor.value}"
+        "${caller.descriptor.value}|${target.owner.internalName}|${target.name.value}|${target.descriptor.value}"
     }
 }
 
 private fun StringBuilder.appendStringArray(values: List<String>): StringBuilder =
     append(values.joinToString(prefix = "[", postfix = "]") { value -> "\"${value.jsonEscape()}\"" })
 
-private fun StringBuilder.appendQuoted(value: String): StringBuilder = append('"').append(value.jsonEscape()).append('"')
+private fun StringBuilder.appendQuoted(value: String): StringBuilder =
+    append('"').append(value.jsonEscape()).append('"')
 
-private fun StringBuilder.appendComma(index: Int, lastIndex: Int): StringBuilder =
+private fun StringBuilder.appendComma(
+    index: Int,
+    lastIndex: Int,
+): StringBuilder =
     apply { if (index < lastIndex) append(',') }
 
 private fun String.jsonEscape(): String = buildString(length) {

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "policyAuthority": "KOTLIN",
   "policySource": "build-logic/src/main/kotlin/support/architecture",
   "enforcementScope": "REPOSITORY_WIDE",
@@ -258,7 +258,8 @@
     {
       "id": "RP01",
       "name": "Parse mutation intent",
-      "dependsOn": [],
+      "orderingDependencies": [],
+      "admission": {"kind": "ENTRY"},
       "owners": [":change:contract", ":protocol:registry"],
       "effects": ["PURE"],
       "cost": "METADATA"
@@ -266,7 +267,8 @@
     {
       "id": "RP02",
       "name": "Acquire planning read lease",
-      "dependsOn": ["RP01"],
+      "orderingDependencies": ["RP01"],
+      "admission": {"kind": "AFTER", "predecessor": "RP01"},
       "owners": [":workspace:contract", ":workspace:service"],
       "effects": ["READ"],
       "cost": "SEMANTIC_ADMISSION"
@@ -274,7 +276,8 @@
     {
       "id": "RP03",
       "name": "Resolve exact target and affected semantic scope",
-      "dependsOn": ["RP02"],
+      "orderingDependencies": ["RP02"],
+      "admission": {"kind": "AFTER", "predecessor": "RP02"},
       "owners": [":change:plan:intellij"],
       "effects": ["READ"],
       "cost": "SCOPED_SEMANTIC_READ / BOUNDED_RELATION_SEARCH"
@@ -282,7 +285,8 @@
     {
       "id": "RP04",
       "name": "Capture stable preconditions and before-image identities",
-      "dependsOn": ["RP03"],
+      "orderingDependencies": ["RP03"],
+      "admission": {"kind": "AFTER", "predecessor": "RP03"},
       "owners": [":change:plan:service"],
       "effects": ["READ"],
       "cost": "BOUNDED_FILE_OBSERVATION"
@@ -290,7 +294,8 @@
     {
       "id": "RP05",
       "name": "Construct and persist stable plan",
-      "dependsOn": ["RP04"],
+      "orderingDependencies": ["RP04"],
+      "admission": {"kind": "AFTER", "predecessor": "RP04"},
       "owners": [":change:journal:contract", ":change:plan:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "SMALL_DURABLE_WRITE"
@@ -298,7 +303,8 @@
     {
       "id": "RP06",
       "name": "Await explicit approval",
-      "dependsOn": ["RP05"],
+      "orderingDependencies": ["RP05"],
+      "admission": {"kind": "AFTER", "predecessor": "RP05"},
       "owners": [":runtime:server"],
       "effects": ["NONE"],
       "cost": "WAIT"
@@ -306,7 +312,8 @@
     {
       "id": "RP07",
       "name": "Acquire one logical Kast mutation lease",
-      "dependsOn": ["RP06"],
+      "orderingDependencies": ["RP06"],
+      "admission": {"kind": "AFTER", "predecessor": "RP06"},
       "owners": [":workspace:mutation:service"],
       "effects": ["AUTHORITY"],
       "cost": "CONCURRENCY_ADMISSION"
@@ -314,7 +321,8 @@
     {
       "id": "RP08",
       "name": "Revalidate plan and exact identity",
-      "dependsOn": ["RP07"],
+      "orderingDependencies": ["RP07"],
+      "admission": {"kind": "AFTER", "predecessor": "RP07"},
       "owners": [":change:apply:service", ":change:plan:intellij"],
       "effects": ["READ"],
       "cost": "SCOPED_SEMANTIC_READ"
@@ -322,7 +330,8 @@
     {
       "id": "RP09",
       "name": "Prepare durable recovery evidence",
-      "dependsOn": ["RP08"],
+      "orderingDependencies": ["RP08"],
+      "admission": {"kind": "AFTER", "predecessor": "RP08"},
       "owners": [":change:recovery:filesystem", ":change:recovery:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "BOUNDED_FILE_COPY"
@@ -330,7 +339,8 @@
     {
       "id": "RP10",
       "name": "Prepare ephemeral apply context",
-      "dependsOn": ["RP09"],
+      "orderingDependencies": ["RP09"],
+      "admission": {"kind": "AFTER", "predecessor": "RP09"},
       "owners": [":change:apply:filesystem", ":change:apply:intellij"],
       "effects": ["READ"],
       "cost": "SMALL_PREPARATION"
@@ -338,7 +348,8 @@
     {
       "id": "RP11S",
       "name": "Apply semantic mutation through IntelliJ",
-      "dependsOn": ["RP10"],
+      "orderingDependencies": ["RP10"],
+      "admission": {"kind": "APPLY_LANE", "lane": "SEMANTIC", "process": "RP11S", "predecessor": "RP10"},
       "owners": [":change:apply:intellij"],
       "effects": ["SOURCE_WRITE"],
       "cost": "SHORT_EDT_WRITE_COMMAND"
@@ -346,7 +357,8 @@
     {
       "id": "RP11E",
       "name": "Apply external file mutation",
-      "dependsOn": ["RP10"],
+      "orderingDependencies": ["RP10"],
+      "admission": {"kind": "APPLY_LANE", "lane": "EXTERNAL", "process": "RP11E", "predecessor": "RP10"},
       "owners": [":change:apply:filesystem"],
       "effects": ["SOURCE_WRITE"],
       "cost": "BOUNDED_DESCRIPTOR_RELATIVE_WRITE"
@@ -354,7 +366,8 @@
     {
       "id": "RP12",
       "name": "Persist affected documents and capture after-images",
-      "dependsOn": ["RP11E", "RP11S"],
+      "orderingDependencies": ["RP11E", "RP11S"],
+      "admission": {"kind": "SELECTED_APPLY_LANE_JOIN", "lanes": [{"lane": "EXTERNAL", "process": "RP11E"},{"lane": "SEMANTIC", "process": "RP11S"}]},
       "owners": [":change:apply:service"],
       "effects": ["OBSERVATION", "SOURCE_WRITE"],
       "cost": "BOUNDED_BY_DECLARED_WRITE_SET"
@@ -362,7 +375,8 @@
     {
       "id": "RP13",
       "name": "Prove write-set closure",
-      "dependsOn": ["RP12"],
+      "orderingDependencies": ["RP12"],
+      "admission": {"kind": "AFTER", "predecessor": "RP12"},
       "owners": [":change:apply:service"],
       "effects": ["READ"],
       "cost": "BOUNDED_DIFF"
@@ -370,7 +384,8 @@
     {
       "id": "RP14",
       "name": "Request targeted workspace transition",
-      "dependsOn": ["RP13"],
+      "orderingDependencies": ["RP13"],
+      "admission": {"kind": "AFTER", "predecessor": "RP13"},
       "owners": [":workspace:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "INCREMENTAL_RECONCILIATION"
@@ -378,7 +393,8 @@
     {
       "id": "RP15",
       "name": "Publish resulting semantic generation",
-      "dependsOn": ["RP14"],
+      "orderingDependencies": ["RP14"],
+      "admission": {"kind": "AFTER", "predecessor": "RP14"},
       "owners": [":evidence:sqlite", ":workspace:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "INCREMENTAL_INDEX / ATOMIC_PUBLICATION"
@@ -386,7 +402,8 @@
     {
       "id": "RP16",
       "name": "Evaluate diagnostics and semantic postconditions",
-      "dependsOn": ["RP15"],
+      "orderingDependencies": ["RP15"],
+      "admission": {"kind": "AFTER", "predecessor": "RP15"},
       "owners": [":change:verify:intellij"],
       "effects": ["READ"],
       "cost": "SCOPED_SMART_READ"
@@ -394,7 +411,8 @@
     {
       "id": "RP17",
       "name": "Reconcile expected and observed result",
-      "dependsOn": ["RP16"],
+      "orderingDependencies": ["RP16"],
+      "admission": {"kind": "AFTER", "predecessor": "RP16"},
       "owners": [":change:verify:service"],
       "effects": ["PURE"],
       "cost": "BOUNDED_COMPARISON"
@@ -402,7 +420,8 @@
     {
       "id": "RP18",
       "name": "Issue verified receipt and release recovery",
-      "dependsOn": ["RP17"],
+      "orderingDependencies": ["RP17"],
+      "admission": {"kind": "AFTER", "predecessor": "RP17"},
       "owners": [":change:journal:contract", ":change:verify:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "SMALL_DURABLE_WRITE"
@@ -410,7 +429,8 @@
     {
       "id": "RP19",
       "name": "Rollback or retain recovery after failure",
-      "dependsOn": ["RP09", "RP11E", "RP11S", "RP12", "RP13", "RP14", "RP15", "RP16", "RP17"],
+      "orderingDependencies": ["RP09"],
+      "admission": {"kind": "RECOVERY_INTERRUPT_AFTER_PREPARATION", "preparedBy": "RP09"},
       "owners": [":change:recovery:service"],
       "effects": ["DERIVED_WRITE", "SOURCE_WRITE"],
       "cost": "FAILURE_DEPENDENT"
