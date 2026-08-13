@@ -15,7 +15,7 @@ class SemanticReadExecutorTest {
     @Test
     fun `executor returns detached result only while the exact lease stays current`() = runBlocking {
         val authority = FakeAuthority(lease())
-        val result = SemanticReadExecutor(authority).current { evidence ->
+        val result = executor(authority).current { evidence ->
             "detached@" + evidence.generation.value
         }
 
@@ -37,12 +37,17 @@ class SemanticReadExecutorTest {
             observed = generation(8),
         )
 
-        val result = SemanticReadExecutor(authority).current {
+        val result = executor(authority).current {
             authority.validation = SemanticReadLeaseValidation.Rejected(failure)
             "must-not-return"
         }
 
-        assertEquals(SemanticReadExecution.Rejected(failure), result)
+        assertEquals(
+            SemanticReadExecution.Rejected(
+                SemanticReadAdmissionFailure.SemanticUnavailable(failure),
+            ),
+            result,
+        )
         assertTrue(authority.closed)
     }
 
@@ -52,7 +57,7 @@ class SemanticReadExecutorTest {
 
         val failure = assertThrows<IllegalStateException> {
             runBlocking {
-                SemanticReadExecutor(authority).current {
+                executor(authority).current {
                     error("operation failed")
                 }
             }
@@ -68,7 +73,7 @@ class SemanticReadExecutorTest {
         var validation: SemanticReadLeaseValidation = SemanticReadLeaseValidation.Current
         var closed: Boolean = false
 
-        override fun open(): SemanticReadLeaseAdmission =
+        override fun open(requirement: SemanticReadFreshnessRequirement): SemanticReadLeaseAdmission =
             SemanticReadLeaseAdmission.Admitted(
                 object : OpenSemanticReadLease {
                     override val evidence: SemanticReadLease = this@FakeAuthority.evidence
@@ -81,6 +86,12 @@ class SemanticReadExecutorTest {
                 },
             )
     }
+
+    private fun executor(authority: SemanticReadLeaseAuthority): SemanticReadExecutor =
+        SemanticReadExecutor(
+            runtimeLiveness = { RuntimeLivenessAdmission.Live },
+            authority = authority,
+        )
 
     private fun lease(): SemanticReadLease = SemanticReadLease(
         workspaceRoot = CanonicalWorkspaceRoot

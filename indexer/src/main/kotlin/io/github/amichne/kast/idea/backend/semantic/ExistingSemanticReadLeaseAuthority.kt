@@ -6,11 +6,13 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.spi.OpenSemanticReadLease
-import io.github.amichne.kast.workspace.spi.SemanticReadAvailability
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseAdmission
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseAuthority
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseFailure
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseValidation
+import io.github.amichne.kast.workspace.spi.SemanticReadFreshness
+import io.github.amichne.kast.workspace.spi.SemanticReadFreshnessAuthority
+import io.github.amichne.kast.workspace.spi.SemanticReadFreshnessRequirement
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -20,17 +22,22 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal class ExistingSemanticReadLeaseAuthority(
     private val delegate: WorkspaceSemanticReadAuthority,
     private val workspaceRootPath: () -> Path,
+    private val freshness: SemanticReadFreshnessAuthority,
 ) : SemanticReadLeaseAuthority {
     /**
      * Proof transition:
-     * `WorkspaceSemanticReadAuthority -> SemanticReadLeaseAdmission`.
+     * `(WorkspaceSemanticReadAuthority, SemanticReadFreshnessAuthority,`
+     * `SemanticReadFreshnessRequirement) -> SemanticReadLeaseAdmission`.
      *
      * Establishes an open lease bound to the same canonical root before and after legacy
      * admission, and to its exact published generation. [SemanticReadLeaseFailure] is the closed
      * expected failure. Legacy exceptions and Boolean currentness are consumed only in this outer
      * adapter.
      */
-    override fun open(): SemanticReadLeaseAdmission {
+    override fun open(requirement: SemanticReadFreshnessRequirement): SemanticReadLeaseAdmission {
+        freshness.failureOrNull(requirement)?.let { failure ->
+            return SemanticReadLeaseAdmission.Rejected(failure)
+        }
         val rootBeforeAdmission = when (
             val root = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRootPath())
         ) {
@@ -43,7 +50,9 @@ internal class ExistingSemanticReadLeaseAuthority(
         val token = try {
             delegate.openRead()
         } catch (_: IllegalStateException) {
-            return SemanticReadLeaseAdmission.Rejected(unavailableFailure())
+            return SemanticReadLeaseAdmission.Rejected(
+                freshness.failureOrNull(requirement) ?: SemanticReadLeaseFailure.TransitionInProgress,
+            )
         }
         val rootAfterAdmission = when (
             val root = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRootPath())
@@ -79,6 +88,8 @@ internal class ExistingSemanticReadLeaseAuthority(
                     ExistingOpenSemanticReadLease(
                         delegate = delegate,
                         workspaceRootPath = workspaceRootPath,
+                        freshness = freshness,
+                        freshnessRequirement = requirement,
                         token = token,
                         evidence = SemanticReadLease(
                             workspaceRoot = rootAfterAdmission,
@@ -88,21 +99,13 @@ internal class ExistingSemanticReadLeaseAuthority(
                 )
         }
     }
-
-    private fun unavailableFailure(): SemanticReadLeaseFailure.WorkspaceUnavailable =
-        SemanticReadLeaseFailure.WorkspaceUnavailable(
-            when (delegate.status()) {
-                is IdeaIndexSemanticAdmission.Status.Failed -> SemanticReadAvailability.FAILED
-                is IdeaIndexSemanticAdmission.Status.Pending,
-                is IdeaIndexSemanticAdmission.Status.Ready,
-                    -> SemanticReadAvailability.PENDING
-            },
-        )
 }
 
 private class ExistingOpenSemanticReadLease(
     private val delegate: WorkspaceSemanticReadAuthority,
     private val workspaceRootPath: () -> Path,
+    private val freshness: SemanticReadFreshnessAuthority,
+    private val freshnessRequirement: SemanticReadFreshnessRequirement,
     private val token: IdeaIndexSemanticAdmission.WorkspaceReadToken,
     override val evidence: SemanticReadLease,
 ) : OpenSemanticReadLease {
@@ -113,6 +116,9 @@ private class ExistingOpenSemanticReadLease(
             return SemanticReadLeaseValidation.Rejected(
                 SemanticReadLeaseFailure.LeaseClosed(evidence),
             )
+        }
+        freshness.failureOrNull(freshnessRequirement)?.let { failure ->
+            return SemanticReadLeaseValidation.Rejected(failure)
         }
         val observedRoot = when (
             val root = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRootPath())
@@ -153,15 +159,11 @@ private class ExistingOpenSemanticReadLease(
                 }
             is IdeaIndexSemanticAdmission.Status.Pending ->
                 SemanticReadLeaseValidation.Rejected(
-                    SemanticReadLeaseFailure.WorkspaceUnavailable(
-                        SemanticReadAvailability.PENDING,
-                    ),
+                    SemanticReadLeaseFailure.TransitionInProgress,
                 )
             is IdeaIndexSemanticAdmission.Status.Failed ->
                 SemanticReadLeaseValidation.Rejected(
-                    SemanticReadLeaseFailure.WorkspaceUnavailable(
-                        SemanticReadAvailability.FAILED,
-                    ),
+                    SemanticReadLeaseFailure.WorkspaceBlocked,
                 )
         }
     }
@@ -169,6 +171,18 @@ private class ExistingOpenSemanticReadLease(
     override fun close() {
         if (closed.compareAndSet(false, true)) token.close()
     }
+}
+
+private fun SemanticReadFreshnessAuthority.failureOrNull(
+    requirement: SemanticReadFreshnessRequirement,
+): SemanticReadLeaseFailure? = when (observe()) {
+    SemanticReadFreshness.Ready -> null
+    SemanticReadFreshness.DumbMode -> when (requirement) {
+        SemanticReadFreshnessRequirement.SMART_INDEXES -> SemanticReadLeaseFailure.DumbMode
+        SemanticReadFreshnessRequirement.QUALIFIED_DUMB_MODE -> null
+    }
+    SemanticReadFreshness.TransitionInProgress -> SemanticReadLeaseFailure.TransitionInProgress
+    SemanticReadFreshness.WorkspaceBlocked -> SemanticReadLeaseFailure.WorkspaceBlocked
 }
 
 /**

@@ -10,7 +10,12 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRootFailure
 import io.github.amichne.kast.workspace.spi.SemanticReadExecution
 import io.github.amichne.kast.workspace.spi.SemanticReadExecutor
+import io.github.amichne.kast.workspace.spi.SemanticReadAdmissionFailure
 import io.github.amichne.kast.workspace.spi.SemanticReadLeaseFailure
+import io.github.amichne.kast.workspace.spi.SemanticReadFreshness
+import io.github.amichne.kast.workspace.spi.SemanticReadFreshnessAuthority
+import io.github.amichne.kast.workspace.spi.SemanticReadFreshnessRequirement
+import io.github.amichne.kast.workspace.spi.RuntimeLivenessAdmission
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -24,12 +29,7 @@ class SemanticReadLeaseAdmissionTest {
     fun `production gate rejects a payload computed across publication generations`() {
         val legacy = MutableLegacyAuthority(generation(7))
         val gate = WorkspaceSemanticGate(
-            SemanticReadExecutor(
-                ExistingSemanticReadLeaseAuthority(
-                    legacy,
-                    workspaceRootPath = { Path.of("/workspace/root") },
-                ),
-            ),
+            executor(legacy),
         )
 
         val failure = assertThrows<ConflictException> {
@@ -52,19 +52,19 @@ class SemanticReadLeaseAdmissionTest {
     fun `adapter rejects an unrepresentable physical workspace root before opening a read`() =
         runBlocking {
             val legacy = MutableLegacyAuthority(generation(7))
-            val executor = SemanticReadExecutor(
-                ExistingSemanticReadLeaseAuthority(
-                    legacy,
-                    workspaceRootPath = { Path.of("relative/workspace") },
-                ),
+            val executor = executor(
+                legacy = legacy,
+                workspaceRootPath = { Path.of("relative/workspace") },
             )
 
             val result = executor.current { "must-not-run" }
 
             assertEquals(
                 SemanticReadExecution.Rejected(
-                    SemanticReadLeaseFailure.WorkspaceRootUnrepresentable(
-                        CanonicalWorkspaceRootFailure.NOT_ABSOLUTE,
+                    SemanticReadAdmissionFailure.SemanticUnavailable(
+                        SemanticReadLeaseFailure.WorkspaceRootUnrepresentable(
+                            CanonicalWorkspaceRootFailure.NOT_ABSOLUTE,
+                        ),
                     ),
                 ),
                 result,
@@ -76,9 +76,7 @@ class SemanticReadLeaseAdmissionTest {
     fun `adapter returns detached result with canonical root and published generation`() = runBlocking {
         val legacy = MutableLegacyAuthority(generation(7))
         val root = AtomicReference(Path.of("/workspace/root"))
-        val executor = SemanticReadExecutor(
-            ExistingSemanticReadLeaseAuthority(legacy, root::get),
-        )
+        val executor = executor(legacy, root::get)
 
         val result = executor.current { lease ->
             lease.workspaceRoot.value + "@" + lease.generation.value
@@ -100,9 +98,7 @@ class SemanticReadLeaseAdmissionTest {
     fun `adapter rejects root movement before returning operation result`() = runBlocking {
         val legacy = MutableLegacyAuthority(generation(7))
         val root = AtomicReference(Path.of("/workspace/root"))
-        val executor = SemanticReadExecutor(
-            ExistingSemanticReadLeaseAuthority(legacy, root::get),
-        )
+        val executor = executor(legacy, root::get)
 
         val result = executor.current {
             root.set(Path.of("/workspace/moved"))
@@ -111,9 +107,11 @@ class SemanticReadLeaseAdmissionTest {
 
         assertEquals(
             SemanticReadExecution.Rejected(
-                SemanticReadLeaseFailure.WorkspaceRootMoved(
-                    expected = canonicalRoot("/workspace/root"),
-                    observed = canonicalRoot("/workspace/moved"),
+                SemanticReadAdmissionFailure.SemanticUnavailable(
+                    SemanticReadLeaseFailure.WorkspaceRootMoved(
+                        expected = canonicalRoot("/workspace/root"),
+                        observed = canonicalRoot("/workspace/moved"),
+                    ),
                 ),
             ),
             result,
@@ -124,12 +122,7 @@ class SemanticReadLeaseAdmissionTest {
     @Test
     fun `adapter rejects generation movement before returning operation result`() = runBlocking {
         val legacy = MutableLegacyAuthority(generation(7))
-        val executor = SemanticReadExecutor(
-            ExistingSemanticReadLeaseAuthority(
-                legacy,
-                workspaceRootPath = { Path.of("/workspace/root") },
-            ),
-        )
+        val executor = executor(legacy)
 
         val result = executor.current {
             legacy.published = generation(8)
@@ -141,10 +134,55 @@ class SemanticReadLeaseAdmissionTest {
         assertTrue(legacy.released)
     }
 
+    @Test
+    fun `freshness states reject with distinct blockers before a lease opens`() = runBlocking {
+        val cases = listOf(
+            SemanticReadFreshness.DumbMode to SemanticReadLeaseFailure.DumbMode,
+            SemanticReadFreshness.TransitionInProgress to SemanticReadLeaseFailure.TransitionInProgress,
+            SemanticReadFreshness.WorkspaceBlocked to SemanticReadLeaseFailure.WorkspaceBlocked,
+        )
+
+        cases.forEach { (freshness, expected) ->
+            val legacy = MutableLegacyAuthority(generation(7))
+            val result = executor(
+                legacy = legacy,
+                freshness = SemanticReadFreshnessAuthority { freshness },
+            ).current { "must-not-run" }
+
+            assertEquals(
+                SemanticReadExecution.Rejected(
+                    SemanticReadAdmissionFailure.SemanticUnavailable(expected),
+                ),
+                result,
+            )
+            assertEquals(0, legacy.openAttempts)
+        }
+    }
+
+    @Test
+    fun `qualified dumb-mode operation retains the lease while strict reads reject`() = runBlocking {
+        val legacy = MutableLegacyAuthority(generation(7))
+        val executor = executor(
+            legacy = legacy,
+            freshness = SemanticReadFreshnessAuthority { SemanticReadFreshness.DumbMode },
+        )
+
+        val result = executor.current(
+            freshness = SemanticReadFreshnessRequirement.QUALIFIED_DUMB_MODE,
+        ) { lease ->
+            "qualified@${lease.generation.value}"
+        }
+
+        assertEquals("qualified@7", result.completedPayload())
+        assertEquals(1, legacy.openAttempts)
+        assertTrue(legacy.released)
+    }
+
     private class MutableLegacyAuthority(
         var published: PublishedWorkspaceGenerationManifest,
     ) : WorkspaceSemanticReadAuthority {
         var released: Boolean = false
+        var openAttempts: Int = 0
 
         override fun status(): IdeaIndexSemanticAdmission.Status =
             IdeaIndexSemanticAdmission.Status.Ready(published)
@@ -154,7 +192,7 @@ class SemanticReadLeaseAdmissionTest {
                 revision = 1,
                 generation = published,
                 release = { released = true },
-            )
+            ).also { openAttempts += 1 }
 
         override fun isReadCurrent(
             token: IdeaIndexSemanticAdmission.WorkspaceReadToken,
@@ -164,6 +202,22 @@ class SemanticReadLeaseAdmissionTest {
             token: IdeaIndexSemanticAdmission.ReconciliationToken,
         ): Boolean = true
     }
+
+    private fun executor(
+        legacy: MutableLegacyAuthority,
+        workspaceRootPath: () -> Path = { Path.of("/workspace/root") },
+        freshness: SemanticReadFreshnessAuthority = IdeaSemanticReadFreshnessAuthority(
+            dumbMode = { IdeaDumbModeObservation.Smart },
+            semanticStatus = legacy::status,
+        ),
+    ): SemanticReadExecutor = SemanticReadExecutor(
+        runtimeLiveness = { RuntimeLivenessAdmission.Live },
+        authority = ExistingSemanticReadLeaseAuthority(
+            delegate = legacy,
+            workspaceRootPath = workspaceRootPath,
+            freshness = freshness,
+        ),
+    )
 
     private fun generation(value: Long): PublishedWorkspaceGenerationManifest =
         testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(value))
@@ -181,9 +235,18 @@ class SemanticReadLeaseAdmissionTest {
         is SemanticReadExecution.Rejected -> error("Expected completion, got $failure")
     }
 
-    private fun <Payload> SemanticReadExecution<Payload>.rejectedFailure() = when (this) {
+    private fun <Payload> SemanticReadExecution<Payload>.completedPayload(): Payload = when (this) {
+        is SemanticReadExecution.Completed -> payload
+        is SemanticReadExecution.Rejected -> error("Expected completion, got $failure")
+    }
+
+    private fun <Payload> SemanticReadExecution<Payload>.rejectedFailure(): SemanticReadLeaseFailure = when (this) {
         is SemanticReadExecution.Completed -> error("Expected rejection, got $payload")
-        is SemanticReadExecution.Rejected -> failure
+        is SemanticReadExecution.Rejected -> when (val rejected = failure) {
+            is SemanticReadAdmissionFailure.RuntimeUnavailable ->
+                error("Expected semantic rejection, got ${rejected.failure}")
+            is SemanticReadAdmissionFailure.SemanticUnavailable -> rejected.failure
+        }
     }
 
     private fun SemanticReadLeaseFailure.expectedGeneration() = when (this) {

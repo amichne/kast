@@ -70,7 +70,7 @@ internal suspend fun KastIndexerBackend.coordinatedRefresh(
         }
     }
     workspaceTransitionRequester.reconcile(refreshTransitionRequest(query))
-    return workspaceSemanticGate.current { refreshOperation(query) }
+    return workspaceSemanticGate.currentWithQualifiedDumbModeEvidence { refreshOperation(query) }
 }
 
 /**

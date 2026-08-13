@@ -86,6 +86,7 @@ import io.github.amichne.kast.idea.backend.workspace.*
 import io.github.amichne.kast.idea.backend.semantic.*
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.workspace.spi.SemanticReadExecutor
+import io.github.amichne.kast.workspace.spi.RuntimeLivenessAuthority
 
 internal class KastIndexerBackend(
     internal val project: Project,
@@ -114,6 +115,8 @@ internal class KastIndexerBackend(
     @Volatile internal var semanticGraphBatchSize: GraphIndexingBatchSize = GraphIndexingBatchSize(32),
     internal val workspaceIndexingProgress: WorkspaceIndexingProgressSink = WorkspaceIndexingProgressAuthority(),
     internal val workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority,
+    internal val runtimeLivenessAuthority: RuntimeLivenessAuthority =
+        IdeaRuntimeLivenessAuthority(project),
     internal val workspaceTransitionRequester: WorkspaceTransitionRequester,
     internal val runtimeCapabilityLeases: RuntimeCapabilityLeaseRegistry? = null,
     internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
@@ -134,9 +137,14 @@ internal class KastIndexerBackend(
     private val psiSupport = KastIndexerPsiSupport(this)
     internal val workspaceSemanticGate = WorkspaceSemanticGate(
         executor = SemanticReadExecutor(
-            ExistingSemanticReadLeaseAuthority(
+            runtimeLiveness = runtimeLivenessAuthority,
+            authority = ExistingSemanticReadLeaseAuthority(
                 delegate = workspaceSemanticReadAuthority,
                 workspaceRootPath = { workspaceIdentity.canonicalWorkspaceRootPath },
+                freshness = IdeaSemanticReadFreshnessAuthority(
+                    project = project,
+                    semanticAuthority = workspaceSemanticReadAuthority,
+                ),
             ),
         ),
     )
@@ -306,7 +314,8 @@ internal class KastIndexerBackend(
         token: IdeaIndexSemanticAdmission.ReconciliationToken,
     ): SemanticGraphResult = semanticGraphOperation(query, token)
     override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult = workspaceSemanticGate.current { semanticInsertionPointOperation(query) }
-    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = workspaceSemanticGate.current { diagnosticsOperation(query) }
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult =
+        workspaceSemanticGate.currentWithQualifiedDumbModeEvidence { diagnosticsOperation(query) }
     override suspend fun rename(query: ParsedRenameQuery): RenameResult = workspaceSemanticGate.current { renameOperation(query) }
     override suspend fun planReplacement(query: ParsedReplacementPlanQuery): ReplacementPlanResult =
         workspaceSemanticGate.current { planReplacementOperation(query) }

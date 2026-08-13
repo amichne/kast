@@ -209,8 +209,8 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
         ).runtimeStatus()
 
         assertEquals(RuntimeState.DEGRADED, status.state)
-        assertTrue(status.readiness.runtime is RuntimeReadinessLane.Blocked)
-        assertFalse(status.readiness.model is RuntimeReadinessLane.InProgress)
+        assertFalse(status.readiness.runtime is RuntimeReadinessLane.Blocked)
+        assertTrue(status.readiness.model is RuntimeReadinessLane.Blocked)
         assertTrue(status.message.orEmpty().contains("K2 diagnostics unavailable"))
     }
 
@@ -315,5 +315,4 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
 
         assertEquals("demo.Parser", result.symbol.containingDeclaration)
     }
-
 }

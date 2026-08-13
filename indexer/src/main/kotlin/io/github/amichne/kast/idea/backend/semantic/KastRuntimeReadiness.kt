@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
 import io.github.amichne.kast.idea.backend.semantic.toRuntimeStatus
 import io.github.amichne.kast.indexstore.snapshot.GraphEvidencePublication
+import io.github.amichne.kast.workspace.spi.RuntimeLivenessAdmission
 
 internal sealed interface IdeaModelReadinessObservation {
     data object Settled : IdeaModelReadinessObservation
@@ -48,6 +49,7 @@ internal sealed interface IdeaModelReadinessObservation {
 }
 
 internal data class KastRuntimeReadinessObservation(
+    val liveness: RuntimeLivenessAdmission,
     val admission: IdeaIndexSemanticAdmission.Status,
     val model: IdeaModelReadinessObservation,
 )
@@ -55,10 +57,9 @@ internal data class KastRuntimeReadinessObservation(
 /**
  * Proof transition: `KastRuntimeReadinessObservation -> RuntimeReadiness`.
  *
- * Derives runtime, model, reference, and graph lanes from closed IDEA admission
- * and model observations, then constrains mutation readiness by both model and
- * graph authority. Raw IntelliJ state is admitted only while constructing
- * [KastRuntimeReadinessObservation].
+ * Derives runtime liveness independently from model, reference, and graph lanes, then
+ * constrains mutation readiness by liveness, model, and graph authority. Raw IntelliJ state is
+ * admitted only while constructing [KastRuntimeReadinessObservation].
  */
 internal fun kastRuntimeReadiness(
     observation: KastRuntimeReadinessObservation,
@@ -83,19 +84,20 @@ internal fun kastRuntimeReadiness(
         is IdeaIndexSemanticAdmission.Status.Ready -> RuntimeReadinessLane.Ready
     }
     return RuntimeReadiness(
-        runtime = when (observation.admission) {
-            is IdeaIndexSemanticAdmission.Status.Failed -> RuntimeReadinessLane.Blocked
-            is IdeaIndexSemanticAdmission.Status.Pending,
-            is IdeaIndexSemanticAdmission.Status.Ready,
-            -> RuntimeReadinessLane.Ready
+        runtime = when (observation.liveness) {
+            RuntimeLivenessAdmission.Live -> RuntimeReadinessLane.Ready
+            is RuntimeLivenessAdmission.Rejected -> RuntimeReadinessLane.Blocked
         },
         model = model,
         references = RuntimeReadinessLane.Blocked,
         semanticGraph = graph,
-        mutation = when (model) {
-            RuntimeReadinessLane.Ready -> graph
-            RuntimeReadinessLane.Blocked -> RuntimeReadinessLane.Blocked
-            is RuntimeReadinessLane.InProgress -> model
+        mutation = when (observation.liveness) {
+            is RuntimeLivenessAdmission.Rejected -> RuntimeReadinessLane.Blocked
+            RuntimeLivenessAdmission.Live -> when (model) {
+                RuntimeReadinessLane.Ready -> graph
+                RuntimeReadinessLane.Blocked -> RuntimeReadinessLane.Blocked
+                is RuntimeReadinessLane.InProgress -> model
+            }
         },
     )
 }
@@ -103,15 +105,23 @@ internal fun kastRuntimeReadiness(
 internal suspend fun KastIndexerBackend.runtimeStatusEvidence(): RuntimeStatusResponse {
     val caps = capabilities()
     val isDumb = DumbService.isDumb(project)
+    val liveness = runtimeLivenessAuthority.admit()
     val admission = workspaceSemanticReadAuthority.status()
     val state = when {
+        liveness is RuntimeLivenessAdmission.Rejected -> RuntimeState.DEGRADED
         admission is IdeaIndexSemanticAdmission.Status.Failed -> RuntimeState.DEGRADED
         isDumb || admission is IdeaIndexSemanticAdmission.Status.Pending -> RuntimeState.INDEXING
         else -> RuntimeState.READY
     }
     val moduleNames = ModuleManager.getInstance(project).modules.map { it.name }.sorted()
     val modelObservation = IdeaModelReadinessObservation.fromIdeaState(isDumb, moduleNames.size)
-    val baseReadiness = kastRuntimeReadiness(KastRuntimeReadinessObservation(admission, modelObservation))
+    val baseReadiness = kastRuntimeReadiness(
+        KastRuntimeReadinessObservation(
+            liveness = liveness,
+            admission = admission,
+            model = modelObservation,
+        ),
+    )
     val readiness = when (
         (admission as? IdeaIndexSemanticAdmission.Status.Ready)?.generation?.graphPublication
     ) {
@@ -124,6 +134,8 @@ internal suspend fun KastIndexerBackend.runtimeStatusEvidence(): RuntimeStatusRe
         backendVersion = caps.backendVersion,
         workspaceRoot = caps.workspaceRoot,
         message = when {
+            liveness is RuntimeLivenessAdmission.Rejected ->
+                "IntelliJ runtime liveness is blocked: ${liveness.failure}"
             admission is IdeaIndexSemanticAdmission.Status.Failed ->
                 "IDEA compiler-backed semantic admission failed: ${admission.detail}"
             isDumb -> "IDEA is indexing — analysis results may be incomplete"

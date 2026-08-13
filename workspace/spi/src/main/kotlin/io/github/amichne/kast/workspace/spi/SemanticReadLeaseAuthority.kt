@@ -5,18 +5,15 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRootFailure
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 
-enum class SemanticReadAvailability {
-    PENDING,
-    FAILED,
-}
-
 /**
  * Finite reasons that semantic work cannot return under its admitted lease.
  */
 sealed interface SemanticReadLeaseFailure {
-    data class WorkspaceUnavailable(
-        val availability: SemanticReadAvailability,
-    ) : SemanticReadLeaseFailure
+    data object DumbMode : SemanticReadLeaseFailure
+
+    data object TransitionInProgress : SemanticReadLeaseFailure
+
+    data object WorkspaceBlocked : SemanticReadLeaseFailure
 
     data class WorkspaceRootMoved(
         val expected: CanonicalWorkspaceRoot,
@@ -78,13 +75,14 @@ sealed interface SemanticReadLeaseValidation {
     ) : SemanticReadLeaseValidation
 }
 
-interface SemanticReadLeaseAuthority {
+fun interface SemanticReadLeaseAuthority {
     /**
-     * Proof transition: `SemanticReadLeaseAuthority -> SemanticReadLeaseAdmission`.
+     * Proof transition:
+     * `(SemanticReadLeaseAuthority, SemanticReadFreshnessRequirement) -> SemanticReadLeaseAdmission`.
      *
      * Establishes a strong open lease fixing one canonical root and published generation.
      * [SemanticReadLeaseFailure] is the closed expected failure. Raw runtime admission state may be
      * observed only by the implementation adapter.
      */
-    fun open(): SemanticReadLeaseAdmission
+    fun open(requirement: SemanticReadFreshnessRequirement): SemanticReadLeaseAdmission
 }

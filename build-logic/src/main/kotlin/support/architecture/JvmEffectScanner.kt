@@ -224,6 +224,19 @@ private object EffectRules {
         if (isGradleImportAuthority(owner, name)) {
             add(ForbiddenEffect.GRADLE_IMPORT)
         }
+        if (
+            moduleRole == ModuleRole.INTELLIJ_READ_ADAPTER &&
+            owner == "com/intellij/openapi/vfs/VfsUtil" &&
+            name == "markDirtyAndRefresh"
+        ) {
+            add(ForbiddenEffect.RECURSIVE_VFS_REFRESH)
+        }
+        if (
+            moduleRole == ModuleRole.INTELLIJ_READ_ADAPTER &&
+            isWorkspaceTransitionAuthority(owner, name)
+        ) {
+            add(ForbiddenEffect.WORKSPACE_TRANSITION)
+        }
         if (moduleRole != ModuleRole.LEGACY_HOST && isGraphBuildAuthority(owner, name)) {
             add(ForbiddenEffect.GRAPH_BUILD)
         }
@@ -268,6 +281,14 @@ private object EffectRules {
             "org/gradle/tooling/BuildLauncher",
             "org/gradle/tooling/ModelBuilder",
         )
+
+    private fun isWorkspaceTransitionAuthority(
+        owner: String,
+        name: String,
+    ): Boolean =
+        owner.endsWith("/WorkspaceTransitionPort") && name !in setOf("<init>", "<type>") ||
+        owner.endsWith("/WorkspaceTransitionRequester") && name in setOf("reconcile", "mutate") ||
+        owner.endsWith("/WorkspaceTransitionIngress") && name in setOf("reconcile", "mutate")
 
     private fun isProcessControlAuthority(
         owner: String,

@@ -215,6 +215,8 @@ class ModuleRoleBoundaryTest {
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE,
                 ForbiddenEffect.JDBC,
                 ForbiddenEffect.GRADLE_IMPORT,
+                ForbiddenEffect.RECURSIVE_VFS_REFRESH,
+                ForbiddenEffect.WORKSPACE_TRANSITION,
                 ForbiddenEffect.GRAPH_BUILD,
                 ForbiddenEffect.PROCESS_CONTROL,
                 ForbiddenEffect.ANALYSIS_BACKEND,
@@ -248,6 +250,16 @@ class ModuleRoleBoundaryTest {
             JvmMember.of(
                 "com/intellij/openapi/externalSystem/util/ExternalSystemUtil",
                 "refreshProject",
+                "()V",
+            ),
+            JvmMember.of(
+                "com/intellij/openapi/vfs/VfsUtil",
+                "markDirtyAndRefresh",
+                "()V",
+            ),
+            JvmMember.of(
+                "io/github/amichne/kast/workspace/spi/WorkspaceTransitionPort",
+                "request",
                 "()V",
             ),
             JvmMember.of("org/gradle/tooling/ProjectConnection", "model", "()V"),
