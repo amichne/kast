@@ -83,9 +83,29 @@ data class AddDeclarationPlanningEvidence private constructor(
 @JvmInline
 value class AddDeclarationPlanId private constructor(val value: String) {
     companion object {
+        /**
+         * Proof transition: `String -> Refinement<AddDeclarationPlanId, AddDeclarationPlanIdFailure>`.
+         *
+         * Establishes an opaque canonical lowercase SHA-256 plan identity. The closed expected
+         * failure is `AddDeclarationPlanIdFailure.INVALID`; raw extraction is permitted only at
+         * transport and durable-journal boundaries.
+         */
+        fun parse(
+            raw: String,
+        ): Refinement<AddDeclarationPlanId, AddDeclarationPlanIdFailure> =
+            if (Regex("[0-9a-f]{64}").matches(raw)) {
+                Refinement.Refined(AddDeclarationPlanId(raw))
+            } else {
+                Refinement.Rejected(AddDeclarationPlanIdFailure.INVALID)
+            }
+
         internal fun fromCanonicalIdentity(value: String): AddDeclarationPlanId =
             AddDeclarationPlanId(sha256Hex(value.toByteArray()))
     }
+}
+
+enum class AddDeclarationPlanIdFailure {
+    INVALID,
 }
 
 @Serializable

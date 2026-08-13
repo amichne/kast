@@ -106,17 +106,17 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_PLAN_SPI,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.CHANGE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_JOURNAL_SQLITE,
             ModuleRole.SQLITE_ADAPTER,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_PLAN_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_CONTRACT,

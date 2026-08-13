@@ -9,6 +9,44 @@ import kotlin.collections.filter
 
 class KastArchitecturePolicyTest {
     @Test
+    fun `durable approval activates only service contract and sqlite evidence owners`() {
+        val architecture = canonicalWithoutLegacyAllowances()
+        val expectedOwners = setOf(
+            ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_SQLITE,
+            ModuleId.CHANGE_PLAN_SERVICE,
+        )
+
+        assertTrue(
+            expectedOwners.all { owner ->
+                architecture.modules.getValue(owner).lifecycle == ModuleLifecycle.ACTIVE
+            },
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.JDBC),
+            architecture.modules.getValue(ModuleId.CHANGE_JOURNAL_SQLITE).allowedEffects,
+        )
+        assertTrue(
+            setOf(ModuleId.CHANGE_JOURNAL_CONTRACT, ModuleId.CHANGE_PLAN_SERVICE).all { owner ->
+                architecture.modules.getValue(owner).allowedEffects.isEmpty()
+            },
+        )
+        assertTrue(
+            expectedOwners.all { owner ->
+                ForbiddenEffect.SOURCE_FILESYSTEM_WRITE !in
+                    architecture.modules.getValue(owner).allowedEffects
+            },
+        )
+        val durablePlanWrite = architecture.mutationRuntimeProcesses.getValue(
+            MutationRuntimeProcessId.RP05,
+        )
+        assertEquals(
+            setOf(ModuleId.CHANGE_PLAN_SERVICE, ModuleId.CHANGE_JOURNAL_CONTRACT),
+            durablePlanWrite.owners,
+        )
+    }
+
+    @Test
     fun `plan-only add declaration activates narrow owners without source-write authority`() {
         val architecture = canonicalWithoutLegacyAllowances()
         val expectedOwners = setOf(
@@ -205,7 +243,7 @@ class KastArchitecturePolicyTest {
                 ModuleId.ANALYSIS_API,
                 ModuleId.ANALYSIS_SERVER,
                 ModuleId.INDEX_STORE,
-                ModuleId.CHANGE_JOURNAL_CONTRACT,
+                ModuleId.WORKSPACE_MUTATION_CONTRACT,
             ),
             projectDependencies = emptySet(),
             effects = emptySet(),
@@ -218,7 +256,7 @@ class KastArchitecturePolicyTest {
         assertTrue(rejected.violations.contains(ArchitectureViolation.ActiveModuleMissing(ModuleId.INDEXER)))
         assertTrue(
             rejected.violations.contains(
-                ArchitectureViolation.PlannedModuleMaterialized(ModuleId.CHANGE_JOURNAL_CONTRACT),
+                ArchitectureViolation.PlannedModuleMaterialized(ModuleId.WORKSPACE_MUTATION_CONTRACT),
             ),
         )
     }
