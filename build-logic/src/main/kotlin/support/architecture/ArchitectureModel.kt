@@ -2,6 +2,8 @@ package support.architecture
 
 import support.architecture.process.MutationRuntimeProcessId
 import support.architecture.process.MutationRuntimeProcessPolicy
+import support.architecture.process.MutationRuntimeTopologyFailure
+import support.architecture.process.ValidatedMutationRuntimeTopology
 
 enum class ModuleLifecycle {
     ACTIVE,
@@ -320,6 +322,10 @@ sealed interface ArchitecturePolicyFailure {
     data class MutationRuntimeProcessDependencyCycle(
         val members: Set<MutationRuntimeProcessId>,
     ) : ArchitecturePolicyFailure
+
+    data class InvalidMutationRuntimeTopology(
+        val failure: MutationRuntimeTopologyFailure,
+    ) : ArchitecturePolicyFailure
 }
 
 sealed interface ArchitecturePolicyValidation {
@@ -331,10 +337,13 @@ sealed interface ArchitecturePolicyValidation {
 class ValidatedArchitecturePolicy internal constructor(
     val modules: Map<ModuleId, ValidatedModulePolicy>,
     val mutationDeliveryTasks: Map<MutationDeliveryTaskId, MutationDeliveryTaskPolicy>,
-    val mutationRuntimeProcesses: Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>,
+    val mutationRuntimeTopology: ValidatedMutationRuntimeTopology,
     val moduleOrder: List<ModuleId>,
     val mutationDeliveryOrder: List<MutationDeliveryTaskId>,
     val mutationRuntimeProcessOrder: List<MutationRuntimeProcessId>,
     val legacyAllowances: Set<LegacyAllowance>,
     val legacyMigrationEdges: Map<ProjectDependencyObservation, ValidatedLegacyMigrationEdge>,
-)
+) {
+    val mutationRuntimeProcesses: Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>
+        get() = mutationRuntimeTopology.processes
+}

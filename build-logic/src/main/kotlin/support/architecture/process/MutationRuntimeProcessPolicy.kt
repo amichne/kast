@@ -49,6 +49,34 @@ enum class MutationApplyLane(val processId: MutationRuntimeProcessId) {
     EXTERNAL(MutationRuntimeProcessId.RP11E),
 }
 
+enum class MutationRecoveryTerminal {
+    ROLLED_BACK,
+    RECOVERY_REQUIRED,
+}
+
+enum class MutationRuntimeTopologyFailure {
+    SEMANTIC_APPLY_LANE_INVALID,
+    EXTERNAL_APPLY_LANE_INVALID,
+    SELECTED_APPLY_LANE_JOIN_REQUIRED,
+    RECOVERY_PREPARATION_POINT_INVALID,
+    POST_PREPARATION_RECOVERY_COVERAGE_INVALID,
+    RECOVERY_TERMINALS_INVALID,
+}
+
+class ValidatedMutationRuntimeTopology internal constructor(
+    val processes: Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>,
+)
+
+sealed interface MutationRuntimeTopologyValidation {
+    data class Valid(
+        val topology: ValidatedMutationRuntimeTopology,
+    ) : MutationRuntimeTopologyValidation
+
+    data class Invalid(
+        val failures: Set<MutationRuntimeTopologyFailure>,
+    ) : MutationRuntimeTopologyValidation
+}
+
 sealed interface MutationRuntimeAdmission {
     val orderingDependencies: Set<MutationRuntimeProcessId>
 
@@ -82,18 +110,40 @@ sealed interface MutationRuntimeAdmission {
             lanes.mapTo(linkedSetOf(), MutationApplyLane::processId)
     }
 
+    /** Raw invalid-policy fixture representing an all-of join across alternative apply lanes. */
+    data object AllApplyLanesJoin : MutationRuntimeAdmission {
+        override val orderingDependencies: Set<MutationRuntimeProcessId> =
+            MutationApplyLane.entries.mapTo(linkedSetOf(), MutationApplyLane::processId)
+    }
+
     /**
      * Arms recovery when durable recovery preparation completes.
      *
      * This is an interrupt admission for every later failure, not a join over failure points.
      */
-    data object RecoveryInterruptAfterPreparation : MutationRuntimeAdmission {
-        val preparedBy: MutationRuntimeProcessId = MutationRuntimeProcessId.RP09
+    class RecoveryInterruptAfterPreparation internal constructor(
+        val preparedBy: MutationRuntimeProcessId,
+        val failurePoints: Set<MutationRuntimeProcessId>,
+        val terminalOutcomes: Set<MutationRecoveryTerminal>,
+    ) : MutationRuntimeAdmission {
         override val orderingDependencies: Set<MutationRuntimeProcessId> = setOf(preparedBy)
     }
 }
 
 object KastMutationRuntimeProcesses {
+    val postRecoveryPreparationFailurePoints: Set<MutationRuntimeProcessId> = linkedSetOf(
+        MutationRuntimeProcessId.RP10,
+        MutationRuntimeProcessId.RP11S,
+        MutationRuntimeProcessId.RP11E,
+        MutationRuntimeProcessId.RP12,
+        MutationRuntimeProcessId.RP13,
+        MutationRuntimeProcessId.RP14,
+        MutationRuntimeProcessId.RP15,
+        MutationRuntimeProcessId.RP16,
+        MutationRuntimeProcessId.RP17,
+        MutationRuntimeProcessId.RP18,
+    )
+
     val all: List<MutationRuntimeProcessPolicy> = listOf(
         process(
             MutationRuntimeProcessId.RP01,
@@ -248,7 +298,7 @@ object KastMutationRuntimeProcesses {
         process(
             MutationRuntimeProcessId.RP19,
             "Rollback or retain recovery after failure",
-            MutationRuntimeAdmission.RecoveryInterruptAfterPreparation,
+            recoveryInterruptAfterPreparation(),
             owners(ModuleId.CHANGE_RECOVERY_SERVICE),
             effects(MutationRuntimeEffect.SOURCE_WRITE, MutationRuntimeEffect.DERIVED_WRITE),
             "FAILURE_DEPENDENT"
@@ -276,7 +326,67 @@ object KastMutationRuntimeProcesses {
     private fun after(predecessor: MutationRuntimeProcessId): MutationRuntimeAdmission =
         MutationRuntimeAdmission.After(predecessor)
 
+    private fun recoveryInterruptAfterPreparation(): MutationRuntimeAdmission =
+        MutationRuntimeAdmission.RecoveryInterruptAfterPreparation(
+            preparedBy = MutationRuntimeProcessId.RP09,
+            failurePoints = postRecoveryPreparationFailurePoints,
+            terminalOutcomes = MutationRecoveryTerminal.entries.toSet(),
+        )
+
     private fun owners(vararg ids: ModuleId): Set<ModuleId> = ids.toSet()
 
     private fun effects(vararg effects: MutationRuntimeEffect): Set<MutationRuntimeEffect> = effects.toSet()
+}
+
+object MutationRuntimeTopologyValidator {
+    /**
+     * Proof transition:
+     * `Iterable<MutationRuntimeProcessPolicy> -> ValidatedMutationRuntimeTopology`.
+     *
+     * A valid result establishes exact alternative-lane admission, a selected-lane common suffix,
+     * complete post-preparation recovery coverage, and the finite truthful recovery terminals.
+     * [MutationRuntimeTopologyValidation.Invalid] retains the closed expected topology failures.
+     * Raw process policies may be extracted only by the architecture-policy definition boundary.
+     */
+    fun validate(
+        policies: Iterable<MutationRuntimeProcessPolicy>,
+    ): MutationRuntimeTopologyValidation {
+        val processes = policies.associateBy(MutationRuntimeProcessPolicy::id)
+        val failures = buildSet {
+            if (!processes.hasLaneAdmission(MutationApplyLane.SEMANTIC)) {
+                add(MutationRuntimeTopologyFailure.SEMANTIC_APPLY_LANE_INVALID)
+            }
+            if (!processes.hasLaneAdmission(MutationApplyLane.EXTERNAL)) {
+                add(MutationRuntimeTopologyFailure.EXTERNAL_APPLY_LANE_INVALID)
+            }
+            if (processes[MutationRuntimeProcessId.RP12]?.admission !==
+                MutationRuntimeAdmission.SelectedApplyLaneJoin
+            ) {
+                add(MutationRuntimeTopologyFailure.SELECTED_APPLY_LANE_JOIN_REQUIRED)
+            }
+            val recovery = processes[MutationRuntimeProcessId.RP19]?.admission as?
+                MutationRuntimeAdmission.RecoveryInterruptAfterPreparation
+            if (recovery?.preparedBy != MutationRuntimeProcessId.RP09) {
+                add(MutationRuntimeTopologyFailure.RECOVERY_PREPARATION_POINT_INVALID)
+            }
+            if (recovery?.failurePoints != KastMutationRuntimeProcesses.postRecoveryPreparationFailurePoints) {
+                add(MutationRuntimeTopologyFailure.POST_PREPARATION_RECOVERY_COVERAGE_INVALID)
+            }
+            if (recovery?.terminalOutcomes != MutationRecoveryTerminal.entries.toSet()) {
+                add(MutationRuntimeTopologyFailure.RECOVERY_TERMINALS_INVALID)
+            }
+        }
+        return if (failures.isEmpty()) {
+            MutationRuntimeTopologyValidation.Valid(
+                ValidatedMutationRuntimeTopology(processes),
+            )
+        } else {
+            MutationRuntimeTopologyValidation.Invalid(failures)
+        }
+    }
+
+    private fun Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>.hasLaneAdmission(
+        lane: MutationApplyLane,
+    ): Boolean =
+        (get(lane.processId)?.admission as? MutationRuntimeAdmission.ApplyLane)?.lane == lane
 }

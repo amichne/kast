@@ -23,7 +23,7 @@ class ArchitectureProjectionTest {
         val root = Json.parseToJsonElement(first).jsonObject
 
         assertEquals(first, second)
-        assertEquals(5, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(6, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("KOTLIN", root.getValue("policyAuthority").jsonPrimitive.content)
         assertEquals("REPOSITORY_WIDE", root.getValue("enforcementScope").jsonPrimitive.content)
         assertEquals("MUTATION", root.getValue("workflowScope").jsonPrimitive.content)
@@ -105,6 +105,18 @@ class ArchitectureProjectionTest {
             recovery.getValue("kind").jsonPrimitive.content,
         )
         assertEquals("RP09", recovery.getValue("preparedBy").jsonPrimitive.content)
+        assertEquals(
+            setOf("RP10", "RP11S", "RP11E", "RP12", "RP13", "RP14", "RP15", "RP16", "RP17", "RP18"),
+            recovery.getValue("failurePoints").jsonArray.mapTo(mutableSetOf()) { failurePoint ->
+                failurePoint.jsonPrimitive.content
+            },
+        )
+        assertEquals(
+            setOf("ROLLED_BACK", "RECOVERY_REQUIRED"),
+            recovery.getValue("terminalOutcomes").jsonArray.mapTo(mutableSetOf()) { terminal ->
+                terminal.jsonPrimitive.content
+            },
+        )
         assertTrue(processes.values.none { "dependsOn" in it.jsonObject })
     }
 }

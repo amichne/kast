@@ -12,7 +12,7 @@ import support.architecture.process.MutationRuntimeAdmission
 object ArchitectureProjection {
     fun render(policy: ValidatedArchitecturePolicy): String = buildString {
         append("{\n")
-        append("  \"schemaVersion\": 5,\n")
+        append("  \"schemaVersion\": 6,\n")
         append("  \"policyAuthority\": \"KOTLIN\",\n")
         append("  \"policySource\": \"build-logic/src/main/kotlin/support/architecture\",\n")
         append("  \"enforcementScope\": \"REPOSITORY_WIDE\",\n")
@@ -138,10 +138,19 @@ private fun StringBuilder.appendAdmission(admission: MutationRuntimeAdmission): 
         }
         append("]}")
     }
-    MutationRuntimeAdmission.RecoveryInterruptAfterPreparation ->
+    MutationRuntimeAdmission.AllApplyLanesJoin ->
+        append("{\"kind\": \"ALL_APPLY_LANES_JOIN\"}")
+    is MutationRuntimeAdmission.RecoveryInterruptAfterPreparation -> {
+        val failurePoints = admission.failurePoints.sortedBy(Enum<*>::name)
+        val terminalOutcomes = admission.terminalOutcomes.sortedBy(Enum<*>::name)
         append("{\"kind\": \"RECOVERY_INTERRUPT_AFTER_PREPARATION\", \"preparedBy\": ")
-            .appendQuoted(MutationRuntimeAdmission.RecoveryInterruptAfterPreparation.preparedBy.name)
+            .appendQuoted(admission.preparedBy.name)
+            .append(", \"failurePoints\": ")
+            .appendStringArray(failurePoints.map(Enum<*>::name))
+            .append(", \"terminalOutcomes\": ")
+            .appendStringArray(terminalOutcomes.map(Enum<*>::name))
             .append("}")
+    }
 }
 
 private fun StringBuilder.appendOwner(owner: MutationDeliveryOwner): StringBuilder = when (owner) {

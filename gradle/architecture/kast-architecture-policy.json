@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "policyAuthority": "KOTLIN",
   "policySource": "build-logic/src/main/kotlin/support/architecture",
   "enforcementScope": "REPOSITORY_WIDE",
@@ -552,7 +552,7 @@
       "id": "RP19",
       "name": "Rollback or retain recovery after failure",
       "orderingDependencies": ["RP09"],
-      "admission": {"kind": "RECOVERY_INTERRUPT_AFTER_PREPARATION", "preparedBy": "RP09"},
+      "admission": {"kind": "RECOVERY_INTERRUPT_AFTER_PREPARATION", "preparedBy": "RP09", "failurePoints": ["RP10", "RP11E", "RP11S", "RP12", "RP13", "RP14", "RP15", "RP16", "RP17", "RP18"], "terminalOutcomes": ["RECOVERY_REQUIRED", "ROLLED_BACK"]},
       "owners": [":change:recovery:service"],
       "effects": ["DERIVED_WRITE", "SOURCE_WRITE"],
       "cost": "FAILURE_DEPENDENT"

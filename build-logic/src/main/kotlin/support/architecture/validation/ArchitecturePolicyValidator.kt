@@ -4,6 +4,8 @@ import support.architecture.baseline.KastArchitectureLegacyBaseline
 import support.architecture.baseline.KastArchitectureLegacyMigrations
 import support.architecture.process.KastMutationRuntimeProcesses
 import support.architecture.process.MutationRuntimeProcessPolicy
+import support.architecture.process.MutationRuntimeTopologyValidation
+import support.architecture.process.MutationRuntimeTopologyValidator
 
 object KastArchitecturePolicy {
     internal fun definition(): ArchitecturePolicyDefinition = ArchitecturePolicyDefinition(
@@ -18,9 +20,9 @@ object KastArchitecturePolicy {
      * Proof transition: `ArchitecturePolicyDefinition -> ValidatedArchitecturePolicy`.
      *
      * Establishes unique identities, complete references, and acyclic platform-module, mutation
-     * runtime, and mutation delivery graphs. [ArchitecturePolicyValidation.Invalid] is the closed
-     * expected failure. Raw graph extraction is permitted only in Gradle task and JSON projection
-     * adapters.
+     * runtime, and mutation delivery graphs, including exact alternative apply-lane and recovery
+     * topology. [ArchitecturePolicyValidation.Invalid] is the closed expected failure. Raw graph
+     * extraction is permitted only in Gradle task and JSON projection adapters.
      */
     fun validate(): ArchitecturePolicyValidation = ArchitecturePolicyValidator.validate(definition())
 }
@@ -129,6 +131,15 @@ object ArchitecturePolicyValidator {
             .keys
             .map(ArchitecturePolicyFailure::DuplicateMutationRuntimeProcess)
         val mutationRuntimeProcesses = definition.mutationRuntimeProcesses.associateBy(MutationRuntimeProcessPolicy::id)
+        val mutationRuntimeTopologyValidation =
+            MutationRuntimeTopologyValidator.validate(definition.mutationRuntimeProcesses)
+        val mutationRuntimeTopologyFailures = when (mutationRuntimeTopologyValidation) {
+            is MutationRuntimeTopologyValidation.Valid -> emptySet()
+            is MutationRuntimeTopologyValidation.Invalid ->
+                mutationRuntimeTopologyValidation.failures.mapTo(linkedSetOf()) {
+                    ArchitecturePolicyFailure.InvalidMutationRuntimeTopology(it)
+                }
+        }
         val missingMutationRuntimeDependencies = definition.mutationRuntimeProcesses.flatMap { process ->
             process.admission.orderingDependencies
                 .filterNot(mutationRuntimeProcesses::containsKey)
@@ -167,27 +178,33 @@ object ArchitecturePolicyValidator {
             addAll(nonExactAllowances)
             addAll(dependencyAllowances)
             addAll(duplicateMutationRuntimeProcesses)
+            addAll(mutationRuntimeTopologyFailures)
             addAll(missingMutationRuntimeDependencies)
             addAll(missingMutationRuntimeOwners)
             mutationRuntimeSort.cycle?.let {
                 add(ArchitecturePolicyFailure.MutationRuntimeProcessDependencyCycle(it))
             }
         }
-        return if (failures.isEmpty()) {
-            ArchitecturePolicyValidation.Valid(
-                ValidatedArchitecturePolicy(
-                    modules = validatedModules,
-                    mutationDeliveryTasks = mutationDeliveryTasks,
-                    mutationRuntimeProcesses = mutationRuntimeProcesses,
-                    moduleOrder = moduleSort.order,
-                    mutationDeliveryOrder = mutationDeliverySort.order,
-                    mutationRuntimeProcessOrder = mutationRuntimeSort.order,
-                    legacyAllowances = definition.legacyAllowances.toSet(),
-                    legacyMigrationEdges = validatedMigrations,
-                ),
-            )
-        } else {
-            ArchitecturePolicyValidation.Invalid(failures)
+        return when (mutationRuntimeTopologyValidation) {
+            is MutationRuntimeTopologyValidation.Valid ->
+                if (failures.isEmpty()) {
+                    ArchitecturePolicyValidation.Valid(
+                        ValidatedArchitecturePolicy(
+                            modules = validatedModules,
+                            mutationDeliveryTasks = mutationDeliveryTasks,
+                            mutationRuntimeTopology = mutationRuntimeTopologyValidation.topology,
+                            moduleOrder = moduleSort.order,
+                            mutationDeliveryOrder = mutationDeliverySort.order,
+                            mutationRuntimeProcessOrder = mutationRuntimeSort.order,
+                            legacyAllowances = definition.legacyAllowances.toSet(),
+                            legacyMigrationEdges = validatedMigrations,
+                        ),
+                    )
+                } else {
+                    ArchitecturePolicyValidation.Invalid(failures)
+                }
+            is MutationRuntimeTopologyValidation.Invalid ->
+                ArchitecturePolicyValidation.Invalid(failures)
         }
     }
 
