@@ -13,6 +13,7 @@ mkdir -p \
   "$fixture/line-limit" \
   "$fixture/child-limit" \
   "$fixture/non-source" \
+  "$fixture/generated/bulk-attributes" \
   "$fixture/generated/overfull" \
   "$fixture/locked/overfull" \
   "$fixture/indexer"
@@ -30,6 +31,10 @@ for child in $(seq 1 10); do
 done
 for child in $(seq 1 11); do
   printf 'root boundary %s\n' "$child" >"$fixture/root-$child.txt"
+done
+for child in $(seq 1 600); do
+  printf 'generated bulk child %s\n' "$child" \
+    >"$fixture/generated/bulk-attributes/attribute-output-padding-$child.json"
 done
 
 for extension in md json py sh; do
@@ -67,7 +72,22 @@ for line in $(seq 1 401); do
 done >"$fixture/untracked.rs"
 
 baseline_output="$fixture/baseline-output.txt"
-python3 "$checker" --root "$fixture" >"$baseline_output"
+python3 "$checker" --root "$fixture" >"$baseline_output" &
+checker_pid=$!
+for _ in $(seq 1 100); do
+  if ! kill -0 "$checker_pid" 2>/dev/null; then
+    break
+  fi
+  sleep 0.05
+done
+if kill -0 "$checker_pid" 2>/dev/null; then
+  pkill -P "$checker_pid" 2>/dev/null || true
+  kill "$checker_pid" 2>/dev/null || true
+  wait "$checker_pid" 2>/dev/null || true
+  printf '%s\n' 'repository shape checker deadlocked on bulk attribute output' >&2
+  exit 1
+fi
+wait "$checker_pid"
 grep -Fq 'repositoryRoot: boundary' "$baseline_output"
 grep -Fq 'files: trackedHandAuthoredKotlinAndRustSource' "$baseline_output"
 
