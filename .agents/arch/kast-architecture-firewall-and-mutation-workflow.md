@@ -56,7 +56,7 @@ all of its own dependencies have mechanical proof.
 
 | ID | Milestone | Wave | Depends on | Observable outcome |
 | --- | --- | ---: | --- | --- |
-| KIP-001 | M0 | 0 | - | Freeze the source and reproducible performance ledger. |
+| KIP-001 | M0 | 0 | - | Freeze the [source and reproducible performance ledger](kast-intellij-substrate-ledger.json) and its executable validator. |
 | KIP-002 | M0 | 1 | KIP-001 | Correct alternative mutation branches, joins, and recovery interrupts. |
 | KIP-003 | M0 | 1 | KIP-001 | Correct module dependency direction around contracts, ports, adapters, and persistence. |
 | KIP-004 | M0 | 2 | KIP-003 | Introduce exact, shrink-only, retirement-bound migration edges. |
@@ -190,7 +190,8 @@ program. They replace the former undifferentiated deferred backlog.
 ## Selection and completion contract
 
 - Select exactly one node whose direct dependencies have landed with mechanical
-  proof. The first reconciliation node is KIP-001.
+  proof. Reconcile legacy-mapped implementation against the adopted KIP
+  contract before treating it as a proven predecessor.
 - Derive one ignored `.agent/TASK.md` packet with exact writes, non-goals, one
   focused RED, the smallest GREEN, and objective completion conditions.
 - Completion requires the observable outcome, positive and negative proof,
