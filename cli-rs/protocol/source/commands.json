@@ -23,7 +23,6 @@
       "symbol/rename",
       "symbol/write-and-validate",
       "symbol/add-file",
-      "symbol/add-declaration",
       "symbol/add-implementation",
       "symbol/add-statement",
       "symbol/replace-declaration"
@@ -38,7 +37,6 @@
       "raw/rename",
       "raw/plan-replacement",
       "raw/plan-add-file",
-      "raw/plan-add-declaration",
       "raw/exact-file-image-cas",
       "raw/exact-file-observation",
       "raw/inspect-mutation-scratch",
@@ -1428,148 +1426,6 @@
       "successType": "SCOPE_MUTATION_SUCCESS",
       "failureType": "SCOPE_MUTATION_FAILURE"
     },
-    "symbol/add-declaration": {
-      "method": "symbol/add-declaration",
-      "category": "symbol",
-      "summary": "Insert declaration content into a file or named Kotlin scope and validate the result",
-      "dataSource": "backend",
-      "request": {
-        "fields": {
-          "workspaceRoot": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "placement": {
-            "type": "object",
-            "sample": {
-              "scope": {
-                "type": "NAMED_SCOPE",
-                "insideScope": "com.example.Widget"
-              },
-              "anchor": {
-                "type": "AT_ANCHOR",
-                "anchor": "body-end"
-              }
-            },
-            "fields": {
-              "scope": {
-                "type": "object",
-                "fields": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "NAMED_SCOPE",
-                      "FILE_SCOPE"
-                    ]
-                  },
-                  "insideScope": {
-                    "type": "string",
-                    "optional": true
-                  },
-                  "insideFile": {
-                    "type": "string",
-                    "optional": true
-                  },
-                  "fileHint": {
-                    "type": "string",
-                    "optional": true,
-                    "nullable": true
-                  },
-                  "kind": {
-                    "type": "string",
-                    "optional": true,
-                    "nullable": true,
-                    "enum": [
-                      "class",
-                      "interface",
-                      "object",
-                      "function",
-                      "property"
-                    ]
-                  },
-                  "containingType": {
-                    "type": "string",
-                    "optional": true,
-                    "nullable": true
-                  }
-                },
-                "required": [
-                  "type"
-                ]
-              },
-              "anchor": {
-                "type": "object",
-                "fields": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "AT_ANCHOR",
-                      "AFTER_SYMBOL",
-                      "BEFORE_SYMBOL"
-                    ]
-                  },
-                  "anchor": {
-                    "type": "string",
-                    "optional": true,
-                    "enum": [
-                      "body-start",
-                      "body-end",
-                      "file-top",
-                      "file-bottom",
-                      "after-imports"
-                    ]
-                  },
-                  "symbol": {
-                    "type": "string",
-                    "optional": true
-                  },
-                  "fileHint": {
-                    "type": "string",
-                    "optional": true,
-                    "nullable": true
-                  },
-                  "kind": {
-                    "type": "string",
-                    "optional": true,
-                    "nullable": true,
-                    "enum": [
-                      "class",
-                      "interface",
-                      "object",
-                      "function",
-                      "property"
-                    ]
-                  },
-                  "containingType": {
-                    "type": "string",
-                    "optional": true,
-                    "nullable": true
-                  }
-                },
-                "required": [
-                  "type"
-                ]
-              }
-            },
-            "required": [
-              "scope",
-              "anchor"
-            ]
-          },
-          "contentFile": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "placement",
-          "contentFile"
-        ]
-      },
-      "responseType": "KastScopeMutationResponse",
-      "successType": "SCOPE_MUTATION_SUCCESS",
-      "failureType": "SCOPE_MUTATION_FAILURE"
-    },
     "symbol/add-implementation": {
       "method": "symbol/add-implementation",
       "category": "symbol",
@@ -2178,35 +2034,6 @@
       "notes": [
         "The result is non-mutating and proves the exact target is absent.",
         "The result binds canonical source ownership, collision and rebinding coverage, compiler occurrences, and the exact UTF-8 postimage."
-      ]
-    },
-    "raw/plan-add-declaration": {
-      "method": "raw/plan-add-declaration",
-      "category": "raw",
-      "summary": "Plan a compiler-proven top-level Kotlin declaration addition",
-      "dataSource": "backend",
-      "request": {
-        "fields": {
-          "targetPath": {
-            "type": "string"
-          },
-          "expectedCurrentSha256": {
-            "type": "string"
-          },
-          "proposedDeclaration": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "targetPath",
-          "expectedCurrentSha256",
-          "proposedDeclaration"
-        ]
-      },
-      "responseType": "AddDeclarationPlanResult",
-      "notes": [
-        "The result is non-mutating and binds the exact target preimage and postimage.",
-        "The only supported insertion is compiler FILE_BOTTOM with the closed preserve-existing append blank-line final-LF policy."
       ]
     },
     "raw/exact-file-image-cas": {
@@ -3234,41 +3061,41 @@
       "dataSource": "sqlite",
       "request": {
         "fields": {
-      "workspaceRoot": {
-        "type": "string",
-        "optional": true,
-        "nullable": true
-      },
-      "canonicalKey": {
-        "type": "string",
-        "optional": true
-      },
-      "labelIndex": {
-        "type": "string",
-        "description": "Workspace-relative version-1 precomputed label index used only to retrieve compiler-identified candidates for natural-language resolve queries.",
-        "sample": "repository-labels.json",
-        "optional": true
-      },
-      "question": {
-        "type": "string"
-      },
-      "querySyntax": {
-        "type": "string",
-        "enum": [
-          "natural_language",
-          "regex"
-        ],
-        "optional": true
-      },
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "canonicalKey": {
+            "type": "string",
+            "optional": true
+          },
+          "labelIndex": {
+            "type": "string",
+            "description": "Workspace-relative version-1 precomputed label index used only to retrieve compiler-identified candidates for natural-language resolve queries.",
+            "sample": "repository-labels.json",
+            "optional": true
+          },
+          "question": {
+            "type": "string"
+          },
+          "querySyntax": {
+            "type": "string",
+            "enum": [
+              "natural_language",
+              "regex"
+            ],
+            "optional": true
+          },
           "intent": {
             "enum": [
-          "resolve",
-          "path",
-          "incoming_impact",
-          "outgoing_impact",
-          "architecture",
-          "context_relationship"
-        ],
+              "resolve",
+              "path",
+              "incoming_impact",
+              "outgoing_impact",
+              "architecture",
+              "context_relationship"
+            ],
             "type": "string"
           },
           "scope": {
@@ -3315,48 +3142,48 @@
                 ],
                 "optional": true
               },
-          "maxDepth": {
-            "type": "integer",
-            "optional": true
+              "maxDepth": {
+                "type": "integer",
+                "optional": true
+              },
+              "projection": {
+                "type": "string",
+                "enum": [
+                  "RUNTIME_CALLS",
+                  "SYMBOL_REFERENCES",
+                  "TYPE_DEPENDENCIES",
+                  "INTERFACE_IMPLEMENTATION",
+                  "MODULE_DEPENDENCIES",
+                  "CONTAINMENT_OWNERSHIP"
+                ],
+                "optional": true
+              },
+              "metric": {
+                "type": "string",
+                "enum": [
+                  "SCC",
+                  "COMMUNITIES",
+                  "BRIDGES",
+                  "PUBLIC_API_CONSUMERS"
+                ],
+                "optional": true
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "markdown",
+                    "gradle",
+                    "schema",
+                    "workflow",
+                    "rust"
+                  ]
+                },
+                "optional": true
+              }
+            }
           },
-          "projection": {
-            "type": "string",
-            "enum": [
-              "RUNTIME_CALLS",
-              "SYMBOL_REFERENCES",
-              "TYPE_DEPENDENCIES",
-              "INTERFACE_IMPLEMENTATION",
-              "MODULE_DEPENDENCIES",
-              "CONTAINMENT_OWNERSHIP"
-            ],
-            "optional": true
-          },
-          "metric": {
-            "type": "string",
-            "enum": [
-              "SCC",
-              "COMMUNITIES",
-              "BRIDGES",
-              "PUBLIC_API_CONSUMERS"
-            ],
-            "optional": true
-          },
-          "sources": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "markdown",
-                "gradle",
-                "schema",
-                "workflow",
-                "rust"
-              ]
-            },
-            "optional": true
-          }
-        }
-      },
           "evidenceContinuation": {
             "type": "string",
             "description": "Opaque continuation from one returned edge. Reuse only with the identical workspace, graph generation, question, intent, scope, and limits; otherwise start a new unpaged query.",

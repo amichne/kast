@@ -16,8 +16,8 @@ import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
 import io.github.amichne.kast.idea.transition.CompilerSourceRootAuthorities
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.IdeaCompilerVisibleSourceIdentityResolver
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore

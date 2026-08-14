@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.idea.backend.workspace.nativePublicSymbolBinding
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
@@ -16,14 +17,21 @@ import io.github.amichne.kast.api.client.WorkspaceRepository
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
+import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceException
+import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceFailure
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
+import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclarationRecoveryPreparer
+import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclarationRecoveryPreparerOpenResult
+import io.github.amichne.kast.change.verify.intellij.IntellijPublishedWorkspaceGenerationAuthority
+import io.github.amichne.kast.idea.backend.mutation.liveAddDeclarationIntellijRuntimeAuthority
+import io.github.amichne.kast.idea.backend.mutation.verifiedAddDeclarationOperations
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
-import io.github.amichne.kast.server.RunningAnalysisServer
+import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
@@ -153,6 +161,9 @@ object IndexerServerRuntime {
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
         sourceIndexStore.ensureSchema()
         val workspaceGenerationStore = WorkspaceGenerationStore(sourceIndexStore)
+        val workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(
+            workspaceGenerationStore,
+        )
         when (val overlay = snapshotPreparation.overlaySeed) {
             is WorktreeOverlaySeed.None -> Unit
             is WorktreeOverlaySeed.Prepared -> {
@@ -172,6 +183,30 @@ object IndexerServerRuntime {
         )
         if (indexAdmission is IndexerAdmission.Failed) {
             semanticAdmission.fail(indexAdmission.error.indexAdmissionFailureDetail())
+        }
+        val addDeclarationBootstrap = when (
+            val bootstrap = openAddDeclarationPlanPersistence(
+                workspaceIdentity.workspaceIdentity.workspaceCacheDirectoryPath.resolve(
+                    ADD_DECLARATION_PLAN_JOURNAL_FILE_NAME,
+                ),
+            )
+        ) {
+            is AddDeclarationPlanPersistenceBootstrap.Ready -> bootstrap
+            is AddDeclarationPlanPersistenceBootstrap.Rejected -> {
+                sourceIndexStore.close()
+                throw AddDeclarationPlanPersistenceException.of(bootstrap.failure)
+            }
+        }
+        val recoveryPreparer = when (val opened = FilesystemAddDeclarationRecoveryPreparer.open(
+            workspaceIdentity.workspaceIdentity.workspaceCacheDirectoryPath,
+        )) {
+            is FilesystemAddDeclarationRecoveryPreparerOpenResult.Opened -> opened.preparer
+            is FilesystemAddDeclarationRecoveryPreparerOpenResult.Rejected -> {
+                sourceIndexStore.close()
+                throw AddDeclarationPlanPersistenceException.of(
+                    AddDeclarationPlanPersistenceFailure.STORAGE_UNAVAILABLE,
+                )
+            }
         }
         var pluginBackend: KastIndexerBackend? = null
         val backend = try {
@@ -201,6 +236,7 @@ object IndexerServerRuntime {
                 workspaceSemanticReadAuthority = semanticAdmission,
                 workspaceTransitionRequester = transitionIngress,
                 runtimeCapabilityLeases = runtimeCapabilityLeases,
+                addDeclarationPlanPersistence = addDeclarationBootstrap.persistence,
             )
             pluginBackend = startedPluginBackend
             ObservedAnalysisBackend(
@@ -221,6 +257,8 @@ object IndexerServerRuntime {
             throw failure
         }
         val server = try {
+            val startedPluginBackend = checkNotNull(pluginBackend)
+            val runtime = liveAddDeclarationIntellijRuntimeAuthority()
             AnalysisServer(
                 backend = backend,
                 config = indexerAnalysisServerConfig(
@@ -230,6 +268,19 @@ object IndexerServerRuntime {
                     config = config,
                     workspaceFileCountProvider = manifestFileCountProvider,
                     runtimeCapabilityLeases = runtimeCapabilityLeases,
+                ),
+                publicSymbolReads = startedPluginBackend.nativePublicSymbolBinding(),
+                verifiedAddDeclarations = VerifiedAddDeclarationBinding.Native(
+                    startedPluginBackend.verifiedAddDeclarationOperations(
+                        workspaceRoot = workspaceIdentity.workspaceRootPath,
+                        journal = addDeclarationBootstrap.journal,
+                        transitions = transitionIngress,
+                        publications = IntellijPublishedWorkspaceGenerationAuthority(
+                            workspaceGenerationPublication::current,
+                        ),
+                        recoveryPreparer = recoveryPreparer,
+                        runtime = runtime,
+                    ),
                 ),
             ).start()
         } catch (failure: Throwable) {
@@ -256,39 +307,39 @@ object IndexerServerRuntime {
             diagnostics.recordBackendStarted(transport)
             val startedPluginBackend = checkNotNull(pluginBackend)
             val startedProjectIndexing = KastIdeaProjectIndexing(
-                    project = project,
-                    workspaceIdentity = workspaceIdentity,
-                    config = config,
-                    workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(workspaceGenerationStore),
-                    diagnostics = diagnostics,
-                    indexStore = sourceIndexStore,
-                    semanticAdmission = semanticAdmission,
-                    initialProjectModelAuthority = initialProjectModelAuthority,
-                    gitWorktreeRegistrationProof = registrationProof,
-                    indexingProgress = indexingProgress,
-                    transitionIngress = transitionIngress,
-                    snapshotPreparation = snapshotPreparation,
-                    scopeCache = indexingScopeCache,
-                    semanticGraphIndexer = SemanticGraphIndexingTransition { input ->
-                        val scope = input.sourceIdentifiers
-                        if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
-                            startedPluginBackend.updateSemanticGraphBatchSize(input.batchSize)
-                            runBlocking {
-                                startedPluginBackend.reconcileSemanticGraph(
-                                    ParsedSemanticGraphQuery(
-                                        filePaths = scope.paths.distinct().sorted().map { path -> path.absolute },
-                                        removedFilePaths = scope.removedPaths
-                                            .distinct()
-                                            .sorted()
-                                            .map { path -> path.absolute },
-                                        expectedGeneration = null,
-                                    ),
-                                    input.reconciliationToken,
-                                )
-                            }
+                project = project,
+                workspaceIdentity = workspaceIdentity,
+                config = config,
+                workspaceGenerationPublication = workspaceGenerationPublication,
+                diagnostics = diagnostics,
+                indexStore = sourceIndexStore,
+                semanticAdmission = semanticAdmission,
+                initialProjectModelAuthority = initialProjectModelAuthority,
+                gitWorktreeRegistrationProof = registrationProof,
+                indexingProgress = indexingProgress,
+                transitionIngress = transitionIngress,
+                snapshotPreparation = snapshotPreparation,
+                scopeCache = indexingScopeCache,
+                semanticGraphIndexer = SemanticGraphIndexingTransition { input ->
+                    val scope = input.sourceIdentifiers
+                    if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
+                        startedPluginBackend.updateSemanticGraphBatchSize(input.batchSize)
+                        runBlocking {
+                            startedPluginBackend.reconcileSemanticGraph(
+                                ParsedSemanticGraphQuery(
+                                    filePaths = scope.paths.distinct().sorted().map { path -> path.absolute },
+                                    removedFilePaths = scope.removedPaths
+                                        .distinct()
+                                        .sorted()
+                                        .map { path -> path.absolute },
+                                    expectedGeneration = null,
+                                ),
+                                input.reconciliationToken,
+                            )
                         }
-                        GraphLaneOutcome.Committed
-                    },
+                    }
+                    GraphLaneOutcome.Committed
+                },
             )
             projectIndexing = startedProjectIndexing
             when (indexAdmission) {

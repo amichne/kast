@@ -15,58 +15,125 @@ internal object KastPlatformModules {
             ModuleRole.LEGACY_HOST,
             ModuleId.ANALYSIS_API,
             ModuleId.ANALYSIS_SERVER,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_SQLITE,
+            ModuleId.CHANGE_PLAN_INTELLIJ,
+            ModuleId.CHANGE_PLAN_SERVICE,
+            ModuleId.CHANGE_PLAN_SPI,
+            ModuleId.CHANGE_APPLY_INTELLIJ,
+            ModuleId.CHANGE_APPLY_SERVICE,
+            ModuleId.CHANGE_APPLY_SPI,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_FILESYSTEM,
+            ModuleId.CHANGE_RECOVERY_SERVICE,
+            ModuleId.CHANGE_RECOVERY_SPI,
+            ModuleId.CHANGE_VERIFY_INTELLIJ,
+            ModuleId.CHANGE_VERIFY_SERVICE,
+            ModuleId.CHANGE_VERIFY_SPI,
+            ModuleId.EVIDENCE_SQLITE,
+            ModuleId.EVIDENCE_SPI,
             ModuleId.INDEX_STORE,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.SYMBOL_INTELLIJ,
+            ModuleId.WORKSPACE_INTELLIJ,
+            ModuleId.WORKSPACE_SERVICE,
+            ModuleId.WORKSPACE_SPI,
         ),
-        planned(ModuleId.KERNEL, ModuleRole.KERNEL),
-        planned(ModuleId.PROTOCOL_REGISTRY, ModuleRole.CONTRACT, ModuleId.KERNEL),
-        planned(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
-        planned(
+        active(ModuleId.KERNEL, ModuleRole.KERNEL),
+        active(
+            ModuleId.PROTOCOL_REGISTRY,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        active(ModuleId.WORKSPACE_SPI, ModuleRole.SPI, ModuleId.WORKSPACE_CONTRACT),
+        active(
+            ModuleId.EVIDENCE_CONTRACT,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
+            ModuleId.EVIDENCE_SPI,
+            ModuleRole.SPI,
+            ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
             ModuleId.EVIDENCE_SQLITE,
             ModuleRole.SQLITE_ADAPTER,
+            ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.EVIDENCE_SPI,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.WORKSPACE_SERVICE,
             ModuleRole.SERVICE,
+            ModuleId.EVIDENCE_SPI,
             ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.EVIDENCE_SQLITE,
+            ModuleId.WORKSPACE_SPI,
         ),
-        planned(
+        active(
             ModuleId.WORKSPACE_INTELLIJ,
             ModuleRole.WORKSPACE_ADAPTER,
             ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.WORKSPACE_SERVICE,
+            ModuleId.WORKSPACE_SPI,
         ),
-        planned(
+        active(
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
+            ModuleId.SYMBOL_INTELLIJ,
+            ModuleRole.INTELLIJ_READ_ADAPTER,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_SPI,
+        ),
+        active(
+            ModuleId.PROTOCOL_CONTINUATION,
+            ModuleRole.SERVICE,
+            ModuleId.KERNEL,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
             ModuleId.CHANGE_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.KERNEL,
-            ModuleId.PROTOCOL_REGISTRY,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_PLAN_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_PLAN_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_PLAN_SPI,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_JOURNAL_SQLITE,
             ModuleRole.SQLITE_ADAPTER,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.CHANGE_VERIFY_SPI,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_PLAN_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_CONTRACT,
@@ -85,44 +152,48 @@ internal object KastPlatformModules {
             ModuleRole.SERVICE,
             ModuleId.WORKSPACE_MUTATION_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.WORKSPACE_SERVICE,
+            ModuleId.WORKSPACE_SPI,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_APPLY_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.WORKSPACE_MUTATION_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
         ),
-        planned(ModuleId.CHANGE_RECOVERY_CONTRACT, ModuleRole.CONTRACT, ModuleId.CHANGE_CONTRACT),
-        planned(
+        active(ModuleId.CHANGE_RECOVERY_CONTRACT, ModuleRole.CONTRACT, ModuleId.CHANGE_CONTRACT),
+        active(
+            ModuleId.CHANGE_RECOVERY_SPI,
+            ModuleRole.SPI,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
+        ),
+        active(
             ModuleId.CHANGE_RECOVERY_FILESYSTEM,
             ModuleRole.FILESYSTEM_WRITE_ADAPTER,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_SPI,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_RECOVERY_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
-            ModuleId.CHANGE_RECOVERY_FILESYSTEM,
+            ModuleId.CHANGE_RECOVERY_SPI,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_APPLY_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.CHANGE_PLAN_SPI,
             ModuleId.CHANGE_APPLY_SPI,
-            ModuleId.CHANGE_RECOVERY_CONTRACT,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
-            ModuleId.WORKSPACE_MUTATION_CONTRACT,
+            ModuleId.CHANGE_RECOVERY_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_APPLY_INTELLIJ,
             ModuleRole.INTELLIJ_WRITE_ADAPTER,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_APPLY_SPI,
-            ModuleId.WORKSPACE_CONTRACT,
         ),
         planned(
             ModuleId.CHANGE_APPLY_FILESYSTEM,
@@ -130,34 +201,44 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_APPLY_SPI,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_VERIFY_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_VERIFY_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_VERIFY_SPI,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_VERIFY_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_VERIFY_SPI,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_SPI,
         ),
-        planned(ModuleId.RUNTIME_BINDINGS_CONTRACT, ModuleRole.CONTRACT, ModuleId.CHANGE_CONTRACT),
+        planned(
+            ModuleId.RUNTIME_BINDINGS,
+            ModuleRole.CONTRACT,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
         planned(
             ModuleId.RUNTIME_SERVER,
             ModuleRole.TRANSPORT,
             ModuleId.PROTOCOL_REGISTRY,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.RUNTIME_BINDINGS_CONTRACT,
+            ModuleId.RUNTIME_BINDINGS,
         ),
         planned(
             ModuleId.RUNTIME_COMPOSITION,
@@ -202,20 +283,20 @@ internal object KastPlatformModules {
     private fun allowedEffects(id: ModuleId): Set<ForbiddenEffect> = when (id) {
         ModuleId.ANALYSIS_API,
         ModuleId.ANALYSIS_SERVER,
-        -> setOf(ForbiddenEffect.ANALYSIS_BACKEND, ForbiddenEffect.FILESYSTEM_WRITE)
+            -> setOf(ForbiddenEffect.ANALYSIS_BACKEND, ForbiddenEffect.FILESYSTEM_WRITE)
         ModuleId.INDEX_STORE -> setOf(ForbiddenEffect.JDBC, ForbiddenEffect.FILESYSTEM_WRITE)
         ModuleId.INDEXER -> setOf(ForbiddenEffect.FILESYSTEM_WRITE)
         ModuleId.WORKSPACE_INTELLIJ -> setOf(ForbiddenEffect.GRADLE_IMPORT)
         ModuleId.CHANGE_JOURNAL_SQLITE,
         ModuleId.EVIDENCE_SQLITE,
-        -> setOf(ForbiddenEffect.JDBC)
+            -> setOf(ForbiddenEffect.JDBC)
         ModuleId.CHANGE_APPLY_INTELLIJ -> setOf(ForbiddenEffect.INTELLIJ_WRITE)
         ModuleId.CHANGE_APPLY_FILESYSTEM,
         ModuleId.CHANGE_RECOVERY_FILESYSTEM,
-        -> setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
+            -> setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
         ModuleId.RUNTIME_COMPOSITION,
         ModuleId.RUNTIME_SERVER,
-        -> setOf(ForbiddenEffect.ANALYSIS_BACKEND)
+            -> setOf(ForbiddenEffect.ANALYSIS_BACKEND)
         else -> emptySet()
     }
 }

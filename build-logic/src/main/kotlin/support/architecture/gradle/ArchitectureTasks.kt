@@ -25,7 +25,6 @@ import support.architecture.BytecodeScanOutcome
 import support.architecture.JvmEffectScanner
 import support.architecture.KastArchitecturePolicy
 import support.architecture.LegacyViolationKey
-import support.architecture.ModuleId
 import support.architecture.ObservedArchitecture
 import support.architecture.ValidatedArchitecturePolicy
 import support.architecture.projection.ArchitectureProjection
@@ -49,8 +48,11 @@ abstract class GenerateKastArchitectureProjectionTask : DefaultTask() {
 @CacheableTask
 abstract class VerifyKastArchitectureTask : DefaultTask() {
     init {
+        mustRunAfter("generateKastArchitectureProjection")
         observedProjectPaths.convention(emptyList())
         observedProjectDependencies.convention(emptyList())
+        observedExportedProjectDependencies.convention(emptyList())
+        observedModuleRoleConventions.convention(emptyList())
         classDirectoryOwners.convention(emptyList())
     }
 
@@ -59,6 +61,12 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     @get:Input
     abstract val observedProjectDependencies: ListProperty<String>
+
+    @get:Input
+    abstract val observedExportedProjectDependencies: ListProperty<String>
+
+    @get:Input
+    abstract val observedModuleRoleConventions: ListProperty<String>
 
     @get:Input
     abstract val classDirectoryOwners: ListProperty<String>
@@ -86,6 +94,8 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
                 policy,
                 observedProjectPaths.get(),
                 observedProjectDependencies.get(),
+                observedExportedProjectDependencies.get(),
+                observedModuleRoleConventions.get(),
             )
         ) {
             is ArchitectureObservationValidation.Valid -> parsed.graph
@@ -98,7 +108,13 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         when (
             val admission = ArchitectureAdmission.evaluate(
                 policy,
-                ObservedArchitecture(graph.modules, graph.projectDependencies, effects),
+                ObservedArchitecture(
+                    graph.modules,
+                    graph.projectDependencies,
+                    effects,
+                    graph.exportedProjectDependencies,
+                    graph.moduleRoleConventions,
+                ),
             )
         ) {
             is ArchitectureAdmission.Accepted -> writeReport(
@@ -108,6 +124,11 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
                         "RETAINED_LEGACY_ALLOWANCES",
                         "The exact migration baseline remains fully observed.",
                         "count" to admission.retainedLegacyAllowances.size.toString(),
+                    ),
+                    finding(
+                        "RETAINED_LEGACY_MIGRATIONS",
+                        "Every active temporary dependency remains exactly observed.",
+                        "count" to admission.retainedLegacyMigrations.size.toString(),
                     ),
                 ),
             )
@@ -137,7 +158,7 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     private fun scanEffects(policy: ValidatedArchitecturePolicy) =
         classDirectoryOwners.get().groupByOwner().flatMapTo(linkedSetOf()) { (projectPath, directories) ->
-            val module = policy.modules.keys.single { it.projectPath == projectPath }
+            val module = policy.modules.values.single { it.id.projectPath == projectPath }
             val classFiles = directories.flatMap(::classFiles)
             when (val scan = JvmEffectScanner.scan(module, classFiles)) {
                 is BytecodeScanOutcome.Scanned -> scan.effects
@@ -170,7 +191,10 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         }
     }
 
-    private fun fail(status: String, findings: List<ArchitectureReportFinding>): Nothing {
+    private fun fail(
+        status: String,
+        findings: List<ArchitectureReportFinding>,
+    ): Nothing {
         writeReport(status, findings)
         throw GradleException(
             buildString {
@@ -180,7 +204,10 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         )
     }
 
-    private fun writeReport(status: String, findings: List<ArchitectureReportFinding>) {
+    private fun writeReport(
+        status: String,
+        findings: List<ArchitectureReportFinding>,
+    ) {
         val target = reportFile.get().asFile.toPath()
         Files.createDirectories(target.parent)
         val renderedFindings = findings.joinToString(",") { it.renderJson() }
@@ -199,7 +226,7 @@ private fun canonicalPolicy(): ValidatedArchitecturePolicy = when (val policy = 
     is ArchitecturePolicyValidation.Valid -> policy.architecture
     is ArchitecturePolicyValidation.Invalid -> throw GradleException(
         "Canonical Kast repository architecture policy is invalid:\n" +
-            policy.failures.joinToString("\n") { " - $it" },
+        policy.failures.joinToString("\n") { " - $it" },
     )
 }
 
@@ -224,6 +251,45 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
         violation.allowance.violation.toString(),
         "retirementTask" to violation.allowance.retirementTask.name,
     )
+    is ArchitectureViolation.ObsoleteLegacyMigration -> finding(
+        "OBSOLETE_LEGACY_MIGRATION",
+        violation.migration.dependency.toString(),
+        "consumer" to violation.migration.dependency.consumer.projectPath,
+        "dependency" to violation.migration.dependency.dependency.projectPath,
+        "retirementTask" to violation.migration.retirementTask.name,
+    )
+    is ArchitectureViolation.ObsoleteLegacyImplementationBridge -> finding(
+        "OBSOLETE_LEGACY_IMPLEMENTATION_BRIDGE",
+        violation.bridge.dependency.toString(),
+        "consumer" to violation.bridge.dependency.consumer.projectPath,
+        "dependency" to violation.bridge.dependency.dependency.projectPath,
+        "retirementTask" to violation.bridge.retirementTask.name,
+    )
+    is ArchitectureViolation.ForbiddenExportedProjectDependency -> finding(
+        "FORBIDDEN_EXPORTED_PROJECT_DEPENDENCY",
+        "${violation.dependency.consumer.projectPath} -> ${violation.dependency.dependency.projectPath}",
+        "consumer" to violation.dependency.consumer.projectPath,
+        "dependency" to violation.dependency.dependency.projectPath,
+    )
+    is ArchitectureViolation.MissingModuleRoleConvention -> finding(
+        "MISSING_MODULE_ROLE_CONVENTION",
+        violation.module.projectPath,
+        "module" to violation.module.projectPath,
+        "expectedPlugin" to violation.expected.pluginId,
+    )
+    is ArchitectureViolation.UnexpectedModuleRoleConvention -> finding(
+        "UNEXPECTED_MODULE_ROLE_CONVENTION",
+        violation.module.projectPath,
+        "module" to violation.module.projectPath,
+        "observedPlugin" to violation.observed.pluginId,
+    )
+    is ArchitectureViolation.MismatchedModuleRoleConvention -> finding(
+        "MISMATCHED_MODULE_ROLE_CONVENTION",
+        violation.module.projectPath,
+        "module" to violation.module.projectPath,
+        "expectedPlugin" to violation.expected.pluginId,
+        "observedPlugin" to violation.observed.pluginId,
+    )
     is ArchitectureViolation.UnbaselinedLegacyViolation -> when (val key = violation.violation) {
         is LegacyViolationKey.UnapprovedProjectDependency -> finding(
             "UNAPPROVED_PROJECT_DEPENDENCY",
@@ -235,8 +301,8 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
             finding(
                 "FORBIDDEN_EFFECT",
                 "${module.projectPath} ${effect.name} " +
-                    "${caller.owner.internalName}.${caller.name.value}${caller.descriptor.value} -> " +
-                    "${target.owner.internalName}.${target.name.value}${target.descriptor.value}",
+                "${caller.owner.internalName}.${caller.name.value}${caller.descriptor.value} -> " +
+                "${target.owner.internalName}.${target.name.value}${target.descriptor.value}",
                 "module" to module.projectPath,
                 "effect" to effect.name,
                 "callerOwner" to caller.owner.internalName,
@@ -272,7 +338,7 @@ private data class ArchitectureReportFinding(
         val renderedAttributes = attributes.entries.sortedBy(Map.Entry<String, String>::key)
             .joinToString(",") { (key, value) -> "\"${key.reportEscape()}\":\"${value.reportEscape()}\"" }
         return "{\"code\":\"${code.reportEscape()}\",\"message\":\"${message.reportEscape()}\"," +
-            "\"attributes\":{$renderedAttributes}}"
+               "\"attributes\":{$renderedAttributes}}"
     }
 }
 

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListenerBackgroundable
@@ -137,11 +139,14 @@ internal class WorkspaceVfsSignalClassifier(
             .map { authority -> authority.relativize(path) }
             .any { relative ->
                 relative.nameCount == 2 &&
-                    relative.getName(0).toString() == ".idea" &&
-                    relative.fileName.toString() in IDEA_COMPILER_CONFIGURATION_FILES
+                relative.getName(0).toString() == ".idea" &&
+                relative.fileName.toString() in IDEA_COMPILER_CONFIGURATION_FILES
             }
 
-    private fun isWithinAny(path: Path, roots: () -> Set<Path>): Boolean =
+    private fun isWithinAny(
+        path: Path,
+        roots: () -> Set<Path>,
+    ): Boolean =
         runCatching {
             roots().any { authority ->
                 val normalized = authority.toAbsolutePath().normalize()

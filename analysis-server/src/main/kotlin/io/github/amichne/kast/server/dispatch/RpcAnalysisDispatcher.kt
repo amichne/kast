@@ -17,6 +17,7 @@ import io.github.amichne.kast.server.dispatch.RpcMethodRouter
 import io.github.amichne.kast.server.dispatch.RpcMethodResult
 import io.github.amichne.kast.server.dispatch.RpcRequestWaitPolicy
 import io.github.amichne.kast.server.dispatch.UnknownRpcMethodException
+import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
@@ -35,6 +36,10 @@ import kotlin.concurrent.withLock
 class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
+    private val publicSymbolReads: PublicSymbolReadBinding =
+        PublicSymbolReadBinding.LegacyAnalysisBackend,
+    private val verifiedAddDeclarations: VerifiedAddDeclarationBinding =
+        VerifiedAddDeclarationBinding.Unavailable,
     private val json: Json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -44,6 +49,8 @@ class RpcAnalysisDispatcher(
     private val methodRouter = RpcMethodRouter(
         backend = backend,
         config = config,
+        publicSymbolReads = publicSymbolReads,
+        verifiedAddDeclarations = verifiedAddDeclarations,
         json = json,
     )
     private val lifecycleLock = ReentrantLock()
@@ -207,9 +214,12 @@ class RpcAnalysisDispatcher(
         methodRouter.close()
     }
 
-    private suspend fun <T> withDispatchAdmission(method: String, block: suspend () -> T): T {
+    private suspend fun <T> withDispatchAdmission(
+        method: String,
+        block: suspend () -> T,
+    ): T {
         val job = currentCoroutineContext()[Job]
-            ?: error("RPC dispatch requires a coroutine job")
+                  ?: error("RPC dispatch requires a coroutine job")
         lifecycleLock.withLock {
             if (!accepting) {
                 throw CancellationException("Analysis server is shutting down")

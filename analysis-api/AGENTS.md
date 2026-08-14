@@ -19,7 +19,8 @@ guide applies to the module except where the narrower
   response families for analysis, workspace discovery, relationships, and
   mutation planning/execution evidence.
 - `api/contract/skill` is the public agent-oriented request/response surface.
-  It composes typed selectors and backend results without owning host work.
+  It composes typed selectors, native read evidence, and backend results
+  without owning host work.
 - `api/contract/runtime` models layered readiness, lifecycle DAG edges,
   capability leases, stop permits, and runtime status.
 - `api/contract/selector`, `source`, and `symbol` own exact identities, opaque
@@ -71,6 +72,9 @@ guide applies to the module except where the narrower
 - Selector handles, relationship traversal handles, and page tokens are opaque
   capabilities. Never reconstruct identity, issuer, generation, provider
   position, or traversal frontier from display data or a UUID.
+- Native public read evidence reports one generation, exact or qualified
+  completeness, every required stage, bounded output bytes, and prohibited
+  effect counters. Legacy compatibility is an explicit variant.
 - Relationship success retains one complete `SymbolIdentity` anchor. Exact or
   indexed fallback needs a canonical declaration file and non-negative start
   offset. Subject absence, identity mismatch, unsupported subject kind,

@@ -54,22 +54,6 @@ internal fun mutationOperationDocs(): List<OperationDoc> = listOf(
             errorCodes = listOf("ADDITION_PROOF_INCOMPLETE", "CONFLICT"),
         ),
         OperationDoc(
-            operationId = "planAddDeclaration",
-            jsonRpcMethod = "raw/plan-add-declaration",
-            summary = "Plan a compiler-proven top-level Kotlin declaration addition",
-            tag = "mutation",
-            capability = "PLAN_ADD_DECLARATION",
-            requestSchema = "AddDeclarationPlanQuery",
-            responseSchema = "AddDeclarationPlanResult",
-            description = "Plans one top-level Kotlin declaration at compiler-proven file bottom without writing. " +
-                "The result binds the exact target preimage, insertion policy, semantic proof, and postimage.",
-            behavioralNotes = listOf(
-                "The current target bytes must match expectedCurrentSha256.",
-                "The closed append policy preserves existing bytes and adds one final LF.",
-            ),
-            errorCodes = listOf("ADDITION_PROOF_INCOMPLETE", "CONFLICT"),
-        ),
-        OperationDoc(
             operationId = "verifyMutationPostcondition",
             jsonRpcMethod = "raw/verify-mutation-postcondition",
             summary = "Verify one exact mutation postcondition",

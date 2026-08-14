@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -143,7 +144,10 @@ class WorkspaceVfsSignalClassifierTest {
         )
 
         assertEquals(WorkspaceSignal.BuildSemantic, scoped.classify(buildRoot.resolve("gradle/libs.versions.toml")))
-        assertEquals(WorkspaceSignal.BuildSemantic, scoped.classify(buildRoot.resolve("included/buildSrc/src/Plugin.kt")))
+        assertEquals(
+            WorkspaceSignal.BuildSemantic,
+            scoped.classify(buildRoot.resolve("included/buildSrc/src/Plugin.kt"))
+        )
         assertEquals(WorkspaceSignal.Source, scoped.classify(compilerSourceRoot.resolve("demo/Shared.java")))
         assertEquals(WorkspaceSignal.SemanticEnvironment, scoped.classify(classpathJar))
         assertEquals(WorkspaceSignal.SemanticEnvironment, scoped.classify(classesRoot.resolve("demo/Shared.class")))

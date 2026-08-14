@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
@@ -7,12 +8,12 @@ import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -129,7 +130,10 @@ class WorkspaceTransitionWorkerRecoveryAuditConcurrencyTest {
         assertThrows(ProcessCanceledException::class.java, worker::requestRecoveryAudit)
 
         assertTrue(admission.status() is IdeaIndexSemanticAdmission.Status.Pending)
-        assertEquals(PublishedWorkspaceGenerationState.Published(initial), publication.current())
+        assertEquals(
+            PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+            publication.current(),
+        )
     }
 
     private fun readyAdmission(generation: PublishedWorkspaceGenerationManifest) =

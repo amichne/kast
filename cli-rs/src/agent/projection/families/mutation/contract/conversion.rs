@@ -69,28 +69,6 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
                         preview.validate_for(&target, &proposed)?;
                         Some(AgentMutationPlanPreview::AddFile(preview))
                     }
-                    "KAST_AGENT_ADDITION_PLAN"
-                        if plan.request.method == "symbol/add-declaration"
-                            && plan.plan_kind
-                                == Some(AgentAdditionPlanKind::AddDeclaration) =>
-                    {
-                        let AgentMutationPlanPreview::AddDeclaration(preview) =
-                            plan.preview.ok_or_else(|| {
-                                "add-declaration plan omitted its exact compiler proof preview"
-                                    .to_string()
-                            })?
-                        else {
-                            return Err(
-                                "add-declaration plan carried a non-add-declaration proof preview"
-                                    .to_string()
-                            );
-                        };
-                        let target = preview.proof.target_path.clone();
-                        let expected = preview.proof.target_preimage_sha256.clone();
-                        let proposed = preview.proposed_declaration.clone();
-                        preview.validate_for(&target, &expected, &proposed)?;
-                        Some(AgentMutationPlanPreview::AddDeclaration(preview))
-                    }
                     "KAST_AGENT_ADDITION_PLAN" => {
                         return Err("addition plan kind disagreed with its request".to_string());
                     }

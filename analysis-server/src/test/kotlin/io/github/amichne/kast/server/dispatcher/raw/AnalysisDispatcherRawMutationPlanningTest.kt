@@ -3,13 +3,11 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.contract.result.*
-import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.testing.*
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText
-import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -88,46 +86,16 @@ class AnalysisDispatcherRawMutationPlanningTest : AnalysisDispatcherTestSupport(
             rebindingBaseline = ExactAdditionRebindingBaseline.complete(emptyList()),
             postimageSha256 = AdditionPostimageSha256.of(FileHashing.sha256(addFileContent.toByteArray())),
         )
-        val existing = sampleFile()
-        val preimage = Files.readAllBytes(existing)
-        val declaration = "class RawDeclaration"
-        val separator = if (preimage.toString(Charsets.UTF_8).endsWith('\n')) "\n" else "\n\n"
-        val postimage = preimage + (separator + declaration + "\n").toByteArray()
-        val image = ExactFileImage.of(existing.toString(), preimage, postimage)
-        val addDeclarationProof = ExactAddDeclarationProof.of(
-            targetPath = AdditionTargetPath.parse(existing.toString()),
-            targetPreimageSha256 = AdditionTargetPreimageSha256.of(FileHashing.sha256(preimage)),
-            owner = additionOwner(sourceRoot),
-            packageIdentity = AdditionKotlinPackage.Root,
-            declaration = additionDeclaration("RawDeclaration", 0, declaration.length),
-            insertion = CompilerFileBottomInsertion.at(preimage.toString(Charsets.UTF_8).length),
-            newlinePolicy = AdditionNewlinePolicy.PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF,
-            context = additionContext(
-                ExactAdditionContextFileHash.of(existing.toString(), FileHashing.sha256(preimage)),
-            ),
-            collisionEvidence = ExactAdditionCollisionEvidence.complete(1),
-            outboundEvidence = ExactAdditionOutboundEvidence.complete(emptyList()),
-            rebindingBaseline = ExactAdditionRebindingBaseline.complete(emptyList()),
-            postimageSha256 = AdditionPostimageSha256.of(image.postimage.sha256.value),
-        )
         val backend = object : AnalysisBackend by delegate {
             override suspend fun capabilities(): BackendCapabilities = delegate.capabilities().copy(
-                mutationCapabilities = delegate.capabilities().mutationCapabilities + setOf(
+                mutationCapabilities = delegate.capabilities().mutationCapabilities +
                     MutationCapability.PLAN_ADD_FILE,
-                    MutationCapability.PLAN_ADD_DECLARATION,
-                ),
             )
 
             override suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult {
                 assertEquals(addFileTarget.toString(), query.targetPath.value)
                 assertEquals(addFileContent, query.proposedContent.value)
                 return AddFilePlanResult.of(addFileContent, addFileProof)
-            }
-
-            override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult {
-                assertEquals(existing.toString(), query.targetPath.value)
-                assertEquals(declaration, query.proposedDeclaration.value)
-                return AddDeclarationPlanResult.of(declaration, image, addDeclarationProof)
             }
         }
 
@@ -139,23 +107,8 @@ class AnalysisDispatcherRawMutationPlanningTest : AnalysisDispatcherTestSupport(
                 AddFilePlanQuery(AdditionTargetPath.parse(addFileTarget.toString()), addFileContent),
             ),
         )
-        val addDeclaration = dispatchSuccessWithBackend<AddDeclarationPlanResult>(
-            backend = backend,
-            method = "raw/plan-add-declaration",
-            params = json.encodeToJsonElement(
-                AddDeclarationPlanQuery.serializer(),
-                AddDeclarationPlanQuery(
-                    AdditionTargetPath.parse(existing.toString()),
-                    AdditionTargetPreimageSha256.of(FileHashing.sha256(preimage)),
-                    declaration,
-                ),
-            ),
-        )
-
         assertFalse(Files.exists(addFileTarget))
-        assertArrayEquals(preimage, Files.readAllBytes(existing))
         assertEquals(addFileProof, addFile.proof)
-        assertEquals(addDeclarationProof, addDeclaration.proof)
     }
 
     @Test

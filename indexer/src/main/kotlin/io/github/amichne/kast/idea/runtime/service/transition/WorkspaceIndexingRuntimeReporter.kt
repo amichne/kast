@@ -6,9 +6,9 @@ import io.github.amichne.kast.idea.diagnostics.KastDiagnosticsService
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublicationOutcome
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.SnapshotPublicationResult
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 
@@ -58,8 +58,8 @@ internal class WorkspaceIndexingRuntimeReporter(
             reconciliation.snapshotPublication.publish(indexStore)
         }.onSuccess(::recordSnapshotPublication)
             .onFailure { error ->
-            LOG.warn("Kast repository snapshot publication failed", error)
-        }
+                LOG.warn("Kast repository snapshot publication failed", error)
+            }
         val summary = reconciliation.summary
         KastStructuredTrace.event(
             eventName = "idea.index.completed",
@@ -108,7 +108,7 @@ internal class WorkspaceIndexingRuntimeReporter(
                 "observedEventCount" to snapshot.observedEventCount,
                 "publishedGeneration" to when (val publication = snapshot.published) {
                     PublishedWorkspaceGenerationState.Unpublished -> null
-                    is PublishedWorkspaceGenerationState.Published -> publication.manifest.generation.value
+                    is PublishedWorkspaceGenerationState.Published -> publication.publication.generation.value
                 },
                 "blockerPhase" to snapshot.blocker?.phase?.name,
                 "blockerDetail" to snapshot.blocker?.detail,
@@ -120,7 +120,7 @@ internal class WorkspaceIndexingRuntimeReporter(
         when (outcome) {
             RepositorySnapshotPublicationOutcome.UnmanagedWorkspace,
             RepositorySnapshotPublicationOutcome.SuppressedForWorktreeOverlay,
-            -> Unit
+                -> Unit
             is RepositorySnapshotPublicationOutcome.Skipped ->
                 LOG.debug("Kast repository snapshot publication skipped: ${outcome.reason}")
             is RepositorySnapshotPublicationOutcome.Completed -> when (val result = outcome.result) {

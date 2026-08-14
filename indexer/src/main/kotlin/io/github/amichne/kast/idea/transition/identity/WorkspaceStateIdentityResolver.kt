@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+
 import io.github.amichne.kast.idea.AdmittedWorkspaceContentIdentity
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -22,7 +24,11 @@ internal class WorkspaceStateIdentityResolver(
         return WorkspaceStateIdentity(digest.digest().toHex())
     }
 
-    private fun update(digest: MessageDigest, label: String, value: String) {
+    private fun update(
+        digest: MessageDigest,
+        label: String,
+        value: String,
+    ) {
         digest.update(label.toByteArray())
         digest.update(FIELD_SEPARATOR)
         digest.update(value.toByteArray())

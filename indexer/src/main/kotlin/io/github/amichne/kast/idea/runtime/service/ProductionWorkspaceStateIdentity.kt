@@ -6,7 +6,7 @@ import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.IdeaSemanticEnvironmentIdentityResolver
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentityResolver
 import java.nio.file.Path
 

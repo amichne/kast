@@ -1,12 +1,12 @@
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
 import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridge
+import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceEffects
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
@@ -25,7 +25,7 @@ internal class WorkspaceVfsRefreshScope private constructor(
          * refresh root. Nested authorities are removed without discarding their
          * coverage. Raw compiler and classpath root providers are extracted only
          * at this transition boundary; [WorkspaceVfsRefreshScope.roots] may be
-         * extracted only at the [LocalFileSystem] refresh boundary.
+         * extracted only by the workspace IntelliJ effect adapter.
          */
         fun from(scope: WorkspaceVfsObservationScope): WorkspaceVfsRefreshScope {
             val candidates = buildSet {
@@ -40,8 +40,8 @@ internal class WorkspaceVfsRefreshScope private constructor(
                 .filterTo(linkedSetOf()) { candidate ->
                     candidates.none { other ->
                         other != candidate &&
-                            other.nameCount < candidate.nameCount &&
-                            candidate.startsWith(other)
+                        other.nameCount < candidate.nameCount &&
+                        candidate.startsWith(other)
                     }
                 }
             return WorkspaceVfsRefreshScope(minimalRoots)
@@ -82,8 +82,8 @@ internal fun workspaceRefreshPlan(
     WorkspaceSignal.RecoveryProbe in signals && WorkspaceSignal.BuildSemantic in signals ->
         WorkspaceRefreshPlan.GlobalVfsThenGradle
     WorkspaceSignal.Source in signals ||
-        WorkspaceSignal.RecoveryProbe in signals ||
-        WorkspaceSignal.InitialProjectModel in signals -> WorkspaceRefreshPlan.GlobalVfs
+    WorkspaceSignal.RecoveryProbe in signals ||
+    WorkspaceSignal.InitialProjectModel in signals -> WorkspaceRefreshPlan.GlobalVfs
     WorkspaceSignal.BuildSemantic in signals -> WorkspaceRefreshPlan.ObservedVfsThenGradle
     else -> WorkspaceRefreshPlan.ObservedVfs
 }
@@ -118,11 +118,14 @@ internal fun refreshWorkspaceVfs(
     scope: WorkspaceVfsRefreshScope,
 ) {
     authority.runGlobalRefresh {
-        LocalFileSystem.getInstance().refreshNioFiles(scope.roots, false, true) {}
+        IntellijWorkspaceEffects.refreshNioFiles(scope.roots)
     }
 }
 
-private fun refreshGradleModel(project: Project, gradleBuildRoot: Path) {
+private fun refreshGradleModel(
+    project: Project,
+    gradleBuildRoot: Path,
+) {
     val refresh = CompletableFuture<Void>()
     IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, gradleBuildRoot, refresh)
     GradleProjectImportBridge.awaitGradleRefresh(project, refresh)

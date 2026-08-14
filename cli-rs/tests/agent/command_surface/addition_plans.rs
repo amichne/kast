@@ -78,60 +78,6 @@ fn exact_add_file_preview(workspace: &Path, target: &Path, proposed: &str) -> Va
     })
 }
 
-fn exact_add_declaration_preview(
-    workspace: &Path,
-    target: &Path,
-    preimage: &[u8],
-    declaration: &str,
-) -> Value {
-    let normalized_preimage = String::from_utf8(preimage.to_vec()).expect("UTF-8 fixture");
-    let separator = if normalized_preimage.is_empty() || normalized_preimage.ends_with("\n\n") {
-        ""
-    } else if normalized_preimage.ends_with('\n') {
-        "\n"
-    } else {
-        "\n\n"
-    };
-    let mut postimage = preimage.to_vec();
-    postimage.extend_from_slice(format!("{separator}{declaration}\n").as_bytes());
-    let preimage_sha256 = replacement_sha256(preimage);
-    let postimage_sha256 = replacement_sha256(&postimage);
-    json!({
-        "proposedDeclaration": declaration,
-        "proposedContent": String::from_utf8(postimage.clone()).expect("UTF-8 fixture"),
-        "image": exact_file_image_value(
-            target.to_str().expect("target path"),
-            preimage,
-            &postimage,
-        ),
-        "proof": {
-            "targetPath": target,
-            "targetPreimageSha256": preimage_sha256,
-            "owner": addition_owner(workspace),
-            "packageIdentity": {"type": "ROOT"},
-            "declaration": addition_declaration("Added", declaration.encode_utf16().count()),
-            "insertion": {"offset": normalized_preimage.encode_utf16().count()},
-            "newlinePolicy": "PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF",
-            "context": addition_context(vec![json!({
-                "filePath": target,
-                "sha256": preimage_sha256,
-            })]),
-            "collisionEvidence": {
-                "declarationCardinality": 1,
-                "dimensions": addition_collision_dimensions(),
-            },
-            "outboundEvidence": {"cardinality": 0, "occurrences": []},
-            "rebindingBaseline": {
-                "cardinality": 0,
-                "dimensions": addition_rebinding_dimensions(),
-                "occurrences": [],
-            },
-            "postimageSha256": postimage_sha256,
-        },
-        "schemaVersion": api_schema_version(),
-    })
-}
-
 #[test]
 fn agent_add_file_preview_requires_closed_compiler_authority() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -193,7 +139,7 @@ fn agent_add_file_preview_requires_closed_compiler_authority() {
 }
 
 #[test]
-fn agent_add_declaration_preview_requires_file_bottom_exact_image_authority() {
+fn agent_add_declaration_requires_verified_change_workflow() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -202,25 +148,13 @@ fn agent_add_declaration_preview_requires_file_bottom_exact_image_authority() {
     std::fs::create_dir_all(&source_root).expect("source root");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let target = source_root.join("Existing.kt");
-    let preimage = b"class Existing\n";
-    std::fs::write(&target, preimage).expect("existing file");
+    std::fs::write(&target, b"class Existing\n").expect("existing file");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = target.canonicalize().expect("canonical target");
-    let declaration = "class Added";
     let content_file = temp.path().join("declaration.kt");
-    std::fs::write(&content_file, declaration).expect("proposed declaration");
-    let backend = spawn_scripted_indexer_backend(
-        &home,
-        &config_home,
-        &workspace,
-        &temp.path().join("add-declaration.sock"),
-        vec![(
-            "raw/plan-add-declaration",
-            exact_add_declaration_preview(&workspace, &target, preimage, declaration),
-        )],
-    );
+    std::fs::write(&content_file, "class Added").expect("proposed declaration");
 
-    let plan = kast(&home, &config_home)
+    let result = kast(&home, &config_home)
         .args([
             "--output",
             "json",
@@ -236,34 +170,13 @@ fn agent_add_declaration_preview_requires_file_bottom_exact_image_authority() {
             workspace.to_str().expect("workspace"),
         ])
         .output()
-        .expect("add-declaration preview");
+        .expect("retired add-declaration command");
 
-    assert!(
-        plan.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&plan.stdout),
-        String::from_utf8_lossy(&plan.stderr),
-    );
-    let plan: Value = serde_json::from_slice(&plan.stdout).expect("plan JSON");
-    assert_eq!(plan["result"]["type"], "KAST_AGENT_MUTATION_RESULT");
+    assert!(!result.status.success(), "{result:?}");
+    let result: Value = serde_json::from_slice(&result.stdout).expect("retirement JSON");
     assert_eq!(
-        plan["result"]["plan"]["method"],
-        "symbol/add-declaration"
-    );
-    assert_eq!(
-        plan["result"]["plan"]["preview"]["proof"]["newlinePolicy"],
-        "PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF"
-    );
-    let requests = backend.join().expect("add-declaration backend");
-    assert_eq!(requests[2]["method"], "raw/plan-add-declaration");
-    assert_eq!(requests[2]["params"]["targetPath"], json!(target));
-    assert_eq!(
-        requests[2]["params"]["expectedCurrentSha256"],
-        replacement_sha256(preimage)
-    );
-    assert_eq!(
-        requests[2]["params"]["proposedDeclaration"],
-        declaration
+        result["error"]["code"],
+        "KAST_VERIFIED_ADD_DECLARATION_WORKFLOW_REQUIRED",
     );
 }
 

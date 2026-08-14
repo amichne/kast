@@ -15,7 +15,7 @@ import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.semantic.semanticGraphContentHash
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
@@ -33,7 +33,10 @@ class NativeSemanticGraphContextVersionTest {
 
     private val moduleFixture = projectFixture.moduleFixture("main")
     private val sourceRootFixture = moduleFixture.sourceRootFixture()
-    private val sourceFileFixture = sourceRootFixture.psiFileFixture("Canonical.kt", NativeSemanticGraphSources.canonical)
+    private val sourceFileFixture = sourceRootFixture.psiFileFixture(
+        "Canonical.kt",
+        NativeSemanticGraphSources.canonical
+    )
 
     @TempDir
     lateinit var storeRoot: Path
@@ -80,7 +83,12 @@ class NativeSemanticGraphContextVersionTest {
 
             assertEquals(
                 desiredVersions.semanticGraph,
-                requireNotNull(store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)).version,
+                requireNotNull(
+                    store.fileStageOutcome(
+                        sourceFile.virtualFile.path,
+                        FileIndexStage.SEMANTIC_GRAPH
+                    )
+                ).version,
             )
         }
     }

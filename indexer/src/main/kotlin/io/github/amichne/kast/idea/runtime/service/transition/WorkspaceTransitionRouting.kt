@@ -1,13 +1,28 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.api.protocol.ConflictException
-import io.github.amichne.kast.idea.transition.TransitionBlocker
-import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
-import io.github.amichne.kast.idea.transition.WorkspaceSourceFreshnessCoverage
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
+import io.github.amichne.kast.workspace.contract.TransitionBlocker
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshnessCoverage
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailure
+
+/** Observes the current compiler-backed admission without owning mutation or publication effects. */
+internal fun interface WorkspaceTransitionAdmissionObservation {
+    fun status(): IdeaIndexSemanticAdmission.Status
+}
+
+/** Retains successful dispatch or a finite ingress failure without nullable control state. */
+internal sealed interface WorkspaceTransitionDispatch {
+    data object Dispatched : WorkspaceTransitionDispatch
+
+    data class Rejected(
+        val failure: WorkspaceTransitionFailure,
+    ) : WorkspaceTransitionDispatch
+}
 
 internal sealed interface TransitionObservation {
     data object Unobserved : TransitionObservation
@@ -26,12 +41,12 @@ internal sealed interface WorkspaceTransitionRoute {
         ) : Join
 
         data class Published(
-            val manifest: PublishedWorkspaceGenerationManifest,
+            val publication: PublishedWorkspaceGeneration,
         ) : Join
     }
 
     data class Rejected(
-        val failure: WorkspaceTransitionRequestFailure,
+        val failure: WorkspaceTransitionFailure,
     ) : WorkspaceTransitionRoute
 
     companion object {
@@ -65,7 +80,7 @@ internal sealed interface WorkspaceTransitionRoute {
                             if (admission.baseline == admission.observedBaseline) {
                                 Join.Awaiting(admission.observedBaseline)
                             } else {
-                                Join.Published(admission.manifest)
+                                Join.Published(admission.publication)
                             }
                     }
 
@@ -80,7 +95,7 @@ internal sealed interface WorkspaceTransitionJoinRegistration {
     data object Awaiting : WorkspaceTransitionJoinRegistration
 
     data class Published(
-        val manifest: PublishedWorkspaceGenerationManifest,
+        val publication: PublishedWorkspaceGeneration,
     ) : WorkspaceTransitionJoinRegistration
 
     data class Blocked(
@@ -111,8 +126,8 @@ internal sealed interface WorkspaceTransitionJoinRegistration {
                 val completion = WorkspaceTransitionCompletion.derive(observation.snapshot)
             ) {
                 is WorkspaceTransitionCompletion.Ready -> {
-                    val published = PublishedWorkspaceGenerationState.Published(completion.manifest)
-                    if (published == join.baseline) Awaiting else Published(completion.manifest)
+                    val published = PublishedWorkspaceGenerationState.Published(completion.publication)
+                    if (published == join.baseline) Awaiting else Published(completion.publication)
                 }
 
                 is WorkspaceTransitionCompletion.Blocked -> Blocked(completion.blocker)
@@ -141,39 +156,16 @@ private object ActiveSourceRequestCoverage {
             WorkspaceLifecycle.Refreshing,
             WorkspaceLifecycle.Reconciling,
             WorkspaceLifecycle.Verifying,
-            -> observation.snapshot.activeSourceFreshness.coverageOf(request)
+                -> observation.snapshot.activeSourceFreshness.coverageOf(request)
 
             WorkspaceLifecycle.Ready,
             WorkspaceLifecycle.Dirty,
             WorkspaceLifecycle.Settling,
             WorkspaceLifecycle.Blocked,
-            -> WorkspaceSourceFreshnessCoverage.Uncovered
+                -> WorkspaceSourceFreshnessCoverage.Uncovered
         }
     }
 }
-
-internal sealed interface WorkspaceTransitionRequestFailure {
-    data class SemanticAdmissionFailed(val detail: String) : WorkspaceTransitionRequestFailure
-
-    fun toConflict(): ConflictException = when (this) {
-        is SemanticAdmissionFailed -> ConflictException(
-            message = "Workspace transition request cannot recover failed semantic admission",
-            details = mapOf("admissionState" to "FAILED", "detail" to detail),
-        )
-    }
-}
-
-/** Converts a retained transition blocker only at the ingress RPC boundary. */
-internal fun TransitionBlocker.toConflict(): ConflictException = ConflictException(
-    message = "Workspace reconciliation is blocked: $detail",
-    details = mapOf("phase" to phase.name),
-)
-
-/** Converts an invalid completion lifecycle only at the ingress RPC boundary. */
-internal fun WorkspaceLifecycle.toInvalidCompletionConflict(): ConflictException = ConflictException(
-    message = "Workspace transition published an invalid completion state",
-    details = mapOf("lifecycle" to name),
-)
 
 private object TransitionPublicationBaseline {
     /**
@@ -198,16 +190,16 @@ private sealed interface TransitionRequestAdmission {
         ) : Permitted
 
         data class Ready(
-            val manifest: PublishedWorkspaceGenerationManifest,
+            val publication: PublishedWorkspaceGeneration,
             val observedBaseline: PublishedWorkspaceGenerationState,
         ) : Permitted {
             override val baseline: PublishedWorkspaceGenerationState =
-                PublishedWorkspaceGenerationState.Published(manifest)
+                PublishedWorkspaceGenerationState.Published(publication)
         }
     }
 
     data class Rejected(
-        val failure: WorkspaceTransitionRequestFailure,
+        val failure: WorkspaceTransitionFailure,
     ) : TransitionRequestAdmission
 
     companion object {
@@ -228,7 +220,7 @@ private sealed interface TransitionRequestAdmission {
             observation: TransitionObservation,
         ): TransitionRequestAdmission = when (status) {
             is IdeaIndexSemanticAdmission.Status.Ready -> Permitted.Ready(
-                manifest = status.generation,
+                publication = status.generation.detachedPublication(),
                 observedBaseline = TransitionPublicationBaseline.derive(observation),
             )
 
@@ -237,14 +229,14 @@ private sealed interface TransitionRequestAdmission {
             )
 
             is IdeaIndexSemanticAdmission.Status.Failed -> Rejected(
-                WorkspaceTransitionRequestFailure.SemanticAdmissionFailed(status.detail),
+                WorkspaceTransitionFailure.SemanticAdmissionFailed(status.detail),
             )
         }
     }
 }
 
 internal sealed interface WorkspaceTransitionCompletion {
-    data class Ready(val manifest: PublishedWorkspaceGenerationManifest) : WorkspaceTransitionCompletion
+    data class Ready(val publication: PublishedWorkspaceGeneration) : WorkspaceTransitionCompletion
 
     data class Blocked(val blocker: TransitionBlocker) : WorkspaceTransitionCompletion
 
@@ -263,19 +255,19 @@ internal sealed interface WorkspaceTransitionCompletion {
         fun derive(snapshot: WorkspaceTransitionSnapshot): WorkspaceTransitionCompletion = when (snapshot.lifecycle) {
             WorkspaceLifecycle.Ready -> when (val published = snapshot.published) {
                 PublishedWorkspaceGenerationState.Unpublished -> Invalid(snapshot.lifecycle)
-                is PublishedWorkspaceGenerationState.Published -> Ready(published.manifest)
+                is PublishedWorkspaceGenerationState.Published -> Ready(published.publication)
             }
 
             WorkspaceLifecycle.Blocked -> snapshot.blocker
-                ?.let(::Blocked)
-                ?: Invalid(snapshot.lifecycle)
+                                              ?.let(::Blocked)
+                                          ?: Invalid(snapshot.lifecycle)
 
             WorkspaceLifecycle.Dirty,
             WorkspaceLifecycle.Settling,
             WorkspaceLifecycle.Refreshing,
             WorkspaceLifecycle.Reconciling,
             WorkspaceLifecycle.Verifying,
-            -> InProgress
+                -> InProgress
         }
     }
 }

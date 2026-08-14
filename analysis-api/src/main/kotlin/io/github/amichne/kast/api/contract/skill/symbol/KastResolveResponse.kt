@@ -29,6 +29,7 @@ data class KastResolveSuccessResponse(
     val alternatives: List<String>? = null,
     val context: KastResolveContext? = null,
     val logFile: String,
+    val readEvidence: KastReadEvidence = KastReadEvidence.LegacyCompatibility,
 ) : KastResolveResponse
 
 @Serializable
@@ -38,6 +39,7 @@ data class KastResolveNotFoundResponse(
     val source: KastResolveResponse.Source = KastResolveResponse.Source.COMPILER,
     val query: KastResolveQuery,
     val logFile: String,
+    val readEvidence: KastReadEvidence = KastReadEvidence.LegacyCompatibility,
 ) : KastResolveResponse
 
 @Serializable
@@ -54,6 +56,7 @@ data class KastResolveAmbiguousResponse(
     val query: KastResolveQuery,
     val candidates: List<KastResolveCandidate>,
     val logFile: String,
+    val readEvidence: KastReadEvidence = KastReadEvidence.LegacyCompatibility,
 ) : KastResolveResponse
 
 @Serializable

@@ -2,19 +2,12 @@ package io.github.amichne.kast.server.skill
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
-import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.api.contract.selector.*
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.protocol.*
-import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.parsed
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.isActive
-import java.nio.file.Files
-import java.nio.file.Path
 
 internal suspend fun SkillRpcContext.rename(request: KastRenameRequest): KastRenameResponse = when (request) {
     is KastRenameBySymbolRequest -> renameBySymbol(request)
@@ -43,8 +36,6 @@ internal suspend fun SkillRpcContext.addFile(request: KastAddFileRequest): KastS
         editCount = 1,
     )
 }
-
-internal suspend fun SkillRpcContext.addDeclaration(request: KastAddDeclarationRequest): KastScopeMutationResponse = addPlacedContent(request)
 
 internal suspend fun SkillRpcContext.addImplementation(request: KastAddImplementationRequest): KastScopeMutationResponse = addPlacedContent(request)
 

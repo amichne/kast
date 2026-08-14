@@ -48,10 +48,12 @@ import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthority
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistence
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -135,12 +137,18 @@ internal abstract class KastIndexerBackendContractTestFixture {
     protected val mainSourceRootFixture: TestFixture<PsiDirectory> = mainModuleFixture.sourceRootFixture()
     protected val secondarySourceRootFixture: TestFixture<PsiDirectory> =
         secondaryModuleFixture.sourceRootFixture(isTestSource = true)
-    protected val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Sample.kt", sampleSource)
+    protected val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture(
+        "Sample.kt",
+        sampleSource
+    )
     protected val sampleUsageFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("SampleUsage.kt", sampleUsageSource)
     protected val memberFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("Parser.kt", memberSource)
-    protected val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Hierarchy.kt", hierarchySource)
+    protected val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture(
+        "Hierarchy.kt",
+        hierarchySource
+    )
     protected val internalDeclarationFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("InternalDeclaration.kt", internalDeclarationSource)
     protected val internalDependentFileFixture: TestFixture<PsiFile> =
@@ -164,7 +172,7 @@ internal abstract class KastIndexerBackendContractTestFixture {
         readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
         referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
         workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
-        workspaceTransitionRequester: WorkspaceTransitionRequester = TestWorkspaceTransitionRequester(),
+        workspaceTransitionRequester: WorkspaceTransitionPort = TestWorkspaceTransitionRequester(),
         workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
             IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
                 emptyList(),
@@ -177,6 +185,8 @@ internal abstract class KastIndexerBackendContractTestFixture {
         },
         relationshipCoverageAuthority: RelationshipCoverageAuthority =
             RelationshipCoverageAuthority.proven(),
+        addDeclarationPlanPersistenceService: AddDeclarationPlanPersistence =
+            TestAddDeclarationPlanPersistence,
     ): KastIndexerBackend = KastIndexerBackend(
         project = project,
         workspaceRoot = workspaceRoot,
@@ -191,6 +201,7 @@ internal abstract class KastIndexerBackendContractTestFixture {
         workspaceTransitionRequester = workspaceTransitionRequester,
         workspaceModelReader = workspaceModelReader,
         relationshipCoverageAuthority = relationshipCoverageAuthority,
+        addDeclarationPlanPersistence = addDeclarationPlanPersistenceService,
     )
 
     protected fun ensureProjectReady() {
@@ -205,7 +216,7 @@ internal abstract class KastIndexerBackendContractTestFixture {
     protected fun relationshipCoverageAuthority(
         sourceIndexStore: SqliteSourceIndexStore? = null,
         transform: (IdeaGradleProjectLoadBridge.GradleWorkspaceModel) ->
-            IdeaGradleProjectLoadBridge.GradleWorkspaceModel = { model -> model },
+        IdeaGradleProjectLoadBridge.GradleWorkspaceModel = { model -> model },
     ): IdeaRelationshipCoverageAuthority {
         val sourceRoots = ApplicationManager.getApplication().runReadAction<List<Path>> {
             listOf(mainModuleFixture.get(), secondaryModuleFixture.get())
@@ -270,7 +281,10 @@ internal abstract class KastIndexerBackendContractTestFixture {
     protected val highCardinalitySource: String
         get() = highCardinalityUsageSource
 
-    protected fun commonWorkspaceRoot(first: String, second: String): Path {
+    protected fun commonWorkspaceRoot(
+        first: String,
+        second: String,
+    ): Path {
         val firstPath = Path.of(first).toAbsolutePath().normalize()
         val secondPath = Path.of(second).toAbsolutePath().normalize()
         return generateSequence(firstPath.parent) { it.parent }

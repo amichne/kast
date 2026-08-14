@@ -19,6 +19,7 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
     keepalive_until: Option<PathBuf>,
     scratch_crash_gate: Option<ScriptedScratchCrashGate>,
     additional_runtime_status_requests: usize,
+    reject_unexpected_methods: bool,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
     runtime_authority: ScriptedRuntimeAuthority,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
@@ -206,6 +207,10 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
                             std::fs::write(path, contents).expect("retained backend artifact");
                         }
                         scripted
+                    } else if reject_unexpected_methods {
+                        panic!(
+                            "strict scripted backend rejected method: {method}; next={scripted_method:?}"
+                        );
                     } else if let Some(result) = unified_raw_result(
                         &server_workspace,
                         &request,

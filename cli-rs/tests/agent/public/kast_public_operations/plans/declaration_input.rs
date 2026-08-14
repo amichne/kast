@@ -18,14 +18,14 @@ fn change_add_declaration_normalizes_one_terminal_line_ending() {
         std::fs::write(&target, preimage).expect("existing source");
         let workspace = workspace.canonicalize().expect("canonical workspace");
         let target = target.canonicalize().expect("canonical target");
-        let preview =
-            public_exact_add_declaration_preview(&workspace, &target, preimage, declaration);
+        let plan_id = source_sha256(case.as_bytes());
+        let preview = verified_add_declaration_plan_result(&plan_id, &target, declaration, 7);
         let backend = spawn_scripted_indexer_backend(
             &home,
             &config_home,
             &workspace,
             &fixture.path().join(format!("{case}.sock")),
-            vec![("raw/plan-add-declaration", preview)],
+            vec![("change/plan-add-declaration", preview)],
         );
         let binary = write_active_kast_for_test(&home, &config_home);
         let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
@@ -43,7 +43,7 @@ fn change_add_declaration_normalizes_one_terminal_line_ending() {
         assert!(change.status.success(), "{case}: {change:?}");
         let request = requests
             .iter()
-            .find(|request| request["method"] == "raw/plan-add-declaration")
+            .find(|request| request["method"] == "change/plan-add-declaration")
             .unwrap_or_else(|| panic!("{case}: add-declaration request in {requests:#?}"));
         assert_eq!(
             request["params"]["proposedDeclaration"], declaration,
@@ -51,26 +51,24 @@ fn change_add_declaration_normalizes_one_terminal_line_ending() {
         );
         let public = decode(&change);
         assert_eq!(
-            public["plan"]["preview"]["proposedDeclaration"], declaration,
+            public["preview"]["proposedDeclaration"], declaration,
             "{case}: public preview"
         );
         let plan_id = public["planId"].as_str().expect("plan id");
         let plans = home.join(".local/share/kast/state/agent-plans");
-        assert_eq!(
-            std::fs::read(plans.join(format!("{plan_id}.content")))
-                .expect("stored declaration content"),
-            declaration.as_bytes(),
-            "{case}: persisted content"
+        assert!(
+            !plans.join(format!("{plan_id}.content")).exists(),
+            "{case}: the indexer journal, not a parallel Rust content file, owns mutation authority"
         );
         let stored: Value = serde_json::from_slice(
             &std::fs::read(plans.join(format!("{plan_id}.json"))).expect("stored plan"),
         )
         .expect("stored plan JSON");
         assert_eq!(
-            stored["contentSha256"],
-            source_sha256(declaration.as_bytes()),
-            "{case}: persisted digest"
+            stored["planId"], plan_id,
+            "{case}: persisted server-issued identity"
         );
+        assert_eq!(stored["planVersion"], 0, "{case}: persisted version");
     }
 }
 
@@ -91,21 +89,23 @@ fn change_add_declaration_retains_typed_rejection_for_invalid_content() {
         std::fs::write(&target, "class Existing\n").expect("existing source");
         let workspace = workspace.canonicalize().expect("canonical workspace");
         let target = target.canonicalize().expect("canonical target");
-        let backend = spawn_scripted_indexer_backend(
-            &home,
-            &config_home,
-            &workspace,
-            &fixture.path().join(format!("invalid-{case}.sock")),
-            vec![(
-                "raw/plan-add-declaration",
-                scripted_json_rpc_error(
-                    "INVALID_ADDITION_CONTENT",
-                    "Add-declaration requires exactly one valid declaration.",
-                    json!({"case": case}),
-                    false,
-                ),
-            )],
-        );
+        let backend = (case == "multiple-declarations").then(|| {
+            spawn_scripted_indexer_backend(
+                &home,
+                &config_home,
+                &workspace,
+                &fixture.path().join(format!("invalid-{case}.sock")),
+                vec![(
+                    "change/plan-add-declaration",
+                    scripted_json_rpc_error(
+                        "INVALID_ADDITION_CONTENT",
+                        "Add-declaration requires exactly one valid declaration.",
+                        json!({"case": case}),
+                        false,
+                    ),
+                )],
+            )
+        });
         let binary = write_active_kast_for_test(&home, &config_home);
         let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
         change.args([
@@ -116,14 +116,19 @@ fn change_add_declaration_retains_typed_rejection_for_invalid_content() {
             target.to_str().expect("target"),
         ]);
         let change = run_with_stdin(change, input);
-        backend
-            .join()
-            .unwrap_or_else(|_| panic!("{case} planner backend"));
+        if let Some(backend) = backend {
+            backend
+                .join()
+                .unwrap_or_else(|_| panic!("{case} planner backend"));
+        }
         assert_eq!(change.status.code(), Some(1), "{case}: {change:?}");
-        let envelope = decode_envelope(&change);
-        assert_eq!(envelope["result"]["type"], "rejected", "{case}");
         assert_eq!(
-            envelope["result"]["failure"]["code"], "INVALID_ADDITION_CONTENT",
+            decode(&change)["error"],
+            if case == "blank-only" {
+                "KAST_VERIFIED_ADD_DECLARATION_SOURCE_INVALID"
+            } else {
+                "KAST_VERIFIED_ADD_DECLARATION_RPC_REJECTED"
+            },
             "{case}"
         );
     }

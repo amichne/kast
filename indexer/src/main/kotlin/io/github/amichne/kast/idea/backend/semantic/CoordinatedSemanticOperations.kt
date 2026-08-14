@@ -15,8 +15,12 @@ import io.github.amichne.kast.idea.backend.mutation.applyEditsOperation
 import io.github.amichne.kast.idea.backend.mutation.exactFileImageCasOperation
 import io.github.amichne.kast.idea.backend.mutation.recoverMutationScratchOperation
 import io.github.amichne.kast.idea.backend.mutation.refreshOperation
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
+import io.github.amichne.kast.idea.transition.captureSourceWorkspaceTransitionRequest
+import io.github.amichne.kast.idea.toConflict
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionOutcome
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
 
 internal suspend fun KastIndexerBackend.coordinatedSemanticGraph(
     query: ParsedSemanticGraphQuery,
@@ -26,7 +30,7 @@ internal suspend fun KastIndexerBackend.coordinatedSemanticGraph(
     } catch (_: PublishedSemanticGraphIncompleteException) {
         workspaceTransitionRequester.reconcile(
             WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit),
-        )
+        ).requirePublished()
         workspaceSemanticGate.current { semanticGraphOperation(query) }
     }
 }
@@ -38,7 +42,7 @@ internal suspend fun KastIndexerBackend.coordinatedApplyEdits(
     detail = "workspace edit mutation is active",
 ) {
     applyEditsOperation(query)
-}
+}.valueOrThrow()
 
 internal suspend fun KastIndexerBackend.coordinatedExactFileImageCas(
     query: ParsedExactFileImageQuery,
@@ -47,7 +51,7 @@ internal suspend fun KastIndexerBackend.coordinatedExactFileImageCas(
     detail = "exact file-image mutation is active",
 ) {
     exactFileImageCasOperation(query)
-}
+}.valueOrThrow()
 
 internal suspend fun KastIndexerBackend.coordinatedMutationScratchRecovery(
     query: ParsedMutationScratchRecoveryQuery,
@@ -56,7 +60,7 @@ internal suspend fun KastIndexerBackend.coordinatedMutationScratchRecovery(
     detail = "mutation scratch recovery is active",
 ) {
     recoverMutationScratchOperation(query)
-}
+}.valueOrThrow()
 
 internal suspend fun KastIndexerBackend.coordinatedRefresh(
     query: ParsedRefreshQuery,
@@ -67,10 +71,22 @@ internal suspend fun KastIndexerBackend.coordinatedRefresh(
             detail = "semantic failure classification mutation is active",
         ) {
             refreshOperation(query)
-        }
+        }.valueOrThrow()
     }
-    workspaceTransitionRequester.reconcile(refreshTransitionRequest(query))
-    return workspaceSemanticGate.current { refreshOperation(query) }
+    workspaceTransitionRequester.reconcile(refreshTransitionRequest(query)).requirePublished()
+    return workspaceSemanticGate.currentWithQualifiedDumbModeEvidence { refreshOperation(query) }
+}
+
+private fun WorkspaceTransitionOutcome.requirePublished() {
+    when (this) {
+        is WorkspaceTransitionOutcome.Published -> Unit
+        is WorkspaceTransitionOutcome.Rejected -> throw failure.toConflict()
+    }
+}
+
+private fun <Value> WorkspaceMutationTransitionOutcome<Value>.valueOrThrow(): Value = when (this) {
+    is WorkspaceMutationTransitionOutcome.Completed -> value
+    is WorkspaceMutationTransitionOutcome.Rejected -> throw failure.toConflict()
 }
 
 /**
@@ -89,7 +105,7 @@ private fun KastIndexerBackend.refreshTransitionRequest(
 ): WorkspaceTransitionRequest = if (query.filePaths.isEmpty()) {
     WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit)
 } else {
-    WorkspaceTransitionRequest.sourceFiles(
+    captureSourceWorkspaceTransitionRequest(
         workspaceRoot = workspaceIdentity.canonicalWorkspaceRootPath,
         paths = query.filePaths,
     )

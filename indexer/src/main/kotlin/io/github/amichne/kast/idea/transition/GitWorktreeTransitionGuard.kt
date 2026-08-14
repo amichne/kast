@@ -110,11 +110,15 @@ internal fun interface GitWorktreeTransitionResolutionObserver {
     }
 }
 
+internal sealed class WorkspaceTransitionRetryException(
+    message: String,
+) : IllegalStateException(message)
+
 internal class GitWorktreeTransitionInProgressException(
     val transition: GitWorktreeTransitionStatus.InProgress,
 ) : WorkspaceTransitionRetryException(
     "Git worktree transition is in progress: " +
-        transition.markers.joinToString { evidence -> "${evidence.marker.name}=${evidence.path}" },
+    transition.markers.joinToString { evidence -> "${evidence.marker.name}=${evidence.path}" },
 )
 
 internal class GitWorktreeTransitionInspectionException(
@@ -164,12 +168,12 @@ private class ResolvedGitWorktreeTransitionGuard(
             } catch (failure: IOException) {
                 return GitWorktreeTransitionStatus.Unavailable(
                     "Cannot inspect exact-worktree Git transition marker ${evidence.path}: " +
-                        (failure.message ?: failure::class.qualifiedName.orEmpty()),
+                    (failure.message ?: failure::class.qualifiedName.orEmpty()),
                 )
             } catch (failure: SecurityException) {
                 return GitWorktreeTransitionStatus.Unavailable(
                     "Cannot inspect exact-worktree Git transition marker ${evidence.path}: " +
-                        (failure.message ?: failure::class.qualifiedName.orEmpty()),
+                    (failure.message ?: failure::class.qualifiedName.orEmpty()),
                 )
             }
         }
@@ -218,14 +222,14 @@ private class ResolvedGitWorktreeTransitionGuard(
         }.getOrElse { failure ->
             return unavailableOrNotGit(
                 "Cannot inspect exact-worktree Git transition metadata: " +
-                    (failure.message ?: failure::class.qualifiedName.orEmpty()),
+                (failure.message ?: failure::class.qualifiedName.orEmpty()),
             )
         }
         val output = process.inputStream.use { input -> input.readAllBytes().toString(Charsets.UTF_8) }
         if (process.waitFor() != 0) {
             return unavailableOrNotGit(
                 output.trim().takeIf(String::isNotBlank)
-                    ?: "Git could not resolve exact-worktree transition metadata for $root",
+                ?: "Git could not resolve exact-worktree transition metadata for $root",
             )
         }
         val resolved = output.trimEnd('\n', '\r')
@@ -274,18 +278,21 @@ private class ResolvedGitWorktreeTransitionGuard(
         if (registrationIdentity == null) return null
         if (!sameExistingPath(resolved.gitDirectory, registrationIdentity.gitDirectory)) {
             return "Git resolved transition markers for a different linked-worktree Git directory: " +
-                resolved.gitDirectory
+                   resolved.gitDirectory
         }
         val registeredCommonGitDirectory = registrationIdentity.gitDirectory.parent?.parent
-            ?: return "Registered linked-worktree Git directory has no common Git directory"
+                                           ?: return "Registered linked-worktree Git directory has no common Git directory"
         if (!sameExistingPath(resolved.commonGitDirectory, registeredCommonGitDirectory)) {
             return "Git resolved transition markers for a different common Git directory: " +
-                resolved.commonGitDirectory
+                   resolved.commonGitDirectory
         }
         return null
     }
 
-    private fun sameExistingPath(first: Path, second: Path): Boolean = try {
+    private fun sameExistingPath(
+        first: Path,
+        second: Path,
+    ): Boolean = try {
         Files.isSameFile(first, second)
     } catch (_: IOException) {
         false
@@ -304,7 +311,7 @@ private class ResolvedGitWorktreeTransitionGuard(
             is GitWorktreeRegistrationObservation.UnprovenMissingDirectory -> {
                 return GitMarkerPathResolution.Unavailable(
                     "Missing linked-worktree Git directory has no exact launch registration proof: " +
-                        registration.gitDirectory,
+                    registration.gitDirectory,
                 )
             }
             is GitWorktreeRegistrationObservation.Unavailable -> {
@@ -331,12 +338,12 @@ private class ResolvedGitWorktreeTransitionGuard(
             } catch (failure: IOException) {
                 return GitMarkerPathResolution.Unavailable(
                     "Cannot inspect Git metadata at $gitFile: " +
-                        (failure.message ?: failure::class.qualifiedName.orEmpty()),
+                    (failure.message ?: failure::class.qualifiedName.orEmpty()),
                 )
             } catch (failure: SecurityException) {
                 return GitMarkerPathResolution.Unavailable(
                     "Cannot inspect Git metadata at $gitFile: " +
-                        (failure.message ?: failure::class.qualifiedName.orEmpty()),
+                    (failure.message ?: failure::class.qualifiedName.orEmpty()),
                 )
             }
             return GitMarkerPathResolution.Unavailable(detail)

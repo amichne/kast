@@ -20,7 +20,6 @@ import io.github.amichne.kast.api.contract.result.MutationScratchState
 import io.github.amichne.kast.api.contract.result.MutationScratchTargetState
 import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
 import io.github.amichne.kast.api.contract.result.ReplacementPlanResult
-import io.github.amichne.kast.api.validation.ParsedAddDeclarationPlanQuery
 import io.github.amichne.kast.api.validation.ParsedAddFilePlanQuery
 import io.github.amichne.kast.api.validation.ParsedExactFileImageQuery
 import io.github.amichne.kast.api.validation.ParsedMutationPostconditionAuthority
@@ -58,13 +57,6 @@ internal class DocExampleGeneratorMutationBackend(
         require(query.targetPath == responses.addFile.proof.targetPath)
         require(query.proposedContent.value == responses.addFile.proposedContent)
         return responses.addFile
-    }
-
-    override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult {
-        require(query.targetPath == responses.addDeclaration.proof.targetPath)
-        require(query.expectedCurrentSha256 == responses.addDeclaration.proof.targetPreimageSha256)
-        require(query.proposedDeclaration.value == responses.addDeclaration.proposedDeclaration)
-        return responses.addDeclaration
     }
 
     override suspend fun verifyMutationPostcondition(
@@ -135,7 +127,6 @@ private fun io.github.amichne.kast.api.validation.ParsedMutationScratchSet.absen
 private val DOCUMENTED_MUTATION_CAPABILITIES = setOf(
     MutationCapability.PLAN_REPLACEMENT,
     MutationCapability.PLAN_ADD_FILE,
-    MutationCapability.PLAN_ADD_DECLARATION,
     MutationCapability.VERIFY_MUTATION_POSTCONDITION,
     MutationCapability.EXACT_FILE_OBSERVATION,
     MutationCapability.EXACT_FILE_IMAGE_CAS,

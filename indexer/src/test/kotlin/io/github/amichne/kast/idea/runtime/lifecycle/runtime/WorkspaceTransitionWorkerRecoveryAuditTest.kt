@@ -4,14 +4,16 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
+import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspacePublicationCurrency
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
@@ -40,19 +42,30 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             override fun current() =
                 if (currentReads.incrementAndGet() == 1) delegate.current() else error("unreadable current pointer")
 
+            override fun currency(
+                manifest: PublishedWorkspaceGenerationManifest,
+            ): IndexStoreWorkspacePublicationCurrency {
+                current()
+                return delegate.currency(manifest)
+            }
+
             override fun begin() = delegate.begin()
             override fun prepare(
-                open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication,
+                open: io.github.amichne.kast.evidence.contract.OpenWorkspacePublication,
                 identity: WorkspaceStateIdentity,
-                graphBlocker: io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker?,
-            ) = delegate.prepare(open, identity, graphBlocker)
-            override fun commit(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) =
+                graphPublication: io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication,
+            ) = delegate.prepare(open, identity, graphPublication)
+
+            override fun commit(prepared: io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication) =
                 delegate.commit(prepared)
 
-            override fun discard(open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication) =
+            override fun storedCommit(commit: io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit) =
+                delegate.storedCommit(commit)
+
+            override fun discard(open: io.github.amichne.kast.evidence.contract.OpenWorkspacePublication) =
                 delegate.discard(open)
 
-            override fun discard(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) =
+            override fun discard(prepared: io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication) =
                 delegate.discard(prepared)
         }
         var waitCount = 0
@@ -81,7 +94,7 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
 
         assertEquals(listOf(setOf(WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic)), refreshedSignals)
         assertEquals(listOf(identity), publications)
-        val current = (delegate.current() as PublishedWorkspaceGenerationState.Published).manifest
+        val current = (admission.status() as IdeaIndexSemanticAdmission.Status.Ready).generation
         assertEquals(WorkspaceSemanticGeneration(9), current.generation)
         assertEquals(IdeaIndexSemanticAdmission.Status.Ready(current), admission.status())
     }
@@ -126,7 +139,10 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
         assertEquals(listOf(setOf(WorkspaceSignal.RecoveryProbe)), refreshedSignals)
         assertEquals(0, indexingPasses.get())
         assertTrue(publications.isEmpty())
-        assertEquals(PublishedWorkspaceGenerationState.Published(initial), publication.current())
+        assertEquals(
+            PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+            publication.current(),
+        )
         assertEquals(IdeaIndexSemanticAdmission.Status.Ready(initial), admission.status())
         assertEquals(2, waitCount)
     }
@@ -214,7 +230,10 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
         assertEquals("cancelled recovery audit", failure.message)
         assertFalse(fallbackCalled.get())
         assertTrue(admission.status() is IdeaIndexSemanticAdmission.Status.Pending)
-        assertEquals(PublishedWorkspaceGenerationState.Published(initial), publication.current())
+        assertEquals(
+            PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+            publication.current(),
+        )
     }
 
     private fun readyAdmission(generation: PublishedWorkspaceGenerationManifest) =

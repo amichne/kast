@@ -1,6 +1,7 @@
 package support.architecture
 
 internal object KastMutationDelivery {
+    // @formatter:off
     val all: List<MutationDeliveryTaskPolicy> = listOf(
         task(MutationDeliveryTaskId.F01, MutationDeliveryPhase.FOUNDATION, "Freeze mutation lifecycle and canonical contracts", module(ModuleId.CHANGE_CONTRACT)),
         task(MutationDeliveryTaskId.F02, MutationDeliveryPhase.FOUNDATION, "Create Gradle module-role convention plugins", MutationDeliveryOwner.BuildLogic, MutationDeliveryTaskId.F01),
@@ -30,12 +31,14 @@ internal object KastMutationDelivery {
         task(MutationDeliveryTaskId.M01, MutationDeliveryPhase.MIGRATION, "Route rename through plan/apply/verify", module(ModuleId.RUNTIME_COMPOSITION), MutationDeliveryTaskId.V05, MutationDeliveryTaskId.R03),
         task(MutationDeliveryTaskId.M02, MutationDeliveryPhase.MIGRATION, "Route replace/add/implementation/body/import operations", module(ModuleId.RUNTIME_COMPOSITION), MutationDeliveryTaskId.M01),
         task(MutationDeliveryTaskId.M03, MutationDeliveryPhase.MIGRATION, "Remove semantic access to generic raw apply-edits", modules(ModuleId.RUNTIME_SERVER, ModuleId.PROTOCOL_REGISTRY), MutationDeliveryTaskId.M02, MutationDeliveryTaskId.F03),
+        task(MutationDeliveryTaskId.M04, MutationDeliveryPhase.MIGRATION, "Move workspace-generation storage out of the legacy index-store host", module(ModuleId.EVIDENCE_SQLITE), MutationDeliveryTaskId.V02),
         task(MutationDeliveryTaskId.T01, MutationDeliveryPhase.PROOF, "Contract and state-machine suite", modules(ModuleId.CHANGE_CONTRACT, ModuleId.CHANGE_JOURNAL_CONTRACT, ModuleId.CHANGE_RECOVERY_CONTRACT), MutationDeliveryTaskId.F01, MutationDeliveryTaskId.P02, MutationDeliveryTaskId.V05, MutationDeliveryTaskId.R03),
         task(MutationDeliveryTaskId.T02, MutationDeliveryPhase.PROOF, "IntelliJ write-protocol integration suite", modules(ModuleId.CHANGE_APPLY_INTELLIJ, ModuleId.CHANGE_PLAN_INTELLIJ, ModuleId.CHANGE_VERIFY_INTELLIJ), MutationDeliveryTaskId.A05, MutationDeliveryTaskId.A07, MutationDeliveryTaskId.V03),
         task(MutationDeliveryTaskId.T03, MutationDeliveryPhase.PROOF, "Concurrency, movement, and recovery fault suite", modules(ModuleId.CHANGE_RECOVERY_SERVICE, ModuleId.WORKSPACE_SERVICE), MutationDeliveryTaskId.R03, MutationDeliveryTaskId.V02),
         task(MutationDeliveryTaskId.T04, MutationDeliveryPhase.PROOF, "Performance and UI-safety suite", module(ModuleId.INDEXER), MutationDeliveryTaskId.T02, MutationDeliveryTaskId.T03),
         task(MutationDeliveryTaskId.T05, MutationDeliveryPhase.PROOF, "Enterprise multi-module mutation demonstration", MutationDeliveryOwner.EndToEndCorpus, MutationDeliveryTaskId.M03, MutationDeliveryTaskId.T01, MutationDeliveryTaskId.T02, MutationDeliveryTaskId.T03, MutationDeliveryTaskId.T04),
     )
+    // @formatter:on
 
     private fun task(
         id: MutationDeliveryTaskId,
@@ -43,7 +46,14 @@ internal object KastMutationDelivery {
         name: String,
         owner: MutationDeliveryOwner,
         vararg dependencies: MutationDeliveryTaskId,
-    ): MutationDeliveryTaskPolicy = MutationDeliveryTaskPolicy(id, phase, name, dependencies.toSet(), owner)
+    ): MutationDeliveryTaskPolicy = MutationDeliveryTaskPolicy(
+        id = id,
+        phase = phase,
+        name = name,
+        lifecycle = MutationDeliveryTaskLifecycle.OPEN,
+        dependsOn = dependencies.toSet(),
+        owner = owner,
+    )
 
     private fun module(id: ModuleId): MutationDeliveryOwner = MutationDeliveryOwner.Modules(setOf(id))
 

@@ -1,0 +1,97 @@
+{
+  "type": "KAST_ADD_DECLARATION_INTELLIJ_PROTOCOL",
+  "schemaVersion": 1,
+  "ownerTicket": "KIP-030",
+  "runtimeBuild": "261.25134.95",
+  "distributionVersion": "2026.1.3",
+  "productFamily": "INTELLIJ_IDEA_COMMUNITY",
+  "supportState": "PINNED_BUILD_ONLY",
+  "selectedExecutor": {
+    "kind": "KOTLIN_PSI_INSERTION",
+    "status": "SUPPORTED",
+    "publicApis": [
+      "org.jetbrains.kotlin.psi.KtPsiFactory.createDeclaration",
+      "com.intellij.psi.PsiElement.add",
+      "com.intellij.psi.codeStyle.CodeStyleManager.reformat(PsiElement,boolean)",
+      "com.intellij.openapi.command.WriteCommandAction.writeCommandAction(Project,PsiFile...)",
+      "com.intellij.psi.PsiDocumentManager.commitDocument",
+      "com.intellij.openapi.fileEditor.FileDocumentManager.saveDocument"
+    ],
+    "preparationOutsideWriteCommand": [
+      "CHECK_CANCELLATION",
+      "REQUIRE_SMART_MODE",
+      "REQUIRE_WRITABLE_TARGET",
+      "RESOLVE_EXACT_TARGET",
+      "PARSE_DECLARATION",
+      "CAPTURE_DOCUMENT"
+    ],
+    "insideWriteCommand": [
+      "ADD_DECLARATION_PSI",
+      "REFORMAT_WHITESPACE_ONLY",
+      "COMMIT_TARGET_DOCUMENT"
+    ],
+    "afterWriteCommand": [
+      "SAVE_TARGET_DOCUMENT",
+      "OBSERVE_CHANGED_DOCUMENT_SET",
+      "CHECK_GLOBAL_UNDO"
+    ],
+    "forbiddenInsideWriteCommand": [
+      "INDEX_OR_SEARCH",
+      "SMART_MODE_WAIT",
+      "VFS_REFRESH",
+      "GRADLE_IMPORT",
+      "PERSISTENCE",
+      "VERIFICATION",
+      "DOCUMENT_SAVE",
+      "REFERENCE_SHORTENING"
+    ]
+  },
+  "planInputs": [
+    "canonicalTargetPath",
+    "targetPreimageSha256",
+    "semanticGeneration",
+    "compiledSourceOwner",
+    "insertionAnchor",
+    "declarationText",
+    "expectedPostimageSha256",
+    "formatWhitespaceOnly",
+    "declaredWriteSet"
+  ],
+  "observedBehavior": {
+    "affectedDocuments": "EXACT_DECLARED_TARGET",
+    "commandThread": "EDT_WITH_WRITE_ACCESS",
+    "commandDuration": "MEASURED_SEPARATELY",
+    "undo": "UNAVAILABLE_IN_HEADLESS_INDEXER",
+    "formatting": "WHITESPACE_ONLY",
+    "referenceShortening": "NOT_PERFORMED",
+    "save": "EXPLICIT_AFTER_COMMAND",
+    "cancellation": "PROPAGATES_BEFORE_COMMAND",
+    "dumbMode": "REJECTED_BEFORE_COMMAND",
+    "readOnly": "REJECTED_BEFORE_COMMAND"
+  },
+  "closedLimitations": [
+    {
+      "code": "ANDROID_STUDIO_UNVERIFIED",
+      "effect": "UNSUPPORTED"
+    },
+    {
+      "code": "UNPINNED_BUILD_UNVERIFIED",
+      "effect": "UNSUPPORTED"
+    },
+    {
+      "code": "REFERENCE_SHORTENING_REQUIRES_SEPARATE_PROTOCOL",
+      "effect": "UNSUPPORTED"
+    },
+    {
+      "code": "MID_COMMAND_CANCELLATION_NOT_ADMITTED",
+      "effect": "UNSUPPORTED"
+    },
+    {
+      "code": "HEADLESS_UNDO_UNAVAILABLE",
+      "effect": "UNSUPPORTED"
+    }
+  ],
+  "evidence": [
+    "indexer/src/test/kotlin/io/github/amichne/kast/idea/backend/contract/mutation/addition/AddDeclarationIntellijProtocolTest.kt"
+  ]
+}

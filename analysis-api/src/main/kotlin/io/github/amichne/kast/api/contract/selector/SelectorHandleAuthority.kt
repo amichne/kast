@@ -1,5 +1,7 @@
 package io.github.amichne.kast.api.contract.selector
 
+import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import kotlinx.serialization.Serializable
 
@@ -50,3 +52,51 @@ interface SelectorHandleAuthority {
         ): Resolution = Resolution.Rejected(Resolution.RejectionReason.UNAVAILABLE)
     }
 }
+
+fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily> = when (this) {
+    SymbolKind.CLASS, SymbolKind.INTERFACE -> setOf(
+        SelectorOperationFamily.IDENTITY,
+        SelectorOperationFamily.REFERENCES,
+        SelectorOperationFamily.IMPLEMENTATIONS,
+        SelectorOperationFamily.HIERARCHY,
+        SelectorOperationFamily.IMPACT,
+        SelectorOperationFamily.RENAME,
+    )
+    SymbolKind.OBJECT -> setOf(
+        SelectorOperationFamily.IDENTITY,
+        SelectorOperationFamily.REFERENCES,
+        SelectorOperationFamily.HIERARCHY,
+        SelectorOperationFamily.IMPACT,
+        SelectorOperationFamily.RENAME,
+    )
+    SymbolKind.FUNCTION -> setOf(
+        SelectorOperationFamily.IDENTITY,
+        SelectorOperationFamily.REFERENCES,
+        SelectorOperationFamily.CALLERS,
+        SelectorOperationFamily.CALLEES,
+        SelectorOperationFamily.IMPACT,
+        SelectorOperationFamily.RENAME,
+        SelectorOperationFamily.REPLACE_DECLARATION,
+    )
+    SymbolKind.PROPERTY -> setOf(
+        SelectorOperationFamily.IDENTITY,
+        SelectorOperationFamily.REFERENCES,
+        SelectorOperationFamily.IMPACT,
+        SelectorOperationFamily.RENAME,
+        SelectorOperationFamily.REPLACE_DECLARATION,
+    )
+    SymbolKind.PARAMETER -> setOf(
+        SelectorOperationFamily.IDENTITY,
+        SelectorOperationFamily.REFERENCES,
+        SelectorOperationFamily.RENAME,
+    )
+    SymbolKind.UNKNOWN -> emptySet()
+}
+
+fun Symbol.toExactSelector(): KastExactSymbolSelector = KastExactSymbolSelector(
+    fqName = fqName,
+    declarationFile = location.filePath,
+    declarationStartOffset = location.startOffset,
+    kind = kind,
+    containingType = containingDeclaration,
+)

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
@@ -18,8 +19,11 @@ import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.mutation.ExactFileImageCasObserver
 import io.github.amichne.kast.idea.mutation.SecureWorkspaceMutation
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionOutcome
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import java.nio.file.Files
 import java.nio.file.Path
@@ -47,7 +51,7 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
         }
         val before = Files.readAllBytes(filePath)
         val after = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()) +
-            "package demo\r\n\r\nfun exact(): String = \"😀\"\r\n".toByteArray()
+                    "package demo\r\n\r\nfun exact(): String = \"😀\"\r\n".toByteArray()
         val result = backend(workspaceRoot).exactFileImageCas(query(filePath, before, after))
 
         assertEquals(ExactFileImageStatus.COMMITTED, result.status)
@@ -253,7 +257,11 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
         assertArrayEquals(after, Files.readAllBytes(filePath))
     }
 
-    private fun query(filePath: Path, before: ByteArray, after: ByteArray): ExactFileImageQuery =
+    private fun query(
+        filePath: Path,
+        before: ByteArray,
+        after: ByteArray,
+    ): ExactFileImageQuery =
         ExactFileImageQuery(
             filePath = ExactFileImagePath(filePath.toString()),
             expectedCurrentSha256 = ExactFileImageSha256(FileHashing.sha256(before)),
@@ -360,22 +368,26 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
         workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
     )
 
-    private class RecordingWorkspaceTransitionRequester : WorkspaceTransitionRequester {
+    private class RecordingWorkspaceTransitionRequester : WorkspaceTransitionPort {
         var mutationCount: Int = 0
         var signal: WorkspaceSignal? = null
         var operationCompleted: Boolean = false
 
-        override suspend fun reconcile(request: WorkspaceTransitionRequest): PublishedWorkspaceGenerationManifest =
+        override suspend fun reconcile(request: WorkspaceTransitionRequest): WorkspaceTransitionOutcome =
             error("Unexpected standalone reconciliation")
 
         override suspend fun <T> mutate(
             signal: WorkspaceSignal,
             detail: String,
             operation: suspend () -> T,
-        ): T {
+        ): WorkspaceMutationTransitionOutcome<T> {
             mutationCount += 1
             this.signal = signal
-            return operation().also { operationCompleted = true }
+            val value = operation().also { operationCompleted = true }
+            return WorkspaceMutationTransitionOutcome.Completed(
+                value,
+                testPublishedWorkspaceGeneration().detachedPublication(),
+            )
         }
     }
 }

@@ -1,391 +1,215 @@
-# Implement the Kast architecture firewall and mutation workflow
+# IntelliJ substrate architecture and delivery program
 
-This guide is the implementation contract for enforcing Kast's repository-wide platform topology
-and for extracting mutation behavior from the four legacy Gradle projects. The platform module and
-effect policy governs every flow. The runtime process and delivery graphs govern the mutation
-workflow specifically. Follow the mutation delivery graph one bounded node at a time. Do not
-reinterpret either scope while moving code.
+This file is the working reference for the dependency-ordered program. It
+defines selectable nodes, dependencies, milestone exits, and invariant
+boundaries. Root `AGENTS.md` owns the work-packet procedure; this reference does
+not duplicate pseudo-ticket bodies or execution transcripts.
 
-The durable resources have two distinct responsibilities:
+## Authorities
 
-- Kotlin under `build-logic/src/main/kotlin/support/architecture/` is the sole executable authority
-  for repository-wide module dependencies, compiled effects, lifecycle admission, and the exact
-  migration baseline. It also represents the mutation-specific runtime and delivery graphs.
-- This guide explains how contributors implement the mutation workflow without weakening the
-  repository-wide architecture firewall.
+- Current repository HEAD is implementation authority. The source planning
+  baseline is `amichne/kast@60ca538fd00d6c75c4c40140ec719bc531c9651e`.
+- `build-logic/src/main/kotlin/support/architecture/` and generated
+  `gradle/architecture/kast-architecture-policy.json` are executable authority
+  for module, role, effect, cost, and migration policy. This Markdown graph is
+  not a substitute for that policy.
+- `hechtcarmel/jetbrains-index-mcp-plugin@7670d7202f43ab6d54433832d087316b69637f1b`
+  is behavior evidence for native IntelliJ discovery, search scopes,
+  cancellable smart reads, pagination, and liveness. It is not Kast's
+  architecture authority.
+- `amichne/slopsentral@672f169842174ee807cd28a12c8f4718e7272dff`
+  is the design reference for proof-carrying transitions and boundary parsing.
 
-`gradle/architecture/kast-architecture-policy.json` is a deterministic projection for review,
-hooks, and CI. Generate it from Kotlin; never edit it as policy.
+If HEAD has moved, resolve only the selected node's renamed owners and current
+consumers. Do not broaden its outcome to match an obsolete baseline.
 
-## Preserve these invariants
+## Program outcome
 
-1. A semantic mutation is a transaction over one published workspace generation.
-2. Planning retains stable values, never live IntelliJ objects.
-3. Approval waits without a mutation lease, read action, write action, database transaction, PSI
-   pointer, `Document`, `VirtualFile`, or `KaSession`.
-4. Apply revalidates the approved plan against current identity, content, ownership, provenance,
-   and writability before acquiring physical write authority.
-5. Recovery evidence exists before the first source write.
-6. Modeled Kotlin and Java source uses the IntelliJ semantic lane. Raw filesystem mutation cannot
-   substitute for PSI or refactoring behavior.
-7. The external lane accepts only a typed unmodeled-file target or explicit regeneration authority.
-8. The IntelliJ command/write action contains only the modeled mutation. Search, index waiting,
-   diagnostics, persistence, refresh, network work, and approval remain outside it.
-9. Apply produces `AppliedUnverified`. Only verification against a newly published generation can
-   produce `VerifiedMutationReceipt`.
-10. Unknown, ambiguous, stale, incomplete, unsupported, or over-budget evidence fails closed.
-11. Every validation is a type transition. Callers consume the stronger result and cannot discard
-    or reconstruct its proof from primitives.
-12. Expected failures are closed data. Do not use exceptions, nullable values, booleans, stage
-    strings, transport success, or arbitrary text as lifecycle or failure protocols.
-
-The type ratchet is:
+The first vertical journey is:
 
 ```text
-RawMutationRequest
-  -> MutationIntent
-  -> MutationPlan bound to source generation M0
-  -> AdmittedMutation under WorkspaceMutationLease
-  -> PreparedPsiMutation | PreparedExternalMutation
-  -> ClosedAppliedMutation
-  -> ResultingWorkspace M1
-  -> VerifiedMutationReceipt
+native symbol discovery -> exact selector -> exact definition/description
 ```
 
-One owning transition constructs each stronger type. Raw extraction is permitted only at the
-outer transport, IntelliJ, filesystem, SQLite, and Gradle adapters.
+The terminal journey is KIP-056: native bounded reads, explicit workspace and
+long-operation execution, verified semantic and external mutation slices,
+aggregate-backend retirement, and enterprise multi-module acceptance. Each
+operation becomes usable when its own vertical slice is proven; the program is
+not a horizontal platform rewrite.
 
-## Use the repository-wide policy as a firewall
+## Milestones
 
-Run the architecture gate before changing module membership:
-
-```shell
-./gradlew verifyKastArchitecture --configuration-cache
-```
-
-The root `kast.architecture` plugin observes every active project's direct production dependencies
-and compiled main classes, regardless of which product flow uses them. `VerifyKastArchitectureTask`
-admits those observations only after they have been parsed into canonical `ModuleId`,
-`ProjectDependencyObservation`, and `EffectObservation` values. The gate rejects:
-
-- an absent `ACTIVE` module;
-- a materialized `PLANNED` module;
-- a present `RETIRED` module;
-- a direct project edge not listed for its consumer;
-- a forbidden compiled JVM reference outside its owning adapter;
-- a new violation absent from the exact migration baseline;
-- a baseline entry whose exact violation has disappeared;
-- a wildcard or pattern baseline entry;
-- duplicate nodes, missing dependencies or owners, and graph cycles; and
-- drift between Kotlin policy and the checked-in JSON projection.
-
-Do not add an allowance to make a new change pass. The baseline is a frozen description of legacy
-debt, keyed by exact module, effect, caller owner/name/descriptor, target owner/name/descriptor,
-and retirement task. It can only shrink. When moving an allowed reference, delete its old
-allowance in the same change. A moved or renamed reference is new debt unless it lands in the
-permitted target adapter.
-
-The scanner recognizes `INTELLIJ_WRITE`, `FILESYSTEM_WRITE`, `SOURCE_FILESYSTEM_WRITE`, `JDBC`,
-`GRADLE_IMPORT`, and `ANALYSIS_BACKEND`. Adding a wrapper does not transfer authority: place the
-wrapper in the module that owns the effect and expose a typed, effect-specific port.
-
-After every policy edit, regenerate and inspect the projection:
-
-```shell
-./gradlew generateKastArchitectureProjection
-git diff -- gradle/architecture/kast-architecture-policy.json
-./gradlew verifyKastArchitecture --configuration-cache
-```
-
-## Materialize only the predetermined platform module graph
-
-`settings.gradle.kts` is project-membership authority. A target project must be absent while its
-policy lifecycle is `PLANNED`. Materialize it by adding the project to settings and changing that
-same `ModulePolicy` to `ACTIVE` in one change. Never create an ungoverned intermediate project.
-
-The arrow notation below means “consumer may depend directly on dependency.” Transitive access
-does not authorize a new direct edge.
-
-| Module | Role | Allowed direct project dependencies | Allowed effects |
-| --- | --- | --- | --- |
-| `:analysis-api` | legacy host | none | backend, ordinary filesystem output |
-| `:index-store` | legacy host | `:analysis-api` | JDBC, ordinary filesystem output |
-| `:analysis-server` | legacy host | `:analysis-api`, `:index-store` | backend, ordinary filesystem output |
-| `:indexer` | legacy host | `:analysis-api`, `:analysis-server`, `:index-store` | ordinary filesystem output |
-| `:kernel` | kernel | none | none |
-| `:protocol:registry` | contract | `:kernel` | none |
-| `:workspace:contract` | contract | `:kernel` | none |
-| `:evidence:sqlite` | SQLite adapter | `:workspace:contract` | JDBC |
-| `:workspace:service` | service | `:workspace:contract`, `:evidence:sqlite` | none |
-| `:workspace:intellij` | workspace adapter | `:workspace:contract`, `:workspace:service` | Gradle import |
-| `:change:contract` | contract | `:kernel`, `:protocol:registry` | none |
-| `:change:plan:spi` | SPI | `:change:contract`, `:workspace:contract` | none |
-| `:change:plan:intellij` | IntelliJ read adapter | `:change:contract`, `:change:plan:spi`, `:workspace:contract` | none |
-| `:change:journal:contract` | contract | `:change:contract` | none |
-| `:change:journal:sqlite` | SQLite adapter | `:change:journal:contract` | JDBC |
-| `:change:plan:service` | service | `:change:contract`, `:change:plan:spi`, `:change:journal:contract`, `:workspace:contract` | none |
-| `:workspace:mutation:contract` | contract | `:change:contract`, `:workspace:contract` | none |
-| `:workspace:mutation:service` | service | `:workspace:contract`, `:workspace:service`, `:workspace:mutation:contract` | none |
-| `:change:apply:spi` | SPI | `:change:contract`, `:workspace:mutation:contract` | none |
-| `:change:recovery:contract` | contract | `:change:contract` | none |
-| `:change:recovery:filesystem` | filesystem write adapter | `:change:recovery:contract` | filesystem and source-filesystem write |
-| `:change:recovery:service` | service | `:change:recovery:contract`, `:change:recovery:filesystem`, `:change:journal:contract`, `:workspace:contract` | none |
-| `:change:apply:service` | service | `:change:contract`, `:change:plan:spi`, `:change:apply:spi`, `:change:recovery:contract`, `:change:journal:contract`, `:workspace:mutation:contract` | none |
-| `:change:apply:intellij` | IntelliJ write adapter | `:change:contract`, `:change:apply:spi`, `:workspace:contract` | IntelliJ write |
-| `:change:apply:filesystem` | filesystem write adapter | `:change:contract`, `:change:apply:spi` | filesystem and source-filesystem write |
-| `:change:verify:spi` | SPI | `:change:contract`, `:workspace:contract` | none |
-| `:change:verify:intellij` | IntelliJ read adapter | `:change:contract`, `:change:verify:spi`, `:workspace:contract` | none |
-| `:change:verify:service` | service | `:change:contract`, `:change:verify:spi`, `:change:recovery:contract`, `:change:journal:contract` | none |
-| `:runtime:bindings:contract` | contract | `:change:contract` | none |
-| `:runtime:server` | transport | `:protocol:registry`, `:change:contract`, `:runtime:bindings:contract` | compatibility backend |
-| `:runtime:composition` | composition | every target module above, but no legacy host | compatibility backend |
-
-Do not add lateral convenience edges. In particular:
-
-- planning modules cannot depend on apply modules or IntelliJ write APIs;
-- the IntelliJ apply adapter cannot reach the filesystem apply adapter;
-- the filesystem adapter cannot reach PSI or Kotlin Analysis APIs;
-- verification cannot depend on apply implementations or repair by reapplying;
-- transport cannot reach IntelliJ, Gradle, JDBC, source writers, or the complete runtime graph;
-- only `:workspace:intellij` may import Gradle projects;
-- only `:change:apply:intellij` may mutate modeled PSI;
-- only filesystem apply and recovery adapters may mutate source through raw file APIs;
-- only the two SQLite adapters may use JDBC; and
-- only composition may see the complete implementation graph.
-
-Foundation task F02 must provide module-role convention plugins before general extraction begins.
-Each plugin is an orthogonal role marker and build convention, not a second dependency-policy
-authority. At minimum distinguish kernel, contract, SPI, service, IntelliJ-read,
-IntelliJ-write, filesystem-write, SQLite, workspace, transport, and composition roles. Keep the
-allowed graph and effect sets in `KastPlatformModules`; a convention plugin may configure or expose
-the declared role but must not carry a divergent allowlist.
-
-## Implement modules according to their role
-
-### Contracts and kernel
-
-Use contracts for identities, invariant-carrying values, closed lifecycle states, commands,
-receipts, failures, and narrow ports. They have no IntelliJ, Gradle, JDBC, filesystem, service
-locator, or implementation dependencies. Constructors that could manufacture unproven state stay
-private or internal to the transition owner.
-
-The mutation contract must distinguish semantic and external plans. A plan includes its source
-manifest, non-empty expected-file set, declared write set, obligations, expected semantic delta,
-and verification contract. Each expected file carries a workspace-relative path, before-image
-identity, Gradle owner, source-root provenance, and writability requirement.
-
-### Services
-
-Services are pure coordinators over typed ports. They select legal transitions but cannot import
-physical APIs. A service receives proof-carrying capabilities, calls one narrower owner, and
-returns a stronger state or a closed failure. It cannot unpack a capability into raw paths or
-handles for downstream revalidation.
-
-### IntelliJ read adapters
-
-Planning and verification adapters run cancellable smart read actions. Resolve PSI, Kotlin
-Analysis, indexes, scopes, and live file identities locally, then detach the result into stable
-contract values before returning. Never retain or serialize `Project`, `PsiElement`, `KaSession`,
-`VirtualFile`, `Document`, or a search scope.
-
-### IntelliJ write adapter
-
-Prepare the ephemeral apply context before the write command. Re-resolve exact targets and prove
-writability. On EDT, perform only the supported PSI/refactoring mutation, formatting or reference
-shortening that belongs to that operation, and capture affected document identities. Save only the
-affected documents after the command. Do not search, wait for smart mode, refresh, diagnose,
-persist journal state, call an agent, or perform network work inside the command.
-
-### Filesystem write and recovery adapters
-
-Accept only typed, descriptor-relative targets with proven containment and operation authority.
-Use atomic replacement, fsync, exact file identities, and before/after hashes as required by the
-operation. Reject modeled source and unproven generated targets. Recovery storage and restoration
-are physical mechanisms; rollback policy remains in the recovery service.
-
-### SQLite adapters
-
-Implement compare-and-set lifecycle persistence and evidence publication from typed records.
-Transactions make decisions durable but do not decide semantic truth. Do not expose SQL,
-connections, tables, or database handles to contracts or services.
-
-### Transport and composition
-
-Transport parses envelopes, dispatches declared operations through `KastOperationBindings`, and
-projects canonical results. Transport success cannot mean semantic success. Composition is the
-only owner of the full object graph; it returns narrow bindings and never exports a backend
-aggregate or service locator.
-
-## Implement the mutation state machine
-
-Represent runtime state as a product, not as one readiness flag:
-
-```text
-SystemState = [WorkspaceState, PlanState, MutationState, RecoveryState]
-```
-
-| Axis | Closed states |
-| --- | --- |
-| Workspace | `W0 READY(M0)`, `W1 DIRTY(base=M0)`, `W2 RECONCILING`, `W3 READY(M1)`, `WB BLOCKED` |
-| Plan | `P0 NONE`, `P1 PLANNING`, `P2 PLANNED(planId, source=M0)`, `PX EXPIRED_OR_REJECTED` |
-| Mutation | `M0 IDLE`, `M1 LEASED`, `M2 APPLIED_UNVERIFIED`, `M3 VERIFYING`, `M4 VERIFIED`, `MR ROLLED_BACK`, `MX RECOVERY_REQUIRED` |
-| Recovery | `R0 NONE`, `R1 PREPARED`, `R2 RETAINED`, `R3 RELEASED` |
-
-Encode legal transitions as state-specific functions or capabilities. Persist the expected prior
-state with every journal transition so a stale actor receives a typed conflict. `WB`, `PX`, and
-`MX` are terminal claims about failed proof; no fallback may relabel them as success.
-
-Implement the mutation runtime processes in this order. The state column shows the required
-transition; the owner is fixed by the platform module graph.
-
-| Process | Required transition | Implementation constraint |
+| ID | Outcome | Exit condition |
 | --- | --- | --- |
-| RP01 Parse intent | `[W0,P0,M0,R0] -> [W0,P1,M0,R0]` | Parse all raw paths and strings; expose no physical authority. |
-| RP02 Planning lease | state unchanged | Bind exact root, worktree, compiler environment, scope, and M0. |
-| RP03 Resolve semantic scope | state unchanged | Use bounded smart reads; return detached evidence. |
-| RP04 Capture preconditions | state unchanged | Bind hashes, identities, owner, provenance, writability, and declared scope. |
-| RP05 Persist plan | `P1 -> P2` | Persist stable, tamper-evident values safe for an approval wait. |
-| RP06 Await approval | state unchanged | Retain no live or physical resource. |
-| RP07 Logical mutation lease | `M0 -> M1` | Serialize Kast writers only; do not hold an IntelliJ lock. |
-| RP08 Revalidate | remain `M1` or `P2 -> PX, M1 -> M0` | Resolve every selector and authority predicate again. |
-| RP09 Prepare recovery | `R0 -> R1` | Durably capture exact before-images before source write. |
-| RP10 Prepare apply context | state unchanged | Create only brief, process-local PSI or external capabilities. |
-| RP11S Semantic apply | `W0 -> W1, M1 -> M2` | Run only modeled PSI mutation in the short write command. |
-| RP11E External apply | `W0 -> W1, M1 -> M2` | Reject modeled source; write only the admitted external target. |
-| RP12 Persist/capture after-images | remain `W1,M2,R1` | Save affected documents or verify external atomic commit. |
-| RP13 Prove write-set closure | remain `M2` or `M2 -> MX, R1 -> R2` | Any undeclared change blocks success and retains recovery. |
-| RP14 Targeted transition | `W1 -> W2` | Use targeted VFS refresh; never ordinary whole-workspace refresh. |
-| RP15 Publish generation | `W2 -> W3, M2 -> M3` or `W2 -> WB, M2 -> MX, R1 -> R2` | Atomically publish an M1 distinct from M0 and bound to exact source/compiler state. |
-| RP16 Evaluate postconditions | remain `W3,M3,R1` | Run bounded diagnostics and semantic checks in background smart reads. |
-| RP17 Reconcile result | state unchanged | Require operation proof; compilation or tests alone are insufficient. |
-| RP18 Issue receipt | `M3 -> M4, R1 -> R3` | Only this step emits semantic success and releases the logical lease durably. |
-| RP19 Recover | after `R1`, produce rollback `MR,R3` or failure `MX,R2` | Roll back safely by default; an unsafe or failed rollback stays explicit. |
+| M0 | Correct foundation | Policy expresses the intended architecture and shrink-only migration without a big-bang move. |
+| M1 | Fast read path | One public read uses a narrow native IntelliJ capability and returns exact, bounded, generation-bound output. |
+| M2 | Workspace execution | Transitions, long work, and resource admission are explicit and independent from ordinary reads. |
+| M3 | Plan-only mutation | Add-declaration produces a detached durable plan with no source authority. |
+| M4 | First verified mutation | Add-declaration ends Verified, Rejected, RolledBack, or RecoveryRequired truthfully. |
+| M5 | Verified rename | Native multi-file rename uses the same plan, recovery, transition, and proof protocol. |
+| M6 | Expansion and retirement | Operations migrate one at a time; raw semantic apply and the aggregate backend retire after their consumers move. |
 
-The semantic and external apply processes are alternative RP11 lanes. RP12 must join only the lane
-selected by the admitted plan; it must not require both lanes to execute.
+## Task graph
 
-## Follow the mutation delivery DAG
+The wave is topological depth, not a batch barrier. A node is ready as soon as
+all of its own dependencies have mechanical proof.
 
-Choose a delivery node only after every listed predecessor has mechanical completion evidence.
-Independent nodes with satisfied predecessors may run in parallel in isolated worktrees. They may
-not edit the same source owner, policy row, or baseline entries without an explicit integration
-owner.
+| ID | Milestone | Wave | Depends on | Observable outcome |
+| --- | --- | ---: | --- | --- |
+| KIP-001 | M0 | 0 | - | Freeze the [source and reproducible performance ledger](kast-intellij-substrate-ledger.json) and its executable validator. |
+| KIP-002 | M0 | 1 | KIP-001 | Correct alternative mutation branches, joins, and recovery interrupts. |
+| KIP-003 | M0 | 1 | KIP-001 | Correct module dependency direction around contracts, ports, adapters, and persistence. |
+| KIP-004 | M0 | 2 | KIP-003 | Introduce exact, shrink-only, retirement-bound migration edges. |
+| KIP-005 | M0 | 2 | KIP-002, KIP-003 | Enforce module role, effect, cost, and exported-API boundaries. |
+| KIP-010 | M1 | 2 | KIP-003 | Define typed operation lanes, capabilities, budgets, and closed outcomes. |
+| KIP-011 | M1 | 3 | KIP-005, KIP-010 | Extract a canonical-root, generation-bound semantic read lease. |
+| KIP-012 | M1 | 4 | KIP-011 | Compile typed IntelliJ search scopes before query execution. |
+| KIP-013 | M1 | 5 | KIP-012 | Implement bounded native file, class, and symbol discovery. |
+| KIP-014 | M1 | 6 | KIP-013 | Resolve detached discovery candidates into exact generation-bound selectors. |
+| KIP-015 | M1 | 7 | KIP-011, KIP-012, KIP-014 | Implement bounded native relation reads with qualified coverage. |
+| KIP-016 | M1 | 4 | KIP-010, KIP-011 | Implement detached generation-bound continuations. |
+| KIP-017 | M1 | 4 | KIP-011 | Add fail-fast liveness and freshness admission. |
+| KIP-018 | M1 | 7 | KIP-001, KIP-013, KIP-014, KIP-016, KIP-017 | Cut over and benchmark the first public fast read. |
+| KIP-020 | M2 | 3 | KIP-003, KIP-004, KIP-005 | Extract the workspace transition port. |
+| KIP-021 | M2 | 5 | KIP-010, KIP-017 | Add the registered long-operation protocol. |
+| KIP-022 | M2 | 6 | KIP-001, KIP-020, KIP-021 | Add resource admission and staggered expensive work. |
+| KIP-030 | M3 | 5 | KIP-001, KIP-011, KIP-012 | Characterize the add-declaration IntelliJ protocol. |
+| KIP-031 | M3 | 6 | KIP-010, KIP-011, KIP-012, KIP-020, KIP-030 | Define and route plan-only add-declaration. |
+| KIP-032 | M3 | 7 | KIP-004, KIP-031 | Persist the plan and establish the approval boundary. |
+| KIP-033 | M4 | 8 | KIP-020, KIP-032 | Revalidate the approved plan and prepare recovery. |
+| KIP-034 | M4 | 9 | KIP-005, KIP-030, KIP-033 | Apply one short IntelliJ mutation and prove write-set closure. |
+| KIP-035 | M4 | 10 | KIP-015, KIP-020, KIP-034 | Publish the resulting generation and verify add-declaration. |
+| KIP-036 | M4 | 11 | KIP-005, KIP-035 | Cut over public add-declaration and close bypasses. |
+| KIP-040 | M5 | 5 | KIP-001, KIP-011, KIP-012 | Characterize the native rename protocol. |
+| KIP-041 | M5 | 9 | KIP-015, KIP-033, KIP-040 | Extract a detached rename plan and native apply adapter. |
+| KIP-042 | M5 | 11 | KIP-016, KIP-035, KIP-041 | Route verified rename and prove multi-file behavior. |
+| KIP-050 | M6 | 12 | KIP-036 | Route verified add-file as its own slice. |
+| KIP-051 | M6 | 12 | KIP-015, KIP-036 | Route exact replacement as its own slice. |
+| KIP-052 | M6 | 12 | KIP-036 | Route optimize-imports as its own slice. |
+| KIP-053 | M6 | 9 | KIP-002, KIP-020, KIP-033 | Implement the typed external-file lane. |
+| KIP-054 | M6 | 13 | KIP-036, KIP-042, KIP-050, KIP-051, KIP-052, KIP-053 | Reduce mutation methods on `AnalysisBackend` to compatibility bindings. |
+| KIP-055 | M6 | 14 | KIP-018, KIP-054 | Decompose remaining read capabilities and retire `AnalysisBackend`. |
+| KIP-056 | M6 | 15 | KIP-022, KIP-042, KIP-050, KIP-051, KIP-052, KIP-053, KIP-055 | Prove the enterprise multi-module acceptance journey. |
 
-| Task | Outcome | Required predecessors |
+## Topological waves
+
+| Wave | Nodes |
+| ---: | --- |
+| 0 | KIP-001 |
+| 1 | KIP-002, KIP-003 |
+| 2 | KIP-004, KIP-005, KIP-010 |
+| 3 | KIP-011, KIP-020 |
+| 4 | KIP-012, KIP-016, KIP-017 |
+| 5 | KIP-013, KIP-021, KIP-030, KIP-040 |
+| 6 | KIP-014, KIP-022, KIP-031 |
+| 7 | KIP-015, KIP-018, KIP-032 |
+| 8 | KIP-033 |
+| 9 | KIP-034, KIP-041, KIP-053 |
+| 10 | KIP-035 |
+| 11 | KIP-036, KIP-042 |
+| 12 | KIP-050, KIP-051, KIP-052 |
+| 13 | KIP-054 |
+| 14 | KIP-055 |
+| 15 | KIP-056 |
+
+## Legacy node normalization
+
+The S identifiers are no longer selectable nodes. They map into this graph as
+follows; code and tests remain the durable evidence. A mapping is not a ticket
+completion flag, and KIP-001 must bind the source and performance ledger before
+mapped dependents are treated as complete under this adopted graph.
+
+| Legacy unit | Program node | Disposition |
 | --- | --- | --- |
-| F01 | Freeze mutation lifecycle and canonical contracts | none |
-| F02 | Create module-role convention plugins | F01 |
-| F03 | Enforce dependency graph and forbidden effects | F02 |
-| F04 | Reduce `AnalysisBackend` to compatibility transport | F01, F03 |
-| P01 | Classify semantic and external operations | F01 |
-| P02 | Define stable plan and expected-file proof | P01 |
-| P03 | Create durable plan journal | F03, P02 |
-| P04 | Extract IntelliJ semantic planning adapter | F03, P02 |
-| P05 | Assemble deterministic plans | P03, P04 |
-| A01 | Establish logical workspace mutation lease | F03, P05 |
-| A02 | Revalidate selector, hashes, ownership, and provenance | A01, P04 |
-| A03 | Prepare writable-target and recovery capabilities | A02 |
-| A04 | Validate supported IntelliJ refactoring APIs | A03 |
-| A05 | Implement short IntelliJ write-command executor | A04 |
-| A06 | Implement typed external-file writer | A03 |
-| A07 | Persist affected documents and capture after-images | A05, A06 |
-| A08 | Prove declared write-set closure | A07 |
-| V01 | Route targeted post-write workspace transition | A08 |
-| V02 | Publish one resulting semantic generation | V01 |
-| V03 | Evaluate diagnostics and operation postconditions | V02 |
-| V04 | Reconcile expected and observed semantic delta | V03 |
-| V05 | Issue terminal verified receipt | V04 |
-| R01 | Implement automatic rollback policy | A07, V04 |
-| R02 | Reconcile and prove rollback generation | R01, V01, V02 |
-| R03 | Resume or recover after crash | A03, P03, R01 |
-| M01 | Route rename through plan/apply/verify | R03, V05 |
-| M02 | Route replace, add, implementation, body, and import operations | M01 |
-| M03 | Remove semantic access to generic raw apply-edits | F03, M02 |
-| T01 | Contract and state-machine suite | F01, P02, R03, V05 |
-| T02 | IntelliJ write-protocol integration suite | A05, A07, V03 |
-| T03 | Concurrency, movement, and recovery fault suite | R03, V02 |
-| T04 | Performance and UI-safety suite | T02, T03 |
-| T05 | Enterprise multi-module mutation demonstration | M03, T01, T02, T03, T04 |
+| S00 | KIP-002 | Branch, join, and recovery correction. |
+| S01 | KIP-003 | Dependency-center and planned-read boundaries. |
+| S02 | KIP-004 | Retirement-bound migration admission. |
+| S03 | KIP-005 | Role, effect, and cost enforcement. |
+| S04 | - | Supporting kernel materialization; no parallel graph node. |
+| S05 | KIP-010 | Typed operation registry and lanes. |
+| S06 | KIP-011 | Generation-bound semantic read lease. |
+| S07 | KIP-012 | Typed IntelliJ search-scope compilation. |
+| S08 | KIP-013 | Use the KIP identifier for future discovery work. |
+| S09 | KIP-014 | Use the KIP identifier for future selector work. |
+| S10 | KIP-016 | Use the KIP identifier for future continuation work. |
+| S11 | KIP-017 | Use the KIP identifier for future liveness work. |
+| S12 | KIP-018 | Use the KIP identifier for future public cutover work. |
 
-Representation in `KastMutationDelivery` does not prove a task complete. Record completion only
-when its types, module boundaries, behavior, negative proofs, and consumer integration exist.
+KIP-015 and KIP-020 through KIP-056 are explicit additions from the end-to-end
+program. They replace the former undifferentiated deferred backlog.
 
-## Execute one extraction work packet
+## Substrate boundaries
 
-1. Select the smallest delivery node whose predecessors are proven. Name the source owner, target
-   module, policy rows, baseline entries, and direct consumers before editing.
-2. Start from a green `verifyKastArchitecture` result and record the exact baseline count relevant
-   to the owner being moved.
-3. Add focused red tests for the invariant or transition. Include a negative test demonstrating
-   that the old primitive, effect, edge, or invalid state is rejected.
-4. Introduce the target contract and stronger output type first. Keep raw input at the boundary and
-   make every caller consume the proof-bearing result.
-5. Materialize the target module only when it can compile under its final direct dependency and
-   role constraints. Update settings and `PLANNED -> ACTIVE` together.
-6. Move the implementation behind its narrow port. Do not leave a second implementation or
-   compatibility path unless its removal belongs to a later named migration node.
-7. Migrate callers inward from contracts to services to adapters. The composition root is the only
-   place allowed to bind implementations.
-8. Delete every exact legacy allowance retired by the move. Do not rewrite or broaden an allowance
-   to follow relocated debt.
-9. Generate the projection and run the architecture gate. Treat an obsolete allowance as evidence
-   of progress that must be removed, not as a reason to preserve stale baseline data.
-10. Run focused tests, the owning module check, direct consumers, and the repository widening proof
-    required by the nearest `AGENTS.md`.
-11. Commit only when the old owner no longer possesses the moved authority and the target module
-    cannot compile with an undeclared dependency or effect.
+- IntelliJ owns live indexes, PSI, smart reads, search scopes, refactoring, and
+  write commands. Kast owns exact selectors, published generations, detached
+  evidence, continuations, plans, recovery, and verified receipts.
+- Ordinary reads never import Gradle, build a graph, write SQLite, mutate
+  source, refresh the whole workspace, control processes, or reacquire
+  aggregate `AnalysisBackend` authority.
+- File discovery uses `ChooseByNameContributor.FILE_EP_NAME`; class discovery
+  uses `CLASS_EP_NAME`; symbol discovery uses `GotoSymbolModel2` and the current
+  supported Choose-by-Name provider stack.
+- Project-model ownership becomes a typed `GlobalSearchScope` before PSI or
+  index work. Result limits apply before expensive PSI conversion.
+- Reads are cancellable suspending smart read actions that yield to writes.
+  Runtime, EDT, index, workspace, generation, cancellation, and provider
+  failures are closed outcomes, never implicit refresh or fallback triggers.
+- Candidates, selectors, descriptions, relation facts, coverage, and
+  continuation state are bounded and detached. No `Project`, `PsiElement`,
+  `KaSession`, `VirtualFile`, `Document`, search scope, pointer, or closure may
+  survive a request boundary.
+- Exact counts require terminal enumeration. A cap, cancellation, stale cursor,
+  dumb-mode transition, unsupported element, or provider failure produces a
+  qualified minimum or rejection, never fabricated completeness.
+- A continuation binds root, generation, normalized request, scope, ordering,
+  resume position, TTL, and resource limits.
 
-If one work packet requires an unlisted edge, new effect owner, graph cycle, raw escape hatch, or
-baseline expansion, stop. That is an architecture change requiring an explicit policy decision,
-not an extraction implementation detail.
+## Mutation and recovery boundaries
 
-## Prove each boundary mechanically
+- Planning retains stable evidence and no source authority. Approval waits hold
+  no mutation lease, read/write action, database transaction, live IDE object,
+  document, or filesystem capability.
+- Semantic and external apply are alternative lanes. Services consume contracts
+  and SPIs; adapters implement SPIs; persistence implements evidence contracts;
+  the registry imports feature contracts.
+- Apply revalidates selector, content, ownership, provenance, and writability,
+  then prepares durable recovery before the first source write.
+- The IntelliJ command contains only the admitted modeled mutation and its
+  local formatting or reference shortening. Search, waiting, diagnostics,
+  persistence, refresh, approval, and network work remain outside it.
+- External mutation accepts only typed unmodeled-file or regeneration authority
+  and cannot substitute for modeled PSI/refactoring behavior.
+- Apply produces `AppliedUnverified`. Only targeted transition, publication of
+  a distinct generation, obligation evaluation, and reconciliation can produce
+  a verified receipt. Every failure remains truthfully Rejected, RolledBack, or
+  RecoveryRequired.
+- Migration edges are exact, temporary, target-directed, retirement-bound, and
+  shrink-only. Mutation compatibility can retire before the aggregate backend;
+  complete backend retirement waits for all read and evidence families.
 
-Maintain positive and negative proof for all of these surfaces:
+## Selection and completion contract
 
-- policy validation: duplicates, missing references, owner references, cycles, and non-exact
-  allowances return closed `ArchitecturePolicyFailure` values;
-- lifecycle admission: active, planned, and retired membership is enforced;
-- project graph: an undeclared direct edge fails its owning Gradle fixture;
-- bytecode effects: fixtures fail for IntelliJ write, source-filesystem write, JDBC, Gradle import,
-  and backend authority outside their permitted modules;
-- baseline subtraction: exact observations pass, disappearance is obsolete, additions are
-  unbaselined, and pattern entries are invalid policy;
-- projection: two renders are byte-for-byte identical and parse as JSON;
-- Gradle integration: the root task reports structured findings and reuses configuration cache;
-- mutation contracts: illegal lifecycle transitions and stale compare-and-set writes cannot be
-  constructed or persisted;
-- IntelliJ integration: planning/verification retain no live objects and the write command performs
-  no blocking or unrelated work;
-- fault behavior: external edits, movement, stale hashes, crashes, undeclared writes, publication
-  failure, verification failure, and rollback failure preserve truthful terminal state; and
-- scale/performance: bounded scopes and budgets hold on multi-module repositories without EDT
-  waits, repository-wide refresh, or unbounded relation search.
+- Select exactly one node whose direct dependencies have landed with mechanical
+  proof. Reconcile legacy-mapped implementation against the adopted KIP
+  contract before treating it as a proven predecessor.
+- Derive one ignored `.agent/TASK.md` packet with exact writes, non-goals, one
+  focused RED, the smallest GREEN, and objective completion conditions.
+- Completion requires the observable outcome, positive and negative proof,
+  stronger representations for established facts, no new bypass or fallback,
+  architecture projection and exact-baseline coherence, direct-consumer proof,
+  repository shape, and changed-path hygiene.
+- Independent ready nodes may use isolated worktrees, but each node lands
+  independently. Parallel nodes cannot share a source owner, policy row, or
+  baseline entry without one named integration owner.
+- An unlisted edge, effect owner, graph cycle, raw escape hatch, wildcard
+  migration permission, or baseline expansion is a new policy decision, not an
+  implementation detail.
 
-Use this minimum architecture proof after any extraction:
+## Program completion
 
-```shell
-./gradlew -p build-logic test --tests 'support.architecture.*'
-./gradlew generateKastArchitectureProjection
-./gradlew verifyKastArchitecture --configuration-cache
-./gradlew verifyKastArchitecture --configuration-cache
-git diff --check
-python3 .github/scripts/check-repository-shape.py --root .
-```
-
-The second verifier run must reuse configuration cache. Widen to the owning module, direct
-consumers, `./gradlew test`, or `./gradlew build` according to the root and nearest module guides.
-
-## Completion conditions
-
-The repository-wide architecture firewall is installed when every active project is checked against
-the predetermined platform topology, compiled-effect ownership, lifecycle rules, exact baseline,
-and policy projection. That enforcement applies to every flow now and to every target module as it
-is materialized.
-
-The mutation workflow is fully implemented only when all target modules are active, legacy hosts
-no longer own mutation authority, the exact baseline is empty, raw semantic apply-edits are
-unavailable to semantic callers, every mutation reaches a verified, rolled-back, rejected, or
-recovery-required terminal state, and T05 proves the full protocol on an enterprise multi-module
-workspace. A green firewall with retained legacy allowances proves only that migration has not
-regressed; it does not prove the mutation extraction complete.
+KIP-056 is complete only when enterprise-shaped multi-module fixtures prove
+bounded native reads, resource and long-operation admission, verified rename,
+verified add-file, exact replacement, optimize-imports, typed external writes,
+truthful recovery terminals, and complete `AnalysisBackend` retirement. A green
+architecture firewall with retained legacy allowances or compatibility owners
+is partial migration, not terminal success.

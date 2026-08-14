@@ -20,7 +20,9 @@ value class WorkspaceRelativePath private constructor(val value: String) {
             require(normalized.none { segment -> segment.toString() == ".." }) {
                 "Workspace-relative paths must remain inside the workspace: $path"
             }
-            return WorkspaceRelativePath(normalized.toString().replace('\\', '/'))
+            return WorkspaceRelativePath(
+                normalized.joinToString(separator = "/") { segment -> segment.toString() },
+            )
         }
 
         /**

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `50`.
+Catalog version: `dev`. Methods: `48`.
 
 #### Method families
 
@@ -54,8 +54,8 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | --- | --- | --- | --- |
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit` |
-| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
-| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/plan-replacement`<br>`raw/plan-add-file`<br>`raw/plan-add-declaration`<br>`raw/exact-file-image-cas`<br>`raw/exact-file-observation`<br>`raw/inspect-mutation-scratch`<br>`raw/recover-mutation-scratch`<br>`raw/verify-mutation-postcondition`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
+| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
+| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/plan-replacement`<br>`raw/plan-add-file`<br>`raw/exact-file-image-cas`<br>`raw/exact-file-observation`<br>`raw/inspect-mutation-scratch`<br>`raw/recover-mutation-scratch`<br>`raw/verify-mutation-postcondition`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `graph` | Cataloged JSON-RPC methods. | sqlite | `graph/coverage` |
 | `repository` | Cataloged JSON-RPC methods. | sqlite | `repository/query` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
@@ -99,7 +99,6 @@ uses a discriminated response envelope.
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type`<br>`RENAME_BY_SYMBOL_REQUEST`: `symbol`, `newName`<br>`RENAME_BY_OFFSET_REQUEST`: `filePath`, `offset`, `newName` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
 | `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type`<br>`CREATE_FILE_REQUEST`: `filePath`<br>`INSERT_AT_OFFSET_REQUEST`: `filePath`, `offset`<br>`REPLACE_RANGE_REQUEST`: `filePath`, `startOffset`, `endOffset` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
 | `symbol/add-file` | `symbol` | backend | Create a Kotlin file from a content file and validate the result | `filePath`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
-| `symbol/add-declaration` | `symbol` | backend | Insert declaration content into a file or named Kotlin scope and validate the result | `placement`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/add-implementation` | `symbol` | backend | Insert implementation content into a file or named Kotlin scope and validate the result | `placement`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/add-statement` | `symbol` | backend | Insert statement content into a named executable Kotlin scope and validate the result | `insideScope`<br>`anchor`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/replace-declaration` | `symbol` | backend | Replace a named Kotlin declaration using declaration-scope evidence and validate the result | `symbol`<br>`contentFile` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
@@ -112,7 +111,6 @@ uses a discriminated response envelope.
 | `raw/rename` | `raw` | backend | Plan a symbol rename by file position | `position`<br>`newName` | `dryRun` | `RenameResult` | single result |
 | `raw/plan-replacement` | `raw` | backend | Plan an identity-preserving function or property replacement | `target`<br>`proposedDeclaration` | none | `ReplacementPlanResult` | single result |
 | `raw/plan-add-file` | `raw` | backend | Plan a compiler-proven Kotlin source file addition | `targetPath`<br>`proposedContent` | none | `AddFilePlanResult` | single result |
-| `raw/plan-add-declaration` | `raw` | backend | Plan a compiler-proven top-level Kotlin declaration addition | `targetPath`<br>`expectedCurrentSha256`<br>`proposedDeclaration` | none | `AddDeclarationPlanResult` | single result |
 | `raw/exact-file-image-cas` | `raw` | backend | Commit one exact file byte image with compare-and-swap | `filePath`<br>`expectedCurrentSha256`<br>`contentBase64`<br>`expectedResultSha256` | `mutationAttemptId`<br>`mutationScratch` | `ExactFileImageResult` | single result |
 | `raw/exact-file-observation` | `raw` | backend | Observe one canonical workspace-relative file as an exact byte image | `filePath` | `mutationAttemptId` | `RawExactFileObservationResult` | single result |
 | `raw/inspect-mutation-scratch` | `raw` | backend | Fence a mutation attempt and inspect its exact scratch namespace | `mutationAttemptId`<br>`workspaceRelativeParentPaths`<br>`ownedScratchSets` | none | `MutationScratchInspectResult` | single result |
@@ -447,20 +445,6 @@ Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
 </details>
 
 <details markdown="1">
-<summary><code>symbol/add-declaration</code> - Insert declaration content into a file or named Kotlin scope and validate the result</summary>
-
-| Field | Type | Required | Nullable | Values |
-| --- | --- | --- | --- | --- |
-| `workspaceRoot` | `string` | no | yes |  |
-| `placement` | `object` | yes | no |  |
-| `contentFile` | `string` | yes | no |  |
-
-Response type: `KastScopeMutationResponse`.
-Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
-
-</details>
-
-<details markdown="1">
 <summary><code>symbol/add-implementation</code> - Insert implementation content into a file or named Kotlin scope and validate the result</summary>
 
 | Field | Type | Required | Nullable | Values |
@@ -645,24 +629,6 @@ Notes:
 
 - The result is non-mutating and proves the exact target is absent.
 - The result binds canonical source ownership, collision and rebinding coverage, compiler occurrences, and the exact UTF-8 postimage.
-
-</details>
-
-<details markdown="1">
-<summary><code>raw/plan-add-declaration</code> - Plan a compiler-proven top-level Kotlin declaration addition</summary>
-
-| Field | Type | Required | Nullable | Values |
-| --- | --- | --- | --- | --- |
-| `targetPath` | `string` | yes | no |  |
-| `expectedCurrentSha256` | `string` | yes | no |  |
-| `proposedDeclaration` | `string` | yes | no |  |
-
-Response type: `AddDeclarationPlanResult`.
-
-Notes:
-
-- The result is non-mutating and binds the exact target preimage and postimage.
-- The only supported insertion is compiler FILE_BOTTOM with the closed preserve-existing append blank-line final-LF policy.
 
 </details>
 

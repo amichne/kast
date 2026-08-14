@@ -1,6 +1,6 @@
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.project.Project
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
@@ -13,15 +13,14 @@ import io.github.amichne.kast.idea.transition.GitWorktreeTransitionMarkerEvidenc
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.indexer.gradle.bootstrap.readyInitialProjectModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
@@ -78,7 +77,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
 
     @Test
     fun `missing linked-worktree Git directory does not block reconciliation`() {
-        val repository = committedRepository()
+        val repository = createCommittedTestRepository(tempDir)
         val workspace = tempDir.resolve("broken-linked-worktree")
         git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
         val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
@@ -112,7 +111,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
 
     @Test
     fun `missing non-worktree Git directory remains blocked`() {
-        val repository = committedRepository()
+        val repository = createCommittedTestRepository(tempDir)
         val registeredWorktree = tempDir.resolve("registered-worktree")
         git(repository, "worktree", "add", "--detach", registeredWorktree.toString(), "HEAD")
         val workspace = tempDir.resolve("separate-git-directory-workspace").also(Files::createDirectories)
@@ -164,25 +163,32 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val publication = object : WorkspaceGenerationPublication {
             override fun current() = delegate.current()
 
+            override fun currency(
+                manifest: io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest,
+            ) = delegate.currency(manifest)
+
             override fun begin() = delegate.begin()
 
             override fun prepare(
-                open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication,
+                open: io.github.amichne.kast.evidence.contract.OpenWorkspacePublication,
                 identity: WorkspaceStateIdentity,
-                graphBlocker: io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker?,
-            ) = delegate.prepare(open, identity, graphBlocker).also {
+                graphPublication: io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication,
+            ) = delegate.prepare(open, identity, graphPublication).also {
                 if (preparations.incrementAndGet() == 1) transition.set(inProgress)
             }
 
-            override fun commit(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) =
+            override fun commit(prepared: io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication) =
                 delegate.commit(prepared)
 
-            override fun discard(open: io.github.amichne.kast.idea.transition.OpenWorkspacePublication) {
+            override fun storedCommit(commit: io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit) =
+                delegate.storedCommit(commit)
+
+            override fun discard(open: io.github.amichne.kast.evidence.contract.OpenWorkspacePublication) {
                 discards.incrementAndGet()
                 delegate.discard(open)
             }
 
-            override fun discard(prepared: io.github.amichne.kast.idea.transition.PreparedWorkspacePublication) {
+            override fun discard(prepared: io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication) {
                 discards.incrementAndGet()
                 delegate.discard(prepared)
             }
@@ -344,7 +350,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         initialConfig = KastConfig.defaults(),
         initialProjectModelAuthority = readyInitialProjectModel(importedBuildInputs),
         resolveBuildSemanticInputIdentity = { currentBuildInputs },
-        semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+        semanticAdmission = IdeaIndexSemanticAdmission(workspaceTransitionProjectStub()),
         eventWakeup = eventWakeup,
         gitWorktreeTransitionGuard = gitWorktreeTransitionGuard,
         refreshWorkspace = refreshWorkspace,
@@ -360,22 +366,17 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         onTransition = {},
     )
 
-    private fun committedRepository(): Path {
-        val repository = tempDir.resolve("repository").also(Files::createDirectories)
-        git(repository, "init")
-        git(repository, "config", "user.name", "Kast Test")
-        git(repository, "config", "user.email", "kast@example.invalid")
-        Files.writeString(repository.resolve("README.md"), "initial")
-        git(repository, "add", "README.md")
-        git(repository, "commit", "-m", "initial")
-        return repository
-    }
-
-    private fun git(directory: Path, vararg arguments: String) {
+    private fun git(
+        directory: Path,
+        vararg arguments: String,
+    ) {
         runGitCommand(directory, *arguments)
     }
 
-    private fun gitOutput(directory: Path, vararg arguments: String): String =
+    private fun gitOutput(
+        directory: Path,
+        vararg arguments: String,
+    ): String =
         readGitOutput(directory, *arguments)
 
     private fun unmanagedCandidate(identity: WorkspaceStateIdentity) = WorkspaceReconciliationCandidate(
@@ -383,18 +384,4 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         indexingCandidate = null,
         snapshotPublication = RepositorySnapshotPublication.Unmanaged,
     )
-
-    private fun projectStub(): Project = Proxy.newProxyInstance(
-        Project::class.java.classLoader,
-        arrayOf(Project::class.java),
-    ) { _, method, _ ->
-        when (method.name) {
-            "getName" -> "stub"
-            "isDisposed" -> false
-            "hashCode" -> 0
-            "equals" -> false
-            "toString" -> "ProjectStub"
-            else -> null
-        }
-    } as Project
 }

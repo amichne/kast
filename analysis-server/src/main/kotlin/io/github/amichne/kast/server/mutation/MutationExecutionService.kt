@@ -53,7 +53,6 @@ internal class MutationExecutionService(
             when (mutation) {
                 is KastSemanticMutation.Rename -> skillRpc.rename(mutation.request).toOutcome()
                 is KastSemanticMutation.AddFile -> skillRpc.addFile(mutation.request).toOutcome()
-                is KastSemanticMutation.AddDeclaration -> skillRpc.addDeclaration(mutation.request).toOutcome()
                 is KastSemanticMutation.AddImplementation -> skillRpc.addImplementation(mutation.request).toOutcome()
                 is KastSemanticMutation.AddStatement -> skillRpc.addStatement(mutation.request).toOutcome()
                 is KastSemanticMutation.ReplaceDeclaration -> skillRpc.replaceDeclaration(mutation.request).toOutcome()

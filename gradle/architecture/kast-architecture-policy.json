@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 7,
   "policyAuthority": "KOTLIN",
   "policySource": "build-logic/src/main/kotlin/support/architecture",
   "enforcementScope": "REPOSITORY_WIDE",
@@ -10,6 +10,8 @@
       "projectPath": ":analysis-api",
       "lifecycle": "ACTIVE",
       "role": "LEGACY_HOST",
+      "cost": "LEGACY",
+      "roleConvention": {"kind": "UNMARKED_LEGACY"},
       "allowedProjectDependencies": [],
       "allowedEffects": ["ANALYSIS_BACKEND", "FILESYSTEM_WRITE"]
     },
@@ -18,6 +20,8 @@
       "projectPath": ":index-store",
       "lifecycle": "ACTIVE",
       "role": "LEGACY_HOST",
+      "cost": "LEGACY",
+      "roleConvention": {"kind": "UNMARKED_LEGACY"},
       "allowedProjectDependencies": [":analysis-api"],
       "allowedEffects": ["FILESYSTEM_WRITE", "JDBC"]
     },
@@ -26,111 +30,299 @@
       "projectPath": ":analysis-server",
       "lifecycle": "ACTIVE",
       "role": "LEGACY_HOST",
+      "cost": "LEGACY",
+      "roleConvention": {"kind": "UNMARKED_LEGACY"},
       "allowedProjectDependencies": [":analysis-api", ":index-store"],
       "allowedEffects": ["ANALYSIS_BACKEND", "FILESYSTEM_WRITE"]
     },
     {
-      "id": "INDEXER",
-      "projectPath": ":indexer",
-      "lifecycle": "ACTIVE",
-      "role": "LEGACY_HOST",
-      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":index-store"],
-      "allowedEffects": ["FILESYSTEM_WRITE"]
-    },
-    {
       "id": "KERNEL",
       "projectPath": ":kernel",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "KERNEL",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.kernel"},
       "allowedProjectDependencies": [],
       "allowedEffects": []
     },
     {
-      "id": "PROTOCOL_REGISTRY",
-      "projectPath": ":protocol:registry",
-      "lifecycle": "PLANNED",
+      "id": "CHANGE_CONTRACT",
+      "projectPath": ":change:contract",
+      "lifecycle": "ACTIVE",
       "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
       "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_RECOVERY_CONTRACT",
+      "projectPath": ":change:recovery:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":change:contract"],
       "allowedEffects": []
     },
     {
       "id": "WORKSPACE_CONTRACT",
       "projectPath": ":workspace:contract",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
       "allowedProjectDependencies": [":kernel"],
       "allowedEffects": []
     },
     {
-      "id": "EVIDENCE_SQLITE",
-      "projectPath": ":evidence:sqlite",
-      "lifecycle": "PLANNED",
-      "role": "SQLITE_ADAPTER",
-      "allowedProjectDependencies": [":workspace:contract"],
-      "allowedEffects": ["JDBC"]
-    },
-    {
-      "id": "WORKSPACE_SERVICE",
-      "projectPath": ":workspace:service",
-      "lifecycle": "PLANNED",
-      "role": "SERVICE",
-      "allowedProjectDependencies": [":evidence:sqlite", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "WORKSPACE_INTELLIJ",
-      "projectPath": ":workspace:intellij",
-      "lifecycle": "PLANNED",
-      "role": "WORKSPACE_ADAPTER",
-      "allowedProjectDependencies": [":workspace:contract", ":workspace:service"],
-      "allowedEffects": ["GRADLE_IMPORT"]
-    },
-    {
-      "id": "CHANGE_CONTRACT",
-      "projectPath": ":change:contract",
-      "lifecycle": "PLANNED",
+      "id": "CHANGE_JOURNAL_CONTRACT",
+      "projectPath": ":change:journal:contract",
+      "lifecycle": "ACTIVE",
       "role": "CONTRACT",
-      "allowedProjectDependencies": [":kernel", ":protocol:registry"],
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":change:contract", ":change:recovery:contract", ":workspace:contract"],
       "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_VERIFY_SPI",
+      "projectPath": ":change:verify:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_JOURNAL_SQLITE",
+      "projectPath": ":change:journal:sqlite",
+      "lifecycle": "ACTIVE",
+      "role": "SQLITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.sqlite"},
+      "allowedProjectDependencies": [":change:journal:contract", ":change:verify:spi"],
+      "allowedEffects": ["JDBC"]
     },
     {
       "id": "CHANGE_PLAN_SPI",
       "projectPath": ":change:plan:spi",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
       "allowedProjectDependencies": [":change:contract", ":workspace:contract"],
       "allowedEffects": []
     },
     {
       "id": "CHANGE_PLAN_INTELLIJ",
       "projectPath": ":change:plan:intellij",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
       "allowedProjectDependencies": [":change:contract", ":change:plan:spi", ":workspace:contract"],
       "allowedEffects": []
     },
     {
-      "id": "CHANGE_JOURNAL_CONTRACT",
-      "projectPath": ":change:journal:contract",
-      "lifecycle": "PLANNED",
-      "role": "CONTRACT",
-      "allowedProjectDependencies": [":change:contract"],
+      "id": "CHANGE_PLAN_SERVICE",
+      "projectPath": ":change:plan:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":change:plan:spi", ":workspace:contract"],
       "allowedEffects": []
     },
     {
-      "id": "CHANGE_JOURNAL_SQLITE",
-      "projectPath": ":change:journal:sqlite",
-      "lifecycle": "PLANNED",
+      "id": "CHANGE_APPLY_SPI",
+      "projectPath": ":change:apply:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":change:recovery:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_APPLY_INTELLIJ",
+      "projectPath": ":change:apply:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_WRITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-write"},
+      "allowedProjectDependencies": [":change:apply:spi", ":change:contract"],
+      "allowedEffects": ["INTELLIJ_WRITE"]
+    },
+    {
+      "id": "CHANGE_APPLY_SERVICE",
+      "projectPath": ":change:apply:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:recovery:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_RECOVERY_SPI",
+      "projectPath": ":change:recovery:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":change:recovery:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_RECOVERY_FILESYSTEM",
+      "projectPath": ":change:recovery:filesystem",
+      "lifecycle": "ACTIVE",
+      "role": "FILESYSTEM_WRITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.filesystem-write"},
+      "allowedProjectDependencies": [":change:recovery:contract", ":change:recovery:spi"],
+      "allowedEffects": ["FILESYSTEM_WRITE", "SOURCE_FILESYSTEM_WRITE"]
+    },
+    {
+      "id": "CHANGE_RECOVERY_SERVICE",
+      "projectPath": ":change:recovery:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:journal:contract", ":change:recovery:contract", ":change:recovery:spi", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_VERIFY_INTELLIJ",
+      "projectPath": ":change:verify:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
+      "allowedProjectDependencies": [":change:contract", ":change:verify:spi", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "WORKSPACE_SPI",
+      "projectPath": ":workspace:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_VERIFY_SERVICE",
+      "projectPath": ":change:verify:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":change:recovery:contract", ":change:verify:spi", ":workspace:contract", ":workspace:spi"],
+      "allowedEffects": []
+    },
+    {
+      "id": "EVIDENCE_CONTRACT",
+      "projectPath": ":evidence:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "EVIDENCE_SPI",
+      "projectPath": ":evidence:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":evidence:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "EVIDENCE_SQLITE",
+      "projectPath": ":evidence:sqlite",
+      "lifecycle": "ACTIVE",
       "role": "SQLITE_ADAPTER",
-      "allowedProjectDependencies": [":change:journal:contract"],
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.sqlite"},
+      "allowedProjectDependencies": [":evidence:contract", ":evidence:spi", ":workspace:contract"],
       "allowedEffects": ["JDBC"]
     },
     {
-      "id": "CHANGE_PLAN_SERVICE",
-      "projectPath": ":change:plan:service",
-      "lifecycle": "PLANNED",
+      "id": "SYMBOL_CONTRACT",
+      "projectPath": ":symbol:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "SYMBOL_INTELLIJ",
+      "projectPath": ":symbol:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
+      "allowedProjectDependencies": [":symbol:contract", ":workspace:contract", ":workspace:spi"],
+      "allowedEffects": []
+    },
+    {
+      "id": "WORKSPACE_INTELLIJ",
+      "projectPath": ":workspace:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "WORKSPACE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.workspace"},
+      "allowedProjectDependencies": [":workspace:contract", ":workspace:spi"],
+      "allowedEffects": ["GRADLE_IMPORT"]
+    },
+    {
+      "id": "WORKSPACE_SERVICE",
+      "projectPath": ":workspace:service",
+      "lifecycle": "ACTIVE",
       "role": "SERVICE",
-      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":change:plan:spi", ":workspace:contract"],
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":evidence:spi", ":workspace:contract", ":workspace:spi"],
+      "allowedEffects": []
+    },
+    {
+      "id": "INDEXER",
+      "projectPath": ":indexer",
+      "lifecycle": "ACTIVE",
+      "role": "LEGACY_HOST",
+      "cost": "LEGACY",
+      "roleConvention": {"kind": "UNMARKED_LEGACY"},
+      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:spi", ":evidence:sqlite", ":index-store", ":symbol:contract", ":symbol:intellij", ":workspace:intellij", ":workspace:service", ":workspace:spi"],
+      "allowedEffects": ["FILESYSTEM_WRITE"]
+    },
+    {
+      "id": "PROTOCOL_REGISTRY",
+      "projectPath": ":protocol:registry",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":change:contract", ":kernel", ":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "PROTOCOL_CONTINUATION",
+      "projectPath": ":protocol:continuation",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -138,6 +330,8 @@
       "projectPath": ":workspace:mutation:contract",
       "lifecycle": "PLANNED",
       "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
       "allowedProjectDependencies": [":change:contract", ":workspace:contract"],
       "allowedEffects": []
     },
@@ -146,95 +340,29 @@
       "projectPath": ":workspace:mutation:service",
       "lifecycle": "PLANNED",
       "role": "SERVICE",
-      "allowedProjectDependencies": [":workspace:contract", ":workspace:mutation:contract", ":workspace:service"],
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":workspace:contract", ":workspace:mutation:contract", ":workspace:spi"],
       "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_APPLY_SPI",
-      "projectPath": ":change:apply:spi",
-      "lifecycle": "PLANNED",
-      "role": "SPI",
-      "allowedProjectDependencies": [":change:contract", ":workspace:mutation:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_RECOVERY_CONTRACT",
-      "projectPath": ":change:recovery:contract",
-      "lifecycle": "PLANNED",
-      "role": "CONTRACT",
-      "allowedProjectDependencies": [":change:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_RECOVERY_FILESYSTEM",
-      "projectPath": ":change:recovery:filesystem",
-      "lifecycle": "PLANNED",
-      "role": "FILESYSTEM_WRITE_ADAPTER",
-      "allowedProjectDependencies": [":change:recovery:contract"],
-      "allowedEffects": ["FILESYSTEM_WRITE", "SOURCE_FILESYSTEM_WRITE"]
-    },
-    {
-      "id": "CHANGE_RECOVERY_SERVICE",
-      "projectPath": ":change:recovery:service",
-      "lifecycle": "PLANNED",
-      "role": "SERVICE",
-      "allowedProjectDependencies": [":change:journal:contract", ":change:recovery:contract", ":change:recovery:filesystem", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_APPLY_SERVICE",
-      "projectPath": ":change:apply:service",
-      "lifecycle": "PLANNED",
-      "role": "SERVICE",
-      "allowedProjectDependencies": [":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:plan:spi", ":change:recovery:contract", ":workspace:mutation:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_APPLY_INTELLIJ",
-      "projectPath": ":change:apply:intellij",
-      "lifecycle": "PLANNED",
-      "role": "INTELLIJ_WRITE_ADAPTER",
-      "allowedProjectDependencies": [":change:apply:spi", ":change:contract", ":workspace:contract"],
-      "allowedEffects": ["INTELLIJ_WRITE"]
     },
     {
       "id": "CHANGE_APPLY_FILESYSTEM",
       "projectPath": ":change:apply:filesystem",
       "lifecycle": "PLANNED",
       "role": "FILESYSTEM_WRITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.filesystem-write"},
       "allowedProjectDependencies": [":change:apply:spi", ":change:contract"],
       "allowedEffects": ["FILESYSTEM_WRITE", "SOURCE_FILESYSTEM_WRITE"]
     },
     {
-      "id": "CHANGE_VERIFY_SPI",
-      "projectPath": ":change:verify:spi",
-      "lifecycle": "PLANNED",
-      "role": "SPI",
-      "allowedProjectDependencies": [":change:contract", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_VERIFY_INTELLIJ",
-      "projectPath": ":change:verify:intellij",
-      "lifecycle": "PLANNED",
-      "role": "INTELLIJ_READ_ADAPTER",
-      "allowedProjectDependencies": [":change:contract", ":change:verify:spi", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_VERIFY_SERVICE",
-      "projectPath": ":change:verify:service",
-      "lifecycle": "PLANNED",
-      "role": "SERVICE",
-      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":change:recovery:contract", ":change:verify:spi"],
-      "allowedEffects": []
-    },
-    {
-      "id": "RUNTIME_BINDINGS_CONTRACT",
-      "projectPath": ":runtime:bindings:contract",
+      "id": "RUNTIME_BINDINGS",
+      "projectPath": ":runtime:bindings",
       "lifecycle": "PLANNED",
       "role": "CONTRACT",
-      "allowedProjectDependencies": [":change:contract"],
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":change:contract", ":kernel", ":symbol:contract", ":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -242,7 +370,9 @@
       "projectPath": ":runtime:server",
       "lifecycle": "PLANNED",
       "role": "TRANSPORT",
-      "allowedProjectDependencies": [":change:contract", ":protocol:registry", ":runtime:bindings:contract"],
+      "cost": "RUNTIME_ORCHESTRATION",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.transport"},
+      "allowedProjectDependencies": [":change:contract", ":protocol:registry", ":runtime:bindings"],
       "allowedEffects": ["ANALYSIS_BACKEND"]
     },
     {
@@ -250,7 +380,9 @@
       "projectPath": ":runtime:composition",
       "lifecycle": "PLANNED",
       "role": "COMPOSITION",
-      "allowedProjectDependencies": [":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:sqlite", ":kernel", ":protocol:registry", ":runtime:bindings:contract", ":runtime:server", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service"],
+      "cost": "RUNTIME_ORCHESTRATION",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.composition"},
+      "allowedProjectDependencies": [":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:contract", ":evidence:spi", ":evidence:sqlite", ":kernel", ":protocol:continuation", ":protocol:registry", ":runtime:bindings", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service", ":workspace:spi"],
       "allowedEffects": ["ANALYSIS_BACKEND"]
     }
   ],
@@ -258,7 +390,8 @@
     {
       "id": "RP01",
       "name": "Parse mutation intent",
-      "dependsOn": [],
+      "orderingDependencies": [],
+      "admission": {"kind": "ENTRY"},
       "owners": [":change:contract", ":protocol:registry"],
       "effects": ["PURE"],
       "cost": "METADATA"
@@ -266,7 +399,8 @@
     {
       "id": "RP02",
       "name": "Acquire planning read lease",
-      "dependsOn": ["RP01"],
+      "orderingDependencies": ["RP01"],
+      "admission": {"kind": "AFTER", "predecessor": "RP01"},
       "owners": [":workspace:contract", ":workspace:service"],
       "effects": ["READ"],
       "cost": "SEMANTIC_ADMISSION"
@@ -274,7 +408,8 @@
     {
       "id": "RP03",
       "name": "Resolve exact target and affected semantic scope",
-      "dependsOn": ["RP02"],
+      "orderingDependencies": ["RP02"],
+      "admission": {"kind": "AFTER", "predecessor": "RP02"},
       "owners": [":change:plan:intellij"],
       "effects": ["READ"],
       "cost": "SCOPED_SEMANTIC_READ / BOUNDED_RELATION_SEARCH"
@@ -282,7 +417,8 @@
     {
       "id": "RP04",
       "name": "Capture stable preconditions and before-image identities",
-      "dependsOn": ["RP03"],
+      "orderingDependencies": ["RP03"],
+      "admission": {"kind": "AFTER", "predecessor": "RP03"},
       "owners": [":change:plan:service"],
       "effects": ["READ"],
       "cost": "BOUNDED_FILE_OBSERVATION"
@@ -290,7 +426,8 @@
     {
       "id": "RP05",
       "name": "Construct and persist stable plan",
-      "dependsOn": ["RP04"],
+      "orderingDependencies": ["RP04"],
+      "admission": {"kind": "AFTER", "predecessor": "RP04"},
       "owners": [":change:journal:contract", ":change:plan:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "SMALL_DURABLE_WRITE"
@@ -298,7 +435,8 @@
     {
       "id": "RP06",
       "name": "Await explicit approval",
-      "dependsOn": ["RP05"],
+      "orderingDependencies": ["RP05"],
+      "admission": {"kind": "AFTER", "predecessor": "RP05"},
       "owners": [":runtime:server"],
       "effects": ["NONE"],
       "cost": "WAIT"
@@ -306,7 +444,8 @@
     {
       "id": "RP07",
       "name": "Acquire one logical Kast mutation lease",
-      "dependsOn": ["RP06"],
+      "orderingDependencies": ["RP06"],
+      "admission": {"kind": "AFTER", "predecessor": "RP06"},
       "owners": [":workspace:mutation:service"],
       "effects": ["AUTHORITY"],
       "cost": "CONCURRENCY_ADMISSION"
@@ -314,7 +453,8 @@
     {
       "id": "RP08",
       "name": "Revalidate plan and exact identity",
-      "dependsOn": ["RP07"],
+      "orderingDependencies": ["RP07"],
+      "admission": {"kind": "AFTER", "predecessor": "RP07"},
       "owners": [":change:apply:service", ":change:plan:intellij"],
       "effects": ["READ"],
       "cost": "SCOPED_SEMANTIC_READ"
@@ -322,7 +462,8 @@
     {
       "id": "RP09",
       "name": "Prepare durable recovery evidence",
-      "dependsOn": ["RP08"],
+      "orderingDependencies": ["RP08"],
+      "admission": {"kind": "AFTER", "predecessor": "RP08"},
       "owners": [":change:recovery:filesystem", ":change:recovery:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "BOUNDED_FILE_COPY"
@@ -330,7 +471,8 @@
     {
       "id": "RP10",
       "name": "Prepare ephemeral apply context",
-      "dependsOn": ["RP09"],
+      "orderingDependencies": ["RP09"],
+      "admission": {"kind": "AFTER", "predecessor": "RP09"},
       "owners": [":change:apply:filesystem", ":change:apply:intellij"],
       "effects": ["READ"],
       "cost": "SMALL_PREPARATION"
@@ -338,7 +480,8 @@
     {
       "id": "RP11S",
       "name": "Apply semantic mutation through IntelliJ",
-      "dependsOn": ["RP10"],
+      "orderingDependencies": ["RP10"],
+      "admission": {"kind": "APPLY_LANE", "lane": "SEMANTIC", "process": "RP11S", "predecessor": "RP10"},
       "owners": [":change:apply:intellij"],
       "effects": ["SOURCE_WRITE"],
       "cost": "SHORT_EDT_WRITE_COMMAND"
@@ -346,7 +489,8 @@
     {
       "id": "RP11E",
       "name": "Apply external file mutation",
-      "dependsOn": ["RP10"],
+      "orderingDependencies": ["RP10"],
+      "admission": {"kind": "APPLY_LANE", "lane": "EXTERNAL", "process": "RP11E", "predecessor": "RP10"},
       "owners": [":change:apply:filesystem"],
       "effects": ["SOURCE_WRITE"],
       "cost": "BOUNDED_DESCRIPTOR_RELATIVE_WRITE"
@@ -354,7 +498,8 @@
     {
       "id": "RP12",
       "name": "Persist affected documents and capture after-images",
-      "dependsOn": ["RP11E", "RP11S"],
+      "orderingDependencies": ["RP11E", "RP11S"],
+      "admission": {"kind": "SELECTED_APPLY_LANE_JOIN", "lanes": [{"lane": "EXTERNAL", "process": "RP11E"},{"lane": "SEMANTIC", "process": "RP11S"}]},
       "owners": [":change:apply:service"],
       "effects": ["OBSERVATION", "SOURCE_WRITE"],
       "cost": "BOUNDED_BY_DECLARED_WRITE_SET"
@@ -362,7 +507,8 @@
     {
       "id": "RP13",
       "name": "Prove write-set closure",
-      "dependsOn": ["RP12"],
+      "orderingDependencies": ["RP12"],
+      "admission": {"kind": "AFTER", "predecessor": "RP12"},
       "owners": [":change:apply:service"],
       "effects": ["READ"],
       "cost": "BOUNDED_DIFF"
@@ -370,7 +516,8 @@
     {
       "id": "RP14",
       "name": "Request targeted workspace transition",
-      "dependsOn": ["RP13"],
+      "orderingDependencies": ["RP13"],
+      "admission": {"kind": "AFTER", "predecessor": "RP13"},
       "owners": [":workspace:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "INCREMENTAL_RECONCILIATION"
@@ -378,7 +525,8 @@
     {
       "id": "RP15",
       "name": "Publish resulting semantic generation",
-      "dependsOn": ["RP14"],
+      "orderingDependencies": ["RP14"],
+      "admission": {"kind": "AFTER", "predecessor": "RP14"},
       "owners": [":evidence:sqlite", ":workspace:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "INCREMENTAL_INDEX / ATOMIC_PUBLICATION"
@@ -386,7 +534,8 @@
     {
       "id": "RP16",
       "name": "Evaluate diagnostics and semantic postconditions",
-      "dependsOn": ["RP15"],
+      "orderingDependencies": ["RP15"],
+      "admission": {"kind": "AFTER", "predecessor": "RP15"},
       "owners": [":change:verify:intellij"],
       "effects": ["READ"],
       "cost": "SCOPED_SMART_READ"
@@ -394,7 +543,8 @@
     {
       "id": "RP17",
       "name": "Reconcile expected and observed result",
-      "dependsOn": ["RP16"],
+      "orderingDependencies": ["RP16"],
+      "admission": {"kind": "AFTER", "predecessor": "RP16"},
       "owners": [":change:verify:service"],
       "effects": ["PURE"],
       "cost": "BOUNDED_COMPARISON"
@@ -402,7 +552,8 @@
     {
       "id": "RP18",
       "name": "Issue verified receipt and release recovery",
-      "dependsOn": ["RP17"],
+      "orderingDependencies": ["RP17"],
+      "admission": {"kind": "AFTER", "predecessor": "RP17"},
       "owners": [":change:journal:contract", ":change:verify:service"],
       "effects": ["DERIVED_WRITE"],
       "cost": "SMALL_DURABLE_WRITE"
@@ -410,7 +561,8 @@
     {
       "id": "RP19",
       "name": "Rollback or retain recovery after failure",
-      "dependsOn": ["RP09", "RP11E", "RP11S", "RP12", "RP13", "RP14", "RP15", "RP16", "RP17"],
+      "orderingDependencies": ["RP09"],
+      "admission": {"kind": "RECOVERY_INTERRUPT_AFTER_PREPARATION", "preparedBy": "RP09", "failurePoints": ["RP10", "RP11E", "RP11S", "RP12", "RP13", "RP14", "RP15", "RP16", "RP17", "RP18"], "terminalOutcomes": ["RECOVERY_REQUIRED", "ROLLED_BACK"]},
       "owners": [":change:recovery:service"],
       "effects": ["DERIVED_WRITE", "SOURCE_WRITE"],
       "cost": "FAILURE_DEPENDENT"
@@ -421,6 +573,7 @@
       "id": "F01",
       "phase": "FOUNDATION",
       "name": "Freeze mutation lifecycle and canonical contracts",
+      "lifecycle": "OPEN",
       "dependsOn": [],
       "owner": {"kind": "MODULES", "modules": [":change:contract"]}
     },
@@ -428,6 +581,7 @@
       "id": "F02",
       "phase": "FOUNDATION",
       "name": "Create Gradle module-role convention plugins",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01"],
       "owner": {"kind": "BUILD_LOGIC"}
     },
@@ -435,6 +589,7 @@
       "id": "F03",
       "phase": "FOUNDATION",
       "name": "Enforce dependency graph and forbidden effects",
+      "lifecycle": "OPEN",
       "dependsOn": ["F02"],
       "owner": {"kind": "BUILD_LOGIC"}
     },
@@ -442,6 +597,7 @@
       "id": "F04",
       "phase": "FOUNDATION",
       "name": "Reduce AnalysisBackend to compatibility transport",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01", "F03"],
       "owner": {"kind": "MODULES", "modules": [":runtime:server"]}
     },
@@ -449,6 +605,7 @@
       "id": "P01",
       "phase": "PLANNING",
       "name": "Classify semantic and external mutation operations",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01"],
       "owner": {"kind": "MODULES", "modules": [":change:contract"]}
     },
@@ -456,6 +613,7 @@
       "id": "P02",
       "phase": "PLANNING",
       "name": "Define stable plan and expected-file proof",
+      "lifecycle": "OPEN",
       "dependsOn": ["P01"],
       "owner": {"kind": "MODULES", "modules": [":change:contract"]}
     },
@@ -463,6 +621,7 @@
       "id": "P03",
       "phase": "PLANNING",
       "name": "Create durable plan journal",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "P02"],
       "owner": {"kind": "MODULES", "modules": [":change:journal:contract", ":change:journal:sqlite"]}
     },
@@ -470,6 +629,7 @@
       "id": "P04",
       "phase": "PLANNING",
       "name": "Extract IntelliJ semantic planning adapter",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "P02"],
       "owner": {"kind": "MODULES", "modules": [":change:plan:intellij"]}
     },
@@ -477,6 +637,7 @@
       "id": "P05",
       "phase": "PLANNING",
       "name": "Assemble deterministic plans",
+      "lifecycle": "OPEN",
       "dependsOn": ["P03", "P04"],
       "owner": {"kind": "MODULES", "modules": [":change:plan:service"]}
     },
@@ -484,6 +645,7 @@
       "id": "A01",
       "phase": "APPLY",
       "name": "Establish logical workspace mutation lease",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "P05"],
       "owner": {"kind": "MODULES", "modules": [":workspace:mutation:service"]}
     },
@@ -491,6 +653,7 @@
       "id": "A02",
       "phase": "APPLY",
       "name": "Revalidate plan, selector, hashes, ownership, and provenance",
+      "lifecycle": "OPEN",
       "dependsOn": ["A01", "P04"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:service"]}
     },
@@ -498,6 +661,7 @@
       "id": "A03",
       "phase": "APPLY",
       "name": "Prepare writable-target and recovery capabilities",
+      "lifecycle": "OPEN",
       "dependsOn": ["A02"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service"]}
     },
@@ -505,6 +669,7 @@
       "id": "A04",
       "phase": "APPLY",
       "name": "Validate public IntelliJ refactoring APIs on supported builds",
+      "lifecycle": "OPEN",
       "dependsOn": ["A03"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:intellij"]}
     },
@@ -512,6 +677,7 @@
       "id": "A05",
       "phase": "APPLY",
       "name": "Implement short PSI/refactoring write-command executor",
+      "lifecycle": "OPEN",
       "dependsOn": ["A04"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:intellij"]}
     },
@@ -519,6 +685,7 @@
       "id": "A06",
       "phase": "APPLY",
       "name": "Implement external file writer with typed target capability",
+      "lifecycle": "OPEN",
       "dependsOn": ["A03"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:filesystem"]}
     },
@@ -526,6 +693,7 @@
       "id": "A07",
       "phase": "APPLY",
       "name": "Persist affected documents and capture after-images",
+      "lifecycle": "OPEN",
       "dependsOn": ["A05", "A06"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:service"]}
     },
@@ -533,6 +701,7 @@
       "id": "A08",
       "phase": "APPLY",
       "name": "Prove declared write-set closure",
+      "lifecycle": "OPEN",
       "dependsOn": ["A07"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:service"]}
     },
@@ -540,6 +709,7 @@
       "id": "V01",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Route targeted post-write workspace transition",
+      "lifecycle": "OPEN",
       "dependsOn": ["A08"],
       "owner": {"kind": "MODULES", "modules": [":workspace:service"]}
     },
@@ -547,6 +717,7 @@
       "id": "V02",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Publish one resulting semantic generation",
+      "lifecycle": "OPEN",
       "dependsOn": ["V01"],
       "owner": {"kind": "MODULES", "modules": [":evidence:sqlite", ":workspace:service"]}
     },
@@ -554,6 +725,7 @@
       "id": "V03",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Evaluate diagnostics and operation-specific postconditions",
+      "lifecycle": "OPEN",
       "dependsOn": ["V02"],
       "owner": {"kind": "MODULES", "modules": [":change:verify:intellij"]}
     },
@@ -561,6 +733,7 @@
       "id": "V04",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Reconcile expected and observed semantic delta",
+      "lifecycle": "OPEN",
       "dependsOn": ["V03"],
       "owner": {"kind": "MODULES", "modules": [":change:verify:service"]}
     },
@@ -568,6 +741,7 @@
       "id": "V05",
       "phase": "TRANSITION_AND_VERIFICATION",
       "name": "Issue terminal verified receipt",
+      "lifecycle": "OPEN",
       "dependsOn": ["V04"],
       "owner": {"kind": "MODULES", "modules": [":change:journal:contract", ":change:verify:service"]}
     },
@@ -575,6 +749,7 @@
       "id": "R01",
       "phase": "RECOVERY",
       "name": "Implement automatic rollback policy",
+      "lifecycle": "OPEN",
       "dependsOn": ["A07", "V04"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service"]}
     },
@@ -582,6 +757,7 @@
       "id": "R02",
       "phase": "RECOVERY",
       "name": "Reconcile and prove rollback generation",
+      "lifecycle": "OPEN",
       "dependsOn": ["R01", "V01", "V02"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service", ":change:verify:service"]}
     },
@@ -589,6 +765,7 @@
       "id": "R03",
       "phase": "RECOVERY",
       "name": "Resume or recover after crash",
+      "lifecycle": "OPEN",
       "dependsOn": ["A03", "P03", "R01"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service"]}
     },
@@ -596,6 +773,7 @@
       "id": "M01",
       "phase": "MIGRATION",
       "name": "Route rename through plan/apply/verify",
+      "lifecycle": "OPEN",
       "dependsOn": ["R03", "V05"],
       "owner": {"kind": "MODULES", "modules": [":runtime:composition"]}
     },
@@ -603,6 +781,7 @@
       "id": "M02",
       "phase": "MIGRATION",
       "name": "Route replace/add/implementation/body/import operations",
+      "lifecycle": "OPEN",
       "dependsOn": ["M01"],
       "owner": {"kind": "MODULES", "modules": [":runtime:composition"]}
     },
@@ -610,13 +789,23 @@
       "id": "M03",
       "phase": "MIGRATION",
       "name": "Remove semantic access to generic raw apply-edits",
+      "lifecycle": "OPEN",
       "dependsOn": ["F03", "M02"],
       "owner": {"kind": "MODULES", "modules": [":protocol:registry", ":runtime:server"]}
+    },
+    {
+      "id": "M04",
+      "phase": "MIGRATION",
+      "name": "Move workspace-generation storage out of the legacy index-store host",
+      "lifecycle": "OPEN",
+      "dependsOn": ["V02"],
+      "owner": {"kind": "MODULES", "modules": [":evidence:sqlite"]}
     },
     {
       "id": "T01",
       "phase": "PROOF",
       "name": "Contract and state-machine suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["F01", "P02", "R03", "V05"],
       "owner": {"kind": "MODULES", "modules": [":change:contract", ":change:journal:contract", ":change:recovery:contract"]}
     },
@@ -624,6 +813,7 @@
       "id": "T02",
       "phase": "PROOF",
       "name": "IntelliJ write-protocol integration suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["A05", "A07", "V03"],
       "owner": {"kind": "MODULES", "modules": [":change:apply:intellij", ":change:plan:intellij", ":change:verify:intellij"]}
     },
@@ -631,6 +821,7 @@
       "id": "T03",
       "phase": "PROOF",
       "name": "Concurrency, movement, and recovery fault suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["R03", "V02"],
       "owner": {"kind": "MODULES", "modules": [":change:recovery:service", ":workspace:service"]}
     },
@@ -638,6 +829,7 @@
       "id": "T04",
       "phase": "PROOF",
       "name": "Performance and UI-safety suite",
+      "lifecycle": "OPEN",
       "dependsOn": ["T02", "T03"],
       "owner": {"kind": "MODULES", "modules": [":indexer"]}
     },
@@ -645,9 +837,16 @@
       "id": "T05",
       "phase": "PROOF",
       "name": "Enterprise multi-module mutation demonstration",
+      "lifecycle": "OPEN",
       "dependsOn": ["M03", "T01", "T02", "T03", "T04"],
       "owner": {"kind": "END_TO_END_CORPUS"}
     }
+  ],
+  "legacyMigrationEdges": [
+    {"consumer": ":analysis-server", "dependency": ":runtime:bindings", "lifecycle": "PLANNED", "retirementTask": "F04"}
+  ],
+  "legacyImplementationBridges": [
+    {"consumer": ":evidence:sqlite", "dependency": ":index-store", "lifecycle": "ACTIVE", "retirementTask": "M04"}
   ],
   "legacyAllowances": [
     {"retirementTask": "A06", "kind": "FORBIDDEN_EFFECT", "effect": "SOURCE_FILESYSTEM_WRITE", "module": ":analysis-api", "caller": {"owner": "io/github/amichne/kast/api/io/LocalDiskFileOperations", "name": "createTempFile", "descriptor": "(Ljava/lang/String;)Ljava/lang/String;", "targetOwner": "java/nio/file/Files", "targetName": "createDirectories", "targetDescriptor": "(Ljava/nio/file/Path;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;"}},
@@ -700,27 +899,6 @@
     {"retirementTask": "F04", "kind": "FORBIDDEN_EFFECT", "effect": "ANALYSIS_BACKEND", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/backend/KastIndexerBackend", "name": "<class>", "descriptor": "", "targetOwner": "io/github/amichne/kast/api/contract/CloseableAnalysisBackend", "targetName": "<type>", "targetDescriptor": ""}},
     {"retirementTask": "F04", "kind": "FORBIDDEN_EFFECT", "effect": "ANALYSIS_BACKEND", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/KastIndexerRuntime$run$projectName$1", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "io/github/amichne/kast/api/contract/CloseableAnalysisBackend", "targetName": "runtimeStatus", "targetDescriptor": "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;"}},
     {"retirementTask": "F04", "kind": "FORBIDDEN_EFFECT", "effect": "ANALYSIS_BACKEND", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/KastIndexerRuntime$start$status$1", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "io/github/amichne/kast/api/contract/CloseableAnalysisBackend", "targetName": "runtimeStatus", "targetDescriptor": "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<init>", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<type>", "targetDescriptor": ""}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "dontNavigateToError", "targetDescriptor": "()Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "dontReportRefreshErrors", "targetDescriptor": "()Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "use", "targetDescriptor": "(Lcom/intellij/openapi/externalSystem/service/execution/ProgressExecutionMode;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withActivateToolWindowOnFailure", "targetDescriptor": "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withActivateToolWindowOnStart", "targetDescriptor": "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withCallback", "targetDescriptor": "(Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "importSpec", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withImportProjectData", "targetDescriptor": "(Z)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "linkExternalGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "linkExternalProject", "targetDescriptor": "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "linkExternalGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "targetOwner": "org/jetbrains/plugins/gradle/settings/GradleProjectSettings", "targetName": "<init>", "targetDescriptor": "(Ljava/lang/String;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/IdeaGradleProjectLoadBridge", "name": "refreshExternalGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/nio/file/Path;Ljava/util/concurrent/CompletableFuture;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "refreshProject", "targetDescriptor": "(Ljava/lang/String;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "canLinkAndRefreshGradleProject", "descriptor": "(Ljava/lang/String;Lcom/intellij/openapi/project/Project;)Z", "targetOwner": "org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "targetName": "canLinkAndRefreshGradleProject", "targetDescriptor": "(Ljava/lang/String;Lcom/intellij/openapi/project/Project;Z)Z"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "configureIndexerImport", "descriptor": "(Lcom/intellij/openapi/project/Project;)V", "targetOwner": "org/jetbrains/plugins/gradle/settings/GradleSettings", "targetName": "setGradleVmOptions", "targetDescriptor": "(Ljava/lang/String;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "lambda$configureIndexerApplication$0", "descriptor": "(Ljava/lang/Boolean;)V", "targetOwner": "org/jetbrains/plugins/gradle/settings/GradleSystemSettings", "targetName": "setDownloadSources", "targetDescriptor": "(Z)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<init>", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "<type>", "targetDescriptor": ""}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder", "targetName": "withCallback", "targetDescriptor": "(Ljava/util/concurrent/CompletableFuture;)Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "linkExternalProject", "targetDescriptor": "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "targetName": "refreshProject", "targetDescriptor": "(Ljava/lang/String;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V"}},
-    {"retirementTask": "F03", "kind": "FORBIDDEN_EFFECT", "effect": "GRADLE_IMPORT", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/indexer/gradle/bootstrap/GradleProjectImportBridge", "name": "linkAndImportGradleProject", "descriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/String;)V", "targetOwner": "org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "targetName": "createLinkSettings", "targetDescriptor": "(Ljava/nio/file/Path;Lcom/intellij/openapi/project/Project;)Lorg/jetbrains/plugins/gradle/settings/GradleProjectSettings;"}},
     {"retirementTask": "A05", "kind": "FORBIDDEN_EFFECT", "effect": "INTELLIJ_WRITE", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/backend/mutation/ExactFileImageOperationsKt$exactFileImageCasUnderFence$2", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "com/intellij/openapi/command/WriteCommandAction", "targetName": "runWriteCommandAction", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/Runnable;)V"}},
     {"retirementTask": "A05", "kind": "FORBIDDEN_EFFECT", "effect": "INTELLIJ_WRITE", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/edit/IdeaEditApplier$3", "name": "invokeSuspend", "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;", "targetOwner": "com/intellij/openapi/application/CoroutinesKt", "targetName": "writeAction", "targetDescriptor": "(Lkotlin/jvm/functions/Function0;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;"}},
     {"retirementTask": "A05", "kind": "FORBIDDEN_EFFECT", "effect": "INTELLIJ_WRITE", "module": ":indexer", "caller": {"owner": "io/github/amichne/kast/idea/edit/IdeaTextEditsKt", "name": "applyTextEdits", "descriptor": "(Lio/github/amichne/kast/idea/edit/IdeaEditApplier;Lio/github/amichne/kast/api/validation/ValidatedFileEdits;Lcom/intellij/openapi/vfs/VirtualFileManager;Lcom/intellij/openapi/fileEditor/FileDocumentManager;Lcom/intellij/psi/PsiDocumentManager;Ljava/lang/String;Ljava/nio/file/Path;Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "targetOwner": "com/intellij/openapi/command/WriteCommandAction", "targetName": "runWriteCommandAction", "targetDescriptor": "(Lcom/intellij/openapi/project/Project;Ljava/lang/Runnable;)V"}}

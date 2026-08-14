@@ -8,9 +8,10 @@ import kotlinx.serialization.json.Json
 internal class SkillRpcOrchestrator(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
+    private val publicSymbolReads: PublicSymbolReadBinding,
     private val json: Json,
 ) {
-    private val context = SkillRpcContext(backend, config)
+    private val context = SkillRpcContext(backend, config, publicSymbolReads)
 
     suspend fun resolve(request: KastResolveRequest): KastResolveResponse = context.resolve(request)
 
@@ -36,9 +37,6 @@ internal class SkillRpcOrchestrator(
         context.writeAndValidate(request)
 
     suspend fun addFile(request: KastAddFileRequest): KastScopeMutationResponse = context.addFile(request)
-
-    suspend fun addDeclaration(request: KastAddDeclarationRequest): KastScopeMutationResponse =
-        context.addDeclaration(request)
 
     suspend fun addImplementation(request: KastAddImplementationRequest): KastScopeMutationResponse =
         context.addImplementation(request)

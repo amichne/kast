@@ -1,14 +1,20 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
-import io.github.amichne.kast.idea.transition.WorkspaceSourceFreshness
-import io.github.amichne.kast.idea.transition.TransitionBlocker
-import io.github.amichne.kast.idea.transition.TransitionPhase
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
+import io.github.amichne.kast.workspace.contract.TransitionBlocker
+import io.github.amichne.kast.workspace.contract.TransitionBlockerKind
+import io.github.amichne.kast.workspace.contract.TransitionPhase
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailure
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
+import io.github.amichne.kast.idea.transition.captureSourceWorkspaceTransitionRequest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
@@ -68,7 +74,7 @@ class WorkspaceTransitionFreshnessTest {
     }
 
     private fun sourceRequest(source: Path): WorkspaceTransitionRequest.SourceFiles =
-        WorkspaceTransitionRequest.sourceFiles(
+        captureSourceWorkspaceTransitionRequest(
             workspaceRoot = workspaceRoot,
             paths = listOf(NormalizedPath.of(source)),
         ) as WorkspaceTransitionRequest.SourceFiles
@@ -87,6 +93,78 @@ class WorkspaceTransitionFreshnessTest {
     )
 }
 
+class WorkspaceTransitionIngressReviewRegressionTest {
+    @Test
+    fun `uncovered request dispatches before a newer generation can satisfy its waiter`() {
+        val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(30))
+        val next = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(31))
+        val admission = raceReadyAdmission(initial)
+        val order = mutableListOf<String>()
+        var observations = 0
+        val ingress = WorkspaceTransitionIngress(
+            semanticAdmission = admission,
+            admissionObservation = WorkspaceTransitionAdmissionObservation {
+                observations += 1
+                when (observations) {
+                    1 -> IdeaIndexSemanticAdmission.Status.Ready(initial).also { order += "route" }
+                    2 -> IdeaIndexSemanticAdmission.Status.Ready(next).also { order += "accept" }
+                    else -> IdeaIndexSemanticAdmission.Status.Ready(next)
+                }
+            },
+            transitionAwaiter = raceAwaiter(),
+        )
+        ingress.bindRequest { order += "dispatch" }
+
+        try {
+            val outcome = runBlocking {
+                ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
+            }
+
+            assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), outcome)
+            assertEquals(listOf("route", "dispatch", "accept"), order)
+        } finally {
+            ingress.close()
+        }
+    }
+
+    @Test
+    fun `uncovered request retains a blocked outcome published during dispatch`() {
+        val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(32))
+        val admission = raceReadyAdmission(initial)
+        val blocker = TransitionBlocker(
+            phase = TransitionPhase.Reconciling,
+            kind = TransitionBlockerKind.AdapterFailure,
+            detail = "compiler reconciliation failed",
+        )
+        val ingress = WorkspaceTransitionIngress(admission, raceAwaiter())
+        ingress.bindRequest {
+            ingress.observe(
+                WorkspaceTransitionSnapshot(
+                    lifecycle = WorkspaceLifecycle.Blocked,
+                    pendingSignals = emptySet(),
+                    published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+                    blocker = blocker,
+                    observedEventCount = 32,
+                    activeSourceFreshness = WorkspaceSourceFreshness.Absent,
+                ),
+            )
+        }
+
+        try {
+            val outcome = runBlocking {
+                ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
+            }
+
+            assertEquals(
+                WorkspaceTransitionOutcome.Rejected(WorkspaceTransitionFailure.Blocked(blocker)),
+                outcome,
+            )
+        } finally {
+            ingress.close()
+        }
+    }
+}
+
 internal fun assertCoveredSourcePublicationRace(workspaceRoot: Path) {
     val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(20))
     val next = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(21))
@@ -94,7 +172,7 @@ internal fun assertCoveredSourcePublicationRace(workspaceRoot: Path) {
     val source = workspaceRoot.resolve("src/Racing.kt")
     Files.createDirectories(source.parent)
     Files.writeString(source, "class Racing\n")
-    val request = WorkspaceTransitionRequest.sourceFiles(
+    val request = captureSourceWorkspaceTransitionRequest(
         workspaceRoot = workspaceRoot,
         paths = listOf(NormalizedPath.of(source)),
     ) as WorkspaceTransitionRequest.SourceFiles
@@ -106,7 +184,7 @@ internal fun assertCoveredSourcePublicationRace(workspaceRoot: Path) {
         WorkspaceTransitionSnapshot(
             lifecycle = WorkspaceLifecycle.Reconciling,
             pendingSignals = emptySet(),
-            published = PublishedWorkspaceGenerationState.Published(initial),
+            published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
             blocker = null,
             observedEventCount = 4,
             activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
@@ -117,7 +195,7 @@ internal fun assertCoveredSourcePublicationRace(workspaceRoot: Path) {
     try {
         val published = runBlocking { ingress.reconcile(request) }
 
-        assertEquals(next, published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
         assertFalse(transitionRequested.get())
     } finally {
         ingress.close()
@@ -131,7 +209,7 @@ internal fun assertCoveredSourceStaleReadyRace(workspaceRoot: Path) {
     val source = workspaceRoot.resolve("src/Stale.kt")
     Files.createDirectories(source.parent)
     Files.writeString(source, "class Stale\n")
-    val request = WorkspaceTransitionRequest.sourceFiles(
+    val request = captureSourceWorkspaceTransitionRequest(
         workspaceRoot = workspaceRoot,
         paths = listOf(NormalizedPath.of(source)),
     ) as WorkspaceTransitionRequest.SourceFiles
@@ -151,7 +229,7 @@ internal fun assertCoveredSourceStaleReadyRace(workspaceRoot: Path) {
         WorkspaceTransitionSnapshot(
             lifecycle = WorkspaceLifecycle.Reconciling,
             pendingSignals = emptySet(),
-            published = PublishedWorkspaceGenerationState.Published(initial),
+            published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
             blocker = null,
             observedEventCount = 5,
             activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
@@ -161,7 +239,7 @@ internal fun assertCoveredSourceStaleReadyRace(workspaceRoot: Path) {
     try {
         val published = runBlocking { ingress.reconcile(request) }
 
-        assertEquals(next, published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
         assertFalse(transitionRequested.get())
     } finally {
         ingress.close()
@@ -173,7 +251,7 @@ internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
     val source = workspaceRoot.resolve("src/Blocked.kt")
     Files.createDirectories(source.parent)
     Files.writeString(source, "class Blocked\n")
-    val request = WorkspaceTransitionRequest.sourceFiles(
+    val request = captureSourceWorkspaceTransitionRequest(
         workspaceRoot = workspaceRoot,
         paths = listOf(NormalizedPath.of(source)),
     ) as WorkspaceTransitionRequest.SourceFiles
@@ -181,7 +259,7 @@ internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
         WorkspaceTransitionSnapshot(
             lifecycle = WorkspaceLifecycle.Reconciling,
             pendingSignals = emptySet(),
-            published = PublishedWorkspaceGenerationState.Published(initial),
+            published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
             blocker = null,
             observedEventCount = 6,
             activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
@@ -194,6 +272,7 @@ internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
     ) as WorkspaceTransitionRoute.Join.Awaiting
     val blocker = TransitionBlocker(
         phase = TransitionPhase.Reconciling,
+        kind = TransitionBlockerKind.AdapterFailure,
         detail = "compiler reconciliation failed",
     )
 
@@ -203,7 +282,7 @@ internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
             WorkspaceTransitionSnapshot(
                 lifecycle = WorkspaceLifecycle.Blocked,
                 pendingSignals = emptySet(),
-                published = PublishedWorkspaceGenerationState.Published(initial),
+                published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
                 blocker = blocker,
                 observedEventCount = 7,
                 activeSourceFreshness = WorkspaceSourceFreshness.Absent,
@@ -259,7 +338,7 @@ private fun raceReadySnapshot(
 ): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
     lifecycle = WorkspaceLifecycle.Ready,
     pendingSignals = emptySet(),
-    published = PublishedWorkspaceGenerationState.Published(generation),
+    published = PublishedWorkspaceGenerationState.Published(generation.detachedPublication()),
     blocker = null,
     observedEventCount = generation.generation.value,
     activeSourceFreshness = WorkspaceSourceFreshness.Absent,

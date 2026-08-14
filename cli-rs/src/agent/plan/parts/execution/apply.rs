@@ -1,11 +1,11 @@
-fn run_apply_typed(
-    plan_id: crate::agent::public_protocol::PlanId,
+fn run_legacy_apply(
+    plan_id: Uuid,
     output_format: OutputFormat,
 ) -> Result<i32> {
-    let plan_id = plan_id.uuid();
     let paths = PlanPaths::new(plan_id);
     let _operation_lock = PlanOperationLock::acquire(&paths.lock)?;
     let mut plan = read_plan(&paths.plan, plan_id)?;
+    reject_legacy_add_declaration_apply(&plan)?;
     plan.set_runtime_output(
         output_format,
         crate::agent::public_protocol::OperationId::ChangeApply,

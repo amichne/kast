@@ -150,39 +150,23 @@ fn public_recover_rejects_pre_diagnostic_evidence_not_bound_to_exact_preimages()
         std::fs::write(&target, preimage).expect("existing source");
         let workspace = workspace.canonicalize().expect("canonical workspace");
         let target = target.canonicalize().expect("canonical source");
-        let declaration = "class Added";
-        let preview =
-            public_exact_add_declaration_preview(&workspace, &target, preimage, declaration);
+        let replacement = replacement_fixture(&target, preimage);
         let binary = write_active_kast_for_test(&home, &config_home);
-        let plan_backend = spawn_scripted_indexer_backend(
+        let plan_id = plan_replacement(
+            &binary,
             &home,
             &config_home,
             &workspace,
-            &root.join("plan.sock"),
-            vec![("raw/plan-add-declaration", preview.clone())],
+            &root.join("replacement-plan.sock"),
+            &replacement,
         );
-        let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
-        change.args([
-            "change",
-            "plan",
-            "add-declaration",
-            "--file",
-            target.to_str().expect("target"),
-        ]);
-        let change = run_with_stdin(change, declaration);
-        assert!(change.status.success(), "{change:?}");
-        plan_backend.join().expect("planner backend");
-        let plan_id = decode(&change)["planId"]
-            .as_str()
-            .expect("plan id")
-            .to_string();
 
         let apply_backend = spawn_scripted_mutating_indexer_backend(
             &home,
             &config_home,
             &workspace,
             &root.join("apply.sock"),
-            vec![("raw/plan-add-declaration", preview)],
+            vec![("raw/plan-replacement", replacement.preview)],
         );
         let interrupted = installed_public_kast(&binary, &home, &config_home, &workspace)
             .env("KAST_TEST_MUTATION_FAILURE_POINT", "AFTER_RECOVERY_JOURNAL")

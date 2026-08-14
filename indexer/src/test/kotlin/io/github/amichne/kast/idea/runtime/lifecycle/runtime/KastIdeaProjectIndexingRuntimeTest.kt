@@ -81,7 +81,7 @@ class KastIdeaProjectIndexingRuntimeTest {
             },
             waitForNextPass = { delay -> retryDelays += delay; false },
             refreshWorkspace = { _, _, _ -> },
-            resolveWorkspaceStateIdentity = { io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("test") },
+            resolveWorkspaceStateIdentity = { io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity("test") },
         )
 
         try {
@@ -127,7 +127,7 @@ class KastIdeaProjectIndexingRuntimeTest {
             },
             waitForNextPass = { false },
             refreshWorkspace = { _, _, _ -> },
-            resolveWorkspaceStateIdentity = { io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("test") },
+            resolveWorkspaceStateIdentity = { io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity("test") },
         )
 
         try {
@@ -162,7 +162,7 @@ class KastIdeaProjectIndexingRuntimeTest {
             waitForNextPass = { false },
             refreshWorkspace = { _, _, _ -> },
             resolveWorkspaceStateIdentity = {
-                io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("verified-workspace")
+                io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity("verified-workspace")
             },
         )
 
@@ -200,7 +200,7 @@ class KastIdeaProjectIndexingRuntimeTest {
             waitForNextPass = { false },
             refreshWorkspace = { _, _, _ -> },
             resolveWorkspaceStateIdentity = {
-                io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("verified-workspace")
+                io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity("verified-workspace")
             },
         )
 
@@ -247,7 +247,7 @@ class KastIdeaProjectIndexingRuntimeTest {
             },
             waitForNextPass = { false },
             refreshWorkspace = { _, _, _ -> },
-            resolveWorkspaceStateIdentity = { io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("test") },
+            resolveWorkspaceStateIdentity = { io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity("test") },
         )
 
         try {
@@ -355,5 +355,4 @@ class KastIdeaProjectIndexingRuntimeTest {
         project = project,
         inspectProject = { IdeaIndexSemanticAdmission.Inspection.Ready },
     )
-
 }

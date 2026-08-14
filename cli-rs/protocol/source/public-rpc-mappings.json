@@ -326,7 +326,7 @@
         }
       ],
       "methods": [
-        "raw/plan-add-declaration"
+        "change/plan-add-declaration"
       ],
       "operation": "change.plan.add-declaration",
       "requestType": "changePlanAddDeclaration"
@@ -353,6 +353,7 @@
         }
       ],
       "methods": [
+        "change/apply-add-declaration",
         "raw/apply-edits",
         "raw/verify-mutation-postcondition"
       ],

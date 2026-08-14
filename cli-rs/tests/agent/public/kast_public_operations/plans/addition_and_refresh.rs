@@ -17,22 +17,14 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = target.canonicalize().expect("canonical target");
     let declaration = "class Added";
-    let preview = public_exact_add_declaration_preview(&workspace, &target, preimage, declaration);
-    let expected_image = preview["image"].clone();
-    let expected_proof = preview["proof"].clone();
-    let expected_postimage = STANDARD_BASE64
-        .decode(
-            preview["image"]["postimage"]["contentBase64"]
-                .as_str()
-                .expect("add-declaration postimage bytes"),
-        )
-        .expect("add-declaration postimage Base64");
+    let plan_id = "a".repeat(64);
+    let preview = verified_add_declaration_plan_result(&plan_id, &target, declaration, 7);
     let backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
         &fixture.path().join("plan-add-declaration.sock"),
-        vec![("raw/plan-add-declaration", preview.clone())],
+        vec![("change/plan-add-declaration", preview.clone())],
     );
     let binary = write_active_kast_for_test(&home, &config_home);
     let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
@@ -56,14 +48,7 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     );
     backend.join().expect("add-declaration planner backend");
     let public = decode(&change);
-    assert_eq!(
-        public["plan"]["preview"]["proposedDeclaration"],
-        declaration
-    );
-    assert_eq!(
-        public["plan"]["preview"]["proof"]["packageIdentity"]["type"], "ROOT",
-        "public addition proof must retain its semantic discriminator"
-    );
+    assert_eq!(public["preview"]["proposedDeclaration"], declaration);
     let plan_id = public["planId"].as_str().expect("plan id");
     let plan_path = home
         .join(".local/share/kast/state/agent-plans")
@@ -72,29 +57,20 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
         &std::fs::read(&plan_path).expect("stored add-declaration authority"),
     )
     .expect("stored add-declaration JSON");
-    assert_eq!(
-        stored["operation"],
-        json!({
-            "operation": "add-declaration",
-            "authority": {
-                "image": expected_image,
-                "proof": expected_proof,
-                "proposedDeclarationSha256": source_sha256(declaration.as_bytes()),
-            }
-        })
-    );
-    assert!(stored["operation"].get("path").is_none());
-    assert_eq!(
-        stored["contentSha256"],
-        source_sha256(declaration.as_bytes())
-    );
+    assert_eq!(stored["planId"], plan_id);
+    assert_eq!(stored["planVersion"], 0);
+    assert_eq!(stored["targetPath"], target.to_string_lossy().as_ref());
+    assert_eq!(stored["state"]["state"], "AWAITING_APPROVAL");
 
     let apply_backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
         &fixture.path().join("add-declaration-apply.sock"),
-        vec![("raw/plan-add-declaration", preview.clone())],
+        vec![(
+            "change/apply-add-declaration",
+            verified_add_declaration_receipt(plan_id, &target, 8),
+        )],
     );
     let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "apply", "--plan-id", plan_id])
@@ -106,15 +82,11 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
         verified_receipt["outcome"], "VERIFIED",
         "{verified_receipt:#}"
     );
-    assert_eq!(
-        std::fs::read(&target).expect("add-declaration postimage"),
-        expected_postimage
-    );
     let apply_requests = apply_backend.join().expect("add-declaration apply backend");
     assert_eq!(
         apply_requests
             .iter()
-            .filter(|request| request["method"] == "raw/exact-file-image-cas")
+            .filter(|request| request["method"] == "change/apply-add-declaration")
             .count(),
         1
     );
@@ -126,12 +98,16 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     assert_eq!(decode(&replay), verified_receipt);
 
     std::fs::write(&target, preimage).expect("reset add-declaration preimage");
+    let tamper_plan_id = "b".repeat(64);
     let tamper_plan_backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
         &fixture.path().join("add-declaration-tamper-plan.sock"),
-        vec![("raw/plan-add-declaration", preview)],
+        vec![(
+            "change/plan-add-declaration",
+            verified_add_declaration_plan_result(&tamper_plan_id, &target, declaration, 7),
+        )],
     );
     let mut tamper_change = installed_public_kast(&binary, &home, &config_home, &workspace);
     tamper_change.args([
@@ -159,8 +135,7 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     .expect("stored tamper add-declaration JSON");
 
     let mut tampered = stored;
-    tampered["operation"]["authority"]["proposedDeclarationSha256"] =
-        json!(source_sha256(b"class Other"));
+    tampered["planId"] = json!("c".repeat(64));
     let mut encoded = serde_json::to_vec(&tampered).expect("tampered declaration plan");
     encoded.push(b'\n');
     std::fs::write(&plan_path, encoded).expect("write tampered declaration plan");
@@ -377,3 +352,4 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
 
 include!("../../operations/refresh.rs");
 include!("../../operations/focused_refresh.rs");
+include!("verified_add_declaration_binding.rs");

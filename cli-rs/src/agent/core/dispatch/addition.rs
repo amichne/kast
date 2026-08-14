@@ -37,62 +37,6 @@ fn execute_agent_add_file_preview(
     )
 }
 
-fn execute_agent_add_declaration_preview(
-    runtime: AgentRuntimeArgs,
-    identity_request: Value,
-    target_path: String,
-    content_file: PathBuf,
-) -> AgentEnvelope {
-    let proposed_declaration = match read_exact_addition_content(&content_file, false) {
-        Ok(content) => content,
-        Err(error) => {
-            return error_envelope(
-                "agent/add-declaration".to_string(),
-                Some(identity_request),
-                error,
-            );
-        }
-    };
-    let preimage = match read_exact_addition_target(&target_path) {
-        Ok(preimage) => preimage,
-        Err(error) => {
-            return error_envelope(
-                "agent/add-declaration".to_string(),
-                Some(identity_request),
-                error,
-            );
-        }
-    };
-    let expected_current_sha256 = exact_file_sha256(&preimage);
-    let raw_request = json_rpc_request(
-        "raw/plan-add-declaration",
-        json!({
-            "targetPath": target_path,
-            "expectedCurrentSha256": expected_current_sha256,
-            "proposedDeclaration": proposed_declaration,
-        }),
-    );
-    execute_agent_addition_preview(
-        "agent/add-declaration",
-        "ADD_DECLARATION",
-        identity_request,
-        runtime,
-        raw_request,
-        |result| {
-            let preview: AgentAddDeclarationPlanResult = serde_json::from_value(result)
-                .map_err(|error| format!("The add-declaration preview violated its closed typed contract: {error}"))?;
-            preview.validate_for(
-                &target_path,
-                &expected_current_sha256,
-                &proposed_declaration,
-            )?;
-            serde_json::to_value(preview).map_err(|error| {
-                format!("The add-declaration preview could not be projected: {error}")
-            })
-        },
-    )
-}
-
 fn execute_agent_addition_preview<F>(
     agent_method: &'static str,
     plan_kind: &'static str,
@@ -215,32 +159,4 @@ fn read_exact_addition_content(
     validate_strict_addition_text(&proposed, allow_final_lf)
         .map_err(|message| agent_error("INVALID_ADDITION_CONTENT", message))?;
     Ok(proposed)
-}
-
-fn read_exact_addition_target(path: &str) -> std::result::Result<Vec<u8>, AgentError> {
-    let path = Path::new(path);
-    let metadata = std::fs::symlink_metadata(path).map_err(|error| {
-        agent_error(
-            "INVALID_ADDITION_TARGET",
-            format!(
-                "The add-declaration target {} could not be inspected: {error}",
-                path.display()
-            ),
-        )
-    })?;
-    if metadata.file_type().is_symlink() || !metadata.is_file() {
-        return Err(agent_error(
-            "INVALID_ADDITION_TARGET",
-            "The add-declaration target must be one regular non-symlink file.",
-        ));
-    }
-    std::fs::read(path).map_err(|error| {
-        agent_error(
-            "INVALID_ADDITION_TARGET",
-            format!(
-                "The add-declaration target {} could not be read exactly: {error}",
-                path.display()
-            ),
-        )
-    })
 }

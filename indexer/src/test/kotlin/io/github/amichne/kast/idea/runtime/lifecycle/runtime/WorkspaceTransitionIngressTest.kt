@@ -1,20 +1,23 @@
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.project.Project
-import io.github.amichne.kast.api.protocol.ConflictException
-import io.github.amichne.kast.idea.transition.WorkspaceLifecycle
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceSourceFreshness
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionRequest
-import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
+import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.spi.WorkspaceMutationAdmissionState
+import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionFailure
+import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionOutcome
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.indexer.gradle.settlement.MonotonicClock
@@ -27,7 +30,6 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.lang.reflect.Proxy
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
@@ -37,7 +39,9 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.properties.Delegates
 
 class WorkspaceTransitionIngressTest {
-    @TempDir lateinit var workspaceRoot: Path
+    @TempDir
+    lateinit var workspaceRoot: Path
+
     @Test
     fun `workspace signal is queued before its worker wakeup`() {
         val order = mutableListOf<String>()
@@ -71,7 +75,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit))
         }
 
-        assertEquals(next, published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
     }
 
     @Test
@@ -102,7 +106,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
         }
 
-        assertEquals(next, published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
         assertTrue(transitionRequested.get())
     }
 
@@ -164,7 +168,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
         }
 
-        assertEquals(next, published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
     }
 
     @Test
@@ -202,7 +206,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
         }
 
-        assertEquals(next, published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
     }
 
     @Test
@@ -226,7 +230,10 @@ class WorkspaceTransitionIngressTest {
             }
         }
 
-        assertEquals("result", result)
+        assertEquals(
+            WorkspaceMutationTransitionOutcome.Completed("result", next.detachedPublication()),
+            result,
+        )
         assertEquals(listOf("mutation", "signal", "published"), order)
         assertEquals(next, (admission.status() as IdeaIndexSemanticAdmission.Status.Ready).generation)
     }
@@ -239,16 +246,16 @@ class WorkspaceTransitionIngressTest {
         val read = admission.openRead()
         val mutationStarted = CountDownLatch(1)
         val mutationRan = AtomicBoolean(false)
-        val mutationFailure = AtomicReference<Throwable>()
+        val mutationOutcome = AtomicReference<WorkspaceMutationTransitionOutcome<Unit>>()
         val mutation = Thread {
             mutationStarted.countDown()
-            runCatching {
+            mutationOutcome.set(
                 runBlocking {
                     ingress.mutate(WorkspaceSignal.Source, "test moving mutation") {
                         mutationRan.set(true)
                     }
-                }
-            }.onFailure(mutationFailure::set)
+                },
+            )
         }
 
         try {
@@ -262,7 +269,9 @@ class WorkspaceTransitionIngressTest {
 
             assertFalse(mutation.isAlive)
             assertFalse(mutationRan.get())
-            assertTrue(mutationFailure.get() is ConflictException)
+            assertTrue(
+                mutationOutcome.get() is WorkspaceMutationTransitionOutcome.Rejected,
+            )
         } finally {
             read.close()
             mutation.interrupt()
@@ -273,28 +282,31 @@ class WorkspaceTransitionIngressTest {
 
     @Test
     fun `mutation outside ready returns typed conflict without running the mutation`() {
-        val admission = IdeaIndexSemanticAdmission(projectStub())
+        val admission = IdeaIndexSemanticAdmission(workspaceTransitionProjectStub())
         val ingress = WorkspaceTransitionIngress(admission, testAwaiter {})
         val mutationRan = AtomicBoolean(false)
 
-        val failure = assertThrows(ConflictException::class.java) {
-            runBlocking {
-                ingress.mutate(WorkspaceSignal.Source, "test non-ready mutation") {
-                    mutationRan.set(true)
-                }
+        val outcome = runBlocking {
+            ingress.mutate(WorkspaceSignal.Source, "test non-ready mutation") {
+                mutationRan.set(true)
             }
         }
 
         assertFalse(mutationRan.get())
-        assertTrue(
-            failure.cause is IdeaIndexSemanticAdmission.WorkspaceMutationAdmissionUnavailableException,
+        assertEquals(
+            WorkspaceMutationTransitionOutcome.Rejected(
+                WorkspaceMutationTransitionFailure.AdmissionUnavailable(
+                    WorkspaceMutationAdmissionState.Pending,
+                ),
+            ),
+            outcome,
         )
         ingress.close()
     }
 
     private fun readyAdmission(
         generation: PublishedWorkspaceGenerationManifest,
-    ): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(projectStub()).also { admission ->
+    ): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(workspaceTransitionProjectStub()).also { admission ->
         val token = admission.beginReconciliation("test generation")
         check(
             admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
@@ -319,7 +331,7 @@ class WorkspaceTransitionIngressTest {
     ): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
         lifecycle = WorkspaceLifecycle.Ready,
         pendingSignals = emptySet(),
-        published = PublishedWorkspaceGenerationState.Published(generation),
+        published = PublishedWorkspaceGenerationState.Published(generation.detachedPublication()),
         blocker = null,
         observedEventCount = generation.generation.value,
         activeSourceFreshness = WorkspaceSourceFreshness.Absent,
@@ -332,7 +344,7 @@ class WorkspaceTransitionIngressTest {
     ): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
         lifecycle = lifecycle,
         pendingSignals = emptySet(),
-        published = PublishedWorkspaceGenerationState.Published(generation),
+        published = PublishedWorkspaceGenerationState.Published(generation.detachedPublication()),
         blocker = null,
         observedEventCount = observedEventCount.value,
         activeSourceFreshness = WorkspaceSourceFreshness.Unkeyed,
@@ -383,18 +395,4 @@ class WorkspaceTransitionIngressTest {
             }
         }
     }
-
-    private fun projectStub(): Project = Proxy.newProxyInstance(
-        Project::class.java.classLoader,
-        arrayOf(Project::class.java),
-    ) { _, method, _ ->
-        when (method.name) {
-            "getName" -> "stub"
-            "isDisposed" -> false
-            "hashCode" -> 0
-            "equals" -> false
-            "toString" -> "ProjectStub"
-            else -> null
-        }
-    } as Project
 }

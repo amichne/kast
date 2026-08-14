@@ -15,6 +15,8 @@ the consuming projects.
 - `support/tasks` owns IDEA distribution extraction, test-tag selection,
   generated protocol versions, runtime library synchronization, classpath
   layout proof, indexer-version generation, and wrapper scripts.
+- `support/architecture` owns the typed module graph, effect policy, migration
+  baseline, and checked-in architecture projection.
 - `src/test/kotlin` contains task and convention contract tests.
 
 ## Dependency boundary
@@ -46,6 +48,8 @@ the consuming projects.
   `cli-rs/protocol/`: `api-schema-version.txt`,
   `install-receipt-schema-version.txt`, and
   `source-index-schema-version.txt`. Never add a second literal authority.
+- Add every direct project dependency to the typed architecture policy in the
+  same change. Regenerate the checked-in projection from that policy.
 - Publishing configuration must reject missing or blank artifact metadata and
   preserve explicit local, snapshot, release, and GitHub target behavior.
 

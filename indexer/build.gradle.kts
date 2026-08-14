@@ -175,7 +175,6 @@ application {
 
 @Suppress("UNCHECKED_CAST")
 val buildVersion: Provider<String> = extra["buildVersion"] as Provider<String>
-
 val generatedResourcesDirectory = layout.buildDirectory.dir("generated-resources")
 val writeIndexerVersion by tasks.registering(WriteIndexerVersionTask::class) {
     indexerVersion.set(version.toString())
@@ -185,19 +184,47 @@ val writeIndexerVersion by tasks.registering(WriteIndexerVersionTask::class) {
 sourceSets.main {
     resources.srcDir(generatedResourcesDirectory)
 }
-
 tasks.named("processResources") {
     dependsOn(writeIndexerVersion)
 }
 
+tasks.named("sourcesJar") {
+    dependsOn(writeIndexerVersion)
+}
 dependencies {
+    val projectPayloads = listOf(
+        ":change:apply:intellij",
+        ":change:apply:service",
+        ":change:apply:spi",
+        ":change:contract",
+        ":change:journal:contract",
+        ":change:journal:sqlite",
+        ":change:plan:intellij",
+        ":change:plan:service",
+        ":change:plan:spi",
+        ":change:recovery:contract",
+        ":change:recovery:filesystem",
+        ":change:recovery:service",
+        ":change:recovery:spi",
+        ":change:verify:intellij", ":change:verify:service", ":change:verify:spi",
+        ":analysis-api",
+        ":analysis-server",
+        ":evidence:spi", ":evidence:sqlite",
+        ":index-store",
+        ":workspace:intellij",
+        ":workspace:service",
+        ":workspace:spi",
+        ":symbol:contract",
+        ":symbol:intellij",
+    )
+    projectPayloads.forEach { modulePath ->
+        compileOnly(project(modulePath))
+        indexerPluginRuntime(project(modulePath))
+        testImplementation(project(modulePath))
+    }
     indexerIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
     }
-
-    compileOnly(project(":analysis-api"))
-    compileOnly(project(":analysis-server"))
-    compileOnly(project(":index-store"))
     compileOnly(libs.coroutines.core)
     compileOnly(libs.opentelemetry.api)
     compileOnly(libs.opentelemetry.sdk)
@@ -206,20 +233,11 @@ dependencies {
     compileOnly(kotlinPluginLibs)
     compileOnly(javaPluginLibs)
     compileOnly(gradlePluginLibs)
-
     indexerLauncherRuntime(ideaLibs)
-
-    indexerPluginRuntime(project(":analysis-api"))
-    indexerPluginRuntime(project(":analysis-server"))
-    indexerPluginRuntime(project(":index-store"))
     indexerPluginRuntime(libs.coroutines.core)
     indexerPluginRuntime(libs.opentelemetry.api)
     indexerPluginRuntime(libs.opentelemetry.sdk)
     indexerPluginRuntime(libs.serialization.json)
-
-    testImplementation(project(":analysis-api"))
-    testImplementation(project(":analysis-server"))
-    testImplementation(project(":index-store"))
     testImplementation(libs.coroutines.core)
     testImplementation(libs.opentelemetry.api)
     testImplementation(libs.opentelemetry.sdk)
@@ -230,7 +248,6 @@ dependencies {
     testImplementation("com.jetbrains.intellij.platform:test-framework:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:test-framework-junit5:$ideaPlatformBuild")
 }
-
 tasks.withType<Test>().configureEach {
     dependsOn(extractIdeaDistribution)
     jvmArgs(indexerJvmArguments)
@@ -303,6 +320,9 @@ val indexerPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/api/client/ServerLaunchOptions.class",
     "io/github/amichne/kast/server/AnalysisServer.class",
     "io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.class",
+    "io/github/amichne/kast/change/apply/spi/AddDeclarationApplyExecutor.class",
+    "io/github/amichne/kast/change/apply/service/AddDeclarationApplicationService.class",
+    "io/github/amichne/kast/change/apply/intellij/IntellijAddDeclarationApplyExecutor.class",
     "io/github/amichne/kast/shared/analysis/PsiReferenceScanner.class",
     "io/github/amichne/kast/idea/IndexerServerRuntime.class",
 )
@@ -313,9 +333,11 @@ val platformKotlinPluginOwnedClassEntries = listOf(
 )
 
 val indexerPluginRuntimeJarPrefixes = listOf(
-    "analysis-api-",
-    "analysis-server-",
-    "index-store-",
+    "analysis-api-", "analysis-server-", "evidence-sqlite-", "index-store-",
+    "change-apply-intellij-", "change-apply-service-", "change-apply-spi-",
+    "change-recovery-contract-", "change-recovery-filesystem-", "change-recovery-service-", "change-recovery-spi-",
+    "change-verify-intellij-", "change-verify-service-", "change-verify-spi-",
+    "symbol-contract-", "symbol-intellij-",
     "kotlinx-coroutines-core",
     "opentelemetry-",
 )
@@ -371,11 +393,8 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
 tasks.named("check") {
     dependsOn(verifyPortableDistLayout)
 }
-
 tasks.named<Zip>("portableDistZip") {
     eachFile {
-        if (relativePath.pathString == "indexer/kast-indexer") {
-            permissions { unix("755") }
-        }
+        if (relativePath.pathString == "indexer/kast-indexer") permissions { unix("755") }
     }
 }

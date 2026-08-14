@@ -1,18 +1,10 @@
 package io.github.amichne.kast.api.contract.skill
 
 import io.github.amichne.kast.api.contract.*
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
-import io.github.amichne.kast.api.contract.result.CallHierarchyStats
-import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
-import io.github.amichne.kast.api.contract.result.ResultCardinality
-import io.github.amichne.kast.api.contract.result.SearchMatch
-import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
-import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.nio.file.Path
 
 @Serializable
 data class KastDiscoverRequest(
@@ -27,7 +19,6 @@ data class KastDiscoverRequest(
     val includeDeclarationScope: Boolean = false,
 )
 
-
 @Serializable
 data class KastDiscoverQuery(
     val workspaceRoot: String,
@@ -41,7 +32,6 @@ data class KastDiscoverQuery(
     val includeDeclarationScope: Boolean = false,
 )
 
-
 @Serializable
 data class KastDiscoveryCandidate(
     val rank: Int,
@@ -53,14 +43,12 @@ data class KastDiscoveryCandidate(
     val nextRequest: KastNextRequest,
 )
 
-
 @Serializable
 data class KastCandidate(
     val line: Int,
     val column: Int,
     val context: String,
 )
-
 
 @Serializable
 sealed interface KastDiscoverResponse
@@ -73,6 +61,7 @@ data class KastDiscoverSuccessResponse(
     val candidates: List<KastDiscoveryCandidate>,
     val page: PageInfo? = null,
     val logFile: String,
+    val readEvidence: KastReadEvidence = KastReadEvidence.LegacyCompatibility,
 ) : KastDiscoverResponse
 
 @Serializable

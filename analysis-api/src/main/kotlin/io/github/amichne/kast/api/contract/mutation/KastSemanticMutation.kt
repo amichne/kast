@@ -1,6 +1,5 @@
 package io.github.amichne.kast.api.contract.mutation
 
-import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.contract.skill.KastAddImplementationRequest
 import io.github.amichne.kast.api.contract.skill.KastAddStatementRequest
@@ -37,18 +36,6 @@ sealed interface KastSemanticMutation {
             get() = KastSemanticMutationKind.ADD_FILE
         override val symbolMethod: String
             get() = "symbol/add-file"
-    }
-
-    @Serializable
-    @SerialName("ADD_DECLARATION")
-    data class AddDeclaration(
-        override val idempotencyKey: KastMutationIdempotencyKey,
-        val request: KastAddDeclarationRequest,
-    ) : KastSemanticMutation {
-        override val kind: KastSemanticMutationKind
-            get() = KastSemanticMutationKind.ADD_DECLARATION
-        override val symbolMethod: String
-            get() = "symbol/add-declaration"
     }
 
     @Serializable

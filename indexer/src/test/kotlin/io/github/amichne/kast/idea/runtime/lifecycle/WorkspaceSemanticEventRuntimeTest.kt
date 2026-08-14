@@ -8,8 +8,8 @@ import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceVfsSignalClassifier
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.jetbrains.jps.model.java.compiler.ProcessorConfigProfile
@@ -73,7 +73,10 @@ class WorkspaceSemanticEventRuntimeTest {
         }
     }
 
-    private fun annotationProcessorProfile(project: Project, processorArtifact: Path): ProcessorConfigProfile {
+    private fun annotationProcessorProfile(
+        project: Project,
+        processorArtifact: Path,
+    ): ProcessorConfigProfile {
         lateinit var profile: ProcessorConfigProfile
         updateCompilerConfiguration {
             profile = CompilerConfiguration.getInstance(project)

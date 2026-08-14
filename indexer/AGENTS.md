@@ -20,12 +20,13 @@ not a foreground IDE plugin.
 - `idea/runtime/service` assembles the backend, source-index store, analysis
   server, indexing runtime, observers, and shutdown. Its `transition` subtree
   runs the event-driven reconciliation worker and publishes readiness.
-- `idea/transition` owns workspace signals, freshness claims, Git worktree
-  guards, semantic input identity, VFS observation, transition coordination,
-  retry/block state, and publication capability interfaces.
-- `idea/workspace` owns Gradle project/source-set provenance, workspace
-  identity, file inventory/paging/snapshots, indexing scope, stage versions,
-  hydration, and project indexing.
+- `idea/transition` owns host adapters for workspace signals, freshness claims,
+  Git worktree guards, semantic input identity, VFS observation, and publication
+  capabilities. `:workspace:service` owns host-neutral transition coordination,
+  retry/block state, and the publication protocol.
+- `idea/workspace` owns Gradle project/source-set production/test kind and
+  authored/generated provenance, workspace identity, file inventory/paging/snapshots,
+  indexing scope, stage versions, hydration, and project indexing.
 - `idea/snapshot` binds committed Git tree and build classpath identity to
   repository snapshot publication and worktree overlay selection.
 - `idea/backend` implements `AnalysisBackend`. Its subtrees own diagnostics,
@@ -43,9 +44,10 @@ not a foreground IDE plugin.
 
 ## Dependency boundary
 
-- `analysis-api`, `analysis-server`, and `index-store` are `compileOnly` inputs
-  to compilation and explicit `indexerPluginRuntime` payloads for packaging.
-  The private plugin payload owns these jars at runtime.
+- Runtime-facing `analysis`, `index-store`, `workspace`, `symbol`, `evidence`, and
+  operation-specific `change` modules are `compileOnly` inputs and explicit
+  `indexerPluginRuntime` payloads. The private plugin payload owns these jars
+  at runtime.
 - IntelliJ core libraries belong to the launcher runtime; Kotlin, Java, Gradle,
   and other platform plugin libraries stay in the packaged IDEA home. Never
   duplicate platform-plugin-owned classes in the private Kast payload.
@@ -73,6 +75,9 @@ not a foreground IDE plugin.
   readiness. `WorkspaceSemanticGate` admits only evidence from the current
   published workspace generation; blocked or moving lanes cannot be rendered
   as ready.
+- The first public native symbol route compiles the imported model, runs one
+  bounded IntelliJ read, and returns detached definitions with generation,
+  completeness, stage, work, byte, and selector-handle evidence.
 - Workspace events enter through `WorkspaceTransitionIngress`. Coalesce
   compatible work while retaining the newest source-content freshness claims,
   build semantic identity, and recovery-audit demand. Do not start parallel
@@ -105,9 +110,26 @@ not a foreground IDE plugin.
   preimage, semantic generation, signature compatibility, complete outbound
   references, and postcondition. `MutationAttemptGate` serializes one exact-
   root attempt; stale attempt IDs, images, selectors, or generations conflict.
+- Add-declaration planning crosses the legacy backend only through
+  `IntellijAddDeclarationPlanner`. It returns a detached, generation-bound
+  `PlannedAddDeclaration` with one non-empty declared write set, exact Gradle
+  ownership, canonical compiler evidence, semantic delta, and verification
+  obligations. The `change:contract`, `change:plan:spi`, and
+  `change:plan:intellij` classpaths remain read-only and must not acquire source
+  mutation authority.
+- The public add-declaration planner persists only after the semantic read lease
+  has been validated and released. Runtime composition opens the workspace-scoped
+  SQLite journal; the backend consumes only `AddDeclarationPlanPersistence` and
+  projects legacy compiler evidence only from a stored or identical existing record.
 - Native mutation effects preserve hard exclusions, symlink/root containment,
   durable parent/file writes, cancellation, and totalized scratch recovery.
   A successful edit is not a substitute for compiler postcondition proof.
+- The KIP-030 add-declaration physical protocol is pinned by
+  `.agents/arch/kast-add-declaration-intellij-protocol.json`. Preparation and
+  every semantic/search decision remain outside the command. The command may
+  only insert PSI, reformat whitespace, and commit the declared target; save
+  follows afterward. Headless undo, reference shortening, Android Studio, and
+  unpinned builds remain explicit unsupported evidence until separately proven.
 - Repository snapshots bind committed tree, classpath, schema, and producer
   identity. Worktree overlays retain dirty shards/tombstones and may read an
   immutable validated base only; stale or mismatched bases are revoked.
@@ -135,6 +157,12 @@ not a foreground IDE plugin.
 
 1. Run the smallest relevant class:
    `./gradlew :indexer:test --tests '<fully.qualified.TestClass>'`.
+    For KIP-030 run
+    `io.github.amichne.kast.idea.backend.contract.mutation.addition.AddDeclarationIntellijProtocolTest`
+    plus `.agents/arch/test-kast-add-declaration-intellij-protocol.py`.
+    For KIP-031 also run `:change:contract:test`,
+    `:change:plan:intellij:test`, and
+    `io.github.amichne.kast.idea.ExactAdditionPlannerContractTest`.
 2. Run `./gradlew :indexer:test` for Kotlin/Java source changes. The pinned IDEA
    distribution and platform plugins must be available.
 3. Run excluded suites explicitly when their risk applies, for example

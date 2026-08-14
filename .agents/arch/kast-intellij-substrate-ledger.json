@@ -1,0 +1,355 @@
+{
+  "type": "KAST_INTELLIJ_SUBSTRATE_LEDGER",
+  "schemaVersion": 1,
+  "program": {
+    "graphPath": ".agents/arch/kast-architecture-firewall-and-mutation-workflow.md",
+    "preparedOn": "2026-08-12",
+    "claimPolicy": "Only same-operation, same-corpus, same-environment runs with complete stage and work evidence may be compared."
+  },
+  "sources": {
+    "kastArchitectureBaseline": {
+      "kind": "AUTHORITY",
+      "repository": "https://github.com/amichne/kast",
+      "commitSha": "60ca538fd00d6c75c4c40140ec719bc531c9651e",
+      "treeSha": "6bbb38882e95aea82dd8dfb92fc5d4462cebba8b",
+      "supports": [
+        "Executable architecture policy direction, target graph, effect ownership, mutation invariants, and migration baseline."
+      ],
+      "doesNotSupport": [
+        "Completion of planned modules or operations."
+      ]
+    },
+    "jetbrainsIndexReference": {
+      "kind": "FUNCTIONAL_REFERENCE",
+      "repository": "https://github.com/hechtcarmel/jetbrains-index-mcp-plugin",
+      "commitSha": "7670d7202f43ab6d54433832d087316b69637f1b",
+      "supports": [
+        "Native IntelliJ discovery, bounded scopes, cancellable reads, pagination, diagnostics, and refactoring patterns."
+      ],
+      "doesNotSupport": [
+        "A latency claim or architecture authority for Kast."
+      ]
+    },
+    "slopsentralProcessBaseline": {
+      "kind": "PROCESS_REFERENCE",
+      "repository": "https://github.com/amichne/slopsentral",
+      "commitSha": "672f169842174ee807cd28a12c8f4718e7272dff",
+      "supports": [
+        "Proof-carrying transitions and parse-at-the-boundary design."
+      ],
+      "doesNotSupport": [
+        "Kast implementation ownership or IntelliJ behavior."
+      ]
+    },
+    "pr604Implementation": {
+      "kind": "HISTORICAL_EVIDENCE",
+      "repository": "https://github.com/amichne/kast",
+      "commitSha": "fe49f01a14e6b8f0b5a979a2a22948dee0560702",
+      "treeSha": "a466ac9216dd3628a270d370cae1ae88d252087c",
+      "supports": [
+        "The retained PR 604 startup and warm-search observations in .agent/performance-audit/summary.md at this commit."
+      ],
+      "doesNotSupport": [
+        "A current service objective or same-corpus comparison."
+      ]
+    },
+    "pr604Merge": {
+      "kind": "HISTORICAL_EVIDENCE",
+      "repository": "https://github.com/amichne/kast",
+      "commitSha": "c6792be7cc747e0f575dd39aae23337f74940321",
+      "treeSha": "05a2c920164c2fc181bc574bca38d0fd21220490",
+      "supports": [
+        "Merged identity of performance increment 604."
+      ],
+      "doesNotSupport": [
+        "Raw traces that were not retained by the original increment."
+      ]
+    }
+  },
+  "intellij": {
+    "supportedRuntime": {
+      "compileBuild": "261.25134.95",
+      "sinceBuild": "261",
+      "untilBuild": null,
+      "sourcePaths": [
+        "gradle/libs.versions.toml",
+        "packaging/indexer/runtime-compatibility.json"
+      ]
+    },
+    "observedMcpHost": {
+      "serverName": "idea",
+      "productCode": "IU",
+      "version": "2026.2.1",
+      "build": "IU-262.9437.185",
+      "projectBinding": "EXACT_CANONICAL_WORKTREE"
+    }
+  },
+  "captureEnvironment": {
+    "capturedOn": "2026-08-13",
+    "machine": {
+      "machineId": "macbookpro18-2-m1-max-10c-32g",
+      "osVersion": "macOS 26.5.2",
+      "architecture": "arm64",
+      "hardwareModel": "MacBookPro18,2",
+      "cpuModel": "Apple M1 Max",
+      "logicalCpuCount": 10,
+      "memoryBytes": 34359738368
+    },
+    "javaRuntime": "OpenJDK 21.0.7 2025-04-15 LTS",
+    "kastRuntime": {
+      "state": "DISABLED_UNTIL_USEFUL",
+      "perRunIdentity": "EXACT_DISTRIBUTION_SHA256",
+      "rule": "KIP-001 records the capture contract but does not invoke or re-enable Kast tooling."
+    },
+    "canonicalRootPolicy": "PER_RUN_REALPATH"
+  },
+  "corpora": [
+    {
+      "id": "kast-program-baseline",
+      "shape": "PRIMARY",
+      "repository": "https://github.com/amichne/kast",
+      "commitSha": "60ca538fd00d6c75c4c40140ec719bc531c9651e",
+      "treeSha": "6bbb38882e95aea82dd8dfb92fc5d4462cebba8b",
+      "gradleProjectCount": 4,
+      "jvmSourceFileCount": 931,
+      "captureRootPolicy": "EXACT_CANONICAL_CHECKOUT"
+    },
+    {
+      "id": "konditional-medium",
+      "shape": "MEDIUM_MULTI_MODULE",
+      "repository": "https://github.com/amichne/konditional",
+      "commitSha": "f191bc264fb18b65d54f228233d7630589fbaf37",
+      "treeSha": "7f4773b12b2f8983615871c08db25b84254ff097",
+      "gradleProjectCount": 4,
+      "jvmSourceFileCount": 178,
+      "captureRootPolicy": "EXACT_CANONICAL_CHECKOUT"
+    },
+    {
+      "id": "kast-enterprise-shaped",
+      "shape": "ENTERPRISE_SHAPED",
+      "repository": "https://github.com/amichne/kast",
+      "commitSha": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+      "treeSha": "776118993f8e415952c042fffad2b17163966ecb",
+      "gradleProjectCount": 6,
+      "jvmSourceFileCount": 601,
+      "captureRootPolicy": "EXACT_CANONICAL_CHECKOUT"
+    }
+  ],
+  "measurementContract": {
+    "environmentInputs": [
+      "sourceRevision",
+      "runtimeBuild",
+      "ideaBuild",
+      "canonicalRoot",
+      "corpusId",
+      "machineId",
+      "operationId",
+      "normalizedRequest",
+      "publishedGeneration",
+      "state"
+    ],
+    "stageTimings": [
+      "admissionQueueNanos",
+      "resourceQueueNanos",
+      "resourceAdmissionNanos",
+      "smartModeOrTransitionWaitNanos",
+      "searchScopeCompilationNanos",
+      "nativeQueryNanos",
+      "semanticResolutionNanos",
+      "persistenceOrPublicationNanos",
+      "projectionSerializationNanos",
+      "ipcNanos"
+    ],
+    "workCounters": [
+      "vfsRefreshCount",
+      "vfsRefreshScope",
+      "gradleImportCount",
+      "graphBuildCount",
+      "sqliteWriteCount",
+      "readActionCount"
+    ],
+    "resultMeasurements": [
+      "recordCount",
+      "outputBytes",
+      "pageCount",
+      "exactness",
+      "cancellation",
+      "edtObservation",
+      "cpuNanos",
+      "heapBytes"
+    ]
+  },
+  "operationBaselines": {
+    "file-discovery": {
+      "ownerTicket": "KIP-013",
+      "states": ["COLD", "WARM"],
+      "corpusIds": ["kast-program-baseline", "konditional-medium", "kast-enterprise-shaped"],
+      "normalizedRequestFields": ["query", "fileKinds", "owner", "readableSources", "limit"]
+    },
+    "symbol-discovery": {
+      "ownerTicket": "KIP-013",
+      "states": ["COLD", "WARM"],
+      "corpusIds": ["kast-program-baseline", "konditional-medium", "kast-enterprise-shaped"],
+      "normalizedRequestFields": ["query", "symbolKinds", "owner", "readableSources", "limit"]
+    },
+    "exact-definition": {
+      "ownerTicket": "KIP-014",
+      "states": ["COLD", "WARM"],
+      "corpusIds": ["kast-program-baseline", "konditional-medium", "kast-enterprise-shaped"],
+      "normalizedRequestFields": ["selector", "descriptionFields", "previewBytes"]
+    },
+    "references": {
+      "ownerTicket": "KIP-015",
+      "states": ["COLD", "WARM"],
+      "corpusIds": ["kast-program-baseline", "konditional-medium", "kast-enterprise-shaped"],
+      "normalizedRequestFields": ["selector", "relationKind", "owner", "limit", "continuation"]
+    },
+    "workspace-admission": {
+      "ownerTicket": "KIP-020",
+      "states": ["COLD", "WARM"],
+      "corpusIds": ["kast-program-baseline", "konditional-medium", "kast-enterprise-shaped"],
+      "normalizedRequestFields": ["canonicalRoot", "requiredGeneration", "deadlineNanos"]
+    },
+    "add-declaration-planning": {
+      "ownerTicket": "KIP-030",
+      "states": ["COLD", "WARM"],
+      "corpusIds": ["kast-program-baseline", "konditional-medium", "kast-enterprise-shaped"],
+      "normalizedRequestFields": ["targetSelector", "declarationKind", "signature", "bodyIntent"]
+    }
+  },
+  "ticketPerformanceBaselines": {
+    "KIP-013": ["file-discovery", "symbol-discovery"],
+    "KIP-014": ["exact-definition"],
+    "KIP-015": ["references"],
+    "KIP-017": ["workspace-admission"],
+    "KIP-018": ["file-discovery", "symbol-discovery", "exact-definition", "references"],
+    "KIP-020": ["workspace-admission"],
+    "KIP-022": ["workspace-admission"],
+    "KIP-030": ["add-declaration-planning"],
+    "KIP-031": ["add-declaration-planning"],
+    "KIP-040": ["references"],
+    "KIP-056": [
+      "file-discovery",
+      "symbol-discovery",
+      "exact-definition",
+      "references",
+      "workspace-admission",
+      "add-declaration-planning"
+    ]
+  },
+  "historicalEvidence": [
+    {
+      "id": "pr604-warm-symbol-discovery",
+      "sourceEvidence": "pr604Implementation",
+      "mergedEvidence": "pr604Merge",
+      "sourcePath": ".agent/performance-audit/summary.md@fe49f01a14e6b8f0b5a979a2a22948dee0560702",
+      "candidateParentCommitSha": "4fe7e33ca09d98ef1ceaae7aec24555c6409e65a",
+      "candidateParentTreeSha": "3673c0c643a82f9a387157b69cb9650aea8ee56c",
+      "operationId": "symbol-discovery",
+      "normalizedRequest": {
+        "query": "WorkspaceTransitionRuntime",
+        "interface": "historical warm semantic search"
+      },
+      "state": "WARM",
+      "sampleNanos": [640000000, 730000000, 1030000000],
+      "medianNanos": 730000000,
+      "resultClaim": "Each sample returned the same WorkspaceTransitionRuntime match and semantic generation.",
+      "claimClass": "HISTORICAL_CONTEXT_ONLY",
+      "comparisonEligible": false,
+      "universalTarget": false,
+      "rawTraceRetained": false,
+      "limitations": [
+        "The original machine identity was not recorded.",
+        "The exact semantic generation value was not retained.",
+        "Stage timings and work counters were not retained.",
+        "The samples cannot be compared with a new run until a same-corpus complete baseline exists."
+      ]
+    }
+  ],
+  "performanceIncrements": [
+    {
+      "id": "kip018-native-public-fast-read-fixture",
+      "ownerTicket": "KIP-018",
+      "proofClass": "io.github.amichne.kast.idea.backend.contract.suite.NativePublicSymbolReadTest",
+      "operationSequence": [
+        "symbol-discovery",
+        "exact-definition"
+      ],
+      "fixture": "indexer-light-kotlin-fixture",
+      "state": "WARM",
+      "runtimeBuild": "261.25134.95",
+      "publishedGeneration": 1,
+      "completeness": "EXACT",
+      "qualifications": [],
+      "stageObservations": {
+        "admissionQueueNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 5678209
+        },
+        "resourceQueueNanos": {
+          "state": "NOT_APPLICABLE"
+        },
+        "resourceAdmissionNanos": {
+          "state": "NOT_APPLICABLE"
+        },
+        "smartModeOrTransitionWaitNanos": {
+          "state": "NOT_APPLICABLE"
+        },
+        "searchScopeCompilationNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 3477292
+        },
+        "nativeQueryNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 78057250
+        },
+        "semanticResolutionNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 6105666
+        },
+        "persistenceOrPublicationNanos": {
+          "state": "NOT_APPLICABLE"
+        },
+        "projectionSerializationNanos": {
+          "state": "MEASURED",
+          "nanoseconds": 406424249
+        },
+        "ipcNanos": {
+          "state": "OUTSIDE_RESPONSE_BOUNDARY"
+        }
+      },
+      "workCounters": {
+        "vfsRefreshCount": 0,
+        "vfsRefreshScope": "NONE",
+        "gradleImportCount": 0,
+        "graphBuildCount": 0,
+        "sqliteWriteCount": 0,
+        "readActionCount": 1
+      },
+      "resultMeasurements": {
+        "recordCount": 1,
+        "outputBytes": 547,
+        "exactness": "EXACT"
+      },
+      "claimClass": "BOUNDED_WORK_NON_REGRESSION",
+      "comparisonEligible": false,
+      "historicalComparison": {
+        "evidenceId": "pr604-warm-symbol-discovery",
+        "outcome": "INELIGIBLE",
+        "reasons": [
+          "The historical machine identity was not recorded.",
+          "The historical semantic generation was not retained.",
+          "The historical stage timings and work counters were not retained.",
+          "The historical request and this light fixture do not share a corpus."
+        ]
+      },
+      "proofCommand": "./gradlew :indexer:test --tests '*NativePublicSymbolReadTest' --no-daemon --console=plain"
+    }
+  ],
+  "referenceProjectLatencyClaims": [],
+  "comparisonClaims": [],
+  "proofCommands": [
+    "python3 .agents/arch/test-kast-intellij-substrate-ledger.py",
+    "python3 .agents/arch/validate-kast-intellij-substrate-ledger.py --ledger .agents/arch/kast-intellij-substrate-ledger.json"
+  ]
+}

@@ -7,6 +7,7 @@ import argparse
 import json
 import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -117,14 +118,41 @@ class Parser(argparse.ArgumentParser):
 
 
 def run_git(root: Path, arguments: Sequence[str], *, stdin: bytes | None = None) -> bytes:
+    command = ["git", "-C", str(root), *arguments]
     try:
-        return subprocess.run(
-            ["git", "-C", str(root), *arguments],
-            input=stdin,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-        ).stdout
+        if stdin is None:
+            return subprocess.run(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            ).stdout
+        with (
+            tempfile.TemporaryFile() as input_stream,
+            tempfile.TemporaryFile() as output_stream,
+            tempfile.TemporaryFile() as error_stream,
+        ):
+            input_stream.write(stdin)
+            input_stream.seek(0)
+            completed = subprocess.run(
+                command,
+                stdin=input_stream,
+                stdout=output_stream,
+                stderr=error_stream,
+                check=False,
+            )
+            output_stream.seek(0)
+            error_stream.seek(0)
+            output = output_stream.read()
+            error = error_stream.read()
+            if completed.returncode:
+                raise subprocess.CalledProcessError(
+                    completed.returncode,
+                    command,
+                    output=output,
+                    stderr=error,
+                )
+            return output
     except OSError as error:
         raise ShapeError(f"Git is unavailable while inspecting {root}") from error
     except subprocess.CalledProcessError as error:

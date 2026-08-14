@@ -1,0 +1,34 @@
+# Change contract module guide
+
+`:change:contract` owns detached, operation-specific mutation intent, evidence, plan identity,
+obligation, and verification contracts. It performs no host observation, persistence, or source
+effect.
+
+## Dependency boundary
+
+- Production depends only on `:kernel` and serialization support.
+- Do not import IntelliJ, workspace implementation, JDBC, filesystem, transport, legacy
+  `analysis-api`, backend, adapter, service, or callback types.
+- Compatibility evidence is detached canonical JSON with a verified digest; it is not generic edit
+  authority and may be decoded only by a named legacy transport boundary.
+
+## Contract invariants
+
+- Raw add-declaration requests refine into canonical-root, canonical-target, exact-preimage, and
+  normalized declaration intent or a finite rejection.
+- `PlannedAddDeclaration` binds one exact G0, target owner and source-root provenance, exact before
+  and expected after images, a singleton declared write set, operation obligations, expected
+  semantic delta, verification terms, and all detached compiler evidence.
+- Revalidation admits only a coherent current observation that still matches generation, target
+  identity, owner and scope, exact content, authored provenance, and writability. Its output carries
+  exact recovery material but no write capability, and every rejection is fixed to `NOT_BEGUN`.
+- Plan identity is the SHA-256 of canonical serialized identity material. Decode rejects malformed,
+  non-canonical, or tampered bytes.
+- No plan retains a path handle, file handle, PSI value, document, callback, or mutation capability.
+
+## Verification ladder
+
+1. Run `./gradlew :change:contract:test --tests '*PlannedAddDeclarationTest'`.
+2. Run `./gradlew :change:contract:test`.
+3. Run `./gradlew :change:plan:spi:test :change:plan:intellij:test`.
+4. Run `./gradlew verifyKastArchitecture --configuration-cache`.
