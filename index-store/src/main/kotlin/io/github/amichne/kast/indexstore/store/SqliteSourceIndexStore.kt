@@ -2,7 +2,6 @@ package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NonNegativeInt
-import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
@@ -83,6 +82,9 @@ class SqliteSourceIndexStore private constructor(
     private val pendingUpdates = SourceIndexPendingUpdateStore(state, fileMutations, references)
     private val semanticGraphReader = SemanticGraphReader(state)
     private val snapshots = SourceIndexSnapshotStore(state)
+    private val durableEvidencePersistence = DurableEvidenceLaneStore(state)
+    private val durableEvidenceCandidates = DurableEvidenceCandidateCheckpointStore(durableEvidencePersistence)
+    private val durableEvidencePublications = DurableEvidenceLanePublicationStore(durableEvidencePersistence)
 
     fun dbExists(): Boolean = state.dbExists()
 
@@ -96,6 +98,10 @@ class SqliteSourceIndexStore private constructor(
 
     fun readWorkspacePublication(): PublishedWorkspaceGenerationState =
         snapshots.readWorkspacePublication()
+
+    fun durableEvidenceCandidates(): DurableEvidenceCandidateCheckpointStore = durableEvidenceCandidates
+
+    fun durableEvidencePublications(): DurableEvidenceLanePublicationStore = durableEvidencePublications
 
     fun prepareWorkspacePublication(
         session: WorkspaceWriteSession,

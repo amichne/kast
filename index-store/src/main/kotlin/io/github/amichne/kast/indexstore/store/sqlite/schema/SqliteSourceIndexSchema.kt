@@ -272,6 +272,7 @@ internal class SqliteSourceIndexSchema(
                 "Source index schema $SOURCE_INDEX_SCHEMA_VERSION has invalid foreign keys for $tableName"
             }
         }
+        validateDurableEvidenceSchema(conn)
     }
 
     private fun dropAllTables(conn: Connection) {

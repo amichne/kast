@@ -60,7 +60,12 @@ sealed interface RepositoryOverlayPublicationResolution {
 @Serializable
 @JvmInline
 value class EvidenceRevision private constructor(val value: Long) {
+    fun next(): EvidenceRevision = EvidenceRevision(Math.addExact(value, 1))
+
     companion object {
+        /** Proof transition: publication start -> first positive lane revision. */
+        fun first(): EvidenceRevision = EvidenceRevision(1)
+
         /**
          * Proof transition: `SourceIndexGeneration -> EvidenceRevision`.
          *

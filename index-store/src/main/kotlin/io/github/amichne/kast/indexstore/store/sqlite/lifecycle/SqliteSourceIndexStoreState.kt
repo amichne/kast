@@ -14,7 +14,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
-import java.sql.ResultSet
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
@@ -161,6 +160,15 @@ internal class SqliteSourceIndexStoreState(
         }
     }
 
+    internal fun <Value> committedWriteTransaction(
+        write: (Connection) -> Value,
+    ): CommittedSourceIndexWrite<Value> = synchronized(writeLock) {
+        when (workspaceWriteAuthority) {
+            is WorkspaceWriteAuthority.Active -> CommittedSourceIndexWrite.WorkspaceWriteActive
+            WorkspaceWriteAuthority.Idle -> CommittedSourceIndexWrite.Committed(writeTransaction(write = write))
+        }
+    }
+
     internal fun connection(requireCurrentSchema: Boolean = true): Connection {
         cachedConnection?.let { conn ->
             if (!conn.isClosed && Files.isRegularFile(dbPath)) {
@@ -296,6 +304,7 @@ internal class SqliteSourceIndexStoreState(
     }
 
     private fun rollbackWorkspaceWrite(conn: Connection, session: WorkspaceWriteSession) {
+        requireActiveWorkspaceWrite(session)
         conn.rollback()
         workspaceWriteAuthority = WorkspaceWriteAuthority.Idle
         runCatching { reloadInterningTables(conn) }
@@ -368,18 +377,6 @@ internal class SqliteSourceIndexStoreState(
             )
         }
         loadedInterningDataVersion = dataVersion
-    }
-
-    internal fun decodeNullablePath(
-        rs: ResultSet,
-        prefixColumn: Int,
-        filenameColumn: Int,
-    ): String? {
-        val prefixId = rs.getNullableInt(prefixColumn) ?: return null
-        val filename = requireNotNull(rs.getString(filenameColumn)) {
-            "Path filename is missing for prefix_id=$prefixId"
-        }
-        return pathCodec.decode(prefixId, filename)
     }
 
     private fun readDataVersion(conn: Connection): Long =

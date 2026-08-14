@@ -40,9 +40,70 @@ internal object WorkspaceMetadataSchema {
                 payload TEXT NOT NULL
             )""",
         )
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS evidence_lane_sets (
+                set_id TEXT NOT NULL CHECK(length(set_id) = 36),
+                lane TEXT NOT NULL CHECK(lane IN ('SOURCE', 'REFERENCES', 'SEMANTIC_GRAPH')),
+                workspace_identity TEXT NOT NULL CHECK(length(trim(workspace_identity)) > 0),
+                environment_fingerprint TEXT NOT NULL CHECK(
+                    length(environment_fingerprint) = 64 AND
+                    environment_fingerprint NOT GLOB '*[^0-9a-f]*'
+                ),
+                PRIMARY KEY(set_id, lane)
+            )""",
+        )
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS evidence_candidate_shards (
+                set_id TEXT NOT NULL,
+                lane TEXT NOT NULL,
+                source_path TEXT NOT NULL CHECK(length(trim(source_path)) > 0),
+                content_hash TEXT NOT NULL CHECK(
+                    length(content_hash) = 64 AND content_hash NOT GLOB '*[^0-9a-f]*'
+                ),
+                stage_version TEXT NOT NULL CHECK(
+                    length(trim(stage_version)) > 0 AND length(stage_version) <= 128
+                ),
+                payload TEXT NOT NULL CHECK(
+                    length(CAST(payload AS BLOB)) > 0 AND length(CAST(payload AS BLOB)) <= 1048576
+                ),
+                PRIMARY KEY(set_id, lane, source_path),
+                FOREIGN KEY(set_id, lane) REFERENCES evidence_lane_sets(set_id, lane) ON DELETE CASCADE
+            )""",
+        )
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS evidence_lane_candidates (
+                lane TEXT PRIMARY KEY CHECK(lane IN ('SOURCE', 'REFERENCES', 'SEMANTIC_GRAPH')),
+                set_id TEXT NOT NULL UNIQUE,
+                FOREIGN KEY(set_id, lane) REFERENCES evidence_lane_sets(set_id, lane)
+            )""",
+        )
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS evidence_lane_publications (
+                lane TEXT PRIMARY KEY CHECK(lane IN ('SOURCE', 'REFERENCES', 'SEMANTIC_GRAPH')),
+                current_set_id TEXT NOT NULL UNIQUE,
+                current_revision INTEGER NOT NULL CHECK(current_revision > 0),
+                current_published_at_epoch_millis INTEGER NOT NULL CHECK(current_published_at_epoch_millis >= 0),
+                previous_set_id TEXT UNIQUE,
+                previous_revision INTEGER CHECK(previous_revision > 0),
+                previous_published_at_epoch_millis INTEGER CHECK(previous_published_at_epoch_millis >= 0),
+                CHECK(
+                    (previous_set_id IS NULL AND previous_revision IS NULL AND
+                     previous_published_at_epoch_millis IS NULL) OR
+                    (previous_set_id IS NOT NULL AND previous_revision IS NOT NULL AND
+                     previous_published_at_epoch_millis IS NOT NULL)
+                ),
+                CHECK(previous_set_id IS NULL OR previous_set_id != current_set_id),
+                FOREIGN KEY(current_set_id, lane) REFERENCES evidence_lane_sets(set_id, lane),
+                FOREIGN KEY(previous_set_id, lane) REFERENCES evidence_lane_sets(set_id, lane)
+            )""",
+        )
     }
 
     fun dropTables(stmt: Statement) {
+        stmt.execute("DROP TABLE IF EXISTS main.evidence_lane_publications")
+        stmt.execute("DROP TABLE IF EXISTS main.evidence_lane_candidates")
+        stmt.execute("DROP TABLE IF EXISTS main.evidence_candidate_shards")
+        stmt.execute("DROP TABLE IF EXISTS main.evidence_lane_sets")
         stmt.execute("DROP TABLE IF EXISTS main.workspace_publication")
         stmt.execute("DROP TABLE IF EXISTS main.schema_version")
         stmt.execute("DROP TABLE IF EXISTS main.workspace_discovery")
