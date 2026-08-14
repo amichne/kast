@@ -80,4 +80,21 @@ class BuildSemanticInputIdentityResolverTest {
 
         assertEquals(before, resolver.resolve())
     }
+
+    @Test
+    fun `cargo owned target trees do not affect Gradle build identity`() {
+        Files.writeString(buildRoot.resolve("settings.gradle.kts"), "rootProject.name = \"demo\"")
+        val cargoRoot = buildRoot.resolve("native").also(Files::createDirectories)
+        Files.writeString(cargoRoot.resolve("Cargo.toml"), "[package]\nname = \"native\"\nversion = \"0.1.0\"\n")
+        val generatedBuild = cargoRoot.resolve("target/generated/settings.gradle.kts").also { path ->
+            Files.createDirectories(path.parent)
+            Files.writeString(path, "before")
+        }
+        val resolver = BuildSemanticInputIdentityResolver(buildRoot)
+        val before = resolver.resolve()
+
+        Files.writeString(generatedBuild, "after")
+
+        assertEquals(before, resolver.resolve())
+    }
 }

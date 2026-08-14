@@ -137,19 +137,6 @@ internal value class KastProjectWorkspaceRoot private constructor(
     }
 }
 
-private enum class KastNonSemanticWorkspaceRoot(
-    val directoryName: String,
-) {
-    GRADLE_AND_KAST_CACHE(".gradle"),
-    INTELLIJ_PLATFORM_CACHE(".intellijPlatform"),
-    KAST_WORKSPACE_CACHE(".kast"),
-    RUN_CONFIGURATION_STATE(".run"),
-    PYTHON_VIRTUAL_ENVIRONMENT(".venv"),
-    GENERATED_SITE("site"),
-    NODE_MODULES("node_modules"),
-    RUST_TARGET("target"),
-}
-
 private class KastWorkspaceIndexingExclusions private constructor(
     val urls: List<String>,
 ) {
@@ -165,9 +152,11 @@ private class KastWorkspaceIndexingExclusions private constructor(
          */
         fun forWorkspace(root: KastProjectWorkspaceRoot): KastWorkspaceIndexingExclusions =
             KastWorkspaceIndexingExclusions(
-                KastNonSemanticWorkspaceRoot.entries.map { exclusion ->
+                KastNonSemanticWorkspacePaths.discover(root.pathForFilesystemBoundary)
+                    .pathsForVfsBoundary()
+                    .map { exclusion ->
                     VfsUtilCore.pathToUrl(
-                        root.pathForFilesystemBoundary.resolve(exclusion.directoryName).toString(),
+                        exclusion.toString(),
                     )
                 },
             )

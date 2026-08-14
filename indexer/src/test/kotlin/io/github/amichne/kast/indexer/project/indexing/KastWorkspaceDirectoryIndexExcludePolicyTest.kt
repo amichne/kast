@@ -64,11 +64,13 @@ internal class KastWorkspaceDirectoryIndexExcludePolicyTest {
         val project = projectFixture.get()
         val module = moduleFixture.get()
         val workspaceRoot = Path.of(requireNotNull(project.basePath))
-        val generatedRoot = workspaceRoot.resolve("target/generated/kotlin").also(Files::createDirectories)
+        val cargoRoot = workspaceRoot.resolve("native").also(Files::createDirectories)
+        Files.writeString(cargoRoot.resolve("Cargo.toml"), "[package]\nname = \"native\"\nversion = \"0.1.0\"\n")
+        val generatedRoot = cargoRoot.resolve("target/generated/kotlin").also(Files::createDirectories)
         val generatedFile = generatedRoot.resolve("Generated.kt").also {
             Files.writeString(it, "package generated\n\nclass Generated\n")
         }
-        val unownedFile = workspaceRoot.resolve("target/unowned.bin").also {
+        val unownedFile = cargoRoot.resolve("target/unowned.bin").also {
             Files.writeString(it, "not semantic evidence\n")
         }
         val localFileSystem = LocalFileSystem.getInstance()

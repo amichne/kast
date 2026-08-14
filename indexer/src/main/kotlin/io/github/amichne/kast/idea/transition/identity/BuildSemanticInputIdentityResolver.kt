@@ -1,6 +1,8 @@
 package io.github.amichne.kast.idea.transition
 
 import io.github.amichne.kast.idea.SemanticPathContentIdentity
+import io.github.amichne.kast.indexer.project.indexing.KastNonSemanticWorkspacePaths
+import io.github.amichne.kast.indexer.project.indexing.KastWorkspaceDirectoryTraversal
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
@@ -58,6 +60,7 @@ internal class BuildSemanticInputIdentityResolver(
     private val isCancelled: () -> Boolean = { false },
 ) {
     private val root = buildSemanticRoot.toAbsolutePath().normalize()
+    private val nonSemanticWorkspacePaths = KastNonSemanticWorkspacePaths.discover(root)
 
     fun resolve(): BuildSemanticInputIdentity {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -77,6 +80,12 @@ internal class BuildSemanticInputIdentityResolver(
                 object : SimpleFileVisitor<Path>() {
                     override fun preVisitDirectory(directory: Path, attributes: BasicFileAttributes): FileVisitResult {
                         SemanticPathContentIdentity.requireActive(isCancelled)
+                        if (
+                            nonSemanticWorkspacePaths.traversalFor(directory) ==
+                            KastWorkspaceDirectoryTraversal.Exclude
+                        ) {
+                            return FileVisitResult.SKIP_SUBTREE
+                        }
                         if (
                             directory != root &&
                             root.relativize(directory).any { BuildSemanticInputPolicy.isExcludedDirectory(it.toString()) }
