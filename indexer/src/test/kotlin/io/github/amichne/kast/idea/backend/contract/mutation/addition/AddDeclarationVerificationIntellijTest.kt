@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.junit5.TestApplication
@@ -26,6 +27,12 @@ import io.github.amichne.kast.change.verify.spi.AddDeclarationObservedSourceRang
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationCommand
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationLimitation
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationResult
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
+import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.idea.backend.mutation.AdditionOwnerSnapshot
+import io.github.amichne.kast.idea.backend.mutation.addDeclarationVerificationExecutor
+import io.github.amichne.kast.idea.backend.mutation.exactAdditionOwner
+import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
@@ -41,9 +48,10 @@ import org.junit.jupiter.api.assertThrows
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicReference
 
 @TestApplication
-internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContractTestFixture() {
+internal class AddDeclarationVerificationIntellijTest : ExactAdditionPlanningTestSupport() {
     private val verifiedTargetFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture(
         "VerifiedAddDeclaration.kt",
         postimage(VERIFIED_DECLARATION),
@@ -91,6 +99,74 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
             result.rejection.limitations,
         )
         assertEquals(fixture.command, result.command)
+    }
+
+    @Test
+    fun `live publication authority rejects a moved G1 before PSI verification`() = runBlocking {
+        val fixture = fixture(verifiedTargetFixture, VERIFIED_DECLARATION, "verifiedAddition")
+        val moved = testPublishedWorkspaceGeneration(
+            WorkspaceSemanticGeneration(9),
+            WorkspaceStateIdentity("verified-add-declaration-g2"),
+        )
+        val executor = fixture.backend.addDeclarationVerificationExecutor(
+            TestWorkspaceGenerationPublication(moved),
+            documentedIntellijIdeaRuntime,
+        )
+
+        val result = assertInstanceOf<AddDeclarationVerificationResult.Rejected>(
+            executor.verify(fixture.command),
+        )
+
+        assertEquals(
+            listOf(AddDeclarationVerificationLimitation.RESULT_GENERATION_MOVED),
+            result.rejection.limitations,
+        )
+    }
+
+    @Test
+    fun `live compiler environment rejects a changed project model`() = runBlocking {
+        val fixture = fixture(verifiedTargetFixture, VERIFIED_DECLARATION, "verifiedAddition")
+        val secondaryRoot = Path.of(secondarySourceRootFixture.get().virtualFile.path)
+            .toAbsolutePath()
+            .normalize()
+        fixture.model.set(
+            model(
+                fixture.workspaceRoot,
+                listOf(
+                    association("main", fixture.workspaceRoot, ":", "main", fixture.sourceRoot),
+                    association("secondary", fixture.workspaceRoot, ":secondary", "test", secondaryRoot),
+                ),
+            )(),
+        )
+
+        val result = assertInstanceOf<AddDeclarationVerificationResult.Rejected>(
+            fixture.executor.verify(fixture.command),
+        )
+
+        assertEquals(
+            listOf(AddDeclarationVerificationLimitation.PROJECT_MODEL_CHANGED),
+            result.rejection.limitations,
+        )
+    }
+
+    @Test
+    fun `live compiler environment rejects changed source ownership`() = runBlocking {
+        val fixture = fixture(verifiedTargetFixture, VERIFIED_DECLARATION, "verifiedAddition")
+        fixture.model.set(
+            model(
+                fixture.workspaceRoot,
+                listOf(association("main", fixture.workspaceRoot, ":", "changed", fixture.sourceRoot)),
+            )(),
+        )
+
+        val result = assertInstanceOf<AddDeclarationVerificationResult.Rejected>(
+            fixture.executor.verify(fixture.command),
+        )
+
+        assertEquals(
+            listOf(AddDeclarationVerificationLimitation.OWNER_AND_PROVENANCE_CHANGED),
+            result.rejection.limitations,
+        )
     }
 
     @Test
@@ -144,17 +220,36 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
         ensureProjectReady()
         val target = targetFixture.get() as KtFile
         waitUntilIndexesAreReady(project)
-        val plan = plan(target, declaration, declarationName)
-        val publication = PublishedWorkspaceGeneration(
-            generation(8),
+        val targetPath = Path.of(target.virtualFile.path).toAbsolutePath().normalize()
+        val sourceRoot = targetPath.parent
+        val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), targetPath.toString())
+        val liveModel = AtomicReference(model(workspaceRoot, sourceRoot)())
+        val backend = backend(
+            workspaceRoot = workspaceRoot,
+            workspaceModelReader = liveModel::get,
+        )
+        val owner = ApplicationManager.getApplication().runReadAction<AdditionOwnerSnapshot> {
+            backend.exactAdditionOwner(targetPath)
+        }
+        val plan = plan(target, declaration, declarationName, owner)
+        val manifest = testPublishedWorkspaceGeneration(
+            WorkspaceSemanticGeneration(8),
             WorkspaceStateIdentity("verified-add-declaration-g1"),
         )
+        val publication = manifest.detachedPublication()
         val command = AddDeclarationVerificationCommand.admit(plan, publication).refined()
         return VerificationFixture(
             plan,
             publication,
             command,
-            executor(plan, publication),
+            backend.addDeclarationVerificationExecutor(
+                TestWorkspaceGenerationPublication(manifest),
+                documentedIntellijIdeaRuntime,
+            ),
+            backend,
+            liveModel,
+            workspaceRoot,
+            sourceRoot,
         )
     }
 
@@ -186,6 +281,7 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
         targetFile: KtFile,
         declaration: String,
         declarationName: String,
+        liveOwner: AdditionOwnerSnapshot,
     ): PlannedAddDeclaration {
         val targetPath = Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize()
         val sourceRoot = targetPath.parent
@@ -200,11 +296,11 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
             declaration,
         ).refine().refined()
         val owner = AddDeclarationSourceOwner.admit(
-            sourceRoot.toString(),
-            "main",
-            workspaceRoot.toString(),
-            ":",
-            "main",
+            liveOwner.owner.sourceRoot.value,
+            liveOwner.owner.ideaModuleName.value,
+            liveOwner.owner.gradleBuildRoot.value,
+            liveOwner.owner.gradleProjectPath.value,
+            liveOwner.owner.sourceSetName.value,
         ).refined()
         val target = AddDeclarationTargetCapability.admit(intent, owner).refined()
         val generation = generation(7)
@@ -228,8 +324,8 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
                 AddDeclarationVerificationContract.forGeneration(generation),
                 ExpectedAddDeclarationCompilerContext.admitSingleSource(
                     generation,
-                    "3".repeat(64),
-                    "4".repeat(64),
+                    liveOwner.modelFingerprint.value,
+                    liveOwner.classpathFingerprint.value,
                     targetPath.toString(),
                     hash(PREIMAGE_BYTES),
                     0,
@@ -257,6 +353,10 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
         val publication: PublishedWorkspaceGeneration,
         val command: AddDeclarationVerificationCommand,
         val executor: IntellijAddDeclarationVerificationExecutor,
+        val backend: KastIndexerBackend,
+        val model: AtomicReference<IdeaGradleProjectLoadBridge.GradleWorkspaceModel>,
+        val workspaceRoot: Path,
+        val sourceRoot: Path,
     )
 
     private companion object {
