@@ -159,14 +159,6 @@ internal fun openApiPaths(): Map<String, Any?> = linkedMapOf(
         responseSchema = "ReplacementPlanResult",
         capability = "PLAN_REPLACEMENT",
     ),
-    "/rpc/raw/plan-add-file" to mutationMethod(
-        operationId = "planAddFile",
-        summary = "Plan a compiler-proven Kotlin source file addition",
-        method = "raw/plan-add-file",
-        requestSchema = "AddFilePlanQuery",
-        responseSchema = "AddFilePlanResult",
-        capability = "PLAN_ADD_FILE",
-    ),
     "/rpc/raw/verify-mutation-postcondition" to mutationMethod(
         operationId = "verifyMutationPostcondition",
         summary = "Verify one exact mutation postcondition",

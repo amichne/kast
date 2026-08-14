@@ -77,7 +77,6 @@ pub(crate) fn execute_leased_raw_value(
             method,
             "raw/rename"
                 | "raw/plan-replacement"
-                | "raw/plan-add-file"
                 | "raw/exact-file-observation"
                 | "raw/workspace-refresh"
                 | "raw/diagnostics"
@@ -117,9 +116,6 @@ pub(crate) fn execute_leased_raw_value(
         }
         (LeasedRawOperation::ReadOnly, "raw/plan-replacement") => {
             &[runtime::SemanticMutationCapability::PlanReplacement]
-        }
-        (LeasedRawOperation::ReadOnly, "raw/plan-add-file") => {
-            &[runtime::SemanticMutationCapability::PlanAddFile]
         }
         (LeasedRawOperation::ReadOnly, "raw/exact-file-observation") => {
             &[runtime::SemanticMutationCapability::ExactFileObservation]

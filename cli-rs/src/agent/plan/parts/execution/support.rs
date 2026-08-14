@@ -70,24 +70,11 @@ fn revalidate_persisted_authority(
             }
         }
         StoredOperation::AddFile { authority } => {
-            let proposed = required_private_utf8(content, "add-file")?;
-            let raw = execute_leased_raw_value(
-                workspace_root,
-                lease_id,
-                "raw/plan-add-file",
-                json!({
-                    "targetPath": authority.target_path(),
-                    "proposedContent": proposed,
-                }),
-                LeasedRawOperation::ReadOnly,
-            )?;
-            let preview: AgentAddFilePlanResult = parse_closed_raw(raw, "add-file revalidation")?;
-            preview
-                .validate_for(authority.target_path(), proposed)
-                .map_err(authority_revalidation_error)?;
-            StoredOperation::AddFile {
-                authority: Box::new(preview.into_authority()),
-            }
+            let _ = (authority, content, workspace_root, lease_id);
+            return Err(CliError::new(
+                "KAST_VERIFIED_ADD_FILE_WORKFLOW_REQUIRED",
+                "Legacy add-file authority cannot be revalidated through a raw planning alias.",
+            ));
         }
         StoredOperation::AddDeclaration { authority } => {
             let proposed = required_private_utf8(content, "add-declaration")?;

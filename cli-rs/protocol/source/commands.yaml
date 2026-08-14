@@ -15,7 +15,6 @@ categories:
   - raw/diagnostics
   - raw/rename
   - raw/plan-replacement
-  - raw/plan-add-file
   - raw/exact-file-image-cas
   - raw/exact-file-observation
   - raw/inspect-mutation-scratch
@@ -635,24 +634,6 @@ commands:
       - filePaths
     responseType: ImportOptimizeResult
     summary: Optimize imports for one or more files
-  raw/plan-add-file:
-    category: raw
-    dataSource: backend
-    method: raw/plan-add-file
-    notes:
-    - The result is non-mutating and proves the exact target is absent.
-    - The result binds canonical source ownership, collision and rebinding coverage, compiler occurrences, and the exact UTF-8 postimage.
-    request:
-      fields:
-        proposedContent:
-          type: string
-        targetPath:
-          type: string
-      required:
-      - targetPath
-      - proposedContent
-    responseType: AddFilePlanResult
-    summary: Plan a compiler-proven Kotlin source file addition
   raw/plan-replacement:
     category: raw
     dataSource: backend

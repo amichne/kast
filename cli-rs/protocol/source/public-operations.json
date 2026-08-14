@@ -977,7 +977,7 @@
         }
       ],
       "rpcMethods": [
-        "raw/plan-add-file"
+        "change/plan-add-file"
       ],
       "successors": [
         "change.apply"
@@ -1097,6 +1097,7 @@
         }
       ],
       "rpcMethods": [
+        "change/apply-add-file",
         "change/apply-add-declaration",
         "raw/apply-edits",
         "raw/verify-mutation-postcondition"
@@ -1138,6 +1139,7 @@
         }
       ],
       "rpcMethods": [
+        "change/apply-add-file",
         "raw/inspect-mutation-scratch",
         "raw/recover-mutation-scratch"
       ],

@@ -74,6 +74,7 @@ pub(super) fn change_add_file(
     content: &str,
 ) -> Output {
     let target = workspace.join(relative_path);
+    let plan_id = verified_add_file_plan_id(&target, content.as_bytes());
     let socket_name = format!("p{}.sock", &uuid::Uuid::new_v4().simple().to_string()[..6]);
     let backend = spawn_scripted_indexer_backend(
         home,
@@ -81,8 +82,19 @@ pub(super) fn change_add_file(
         workspace,
         &home.join(socket_name),
         vec![(
-            "raw/plan-add-file",
-            public_exact_add_file_preview(workspace, &target, content),
+            "change/plan-add-file",
+            json!({
+                "planId": plan_id,
+                "planVersion": 0,
+                "stage": "AWAITING_APPROVAL",
+                "operation": "add-file",
+                "preview": {
+                    "targetPath": target,
+                    "proposedContent": content,
+                    "generation": 7,
+                },
+                "schemaVersion": 7,
+            }),
         )],
     );
     let mut change = installed_public_kast(binary, home, config_home, workspace);
@@ -92,108 +104,152 @@ pub(super) fn change_add_file(
     change
 }
 
-pub(super) fn public_addition_collision_dimensions() -> Value {
-    json!([
-        "EXACT_DECLARATION_IDENTITIES",
-        "COMPLETE_OWNING_SOURCE_SCOPE",
-        "COMPLETE_DEPENDENT_SCOPE",
-        "NO_COMPILER_COLLISION",
-    ])
+pub(super) fn source_sha256(content: &[u8]) -> String {
+    hex::encode(Sha256::digest(content))
 }
 
-pub(super) fn public_addition_rebinding_dimensions() -> Value {
-    json!([
-        "EXACT_OCCURRENCE_CARDINALITY",
-        "COMPLETE_DEPENDENT_SCOPE",
-        "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
-        "COMPLETE_JAVA_LOOKUP_SCOPE",
-        "EVERY_CURRENT_BINDING_CAPTURED",
-        "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE",
-    ])
+pub(super) fn verified_add_file_plan_id(target: &Path, content: &[u8]) -> String {
+    let workspace = target
+        .ancestors()
+        .find(|candidate| candidate.join("settings.gradle.kts").is_file())
+        .expect("target belongs to a Gradle workspace");
+    format!(
+        "af-{}",
+        source_sha256(
+            format!(
+                "{}\0{}\0{}\07",
+                workspace.display(),
+                target.display(),
+                std::str::from_utf8(content).expect("Kotlin content"),
+            )
+            .as_bytes(),
+        ),
+    )
 }
 
-pub(super) fn public_addition_owner(workspace: &Path, target: &Path) -> Value {
+pub(super) fn verified_add_file_receipt(target: &Path, content: &[u8]) -> Value {
     json!({
-        "sourceRoot": target.parent().expect("target source root"),
-        "ideaModuleName": "root.main",
-        "gradleBuildRoot": workspace,
-        "gradleProjectPath": ":",
-        "sourceSetName": "main",
-    })
-}
-
-pub(super) fn public_addition_declaration(content_length: usize) -> Value {
-    json!({
-        "packageIdentity": {"type": "ROOT"},
-        "name": "Added",
-        "kind": "CLASS",
-        "relativeRange": {"startOffset": 0, "endOffset": content_length},
-        "collisionSignature": "1".repeat(64),
-    })
-}
-
-pub(super) fn public_addition_context(context_file_hashes: Vec<Value>) -> Value {
-    json!({
-        "requiredGeneration": 7,
-        "projectModelFingerprint": "2".repeat(64),
-        "classpathFingerprint": "3".repeat(64),
-        "contextFileHashes": context_file_hashes,
-    })
-}
-
-pub(super) fn public_exact_add_file_preview(
-    workspace: &Path,
-    target: &Path,
-    content: &str,
-) -> Value {
-    let sha256 = source_sha256(content.as_bytes());
-    json!({
-        "proposedContent": content,
-        "postimage": {
-            "contentBase64": STANDARD_BASE64.encode(content.as_bytes()),
-            "sha256": sha256,
-        },
-        "proof": {
+        "outcome": "VERIFIED",
+        "planId": verified_add_file_plan_id(target, content),
+        "planVersion": 5,
+        "operation": "add-file",
+        "publication": {"generation": 8},
+        "identity": {
             "targetPath": target,
-            "targetState": "ABSENT",
-            "owner": public_addition_owner(workspace, target),
-            "packageIdentity": {"type": "ROOT"},
-            "declarations": [public_addition_declaration(content.encode_utf16().count())],
-            "context": public_addition_context(Vec::new()),
-            "collisionEvidence": {
-                "declarationCardinality": 1,
-                "dimensions": public_addition_collision_dimensions(),
-            },
-            "outboundEvidence": {"cardinality": 0, "occurrences": []},
-            "rebindingBaseline": {
-                "cardinality": 0,
-                "dimensions": public_addition_rebinding_dimensions(),
-                "occurrences": [],
-            },
-            "postimageSha256": sha256,
+            "packageName": "sample",
+            "declarations": [{"name": "Added", "kind": "CLASS"}],
         },
+        "postimageSha256": source_sha256(content),
         "schemaVersion": 7,
     })
 }
 
-pub(super) fn successful_add_file_result(target: &Path) -> Value {
+pub(super) fn verified_add_file_recovery_required(
+    target: &Path,
+    content: &[u8],
+    progress: &str,
+) -> Value {
+    let failure = if progress == "WORKSPACE_PUBLICATION" {
+        "PUBLICATION_FAILED"
+    } else {
+        "PSI_NOT_ADMITTED"
+    };
+    verified_add_file_recovery_required_with_failure(target, content, progress, failure)
+}
+
+pub(super) fn verified_add_file_recovery_required_with_failure(
+    target: &Path,
+    content: &[u8],
+    progress: &str,
+    failure: &str,
+) -> Value {
+    let stage = verified_add_file_recovery_stage(progress);
     json!({
-        "type": "SUCCEEDED",
-        "result": {
-            "type": "SCOPE_MUTATION_RESULT",
-            "response": {
-                "editCount": 1,
-                "affectedFiles": [],
-                "createdFiles": [target],
-                "diagnostics": {"errorCount": 0, "warningCount": 0}
-            }
-        },
-        "deduplicated": false
+        "outcome": "RECOVERY_REQUIRED",
+        "planId": verified_add_file_plan_id(target, content),
+        "recoveryId": verified_add_file_plan_id(target, content),
+        "planVersion": 0,
+        "stage": stage,
+        "progress": progress,
+        "failure": failure,
+        "recoveryAction": "DELETE_CREATED_TARGET",
+        "operation": "add-file",
+        "schemaVersion": 7,
     })
 }
 
-pub(super) fn source_sha256(content: &[u8]) -> String {
-    hex::encode(Sha256::digest(content))
+pub(super) fn verified_add_file_rolled_back(
+    target: &Path,
+    content: &[u8],
+    progress: &str,
+    failure: &str,
+) -> Value {
+    let stage = verified_add_file_recovery_stage(progress);
+    json!({
+        "outcome": "ROLLED_BACK",
+        "planId": verified_add_file_plan_id(target, content),
+        "planVersion": 5,
+        "stage": stage,
+        "progress": progress,
+        "failure": failure,
+        "recoveryAction": "DELETE_CREATED_TARGET",
+        "operation": "add-file",
+        "schemaVersion": 7,
+    })
+}
+
+pub(super) fn verified_add_file_rejected(
+    target: &Path,
+    content: &[u8],
+    progress: &str,
+    failure: &str,
+) -> Value {
+    let stage = match progress {
+        "INTENT_ADMISSION" | "PLANNING" => "AWAITING_APPROVAL",
+        "REVALIDATION" => "APPROVED",
+        "RECOVERY_PREPARATION" => "RECOVERY_PREPARED",
+        "SOURCE_APPLICATION" => "APPLY_ADMITTED",
+        other => panic!("rejected add-file progress has no closed stage: {other}"),
+    };
+    json!({
+        "outcome": "REJECTED",
+        "planId": verified_add_file_plan_id(target, content),
+        "planVersion": 0,
+        "stage": stage,
+        "progress": progress,
+        "failure": failure,
+        "operation": "add-file",
+        "schemaVersion": 7,
+    })
+}
+
+pub(super) fn verified_add_file_reconciliation_required(
+    target: &Path,
+    content: &[u8],
+    progress: &str,
+    failure: &str,
+) -> Value {
+    let stage = verified_add_file_recovery_stage(progress);
+    json!({
+        "outcome": "RECONCILIATION_REQUIRED",
+        "planId": verified_add_file_plan_id(target, content),
+        "recoveryId": verified_add_file_plan_id(target, content),
+        "planVersion": 0,
+        "stage": stage,
+        "progress": progress,
+        "failure": failure,
+        "reconciliationAction": "INSPECT_TARGET",
+        "operation": "add-file",
+        "schemaVersion": 7,
+    })
+}
+
+fn verified_add_file_recovery_stage(progress: &str) -> &'static str {
+    match progress {
+        "SOURCE_APPLICATION" => "APPLY_ADMITTED",
+        "WORKSPACE_PUBLICATION" | "PSI_ADMISSION" => "APPLIED_UNVERIFIED",
+        other => panic!("add-file recovery progress has no closed stage: {other}"),
+    }
 }
 
 pub(super) fn independent_refresh(file: &Path) -> Value {

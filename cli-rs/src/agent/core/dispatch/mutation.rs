@@ -1,24 +1,11 @@
-fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
-    let file_path = match normalize_agent_file_target(&args.runtime, &args.file_path) {
-        Ok(file_path) => file_path,
-        Err(error) => return error_envelope("agent/add-file".to_string(), None, error),
-    };
-    let params = json!({
-        "filePath": file_path,
-        "contentFile": args.content_file.display().to_string(),
-    });
-    if !args.mutation.apply {
-        let request = json_rpc_request("symbol/add-file", params);
-        return execute_agent_add_file_preview(args.runtime, request, file_path, args.content_file);
-    }
-    execute_agent_mutation(
-        "agent/add-file",
-        "symbol/add-file",
-        "ADD_FILE",
-        "add-file",
-        params,
-        args.mutation,
-        args.runtime,
+fn execute_agent_add_file(_args: AgentAddFileArgs) -> AgentEnvelope {
+    error_envelope(
+        "agent/add-file".to_string(),
+        None,
+        agent_error(
+            "KAST_VERIFIED_ADD_FILE_WORKFLOW_REQUIRED",
+            "Use `kast change plan add-file --file ...`, then approve the durable plan with `kast change apply --plan-id ...`.",
+        ),
     )
 }
 

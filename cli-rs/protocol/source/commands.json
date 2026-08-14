@@ -36,7 +36,6 @@
       "raw/diagnostics",
       "raw/rename",
       "raw/plan-replacement",
-      "raw/plan-add-file",
       "raw/exact-file-image-cas",
       "raw/exact-file-observation",
       "raw/inspect-mutation-scratch",
@@ -2009,31 +2008,6 @@
       "notes": [
         "The result is non-mutating and includes exact compiler proof, one source-file hash, and one replacement edit.",
         "Only Kotlin function and property declarations with equal compiler-observable signatures are supported."
-      ]
-    },
-    "raw/plan-add-file": {
-      "method": "raw/plan-add-file",
-      "category": "raw",
-      "summary": "Plan a compiler-proven Kotlin source file addition",
-      "dataSource": "backend",
-      "request": {
-        "fields": {
-          "targetPath": {
-            "type": "string"
-          },
-          "proposedContent": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "targetPath",
-          "proposedContent"
-        ]
-      },
-      "responseType": "AddFilePlanResult",
-      "notes": [
-        "The result is non-mutating and proves the exact target is absent.",
-        "The result binds canonical source ownership, collision and rebinding coverage, compiler occurrences, and the exact UTF-8 postimage."
       ]
     },
     "raw/exact-file-image-cas": {

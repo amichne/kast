@@ -11,12 +11,11 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use support::{
     api_schema_version, kast_at, scripted_json_rpc_error,
-    scripted_json_rpc_error_with_retained_artifact, spawn_gated_foreign_prepared_scratch_backend,
+    scripted_json_rpc_error_with_retained_artifact,
     spawn_gated_mutating_indexer_backend_with_file_write,
-    spawn_gated_prepared_scratch_crash_backend, spawn_gated_quarantine_scratch_crash_backend,
-    spawn_lease_only_mutating_indexer_backend, spawn_scripted_indexer_backend,
-    spawn_scripted_indexer_backend_for_invocations, spawn_scripted_mutating_indexer_backend,
-    spawn_scripted_mutating_indexer_backend_with_file_write, workspace_database_path_for_test,
+    spawn_gated_quarantine_scratch_crash_backend, spawn_lease_only_mutating_indexer_backend,
+    spawn_scripted_indexer_backend, spawn_scripted_indexer_backend_for_invocations,
+    spawn_scripted_mutating_indexer_backend, workspace_database_path_for_test,
     workspace_files::WorkspaceIndexFixture, write_active_kast_for_test,
 };
 

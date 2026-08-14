@@ -107,12 +107,8 @@ fn public_recover_restores_declared_quarantine_scratch_after_cas_is_sigkilled() 
         )
     }));
 }
-
-#[cfg(unix)]
 #[test]
-fn public_recover_rejects_wrong_bytes_at_a_journal_owned_scratch_path() {
-    use std::os::unix::process::ExitStatusExt;
-
+fn public_recover_preserves_native_reconciliation_until_server_reports_terminal_rollback() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
@@ -121,7 +117,7 @@ fn public_recover_rejects_wrong_bytes_at_a_journal_owned_scratch_path() {
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = workspace.join("src/main/kotlin/ForeignScratch.kt");
-    let content = b"class ForeignScratch\n";
+    let content = b"package sample\nclass Added\n";
     let binary = write_active_kast_for_test(&home, &config_home);
     let plan_id = plan_add_file(
         &binary,
@@ -131,81 +127,69 @@ fn public_recover_rejects_wrong_bytes_at_a_journal_owned_scratch_path() {
         "src/main/kotlin/ForeignScratch.kt",
         std::str::from_utf8(content).expect("Kotlin source"),
     );
-    let entered = fixture.path().join("foreign-scratch.entered");
-    let release = fixture.path().join("foreign-scratch.release");
-    let backend = spawn_gated_foreign_prepared_scratch_backend(
+    let pending = verified_add_file_recovery_required_with_failure(
+        &target,
+        content,
+        "SOURCE_APPLICATION",
+        "SOURCE_APPLICATION_FAILED",
+    );
+    let reconciliation = verified_add_file_reconciliation_required(
+        &target,
+        content,
+        "SOURCE_APPLICATION",
+        "SOURCE_APPLICATION_FAILED",
+    );
+    let rolled_back = verified_add_file_rolled_back(
+        &target,
+        content,
+        "SOURCE_APPLICATION",
+        "SOURCE_APPLICATION_FAILED",
+    );
+    let backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
-        &fixture.path().join("foreign-scratch.sock"),
-        &entered,
-        &release,
-        successful_verified_add_file_script(&target, content),
+        &fixture.path().join("foreign-native-recovery.sock"),
+        vec![
+            ("change/apply-add-file", pending.clone()),
+            ("change/apply-add-file", reconciliation.clone()),
+            ("change/apply-add-file", rolled_back.clone()),
+        ],
     );
-    let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
+    let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "apply", "--plan-id", &plan_id])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("spawn foreign-scratch apply");
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    while !entered.is_file() && std::time::Instant::now() < deadline {
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    }
-    assert!(
-        entered.is_file(),
-        "backend retained a declared scratch role"
-    );
-    let scratch = std::fs::read_to_string(&entered).expect("foreign scratch path");
-    let scratch = Path::new(scratch.trim()).to_path_buf();
-    let kill_result = unsafe { libc::kill(apply.id() as i32, libc::SIGKILL) };
-    assert_eq!(kill_result, 0, "SIGKILL foreign-scratch apply");
-    let killed = apply
-        .wait_with_output()
-        .expect("wait for foreign-scratch apply");
-    assert_eq!(killed.status.signal(), Some(libc::SIGKILL), "{killed:?}");
-    std::fs::write(&release, "release\n").expect("release foreign-scratch backend");
-    backend.join().expect("foreign-scratch backend");
+        .output()
+        .expect("native recovery required");
+    assert_eq!(applied.status.code(), Some(1), "{applied:?}");
+    assert_eq!(decode(&applied), pending);
+
+    let blocked = installed_public_kast(&binary, &home, &config_home, &workspace)
+        .args(["change", "recover", "--recovery-id", &plan_id])
+        .output()
+        .expect("retain server reconciliation result");
+    assert_eq!(blocked.status.code(), Some(1), "{blocked:?}");
+    assert_eq!(decode(&blocked), reconciliation);
     assert!(
         !target.exists(),
-        "foreign scratch never authorizes a source write"
-    );
-    assert_eq!(
-        std::fs::read(&scratch).expect("foreign scratch retained"),
-        b"foreign scratch image"
+        "native reconciliation never authorizes a client write"
     );
 
-    let shutdown = fixture.path().join("foreign-scratch-recover.shutdown");
-    let recover_backend = spawn_lease_only_mutating_indexer_backend(
-        &home,
-        &config_home,
-        &workspace,
-        &fixture.path().join("foreign-scratch-recover.sock"),
-        &shutdown,
-    );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
-        .expect("recover foreign scratch");
+        .expect("server-completed reconciled recovery");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
-    assert_eq!(decode(&recovered)["outcome"], "RECOVERY_REQUIRED");
-    assert!(
-        !target.exists(),
-        "wrong-hash owned scratch remains write-free"
+    assert_eq!(decode(&recovered), rolled_back);
+    assert_eq!(
+        backend
+            .join()
+            .expect("foreign native recovery backend")
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        3,
     );
-    assert!(scratch.is_file(), "wrong-hash scratch is not consumed");
-    std::fs::write(&shutdown, "stop\n").expect("stop foreign-scratch recovery backend");
-    let requests = recover_backend
-        .join()
-        .expect("foreign-scratch recovery backend");
-    assert!(requests.iter().all(|request| {
-        !matches!(
-            request["method"].as_str(),
-            Some("raw/apply-edits" | "raw/exact-file-image-cas" | "raw/recover-mutation-scratch")
-        )
-    }));
 }
-
 #[cfg(unix)]
 fn assert_reverse_quarantine_only_recovery(case: &str, preimage: &[u8]) {
     use std::os::unix::process::ExitStatusExt;

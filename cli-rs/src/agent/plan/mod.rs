@@ -1,11 +1,10 @@
 use crate::agent::{
     AgentAddDeclarationAuthority, AgentAddDeclarationPlanResult, AgentAddFileAuthority,
-    AgentAddFilePlanResult, AgentExactByteImage, AgentExactFileImage,
-    AgentExactFileImageCasRequest, AgentExactFileImageCasResponse,
-    AgentMutationPostconditionAuthority, AgentMutationPostconditionEvidence,
-    AgentMutationScratchSet, AgentRenameAuthority, AgentRenamePreview, AgentReplacementAuthority,
-    AgentReplacementPlanResult, BACKEND_RECOVERY_DETAILS_INVALID, LeasedRawOperation,
-    execute_leased_raw_value,
+    AgentExactByteImage, AgentExactFileImage, AgentExactFileImageCasRequest,
+    AgentExactFileImageCasResponse, AgentMutationPostconditionAuthority,
+    AgentMutationPostconditionEvidence, AgentMutationScratchSet, AgentRenameAuthority,
+    AgentRenamePreview, AgentReplacementAuthority, AgentReplacementPlanResult,
+    BACKEND_RECOVERY_DETAILS_INVALID, LeasedRawOperation, execute_leased_raw_value,
 };
 use crate::agent_adapter;
 use crate::cli::{

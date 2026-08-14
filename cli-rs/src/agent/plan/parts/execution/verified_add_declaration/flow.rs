@@ -6,6 +6,9 @@ fn run_apply_typed(
         crate::agent::public_protocol::PlanId::Legacy(plan_id) => {
             run_legacy_apply(plan_id, output_format)
         }
+        crate::agent::public_protocol::PlanId::VerifiedAddFile(plan_id) => {
+            run_verified_add_file_apply(plan_id, output_format)
+        }
         crate::agent::public_protocol::PlanId::VerifiedAddDeclaration(plan_id) => {
             run_verified_add_declaration_apply(plan_id, output_format)
         }

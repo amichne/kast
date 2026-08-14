@@ -87,14 +87,6 @@ internal suspend fun RpcMethodRouter.dispatchRawMethod(
             },
         ),
     )
-    "raw/plan-add-file" -> encode(
-        AddFilePlanResult.serializer(),
-        backend.planAddFile(
-            decodeParams(AddFilePlanQuery.serializer(), params).parsed().also {
-                requireMutationCapability(MutationCapability.PLAN_ADD_FILE)
-            },
-        ),
-    )
     "raw/verify-mutation-postcondition" -> encode(
         MutationPostconditionResult.serializer(),
         backend.verifyMutationPostcondition(

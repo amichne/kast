@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
 import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
+import io.github.amichne.kast.server.change.VerifiedAddFileBinding
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import java.nio.file.Path
@@ -26,6 +27,7 @@ class AnalysisServer(
         PublicSymbolReadBinding.LegacyAnalysisBackend,
     private val verifiedAddDeclarations: VerifiedAddDeclarationBinding =
         VerifiedAddDeclarationBinding.Unavailable,
+    private val verifiedAddFiles: VerifiedAddFileBinding = VerifiedAddFileBinding.Unavailable,
 ) {
     fun start(): RunningAnalysisServer {
         val capabilities = runBlocking {
@@ -36,6 +38,7 @@ class AnalysisServer(
             config,
             publicSymbolReads,
             verifiedAddDeclarations,
+            verifiedAddFiles,
         )
         var transportServer: LocalRpcServer? = null
         var descriptor: ServerInstanceDescriptor? = null

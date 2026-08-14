@@ -67,7 +67,12 @@ fn run_recover_typed(
     recovery_id: crate::agent::public_protocol::RecoveryId,
     output_format: OutputFormat,
 ) -> Result<i32> {
-    let recovery_id = recovery_id.uuid();
+    let recovery_id = match recovery_id {
+        crate::agent::public_protocol::RecoveryId::VerifiedAddFile(recovery_id) => {
+            return run_verified_add_file_recover(recovery_id, output_format);
+        }
+        crate::agent::public_protocol::RecoveryId::Legacy(recovery_id) => recovery_id,
+    };
     let paths = PlanPaths::new(recovery_id);
     let _operation_lock = PlanOperationLock::acquire(&paths.lock)?;
     let mut plan = read_plan(&paths.plan, recovery_id)?;

@@ -10,45 +10,46 @@ import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
-import kotlin.io.path.readText
 
 class AnalysisDispatcherAddMutationTest : AnalysisDispatcherTestSupport() {
     @Test
-    fun `symbol add file dispatches file creation and diagnostics`() {
+    fun `symbol add file is retired before file creation`() {
         FakeAnalysisBackend.sample(tempDir)
         val targetFile = tempDir.resolve("src").resolve("Added.kt")
         val contentFile = tempDir.resolve("added-content.kt")
         Files.writeString(contentFile, "package sample\n\nclass Added\n")
 
-        val result = dispatchSuccess<KastScopeMutationResponse>(
-            method = "symbol/add-file",
-            params = json.encodeToJsonElement(
-                KastAddFileRequest.serializer(),
-                KastAddFileRequest(
-                    workspaceRoot = tempDir.toString(),
-                    filePath = targetFile.toString(),
-                    contentFile = contentFile.toString(),
+        val raw = runBlocking {
+            dispatcher().dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/add-file",
+                    params = json.encodeToJsonElement(
+                        KastAddFileRequest.serializer(),
+                        KastAddFileRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = targetFile.toString(),
+                            contentFile = contentFile.toString(),
+                        ),
+                    ),
                 ),
-            ),
-        )
+            )
+        }
+        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
 
-        val success = result as KastScopeMutationSuccessResponse
-        assertEquals(KastScopeMutationOperation.ADD_FILE, success.operation)
-        assertEquals(true, success.applied)
-        assertEquals(1, success.editCount)
-        assertEquals(listOf(targetFile.toString()), success.createdFiles)
-        assertEquals("package sample\n\nclass Added\n", targetFile.readText())
+        assertEquals(-32601, error.error.code)
+        assertFalse(Files.exists(targetFile))
     }
 
     @Test
-    fun `symbol add file refreshes semantic admission before optimization and diagnostics`() {
+    fun `symbol add file is retired before refresh optimization and diagnostics`() {
         val backend = RecordingMutationBackend(FakeAnalysisBackend.sample(tempDir))
         val targetFile = tempDir.resolve("src").resolve("Added.kt")
         val contentFile = tempDir.resolve("added-content.kt")
         Files.writeString(contentFile, "package sample\n\nclass Added\n")
         val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
 
-        runBlocking {
+        val raw = runBlocking {
             dispatcher.dispatch(
                 JsonRpcRequest(
                     id = JsonPrimitive(1),
@@ -64,15 +65,14 @@ class AnalysisDispatcherAddMutationTest : AnalysisDispatcherTestSupport() {
                 ),
             )
         }
+        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
 
-        assertEquals(
-            listOf("apply", "refresh", "optimize", "diagnostics"),
-            backend.operations,
-        )
+        assertEquals(-32601, error.error.code)
+        assertEquals(emptyList<String>(), backend.operations)
     }
 
     @Test
-    fun `symbol add file fails closed when semantic admission remains incomplete`() {
+    fun `symbol add file is retired before incomplete semantic admission`() {
         val backend = RecordingMutationBackend(
             delegate = FakeAnalysisBackend.sample(tempDir),
             incompleteRefresh = true,
@@ -97,20 +97,15 @@ class AnalysisDispatcherAddMutationTest : AnalysisDispatcherTestSupport() {
                 ),
             )
         }
-        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
-        val result = json.decodeFromJsonElement(KastScopeMutationResponse.serializer(), response.result)
+        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
 
-        val success = result as KastScopeMutationSuccessResponse
-        assertFalse(success.ok)
-        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, success.diagnostics.semanticOutcome)
-        assertEquals(1, success.diagnostics.requestedFileCount)
-        assertEquals(0, success.diagnostics.analyzedFileCount)
-        assertEquals(1, success.diagnostics.skippedFileCount)
-        assertEquals(listOf("apply", "refresh"), backend.operations)
+        assertEquals(-32601, error.error.code)
+        assertEquals(emptyList<String>(), backend.operations)
+        assertFalse(Files.exists(targetFile))
     }
 
     @Test
-    fun `symbol add file preflights refresh capability before creating the file`() {
+    fun `symbol add file is retired before refresh capability preflight`() {
         val backend = MissingRefreshCapabilityBackend(FakeAnalysisBackend.sample(tempDir))
         val targetFile = tempDir.resolve("src").resolve("NoRefresh.kt")
         val contentFile = tempDir.resolve("no-refresh-content.kt")
@@ -135,7 +130,7 @@ class AnalysisDispatcherAddMutationTest : AnalysisDispatcherTestSupport() {
         }
         val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
 
-        assertEquals("CAPABILITY_NOT_SUPPORTED", error.error.data?.code)
+        assertEquals(-32601, error.error.code)
         assertEquals(0, backend.applyCalls)
         assertFalse(Files.exists(targetFile))
     }

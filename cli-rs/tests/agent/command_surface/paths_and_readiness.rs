@@ -26,7 +26,7 @@ fn relative_file_target_requires_explicit_workspace_root() {
 
     assert!(!plan.status.success(), "{document:#}");
     assert_eq!(
-        document["error"]["code"], "AGENT_RELATIVE_FILE_REQUIRES_WORKSPACE",
+        document["error"]["code"], "KAST_VERIFIED_ADD_FILE_WORKFLOW_REQUIRED",
         "{document:#}",
     );
 }

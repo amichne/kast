@@ -313,7 +313,7 @@
         }
       ],
       "methods": [
-        "raw/plan-add-file"
+        "change/plan-add-file"
       ],
       "operation": "change.plan.add-file",
       "requestType": "changePlanAddFile"
@@ -353,6 +353,7 @@
         }
       ],
       "methods": [
+        "change/apply-add-file",
         "change/apply-add-declaration",
         "raw/apply-edits",
         "raw/verify-mutation-postcondition"
@@ -368,6 +369,7 @@
         }
       ],
       "methods": [
+        "change/apply-add-file",
         "raw/inspect-mutation-scratch",
         "raw/recover-mutation-scratch"
       ],

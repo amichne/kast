@@ -8,11 +8,6 @@ pub(super) fn unified_raw_result(
     let method = request["method"].as_str()?;
     let params = &request["params"];
     match method {
-        "raw/plan-add-file" => {
-            let target = Path::new(params["targetPath"].as_str().expect("add-file target"));
-            let proposed = params["proposedContent"].as_str().expect("add-file content");
-            Some(unified_add_file_plan(workspace, target, proposed))
-        }
         "raw/exact-file-observation" => Some(unified_exact_observation(
             workspace,
             params["filePath"].as_str().expect("observer path"),

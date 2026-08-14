@@ -25,6 +25,7 @@ import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclaratio
 import io.github.amichne.kast.change.verify.intellij.IntellijPublishedWorkspaceGenerationAuthority
 import io.github.amichne.kast.idea.backend.mutation.liveAddDeclarationIntellijRuntimeAuthority
 import io.github.amichne.kast.idea.backend.mutation.verifiedAddDeclarationOperations
+import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileOperations
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -32,6 +33,7 @@ import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
+import io.github.amichne.kast.server.change.VerifiedAddFileBinding
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
@@ -270,6 +272,11 @@ object IndexerServerRuntime {
                     runtimeCapabilityLeases = runtimeCapabilityLeases,
                 ),
                 publicSymbolReads = startedPluginBackend.nativePublicSymbolBinding(),
+                verifiedAddFiles = VerifiedAddFileBinding.Native(
+                    startedPluginBackend.verifiedAddFileOperations(
+                        workspaceRoot = workspaceIdentity.workspaceRootPath,
+                    ),
+                ),
                 verifiedAddDeclarations = VerifiedAddDeclarationBinding.Native(
                     startedPluginBackend.verifiedAddDeclarationOperations(
                         workspaceRoot = workspaceIdentity.workspaceRootPath,

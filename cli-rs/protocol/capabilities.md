@@ -384,7 +384,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        11 operations for verified mutation planning, application, observation, recovery, and refresh.
+        10 operations for verified mutation planning, application, observation, recovery, and refresh.
 
     ??? info "raw/rename — Plan a symbol rename (dry-run by default)"
 
@@ -426,25 +426,6 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin edit: TextEdit` | Single non-mutating edit that replaces the exact source declaration. |
             | `#!kotlin proof: ExactReplacementProof` | Required compiler-backed proof for the replacement plan. |
             | `#!kotlin fileImages: List<ExactFileImage>` | Exact immutable preimage and postimage bytes for the replacement file. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-
-    ??? info "raw/plan-add-file — Plan a compiler-proven Kotlin source file addition"
-
-        **Capability** &nbsp;·&nbsp; `PLAN_ADD_FILE`
-
-        === "Input: AddFilePlanQuery"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin targetPath: AdditionTargetPath` | Normalized absolute .kt path for the absent target. |
-            | `#!kotlin proposedContent: String` | Complete inline Kotlin source proposed for the new file. |
-        === "Output: AddFilePlanResult"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin proposedContent: String` | Exact proposed Kotlin source content. |
-            | `#!kotlin postimage: ExactByteImage` | Exact UTF-8 postimage authorized for the absent target. |
-            | `#!kotlin proof: ExactAddFileProof` | Complete compiler-backed add-file proof. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "raw/verify-mutation-postcondition — Verify one exact mutation postcondition"

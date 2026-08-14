@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn dangling_recovery_namespace_entry_is_rejected_without_overwrite() {
+fn occupied_verified_add_file_plan_namespace_is_rejected_without_overwrite() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
@@ -9,56 +9,37 @@ fn dangling_recovery_namespace_entry_is_rejected_without_overwrite() {
     std::fs::create_dir_all(workspace.join("src/main/kotlin")).expect("source root");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
-    let target = workspace.join("src/main/kotlin/DanglingRecovery.kt");
+    let target = workspace.join("src/main/kotlin/DanglingPlan.kt");
+    let content = b"package sample\nclass Added\n";
+    let plan_id = verified_add_file_plan_id(&target, content);
+    let plan_directory = home.join(".local/share/kast/state/agent-plans");
+    std::fs::create_dir_all(&plan_directory).expect("plan directory");
+    let plan_path = plan_directory.join(format!("{plan_id}.json"));
+    let dangling_target = fixture.path().join("missing-plan.json");
+    std::os::unix::fs::symlink(&dangling_target, &plan_path).expect("dangling plan link");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let plan_id = plan_add_file(
+
+    let planned = change_add_file(
         &binary,
         &home,
         &config_home,
         &workspace,
-        "src/main/kotlin/DanglingRecovery.kt",
-        "package sample\nclass DanglingRecovery\n",
+        "src/main/kotlin/DanglingPlan.kt",
+        std::str::from_utf8(content).expect("Kotlin content"),
     );
-    let journal_path = home
-        .join(".local/share/kast/state/agent-plans")
-        .join(format!("{plan_id}.recovery.json"));
-    let dangling_target = fixture.path().join("missing-recovery.json");
-    std::os::unix::fs::symlink(&dangling_target, &journal_path).expect("dangling recovery link");
-    let shutdown = fixture.path().join("dangling-recovery.shutdown");
-    let backend = spawn_lease_only_mutating_indexer_backend(
-        &home,
-        &config_home,
-        &workspace,
-        &fixture.path().join("dangling-recovery.sock"),
-        &shutdown,
-    );
-
-    let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["change", "apply", "--plan-id", &plan_id])
-        .output()
-        .expect("apply with occupied recovery namespace");
-    std::fs::write(&shutdown, "stop\n").expect("stop dangling-recovery backend");
-    backend.join().expect("dangling-recovery backend");
-
-    assert_eq!(apply.status.code(), Some(1), "{apply:?}");
-    let failure = decode(&apply);
-    assert_eq!(failure["error"], "KAST_PLAN_INVALID", "{failure:#}");
+    assert_eq!(planned.status.code(), Some(1), "{planned:?}");
     assert!(
-        std::fs::symlink_metadata(&journal_path)
-            .expect("recovery namespace entry retained")
+        std::fs::symlink_metadata(&plan_path)
+            .expect("plan namespace entry retained")
             .file_type()
             .is_symlink(),
-        "the recovery namespace entry must not be overwritten",
     );
-    assert!(
-        !dangling_target.exists(),
-        "the dangling target remains absent"
-    );
-    assert!(!target.exists(), "no source write is allowed");
+    assert!(!dangling_target.exists());
+    assert!(!target.exists());
 }
 
 #[test]
-fn post_rename_directory_sync_failure_requires_recovery_and_retains_release_failure() {
+fn verified_add_file_recovery_state_is_private_durable_and_replayable() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
@@ -66,59 +47,80 @@ fn post_rename_directory_sync_failure_requires_recovery_and_retains_release_fail
     std::fs::create_dir_all(workspace.join("src/main/kotlin")).expect("source root");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
-    let target = workspace.join("src/main/kotlin/JournalDurability.kt");
-    let content = "package sample\nclass JournalDurability\n";
+    let target = workspace.join("src/main/kotlin/DurableRecovery.kt");
+    let content = b"package sample\nclass Added\n";
     let binary = write_active_kast_for_test(&home, &config_home);
     let plan_id = plan_add_file(
         &binary,
         &home,
         &config_home,
         &workspace,
-        "src/main/kotlin/JournalDurability.kt",
-        content,
+        "src/main/kotlin/DurableRecovery.kt",
+        std::str::from_utf8(content).expect("Kotlin content"),
     );
-    let shutdown = fixture.path().join("journal-durability.shutdown");
-    let backend = spawn_lease_only_mutating_indexer_backend(
+    let pending = verified_add_file_recovery_required(&target, content, "WORKSPACE_PUBLICATION");
+    let apply_backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
-        &fixture.path().join("journal-durability.sock"),
-        &shutdown,
+        &fixture.path().join("durable-recovery-apply.sock"),
+        vec![("change/apply-add-file", pending.clone())],
     );
-
-    let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .env(
-            "KAST_TEST_MUTATION_FAILURE_POINT",
-            "RECOVERY_JOURNAL_DIRECTORY_SYNC",
-        )
-        .env("KAST_TEST_MUTATION_LEASE_RELEASE_FAILURE", "1")
+    let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "apply", "--plan-id", &plan_id])
         .output()
-        .expect("post-rename directory-sync failure");
-    std::fs::write(&shutdown, "stop\n").expect("stop journal-durability backend");
-    backend.join().expect("journal-durability backend");
+        .expect("recovery-required apply");
+    assert_eq!(applied.status.code(), Some(1), "{applied:?}");
+    assert_eq!(decode(&applied), pending);
+    apply_backend.join().expect("recovery-required backend");
 
-    assert_eq!(apply.status.code(), Some(1), "{apply:?}");
-    let receipt = decode(&apply);
-    assert_eq!(receipt["outcome"], "RECOVERY_REQUIRED", "{receipt:#}");
-    assert_eq!(receipt["recoveryId"], plan_id, "{receipt:#}");
-    assert!(
-        receipt["reason"].as_str().is_some_and(|reason| {
-            reason.contains(
-                "Recovery journal directory sync failed at the deterministic post-rename test seam.",
-            ) && reason.contains("Lease release also failed")
-        }),
-        "{receipt:#}",
-    );
-    assert!(!target.exists(), "no source write is allowed");
-    let journal_path = home
+    let plan_path = home
         .join(".local/share/kast/state/agent-plans")
-        .join(format!("{plan_id}.recovery.json"));
-    let metadata = std::fs::symlink_metadata(&journal_path).expect("recovery namespace entry");
-    assert!(metadata.is_file(), "the renamed recovery journal remains");
-    let journal: Value = serde_json::from_slice(
-        &std::fs::read(&journal_path).expect("read renamed recovery journal"),
-    )
-    .expect("valid recovery journal");
-    assert_eq!(journal["state"]["phase"], "PREPARED", "{journal:#}");
+        .join(format!("{plan_id}.json"));
+    assert_eq!(
+        std::fs::metadata(&plan_path)
+            .expect("durable plan")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o600,
+    );
+    let stored: Value =
+        serde_json::from_slice(&std::fs::read(&plan_path).expect("durable recovery state"))
+            .expect("durable recovery JSON");
+    assert_eq!(stored["state"]["state"], "RECOVERY_REQUIRED");
+    assert_eq!(stored["state"]["result"], pending);
+
+    let rolled_back = verified_add_file_rolled_back(
+        &target,
+        content,
+        "WORKSPACE_PUBLICATION",
+        "PUBLICATION_FAILED",
+    );
+    let recover_backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("durable-recovery-recover.sock"),
+        vec![("change/apply-add-file", rolled_back.clone())],
+    );
+    let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
+        .args(["change", "recover", "--recovery-id", &plan_id])
+        .output()
+        .expect("durable recovery");
+    assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
+    assert_eq!(decode(&recovered), rolled_back);
+    recover_backend.join().expect("durable recovery backend");
+
+    let terminal: Value =
+        serde_json::from_slice(&std::fs::read(&plan_path).expect("terminal state"))
+            .expect("terminal JSON");
+    assert_eq!(terminal["state"]["state"], "TERMINAL");
+    assert_eq!(terminal["state"]["result"], rolled_back);
+    let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
+        .args(["change", "recover", "--recovery-id", &plan_id])
+        .output()
+        .expect("durable terminal replay");
+    assert_eq!(replay.status.code(), Some(1), "{replay:?}");
+    assert_eq!(decode(&replay), rolled_back);
 }

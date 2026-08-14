@@ -19,7 +19,7 @@ use domain::{
 };
 pub(crate) use domain::{
     ExternalFailureId, PlanId, RecoveryId, SymbolSelector, VerifiedAddDeclarationPlanId,
-    WorkspaceKotlinPath,
+    VerifiedAddFilePlanId, VerifiedAddFileRecoveryId, WorkspaceKotlinPath,
 };
 pub(crate) use protocol::OperationStatus;
 pub(crate) use protocol::PUBLIC_PROTOCOL_SCHEMA_VERSION;

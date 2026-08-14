@@ -7,7 +7,6 @@ pub(super) fn unified_mutation_capabilities() -> Vec<&'static str> {
         "FILE_OPERATIONS",
         "EXACT_FILE_OBSERVATION",
         "EXACT_FILE_IMAGE_CAS",
-        "PLAN_ADD_FILE",
         "PLAN_REPLACEMENT",
         "VERIFY_MUTATION_POSTCONDITION",
         "MUTATION_SCRATCH_RECOVERY",
@@ -23,73 +22,6 @@ pub(super) fn unified_source_sha256(bytes: &[u8]) -> String {
 pub(super) fn unified_base64(bytes: &[u8]) -> String {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     STANDARD.encode(bytes)
-}
-
-pub(super) fn unified_add_file_plan(
-    workspace: &Path,
-    target: &Path,
-    proposed: &str,
-) -> serde_json::Value {
-    let sha256 = unified_source_sha256(proposed.as_bytes());
-    serde_json::json!({
-        "proposedContent": proposed,
-        "postimage": {
-            "contentBase64": unified_base64(proposed.as_bytes()),
-            "sha256": sha256,
-        },
-        "proof": {
-            "targetPath": target,
-            "targetState": "ABSENT",
-            "owner": {
-                "sourceRoot": target.parent().expect("add-file source root"),
-                "ideaModuleName": "root.main",
-                "gradleBuildRoot": workspace,
-                "gradleProjectPath": ":",
-                "sourceSetName": "main",
-            },
-            "packageIdentity": {"type": "ROOT"},
-            "declarations": [{
-                "packageIdentity": {"type": "ROOT"},
-                "name": "Added",
-                "kind": "CLASS",
-                "relativeRange": {
-                    "startOffset": 0,
-                    "endOffset": proposed.encode_utf16().count(),
-                },
-                "collisionSignature": "1".repeat(64),
-            }],
-            "context": {
-                "requiredGeneration": 7,
-                "projectModelFingerprint": "2".repeat(64),
-                "classpathFingerprint": "3".repeat(64),
-                "contextFileHashes": [],
-            },
-            "collisionEvidence": {
-                "declarationCardinality": 1,
-                "dimensions": [
-                    "EXACT_DECLARATION_IDENTITIES",
-                    "COMPLETE_OWNING_SOURCE_SCOPE",
-                    "COMPLETE_DEPENDENT_SCOPE",
-                    "NO_COMPILER_COLLISION",
-                ],
-            },
-            "outboundEvidence": {"cardinality": 0, "occurrences": []},
-            "rebindingBaseline": {
-                "cardinality": 0,
-                "dimensions": [
-                    "EXACT_OCCURRENCE_CARDINALITY",
-                    "COMPLETE_DEPENDENT_SCOPE",
-                    "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
-                    "COMPLETE_JAVA_LOOKUP_SCOPE",
-                    "EVERY_CURRENT_BINDING_CAPTURED",
-                    "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE",
-                ],
-                "occurrences": [],
-            },
-            "postimageSha256": sha256,
-        },
-        "schemaVersion": 7,
-    })
 }
 
 pub(super) fn unified_exact_observation(

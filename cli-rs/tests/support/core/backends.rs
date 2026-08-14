@@ -10,6 +10,9 @@ pub(crate) use unified_dispatch::*;
 #[path = "backends/scripted_mutation.rs"]
 mod scripted_mutation;
 pub(crate) use scripted_mutation::*;
+#[path = "backends/verified_add_file.rs"]
+mod verified_add_file;
+pub(crate) use verified_add_file::*;
 #[path = "backends/runtime_backend.rs"]
 mod runtime_backend;
 pub(crate) use runtime_backend::*;

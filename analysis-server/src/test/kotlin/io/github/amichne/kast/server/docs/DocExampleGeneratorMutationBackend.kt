@@ -53,12 +53,6 @@ internal class DocExampleGeneratorMutationBackend(
         return responses.replacement
     }
 
-    override suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult {
-        require(query.targetPath == responses.addFile.proof.targetPath)
-        require(query.proposedContent.value == responses.addFile.proposedContent)
-        return responses.addFile
-    }
-
     override suspend fun verifyMutationPostcondition(
         query: ParsedMutationPostconditionQuery,
     ): MutationPostconditionResult {
@@ -126,7 +120,6 @@ private fun io.github.amichne.kast.api.validation.ParsedMutationScratchSet.absen
 
 private val DOCUMENTED_MUTATION_CAPABILITIES = setOf(
     MutationCapability.PLAN_REPLACEMENT,
-    MutationCapability.PLAN_ADD_FILE,
     MutationCapability.VERIFY_MUTATION_POSTCONDITION,
     MutationCapability.EXACT_FILE_OBSERVATION,
     MutationCapability.EXACT_FILE_IMAGE_CAS,

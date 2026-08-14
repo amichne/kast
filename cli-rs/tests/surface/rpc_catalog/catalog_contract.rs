@@ -70,16 +70,33 @@ fn exact_file_image_cas_catalog_declares_closed_byte_authority() {
 }
 
 #[test]
-fn addition_planner_catalog_retires_raw_add_declaration() {
+fn addition_planner_catalog_retires_raw_addition_planners() {
     let catalog = catalog();
-    let add_file = &catalog["commands"]["raw/plan-add-file"];
-    assert_eq!(add_file["responseType"], "AddFilePlanResult");
-    assert_eq!(
-        add_file["request"]["required"],
-        serde_json::json!(["targetPath", "proposedContent"])
-    );
-
+    assert!(catalog["commands"].get("raw/plan-add-file").is_none());
     assert!(catalog["commands"].get("raw/plan-add-declaration").is_none());
+}
+
+#[test]
+fn public_recover_mapping_declares_the_canonical_add_file_reentry_rpc() {
+    let mappings: Value = serde_json::from_str(include_str!(
+        "../../../protocol/source/public-rpc-mappings.json"
+    ))
+    .expect("public RPC mappings");
+    let recover = mappings["operations"]
+        .as_array()
+        .expect("public operations")
+        .iter()
+        .find(|operation| operation["operation"] == "change.recover")
+        .expect("change.recover mapping");
+
+    assert!(
+        recover["methods"]
+            .as_array()
+            .expect("recover methods")
+            .iter()
+            .any(|method| method == "change/apply-add-file"),
+        "native add-file recovery re-enters its canonical apply RPC",
+    );
 }
 
 fn request_required(request: &Value) -> impl Iterator<Item = &str> {

@@ -17,13 +17,6 @@ internal val verifiedMutationDocsContracts = listOf(
         responseSchema = "ReplacementPlanResult",
     ),
     VerifiedMutationDocsContract(
-        operationId = "planAddFile",
-        method = "raw/plan-add-file",
-        capability = "PLAN_ADD_FILE",
-        requestSchema = "AddFilePlanQuery",
-        responseSchema = "AddFilePlanResult",
-    ),
-    VerifiedMutationDocsContract(
         operationId = "exactFileImageCas",
         method = "raw/exact-file-image-cas",
         capability = "EXACT_FILE_IMAGE_CAS",

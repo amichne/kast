@@ -38,22 +38,6 @@ internal fun mutationOperationDocs(): List<OperationDoc> = listOf(
             errorCodes = listOf("NOT_FOUND", "REPLACEMENT_PROOF_INCOMPLETE"),
         ),
         OperationDoc(
-            operationId = "planAddFile",
-            jsonRpcMethod = "raw/plan-add-file",
-            summary = "Plan a compiler-proven Kotlin source file addition",
-            tag = "mutation",
-            capability = "PLAN_ADD_FILE",
-            requestSchema = "AddFilePlanQuery",
-            responseSchema = "AddFilePlanResult",
-            description = "Plans one Kotlin source file addition without writing. " +
-                "The result proves source ownership, target absence, declarations, bindings, and the exact postimage.",
-            behavioralNotes = listOf(
-                "The target must belong to one proven Kotlin source root and must not exist.",
-                "Collision or rebinding uncertainty fails before any source write.",
-            ),
-            errorCodes = listOf("ADDITION_PROOF_INCOMPLETE", "CONFLICT"),
-        ),
-        OperationDoc(
             operationId = "verifyMutationPostcondition",
             jsonRpcMethod = "raw/verify-mutation-postcondition",
             summary = "Verify one exact mutation postcondition",

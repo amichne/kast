@@ -70,48 +70,6 @@ class AnalysisDispatcherRawMutationPlanningTest : AnalysisDispatcherTestSupport(
     }
 
     @Test
-    fun `addition planners dispatch strict typed plans without writing`() {
-        val delegate = FakeAnalysisBackend.sample(tempDir)
-        val sourceRoot = tempDir.toAbsolutePath().normalize()
-        val addFileTarget = sourceRoot.resolve("RawAdded.kt")
-        val addFileContent = "class RawAdded"
-        val addFileProof = ExactAddFileProof.of(
-            targetPath = AdditionTargetPath.parse(addFileTarget.toString()),
-            owner = additionOwner(sourceRoot),
-            packageIdentity = AdditionKotlinPackage.Root,
-            declarations = listOf(additionDeclaration("RawAdded", 0, addFileContent.length)),
-            context = additionContext(),
-            collisionEvidence = ExactAdditionCollisionEvidence.complete(1),
-            outboundEvidence = ExactAdditionOutboundEvidence.complete(emptyList()),
-            rebindingBaseline = ExactAdditionRebindingBaseline.complete(emptyList()),
-            postimageSha256 = AdditionPostimageSha256.of(FileHashing.sha256(addFileContent.toByteArray())),
-        )
-        val backend = object : AnalysisBackend by delegate {
-            override suspend fun capabilities(): BackendCapabilities = delegate.capabilities().copy(
-                mutationCapabilities = delegate.capabilities().mutationCapabilities +
-                    MutationCapability.PLAN_ADD_FILE,
-            )
-
-            override suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult {
-                assertEquals(addFileTarget.toString(), query.targetPath.value)
-                assertEquals(addFileContent, query.proposedContent.value)
-                return AddFilePlanResult.of(addFileContent, addFileProof)
-            }
-        }
-
-        val addFile = dispatchSuccessWithBackend<AddFilePlanResult>(
-            backend = backend,
-            method = "raw/plan-add-file",
-            params = json.encodeToJsonElement(
-                AddFilePlanQuery.serializer(),
-                AddFilePlanQuery(AdditionTargetPath.parse(addFileTarget.toString()), addFileContent),
-            ),
-        )
-        assertFalse(Files.exists(addFileTarget))
-        assertEquals(addFileProof, addFile.proof)
-    }
-
-    @Test
     fun `replacement plan dispatches through required non-mutating transport`() {
         val delegate = FakeAnalysisBackend.sample(tempDir)
         val file = sampleFile()

@@ -13,6 +13,7 @@ import io.github.amichne.kast.server.PublicSymbolReadBinding
 import io.github.amichne.kast.server.SkillRpcOrchestrator
 import io.github.amichne.kast.server.WorkspaceFilesContinuationService
 import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
+import io.github.amichne.kast.server.change.VerifiedAddFileBinding
 import io.github.amichne.kast.server.mutation.MutationExecutionService
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -28,6 +29,7 @@ internal class RpcMethodRouter(
     internal val config: AnalysisServerConfig,
     internal val publicSymbolReads: PublicSymbolReadBinding,
     internal val verifiedAddDeclarations: VerifiedAddDeclarationBinding,
+    internal val verifiedAddFiles: VerifiedAddFileBinding,
     internal val json: Json,
 ) : Closeable {
     internal val skillRpc = SkillRpcOrchestrator(backend, config, publicSymbolReads, json)
@@ -60,6 +62,7 @@ internal class RpcMethodRouter(
         )
         else -> RpcMethodResult(
             dispatchVerifiedAddDeclarationMethod(method, params)
+            ?: dispatchVerifiedAddFileMethod(method, params)
             ?: dispatchRawMethod(method, params)
             ?: dispatchSkillMethod(method, params)
             ?: throw UnknownRpcMethodException(method),

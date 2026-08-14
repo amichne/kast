@@ -140,7 +140,6 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
                         method,
                         "raw/rename"
                             | "raw/plan-replacement"
-                            | "raw/plan-add-file"
                             | "raw/plan-add-declaration"
                             | "raw/exact-file-observation"
                             | "raw/inspect-mutation-scratch"
@@ -154,7 +153,7 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
                     {
                         unified_session_active = true;
                     }
-                    if method == "raw/apply-edits"
+                    if matches!(method, "raw/apply-edits" | "change/apply-add-file")
                         && let Some((entered_marker, release_marker)) = mutation_gate.take()
                     {
                         std::fs::write(&entered_marker, "entered\n")

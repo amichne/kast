@@ -182,27 +182,18 @@ fn change_persists_a_private_root_bound_plan() {
     );
     let change = decode(&change);
     let plan_id = change["planId"].as_str().expect("plan id");
-    uuid::Uuid::parse_str(plan_id).expect("UUID plan id");
+    assert!(plan_id.starts_with("af-"), "operation-specific plan id");
     assert_eq!(change["operation"], "add-file");
     assert_eq!(
-        change["plan"]["preview"]["proposedContent"],
+        change["preview"]["proposedContent"],
         "package sample\nclass Added\n"
     );
-    assert_eq!(
-        change["plan"]["preview"]["proof"]["packageIdentity"]["type"], "ROOT",
-        "public add-file proof must retain its semantic discriminator"
-    );
-    assert_eq!(
-        change["next"],
-        format!("kast change apply --plan-id {plan_id}"),
-        "{change:#}"
-    );
+    assert_eq!(change["planVersion"], 0);
+    assert_eq!(change["stage"], "AWAITING_APPROVAL");
 
     let plans = home.join(".local/share/kast/state/agent-plans");
     let plan_path = plans.join(format!("{plan_id}.json"));
-    let content_path = plans.join(format!("{plan_id}.content"));
     assert!(plan_path.is_file(), "persisted plan");
-    assert!(content_path.is_file(), "persisted content");
     assert_eq!(
         std::fs::metadata(&plan_path)
             .expect("plan metadata")
@@ -211,27 +202,21 @@ fn change_persists_a_private_root_bound_plan() {
             & 0o777,
         0o600
     );
-    assert_eq!(
-        std::fs::metadata(&content_path)
-            .expect("content metadata")
-            .permissions()
-            .mode()
-            & 0o777,
-        0o600
-    );
     let stored: Value =
         serde_json::from_slice(&std::fs::read(&plan_path).expect("stored add-file authority"))
             .expect("stored add-file JSON");
-    assert_eq!(stored["operation"]["operation"], "add-file");
-    assert!(stored["operation"].get("path").is_none());
+    assert_eq!(stored["schemaVersion"], 1);
+    assert_eq!(stored["planId"], plan_id);
+    assert_eq!(stored["planVersion"], 0);
     assert_eq!(
-        stored["operation"]["authority"]["proof"]["targetState"],
-        "ABSENT"
+        stored["targetPath"],
+        workspace
+            .join("src/main/kotlin/Added.kt")
+            .to_string_lossy()
+            .as_ref()
     );
-    assert_eq!(
-        stored["operation"]["authority"]["postimage"]["contentBase64"],
-        STANDARD_BASE64.encode("package sample\nclass Added\n")
-    );
+    assert_eq!(stored["plannedGeneration"], 7);
+    assert_eq!(stored["state"]["state"], "AWAITING_APPROVAL");
 
     let other = fixture.path().join("other");
     std::fs::create_dir_all(&other).expect("other root");
@@ -243,10 +228,9 @@ fn change_persists_a_private_root_bound_plan() {
     assert_eq!(wrong_root.status.code(), Some(1), "{wrong_root:?}");
     assert_eq!(decode(&wrong_root)["error"], "KAST_PLAN_WORKSPACE_MISMATCH");
     assert!(plan_path.is_file(), "failed apply keeps plan");
-    assert!(content_path.is_file(), "failed apply keeps content");
 
     let mut tampered = stored;
-    tampered["operation"]["authority"]["proof"]["postimageSha256"] = json!("0".repeat(64));
+    tampered["planId"] = json!(format!("af-{}", "0".repeat(64)));
     let mut encoded = serde_json::to_vec(&tampered).expect("tampered add-file plan");
     encoded.push(b'\n');
     std::fs::write(&plan_path, encoded).expect("write tampered add-file plan");
@@ -353,3 +337,5 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
 include!("../../operations/refresh.rs");
 include!("../../operations/focused_refresh.rs");
 include!("verified_add_declaration_binding.rs");
+include!("verified_add_file_binding.rs");
+include!("verified_add_file_authority.rs");

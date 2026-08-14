@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn agent_add_file_preview_rejects_partial_malformed_or_unbound_evidence() {
+fn agent_add_file_apply_cannot_bypass_the_verified_change_workflow() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -11,72 +11,31 @@ fn agent_add_file_preview_rejects_partial_malformed_or_unbound_evidence() {
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = workspace.join("src/main/kotlin/Added.kt");
-    let proposed = "class Added\n";
     let content_file = temp.path().join("Added.kt");
-    std::fs::write(&content_file, proposed).expect("proposed file");
-    let valid = exact_add_file_preview(&workspace, &target, proposed);
-    let mut cases = Vec::new();
+    std::fs::write(&content_file, "class Added\n").expect("proposed file");
 
-    let mut unknown = valid.clone();
-    unknown["proof"]["owner"]["untrusted"] = json!(true);
-    cases.push(("unknown", unknown));
-
-    let mut incomplete = valid.clone();
-    incomplete["proof"]["collisionEvidence"]["dimensions"] = json!([
-        "EXACT_DECLARATION_IDENTITIES",
-        "COMPLETE_OWNING_SOURCE_SCOPE",
-        "COMPLETE_DEPENDENT_SCOPE"
-    ]);
-    cases.push(("incomplete", incomplete));
-
-    let mut image_mismatch = valid.clone();
-    let other = b"class Other\n";
-    image_mismatch["postimage"] = json!({
-        "contentBase64": STANDARD_BASE64.encode(other),
-        "sha256": replacement_sha256(other),
-    });
-    image_mismatch["proof"]["postimageSha256"] = json!(replacement_sha256(other));
-    cases.push(("image-mismatch", image_mismatch));
-
-    let mut path_mismatch = valid.clone();
-    path_mismatch["proof"]["targetPath"] =
-        json!(workspace.join("src/main/kotlin/Other.kt"));
-    cases.push(("path-mismatch", path_mismatch));
-
-    let mut cardinality = valid.clone();
-    cardinality["proof"]["outboundEvidence"]["cardinality"] = json!(1);
-    cases.push(("cardinality", cardinality));
-
-    let mut schema = valid;
-    schema["schemaVersion"] = json!(4);
-    cases.push(("schema", schema));
-
-    for (name, result) in cases {
-        let backend = spawn_scripted_indexer_backend(
-            &home,
-            &config_home,
-            &workspace,
-            &temp.path().join(format!("add-file-{name}.sock")),
-            vec![("raw/plan-add-file", result)],
-        );
-        let output = kast(&home, &config_home)
-            .args([
-                "--output",
-                "json",
-                "agent",
-                "add-file",
-                "--file-path",
-                target.to_str().expect("target"),
-                "--content-file",
-                content_file.to_str().expect("content"),
-                "--workspace-root",
-                workspace.to_str().expect("workspace"),
-            ])
-            .output()
-            .unwrap_or_else(|error| panic!("{name}: {error}"));
-        assert!(!output.status.success(), "{name}: {output:?}");
-        let output: Value = serde_json::from_slice(&output.stdout).expect("error JSON");
-        assert_eq!(output["error"]["code"], "INVALID_ADDITION_PREVIEW", "{name}");
-        backend.join().unwrap_or_else(|_| panic!("{name} backend"));
-    }
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "add-file",
+            "--file-path",
+            target.to_str().expect("target"),
+            "--content-file",
+            content_file.to_str().expect("content"),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--apply",
+            "--idempotency-key",
+            "must-not-bypass",
+        ])
+        .output()
+        .expect("retired add-file apply");
+    assert!(!output.status.success(), "{output:?}");
+    let output: Value = serde_json::from_slice(&output.stdout).expect("error JSON");
+    assert_eq!(
+        output["error"]["code"],
+        "KAST_VERIFIED_ADD_FILE_WORKFLOW_REQUIRED",
+    );
 }

@@ -5,6 +5,7 @@ fn run_legacy_apply(
     let paths = PlanPaths::new(plan_id);
     let _operation_lock = PlanOperationLock::acquire(&paths.lock)?;
     let mut plan = read_plan(&paths.plan, plan_id)?;
+    reject_legacy_add_file_apply(&plan)?;
     reject_legacy_add_declaration_apply(&plan)?;
     plan.set_runtime_output(
         output_format,
@@ -21,7 +22,6 @@ fn run_legacy_apply(
             "This plan already has a durable recovery journal; use `kast change recover --recovery-id <RECOVERY_ID>` before retrying apply.",
         );
     }
-
     let content = load_persisted_plan_content(&plan, &paths)?;
     let lease = OwnedMutationLease::acquire(plan.plan_id, &workspace_root)?;
     let lease_id = lease.id();
