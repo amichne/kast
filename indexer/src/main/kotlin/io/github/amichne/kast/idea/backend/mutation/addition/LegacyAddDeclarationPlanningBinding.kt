@@ -134,8 +134,11 @@ private class LegacyAddDeclarationEvidenceSource(
  *
  * A proven result establishes a detached `AddDeclarationPlanningEvidence` with exact ownership,
  * file images, singleton write set, semantic delta, G0 verification, and canonical compiler JSON.
- * Expected failures are closed by `AddDeclarationPlanningRejection`; raw legacy fields are
- * extracted only at this indexer compatibility boundary.
+ * The semantic lease's `EvidenceGeneration` is the authoritative published generation for the
+ * detached plan; the legacy PSI modification epoch remains preserved inside the canonical compiler
+ * evidence and is not interchangeable with that publication identity. Expected failures are closed
+ * by `AddDeclarationPlanningRejection`; raw legacy fields are extracted only at this indexer
+ * compatibility boundary.
  */
 private fun AddDeclarationPlanResult.toDetachedEvidence(
     intent: AddDeclarationIntent,
@@ -168,7 +171,6 @@ private fun AddDeclarationPlanResult.toDetachedEvidence(
         declarationKind = proof.declaration.kind.toPlanningKind(),
     ).refinedOrNull() ?: return invalidEvidence()
     val verification = AddDeclarationVerificationContract.forGeneration(generation)
-    if (proof.context.requiredGeneration.value != generation.value) return invalidEvidence()
     val contextFiles = proof.context.contextFileHashes.map { file ->
         AddDeclarationCompilerContextFile.admit(file.filePath, file.sha256).refinedOrNull()
             ?: return invalidEvidence()

@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test
 @TestApplication
 internal class AddDeclarationPlanPersistenceBindingTest : ExactAdditionPlanningTestSupport() {
     @Test
-    fun `public plan persists only after the semantic read lease is released`() = runBlocking {
+    fun `public plan persists the published generation after the semantic read lease is released`() = runBlocking {
         ensureProjectReady()
         val target = Path.of(sampleFile.virtualFile.path).toAbsolutePath().normalize()
         val sourceRoot = sourceRoot()
@@ -40,6 +40,7 @@ internal class AddDeclarationPlanPersistenceBindingTest : ExactAdditionPlanningT
         val journal = ObservingJournal(activeReads)
         val backend = backend(
             workspaceRoot = workspaceRoot,
+            psiGeneration = { 47L },
             workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(
                 onReadOpened = activeReads::incrementAndGet,
                 onReadClosed = activeReads::decrementAndGet,
@@ -59,6 +60,8 @@ internal class AddDeclarationPlanPersistenceBindingTest : ExactAdditionPlanningT
 
         assertFalse(journal.observedActiveRead)
         assertEquals(0, activeReads.get())
+        assertEquals(1L, journal.storedPlan?.generation?.value)
+        assertEquals(1L, journal.storedPlan?.compilerContext?.generation?.value)
         assertEquals(result.proof.targetPath.value, journal.storedPlan?.target?.targetPath?.value)
         assertArrayEquals(before, Files.readAllBytes(target))
     }
