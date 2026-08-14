@@ -150,7 +150,10 @@ class SqliteAddDeclarationApplyJournalTest {
             open(database).load(result.planId),
         ).record
 
-        assertEquals(io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage.APPLY_ADMITTED, reopened.stage)
+        assertEquals(
+            io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage.APPLY_ADMITTED,
+            reopened.stage,
+        )
     }
 
     @Test
@@ -174,7 +177,10 @@ class SqliteAddDeclarationApplyJournalTest {
             open(database).load(result.planId),
         ).record
 
-        assertEquals(io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage.APPLIED_UNVERIFIED, reopened.stage)
+        assertEquals(
+            io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage.APPLIED_UNVERIFIED,
+            reopened.stage,
+        )
     }
 
     @Test
@@ -197,6 +203,53 @@ class SqliteAddDeclarationApplyJournalTest {
             io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage.APPLY_ADMITTED,
             reopened.stage,
         )
+    }
+
+    @Test
+    fun `ReviewRegression failed rollback after applied CAS preserves unknown outcome`() {
+        val database = tempDir.resolve("unknown-admission-rollback.db")
+        val journal = open(
+            database,
+            ThrowBeforeRollback(SqliteJournalCommitOperation.APPLY_ADMISSION),
+        )
+        val prepared = prepared(journal)
+        DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """CREATE TRIGGER corrupt_apply_admission_reload
+                        AFTER INSERT ON add_declaration_apply BEGIN
+                        UPDATE add_declaration_plan SET plan_bytes = 'corrupt'
+                        WHERE plan_id = NEW.plan_id; END""",
+                )
+            }
+        }
+
+        val result = journal.beginApply(BeginAddDeclarationApply.admit(prepared).refined())
+
+        assertInstanceOf<BeginAddDeclarationApplyResult.CommitOutcomeUnknown>(result)
+
+        val completionDatabase = tempDir.resolve("unknown-completion-rollback.db")
+        val completionJournal = open(
+            completionDatabase,
+            ThrowBeforeRollback(SqliteJournalCommitOperation.APPLY_COMPLETION),
+        )
+        val admitted = assertInstanceOf<BeginAddDeclarationApplyResult.Begun>(
+            completionJournal.beginApply(BeginAddDeclarationApply.admit(prepared(completionJournal)).refined()),
+        ).record
+        DriverManager.getConnection("jdbc:sqlite:$completionDatabase").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """CREATE TRIGGER corrupt_apply_completion_reload AFTER UPDATE OF stage
+                        ON add_declaration_apply WHEN NEW.stage = 'APPLIED_UNVERIFIED' BEGIN
+                        UPDATE add_declaration_plan SET plan_bytes = 'corrupt'
+                        WHERE plan_id = NEW.plan_id; END""",
+                )
+            }
+        }
+        val completion = completionJournal.completeApply(
+            CompleteAddDeclarationApply.admit(admitted, closed(admitted.plan)).refined(),
+        )
+        assertInstanceOf<CompleteAddDeclarationApplyResult.CommitOutcomeUnknown>(completion)
     }
 
     private fun prepared(journal: SqliteAddDeclarationPlanJournal): RecoveryPreparedAddDeclaration {

@@ -69,19 +69,8 @@ internal fun SqliteJournalConnections.beginApply(
                 statement.executeUpdate()
             }
             val loaded = connection.loadRecord(planId)
-            val result = if (inserted == 1) {
-                BeginAddDeclarationApplyResult.Begun(
-                    (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
-                        ?.record as? ApplyAdmittedAddDeclaration
-                    ?: return@use rollback(
-                        connection,
-                        BeginAddDeclarationApplyResult.Rejected(
-                            AddDeclarationPlanJournalFailure.CorruptRecord,
-                        ),
-                    ),
-                )
-            } else {
-                when (loaded) {
+            if (inserted != 1) {
+                val rejection = when (loaded) {
                     SqliteAddDeclarationPlanRecordLoad.Absent ->
                         BeginAddDeclarationApplyResult.Rejected(
                             AddDeclarationPlanJournalFailure.PlanNotFound(planId),
@@ -101,8 +90,18 @@ internal fun SqliteJournalConnections.beginApply(
                             ),
                         )
                 }
+                return@use rollbackApplyAdmission(connection, planId, rejection)
             }
-            if (inserted != 1) return@use rollback(connection, result)
+            val admitted = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
+                               ?.record as? ApplyAdmittedAddDeclaration
+                           ?: return@use rollbackApplyAdmission(
+                               connection,
+                               planId,
+                               BeginAddDeclarationApplyResult.Rejected(
+                                   AddDeclarationPlanJournalFailure.CorruptRecord,
+                               ),
+                           )
+            val result = BeginAddDeclarationApplyResult.Begun(admitted)
             try {
                 commitAttempted = true
                 connection.commit()
@@ -160,19 +159,8 @@ internal fun SqliteJournalConnections.completeApply(
                 statement.executeUpdate()
             }
             val loaded = connection.loadRecord(planId)
-            val result = if (updated == 1) {
-                CompleteAddDeclarationApplyResult.Completed(
-                    (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
-                        ?.record as? AppliedUnverifiedAddDeclaration
-                    ?: return@use rollback(
-                        connection,
-                        CompleteAddDeclarationApplyResult.Rejected(
-                            AddDeclarationPlanJournalFailure.CorruptRecord,
-                        ),
-                    ),
-                )
-            } else {
-                when (loaded) {
+            if (updated != 1) {
+                val rejection = when (loaded) {
                     SqliteAddDeclarationPlanRecordLoad.Absent ->
                         CompleteAddDeclarationApplyResult.Rejected(
                             AddDeclarationPlanJournalFailure.PlanNotFound(planId),
@@ -192,8 +180,18 @@ internal fun SqliteJournalConnections.completeApply(
                             ),
                         )
                 }
+                return@use rollbackApplyCompletion(connection, planId, rejection)
             }
-            if (updated != 1) return@use rollback(connection, result)
+            val applied = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
+                              ?.record as? AppliedUnverifiedAddDeclaration
+                          ?: return@use rollbackApplyCompletion(
+                              connection,
+                              planId,
+                              CompleteAddDeclarationApplyResult.Rejected(
+                                  AddDeclarationPlanJournalFailure.CorruptRecord,
+                              ),
+                          )
+            val result = CompleteAddDeclarationApplyResult.Completed(applied)
             try {
                 commitAttempted = true
                 connection.commit()
@@ -303,9 +301,42 @@ private fun <T, F> Refinement<T, F>.valueOrNull(): T? = when (this) {
     is Refinement.Rejected -> null
 }
 
-private fun <T> rollback(connection: java.sql.Connection, result: T): T {
-    runCatching(connection::rollback)
-    return result
+/**
+ * Proof transition: open v3 admission transaction plus rejection to
+ * [BeginAddDeclarationApplyResult].
+ *
+ * A returned rejection proves rollback; rollback failure is preserved as the closed
+ * [BeginAddDeclarationApplyResult.CommitOutcomeUnknown] state.
+ */
+private fun SqliteJournalConnections.rollbackApplyAdmission(
+    connection: java.sql.Connection,
+    planId: AddDeclarationPlanId,
+    result: BeginAddDeclarationApplyResult.Rejected,
+): BeginAddDeclarationApplyResult = try {
+    observeRollback(SqliteJournalCommitOperation.APPLY_ADMISSION)
+    connection.rollback()
+    result
+} catch (_: Exception) {
+    BeginAddDeclarationApplyResult.CommitOutcomeUnknown(planId)
+}
+
+/**
+ * Proof transition: open v4 completion transaction plus rejection to
+ * [CompleteAddDeclarationApplyResult].
+ *
+ * A returned rejection proves rollback; rollback failure is preserved as the closed
+ * [CompleteAddDeclarationApplyResult.CommitOutcomeUnknown] state.
+ */
+private fun SqliteJournalConnections.rollbackApplyCompletion(
+    connection: java.sql.Connection,
+    planId: AddDeclarationPlanId,
+    result: CompleteAddDeclarationApplyResult.Rejected,
+): CompleteAddDeclarationApplyResult = try {
+    observeRollback(SqliteJournalCommitOperation.APPLY_COMPLETION)
+    connection.rollback()
+    result
+} catch (_: Exception) {
+    CompleteAddDeclarationApplyResult.CommitOutcomeUnknown(planId)
 }
 
 private fun rejected(

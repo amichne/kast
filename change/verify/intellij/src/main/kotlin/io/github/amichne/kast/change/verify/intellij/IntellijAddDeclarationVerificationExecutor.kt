@@ -79,14 +79,17 @@ class IntellijAddDeclarationVerificationExecutor(
         if (currentEnvironment.owner != command.plan.target.owner) {
             return rejected(command, AddDeclarationVerificationLimitation.OWNER_AND_PROVENANCE_CHANGED)
         }
-        val targetPath = Path.of(command.plan.target.targetPath.value)
-        val targetBytes = when (val read = readRegularSource(targetPath)) {
-            is RegularSourceRead.Read -> read.bytes
-            RegularSourceRead.Unavailable -> return rejected(
+        val targetRead = when (val read = EffectBoundVerifiedAddDeclarationTarget.read(
+            command.plan.target,
+        )) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> return rejected(
                 command,
                 AddDeclarationVerificationLimitation.TARGET_CONTEXT_MISSING,
             )
         }
+        val targetPath = targetRead.path
+        val targetBytes = targetRead.copyBytes()
         val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(targetPath)
                           ?: return rejected(
                               command,
@@ -175,6 +178,12 @@ class IntellijAddDeclarationVerificationExecutor(
                 command,
                 AddDeclarationVerificationLimitation.COMPILER_CONTEXT_UNAVAILABLE,
             )
+        }
+        if (targetRead.revalidate() is Refinement.Rejected) {
+            return rejected(command, AddDeclarationVerificationLimitation.TARGET_CONTEXT_MISSING)
+        }
+        if (publicationObservation(command) == PublicationObservation.Moved) {
+            return rejected(command, AddDeclarationVerificationLimitation.RESULT_GENERATION_MOVED)
         }
         return verified(
             command,

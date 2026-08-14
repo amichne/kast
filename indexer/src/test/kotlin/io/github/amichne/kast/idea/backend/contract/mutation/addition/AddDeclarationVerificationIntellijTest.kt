@@ -21,6 +21,7 @@ import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
 import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationCompilerEnvironment
 import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationCompilerEnvironmentResult
 import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationVerificationExecutor
+import io.github.amichne.kast.change.verify.intellij.IntellijPublishedWorkspaceGenerationAuthority
 import io.github.amichne.kast.change.verify.spi.AddDeclarationObservedSourceRange
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationCommand
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationLimitation
@@ -93,6 +94,36 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
     }
 
     @Test
+    fun `ReviewRegression rechecks publication immediately before verification return`() = runBlocking {
+        val fixture = fixture(verifiedTargetFixture, VERIFIED_DECLARATION, "verifiedAddition")
+        val moved = PublishedWorkspaceGeneration(
+            generation(9),
+            WorkspaceStateIdentity("verified-add-declaration-g2"),
+        )
+        val observations = ArrayDeque(
+            listOf(
+                PublishedWorkspaceGenerationState.Published(fixture.publication),
+                PublishedWorkspaceGenerationState.Published(fixture.publication),
+                PublishedWorkspaceGenerationState.Published(moved),
+            ),
+        )
+        val executor = executor(
+            fixture.plan,
+            fixture.publication,
+            publications = { observations.removeFirst() },
+        )
+
+        val result = assertInstanceOf<AddDeclarationVerificationResult.Rejected>(
+            executor.verify(fixture.command),
+        )
+
+        assertEquals(
+            listOf(AddDeclarationVerificationLimitation.RESULT_GENERATION_MOVED),
+            result.rejection.limitations,
+        )
+    }
+
+    @Test
     fun `platform cancellation is rethrown without manufacturing rejection`() {
         val fixture = fixture(verifiedTargetFixture, VERIFIED_DECLARATION, "verifiedAddition")
         val cancellation = ProcessCanceledException()
@@ -130,13 +161,15 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
     private fun executor(
         plan: PlannedAddDeclaration,
         publication: PublishedWorkspaceGeneration,
+        publications: IntellijPublishedWorkspaceGenerationAuthority =
+            IntellijPublishedWorkspaceGenerationAuthority {
+                PublishedWorkspaceGenerationState.Published(publication)
+            },
         beforeRead: () -> Unit = {},
     ): IntellijAddDeclarationVerificationExecutor = IntellijAddDeclarationVerificationExecutor(
         project = project,
         runtime = documentedIntellijIdeaRuntime,
-        publications = {
-            PublishedWorkspaceGenerationState.Published(publication)
-        },
+        publications = publications,
         environment = {
             IntellijAddDeclarationCompilerEnvironmentResult.Observed(
                 IntellijAddDeclarationCompilerEnvironment.observed(

@@ -6,9 +6,11 @@ inside one scoped smart read and returns detached `:change:verify:spi` evidence.
 
 ## Invariants
 
-- The result publication is re-observed before and inside the single smart read; moved or
-  unavailable publication fails closed.
-- Exact physical postimage bytes and normalized IntelliJ document text must agree with the plan.
+- The result publication is re-observed before and inside the single smart read and immediately
+  before successful return; moved or unavailable publication fails closed.
+- Exact real workspace, source-root, and target identity is re-proven before postimage consumption
+  and before successful return. Exact physical postimage bytes and normalized IntelliJ document
+  text must agree with the plan.
 - Compiler context preserves exact model, classpath, target postimage, and non-target file hashes.
 - Declaration identity comes from the exact appended top-level PSI declaration. Callable collision
   checks compare live K2 types with `KaType.semanticallyEquals`; rendered or hashed signatures are
