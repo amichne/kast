@@ -378,7 +378,15 @@ class KastArchitecturePolicyTest {
             .filter { it.lifecycle == ModuleLifecycle.ACTIVE }
             .map(ModulePolicy::id)
             .toSet(),
-        projectDependencies = projectDependencies,
+        projectDependencies = projectDependencies + canonicalActiveImplementationBridges,
         effects = effects,
     )
+
+    private companion object {
+        val canonicalActiveImplementationBridges =
+            KastArchitecturePolicy.definition().legacyImplementationBridges
+                .filter { it.lifecycle == LegacyImplementationBridgeLifecycle.ACTIVE }
+                .map(LegacyImplementationBridgePolicy::dependency)
+                .toSet()
+    }
 }

@@ -222,7 +222,7 @@ class LegacyMigrationPolicyTest {
         dependencies: Set<ProjectDependencyObservation>,
     ): ObservedArchitecture = ObservedArchitecture(
         modules = canonicalActiveModules + dependency.dependency,
-        projectDependencies = dependencies,
+        projectDependencies = dependencies + canonicalActiveImplementationBridges,
         effects = emptySet(),
     )
 
@@ -231,5 +231,10 @@ class LegacyMigrationPolicyTest {
             .filter { it.lifecycle == ModuleLifecycle.ACTIVE }
             .map(ModulePolicy::id)
             .toSet()
+        val canonicalActiveImplementationBridges =
+            KastArchitecturePolicy.definition().legacyImplementationBridges
+                .filter { it.lifecycle == LegacyImplementationBridgeLifecycle.ACTIVE }
+                .map(LegacyImplementationBridgePolicy::dependency)
+                .toSet()
     }
 }
