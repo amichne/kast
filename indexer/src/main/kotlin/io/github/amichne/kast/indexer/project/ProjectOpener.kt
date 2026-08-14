@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectBootstrap
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
+import io.github.amichne.kast.indexer.project.indexing.KastWorkspaceDirectoryIndexExclusionAdmission
 import java.nio.file.Path
 
 class ProjectOpener(
@@ -21,7 +22,7 @@ class ProjectOpener(
         val projectPath = workspaceRoot.toAbsolutePath().normalize()
         val workspaceKind = WorkspaceKind.detect(projectPath)
         val project = ProjectManagerEx.getInstanceEx()
-            .openProject(projectPath, openProjectTask())
+            .openProject(projectPath, openProjectTask(projectPath))
             ?: error("IDEA could not open project: $projectPath")
         val bootstrapped = gradleProjectBootstrap.bootstrapProject(project, projectPath, workspaceKind)
 
@@ -30,6 +31,19 @@ class ProjectOpener(
     }
 
     companion object {
+        /**
+         * Proof transition: `Path -> OpenProjectTask`.
+         *
+         * Establishes that the exact absolute, normalized Kast workspace gains
+         * its private directory-index exclusion policy in `beforeInit`, before
+         * IntelliJ starts project indexing. The admission never applies to an
+         * unrelated project or application-wide test fixture.
+         */
+        internal fun openProjectTask(workspaceRoot: Path): OpenProjectTask {
+            val admission = KastWorkspaceDirectoryIndexExclusionAdmission.fromWorkspaceRoot(workspaceRoot)
+            return openProjectTask().copy(beforeInit = admission::installForProjectLifetime)
+        }
+
         fun openProjectTask(): OpenProjectTask = OpenProjectTask.build().copy(
             isRefreshVfsNeeded = false,
             runConfigurators = false,
