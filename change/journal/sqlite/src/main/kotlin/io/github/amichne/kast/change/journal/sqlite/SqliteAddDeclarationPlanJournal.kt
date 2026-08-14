@@ -70,38 +70,7 @@ class SqliteAddDeclarationPlanJournal private constructor(
             )
         },
     ) {
-        connections.use { connection ->
-            val encoded = AddDeclarationPlanCodec.encode(plan)
-            val inserted = connection.prepareStatement(
-                """INSERT OR IGNORE INTO add_declaration_plan(
-                    plan_id, plan_bytes, source_generation, stage, state_version
-                ) VALUES (?, ?, ?, 'AWAITING_APPROVAL', 0)""",
-            ).use { statement ->
-                statement.setString(1, plan.planId.value)
-                statement.setString(2, encoded)
-                statement.setLong(3, plan.generation.value)
-                statement.executeUpdate()
-            }
-            when (val loaded = connection.loadRecord(plan.planId)) {
-                SqliteAddDeclarationPlanRecordLoad.Absent,
-                SqliteAddDeclarationPlanRecordLoad.Corrupt,
-                -> StoreAddDeclarationPlanResult.Rejected(
-                    AddDeclarationPlanJournalFailure.CorruptRecord,
-                )
-                is SqliteAddDeclarationPlanRecordLoad.Found -> when {
-                    loaded.record.plan != plan -> StoreAddDeclarationPlanResult.Rejected(
-                        AddDeclarationPlanJournalFailure.PlanIdCollision(plan.planId),
-                    )
-                    inserted == 1 -> StoreAddDeclarationPlanResult.Stored(
-                        loaded.record as? PersistedAddDeclarationPlan.AwaitingApproval
-                            ?: return@use StoreAddDeclarationPlanResult.Rejected(
-                                AddDeclarationPlanJournalFailure.CorruptRecord,
-                            ),
-                    )
-                    else -> StoreAddDeclarationPlanResult.Existing(loaded.record)
-                }
-            }
-        }
+        connections.store(plan)
     }
 
     override fun load(planId: AddDeclarationPlanId): LoadAddDeclarationPlanResult = storageResult(

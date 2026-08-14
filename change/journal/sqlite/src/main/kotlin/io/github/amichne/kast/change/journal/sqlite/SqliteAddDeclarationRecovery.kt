@@ -45,6 +45,7 @@ internal fun SqliteJournalConnections.prepareRecovery(
                           ?: return@use PrepareAddDeclarationRecoveryResult.Rejected(
                               AddDeclarationPlanJournalFailure.StateVersionExhausted(planId),
                           )
+        connection.autoCommit = false
         val recovery = command.revalidated.recovery
         val updated = connection.prepareStatement(
             """INSERT OR IGNORE INTO add_declaration_recovery(
@@ -65,14 +66,20 @@ internal fun SqliteJournalConnections.prepareRecovery(
             statement.setString(7, AddDeclarationPlanCodec.encode(command.approved.plan))
             statement.executeUpdate()
         }
-        val loaded = connection.loadRecord(planId)
         if (updated == 1) {
-            val prepared = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
-                ?.record as? RecoveryPreparedAddDeclaration
-                ?: return@use PrepareAddDeclarationRecoveryResult.Rejected(
+            observeTransitionWrite(SqliteJournalTransitionOperation.RECOVERY_PREPARATION)
+        }
+        val loaded = connection.loadRecord(planId)
+        val result = if (updated == 1) {
+            when (
+                val prepared = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
+                    ?.record as? RecoveryPreparedAddDeclaration
+            ) {
+                null -> PrepareAddDeclarationRecoveryResult.Rejected(
                     AddDeclarationPlanJournalFailure.CorruptRecord,
                 )
-            PrepareAddDeclarationRecoveryResult.Prepared(prepared)
+                else -> PrepareAddDeclarationRecoveryResult.Prepared(prepared)
+            }
         } else {
             when (loaded) {
                 is SqliteAddDeclarationPlanRecordLoad.Found ->
@@ -95,6 +102,12 @@ internal fun SqliteJournalConnections.prepareRecovery(
                     )
             }
         }
+        if (result is PrepareAddDeclarationRecoveryResult.Prepared) {
+            connection.commit()
+        } else {
+            connection.rollback()
+        }
+        result
     }
 } catch (_: Exception) {
     PrepareAddDeclarationRecoveryResult.Rejected(

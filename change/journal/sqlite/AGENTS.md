@@ -14,6 +14,9 @@ workspace-transition authority.
 - Decode canonical plan bytes and re-prove PlanId and generation on every read.
 - State advancement is one SQL compare-and-set over PlanId, prior stage, and
   prior version. Exactly one concurrent approval may win.
+- Initial plan and recovery creation each keep insertion, typed reload, and success commit in one
+  transaction so another connection cannot advance a newly created record before its creator
+  returns the capability it established.
 - Recovery preparation is one insert-select compare-and-set from the exact
   approved parent. Exactly one concurrent preparation may win, and reopen must
   replay both transitions before returning `RecoveryPrepared`.

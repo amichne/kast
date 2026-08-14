@@ -85,7 +85,9 @@ enum class SqliteJournalCommitOperation {
 }
 
 enum class SqliteJournalTransitionOperation {
+    PLAN_STORAGE,
     APPROVAL,
+    RECOVERY_PREPARATION,
 }
 
 internal class SqliteJournalConnections(
