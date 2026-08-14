@@ -6,6 +6,8 @@ import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
+import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspacePublicationCurrency
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
@@ -41,8 +43,18 @@ internal class TestWorkspaceGenerationPublication(
                                                                 ?: PublishedWorkspaceGenerationState.Unpublished
 
     @Synchronized
-    override fun matches(manifest: PublishedWorkspaceGenerationManifest): Boolean =
-        published == manifest
+    override fun currency(
+        manifest: PublishedWorkspaceGenerationManifest,
+    ): IndexStoreWorkspacePublicationCurrency = if (published == manifest) {
+        IndexStoreWorkspacePublicationCurrency.Current(manifest)
+    } else {
+        IndexStoreWorkspacePublicationCurrency.Moved(
+            manifest,
+            published?.let(
+                io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState::Published,
+            ) ?: io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState.Unpublished,
+        )
+    }
 
     @Synchronized
     override fun begin(): OpenWorkspacePublication =

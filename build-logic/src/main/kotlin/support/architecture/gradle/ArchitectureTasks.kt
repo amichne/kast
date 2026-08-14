@@ -258,6 +258,13 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
         "dependency" to violation.migration.dependency.dependency.projectPath,
         "retirementTask" to violation.migration.retirementTask.name,
     )
+    is ArchitectureViolation.ObsoleteLegacyImplementationBridge -> finding(
+        "OBSOLETE_LEGACY_IMPLEMENTATION_BRIDGE",
+        violation.bridge.dependency.toString(),
+        "consumer" to violation.bridge.dependency.consumer.projectPath,
+        "dependency" to violation.bridge.dependency.dependency.projectPath,
+        "retirementTask" to violation.bridge.retirementTask.name,
+    )
     is ArchitectureViolation.ForbiddenExportedProjectDependency -> finding(
         "FORBIDDEN_EXPORTED_PROJECT_DEPENDENCY",
         "${violation.dependency.consumer.projectPath} -> ${violation.dependency.dependency.projectPath}",

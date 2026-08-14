@@ -12,6 +12,7 @@ enum class AddDeclarationPlanStage {
     RECOVERY_PREPARED,
     APPLY_ADMITTED,
     APPLIED_UNVERIFIED,
+    VERIFIED,
 }
 
 enum class AddDeclarationPlanStateVersionFailure {

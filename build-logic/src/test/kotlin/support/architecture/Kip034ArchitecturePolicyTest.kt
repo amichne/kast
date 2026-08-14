@@ -29,7 +29,11 @@ class Kip034ArchitecturePolicyTest {
             applyOwners.mapTo(mutableSetOf()) { architecture.modules.getValue(it).lifecycle },
         )
         assertEquals(
-            setOf(ModuleId.CHANGE_CONTRACT, ModuleId.CHANGE_RECOVERY_CONTRACT),
+            setOf(
+                ModuleId.CHANGE_CONTRACT,
+                ModuleId.CHANGE_RECOVERY_CONTRACT,
+                ModuleId.WORKSPACE_CONTRACT,
+            ),
             architecture.modules.getValue(ModuleId.CHANGE_JOURNAL_CONTRACT)
                 .allowedProjectDependencies,
         )

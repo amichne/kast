@@ -107,9 +107,21 @@ class AddDeclarationRevalidationContractTest {
                 packageName = "sample",
                 declarationName = "added",
                 declarationKind = AddDeclarationKind.FUNCTION,
-                collisionSignature = "2".repeat(64),
             ).refined(),
             verification = AddDeclarationVerificationContract.forGeneration(generation),
+            compilerContext = ExpectedAddDeclarationCompilerContext.admit(
+                generation = generation,
+                projectModelFingerprint = AddDeclarationProjectModelFingerprint.parse(
+                    "3".repeat(64),
+                ).refined(),
+                classpathFingerprint = AddDeclarationClasspathFingerprint.parse(
+                    "4".repeat(64),
+                ).refined(),
+                contextFiles = listOf(
+                    AddDeclarationCompilerContextFile.admit(TARGET, hash(PREIMAGE)).refined(),
+                ),
+                outboundReferenceCount = AddDeclarationOutboundReferenceCount.parse(0).refined(),
+            ).refined(),
             compilerEvidence = DetachedCompilerEvidence.admit("{\"proof\":\"complete\"}").refined(),
         ).refined()
         return PlannedAddDeclaration.issue(evidence)

@@ -28,6 +28,10 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_RECOVERY_FILESYSTEM,
             ModuleId.CHANGE_RECOVERY_SERVICE,
             ModuleId.CHANGE_RECOVERY_SPI,
+            ModuleId.CHANGE_VERIFY_INTELLIJ,
+            ModuleId.CHANGE_VERIFY_SERVICE,
+            ModuleId.CHANGE_VERIFY_SPI,
+            ModuleId.EVIDENCE_SQLITE,
             ModuleId.EVIDENCE_SPI,
             ModuleId.INDEX_STORE,
             ModuleId.SYMBOL_CONTRACT,
@@ -59,7 +63,7 @@ internal object KastPlatformModules {
             ModuleId.EVIDENCE_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.EVIDENCE_SQLITE,
             ModuleRole.SQLITE_ADAPTER,
             ModuleId.EVIDENCE_CONTRACT,
@@ -121,11 +125,13 @@ internal object KastPlatformModules {
             ModuleRole.CONTRACT,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
         ),
         active(
             ModuleId.CHANGE_JOURNAL_SQLITE,
             ModuleRole.SQLITE_ADAPTER,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.CHANGE_VERIFY_SPI,
         ),
         active(
             ModuleId.CHANGE_PLAN_SERVICE,
@@ -195,26 +201,29 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_APPLY_SPI,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_VERIFY_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_JOURNAL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_VERIFY_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_VERIFY_SPI,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.CHANGE_VERIFY_SERVICE,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_VERIFY_SPI,
             ModuleId.CHANGE_RECOVERY_CONTRACT,
             ModuleId.CHANGE_JOURNAL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_SPI,
         ),
         planned(
             ModuleId.RUNTIME_BINDINGS,

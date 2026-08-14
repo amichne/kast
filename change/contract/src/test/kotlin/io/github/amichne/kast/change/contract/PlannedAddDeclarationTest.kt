@@ -25,6 +25,7 @@ class PlannedAddDeclarationTest {
         assertEquals(listOf(evidence.target.targetPath), decoded.declaredWriteSet.paths)
         assertEquals(evidence.target.owner, decoded.target.owner)
         assertEquals(evidence.generation, decoded.generation)
+        assertEquals(evidence.compilerContext, decoded.compilerContext)
     }
 
     @Test
@@ -94,9 +95,24 @@ class PlannedAddDeclarationTest {
             packageName = "sample",
             declarationName = "added",
             declarationKind = AddDeclarationKind.FUNCTION,
-            collisionSignature = "2".repeat(64),
         ).refined()
         val generation = EvidenceGeneration.parse(7).refined()
+        val compilerContext = ExpectedAddDeclarationCompilerContext.admit(
+            generation = generation,
+            projectModelFingerprint = AddDeclarationProjectModelFingerprint.parse(
+                "3".repeat(64),
+            ).refined(),
+            classpathFingerprint = AddDeclarationClasspathFingerprint.parse(
+                "4".repeat(64),
+            ).refined(),
+            contextFiles = listOf(
+                AddDeclarationCompilerContextFile.admit(
+                    path = TARGET,
+                    sha256 = hash(preimageBytes),
+                ).refined(),
+            ),
+            outboundReferenceCount = AddDeclarationOutboundReferenceCount.parse(0).refined(),
+        ).refined()
         return AddDeclarationPlanningEvidence.admit(
             intent = intent,
             generation = generation,
@@ -105,6 +121,7 @@ class PlannedAddDeclarationTest {
             declaredWriteSet = DeclaredWriteSet.admit(listOf(target.targetPath)).refined(),
             expectedSemanticDelta = delta,
             verification = AddDeclarationVerificationContract.forGeneration(generation),
+            compilerContext = compilerContext,
             compilerEvidence = DetachedCompilerEvidence.admit("{\"proof\":\"complete\"}").refined(),
         ).refined()
     }

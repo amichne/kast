@@ -67,6 +67,8 @@ interface SqliteJournalConnectionObserver {
 
     fun committed(operation: SqliteJournalCommitOperation) = Unit
 
+    fun rollingBack(operation: SqliteJournalCommitOperation) = Unit
+
     data object Disabled : SqliteJournalConnectionObserver {
         override fun opened() = Unit
 
@@ -77,6 +79,7 @@ interface SqliteJournalConnectionObserver {
 enum class SqliteJournalCommitOperation {
     APPLY_ADMISSION,
     APPLY_COMPLETION,
+    VERIFICATION_COMPLETION,
 }
 
 internal class SqliteJournalConnections(
@@ -101,6 +104,10 @@ internal class SqliteJournalConnections(
 
     fun observeCommit(operation: SqliteJournalCommitOperation) {
         observer.committed(operation)
+    }
+
+    fun observeRollback(operation: SqliteJournalCommitOperation) {
+        observer.rollingBack(operation)
     }
 }
 
@@ -187,6 +194,24 @@ internal fun Connection.initializeAddDeclarationPlanJournal() {
                         observed_target_path IS NOT NULL AND length(after_sha256) = 64 AND
                         after_content_base64 IS NOT NULL)
                 )
+            ) WITHOUT ROWID""",
+        )
+        statement.execute(
+            """CREATE TABLE IF NOT EXISTS add_declaration_verification (
+                plan_id TEXT PRIMARY KEY NOT NULL REFERENCES add_declaration_apply(plan_id),
+                stage TEXT NOT NULL CHECK(stage = 'VERIFIED'),
+                state_version INTEGER NOT NULL CHECK(state_version = 5),
+                prior_stage TEXT NOT NULL CHECK(prior_stage = 'APPLIED_UNVERIFIED'),
+                prior_version INTEGER NOT NULL CHECK(prior_version = 4),
+                publication_generation INTEGER NOT NULL CHECK(publication_generation >= 0),
+                publication_identity TEXT NOT NULL CHECK(length(publication_identity) > 0),
+                verified_target_path TEXT NOT NULL,
+                observed_start_offset INTEGER NOT NULL CHECK(observed_start_offset >= 0),
+                observed_end_offset INTEGER NOT NULL CHECK(observed_end_offset > observed_start_offset),
+                observed_package_name TEXT NOT NULL,
+                observed_declaration_name TEXT NOT NULL,
+                observed_declaration_kind TEXT NOT NULL,
+                verified_postimage_sha256 TEXT NOT NULL CHECK(length(verified_postimage_sha256) = 64)
             ) WITHOUT ROWID""",
         )
     }

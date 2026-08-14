@@ -84,12 +84,32 @@ private fun PlannedAddDeclaration.revalidatedOrNull(): PlannedAddDeclaration? {
         packageName = expectedSemanticDelta.packageName,
         declarationName = expectedSemanticDelta.declarationName,
         declarationKind = expectedSemanticDelta.declarationKind,
-        collisionSignature = expectedSemanticDelta.collisionSignature.value,
     ).valueOrNull() ?: return null
     if (delta != expectedSemanticDelta) return null
     val rawGeneration = EvidenceGeneration.parse(generation.value).valueOrNull() ?: return null
     val expectedVerification = AddDeclarationVerificationContract.forGeneration(rawGeneration)
     if (expectedVerification != verification) return null
+    val contextFiles = compilerContext.contextFiles.map { file ->
+        AddDeclarationCompilerContextFile.admit(file.path, file.sha256.value).valueOrNull()
+            ?: return null
+    }
+    val modelFingerprint = AddDeclarationProjectModelFingerprint.parse(
+        compilerContext.projectModelFingerprint.value,
+    ).valueOrNull() ?: return null
+    val classpathFingerprint = AddDeclarationClasspathFingerprint.parse(
+        compilerContext.classpathFingerprint.value,
+    ).valueOrNull() ?: return null
+    val outboundCount = AddDeclarationOutboundReferenceCount.parse(
+        compilerContext.outboundReferenceCount.value,
+    ).valueOrNull() ?: return null
+    val expectedCompilerContext = ExpectedAddDeclarationCompilerContext.admit(
+        generation = rawGeneration,
+        projectModelFingerprint = modelFingerprint,
+        classpathFingerprint = classpathFingerprint,
+        contextFiles = contextFiles,
+        outboundReferenceCount = outboundCount,
+    ).valueOrNull() ?: return null
+    if (expectedCompilerContext != compilerContext) return null
     val detachedCompilerEvidence = DetachedCompilerEvidence.admit(compilerEvidence.canonicalJson)
                                        .valueOrNull() ?: return null
     if (detachedCompilerEvidence != compilerEvidence) return null
@@ -101,6 +121,7 @@ private fun PlannedAddDeclaration.revalidatedOrNull(): PlannedAddDeclaration? {
         declaredWriteSet = writes,
         expectedSemanticDelta = delta,
         verification = expectedVerification,
+        compilerContext = expectedCompilerContext,
         compilerEvidence = detachedCompilerEvidence,
     ).valueOrNull() ?: return null
     return PlannedAddDeclaration.issue(evidence)

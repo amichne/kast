@@ -7,6 +7,7 @@ import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
+import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspacePublicationCurrency
 import io.github.amichne.kast.evidence.spi.WorkspacePublicationAuthority
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
@@ -284,8 +285,10 @@ internal class WorkspaceTransitionWorker(
     ): RecoveryAuditOutcome {
         return try {
             requireActive()
-            if (!workspaceGenerationPublication.matches(expectedPublished)) {
-                return RecoveryAuditOutcome.WorkspaceDrift
+            when (workspaceGenerationPublication.currency(expectedPublished)) {
+                is IndexStoreWorkspacePublicationCurrency.Current -> Unit
+                is IndexStoreWorkspacePublicationCurrency.Moved ->
+                    return RecoveryAuditOutcome.WorkspaceDrift
             }
             requireStableGitWorktreeTransition()
             refreshWorkspace(setOf(WorkspaceSignal.RecoveryProbe))
@@ -303,13 +306,12 @@ internal class WorkspaceTransitionWorker(
                 }
                 val currentIdentity = captureCandidate(auditConfig, currentBuildInputs).identity
                 requireStableGitWorktreeTransition()
-                if (
-                    currentIdentity.value == expectedPublished.identity.value &&
-                    workspaceGenerationPublication.matches(expectedPublished)
-                ) {
-                    RecoveryAuditOutcome.Current
-                } else {
-                    RecoveryAuditOutcome.WorkspaceDrift
+                if (currentIdentity.value != expectedPublished.identity.value) {
+                    return RecoveryAuditOutcome.WorkspaceDrift
+                }
+                when (workspaceGenerationPublication.currency(expectedPublished)) {
+                    is IndexStoreWorkspacePublicationCurrency.Current -> RecoveryAuditOutcome.Current
+                    is IndexStoreWorkspacePublicationCurrency.Moved -> RecoveryAuditOutcome.WorkspaceDrift
                 }
             }
         } catch (failure: Throwable) {

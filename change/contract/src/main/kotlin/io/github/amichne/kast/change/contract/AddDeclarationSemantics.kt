@@ -23,7 +23,6 @@ enum class AddDeclarationKind {
 enum class ExpectedAddDeclarationDeltaFailure {
     PACKAGE_NAME_INVALID,
     DECLARATION_NAME_INVALID,
-    COLLISION_SIGNATURE_INVALID,
 }
 
 @Serializable
@@ -32,7 +31,6 @@ data class ExpectedAddDeclarationDelta private constructor(
     val packageName: String,
     val declarationName: String,
     val declarationKind: AddDeclarationKind,
-    val collisionSignature: AddDeclarationSha256,
 ) {
     companion object {
         /**
@@ -48,7 +46,6 @@ data class ExpectedAddDeclarationDelta private constructor(
             packageName: String,
             declarationName: String,
             declarationKind: AddDeclarationKind,
-            collisionSignature: String,
         ): Refinement<ExpectedAddDeclarationDelta, ExpectedAddDeclarationDeltaFailure> {
             if (!validPackageName(packageName)) {
                 return Refinement.Rejected(ExpectedAddDeclarationDeltaFailure.PACKAGE_NAME_INVALID)
@@ -56,15 +53,11 @@ data class ExpectedAddDeclarationDelta private constructor(
             if (!canonicalName(declarationName)) {
                 return Refinement.Rejected(ExpectedAddDeclarationDeltaFailure.DECLARATION_NAME_INVALID)
             }
-            if (!Regex("[0-9a-f]{64}").matches(collisionSignature)) {
-                return Refinement.Rejected(ExpectedAddDeclarationDeltaFailure.COLLISION_SIGNATURE_INVALID)
-            }
             return Refinement.Refined(
                 ExpectedAddDeclarationDelta(
                     packageName = packageName,
                     declarationName = declarationName,
                     declarationKind = declarationKind,
-                    collisionSignature = AddDeclarationSha256.fromProvenRaw(collisionSignature),
                 ),
             )
         }
@@ -82,6 +75,8 @@ enum class AddDeclarationObligation {
     COMPILER_COLLISION_REMAINS_ABSENT,
     OUTBOUND_BINDINGS_PRESERVED,
     EXISTING_BINDINGS_PRESERVED,
+    COMPILER_DIAGNOSTICS_CLEAR,
+    RESULT_GENERATION_PUBLISHED,
 }
 
 @Serializable

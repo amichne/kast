@@ -144,6 +144,10 @@ sealed interface ArchitectureViolation {
         val migration: ValidatedLegacyMigrationEdge.Active,
     ) : ArchitectureViolation
 
+    data class ObsoleteLegacyImplementationBridge(
+        val bridge: ValidatedLegacyImplementationBridge.Active,
+    ) : ArchitectureViolation
+
     data class ForbiddenExportedProjectDependency(
         val dependency: ProjectDependencyObservation,
     ) : ArchitectureViolation
@@ -172,6 +176,10 @@ sealed interface ArchitectureAdmission {
             ProjectDependencyObservation,
             ValidatedLegacyMigrationEdge.Active,
             >,
+        val retainedLegacyImplementationBridges: Map<
+            ProjectDependencyObservation,
+            ValidatedLegacyImplementationBridge.Active,
+            >,
     ) : ArchitectureAdmission
 
     data class Rejected(val violations: Set<ArchitectureViolation>) : ArchitectureAdmission
@@ -182,7 +190,8 @@ sealed interface ArchitectureAdmission {
          *
          * Establishes exact active-module presence, planned-module absence, approved direct edges,
          * permitted effects, equality between observed legacy effects and their allowances, and
-         * equality between observed temporary dependencies and active validated migrations.
+         * equality between observed temporary dependencies and active validated migrations or
+         * implementation bridges.
          * [Rejected] is the closed expected failure. Raw Gradle paths and class-file references may
          * be extracted only before constructing [ObservedArchitecture].
          */
@@ -209,9 +218,11 @@ sealed interface ArchitectureAdmission {
             val activeMigrations = policy.legacyMigrationEdges.values
                 .filterIsInstance<ValidatedLegacyMigrationEdge.Active>()
                 .associateBy(ValidatedLegacyMigrationEdge.Active::dependency)
+            val activeImplementationBridges = policy.legacyImplementationBridges
+            val approvedTemporaryDependencies = activeMigrations.keys + activeImplementationBridges.keys
             val observedLegacyViolations = buildSet {
                 observedTemporaryDependencies
-                    .filterNot(activeMigrations::containsKey)
+                    .filterNot(approvedTemporaryDependencies::contains)
                     .mapTo(this, LegacyViolationKey::UnapprovedProjectDependency)
                 observation.effects
                     .filterNot { effect ->
@@ -230,6 +241,10 @@ sealed interface ArchitectureAdmission {
                 .filterKeys { it !in observedTemporaryDependencies }
                 .values
                 .map(ArchitectureViolation::ObsoleteLegacyMigration)
+            val obsoleteImplementationBridges = activeImplementationBridges
+                .filterKeys { it !in observedTemporaryDependencies }
+                .values
+                .map(ArchitectureViolation::ObsoleteLegacyImplementationBridge)
             val forbiddenExports = observation.exportedProjectDependencies.mapNotNull { edge ->
                 val consumer = policy.modules.getValue(edge.consumer)
                 val dependency = policy.modules.getValue(edge.dependency)
@@ -278,10 +293,11 @@ sealed interface ArchitectureAdmission {
             }
             val violations = (
                 lifecycleViolations + unbaselined + obsolete + obsoleteMigrations +
+                    obsoleteImplementationBridges +
                 forbiddenExports + roleConventionViolations
                              ).toSet()
             return if (violations.isEmpty()) {
-                Accepted(policy.legacyAllowances, activeMigrations)
+                Accepted(policy.legacyAllowances, activeMigrations, activeImplementationBridges)
             } else {
                 Rejected(violations)
             }

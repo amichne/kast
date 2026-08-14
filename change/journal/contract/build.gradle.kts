@@ -12,4 +12,5 @@ base {
 dependencies {
     api(project(":change:contract"))
     api(project(":change:recovery:contract"))
+    api(project(":workspace:contract"))
 }

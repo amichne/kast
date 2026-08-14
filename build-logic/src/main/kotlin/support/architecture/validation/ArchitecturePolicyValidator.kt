@@ -1,6 +1,7 @@
 package support.architecture
 
 import support.architecture.baseline.KastArchitectureLegacyBaseline
+import support.architecture.baseline.KastArchitectureLegacyImplementationBridges
 import support.architecture.baseline.KastArchitectureLegacyMigrations
 import support.architecture.process.KastMutationRuntimeProcesses
 import support.architecture.process.MutationRuntimeProcessPolicy
@@ -14,6 +15,7 @@ object KastArchitecturePolicy {
         mutationRuntimeProcesses = KastMutationRuntimeProcesses.all,
         legacyAllowances = KastArchitectureLegacyBaseline.all,
         legacyMigrationEdges = KastArchitectureLegacyMigrations.all,
+        legacyImplementationBridges = KastArchitectureLegacyImplementationBridges.all,
     )
 
     /**
@@ -33,8 +35,8 @@ object ArchitecturePolicyValidator {
      *
      * Establishes that every node is unique, module direction has one complete composition owner,
      * dependencies and effects satisfy independent role and cost boundaries, every reference
-     * terminates at a declared node, every legacy allowance is exact, every migration is an open
-     * legacy-to-target edge with an open retirement task, and all directed graphs are acyclic.
+     * terminates at a declared node, every legacy allowance is exact, and every temporary edge is
+     * exact, non-permanent, and bound to an open retirement task with the required owner.
      * [ArchitecturePolicyValidation.Invalid] retains every closed expected policy failure. Raw
      * graph extraction is permitted only at build-tool boundaries.
      */
@@ -136,6 +138,21 @@ object ArchitecturePolicyValidator {
         val validatedMigrations = migrationValidations
             .filterIsInstance<LegacyMigrationEdgeValidation.Valid>()
             .associate { validation -> validation.migration.dependency to validation.migration }
+        val duplicateLegacyImplementationBridges = definition.legacyImplementationBridges
+            .groupingBy(LegacyImplementationBridgePolicy::dependency)
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+            .map(ArchitecturePolicyFailure::DuplicateLegacyImplementationBridge)
+        val bridgeValidations = definition.legacyImplementationBridges.map { bridge ->
+            LegacyImplementationBridgeValidator.validate(bridge, modules, mutationDeliveryTasks)
+        }
+        val bridgeFailures = bridgeValidations
+            .filterIsInstance<LegacyImplementationBridgeValidation.Invalid>()
+            .flatMap(LegacyImplementationBridgeValidation.Invalid::failures)
+        val validatedBridges = bridgeValidations
+            .filterIsInstance<LegacyImplementationBridgeValidation.Valid>()
+            .associate { validation -> validation.bridge.dependency to validation.bridge }
         val duplicateAllowances = definition.legacyAllowances
             .groupingBy(LegacyAllowance::violation)
             .eachCount()
@@ -205,6 +222,8 @@ object ArchitecturePolicyValidator {
             }
             addAll(duplicateLegacyMigrations)
             addAll(migrationFailures)
+            addAll(duplicateLegacyImplementationBridges)
+            addAll(bridgeFailures)
             addAll(duplicateAllowances)
             addAll(missingRetirementTasks)
             addAll(missingLegacyModules)
@@ -231,6 +250,7 @@ object ArchitecturePolicyValidator {
                             mutationRuntimeProcessOrder = mutationRuntimeSort.order,
                             legacyAllowances = definition.legacyAllowances.toSet(),
                             legacyMigrationEdges = validatedMigrations,
+                            legacyImplementationBridges = validatedBridges,
                         ),
                     )
                 } else {

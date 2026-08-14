@@ -44,8 +44,16 @@ import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclaratio
 import io.github.amichne.kast.change.recovery.service.AddDeclarationRecoveryPreparationService
 import io.github.amichne.kast.change.journal.contract.JournaledAddDeclarationRecovery
 import io.github.amichne.kast.change.recovery.service.PrepareApprovedAddDeclarationRecoveryResult
+import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationCompilerEnvironment
+import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationCompilerEnvironmentResult
+import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationVerificationExecutor
+import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationCommand
+import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationResult
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -107,6 +115,62 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         ).record
         assertEquals(applied.record, reopened)
     }
+
+    @Test
+    fun `applied declaration verifies against live PSI and K2`() =
+        runBlocking {
+            val fixture = fixture("fun kip035Verified() {}")
+            val applied = assertInstanceOf<
+                ApplyRecoveryPreparedAddDeclarationResult.AppliedUnverified,
+            >(
+                AddDeclarationApplicationService(
+                    journal = fixture.journal,
+                    executor = IntellijAddDeclarationApplyExecutor(project),
+                ).apply(fixture.recovery),
+            )
+            val publication = PublishedWorkspaceGeneration(
+                EvidenceGeneration.parse(fixture.plan.generation.value + 1L).refined(),
+                WorkspaceStateIdentity("kip-035-applied-verification"),
+            )
+            val command = AddDeclarationVerificationCommand.admit(
+                applied.record.plan,
+                publication,
+            ).refined()
+            fun executor(
+                beforeRead: () -> Unit = {},
+            ): IntellijAddDeclarationVerificationExecutor =
+                IntellijAddDeclarationVerificationExecutor(
+                    project = project,
+                    publications = {
+                        PublishedWorkspaceGenerationState.Published(publication)
+                    },
+                    environment = {
+                        IntellijAddDeclarationCompilerEnvironmentResult.Observed(
+                            IntellijAddDeclarationCompilerEnvironment.observed(
+                                fixture.plan.compilerContext.projectModelFingerprint,
+                                fixture.plan.compilerContext.classpathFingerprint,
+                                fixture.plan.target.owner,
+                            ),
+                        )
+                    },
+                    beforeRead = beforeRead,
+                )
+
+            val observed = assertInstanceOf<AddDeclarationVerificationResult.Observed>(
+                executor().verify(command),
+            ).verification
+            assertEquals(applied.record.plan, observed.command.plan)
+            assertEquals(publication, observed.publication)
+            assertEquals(fixture.plan.target.targetPath, observed.identity.targetPath)
+            assertEquals(
+                fixture.plan.expectedSemanticDelta.declarationName,
+                observed.identity.declarationName,
+            )
+            assertEquals(
+                fixture.plan.verification.obligations,
+                observed.satisfiedObligations.values,
+            )
+        }
 
     @Test
     fun `stale preimage leaves durable apply admission and performs no additional write`() = runBlocking {

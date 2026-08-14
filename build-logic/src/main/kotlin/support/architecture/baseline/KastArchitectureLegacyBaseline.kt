@@ -5,6 +5,8 @@ import support.architecture.EffectObservation
 import support.architecture.ForbiddenEffect
 import support.architecture.JvmMember
 import support.architecture.LegacyAllowance
+import support.architecture.LegacyImplementationBridgeLifecycle
+import support.architecture.LegacyImplementationBridgePolicy
 import support.architecture.LegacyMigrationEdgePolicy
 import support.architecture.LegacyMigrationLifecycle
 import support.architecture.LegacyViolationKey
@@ -112,6 +114,22 @@ internal object KastArchitectureLegacyMigrations {
 
     val admittedDependencies: Set<ProjectDependencyObservation> =
         all.mapTo(linkedSetOf(), LegacyMigrationEdgePolicy::dependency)
+}
+
+internal object KastArchitectureLegacyImplementationBridges {
+    val all: List<LegacyImplementationBridgePolicy> = listOf(
+        LegacyImplementationBridgePolicy(
+            dependency = ProjectDependencyObservation(
+                consumer = ModuleId.EVIDENCE_SQLITE,
+                dependency = ModuleId.INDEX_STORE,
+            ),
+            lifecycle = LegacyImplementationBridgeLifecycle.ACTIVE,
+            retirementTask = MutationDeliveryTaskId.M04,
+        ),
+    )
+
+    val admittedDependencies: Set<ProjectDependencyObservation> =
+        all.mapTo(linkedSetOf(), LegacyImplementationBridgePolicy::dependency)
 }
 
 private class LegacyEffectAllowanceScope(

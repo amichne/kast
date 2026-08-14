@@ -9,6 +9,9 @@ enum class AddDeclarationPlanningEvidenceFailure {
     EXPECTED_FILE_TARGET_MISMATCH,
     WRITE_SET_NOT_EXACT_TARGET,
     VERIFICATION_GENERATION_MISMATCH,
+    COMPILER_CONTEXT_GENERATION_MISMATCH,
+    COMPILER_CONTEXT_TARGET_MISSING,
+    COMPILER_CONTEXT_TARGET_HASH_MISMATCH,
 }
 
 @Serializable
@@ -21,6 +24,7 @@ data class AddDeclarationPlanningEvidence private constructor(
     val declaredWriteSet: DeclaredWriteSet,
     val expectedSemanticDelta: ExpectedAddDeclarationDelta,
     val verification: AddDeclarationVerificationContract,
+    val compilerContext: ExpectedAddDeclarationCompilerContext,
     val compilerEvidence: DetachedCompilerEvidence,
 ) {
     companion object {
@@ -42,6 +46,7 @@ data class AddDeclarationPlanningEvidence private constructor(
             declaredWriteSet: DeclaredWriteSet,
             expectedSemanticDelta: ExpectedAddDeclarationDelta,
             verification: AddDeclarationVerificationContract,
+            compilerContext: ExpectedAddDeclarationCompilerContext,
             compilerEvidence: DetachedCompilerEvidence,
         ): Refinement<AddDeclarationPlanningEvidence, AddDeclarationPlanningEvidenceFailure> {
             if (
@@ -63,6 +68,21 @@ data class AddDeclarationPlanningEvidence private constructor(
                     AddDeclarationPlanningEvidenceFailure.VERIFICATION_GENERATION_MISMATCH,
                 )
             }
+            if (compilerContext.generation != exactGeneration) {
+                return Refinement.Rejected(
+                    AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_GENERATION_MISMATCH,
+                )
+            }
+            val targetContext = compilerContext.contextFiles.singleOrNull {
+                it.path == target.targetPath.value
+            } ?: return Refinement.Rejected(
+                AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_TARGET_MISSING,
+            )
+            if (targetContext.sha256 != expectedFile.preimage.sha256) {
+                return Refinement.Rejected(
+                    AddDeclarationPlanningEvidenceFailure.COMPILER_CONTEXT_TARGET_HASH_MISMATCH,
+                )
+            }
             return Refinement.Refined(
                 AddDeclarationPlanningEvidence(
                     intent = intent,
@@ -72,6 +92,7 @@ data class AddDeclarationPlanningEvidence private constructor(
                     declaredWriteSet = declaredWriteSet,
                     expectedSemanticDelta = expectedSemanticDelta,
                     verification = verification,
+                    compilerContext = compilerContext,
                     compilerEvidence = compilerEvidence,
                 ),
             )
@@ -119,6 +140,7 @@ data class PlannedAddDeclaration private constructor(
     val declaredWriteSet: DeclaredWriteSet,
     val expectedSemanticDelta: ExpectedAddDeclarationDelta,
     val verification: AddDeclarationVerificationContract,
+    val compilerContext: ExpectedAddDeclarationCompilerContext,
     val compilerEvidence: DetachedCompilerEvidence,
 ) {
     companion object {
@@ -144,6 +166,7 @@ data class PlannedAddDeclaration private constructor(
                 declaredWriteSet = evidence.declaredWriteSet,
                 expectedSemanticDelta = evidence.expectedSemanticDelta,
                 verification = evidence.verification,
+                compilerContext = evidence.compilerContext,
                 compilerEvidence = evidence.compilerEvidence,
             )
         }
@@ -157,6 +180,7 @@ data class PlannedAddDeclaration private constructor(
         declaredWriteSet = declaredWriteSet,
         expectedSemanticDelta = expectedSemanticDelta,
         verification = verification,
+        compilerContext = compilerContext,
         compilerEvidence = compilerEvidence,
     )
 }
@@ -170,6 +194,7 @@ internal data class PlanIdentityMaterial(
     val declaredWriteSet: DeclaredWriteSet,
     val expectedSemanticDelta: ExpectedAddDeclarationDelta,
     val verification: AddDeclarationVerificationContract,
+    val compilerContext: ExpectedAddDeclarationCompilerContext,
     val compilerEvidence: DetachedCompilerEvidence,
 ) {
     companion object {
@@ -182,6 +207,7 @@ internal data class PlanIdentityMaterial(
                 declaredWriteSet = evidence.declaredWriteSet,
                 expectedSemanticDelta = evidence.expectedSemanticDelta,
                 verification = evidence.verification,
+                compilerContext = evidence.compilerContext,
                 compilerEvidence = evidence.compilerEvidence,
             )
     }

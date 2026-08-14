@@ -7,6 +7,7 @@ import io.github.amichne.kast.change.journal.contract.AddDeclarationApplyJournal
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanJournalFailure
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStateVersion
+import io.github.amichne.kast.change.journal.contract.AppliedUnverifiedAddDeclaration
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.BeginAddDeclarationApply
@@ -19,6 +20,9 @@ import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecov
 import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecoveryResult
 import io.github.amichne.kast.change.journal.contract.RawAddDeclarationPlanApprovalEvidence
 import io.github.amichne.kast.change.journal.contract.StoreAddDeclarationPlanResult
+import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationJournal
+import io.github.amichne.kast.change.verify.spi.CompleteAddDeclarationVerification
+import io.github.amichne.kast.change.verify.spi.CompleteAddDeclarationVerificationResult
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.sql.Connection
@@ -58,7 +62,7 @@ private enum class SqliteAddDeclarationPlanRecordDecodeFailure {
 
 class SqliteAddDeclarationPlanJournal private constructor(
     private val connections: SqliteJournalConnections,
-) : AddDeclarationApplyJournal {
+) : AddDeclarationApplyJournal, AddDeclarationVerificationJournal {
     override fun store(plan: PlannedAddDeclaration): StoreAddDeclarationPlanResult = storageResult(
         unavailable = {
             StoreAddDeclarationPlanResult.Rejected(
@@ -198,6 +202,10 @@ class SqliteAddDeclarationPlanJournal private constructor(
         command: CompleteAddDeclarationApply,
     ): CompleteAddDeclarationApplyResult = connections.completeApply(command)
 
+    override fun completeVerification(
+        command: CompleteAddDeclarationVerification,
+    ): CompleteAddDeclarationVerificationResult = connections.completeVerification(command)
+
     private fun <T> storageResult(
         unavailable: () -> T,
         block: () -> T,
@@ -264,10 +272,24 @@ internal fun Connection.loadRecord(planId: AddDeclarationPlanId): SqliteAddDecla
             a.prior_version AS apply_prior_version,
             a.observed_target_path AS apply_observed_target_path,
             a.after_sha256 AS apply_after_sha256,
-            a.after_content_base64 AS apply_after_content_base64
+            a.after_content_base64 AS apply_after_content_base64,
+            v.plan_id AS verification_plan_id, v.stage AS verification_stage,
+            v.state_version AS verification_state_version,
+            v.prior_stage AS verification_prior_stage,
+            v.prior_version AS verification_prior_version,
+            v.publication_generation AS verification_publication_generation,
+            v.publication_identity AS verification_publication_identity,
+            v.verified_target_path AS verification_target_path,
+            v.observed_start_offset AS verification_start_offset,
+            v.observed_end_offset AS verification_end_offset,
+            v.observed_package_name AS verification_package_name,
+            v.observed_declaration_name AS verification_declaration_name,
+            v.observed_declaration_kind AS verification_declaration_kind,
+            v.verified_postimage_sha256 AS verification_postimage_sha256
         FROM add_declaration_plan p
         LEFT JOIN add_declaration_recovery r ON r.plan_id = p.plan_id
         LEFT JOIN add_declaration_apply a ON a.plan_id = p.plan_id
+        LEFT JOIN add_declaration_verification v ON v.plan_id = p.plan_id
         WHERE p.plan_id = ?""",
     ).use { statement ->
         statement.setString(1, planId.value)
@@ -336,7 +358,18 @@ private fun ResultSet.toRecord(
                             Refinement.Refined(recovery.value)
                         } else {
                             when (val apply = decodeAddDeclarationApply(expectedPlanId, recovery.value)) {
-                                is Refinement.Refined -> Refinement.Refined(apply.value)
+                                is Refinement.Refined -> {
+                                    if (getString("verification_plan_id") == null) {
+                                        Refinement.Refined(apply.value)
+                                    } else {
+                                        val applied = apply.value as? AppliedUnverifiedAddDeclaration
+                                            ?: return corruptRecord()
+                                        when (val verification = decodeAddDeclarationVerification(applied)) {
+                                            is Refinement.Refined -> Refinement.Refined(verification.value)
+                                            is Refinement.Rejected -> corruptRecord()
+                                        }
+                                    }
+                                }
                                 is Refinement.Rejected -> corruptRecord()
                             }
                         }

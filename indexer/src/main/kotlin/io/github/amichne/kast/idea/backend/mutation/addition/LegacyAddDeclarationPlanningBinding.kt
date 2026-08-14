@@ -7,8 +7,12 @@ import io.github.amichne.kast.api.protocol.AdditionProofIncompleteException
 import io.github.amichne.kast.api.protocol.AdditionProofLimitation
 import io.github.amichne.kast.api.validation.ParsedAddDeclarationPlanQuery
 import io.github.amichne.kast.change.contract.AddDeclarationKind
+import io.github.amichne.kast.change.contract.AddDeclarationClasspathFingerprint
+import io.github.amichne.kast.change.contract.AddDeclarationCompilerContextFile
 import io.github.amichne.kast.change.contract.AddDeclarationIntent
+import io.github.amichne.kast.change.contract.AddDeclarationOutboundReferenceCount
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidence
+import io.github.amichne.kast.change.contract.AddDeclarationProjectModelFingerprint
 import io.github.amichne.kast.change.contract.AddDeclarationSourceOwner
 import io.github.amichne.kast.change.contract.AddDeclarationTargetCapability
 import io.github.amichne.kast.change.contract.AddDeclarationVerificationContract
@@ -16,6 +20,7 @@ import io.github.amichne.kast.change.contract.DeclaredWriteSet
 import io.github.amichne.kast.change.contract.DetachedCompilerEvidence
 import io.github.amichne.kast.change.contract.ExactFileContentProof
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
+import io.github.amichne.kast.change.contract.ExpectedAddDeclarationCompilerContext
 import io.github.amichne.kast.change.contract.ExpectedFileProof
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
@@ -161,9 +166,26 @@ private fun AddDeclarationPlanResult.toDetachedEvidence(
         packageName = proof.packageIdentity.render(),
         declarationName = proof.declaration.name,
         declarationKind = proof.declaration.kind.toPlanningKind(),
-        collisionSignature = proof.declaration.collisionSignature.value,
     ).refinedOrNull() ?: return invalidEvidence()
     val verification = AddDeclarationVerificationContract.forGeneration(generation)
+    if (proof.context.requiredGeneration.value != generation.value) return invalidEvidence()
+    val contextFiles = proof.context.contextFileHashes.map { file ->
+        AddDeclarationCompilerContextFile.admit(file.filePath, file.sha256).refinedOrNull()
+            ?: return invalidEvidence()
+    }
+    val compilerContext = ExpectedAddDeclarationCompilerContext.admit(
+        generation = generation,
+        projectModelFingerprint = AddDeclarationProjectModelFingerprint.parse(
+            proof.context.projectModelFingerprint.value,
+        ).refinedOrNull() ?: return invalidEvidence(),
+        classpathFingerprint = AddDeclarationClasspathFingerprint.parse(
+            proof.context.classpathFingerprint.value,
+        ).refinedOrNull() ?: return invalidEvidence(),
+        contextFiles = contextFiles,
+        outboundReferenceCount = AddDeclarationOutboundReferenceCount.parse(
+            proof.outboundEvidence.occurrences.size,
+        ).refinedOrNull() ?: return invalidEvidence(),
+    ).refinedOrNull() ?: return invalidEvidence()
     val compilerEvidence = DetachedCompilerEvidence.admit(
         legacyPlanJson.encodeToString(AddDeclarationPlanResult.serializer(), this),
     ).refinedOrNull() ?: return invalidEvidence()
@@ -175,6 +197,7 @@ private fun AddDeclarationPlanResult.toDetachedEvidence(
         declaredWriteSet = declaredWriteSet,
         expectedSemanticDelta = semanticDelta,
         verification = verification,
+        compilerContext = compilerContext,
         compilerEvidence = compilerEvidence,
     ).refinedOrNull() ?: return invalidEvidence()
     return AddDeclarationEvidenceResult.Proven(evidence)

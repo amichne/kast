@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle

@@ -21,6 +21,11 @@ workspace-transition authority.
   wait holds a connection or transaction.
 - SQLite stores evidence and lifecycle facts; it never establishes current
   semantic truth.
+- Verification completion atomically advances exact v4 to terminal v5 from the verification SPI's
+  scoped observation capability. The receipt persists and revalidates the full publication and
+  observed target/range/package/name/kind; a decoded v5 record exposes no recovery capability.
+- Failed rollback leaves transaction disposition explicitly unknown; it never returns an ordinary
+  rejection.
 
 ## Verification
 

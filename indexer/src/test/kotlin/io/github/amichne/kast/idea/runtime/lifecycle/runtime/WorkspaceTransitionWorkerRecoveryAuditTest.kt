@@ -4,6 +4,8 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotPublication
+import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspacePublicationCurrency
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
@@ -40,8 +42,12 @@ class WorkspaceTransitionWorkerRecoveryAuditTest {
             override fun current() =
                 if (currentReads.incrementAndGet() == 1) delegate.current() else error("unreadable current pointer")
 
-            override fun matches(manifest: PublishedWorkspaceGenerationManifest): Boolean =
-                current() == PublishedWorkspaceGenerationState.Published(manifest.detachedPublication())
+            override fun currency(
+                manifest: PublishedWorkspaceGenerationManifest,
+            ): IndexStoreWorkspacePublicationCurrency {
+                current()
+                return delegate.currency(manifest)
+            }
 
             override fun begin() = delegate.begin()
             override fun prepare(

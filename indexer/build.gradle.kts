@@ -206,9 +206,10 @@ dependencies {
         ":change:recovery:filesystem",
         ":change:recovery:service",
         ":change:recovery:spi",
+        ":change:verify:intellij", ":change:verify:service", ":change:verify:spi",
         ":analysis-api",
         ":analysis-server",
-        ":evidence:spi",
+        ":evidence:spi", ":evidence:sqlite",
         ":index-store",
         ":workspace:intellij",
         ":workspace:service",
@@ -332,9 +333,10 @@ val platformKotlinPluginOwnedClassEntries = listOf(
 )
 
 val indexerPluginRuntimeJarPrefixes = listOf(
-    "analysis-api-", "analysis-server-", "index-store-",
+    "analysis-api-", "analysis-server-", "evidence-sqlite-", "index-store-",
     "change-apply-intellij-", "change-apply-service-", "change-apply-spi-",
     "change-recovery-contract-", "change-recovery-filesystem-", "change-recovery-service-", "change-recovery-spi-",
+    "change-verify-intellij-", "change-verify-service-", "change-verify-spi-",
     "symbol-contract-", "symbol-intellij-",
     "kotlinx-coroutines-core",
     "opentelemetry-",

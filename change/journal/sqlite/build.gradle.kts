@@ -11,5 +11,6 @@ base {
 
 dependencies {
     implementation(project(":change:journal:contract"))
+    implementation(project(":change:verify:spi"))
     implementation(libs.sqlite.jdbc)
 }

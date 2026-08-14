@@ -4,27 +4,19 @@ import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
-import io.github.amichne.kast.indexstore.snapshot.GraphEvidenceBlocker
-import io.github.amichne.kast.indexstore.snapshot.OpenWorkspaceGeneration
-import io.github.amichne.kast.indexstore.snapshot.PreparedWorkspaceGeneration
+import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspaceGenerationPublication
+import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspacePublicationCurrency
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState as StoredPublicationState
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
-import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 
-/**
- * Legacy persistence adapter consumed only through evidence publication contracts.
- */
+/** Legacy composition bridge consumed only through evidence publication contracts. */
 internal interface WorkspaceGenerationPublication {
     fun current(): PublishedWorkspaceGenerationState
 
-    fun matches(manifest: PublishedWorkspaceGenerationManifest): Boolean
+    fun currency(manifest: PublishedWorkspaceGenerationManifest): IndexStoreWorkspacePublicationCurrency
 
     fun begin(): OpenWorkspacePublication
 
@@ -44,89 +36,31 @@ internal interface WorkspaceGenerationPublication {
 }
 
 internal class PersistentWorkspaceGenerationPublication(
-    private val store: WorkspaceGenerationStore,
+    store: WorkspaceGenerationStore,
 ) : WorkspaceGenerationPublication {
-    override fun current(): PublishedWorkspaceGenerationState = when (val current = store.current()) {
-        StoredPublicationState.Unpublished -> PublishedWorkspaceGenerationState.Unpublished
-        is StoredPublicationState.Published ->
-            PublishedWorkspaceGenerationState.Published(current.manifest.detachedPublication())
-    }
+    private val delegate = IndexStoreWorkspaceGenerationPublication(store)
 
-    override fun matches(manifest: PublishedWorkspaceGenerationManifest): Boolean =
-        store.current() == StoredPublicationState.Published(manifest)
+    override fun current(): PublishedWorkspaceGenerationState = delegate.current()
 
-    override fun begin(): OpenWorkspacePublication = StoreOpenWorkspacePublication(store.begin())
+    override fun currency(
+        manifest: PublishedWorkspaceGenerationManifest,
+    ): IndexStoreWorkspacePublicationCurrency = delegate.currency(manifest)
+
+    override fun begin(): OpenWorkspacePublication = delegate.begin()
 
     override fun prepare(
         open: OpenWorkspacePublication,
         identity: WorkspaceStateIdentity,
         graphPublication: WorkspaceGraphPublication,
-    ): PreparedWorkspacePublication = StorePreparedWorkspacePublication(
-        store.prepare(
-            candidate = open.storeGeneration(),
-            identity = PublishedWorkspaceIdentity(identity.value),
-            graphBlocker = when (graphPublication) {
-                WorkspaceGraphPublication.Ready -> null
-                WorkspaceGraphPublication.IndexingBlocked -> GraphEvidenceBlocker.INDEXING_FAILED
-            },
-        ),
-    )
+    ): PreparedWorkspacePublication = delegate.prepare(open, identity, graphPublication)
 
     override fun commit(prepared: PreparedWorkspacePublication): WorkspacePublicationCommit =
-        store.commit(prepared.storeGeneration()).let(::StoreWorkspacePublicationCommit)
+        delegate.commit(prepared).commit
 
     override fun storedCommit(commit: WorkspacePublicationCommit): WorkspaceGenerationCommit =
-        (commit as? StoreWorkspacePublicationCommit)?.commit
-        ?: error("Workspace publication commit belongs to another persistence authority")
+        delegate.storedCommit(commit)
 
-    override fun discard(prepared: PreparedWorkspacePublication) {
-        store.discard(prepared.storeGeneration())
-    }
+    override fun discard(prepared: PreparedWorkspacePublication) = delegate.discard(prepared)
 
-    override fun discard(open: OpenWorkspacePublication) {
-        store.discard(open.storeGeneration())
-    }
-
-    private fun OpenWorkspacePublication.storeGeneration(): OpenWorkspaceGeneration =
-        (this as? StoreOpenWorkspacePublication)?.generation
-        ?: error("Open workspace generation belongs to another publication authority")
-
-    private fun PreparedWorkspacePublication.storeGeneration(): PreparedWorkspaceGeneration =
-        (this as? StorePreparedWorkspacePublication)?.generation
-        ?: error("Prepared workspace generation belongs to another publication authority")
-
-    private data class StorePreparedWorkspacePublication(
-        val generation: PreparedWorkspaceGeneration,
-    ) : PreparedWorkspacePublication
-
-    private data class StoreOpenWorkspacePublication(
-        val generation: OpenWorkspaceGeneration,
-    ) : OpenWorkspacePublication
-
-    private data class StoreWorkspacePublicationCommit(
-        val commit: WorkspaceGenerationCommit,
-    ) : WorkspacePublicationCommit {
-        override val publication: PublishedWorkspaceGeneration =
-            commit.manifest.detachedPublication()
-    }
-}
-
-/**
- * Proof transition:
- * `PublishedWorkspaceGenerationManifest -> PublishedWorkspaceGeneration`.
- *
- * Preserves the store-proven positive generation and non-blank workspace identity as detached
- * workspace evidence. Kernel rejection is closed and fails the persistence adapter rather than
- * weakening publication proof. Raw store values may be extracted only at this adapter boundary.
- */
-internal fun PublishedWorkspaceGenerationManifest.detachedPublication(): PublishedWorkspaceGeneration {
-    val detachedGeneration = when (val parsed = EvidenceGeneration.parse(generation.value)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected ->
-            error("Stored workspace publication has an unrepresentable generation: ${generation.value}")
-    }
-    return PublishedWorkspaceGeneration(
-        generation = detachedGeneration,
-        identity = WorkspaceStateIdentity(identity.value),
-    )
+    override fun discard(open: OpenWorkspacePublication) = delegate.discard(open)
 }

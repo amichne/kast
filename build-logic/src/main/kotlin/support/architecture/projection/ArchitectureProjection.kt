@@ -6,13 +6,14 @@ import support.architecture.LegacyViolationKey
 import support.architecture.MutationDeliveryOwner
 import support.architecture.ModuleRoleConventionRequirement
 import support.architecture.ValidatedArchitecturePolicy
+import support.architecture.ValidatedLegacyImplementationBridge
 import support.architecture.ValidatedLegacyMigrationEdge
 import support.architecture.process.MutationRuntimeAdmission
 
 object ArchitectureProjection {
     fun render(policy: ValidatedArchitecturePolicy): String = buildString {
         append("{\n")
-        append("  \"schemaVersion\": 6,\n")
+        append("  \"schemaVersion\": 7,\n")
         append("  \"policyAuthority\": \"KOTLIN\",\n")
         append("  \"policySource\": \"build-logic/src/main/kotlin/support/architecture\",\n")
         append("  \"enforcementScope\": \"REPOSITORY_WIDE\",\n")
@@ -86,6 +87,19 @@ object ArchitectureProjection {
                 .append("\n")
         }
         append("  ],\n")
+        append("  \"legacyImplementationBridges\": [\n")
+        val bridges = policy.legacyImplementationBridges.values.sortedWith(
+            compareBy(
+                { bridge -> bridge.dependency.consumer.name },
+                { bridge -> bridge.dependency.dependency.name },
+            ),
+        )
+        bridges.forEachIndexed { index, bridge ->
+            append("    ").appendImplementationBridge(bridge)
+                .appendComma(index, bridges.lastIndex)
+                .append("\n")
+        }
+        append("  ],\n")
         append("  \"legacyAllowances\": [\n")
         val allowances = policy.legacyAllowances.sortedBy(::allowanceSortKey)
         allowances.forEachIndexed { index, allowance ->
@@ -96,6 +110,16 @@ object ArchitectureProjection {
         append("  ]\n")
         append("}\n")
     }
+}
+
+private fun StringBuilder.appendImplementationBridge(
+    bridge: ValidatedLegacyImplementationBridge.Active,
+): StringBuilder {
+    append("{\"consumer\": ").appendQuoted(bridge.dependency.consumer.projectPath)
+        .append(", \"dependency\": ").appendQuoted(bridge.dependency.dependency.projectPath)
+        .append(", \"lifecycle\": \"ACTIVE\"")
+        .append(", \"retirementTask\": ").appendQuoted(bridge.retirementTask.name)
+    return append("}")
 }
 
 private fun StringBuilder.appendMigration(

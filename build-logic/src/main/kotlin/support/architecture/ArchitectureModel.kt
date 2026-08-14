@@ -2,7 +2,6 @@ package support.architecture
 
 import support.architecture.process.MutationRuntimeProcessId
 import support.architecture.process.MutationRuntimeProcessPolicy
-import support.architecture.process.MutationRuntimeTopologyFailure
 import support.architecture.process.ValidatedMutationRuntimeTopology
 
 enum class ModuleLifecycle {
@@ -167,6 +166,27 @@ sealed interface ValidatedLegacyMigrationEdge {
     ) : ValidatedLegacyMigrationEdge
 }
 
+enum class LegacyImplementationBridgeLifecycle {
+    ACTIVE,
+    COMPLETED,
+}
+
+data class LegacyImplementationBridgePolicy(
+    val dependency: ProjectDependencyObservation,
+    val lifecycle: LegacyImplementationBridgeLifecycle,
+    val retirementTask: MutationDeliveryTaskId,
+)
+
+sealed interface ValidatedLegacyImplementationBridge {
+    val dependency: ProjectDependencyObservation
+    val retirementTask: MutationDeliveryTaskId
+
+    class Active internal constructor(
+        override val dependency: ProjectDependencyObservation,
+        override val retirementTask: MutationDeliveryTaskId,
+    ) : ValidatedLegacyImplementationBridge
+}
+
 enum class MutationDeliveryPhase {
     FOUNDATION,
     PLANNING,
@@ -183,7 +203,7 @@ enum class MutationDeliveryTaskId {
     A01, A02, A03, A04, A05, A06, A07, A08,
     V01, V02, V03, V04, V05,
     R01, R02, R03,
-    M01, M02, M03,
+    M01, M02, M03, M04,
     T01, T02, T03, T04, T05,
 }
 
@@ -215,145 +235,8 @@ data class ArchitecturePolicyDefinition(
     val mutationRuntimeProcesses: List<MutationRuntimeProcessPolicy>,
     val legacyAllowances: List<LegacyAllowance> = emptyList(),
     val legacyMigrationEdges: List<LegacyMigrationEdgePolicy> = emptyList(),
+    val legacyImplementationBridges: List<LegacyImplementationBridgePolicy> = emptyList(),
 )
-
-sealed interface ArchitecturePolicyFailure {
-    data class DuplicateModule(val id: ModuleId) : ArchitecturePolicyFailure
-
-    data class MissingModuleDependency(
-        val module: ModuleId,
-        val missing: ModuleId,
-    ) : ArchitecturePolicyFailure
-
-    data class ForbiddenModuleRoleDependency(
-        val module: ModuleId,
-        val dependency: ModuleId,
-        val dependencyRole: ModuleRole,
-    ) : ArchitecturePolicyFailure
-
-    data class ForbiddenModuleCostDependency(
-        val module: ModuleId,
-        val dependency: ModuleId,
-        val dependencyCost: ModuleCost,
-    ) : ArchitecturePolicyFailure
-
-    data class ForbiddenModuleRoleEffect(
-        val module: ModuleId,
-        val effect: ForbiddenEffect,
-    ) : ArchitecturePolicyFailure
-
-    data class FeatureContractDependsOnRegistry(
-        val featureContract: ModuleId,
-    ) : ArchitecturePolicyFailure
-
-    data object MissingRuntimeComposition : ArchitecturePolicyFailure
-
-    data class UnexpectedCompositionOwner(
-        val module: ModuleId,
-    ) : ArchitecturePolicyFailure
-
-    data class InvalidRuntimeCompositionDependencies(
-        val missing: Set<ModuleId>,
-        val unexpected: Set<ModuleId>,
-    ) : ArchitecturePolicyFailure
-
-    data class ModuleDependencyCycle(val members: Set<ModuleId>) : ArchitecturePolicyFailure
-
-    data class DuplicateMutationDeliveryTask(val id: MutationDeliveryTaskId) : ArchitecturePolicyFailure
-
-    data class MissingMutationDeliveryDependency(
-        val task: MutationDeliveryTaskId,
-        val missing: MutationDeliveryTaskId,
-    ) : ArchitecturePolicyFailure
-
-    data class MissingMutationDeliveryOwnerModule(
-        val task: MutationDeliveryTaskId,
-        val missing: ModuleId,
-    ) : ArchitecturePolicyFailure
-
-    data class MutationDeliveryDependencyCycle(
-        val members: Set<MutationDeliveryTaskId>,
-    ) : ArchitecturePolicyFailure
-
-    data class DuplicateLegacyAllowance(
-        val violation: LegacyViolationKey,
-    ) : ArchitecturePolicyFailure
-
-    data class MissingLegacyRetirementTask(
-        val allowance: LegacyAllowance,
-    ) : ArchitecturePolicyFailure
-
-    data class MissingLegacyAllowanceModule(
-        val allowance: LegacyAllowance,
-        val missing: ModuleId,
-    ) : ArchitecturePolicyFailure
-
-    data class NonExactLegacyAllowance(
-        val allowance: LegacyAllowance,
-    ) : ArchitecturePolicyFailure
-
-    data class DependencyAllowanceRequiresMigration(
-        val allowance: LegacyAllowance,
-    ) : ArchitecturePolicyFailure
-
-    data class DuplicateLegacyMigration(
-        val dependency: ProjectDependencyObservation,
-    ) : ArchitecturePolicyFailure
-
-    data class UnadmittedLegacyMigration(
-        val migration: LegacyMigrationEdgePolicy,
-    ) : ArchitecturePolicyFailure
-
-    data class InvalidLegacyMigrationTarget(
-        val migration: LegacyMigrationEdgePolicy,
-        val failures: Set<LegacyMigrationTargetFailure>,
-    ) : ArchitecturePolicyFailure
-
-    data class MissingLegacyMigrationModule(
-        val migration: LegacyMigrationEdgePolicy,
-        val missing: ModuleId,
-    ) : ArchitecturePolicyFailure
-
-    data class InvalidLegacyMigrationDirection(
-        val migration: LegacyMigrationEdgePolicy,
-    ) : ArchitecturePolicyFailure
-
-    data class CompletedLegacyMigration(
-        val migration: LegacyMigrationEdgePolicy,
-    ) : ArchitecturePolicyFailure
-
-    data class MissingLegacyMigrationRetirementTask(
-        val migration: LegacyMigrationEdgePolicy,
-    ) : ArchitecturePolicyFailure
-
-    data class CompletedLegacyMigrationRetirementTask(
-        val migration: LegacyMigrationEdgePolicy,
-    ) : ArchitecturePolicyFailure
-
-    data class PermanentLegacyMigration(
-        val migration: LegacyMigrationEdgePolicy,
-    ) : ArchitecturePolicyFailure
-
-    data class DuplicateMutationRuntimeProcess(val id: MutationRuntimeProcessId) : ArchitecturePolicyFailure
-
-    data class MissingMutationRuntimeProcessDependency(
-        val process: MutationRuntimeProcessId,
-        val missing: MutationRuntimeProcessId,
-    ) : ArchitecturePolicyFailure
-
-    data class MissingMutationRuntimeProcessOwner(
-        val process: MutationRuntimeProcessId,
-        val missing: ModuleId,
-    ) : ArchitecturePolicyFailure
-
-    data class MutationRuntimeProcessDependencyCycle(
-        val members: Set<MutationRuntimeProcessId>,
-    ) : ArchitecturePolicyFailure
-
-    data class InvalidMutationRuntimeTopology(
-        val failure: MutationRuntimeTopologyFailure,
-    ) : ArchitecturePolicyFailure
-}
 
 enum class LegacyMigrationTargetFailure {
     TARGET_ROLE_NOT_INWARD,
@@ -375,6 +258,10 @@ class ValidatedArchitecturePolicy internal constructor(
     val mutationRuntimeProcessOrder: List<MutationRuntimeProcessId>,
     val legacyAllowances: Set<LegacyAllowance>,
     val legacyMigrationEdges: Map<ProjectDependencyObservation, ValidatedLegacyMigrationEdge>,
+    val legacyImplementationBridges: Map<
+        ProjectDependencyObservation,
+        ValidatedLegacyImplementationBridge.Active,
+        >,
 ) {
     val mutationRuntimeProcesses: Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>
         get() = mutationRuntimeTopology.processes

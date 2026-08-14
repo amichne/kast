@@ -1,7 +1,11 @@
 package io.github.amichne.kast.change.journal.sqlite
 
+import io.github.amichne.kast.change.contract.AddDeclarationClasspathFingerprint
+import io.github.amichne.kast.change.contract.AddDeclarationCompilerContextFile
 import io.github.amichne.kast.change.contract.AddDeclarationKind
+import io.github.amichne.kast.change.contract.AddDeclarationOutboundReferenceCount
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidence
+import io.github.amichne.kast.change.contract.AddDeclarationProjectModelFingerprint
 import io.github.amichne.kast.change.contract.AddDeclarationRevalidationObservation
 import io.github.amichne.kast.change.contract.AddDeclarationSourceProvenance
 import io.github.amichne.kast.change.contract.AddDeclarationSourceOwner
@@ -11,6 +15,7 @@ import io.github.amichne.kast.change.contract.AddDeclarationVerificationContract
 import io.github.amichne.kast.change.contract.DeclaredWriteSet
 import io.github.amichne.kast.change.contract.DetachedCompilerEvidence
 import io.github.amichne.kast.change.contract.ExactFileContentProof
+import io.github.amichne.kast.change.contract.ExpectedAddDeclarationCompilerContext
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.ExpectedFileProof
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
@@ -308,9 +313,21 @@ class SqliteAddDeclarationPlanJournalTest {
                     packageName = "sample",
                     declarationName = "added",
                     declarationKind = AddDeclarationKind.FUNCTION,
-                    collisionSignature = "2".repeat(64),
                 ).refined(),
                 verification = AddDeclarationVerificationContract.forGeneration(generation),
+                compilerContext = ExpectedAddDeclarationCompilerContext.admit(
+                    generation = generation,
+                    projectModelFingerprint = AddDeclarationProjectModelFingerprint.parse(
+                        "3".repeat(64),
+                    ).refined(),
+                    classpathFingerprint = AddDeclarationClasspathFingerprint.parse(
+                        "4".repeat(64),
+                    ).refined(),
+                    contextFiles = listOf(
+                        AddDeclarationCompilerContextFile.admit(TARGET, hash(before)).refined(),
+                    ),
+                    outboundReferenceCount = AddDeclarationOutboundReferenceCount.parse(0).refined(),
+                ).refined(),
                 compilerEvidence = DetachedCompilerEvidence.admit("{\"complete\":true}").refined(),
             ).refined(),
         )

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "policyAuthority": "KOTLIN",
   "policySource": "build-logic/src/main/kotlin/support/architecture",
   "enforcementScope": "REPOSITORY_WIDE",
@@ -66,13 +66,33 @@
       "allowedEffects": []
     },
     {
+      "id": "WORKSPACE_CONTRACT",
+      "projectPath": ":workspace:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
       "id": "CHANGE_JOURNAL_CONTRACT",
       "projectPath": ":change:journal:contract",
       "lifecycle": "ACTIVE",
       "role": "CONTRACT",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":change:contract", ":change:recovery:contract"],
+      "allowedProjectDependencies": [":change:contract", ":change:recovery:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_VERIFY_SPI",
+      "projectPath": ":change:verify:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -82,18 +102,8 @@
       "role": "SQLITE_ADAPTER",
       "cost": "PHYSICAL_EFFECT",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.sqlite"},
-      "allowedProjectDependencies": [":change:journal:contract"],
+      "allowedProjectDependencies": [":change:journal:contract", ":change:verify:spi"],
       "allowedEffects": ["JDBC"]
-    },
-    {
-      "id": "WORKSPACE_CONTRACT",
-      "projectPath": ":workspace:contract",
-      "lifecycle": "ACTIVE",
-      "role": "CONTRACT",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel"],
-      "allowedEffects": []
     },
     {
       "id": "CHANGE_PLAN_SPI",
@@ -186,6 +196,36 @@
       "allowedEffects": []
     },
     {
+      "id": "CHANGE_VERIFY_INTELLIJ",
+      "projectPath": ":change:verify:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
+      "allowedProjectDependencies": [":change:contract", ":change:verify:spi", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "WORKSPACE_SPI",
+      "projectPath": ":workspace:spi",
+      "lifecycle": "ACTIVE",
+      "role": "SPI",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
+      "allowedProjectDependencies": [":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_VERIFY_SERVICE",
+      "projectPath": ":change:verify:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":change:recovery:contract", ":change:verify:spi", ":workspace:contract", ":workspace:spi"],
+      "allowedEffects": []
+    },
+    {
       "id": "EVIDENCE_CONTRACT",
       "projectPath": ":evidence:contract",
       "lifecycle": "ACTIVE",
@@ -206,6 +246,16 @@
       "allowedEffects": []
     },
     {
+      "id": "EVIDENCE_SQLITE",
+      "projectPath": ":evidence:sqlite",
+      "lifecycle": "ACTIVE",
+      "role": "SQLITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.sqlite"},
+      "allowedProjectDependencies": [":evidence:contract", ":evidence:spi", ":workspace:contract"],
+      "allowedEffects": ["JDBC"]
+    },
+    {
       "id": "SYMBOL_CONTRACT",
       "projectPath": ":symbol:contract",
       "lifecycle": "ACTIVE",
@@ -213,16 +263,6 @@
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
       "allowedProjectDependencies": [":kernel", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "WORKSPACE_SPI",
-      "projectPath": ":workspace:spi",
-      "lifecycle": "ACTIVE",
-      "role": "SPI",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
-      "allowedProjectDependencies": [":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -262,7 +302,7 @@
       "role": "LEGACY_HOST",
       "cost": "LEGACY",
       "roleConvention": {"kind": "UNMARKED_LEGACY"},
-      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":evidence:spi", ":index-store", ":symbol:contract", ":symbol:intellij", ":workspace:intellij", ":workspace:service", ":workspace:spi"],
+      "allowedProjectDependencies": [":analysis-api", ":analysis-server", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:spi", ":evidence:sqlite", ":index-store", ":symbol:contract", ":symbol:intellij", ":workspace:intellij", ":workspace:service", ":workspace:spi"],
       "allowedEffects": ["FILESYSTEM_WRITE"]
     },
     {
@@ -274,16 +314,6 @@
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
       "allowedProjectDependencies": [":change:contract", ":kernel", ":symbol:contract", ":workspace:contract"],
       "allowedEffects": []
-    },
-    {
-      "id": "EVIDENCE_SQLITE",
-      "projectPath": ":evidence:sqlite",
-      "lifecycle": "PLANNED",
-      "role": "SQLITE_ADAPTER",
-      "cost": "PHYSICAL_EFFECT",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.sqlite"},
-      "allowedProjectDependencies": [":evidence:contract", ":evidence:spi", ":workspace:contract"],
-      "allowedEffects": ["JDBC"]
     },
     {
       "id": "PROTOCOL_CONTINUATION",
@@ -324,36 +354,6 @@
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.filesystem-write"},
       "allowedProjectDependencies": [":change:apply:spi", ":change:contract"],
       "allowedEffects": ["FILESYSTEM_WRITE", "SOURCE_FILESYSTEM_WRITE"]
-    },
-    {
-      "id": "CHANGE_VERIFY_SPI",
-      "projectPath": ":change:verify:spi",
-      "lifecycle": "PLANNED",
-      "role": "SPI",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.spi"},
-      "allowedProjectDependencies": [":change:contract", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_VERIFY_INTELLIJ",
-      "projectPath": ":change:verify:intellij",
-      "lifecycle": "PLANNED",
-      "role": "INTELLIJ_READ_ADAPTER",
-      "cost": "BOUNDED_READ",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
-      "allowedProjectDependencies": [":change:contract", ":change:verify:spi", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
-      "id": "CHANGE_VERIFY_SERVICE",
-      "projectPath": ":change:verify:service",
-      "lifecycle": "PLANNED",
-      "role": "SERVICE",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
-      "allowedProjectDependencies": [":change:contract", ":change:journal:contract", ":change:recovery:contract", ":change:verify:spi"],
-      "allowedEffects": []
     },
     {
       "id": "RUNTIME_BINDINGS",
@@ -794,6 +794,14 @@
       "owner": {"kind": "MODULES", "modules": [":protocol:registry", ":runtime:server"]}
     },
     {
+      "id": "M04",
+      "phase": "MIGRATION",
+      "name": "Move workspace-generation storage out of the legacy index-store host",
+      "lifecycle": "OPEN",
+      "dependsOn": ["V02"],
+      "owner": {"kind": "MODULES", "modules": [":evidence:sqlite"]}
+    },
+    {
       "id": "T01",
       "phase": "PROOF",
       "name": "Contract and state-machine suite",
@@ -836,6 +844,9 @@
   ],
   "legacyMigrationEdges": [
     {"consumer": ":analysis-server", "dependency": ":runtime:bindings", "lifecycle": "PLANNED", "retirementTask": "F04"}
+  ],
+  "legacyImplementationBridges": [
+    {"consumer": ":evidence:sqlite", "dependency": ":index-store", "lifecycle": "ACTIVE", "retirementTask": "M04"}
   ],
   "legacyAllowances": [
     {"retirementTask": "A06", "kind": "FORBIDDEN_EFFECT", "effect": "SOURCE_FILESYSTEM_WRITE", "module": ":analysis-api", "caller": {"owner": "io/github/amichne/kast/api/io/LocalDiskFileOperations", "name": "createTempFile", "descriptor": "(Ljava/lang/String;)Ljava/lang/String;", "targetOwner": "java/nio/file/Files", "targetName": "createDirectories", "targetDescriptor": "(Ljava/nio/file/Path;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;"}},

@@ -57,6 +57,7 @@ internal class KastAdditionPostconditionRefreshTest : IdeaEditApplicationTestFix
         workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         workspaceModelReader = ::workspaceModel,
         addDeclarationPlanPersistence = TestAddDeclarationPlanPersistence,
+        psiGeneration = { 1L },
     )
 
     private fun workspaceModel(): IdeaGradleProjectLoadBridge.GradleWorkspaceModel {

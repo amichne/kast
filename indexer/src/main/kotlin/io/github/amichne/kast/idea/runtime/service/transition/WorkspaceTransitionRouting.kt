@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.workspace.contract.TransitionBlocker
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState

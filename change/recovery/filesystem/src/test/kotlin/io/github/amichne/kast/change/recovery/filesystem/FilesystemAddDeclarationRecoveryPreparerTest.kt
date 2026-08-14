@@ -12,6 +12,7 @@ import io.github.amichne.kast.change.contract.DeclaredWriteSet
 import io.github.amichne.kast.change.contract.DetachedCompilerEvidence
 import io.github.amichne.kast.change.contract.ExactFileContentProof
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
+import io.github.amichne.kast.change.contract.ExpectedAddDeclarationCompilerContext
 import io.github.amichne.kast.change.contract.ExpectedFileProof
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
@@ -110,9 +111,16 @@ class FilesystemAddDeclarationRecoveryPreparerTest {
                     packageName = "sample",
                     declarationName = "added",
                     declarationKind = AddDeclarationKind.FUNCTION,
-                    collisionSignature = "2".repeat(64),
                 ).refined(),
                 verification = AddDeclarationVerificationContract.forGeneration(generation),
+                compilerContext = ExpectedAddDeclarationCompilerContext.admitSingleSource(
+                    generation,
+                    "3".repeat(64),
+                    "4".repeat(64),
+                    targetCapability.targetPath.value,
+                    hash(PREIMAGE),
+                    0,
+                ).refined(),
                 compilerEvidence = DetachedCompilerEvidence.admit("{\"complete\":true}").refined(),
             ).refined(),
         )

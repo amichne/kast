@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
