@@ -5,13 +5,13 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 
 ## Module map
 
-- `SymbolSearchScope.kt` owns the generation-bound exact-file, module, source-set, Gradle-project,
+- `SymbolSearchScope.kt` owns the current-epoch-bound exact-file, module, source-set, Gradle-project,
   and workspace targets plus production/test, generated-source, and project-library read policy.
 - `SymbolDiscoveryRequest.kt` owns file/class/symbol patterns and record, byte, work, and elapsed
   request budgets.
-- `SymbolDiscoveryCandidate.kt` owns generation-bound detached workspace/external file identity,
+- `SymbolDiscoveryCandidate.kt` owns current-epoch-bound detached workspace/external file identity,
   declaration locations, deterministic ordering, and canonical projection size.
-- `SymbolDiscoveryOutcome.kt` owns bounded generation-bound batches, separate native/projection
+- `SymbolDiscoveryOutcome.kt` owns bounded current-epoch-bound batches, separate native/projection
   timings, closed qualified-completeness states, and the exact search scope retained by a batch.
 - `ExactDeclarationSelector.kt` owns batch-ordinal declaration selection, detached native
   declaration evidence, selector issuance, and proof of unchanged revalidation.
@@ -36,9 +36,11 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 - Readability policy never grants edit, write, or mutation authority.
 - Library readability exists only on workspace-wide policy; narrower model owners cannot silently
   widen to every project library.
+- Native symbol leases are current imported-model/compiler epochs, not persisted source-index
+  generations. The issuing runtime must revalidate an epoch after live work before serving it.
 - Discovery candidates are suggestions, not exact selectors or mutation authority. Exact selection
   is possible only by ordinal from its owning batch; an IntelliJ adapter must then resolve that
-  selection under the same root, generation, and scope before issuing an opaque selector.
+  selection under the same root, current epoch, and scope before issuing an opaque selector.
 - A native definition projector returns only `NativeDetachedDefinition`. It cannot return PSI,
   VFS, project, or search-scope objects.
 - Exact selectors retain file, range, name, qualified-identity state, runtime declaration type, and

@@ -1,48 +1,56 @@
 fn execute_request(request: AgentRequest) -> AgentEnvelope {
-    execute_request_with_session(request, None)
+    execute_request_with_session::<runtime::lifecycle_typestate::CompilerCapability>(request, None)
 }
 
-fn execute_request_with_session(
+fn execute_request_with_session<C: runtime::lifecycle_typestate::RequiredCapability>(
     request: AgentRequest,
-    session: Option<&runtime::RawRpcSession>,
+    session: Option<&runtime::RawRpcSession<C>>,
 ) -> AgentEnvelope {
-    let mutation_session = if request.operation == AgentOperation::AppliedMutation {
-        let admission = match runtime::semantic_mutation_workspace_route(
-            request.runtime.workspace_root.clone(),
-        ) {
-            Ok(runtime::SemanticWorkspaceRoute::Admitted(admission)) => admission,
-            Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {
-                let mut error = agent_error(rejection.code, rejection.message);
-                error.details.insert(
-                    "semanticWorkspace".to_string(),
-                    json!(rejection.evidence),
-                );
-                return error_envelope(request.method, Some(request.request), error);
-            }
-            Err(error) => {
-                return error_envelope(
-                    request.method,
-                    Some(request.request),
-                    AgentError::from_cli_error(error),
-                );
-            }
-        };
-        let required_capability = applied_mutation_capability(&request.request);
-        if !admission.supports_mutation(required_capability) {
+    if request.operation == AgentOperation::AppliedMutation {
+        return execute_applied_mutation_request(request);
+    }
+    execute_request_with_optional_session(request, session)
+}
+
+fn execute_applied_mutation_request(request: AgentRequest) -> AgentEnvelope {
+    let admission = match runtime::semantic_mutation_workspace_route(
+        request.runtime.workspace_root.clone(),
+    ) {
+        Ok(runtime::SemanticWorkspaceRoute::Admitted(admission)) => admission,
+        Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {
+            let mut error = agent_error(rejection.code, rejection.message);
+            error
+                .details
+                .insert("semanticWorkspace".to_string(), json!(rejection.evidence));
+            return error_envelope(request.method, Some(request.request), error);
+        }
+        Err(error) => {
             return error_envelope(
                 request.method,
                 Some(request.request),
-                agent_error(
-                    "SEMANTIC_MUTATION_CAPABILITY_UNAVAILABLE",
-                    "The admitted indexer did not advertise the required mutation capability.",
-                ),
+                AgentError::from_cli_error(error),
             );
         }
-        Some(runtime::raw_rpc_session_for_admission(*admission))
-    } else {
-        None
     };
-    let session = mutation_session.as_ref().or(session);
+    let required_capability = applied_mutation_capability(&request.request);
+    if !admission.supports_mutation(required_capability) {
+        return error_envelope(
+            request.method,
+            Some(request.request),
+            agent_error(
+                "SEMANTIC_MUTATION_CAPABILITY_UNAVAILABLE",
+                "The admitted indexer did not advertise the required mutation capability.",
+            ),
+        );
+    }
+    let session = runtime::raw_rpc_session_for_admission(*admission);
+    execute_request_with_optional_session(request, Some(&session))
+}
+
+fn execute_request_with_optional_session<C: runtime::lifecycle_typestate::RequiredCapability>(
+    request: AgentRequest,
+    session: Option<&runtime::RawRpcSession<C>>,
+) -> AgentEnvelope {
     let validation = validate_request(&request.method, &request.request);
     if let Err(error) = validation {
         return error_envelope(request.method, Some(request.request), error);

@@ -1,16 +1,16 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import java.nio.charset.StandardCharsets
 
 /**
  * Exact detached endpoint resolved by one native relation search and bound to the subject's
- * semantic lease and compiled scope.
+ * current-workspace lease and compiled scope.
  */
 @ConsistentCopyVisibility
 data class ExactRelationEndpoint private constructor(
-    val lease: SemanticReadLease,
+    val lease: CurrentWorkspaceReadLease,
     val scope: SymbolSearchScope,
     val evidence: ExactDeclarationEvidence,
     val fingerprint: ExactDeclarationFingerprint,
@@ -21,7 +21,7 @@ data class ExactRelationEndpoint private constructor(
          * ExactDeclarationSelector + ExactDeclarationEvidence to ExactRelationEndpoint.
          *
          * Establishes a deterministic exact identity for native resolved endpoint evidence under
-         * the subject selector's root, generation, and scope. Live PSI may be extracted into the
+         * the subject selector's root, current epoch, and scope. Live PSI may be extracted into the
          * evidence only by the request-local IntelliJ relation projector.
          */
         fun bind(
@@ -123,7 +123,7 @@ data class NativeRelationFact private constructor(
          * NativeRelationOccurrence to Refinement<NativeRelationFact, NativeRelationFactFailure>.
          *
          * Establishes one exact one-hop fact whose related endpoint retains the subject selector's
-         * root, generation, and scope. [NativeRelationFactFailure] is the closed expected failure.
+         * root, current epoch, and scope. [NativeRelationFactFailure] is the closed expected failure.
          * Raw IntelliJ values may enter only through the already-refined endpoint and occurrence.
          */
         fun create(

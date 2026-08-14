@@ -7,6 +7,8 @@ import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.RuntimeReadiness
 import io.github.amichne.kast.api.contract.RuntimeReadinessLane
+import io.github.amichne.kast.api.contract.EvidenceRevision
+import io.github.amichne.kast.api.contract.EvidenceRevisionResolution
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.result.CallRelationsResult
@@ -37,7 +39,7 @@ class ObservedAnalysisBackendTest {
             backendName = "indexer",
             backendVersion = "test",
             workspaceRoot = "/workspace",
-            readiness = RuntimeReadiness.ready(),
+            readiness = RuntimeReadiness.available(observedEvidenceRevision()),
         )
         val delegate = RecordingRelationshipBackend(
             calls = emptyCallRelationsResult(),
@@ -176,6 +178,11 @@ class ObservedAnalysisBackendTest {
             com.intellij.openapi.util.Disposer.dispose(parentDisposable)
         }
     }
+}
+
+private fun observedEvidenceRevision(): EvidenceRevision = when (val resolution = EvidenceRevision.parse(1)) {
+    is EvidenceRevisionResolution.Resolved -> resolution.revision
+    is EvidenceRevisionResolution.Rejected -> error("Expected positive test evidence revision")
 }
 
 private class RecordingRelationshipBackend(

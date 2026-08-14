@@ -10,7 +10,6 @@ import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import io.github.amichne.kast.idea.backend.workspace.IntellijKotlinRelationSemantics
 import io.github.amichne.kast.idea.workspace.gradle.toWorkspaceSearchScopeModel
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
@@ -42,7 +41,8 @@ import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.symbol.intellij.IntellijNativeRelationAdapter
 import io.github.amichne.kast.symbol.intellij.IntellijNativeRelationResult
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -115,7 +115,7 @@ internal class NativeRelationReviewRegressionTest : KastIndexerBackendContractTe
         }
         val workspaceRoot = checkNotNull(sourceRoot.parent)
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRoot).refined()
-        val lease = SemanticReadLease(root, EvidenceGeneration.parse(47L).refined())
+        val lease = CurrentWorkspaceReadLease(root, CurrentWorkspaceEpoch.parse(47L).refined())
         val model = workspaceModel(workspaceRoot, sourceRoot)
         val modelCompilation = model.toWorkspaceSearchScopeModel(root)
         val selector = readAction {
@@ -151,7 +151,7 @@ internal class NativeRelationReviewRegressionTest : KastIndexerBackendContractTe
 
     private fun selector(
         subject: KtNamedFunction,
-        lease: SemanticReadLease,
+        lease: CurrentWorkspaceReadLease,
         workspaceRoot: Path,
     ): ExactDeclarationSelector {
         val path = Path.of(checkNotNull(subject.containingFile.virtualFile).path)

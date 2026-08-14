@@ -5,7 +5,6 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
@@ -30,7 +29,8 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
@@ -156,20 +156,20 @@ class IntellijExactSelectorResolutionTest {
     @Test
     fun `moved leases and rejected scopes stop before exact native resolution`() {
         val current = lease()
-        val moved = SemanticReadLease(
+        val moved = CurrentWorkspaceReadLease(
             current.workspaceRoot,
-            EvidenceGeneration.parse(current.generation.value + 1).refined(),
+            CurrentWorkspaceEpoch.parse(current.epoch.value + 1).refined(),
         )
         assertEquals(
-            IntellijExactSelectorRejection.GENERATION_MOVED,
+            IntellijExactSelectorRejection.CURRENT_EPOCH_MOVED,
             (
                 admitExactSelectorLease(current, moved)
                     as IntellijExactSelectorLeaseAdmission.Rejected
             ).reason,
         )
-        val otherRoot = SemanticReadLease(
+        val otherRoot = CurrentWorkspaceReadLease(
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/other")).refined(),
-            current.generation,
+            current.epoch,
         )
         assertEquals(
             IntellijExactSelectorRejection.WORKSPACE_ROOT_MISMATCH,
@@ -228,7 +228,7 @@ class IntellijExactSelectorResolutionTest {
         compiled(selector.lease, selector.scope)
 
     private fun compiled(
-        lease: SemanticReadLease,
+        lease: CurrentWorkspaceReadLease,
         scope: SymbolSearchScope,
     ): CompiledIntellijSearchScope = CompiledIntellijSearchScope(
         lease = lease,
@@ -304,8 +304,8 @@ class IntellijExactSelectorResolutionTest {
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun lease(): SemanticReadLease =
-        SemanticReadLease(root(), EvidenceGeneration.parse(19L).refined())
+    private fun lease(): CurrentWorkspaceReadLease =
+        CurrentWorkspaceReadLease(root(), CurrentWorkspaceEpoch.parse(19L).refined())
 
     private fun IntellijExactSelectorResolution.selector(): ExactDeclarationSelector =
         (this as IntellijExactSelectorResolution.Resolved).selector

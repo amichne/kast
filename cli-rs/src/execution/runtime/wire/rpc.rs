@@ -2,94 +2,31 @@ pub fn raw_request_passthrough(
     raw_request: String,
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<String> {
+    if is_local_semantic_rpc(&raw_request)? {
+        let session = raw_rpc_session_from_route(semantic_workspace_route(
+            requested_workspace_root.clone(),
+        )?)?;
+        return raw_local_request_passthrough_in_session(
+            raw_request,
+            requested_workspace_root,
+            &session,
+        );
+    }
     let session = raw_rpc_session(requested_workspace_root.clone())?;
     raw_request_passthrough_in_session(raw_request, requested_workspace_root, &session)
 }
 
 #[derive(Debug, Clone)]
-pub struct RawRpcSession<C: lifecycle_typestate::RequiredCapability = lifecycle_typestate::SourceCapability> {
+pub struct RawRpcSession<C: lifecycle_typestate::RequiredCapability = lifecycle_typestate::CompilerCapability> {
     admission: AdmittedIndexerRuntime<C>,
     socket_path: PathBuf,
     response_timeouts: RpcResponseTimeoutPolicy,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct RpcResponseTimeoutPolicy {
-    ordinary: Duration,
-    workspace_transition: Duration,
-}
-
-impl RpcResponseTimeoutPolicy {
-    /// Proof transition: `Duration -> RpcResponseTimeoutPolicy`.
-    ///
-    /// Retains the configured ordinary request timeout while deriving a
-    /// separate finite response allowance for complete workspace-transition
-    /// dispatch. The latter covers both graph passes around the backend's
-    /// one-hour maximum progress wait, then adds client-only transport and
-    /// response-serialization headroom outside the server deadline.
-    fn derive(ordinary: Duration) -> Self {
-        let transition_dispatch = MAXIMUM_WORKSPACE_RECONCILIATION_WAIT
-            .saturating_add(ordinary.saturating_mul(SEMANTIC_GRAPH_PASS_COUNT));
-        Self {
-            ordinary,
-            workspace_transition: transition_dispatch
-                .saturating_add(CLIENT_RESPONSE_COMPLETION_RESERVE),
-        }
-    }
-
-    fn ordinary(self) -> Duration {
-        self.ordinary
-    }
-
-    /// Boundary transition: `JSON-RPC request -> Duration`.
-    ///
-    /// Extracts the protocol method only to select the already-typed timeout
-    /// policy consumed by the Unix socket read boundary.
-    fn for_request(self, raw_request: &str) -> Result<Duration> {
-        let request: Value = serde_json::from_str(raw_request)?;
-        Ok(
-            match RpcResponseDeadlineAuthority::derive(
-                request.get("method").and_then(Value::as_str),
-            ) {
-                RpcResponseDeadlineAuthority::WorkspaceTransition => self.workspace_transition,
-                RpcResponseDeadlineAuthority::Ordinary => self.ordinary,
-            },
-        )
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RpcResponseDeadlineAuthority {
-    WorkspaceTransition,
-    Ordinary,
-}
-
-impl RpcResponseDeadlineAuthority {
-    /// Boundary transition: `Option<&str> -> RpcResponseDeadlineAuthority`.
-    ///
-    /// Derives one closed timeout authority from the untrusted JSON-RPC method
-    /// field. The output need not retain the method: it carries only the
-    /// constrained fact consumed by exhaustive socket-read policy selection.
-    fn derive(method: Option<&str>) -> Self {
-        match method {
-            Some(
-                "raw/semantic-graph"
-                | "raw/workspace-refresh"
-                | "raw/apply-edits"
-                | "raw/exact-file-image-cas"
-                | "raw/recover-mutation-scratch",
-            ) => Self::WorkspaceTransition,
-            _ => Self::Ordinary,
-        }
-    }
-}
-
-const SEMANTIC_GRAPH_PASS_COUNT: u32 = 2;
-const MAXIMUM_WORKSPACE_RECONCILIATION_WAIT: Duration = Duration::from_secs(60 * 60);
-const CLIENT_RESPONSE_COMPLETION_RESERVE: Duration = Duration::from_secs(5);
+include!("rpc/timeout.rs");
 
 #[derive(Debug, Clone)]
-pub(crate) struct SemanticWorkspaceRead<C: lifecycle_typestate::RequiredCapability = lifecycle_typestate::SourceCapability> {
+pub(crate) struct SemanticWorkspaceRead<C: lifecycle_typestate::PersistedCapability = lifecycle_typestate::SourceCapability> {
     session: RawRpcSession<C>,
     published: crate::published_workspace::PublishedWorkspaceDatabase,
     capability: C::Ready,
@@ -99,13 +36,25 @@ pub(crate) struct SemanticWorkspaceRead<C: lifecycle_typestate::RequiredCapabili
 #[must_use = "the revalidated epoch proof must authorize the result derived from this read"]
 pub(crate) struct RevalidatedSemanticWorkspaceRead<
     'a,
-    C: lifecycle_typestate::RequiredCapability = lifecycle_typestate::SourceCapability,
+    C: lifecycle_typestate::PersistedCapability = lifecycle_typestate::SourceCapability,
 > {
     read: &'a SemanticWorkspaceRead<C>,
     capability: C::Ready,
 }
 
-impl<C: lifecycle_typestate::RequiredCapability> RevalidatedSemanticWorkspaceRead<'_, C> {
+#[derive(Debug)]
+#[must_use = "both revalidated lane proofs must authorize the composed result"]
+pub(crate) struct RevalidatedCompositeWorkspaceRead<
+    'a,
+    P: lifecycle_typestate::PersistedCapability,
+    C: lifecycle_typestate::CurrentCapability,
+> {
+    read: &'a SemanticWorkspaceRead<P>,
+    persisted_capability: P::Ready,
+    current_capability: C::Ready,
+}
+
+impl<C: lifecycle_typestate::PersistedCapability> RevalidatedSemanticWorkspaceRead<'_, C> {
     pub(crate) fn finish<T>(self, value: T) -> T {
         debug_assert_eq!(
             C::source(&self.capability).revision().value(),
@@ -115,7 +64,25 @@ impl<C: lifecycle_typestate::RequiredCapability> RevalidatedSemanticWorkspaceRea
     }
 }
 
-impl<C: lifecycle_typestate::RequiredCapability> SemanticWorkspaceRead<C> {
+impl<
+        P: lifecycle_typestate::PersistedCapability,
+        C: lifecycle_typestate::CurrentCapability,
+    > RevalidatedCompositeWorkspaceRead<'_, P, C>
+{
+    pub(crate) fn finish<T>(self, value: T) -> T {
+        debug_assert_eq!(
+            P::source(&self.persisted_capability).revision().value(),
+            self.read.published.manifest.source_revision,
+        );
+        debug_assert_eq!(
+            P::source(&self.persisted_capability).runtime().identity(),
+            C::current(&self.current_capability).runtime().identity(),
+        );
+        value
+    }
+}
+
+impl<C: lifecycle_typestate::PersistedCapability> SemanticWorkspaceRead<C> {
     pub(crate) fn published(
         &self,
     ) -> &crate::published_workspace::PublishedWorkspaceDatabase {
@@ -126,22 +93,55 @@ impl<C: lifecycle_typestate::RequiredCapability> SemanticWorkspaceRead<C> {
         self.published.database()
     }
 
+    pub(crate) fn freshness(&self) -> lifecycle_typestate::PublishedCapabilityFreshness {
+        C::source(&self.capability).freshness()
+    }
+
+    pub(crate) fn lane_revision(&self) -> u64 {
+        C::source(&self.capability).lane_revision()
+    }
+
     pub(crate) fn revalidate(&self) -> Result<RevalidatedSemanticWorkspaceRead<'_, C>> {
         self.published.revalidate()?;
-        let epoch = self.session.admission.validate_current()?;
-        let capability = epoch.capability_ready()?;
-        let status = rpc::request_wait_for_close::<RuntimeStatusResponse>(
-            Path::new(&self.session.socket_path),
-            "runtime/status",
-            Value::Object(Default::default()),
-            self.session.response_timeouts.ordinary(),
-        )?
-        .validate_protocol()?;
-        validate_runtime_status_identity(&self.session.admission.candidate().descriptor, &status)?;
-        require_published_runtime_status(&status, &self.published)?;
+        let capability = self.session.revalidate_capability()?;
+        self.published
+            .require_manifest(C::source(&capability).publication())?;
         Ok(RevalidatedSemanticWorkspaceRead {
             read: self,
             capability,
+        })
+    }
+
+    pub(crate) fn revalidate_with_current<D: lifecycle_typestate::CurrentCapability>(
+        &self,
+        current: &RawRpcSession<D>,
+    ) -> Result<RevalidatedCompositeWorkspaceRead<'_, C, D>> {
+        self.published.revalidate()?;
+        let current_epoch = current.admission.validate_current()?;
+        let persisted_epoch = self.session.admission.validate_current()?;
+        if current_epoch.identity() != persisted_epoch.identity() {
+            return Err(CliError::new(
+                "RUNTIME_IDENTITY_REPLACED",
+                "The composed current and persisted lanes belong to different runtime epochs.",
+            ));
+        }
+        let status = rpc::request_wait_for_close::<RuntimeStatusResponse>(
+            Path::new(&current.socket_path),
+            "runtime/status",
+            Value::Object(Default::default()),
+            current.response_timeouts.ordinary(),
+        )?
+        .validate_protocol()?;
+        validate_runtime_status_identity(&current.admission.candidate().descriptor, &status)?;
+        validate_runtime_status_identity(&self.session.admission.candidate().descriptor, &status)?;
+        let current_capability = current_epoch.revalidate_capability(&status)?;
+        let persisted_capability = persisted_epoch.revalidate_capability(&status)?;
+        self.published
+            .require_manifest(C::source(&persisted_capability).publication())?;
+        Ok(RevalidatedCompositeWorkspaceRead {
+            read: self,
+            persisted_capability,
+            current_capability,
         })
     }
 }
@@ -158,20 +158,13 @@ impl SemanticWorkspaceRead<lifecycle_typestate::GraphCapability> {
     }
 }
 
-impl<C: lifecycle_typestate::RequiredCapability> RawRpcSession<C> {
+impl<C: lifecycle_typestate::PersistedCapability> RawRpcSession<C> {
     pub(crate) fn semantic_read(&self) -> Result<SemanticWorkspaceRead<C>> {
-        let epoch = self.admission.validate_current()?;
-        let capability = epoch.capability_ready()?;
+        let capability = self.capability()?;
         let published = crate::published_workspace::resolve_published_workspace_database(
             self.admission.workspace_root(),
         )?;
-        let status = self
-            .admission
-            .candidate()
-            .runtime_status
-            .as_ref()
-            .ok_or_else(published_runtime_status_unavailable)?;
-        require_published_runtime_status(status, &published)?;
+        published.require_manifest(C::source(&capability).publication())?;
         Ok(SemanticWorkspaceRead {
             session: self.clone(),
             published,
@@ -183,13 +176,14 @@ impl<C: lifecycle_typestate::RequiredCapability> RawRpcSession<C> {
 pub(crate) fn semantic_workspace_read_ready(
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<SemanticWorkspaceRead> {
-    raw_rpc_session_ready(requested_workspace_root)?.semantic_read()
+    raw_rpc_session_from_route(semantic_workspace_route_ready(requested_workspace_root)?)?
+        .semantic_read()
 }
 
 pub(crate) fn semantic_workspace_read(
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<SemanticWorkspaceRead> {
-    raw_rpc_session(requested_workspace_root)?.semantic_read()
+    raw_rpc_session_from_route(semantic_workspace_route(requested_workspace_root)?)?.semantic_read()
 }
 
 pub(crate) fn semantic_graph_workspace_read(
@@ -208,13 +202,7 @@ pub(crate) fn semantic_workspace_read_for_admission(
 pub fn raw_rpc_session(
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<RawRpcSession> {
-    raw_rpc_session_from_route(semantic_workspace_route(requested_workspace_root)?)
-}
-
-pub fn raw_rpc_session_ready(
-    requested_workspace_root: Option<PathBuf>,
-) -> Result<RawRpcSession> {
-    raw_rpc_session_from_route(semantic_workspace_route_ready(requested_workspace_root)?)
+    raw_rpc_session_from_route(compiler_workspace_route(requested_workspace_root)?)
 }
 
 fn raw_rpc_session_from_route<C: lifecycle_typestate::RequiredCapability>(
@@ -253,29 +241,66 @@ pub(crate) fn raw_rpc_session_for_admission<C: lifecycle_typestate::RequiredCapa
     }
 }
 
-pub fn raw_request_passthrough_in_session(
+impl<C: lifecycle_typestate::RequiredCapability> RawRpcSession<C> {
+    pub(crate) fn capability(&self) -> Result<C::Ready> {
+        self.admission.validate_current()?.capability_ready()
+    }
+
+    pub(crate) fn revalidate_capability(&self) -> Result<C::Ready> {
+        let epoch = self.admission.validate_current()?;
+        let status = rpc::request_wait_for_close::<RuntimeStatusResponse>(
+            Path::new(&self.socket_path),
+            "runtime/status",
+            Value::Object(Default::default()),
+            self.response_timeouts.ordinary(),
+        )?
+        .validate_protocol()?;
+        validate_runtime_status_identity(&self.admission.candidate().descriptor, &status)?;
+        epoch.revalidate_capability(&status)
+    }
+}
+
+impl<C: lifecycle_typestate::CurrentCapability> RawRpcSession<C> {
+    pub(crate) fn current_revision(&self) -> Result<u64> {
+        let capability = self.capability()?;
+        debug_assert_eq!(
+            C::current(&capability).runtime().root().as_path(),
+            self.admission.workspace_root(),
+        );
+        Ok(C::current(&capability).revision())
+    }
+
+    pub(crate) fn finish_current<T>(&self, value: T) -> Result<T> {
+        let _capability = self.revalidate_capability()?;
+        Ok(value)
+    }
+}
+
+pub fn raw_request_passthrough_in_session<C: lifecycle_typestate::RequiredCapability>(
     raw_request: String,
     requested_workspace_root: Option<PathBuf>,
-    session: &RawRpcSession,
+    session: &RawRpcSession<C>,
 ) -> Result<String> {
-    let epoch = session.admission.validate_current()?;
-    let _capability = epoch.capability_ready()?;
-    validate_raw_rpc_workspace_root(requested_workspace_root.as_deref(), session)?;
     if is_local_semantic_rpc(&raw_request)? {
-        let read = session.semantic_read()?;
-        let response = try_handle_local_raw_rpc(
-            &raw_request,
-            session.admission.workspace_root(),
-            read.published(),
-        );
-        let response = response?.ok_or_else(|| {
-            CliError::new(
-                "RPC_LOCAL_DISPATCH_INVALID",
-                "A local semantic RPC method had no local handler.",
-            )
-        });
-        return Ok(read.revalidate()?.finish(response?));
+        return Err(CliError::new(
+            "RPC_PERSISTED_CAPABILITY_REQUIRED",
+            "Local source-index RPC requires an explicitly persisted capability session.",
+        ));
     }
+    let _capability = session.capability()?;
+    let response = raw_request_in_open_session(raw_request, requested_workspace_root, session)?;
+    if C::REVALIDATE_AFTER_RPC {
+        let _capability = session.revalidate_capability()?;
+    }
+    Ok(response)
+}
+
+pub(crate) fn raw_request_in_open_session<C: lifecycle_typestate::RequiredCapability>(
+    raw_request: String,
+    requested_workspace_root: Option<PathBuf>,
+    session: &RawRpcSession<C>,
+) -> Result<String> {
+    validate_raw_rpc_workspace_root(requested_workspace_root.as_deref(), session)?;
     let response_timeout = session.response_timeouts.for_request(&raw_request)?;
     let traced_request = trace_correlation::trace_correlated_rpc_request(
         raw_request,
@@ -295,35 +320,11 @@ pub fn raw_request_passthrough_in_session(
     response
 }
 
-fn try_handle_local_raw_rpc(
-    raw_request: &str,
-    workspace_root: &Path,
-    published: &crate::published_workspace::PublishedWorkspaceDatabase,
-) -> Result<Option<String>> {
-    if let Some(response) = crate::repository_intelligence::try_handle_raw_rpc(
-        raw_request,
-        workspace_root,
-        published,
-    )? {
-        return Ok(Some(response));
-    }
-    if let Some(response) = crate::metrics::try_handle_raw_rpc(raw_request, workspace_root, published)? {
-        return Ok(Some(response));
-    }
-    crate::symbol_query::try_handle_raw_rpc(raw_request, workspace_root, published)
-}
+include!("rpc/local.rs");
 
-fn is_local_semantic_rpc(raw_request: &str) -> Result<bool> {
-    let request: Value = serde_json::from_str(raw_request)?;
-    Ok(matches!(
-        request.get("method").and_then(Value::as_str),
-        Some("graph/coverage" | "repository/query" | "database/metrics" | "symbol/query")
-    ))
-}
-
-fn validate_raw_rpc_workspace_root(
+fn validate_raw_rpc_workspace_root<C: lifecycle_typestate::RequiredCapability>(
     requested_workspace_root: Option<&Path>,
-    session: &RawRpcSession,
+    session: &RawRpcSession<C>,
 ) -> Result<()> {
     let Some(requested_workspace_root) = requested_workspace_root else {
         return Ok(());
@@ -344,30 +345,6 @@ fn validate_raw_rpc_workspace_root(
         ));
     }
     Ok(())
-}
-
-fn require_published_runtime_status(
-    status: &RuntimeStatusResponse,
-    published: &crate::published_workspace::PublishedWorkspaceDatabase,
-) -> Result<()> {
-    if !is_ready(status) {
-        return Err(CliError::new(
-            "PUBLISHED_WORKSPACE_MOVED",
-            "The indexer runtime left READY while the semantic read was in progress.",
-        ));
-    }
-    let expected = status
-        .published_workspace_generation
-        .as_ref()
-        .ok_or_else(published_runtime_status_unavailable)?;
-    published.require_manifest(expected)
-}
-
-fn published_runtime_status_unavailable() -> CliError {
-    CliError::new(
-        "PUBLISHED_WORKSPACE_UNAVAILABLE",
-        "The READY indexer runtime did not advertise its published workspace generation.",
-    )
 }
 
 #[cfg(test)]

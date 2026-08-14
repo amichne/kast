@@ -98,7 +98,7 @@ internal class IntellijNativeDiscoveryQuery(
      *
      * Establishes that each provider receives the compiled scope before native index work, each
      * item is scope-checked before PSI projection, and every returned candidate is detached,
-     * deterministic, record/byte/work/time bounded, and generation-bound.
+     * deterministic, record/byte/work/time bounded, and current-epoch-bound.
      * [IntellijNativeDiscoveryRejection] and [SymbolDiscoveryQualification] are the closed expected
      * failure and partial-coverage states. Cancellation remains a platform cancellation and is
      * propagated. Live contributors, navigation items, virtual files, and scopes remain inside this

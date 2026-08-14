@@ -11,7 +11,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
@@ -81,7 +81,7 @@ internal sealed interface IntellijSearchScopeCompilation {
  * policy before a PSI or index query started.
  */
 internal class CompiledIntellijSearchScope internal constructor(
-    val lease: SemanticReadLease,
+    val lease: CurrentWorkspaceReadLease,
     val scope: SymbolSearchScope,
     val sourceRoots: List<ModelOwnedSourceRoot>,
     internal val nativeScope: GlobalSearchScope,

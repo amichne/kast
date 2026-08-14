@@ -9,11 +9,14 @@ mod runtime_status_wire_tests {
             "backendVersion": "test",
             "workspaceRoot": "/workspace",
             "readiness": {
-                "runtime": {"type": "READY"},
-                "model": {"type": "READY"},
-                "references": {"type": "READY"},
-                "semanticGraph": {"type": "READY"},
-                "mutation": {"type": "READY"}
+                "runtime": current_lane(),
+                "model": current_lane(),
+                "workspaceFiles": current_lane(),
+                "compiler": current_lane(),
+                "sourceIndex": retained_lane(),
+                "references": retained_lane(),
+                "semanticGraph": retained_lane(),
+                "mutation": current_lane()
             }
         });
         status.as_object_mut().expect("status object").extend(
@@ -23,6 +26,20 @@ mod runtime_status_wire_tests {
                 .clone(),
         );
         status
+    }
+
+    fn current_lane() -> Value {
+        serde_json::json!({
+            "type": "AVAILABLE",
+            "evidence": {"revision": 1, "freshness": "CURRENT"}
+        })
+    }
+
+    fn retained_lane() -> Value {
+        serde_json::json!({
+            "type": "AVAILABLE",
+            "evidence": {"revision": 1, "freshness": "CURRENT"}
+        })
     }
 
     #[test]
@@ -48,7 +65,7 @@ mod runtime_status_wire_tests {
     fn absent_readiness_lanes_are_rejected() {
         let mut value = status(serde_json::json!({
             "sourceModuleNames": [":fixture"],
-            "schemaVersion": 7
+            "schemaVersion": SCHEMA_VERSION
         }));
         value.as_object_mut().expect("status object").remove("readiness");
 

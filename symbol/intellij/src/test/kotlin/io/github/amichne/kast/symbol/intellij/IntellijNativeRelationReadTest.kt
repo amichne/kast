@@ -5,14 +5,14 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.*
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -358,8 +358,8 @@ class IntellijNativeRelationReadTest {
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun lease(): SemanticReadLease =
-        SemanticReadLease(root(), EvidenceGeneration.parse(21L).refined())
+    private fun lease(): CurrentWorkspaceReadLease =
+        CurrentWorkspaceReadLease(root(), CurrentWorkspaceEpoch.parse(21L).refined())
 
     private data class FakeEvent(val index: Int) : IntellijNativeRelationEvent
 

@@ -1,13 +1,13 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -128,9 +128,9 @@ class SymbolDiscoveryContractTest {
             path = Path.of("/workspace/src/Other.kt"),
             url = "file:///workspace/src/Other.kt",
             offset = 3,
-            candidateLease = SemanticReadLease(
+            candidateLease = CurrentWorkspaceReadLease(
                 workspaceRoot(),
-                EvidenceGeneration.parse(4L).refined(),
+                CurrentWorkspaceEpoch.parse(4L).refined(),
             ),
         )
 
@@ -190,7 +190,7 @@ class SymbolDiscoveryContractTest {
         path: Path?,
         url: String,
         offset: Int?,
-        candidateLease: SemanticReadLease = lease(),
+        candidateLease: CurrentWorkspaceReadLease = lease(),
     ): SymbolDiscoveryCandidate =
         SymbolDiscoveryCandidate.fromBoundary(
             kind = kind,
@@ -205,9 +205,9 @@ class SymbolDiscoveryContractTest {
         resultLimit: Int,
     ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
         scope = SymbolSearchScopeRequest(
-            lease = SemanticReadLease(
+            lease = CurrentWorkspaceReadLease(
                 workspaceRoot = workspaceRoot(),
-                generation = EvidenceGeneration.parse(3L).refined(),
+                epoch = CurrentWorkspaceEpoch.parse(3L).refined(),
             ),
             scope = SymbolSearchScope.Workspace(
                 sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
@@ -230,8 +230,8 @@ class SymbolDiscoveryContractTest {
     private fun workspaceRoot(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun lease(): SemanticReadLease =
-        SemanticReadLease(workspaceRoot(), EvidenceGeneration.parse(3L).refined())
+    private fun lease(): CurrentWorkspaceReadLease =
+        CurrentWorkspaceReadLease(workspaceRoot(), CurrentWorkspaceEpoch.parse(3L).refined())
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
         is Refinement.Refined -> value

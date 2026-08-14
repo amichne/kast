@@ -48,6 +48,7 @@ import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthority
+import io.github.amichne.kast.idea.backend.semantic.ProgressiveRuntimeAvailability
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
@@ -172,6 +173,14 @@ internal abstract class KastIndexerBackendContractTestFixture {
         readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
         referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
         workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        progressiveRuntimeAvailability: ProgressiveRuntimeAvailability =
+            when (workspaceSemanticReadAuthority.status()) {
+                is IdeaIndexSemanticAdmission.Status.Ready ->
+                    ProgressiveRuntimeAvailability.alreadyCurrent()
+                is IdeaIndexSemanticAdmission.Status.Pending,
+                is IdeaIndexSemanticAdmission.Status.Failed,
+                    -> ProgressiveRuntimeAvailability()
+            },
         workspaceTransitionRequester: WorkspaceTransitionPort = TestWorkspaceTransitionRequester(),
         workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
             IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
@@ -198,6 +207,7 @@ internal abstract class KastIndexerBackendContractTestFixture {
         readEpochObserver = readEpochObserver,
         referenceTraversalObserver = referenceTraversalObserver,
         workspaceSemanticReadAuthority = workspaceSemanticReadAuthority,
+        progressiveRuntimeAvailability = progressiveRuntimeAvailability,
         workspaceTransitionRequester = workspaceTransitionRequester,
         workspaceModelReader = workspaceModelReader,
         relationshipCoverageAuthority = relationshipCoverageAuthority,

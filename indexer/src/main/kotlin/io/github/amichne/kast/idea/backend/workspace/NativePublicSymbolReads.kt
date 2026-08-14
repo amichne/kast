@@ -13,7 +13,8 @@ import io.github.amichne.kast.api.contract.selector.toExactSelector
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.IdeaGradleProjectLoadBridge
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
-import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticGate
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeEpoch
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeGate
 import io.github.amichne.kast.idea.workspace.gradle.toWorkspaceSearchScopeModel
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
@@ -46,6 +47,9 @@ import io.github.amichne.kast.symbol.intellij.IntellijFastSymbolReadAdapter
 import io.github.amichne.kast.symbol.intellij.IntellijFastSymbolReadResult
 import io.github.amichne.kast.symbol.intellij.IntellijNativeDefinitionProjector
 import io.github.amichne.kast.symbol.intellij.IntellijReadNanoClock
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -64,8 +68,8 @@ internal data class DetachedKastSymbol(
 
 internal class IdeaNativePublicSymbolReader(
     private val project: Project,
-    private val workspaceRoot: NormalizedPath,
-    private val semanticGate: WorkspaceSemanticGate,
+    private val workspaceRoot: CanonicalWorkspaceRoot,
+    private val currentRuntimeGate: CurrentRuntimeGate,
     private val selectorHandles: SelectorHandleAuthority,
     private val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
     private val readDispatcher: CoroutineDispatcher,
@@ -76,37 +80,34 @@ internal class IdeaNativePublicSymbolReader(
      * Proof transition:
      * PublicSymbolReadQuery to NativePublicSymbolReadResult.
      *
-     * A completed result establishes one liveness- and freshness-admitted generation, model-owned
-     * IntelliJ scope, native discovery, exact-selector revalidation, detached Kotlin definition,
-     * and explicit bounded-work evidence. [NativePublicSymbolReadFailure] is the closed expected
-     * failure. Raw project model and live IntelliJ values remain inside this physical adapter.
+     * A completed result establishes one liveness- and freshness-admitted current compiler epoch,
+     * model-owned IntelliJ scope, native discovery, exact-selector revalidation, detached Kotlin
+     * definition, and explicit bounded-work evidence. [NativePublicSymbolReadFailure] is the
+     * closed expected failure. Raw project model and live IntelliJ values remain inside this
+     * physical adapter.
      */
     override suspend fun read(query: PublicSymbolReadQuery): NativePublicSymbolReadResult {
-        if (query.workspaceRoot != workspaceRoot) {
+        if (query.workspaceRoot.value != workspaceRoot.value) {
             return NativePublicSymbolReadResult.Rejected(
                 NativePublicSymbolReadFailure.WORKSPACE_ROOT_MISMATCH,
             )
         }
         val admissionStartedAt = clock.now()
         return try {
-            semanticGate.current { lease ->
+            currentRuntimeGate.compiler { epoch ->
+                val lease = epoch.toCurrentWorkspaceReadLease(workspaceRoot)
                 val admissionNanoseconds = elapsedSince(admissionStartedAt)
-                if (lease.workspaceRoot.value != workspaceRoot.value) {
-                    return@current NativePublicSymbolReadResult.Rejected(
-                        NativePublicSymbolReadFailure.WORKSPACE_ROOT_MISMATCH,
-                    )
-                }
                 val request = when (val parsed = query.toDiscoveryRequest(lease, elapsedLimitMillis)) {
                     is NativePublicSymbolRequestParsing.Parsed -> parsed.request
                     NativePublicSymbolRequestParsing.Rejected ->
-                        return@current NativePublicSymbolReadResult.Rejected(
+                        return@compiler NativePublicSymbolReadResult.Rejected(
                             NativePublicSymbolReadFailure.NATIVE_READ_UNAVAILABLE,
                         )
                 }
                 val modelCompilation =
                     workspaceModelReader().toWorkspaceSearchScopeModel(lease.workspaceRoot)
                 if (modelCompilation is WorkspaceSearchScopeModelCompilation.Rejected) {
-                    return@current NativePublicSymbolReadResult.Rejected(
+                    return@compiler NativePublicSymbolReadResult.Rejected(
                         NativePublicSymbolReadFailure.PROJECT_MODEL_UNAVAILABLE,
                     )
                 }
@@ -137,7 +138,7 @@ internal class IdeaNativePublicSymbolReader(
                                 )
                             },
                             evidence = completed.toEvidence(
-                                generation = lease.generation.value,
+                                generation = lease.epoch.value,
                                 admissionNanoseconds = admissionNanoseconds,
                             ),
                         )
@@ -206,8 +207,8 @@ internal fun KastIndexerBackend.nativePublicSymbolReader(
 ): NativePublicSymbolReader =
     IdeaNativePublicSymbolReader(
         project = project,
-        workspaceRoot = NormalizedPath.of(workspaceRoot),
-        semanticGate = workspaceSemanticGate,
+        workspaceRoot = currentWorkspaceRootEvidence(),
+        currentRuntimeGate = currentRuntimeGate,
         selectorHandles = selectorHandles,
         workspaceModelReader = workspaceModelReader,
         readDispatcher = readDispatcher,
@@ -232,14 +233,14 @@ private sealed interface NativePublicSymbolRequestParsing {
 
 /**
  * Proof transition:
- * PublicSymbolReadQuery + SemanticReadLease + Long to NativePublicSymbolRequestParsing.
+ * PublicSymbolReadQuery + CurrentWorkspaceReadLease + Long to NativePublicSymbolRequestParsing.
  *
- * A parsed result establishes exact generation-bound workspace scope plus positive result, work,
+ * A parsed result establishes exact current-epoch-bound workspace scope plus positive result, work,
  * elapsed-time, and byte budgets. NativePublicSymbolRequestParsing.Rejected is the closed expected
  * failure. Raw public primitives may be extracted only at this physical request boundary.
  */
 private fun PublicSymbolReadQuery.toDiscoveryRequest(
-    lease: io.github.amichne.kast.workspace.contract.SemanticReadLease,
+    lease: CurrentWorkspaceReadLease,
     elapsedLimitMillis: Long,
 ): NativePublicSymbolRequestParsing {
     val pattern = when (
@@ -310,3 +311,41 @@ private fun PublicSymbolReadProjection.includesDeclarationScope(): Boolean =
 private fun PublicSymbolReadProjection.includesDocumentation(): Boolean =
     this == PublicSymbolReadProjection.DOCUMENTATION ||
     this == PublicSymbolReadProjection.DECLARATION_SCOPE_AND_DOCUMENTATION
+
+/**
+ * Proof transition: `KastIndexerBackend -> CanonicalWorkspaceRoot`.
+ *
+ * Retains the backend's already physically canonical workspace identity in the host-neutral
+ * contract type. A parser rejection would contradict [KastIndexerBackend.workspaceIdentity] and
+ * is therefore an internal invariant failure, not expected request failure. Raw [java.nio.file.Path]
+ * extraction is permitted only at this adapter assembly boundary.
+ */
+private fun KastIndexerBackend.currentWorkspaceRootEvidence(): CanonicalWorkspaceRoot =
+    when (
+        val parsed = CanonicalWorkspaceRoot.fromCanonicalPath(
+            workspaceIdentity.canonicalWorkspaceRootPath,
+        )
+    ) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected ->
+            error("Canonical backend workspace root became unrepresentable: ${parsed.failure}")
+    }
+
+/**
+ * Proof transition: `CurrentRuntimeEpoch + CanonicalWorkspaceRoot -> CurrentWorkspaceReadLease`.
+ *
+ * Preserves the runtime authority's positive current revision as the distinct compiler epoch used
+ * by native symbol contracts. Parsing cannot reject because [CurrentRuntimeEpoch.revision] is
+ * already positive by construction. Raw revision extraction is permitted only at this adapter
+ * boundary.
+ */
+private fun CurrentRuntimeEpoch.toCurrentWorkspaceReadLease(
+    workspaceRoot: CanonicalWorkspaceRoot,
+): CurrentWorkspaceReadLease {
+    val epoch = when (val parsed = CurrentWorkspaceEpoch.parse(revision.value)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected ->
+            error("Current runtime epoch became unrepresentable: ${parsed.failure}")
+    }
+    return CurrentWorkspaceReadLease(workspaceRoot, epoch)
+}

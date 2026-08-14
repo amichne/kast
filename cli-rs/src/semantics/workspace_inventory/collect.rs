@@ -14,9 +14,9 @@ use super::model::{
     DirtyWorkspaceStamp, SourceIndexSnapshotStamp, WorkspaceCoverageDimension,
     WorkspaceEvidenceSource, WorkspaceFileDirtyState, WorkspaceFileDrift, WorkspaceFileKind,
     WorkspaceFilePath, WorkspaceFilesystemPathState, WorkspaceFilesystemStamp, WorkspaceIndexRead,
-    WorkspaceIndexSnapshot, WorkspaceInventoryFile, WorkspaceInventoryLimitationCode,
-    WorkspaceInventorySnapshot, WorkspaceInventorySnapshotInputs, WorkspaceKindMatchCoverage,
-    WorkspaceLaneEvidence, WorkspaceLanePurpose, WorkspaceLaneStamp,
+    WorkspaceIndexReadFailure, WorkspaceIndexSnapshot, WorkspaceInventoryFile,
+    WorkspaceInventoryLimitationCode, WorkspaceInventorySnapshot, WorkspaceInventorySnapshotInputs,
+    WorkspaceKindMatchCoverage, WorkspaceLaneEvidence, WorkspaceLanePurpose, WorkspaceLaneStamp,
     WorkspaceLaneUnavailableReason, WorkspaceMatchCoverage, WorkspaceRequestedKindDomain,
     WorkspaceRoot,
 };

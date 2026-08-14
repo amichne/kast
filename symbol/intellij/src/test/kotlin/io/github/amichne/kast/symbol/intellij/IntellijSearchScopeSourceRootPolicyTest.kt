@@ -4,7 +4,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.LightVirtualFile
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
@@ -14,7 +13,8 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailure
@@ -98,7 +98,10 @@ class IntellijSearchScopeSourceRootPolicyTest {
         policies.forEach { (scope, expected) ->
             val result = adapter.execute(
                 request = SymbolSearchScopeRequest(
-                    lease = SemanticReadLease(model.workspaceRoot, EvidenceGeneration.parse(7).refined()),
+                    lease = CurrentWorkspaceReadLease(
+                        model.workspaceRoot,
+                        CurrentWorkspaceEpoch.parse(7).refined(),
+                    ),
                     scope = scope,
                 ),
                 modelCompilation = compiled(model),
@@ -268,7 +271,10 @@ class IntellijSearchScopeSourceRootPolicyTest {
         model: WorkspaceSearchScopeModel,
         generatedSources: SymbolGeneratedSourcePolicy = SymbolGeneratedSourcePolicy.EXCLUDE,
     ): SymbolSearchScopeRequest = SymbolSearchScopeRequest(
-        lease = SemanticReadLease(model.workspaceRoot, EvidenceGeneration.parse(7).refined()),
+        lease = CurrentWorkspaceReadLease(
+            model.workspaceRoot,
+            CurrentWorkspaceEpoch.parse(7).refined(),
+        ),
         scope = SymbolSearchScope.GradleProject(
             project = model.sourceRoots.first().project,
             sourceKinds = SymbolSourceKindPolicy.PRODUCTION_AND_TEST,

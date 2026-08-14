@@ -12,9 +12,9 @@ mod repair;
 mod service_manager;
 
 use super::lifecycle_typestate::{
-    CanonicalWorkspaceRoot, CapabilityRequirement, Demand,
-    LifecycleBlocker as TypestateLifecycleBlocker, RequiredCapability, RuntimeAvailable,
-    RuntimeEpochId, RuntimeEpochIdentity, SourceCapability, SourceRevision, StartingEpoch,
+    CanonicalWorkspaceRoot, Demand, LifecycleBlocker as TypestateLifecycleBlocker,
+    RequiredCapability, RuntimeAvailable, RuntimeEpochId, RuntimeEpochIdentity, SourceCapability,
+    StartingEpoch,
 };
 use ownership::{RuntimeOwnershipSnapshot, reconcile_runtime_ownership};
 pub(crate) use registration::{
@@ -70,6 +70,7 @@ pub(crate) struct AdmittedIndexerRuntime<C: RequiredCapability = SourceCapabilit
     candidate: RuntimeCandidateStatus,
     capabilities: AdmittedIndexerCapabilities,
     lifecycle: RuntimeAvailable<C>,
+    capability: C::Ready,
     origin: RuntimeAdmissionOrigin,
     process_identity: WorkspaceLeaseProcessIdentity,
     observed_socket_file_identity: RuntimeSocketFileIdentity,
@@ -125,6 +126,36 @@ impl<C: RequiredCapability> AdmittedIndexerRuntime<C> {
     pub(crate) fn validate_current(&self) -> Result<RevalidatedRuntimeEpoch<'_, C>> {
         validate_admitted_runtime_current(self)
     }
+
+    pub(crate) fn admit_captured_capability<D: RequiredCapability>(
+        &self,
+    ) -> Result<AdmittedIndexerRuntime<D>> {
+        let status = self
+            .candidate
+            .runtime_status
+            .as_ref()
+            .ok_or_else(capability_unavailable)?;
+        let evidence = D::admit(status).map_err(|_| capability_unavailable())?;
+        let lifecycle = Demand::<D>::new()
+            .admit(self.lifecycle.root().clone())
+            .observe_exact(self.lifecycle.identity().clone())
+            .revalidated()
+            .available();
+        let capability = D::finish(lifecycle.clone(), evidence);
+        let admission = AdmittedIndexerRuntime {
+            workspace_root: self.workspace_root.clone(),
+            workspace_kind: self.workspace_kind,
+            config: self.config.clone(),
+            candidate: self.candidate.clone(),
+            capabilities: self.capabilities.clone(),
+            lifecycle,
+            capability,
+            origin: self.origin,
+            process_identity: self.process_identity.clone(),
+            observed_socket_file_identity: self.observed_socket_file_identity.clone(),
+        };
+        Ok(admission)
+    }
 }
 
 impl<C: RequiredCapability> RevalidatedRuntimeEpoch<'_, C> {
@@ -134,26 +165,20 @@ impl<C: RequiredCapability> RevalidatedRuntimeEpoch<'_, C> {
 
     pub(crate) fn capability_ready(&self) -> Result<C::Ready> {
         debug_assert_eq!(self.identity(), self.admission.lifecycle.identity());
-        let status = self
-            .admission
-            .candidate
-            .runtime_status
-            .as_ref()
-            .ok_or_else(capability_unavailable)?;
-        let publication = status
-            .published_workspace_generation
-            .as_ref()
-            .ok_or_else(capability_unavailable)?;
-        require_capability_publication::<C>(status, publication)?;
-        let revision = SourceRevision::positive(publication.source_revision)
-            .map_err(|_| capability_unavailable())?;
-        Ok(C::finish(
-            self.admission
-                .lifecycle
-                .clone()
-                .model_ready()
-                .source_ready(revision),
-        ))
+        Ok(self.admission.capability.clone())
+    }
+
+    pub(crate) fn revalidate_capability(&self, status: &RuntimeStatusResponse) -> Result<C::Ready> {
+        debug_assert_eq!(self.identity(), self.admission.lifecycle.identity());
+        let evidence = C::admit(status).map_err(|_| capability_unavailable())?;
+        let capability = C::finish(self.admission.lifecycle.clone(), evidence);
+        if C::stamp(&capability) != C::stamp(&self.admission.capability) {
+            return Err(CliError::new(
+                "CAPABILITY_REVISION_MOVED",
+                "The admitted capability revision changed while the operation was in progress.",
+            ));
+        }
+        Ok(capability)
     }
 }
 

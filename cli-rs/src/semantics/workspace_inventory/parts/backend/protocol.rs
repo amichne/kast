@@ -18,14 +18,19 @@ pub(crate) trait BackendWorkspaceRpc {
     fn request(&mut self, request: Value) -> Result<Value, BackendRpcFailure>;
 }
 
-pub(crate) struct RawRpcWorkspaceBackend<'a> {
-    session: &'a crate::runtime::RawRpcSession,
+pub(crate) struct RawRpcWorkspaceBackend<
+    'a,
+    C: crate::runtime::lifecycle_typestate::RequiredCapability,
+> {
+    session: &'a crate::runtime::RawRpcSession<C>,
     workspace_root: PathBuf,
 }
 
-impl<'a> RawRpcWorkspaceBackend<'a> {
+impl<'a, C: crate::runtime::lifecycle_typestate::RequiredCapability>
+    RawRpcWorkspaceBackend<'a, C>
+{
     pub(crate) fn new(
-        session: &'a crate::runtime::RawRpcSession,
+        session: &'a crate::runtime::RawRpcSession<C>,
         workspace_root: &WorkspaceRoot,
     ) -> Self {
         Self {
@@ -35,11 +40,13 @@ impl<'a> RawRpcWorkspaceBackend<'a> {
     }
 }
 
-impl BackendWorkspaceRpc for RawRpcWorkspaceBackend<'_> {
+impl<C: crate::runtime::lifecycle_typestate::RequiredCapability> BackendWorkspaceRpc
+    for RawRpcWorkspaceBackend<'_, C>
+{
     fn request(&mut self, request: Value) -> Result<Value, BackendRpcFailure> {
         let encoded = serde_json::to_string(&request)
             .map_err(|error| BackendRpcFailure::InvalidResponse(error.to_string()))?;
-        let raw = crate::runtime::raw_request_passthrough_in_session(
+        let raw = crate::runtime::raw_request_in_open_session(
             encoded,
             Some(self.workspace_root.clone()),
             self.session,

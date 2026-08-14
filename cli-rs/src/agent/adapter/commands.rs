@@ -7,6 +7,7 @@ struct UpResult {
     backend: String,
     reference_index_ready: bool,
     source_revision: u64,
+    evidence_freshness: &'static str,
     source_module_count: usize,
     next: Vec<&'static str>,
 }
@@ -20,6 +21,10 @@ pub(crate) fn run_up(output_format: OutputFormat) -> Result<i32> {
         backend: ready.backend_name().to_string(),
         reference_index_ready: true,
         source_revision: ready.source_revision(),
+        evidence_freshness: match ready.freshness() {
+            runtime::lifecycle_typestate::PublishedCapabilityFreshness::Current => "CURRENT",
+            runtime::lifecycle_typestate::PublishedCapabilityFreshness::Previous => "PREVIOUS",
+        },
         source_module_count: ready.source_module_count(),
         next: vec![
             "kast workspace refresh",

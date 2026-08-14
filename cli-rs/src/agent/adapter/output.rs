@@ -120,6 +120,7 @@ fn print_file_list(envelope: Value, output_format: OutputFormat) -> Result<i32> 
     public.insert("files".to_string(), files);
     public.insert("page".to_string(), page);
     for field in [
+        "capabilityEvidence",
         "coverage",
         "limitations",
         "backendPageCoverage",

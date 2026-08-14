@@ -8,6 +8,8 @@ physical effects.
 
 - `SemanticReadLease.kt` owns canonical-root evidence and the generation-bound semantic read
   lease.
+- `CurrentWorkspaceReadLease.kt` owns the distinct current imported-model/compiler epoch and its
+  detached live-read lease.
 - `WorkspaceSearchScopeModel.kt` owns detached, exact Gradle project/source-set/root ownership,
   model-declared production/test kind, and authored/generated provenance.
 - `WorkspaceResourcePolicy.kt` owns validated admission limits and pressure thresholds.
@@ -27,6 +29,9 @@ physical effects.
 - A canonical workspace root is absolute and lexically normalized. The physical adapter that
   resolved symlinks and canonical identity is the only legitimate caller of its boundary parser.
 - A semantic read lease always carries both canonical root and published evidence generation.
+- A current workspace read lease carries canonical root and a positive compiler epoch, never a
+  persisted evidence generation. Its runtime owner must revalidate the exact epoch after live work
+  before serving the detached result.
 - A compiled search-scope model requires a complete imported model, known source kind and
   provenance, workspace-contained roots, and one coherent Gradle project owner per exact root.
 - Resource policy admits only validated positive limits, bounded percentages, and non-negative

@@ -55,6 +55,7 @@ struct WorkspaceFilesResult {
     result_type: &'static str,
     ok: bool,
     workspace_root: String,
+    capability_evidence: WorkspaceFilesCapabilityEvidence,
     files: WorkspaceFilesResultFiles,
     cardinality: AgentResultCardinality,
     returned_count: usize,
@@ -95,9 +96,38 @@ struct WorkspaceFilesContinuationIdentity {
 #[serde(rename_all = "camelCase")]
 struct WorkspaceFilesContinuationState {
     identity: WorkspaceFilesContinuationIdentity,
+    capability_evidence: WorkspaceFilesCapabilityEvidence,
     composition_stamp_digest: String,
     last_relative_path: String,
     cumulative_returned_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceFilesCapabilityEvidence {
+    workspace_files_revision: u64,
+    source_index: WorkspaceFilesSourceIndexEvidence,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum WorkspaceFilesSourceIndexEvidence {
+    Unavailable,
+    Available {
+        revision: u64,
+        freshness: WorkspaceFilesPersistedFreshness,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum WorkspaceFilesPersistedFreshness {
+    Current,
+    Previous,
 }
 
 struct ValidatedWorkspaceFilesContinuation<'a> {

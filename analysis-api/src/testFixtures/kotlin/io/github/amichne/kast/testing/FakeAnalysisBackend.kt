@@ -91,6 +91,15 @@ class FakeAnalysisBackend private constructor(
 
     override suspend fun capabilities(): BackendCapabilities = capabilitiesResult()
 
+    override suspend fun runtimeStatus(): RuntimeStatusResponse = RuntimeStatusResponse(
+        state = RuntimeState.READY,
+        backendName = backendName,
+        backendVersion = "0.1.0-test",
+        workspaceRoot = workspaceRoot.toAbsolutePath().normalize().toString(),
+        readiness = RuntimeReadiness.available(fakeEvidenceRevision()),
+        referenceCoverageState = ReferenceCoverageState.COMPLETE,
+    )
+
     override suspend fun health(): HealthResponse = healthResult()
 
     override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult =
@@ -333,4 +342,15 @@ class FakeAnalysisBackend private constructor(
             backendName = spec.backendName,
         )
     }
+}
+
+/**
+ * Proof transition: `Long -> EvidenceRevision` for deterministic fake-runtime evidence.
+ *
+ * Establishes the positive revision required by every available fake lane. Raw extraction is not
+ * permitted beyond the protocol serializer exercised by consuming contract tests.
+ */
+private fun fakeEvidenceRevision(): EvidenceRevision = when (val resolution = EvidenceRevision.parse(1)) {
+    is EvidenceRevisionResolution.Resolved -> resolution.revision
+    is EvidenceRevisionResolution.Rejected -> error("The fixed fake evidence revision must be positive")
 }

@@ -55,7 +55,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendName": "fake",
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -81,10 +81,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin warnings: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
             | `#!kotlin sourceModuleNames: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
             | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
-            | `#!kotlin readiness: RuntimeReadiness` | Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes. |
+            | `#!kotlin readiness: RuntimeReadiness` | Independent readiness evidence for runtime, model, workspace-file, compiler, source-index, reference, graph, and mutation lanes. |
             | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE for a ready reference lane; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
             | `#!kotlin referenceCoverageLimitations: List<ReferenceCoverageLimitation>` :material-information-outline:{ title="Default: emptyList()" } | Typed limitations that qualify or prevent persisted reference evidence. |
             | `#!kotlin publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus?` :material-information-outline:{ title="Default: null" } | Exact immutable workspace generation admitted for semantic reads, or null outside generation-backed READY. |
+            | `#!kotlin retainedWorkspaceGeneration: RetainedWorkspaceGenerationStatus` :material-information-outline:{ title="Default: NONE" } | Closed status of the previous workspace publication retained for explicitly stale persisted reads. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
@@ -115,24 +116,68 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "dependentModuleNamesBySourceModuleName": {},
                     "readiness": {
                         "runtime": {
-                            "type": "READY"
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
                         },
                         "model": {
-                            "type": "READY"
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
+                        },
+                        "workspaceFiles": {
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
+                        },
+                        "compiler": {
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
+                        },
+                        "sourceIndex": {
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
                         },
                         "references": {
-                            "type": "READY"
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
                         },
                         "semanticGraph": {
-                            "type": "READY"
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
                         },
                         "mutation": {
-                            "type": "READY"
+                            "type": "AVAILABLE",
+                            "evidence": {
+                                "revision": 1,
+                                "freshness": "CURRENT"
+                            }
                         }
                     },
                     "referenceCoverageState": "COMPLETE",
                     "referenceCoverageLimitations": [],
-                    "schemaVersion": 7
+                    "retainedWorkspaceGeneration": {
+                        "type": "NONE"
+                    },
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -217,7 +262,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "continuationTtlMillis": 60000,
                         "continuationCapacity": 256
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -299,7 +344,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "documentation": "/** Greets the provided name. */",
                         "containingDeclaration": "sample"
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -422,7 +467,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "limitations": []
                         }
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -549,7 +594,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxChildrenPerNodeReached": false,
                         "filesVisited": 1
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -673,7 +718,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxDepthReached": 1,
                         "truncated": false
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -734,7 +779,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "result": {
                     "insertionOffset": 56,
                     "filePath": "/workspace/src/Sample.kt",
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -827,7 +872,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "type": "EXACT",
                         "totalCount": 0
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -909,7 +954,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "children": []
                         }
                     ],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1038,7 +1083,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             ]
                         }
                     ],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1117,7 +1162,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "truncated": false,
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1196,7 +1241,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "snapshotToken": "00000000-0000-4000-8000-000000000002",
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1440,7 +1485,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1498,7 +1543,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "result": {
                     "actions": [],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1574,7 +1619,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1733,7 +1778,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             }
                         ]
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1907,7 +1952,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             }
                         }
                     ],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2035,7 +2080,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         },
                         "postimageSha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2210,7 +2255,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "occurrences": []
                         }
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2337,7 +2382,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "status": "COMMITTED",
                     "previousSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
                     "resultSha256": "b95525cb10f61f05f8d701ea043b498d31551050ae5ba67eea1bf59a6370f9f5",
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2432,7 +2477,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "state": "ABSENT"
                         }
                     ],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2548,7 +2593,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "state": "ABSENT"
                         }
                     ],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2608,7 +2653,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "edits": [],
                     "fileHashes": [],
                     "affectedFiles": [],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2695,7 +2740,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     ],
                     "createdFiles": [],
                     "deletedFiles": [],
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2791,7 +2836,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "removedFileCount": 0,
                     "attemptCount": 1,
                     "elapsedMillis": 0,
-                    "schemaVersion": 7
+                    "schemaVersion": 8
                 },
                 "id": 1,
                 "jsonrpc": "2.0"

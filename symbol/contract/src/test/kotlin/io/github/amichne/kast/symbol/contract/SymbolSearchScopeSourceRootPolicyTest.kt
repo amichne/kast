@@ -1,10 +1,10 @@
 package io.github.amichne.kast.symbol.contract
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
@@ -17,11 +17,11 @@ import java.nio.file.Path
 
 class SymbolSearchScopeSourceRootPolicyTest {
     @Test
-    fun `scope target and read policies are generation-bound and independent from edit authority`() {
+    fun `scope target and read policies are current-epoch-bound and independent from edit authority`() {
         val root = workspaceRoot()
         val model = compiledModel(root)
         val ownedRoot = model.sourceRoots.single()
-        val lease = SemanticReadLease(root, generation(11))
+        val lease = CurrentWorkspaceReadLease(root, epoch(11))
         val exactFile = CanonicalWorkspaceFilePath.fromCanonicalPath(
             root,
             Path.of("/workspace/app/src/main/kotlin/App.kt"),
@@ -92,7 +92,8 @@ class SymbolSearchScopeSourceRootPolicyTest {
     private fun workspaceRoot(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun generation(value: Long): EvidenceGeneration = EvidenceGeneration.parse(value).refined()
+    private fun epoch(value: Long): CurrentWorkspaceEpoch =
+        CurrentWorkspaceEpoch.parse(value).refined()
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
         is Refinement.Refined -> value

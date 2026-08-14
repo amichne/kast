@@ -1,7 +1,10 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::{ReferenceCoverageState, RuntimeReadiness, RuntimeReadinessLane};
+    use crate::runtime::{
+        CapabilityLaneBlocker, ReferenceCoverageState, RetainedCapabilityLaneReadiness,
+        RetainedWorkspaceGenerationStatus, RuntimeReadiness,
+    };
     use serde_json::json;
 
     #[test]
@@ -19,14 +22,17 @@ mod tests {
             reference_coverage_state: ReferenceCoverageState::Complete,
             reference_coverage_limitations: vec![],
             published_workspace_generation: None,
+            retained_workspace_generation: RetainedWorkspaceGenerationStatus::None,
             readiness: RuntimeReadiness::ready(),
             schema_version: crate::SCHEMA_VERSION,
         };
 
         assert!(semantic_status_ready(root, &status));
-        status.readiness.references = RuntimeReadinessLane::Blocked;
+        status.readiness.references = RetainedCapabilityLaneReadiness::Blocked {
+            blocker: CapabilityLaneBlocker::CapabilityUnavailable,
+        };
         assert!(semantic_status_ready(root, &status));
-        status.readiness.references = RuntimeReadinessLane::Ready;
+        status.readiness.references = RuntimeReadiness::ready().references;
         status.source_module_names.clear();
         assert!(semantic_status_ready(root, &status));
         status.source_module_names.push("main".to_string());

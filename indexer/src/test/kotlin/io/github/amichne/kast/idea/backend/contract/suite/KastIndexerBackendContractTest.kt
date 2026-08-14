@@ -26,6 +26,8 @@ import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.CurrentCapabilityLaneReadiness
+import io.github.amichne.kast.api.contract.RetainedCapabilityLaneReadiness
 import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.MutationCapability
@@ -199,7 +201,7 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
     }
 
     @Test
-    fun `runtime degrades when compiler semantic admission fails`() = runBlocking {
+    fun `persisted semantic failure does not block current compiler readiness`() = runBlocking {
         ensureProjectReady()
 
         val status = backend(
@@ -208,9 +210,12 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
             },
         ).runtimeStatus()
 
-        assertEquals(RuntimeState.DEGRADED, status.state)
-        assertFalse(status.readiness.runtime is RuntimeReadinessLane.Blocked)
-        assertTrue(status.readiness.model is RuntimeReadinessLane.Blocked)
+        assertEquals(RuntimeState.INDEXING, status.state)
+        assertTrue(status.readiness.runtimeLane is CurrentCapabilityLaneReadiness.Available)
+        assertTrue(status.readiness.modelLane is CurrentCapabilityLaneReadiness.Building)
+        assertTrue(status.readiness.sourceIndexLane is RetainedCapabilityLaneReadiness.Blocked)
+        assertTrue(status.readiness.referencesLane is RetainedCapabilityLaneReadiness.Blocked)
+        assertTrue(status.readiness.semanticGraphLane is RetainedCapabilityLaneReadiness.Blocked)
         assertTrue(status.message.orEmpty().contains("K2 diagnostics unavailable"))
     }
 

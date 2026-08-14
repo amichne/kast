@@ -21,6 +21,7 @@ fn workspace_files_resume_offset(
 fn validate_workspace_files_resumed_snapshot<'a>(
     state: &'a WorkspaceFilesContinuationState,
     identity: &WorkspaceFilesContinuationIdentity,
+    capability_evidence: &WorkspaceFilesCapabilityEvidence,
     snapshot: &crate::workspace_inventory::model::WorkspaceInventorySnapshot,
 ) -> std::result::Result<ValidatedWorkspaceFilesContinuation<'a>, AgentError> {
     if &state.identity != identity {
@@ -28,7 +29,8 @@ fn validate_workspace_files_resumed_snapshot<'a>(
             "Workspace-file continuation identity does not match this query.",
         ));
     }
-    if state.composition_stamp_digest != snapshot.composition_digest()
+    if &state.capability_evidence != capability_evidence
+        || state.composition_stamp_digest != snapshot.composition_digest()
         || !snapshot.continuation_allowed()
     {
         return Err(stale_workspace_files_page());

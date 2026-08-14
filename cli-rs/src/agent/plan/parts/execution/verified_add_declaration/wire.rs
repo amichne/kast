@@ -42,14 +42,28 @@ fn verified_add_declaration_rpc(
     operation: VerifiedAddDeclarationRpcOperation,
     params: &impl Serialize,
 ) -> Result<Value> {
-    let route = match operation {
-        VerifiedAddDeclarationRpcOperation::Plan => {
-            runtime::semantic_workspace_route(Some(workspace_root.to_path_buf()))?
-        }
-        VerifiedAddDeclarationRpcOperation::Apply => {
-            runtime::semantic_mutation_workspace_route(Some(workspace_root.to_path_buf()))?
-        }
-    };
+    match operation {
+        VerifiedAddDeclarationRpcOperation::Plan => verified_add_declaration_rpc_in_route(
+            workspace_root,
+            operation,
+            params,
+            runtime::compiler_workspace_route(Some(workspace_root.to_path_buf()))?,
+        ),
+        VerifiedAddDeclarationRpcOperation::Apply => verified_add_declaration_rpc_in_route(
+            workspace_root,
+            operation,
+            params,
+            runtime::semantic_mutation_workspace_route(Some(workspace_root.to_path_buf()))?,
+        ),
+    }
+}
+
+fn verified_add_declaration_rpc_in_route<C: runtime::lifecycle_typestate::RequiredCapability>(
+    workspace_root: &Path,
+    operation: VerifiedAddDeclarationRpcOperation,
+    params: &impl Serialize,
+    route: runtime::SemanticWorkspaceRoute<C>,
+) -> Result<Value> {
     let admission = match route {
         runtime::SemanticWorkspaceRoute::Admitted(admission) => admission,
         runtime::SemanticWorkspaceRoute::Rejected(rejection) => {

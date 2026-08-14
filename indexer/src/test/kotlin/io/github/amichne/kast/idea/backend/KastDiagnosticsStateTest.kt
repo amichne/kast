@@ -6,6 +6,8 @@ import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.RuntimeReadiness
 import io.github.amichne.kast.api.contract.RuntimeReadinessLane
+import io.github.amichne.kast.api.contract.EvidenceRevision
+import io.github.amichne.kast.api.contract.EvidenceRevisionResolution
 import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import io.github.amichne.kast.api.contract.ReferenceCoverageState
 import io.github.amichne.kast.api.contract.AnalysisTransport
@@ -83,7 +85,7 @@ class KastDiagnosticsStateTest {
             backendName = "indexer",
             backendVersion = "test",
             workspaceRoot = "/workspace",
-            readiness = RuntimeReadiness.ready(),
+            readiness = RuntimeReadiness.available(diagnosticsEvidenceRevision()),
         )
 
         val indexing = readyBackend.withReferenceIndex(
@@ -229,4 +231,9 @@ class KastDiagnosticsStateTest {
             com.intellij.openapi.util.Disposer.dispose(parentDisposable)
         }
     }
+}
+
+private fun diagnosticsEvidenceRevision(): EvidenceRevision = when (val resolution = EvidenceRevision.parse(1)) {
+    is EvidenceRevisionResolution.Resolved -> resolution.revision
+    is EvidenceRevisionResolution.Rejected -> error("Expected positive test evidence revision")
 }

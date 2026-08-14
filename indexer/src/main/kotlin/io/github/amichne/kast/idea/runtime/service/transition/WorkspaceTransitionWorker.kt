@@ -15,6 +15,7 @@ import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInProgressExc
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.idea.backend.semantic.ProgressiveRuntimeAvailability
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceWakeup
@@ -35,6 +36,9 @@ internal class WorkspaceTransitionWorker(
     initialProjectModelAuthority: InitialProjectModelAuthority,
     private val resolveBuildSemanticInputIdentity: () -> BuildSemanticInputIdentity,
     private val semanticAdmission: IdeaIndexSemanticAdmission,
+    private val progressiveRuntimeAvailability: ProgressiveRuntimeAvailability =
+        ProgressiveRuntimeAvailability.alreadyCurrent(),
+    private val publishCurrentRuntime: () -> Unit = {},
     private val eventWakeup: WorkspaceEventWakeup,
     private val gitWorktreeTransitionGuard: GitWorktreeTransitionGuard = GitWorktreeTransitionGuard.stable(),
     private val refreshWorkspace: (Set<WorkspaceSignal>) -> Unit,
@@ -77,6 +81,7 @@ internal class WorkspaceTransitionWorker(
 
         override fun refresh(signals: Set<WorkspaceSignal>) {
             requireStableGitWorktreeTransition()
+            progressiveRuntimeAvailability.invalidate()
             semanticAdmission.dirty("workspace transition is refreshing semantic inputs")
             cycleCandidate = null
             cycleResult = null
@@ -109,6 +114,7 @@ internal class WorkspaceTransitionWorker(
                 lastValidConfig
             }
             requireStableGitWorktreeTransition()
+            publishCurrentRuntime()
         }
 
         override fun captureIdentity(): WorkspaceStateIdentity {
@@ -251,7 +257,6 @@ internal class WorkspaceTransitionWorker(
         semanticAdmission.dirty("initial workspace reconciliation is required")
         coordinator.observe(initialReconciliationSignal)
     }
-
     fun run() {
         while (!isCancelled()) {
             when (coordinator.reconcilePending()) {

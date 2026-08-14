@@ -5,7 +5,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             return error_envelope("agent/workspace-files".to_string(), None, error);
         }
     };
-    let admission = match runtime::semantic_workspace_route(args.runtime.workspace_root.clone()) {
+    let admission = match runtime::workspace_files_route(args.runtime.workspace_root.clone()) {
         Ok(runtime::SemanticWorkspaceRoute::Admitted(admission)) => admission,
         Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {
             let mut error = agent_error(rejection.code, rejection.message);
@@ -27,16 +27,6 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
     };
     admitted_query.canonical_workspace_root = admission.workspace_root().display().to_string();
     admitted_query.backend = Some(admission.backend_name());
-    let semantic_read = match runtime::semantic_workspace_read_for_admission(&admission) {
-        Ok(read) => read,
-        Err(error) => {
-            return error_envelope(
-                "agent/workspace-files".to_string(),
-                None,
-                AgentError::from_cli_error(error),
-            );
-        }
-    };
     let root = match WorkspaceRoot::try_from(admission.workspace_root()) {
         Ok(root) => root,
         Err(error) => {
@@ -50,6 +40,20 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         }
     };
     let session = runtime::raw_rpc_session_for_admission(admission.as_ref().clone());
+    let source_read = match optional_workspace_source_read(&admission) {
+        Ok(read) => read,
+        Err(error) => return error_envelope("agent/workspace-files".to_string(), None, error),
+    };
+    let capability_evidence = match workspace_files_capability_evidence(&session, source_read.as_ref()) {
+        Ok(evidence) => evidence,
+        Err(error) => {
+            return error_envelope(
+                "agent/workspace-files".to_string(),
+                None,
+                AgentError::from_cli_error(error),
+            );
+        }
+    };
     let mut backend = RawRpcWorkspaceBackend::new(&session, &root);
     let continuation_identity = match workspace_files_continuation_identity(&admitted_query) {
         Ok(identity) => identity,
@@ -70,7 +74,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         },
         None => None,
     };
-    let mut lanes = SystemWorkspaceLaneReader::new(semantic_read.published());
+    let mut lanes = SystemWorkspaceLaneReader::new(source_read.as_ref().map(|read| read.published()));
     let snapshot = match collect_workspace_inventory(WorkspaceInventoryInputs {
         root,
         kind_domain: workspace_files_kind_domain(args.kind_domain()),
@@ -85,6 +89,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         Some(state) => match validate_workspace_files_resumed_snapshot(
             state,
             &continuation_identity,
+            &capability_evidence,
             &snapshot,
         ) {
             Ok(continuation) => Some(continuation),
@@ -161,6 +166,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         };
         let state = WorkspaceFilesContinuationState {
             identity: continuation_identity.clone(),
+            capability_evidence: capability_evidence.clone(),
             composition_stamp_digest: snapshot.composition_digest().to_string(),
             last_relative_path,
             cumulative_returned_count: start.saturating_add(returned_count),
@@ -178,6 +184,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         result_type: "KAST_AGENT_WORKSPACE_FILES_RESULT",
         ok: true,
         workspace_root: admission.workspace_root().display().to_string(),
+        capability_evidence,
         files: if workspace_files_view_name(&args.view) == "compact" {
             WorkspaceFilesResultFiles::Compact(project_workspace_file_groups(
                 admission.workspace_root(),
@@ -227,18 +234,72 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         filter_coverage,
         index_evidence_complete,
     );
-    let result = match semantic_read.revalidate() {
-        Ok(proof) => proof.finish(result),
-        Err(error) => {
-            return error_envelope(
-                "agent/workspace-files".to_string(),
-                None,
-                AgentError::from_cli_error(error),
-            );
-        }
+    let result = match source_read.as_ref() {
+        Some(read) => match read.revalidate_with_current(&session) {
+            Ok(proof) => proof.finish(result),
+            Err(error) => {
+                return error_envelope(
+                    "agent/workspace-files".to_string(),
+                    None,
+                    AgentError::from_cli_error(error),
+                );
+            }
+        },
+        None => match session.finish_current(result) {
+            Ok(result) => result,
+            Err(error) => {
+                return error_envelope(
+                    "agent/workspace-files".to_string(),
+                    None,
+                    AgentError::from_cli_error(error),
+                );
+            }
+        },
     };
     result_envelope(
         "agent/workspace-files".to_string(),
         result,
     )
+}
+
+fn optional_workspace_source_read(
+    workspace_admission: &runtime::WorkspaceFilesAdmission,
+) -> std::result::Result<Option<runtime::SemanticWorkspaceRead>, AgentError> {
+    let Some(status) = workspace_admission.candidate().runtime_status.as_ref() else {
+        return Ok(None);
+    };
+    if <runtime::lifecycle_typestate::SourceCapability as runtime::lifecycle_typestate::RequiredCapability>::admit(status)
+        .is_err()
+    {
+        return Ok(None);
+    }
+    let source_admission = workspace_admission
+        .admit_captured_capability::<runtime::lifecycle_typestate::SourceCapability>()
+        .map_err(AgentError::from_cli_error)?;
+    runtime::semantic_workspace_read_for_admission(&source_admission)
+        .map(Some)
+        .map_err(AgentError::from_cli_error)
+}
+
+fn workspace_files_capability_evidence(
+    session: &runtime::RawRpcSession<runtime::lifecycle_typestate::WorkspaceFilesCapability>,
+    source_read: Option<&runtime::SemanticWorkspaceRead>,
+) -> Result<WorkspaceFilesCapabilityEvidence> {
+    let source_index = source_read.map_or(WorkspaceFilesSourceIndexEvidence::Unavailable, |read| {
+        WorkspaceFilesSourceIndexEvidence::Available {
+            revision: read.lane_revision(),
+            freshness: match read.freshness() {
+                runtime::lifecycle_typestate::PublishedCapabilityFreshness::Current => {
+                    WorkspaceFilesPersistedFreshness::Current
+                }
+                runtime::lifecycle_typestate::PublishedCapabilityFreshness::Previous => {
+                    WorkspaceFilesPersistedFreshness::Previous
+                }
+            },
+        }
+    });
+    Ok(WorkspaceFilesCapabilityEvidence {
+        workspace_files_revision: session.current_revision()?,
+        source_index,
+    })
 }

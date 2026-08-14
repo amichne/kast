@@ -27,7 +27,7 @@
             "type": "EXACT",
             "totalCount": 0
         },
-        "schemaVersion": 7
+        "schemaVersion": 8
     },
     "id": 1,
     "jsonrpc": "2.0"

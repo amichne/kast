@@ -9,53 +9,86 @@ import java.time.Instant
 @Serializable
 data class RuntimeReadiness(
     @DocField(description = "Readiness of the runtime process and workspace session.")
-    val runtime: RuntimeReadinessLane,
+    @SerialName("runtime")
+    val runtimeLane: CurrentCapabilityLaneReadiness,
     @DocField(description = "Readiness of the imported Gradle project model.")
-    val model: RuntimeReadinessLane,
+    @SerialName("model")
+    val modelLane: CurrentCapabilityLaneReadiness,
+    @DocField(description = "Readiness of the current workspace-file inventory.")
+    @SerialName("workspaceFiles")
+    val workspaceFilesLane: CurrentCapabilityLaneReadiness,
+    @DocField(description = "Readiness of live compiler-backed operations for the current workspace revision.")
+    @SerialName("compiler")
+    val compilerLane: CurrentCapabilityLaneReadiness,
+    @DocField(description = "Readiness of independently committed source-index evidence.")
+    @SerialName("sourceIndex")
+    val sourceIndexLane: RetainedCapabilityLaneReadiness,
     @DocField(description = "Readiness of committed symbol-reference evidence.")
-    val references: RuntimeReadinessLane,
+    @SerialName("references")
+    val referencesLane: RetainedCapabilityLaneReadiness,
     @DocField(description = "Readiness of committed semantic graph evidence.")
-    val semanticGraph: RuntimeReadinessLane,
+    @SerialName("semanticGraph")
+    val semanticGraphLane: RetainedCapabilityLaneReadiness,
     @DocField(description = "Readiness of verified mutation operations.")
-    val mutation: RuntimeReadinessLane,
+    @SerialName("mutation")
+    val mutationLane: CurrentCapabilityLaneReadiness,
 ) {
+    /** Coarse compatibility projection; never use this value as readiness authority. */
+    val runtime: RuntimeReadinessLane
+        get() = runtimeLane.toLegacyReadinessLane()
+
+    /** Coarse compatibility projection; never use this value as readiness authority. */
+    val model: RuntimeReadinessLane
+        get() = modelLane.toLegacyReadinessLane()
+
+    /** Coarse compatibility projection; never use this value as readiness authority. */
+    val references: RuntimeReadinessLane
+        get() = referencesLane.toLegacyReadinessLane()
+
+    /** Coarse compatibility projection; never use this value as readiness authority. */
+    val semanticGraph: RuntimeReadinessLane
+        get() = semanticGraphLane.toLegacyReadinessLane()
+
+    /** Coarse compatibility projection; never use this value as readiness authority. */
+    val mutation: RuntimeReadinessLane
+        get() = mutationLane.toLegacyReadinessLane()
+
     val summary: RuntimeReadinessSummary
         get() = RuntimeReadinessSummary.derive(this)
 
     companion object {
-        fun ready(): RuntimeReadiness = RuntimeReadiness(
-            runtime = RuntimeReadinessLane.Ready,
-            model = RuntimeReadinessLane.Ready,
-            references = RuntimeReadinessLane.Ready,
-            semanticGraph = RuntimeReadinessLane.Ready,
-            mutation = RuntimeReadinessLane.Ready,
-        )
-    }
-}
-
-sealed interface RuntimeReadinessSummary {
-    data object Ready : RuntimeReadinessSummary
-
-    data object NotReady : RuntimeReadinessSummary
-
-    companion object {
         /**
-         * Proof transition: `RuntimeReadiness -> RuntimeReadinessSummary`.
+         * Proof composition: `EvidenceRevision -> RuntimeReadiness`.
          *
-         * Collapses the five typed lanes into a closed exhaustive summary;
-         * callers retain the summary as proof instead of passing a Boolean.
+         * Establishes that every independent lane is available at one current
+         * revision. The revision remains typed until protocol serialization.
          */
-        fun derive(readiness: RuntimeReadiness): RuntimeReadinessSummary = if (
-            readiness.runtime is RuntimeReadinessLane.Ready &&
-            readiness.model is RuntimeReadinessLane.Ready &&
-            readiness.references is RuntimeReadinessLane.Ready &&
-            readiness.semanticGraph is RuntimeReadinessLane.Ready &&
-            readiness.mutation is RuntimeReadinessLane.Ready
-        ) {
-            Ready
-        } else {
-            NotReady
+        fun available(revision: EvidenceRevision): RuntimeReadiness {
+            val current = CurrentCapabilityLaneEvidence.current(revision)
+            val retained = RetainedCapabilityLaneEvidence.current(revision)
+            return RuntimeReadiness(
+                runtimeLane = CurrentCapabilityLaneReadiness.Available(current),
+                modelLane = CurrentCapabilityLaneReadiness.Available(current),
+                workspaceFilesLane = CurrentCapabilityLaneReadiness.Available(current),
+                compilerLane = CurrentCapabilityLaneReadiness.Available(current),
+                sourceIndexLane = RetainedCapabilityLaneReadiness.Available(retained),
+                referencesLane = RetainedCapabilityLaneReadiness.Available(retained),
+                semanticGraphLane = RetainedCapabilityLaneReadiness.Available(retained),
+                mutationLane = CurrentCapabilityLaneReadiness.Available(current),
+            )
         }
+
+        /** Creates one fail-closed readiness value without manufacturing a revision. */
+        fun blocked(blocker: CapabilityLaneBlocker): RuntimeReadiness = RuntimeReadiness(
+            runtimeLane = CurrentCapabilityLaneReadiness.Blocked(blocker),
+            modelLane = CurrentCapabilityLaneReadiness.Blocked(blocker),
+            workspaceFilesLane = CurrentCapabilityLaneReadiness.Blocked(blocker),
+            compilerLane = CurrentCapabilityLaneReadiness.Blocked(blocker),
+            sourceIndexLane = RetainedCapabilityLaneReadiness.Blocked(blocker),
+            referencesLane = RetainedCapabilityLaneReadiness.Blocked(blocker),
+            semanticGraphLane = RetainedCapabilityLaneReadiness.Blocked(blocker),
+            mutationLane = CurrentCapabilityLaneReadiness.Blocked(blocker),
+        )
     }
 }
 

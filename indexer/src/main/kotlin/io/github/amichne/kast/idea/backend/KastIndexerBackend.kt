@@ -3,16 +3,13 @@
 package io.github.amichne.kast.idea.backend
 
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
-import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiModificationTracker
 import io.github.amichne.kast.api.contract.*
@@ -76,6 +73,13 @@ internal class KastIndexerBackend(
     @Volatile internal var semanticGraphBatchSize: GraphIndexingBatchSize = GraphIndexingBatchSize(32),
     internal val workspaceIndexingProgress: WorkspaceIndexingProgressSink = WorkspaceIndexingProgressAuthority(),
     internal val workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority,
+    internal val progressiveRuntimeAvailability: ProgressiveRuntimeAvailability =
+        when (workspaceSemanticReadAuthority.status()) {
+            is IdeaIndexSemanticAdmission.Status.Ready -> ProgressiveRuntimeAvailability.alreadyCurrent()
+            is IdeaIndexSemanticAdmission.Status.Pending,
+            is IdeaIndexSemanticAdmission.Status.Failed,
+                -> ProgressiveRuntimeAvailability()
+        },
     internal val runtimeLivenessAuthority: RuntimeLivenessAuthority =
         IdeaRuntimeLivenessAuthority(project),
     internal val workspaceTransitionRequester: WorkspaceTransitionPort,
@@ -108,6 +112,16 @@ internal class KastIndexerBackend(
                 ),
             ),
         ),
+    )
+    internal val currentRuntimeGate = CurrentRuntimeGate(
+        availability = progressiveRuntimeAvailability,
+        hostState = {
+            when {
+                project.isDisposed -> CurrentRuntimeHostState.Unavailable(CurrentRuntimeBlocker.PROJECT_DISPOSED)
+                DumbService.isDumb(project) -> CurrentRuntimeHostState.Unavailable(CurrentRuntimeBlocker.DUMB_MODE)
+                else -> CurrentRuntimeHostState.Current
+            }
+        },
     )
 
     internal fun updateSemanticGraphBatchSize(batchSize: GraphIndexingBatchSize) {
@@ -184,18 +198,6 @@ internal class KastIndexerBackend(
             ApplicationManager.getApplication().runReadAction<T> { action() }
     }
 
-    internal fun kotlinFileType(): FileType? =
-        FileTypeManager.getInstance().findFileTypeByName("Kotlin")
-
-    internal fun kotlinCandidateFiles(scope: GlobalSearchScope): List<VirtualFile> =
-        kotlinFileType()?.let { fileType ->
-            FileTypeIndex.getFiles(fileType, scope)
-                .asSequence()
-                .filter { file -> file.isValid && !file.isDirectory && isWorkspaceFile(file.path) }
-                .sortedBy { file -> file.path }
-                .toList()
-        } ?: emptyList()
-
     internal fun referenceSearchRoots(plan: ReferenceSearchPlan): List<Path> {
         val targetFile = plan.target.element
             ?.containingFile
@@ -259,37 +261,37 @@ internal class KastIndexerBackend(
     }
 
     override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult =
-        workspaceSemanticGate.current { resolveSymbolOperation(query) }
+        currentRuntimeGate.compiler { resolveSymbolOperation(query) }
 
     override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult =
-        workspaceSemanticGate.current { findReferencesOperation(query) }
+        currentRuntimeGate.compiler { findReferencesOperation(query) }
 
     override suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult =
-        workspaceSemanticGate.current { callHierarchyOperation(query) }
+        currentRuntimeGate.compiler { callHierarchyOperation(query) }
 
     override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult =
-        workspaceSemanticGate.current { callRelationsOperation(query) }
+        currentRuntimeGate.compiler { callRelationsOperation(query) }
 
     override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult =
-        workspaceSemanticGate.current { typeHierarchyOperation(query) }
+        currentRuntimeGate.compiler { typeHierarchyOperation(query) }
 
     override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult =
-        workspaceSemanticGate.current { hierarchyRelationsOperation(query) }
+        currentRuntimeGate.compiler { hierarchyRelationsOperation(query) }
 
     override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult =
-        workspaceSemanticGate.current { implementationsOperation(query) }
+        currentRuntimeGate.compiler { implementationsOperation(query) }
 
     override suspend fun implementationRelations(query: KastImplementationsQuery): ImplementationRelationsResult =
-        workspaceSemanticGate.current { implementationRelationsOperation(query) }
+        currentRuntimeGate.compiler { implementationRelationsOperation(query) }
 
     override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult =
-        workspaceSemanticGate.current { codeActionsOperation(query) }
+        currentRuntimeGate.compiler { codeActionsOperation(query) }
 
     override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult =
-        workspaceSemanticGate.current { completionsOperation(query) }
+        currentRuntimeGate.compiler { completionsOperation(query) }
 
     override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult =
-        workspaceSemanticGate.current { workspaceFilesOperation(query) }
+        currentRuntimeGate.workspaceFiles { workspaceFilesOperation(query) }
 
     override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult =
         coordinatedSemanticGraph(query)
@@ -301,10 +303,10 @@ internal class KastIndexerBackend(
     ): SemanticGraphResult = semanticGraphOperation(query, token)
 
     override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult =
-        workspaceSemanticGate.current { semanticInsertionPointOperation(query) }
+        currentRuntimeGate.compiler { semanticInsertionPointOperation(query) }
 
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult =
-        workspaceSemanticGate.currentWithQualifiedDumbModeEvidence { diagnosticsOperation(query) }
+        currentRuntimeGate.compiler { diagnosticsOperation(query) }
 
     override suspend fun rename(query: ParsedRenameQuery): RenameResult =
         workspaceSemanticGate.current { renameOperation(query) }
@@ -345,13 +347,13 @@ internal class KastIndexerBackend(
 
     override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult = coordinatedRefresh(query)
     override suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult =
-        workspaceSemanticGate.current { fileOutlineOperation(query) }
+        currentRuntimeGate.compiler { fileOutlineOperation(query) }
 
     override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult =
-        workspaceSemanticGate.current { workspaceSymbolSearchOperation(query) }
+        currentRuntimeGate.compiler { workspaceSymbolSearchOperation(query) }
 
     override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult =
-        workspaceSemanticGate.current { workspaceSearchOperation(query) }
+        currentRuntimeGate.compiler { workspaceSearchOperation(query) }
 
     internal fun PsiReference.toReferenceOccurrence(includeUsageSiteScope: Boolean): ReferenceOccurrence? =
         psiSupport.toReferenceOccurrence(this, includeUsageSiteScope)

@@ -25,6 +25,8 @@ import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
 import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.idea.transition.CoordinatedVfsRefreshAuthority
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeBlocker
+import io.github.amichne.kast.idea.backend.semantic.ProgressiveRuntimeAvailability
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -39,6 +41,8 @@ internal class KastIdeaProjectIndexing(
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
+    private val progressiveRuntimeAvailability: ProgressiveRuntimeAvailability =
+        ProgressiveRuntimeAvailability.alreadyCurrent(),
     private val initialProjectModelAuthority: InitialProjectModelAuthority = InitialProjectModelAuthority.Unverified,
     private val gitWorktreeRegistrationProof: GitWorktreeRegistrationProof? = null,
     private val indexingProgress: WorkspaceIndexingProgressAuthority = WorkspaceIndexingProgressAuthority(),
@@ -140,6 +144,7 @@ internal class KastIdeaProjectIndexing(
         )
         diagnostics.recordIndexWaitingForIde()
         DumbService.getInstance(project).runWhenSmart {
+            progressiveRuntimeAvailability.publishCurrent()
             val worker = synchronized(lifecycleLock) {
                 if (cancelled.get() || project.isDisposed) {
                     indexingTerminated.countDown()
@@ -184,6 +189,7 @@ internal class KastIdeaProjectIndexing(
     fun cancel() {
         val wasRunning = startRequested.get() && indexingTerminated.count > 0
         cancelled.set(true)
+        progressiveRuntimeAvailability.block(CurrentRuntimeBlocker.RUNTIME_FAILED)
         val worker = synchronized(lifecycleLock) {
             indexingThread.also {
                 if (it == null && startRequested.get()) {
@@ -276,6 +282,8 @@ internal class KastIdeaProjectIndexing(
             initialProjectModelAuthority = initialProjectModelAuthority,
             resolveBuildSemanticInputIdentity = ::currentBuildSemanticInputIdentity,
             semanticAdmission = semanticAdmission,
+            progressiveRuntimeAvailability = progressiveRuntimeAvailability,
+            publishCurrentRuntime = ::publishCurrentRuntime,
             eventWakeup = eventWakeup,
             gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(
                 workspaceRoot,
@@ -340,6 +348,7 @@ internal class KastIdeaProjectIndexing(
     }
 
     private fun observeWorkspaceRequest(request: WorkspaceTransitionRequest) {
+        progressiveRuntimeAvailability.invalidate()
         semanticAdmission.dirty("workspace event requires reconciliation: ${request.signal.name}")
         routeWorkspaceRequest(
             lock = transitionWorkerLock,
@@ -358,12 +367,19 @@ internal class KastIdeaProjectIndexing(
         workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("config.toml")
 
     fun fail(error: Throwable) {
+        progressiveRuntimeAvailability.block(CurrentRuntimeBlocker.RUNTIME_FAILED)
         semanticAdmission.fail(error.message?.takeIf(String::isNotBlank) ?: error::class.java.name)
         diagnostics.recordIndexFailed(error)
     }
 
     private fun currentBuildSemanticInputIdentity(): BuildSemanticInputIdentity =
         resolveBuildSemanticInputIdentity?.invoke() ?: buildSemanticInputIdentityResolver.resolve()
+
+    private fun publishCurrentRuntime() {
+        DumbService.getInstance(project).waitForSmartMode()
+        if (isCancelled()) throw ProcessCanceledException()
+        progressiveRuntimeAvailability.publishCurrent()
+    }
 
     companion object {
         private val LOG = Logger.getInstance(KastIdeaProjectIndexing::class.java)

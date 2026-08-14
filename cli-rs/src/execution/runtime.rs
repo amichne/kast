@@ -20,7 +20,7 @@ include!("runtime/types.rs");
 #[path = "runtime/backend/indexer_authority.rs"]
 mod indexer_authority;
 #[path = "runtime/lifecycle_typestate.rs"]
-mod lifecycle_typestate;
+pub(crate) mod lifecycle_typestate;
 pub(crate) use indexer_authority::service_entrypoint;
 pub(crate) use indexer_authority::{
     RuntimeSetupAuthorization, RuntimeSetupIntent, preflight_runtime_setup,

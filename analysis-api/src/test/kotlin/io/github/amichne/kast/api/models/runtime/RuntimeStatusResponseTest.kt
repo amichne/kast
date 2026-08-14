@@ -70,7 +70,7 @@ class RuntimeStatusResponseTest {
             backendVersion = "test",
             workspaceRoot = "/workspace",
             publishedWorkspaceGeneration = published,
-            readiness = RuntimeReadiness.ready(),
+            readiness = RuntimeReadiness.available(revision(19)),
         )
 
         val encoded = Json.encodeToString(RuntimeStatusResponse.serializer(), response)
@@ -85,7 +85,7 @@ class RuntimeStatusResponseTest {
             runtimeStatusJson(
                 "\"referenceCoverageState\": \"UNAVAILABLE\",\n" +
                     "\"referenceCoverageLimitations\": [],",
-                references = "BLOCKED",
+                references = """{"type":"BLOCKED","blocker":"CAPABILITY_UNAVAILABLE"}""",
             ),
         )
 
@@ -110,12 +110,23 @@ class RuntimeStatusResponseTest {
             indexReady = false,
         )
         val actualLane = RuntimeReadinessLane.inProgress(RuntimeProgressStage.SOURCE_INDEX)
+        val revision = revision(3)
+        val current = CurrentCapabilityLaneEvidence.current(revision)
+        val retained = RetainedCapabilityLaneEvidence.current(revision)
         val readiness = RuntimeReadiness(
-            runtime = RuntimeReadinessLane.Ready,
-            model = RuntimeReadinessLane.inProgress(RuntimeProgressStage.GRADLE_IMPORT),
-            references = actualLane,
-            semanticGraph = RuntimeReadinessLane.Ready,
-            mutation = RuntimeReadinessLane.Ready,
+            runtimeLane = CurrentCapabilityLaneReadiness.Available(current),
+            modelLane = CurrentCapabilityLaneReadiness.Building(
+                RuntimeReadinessProgress.uncounted(RuntimeProgressStage.GRADLE_IMPORT),
+            ),
+            workspaceFilesLane = CurrentCapabilityLaneReadiness.Available(current),
+            compilerLane = CurrentCapabilityLaneReadiness.Available(current),
+            sourceIndexLane = RetainedCapabilityLaneReadiness.Available(retained),
+            referencesLane = RetainedCapabilityLaneReadiness.Building(
+                progress = actualLane.progress,
+                fallback = RetainedCapabilityLaneFallback.None,
+            ),
+            semanticGraphLane = RetainedCapabilityLaneReadiness.Available(retained),
+            mutationLane = CurrentCapabilityLaneReadiness.Available(current),
         )
 
         val failure = assertThrows<RuntimeStatusConsistencyException> {
@@ -176,7 +187,10 @@ class RuntimeStatusResponseTest {
         }
     }
 
-    private fun runtimeStatusJson(coverageFacts: String, references: String = "READY"): String =
+    private fun runtimeStatusJson(
+        coverageFacts: String,
+        references: String = retainedAvailableJson(1),
+    ): String =
         """
         {
           "state": "READY",
@@ -185,17 +199,31 @@ class RuntimeStatusResponseTest {
           "workspaceRoot": "/workspace",
           $coverageFacts
           "readiness": {
-            "runtime": {"type": "READY"},
-            "model": {"type": "READY"},
-            "references": {"type": "$references"},
-            "semanticGraph": {"type": "READY"},
-            "mutation": {"type": "READY"}
+            "runtime": ${currentAvailableJson(1)},
+            "model": ${currentAvailableJson(1)},
+            "workspaceFiles": ${currentAvailableJson(1)},
+            "compiler": ${currentAvailableJson(1)},
+            "sourceIndex": ${retainedAvailableJson(1)},
+            "references": $references,
+            "semanticGraph": ${retainedAvailableJson(1)},
+            "mutation": ${currentAvailableJson(1)}
           },
           "schemaVersion": 1
         }
         """.trimIndent()
 
+    private fun revision(value: Long): EvidenceRevision = when (val resolution = EvidenceRevision.parse(value)) {
+        is EvidenceRevisionResolution.Resolved -> resolution.revision
+        is EvidenceRevisionResolution.Rejected -> error("invalid test revision: ${resolution.failure}")
+    }
+
     private companion object {
+        fun currentAvailableJson(revision: Long): String =
+            """{"type":"AVAILABLE","evidence":{"revision":$revision,"freshness":"CURRENT"}}"""
+
+        fun retainedAvailableJson(revision: Long): String =
+            """{"type":"AVAILABLE","evidence":{"revision":$revision,"freshness":"CURRENT"}}"""
+
         val invalidCoverageFacts = listOf(
             """
             "referenceIndexReady": false,

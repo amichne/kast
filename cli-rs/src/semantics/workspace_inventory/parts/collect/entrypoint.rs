@@ -1,10 +1,10 @@
 pub(crate) struct SystemWorkspaceLaneReader<'a> {
-    published: &'a crate::published_workspace::PublishedWorkspaceDatabase,
+    published: Option<&'a crate::published_workspace::PublishedWorkspaceDatabase>,
 }
 
 impl<'a> SystemWorkspaceLaneReader<'a> {
     pub(crate) fn new(
-        published: &'a crate::published_workspace::PublishedWorkspaceDatabase,
+        published: Option<&'a crate::published_workspace::PublishedWorkspaceDatabase>,
     ) -> Self {
         Self { published }
     }
@@ -12,7 +12,15 @@ impl<'a> SystemWorkspaceLaneReader<'a> {
 
 impl WorkspaceInventoryLaneReader for SystemWorkspaceLaneReader<'_> {
     fn read_source_index(&mut self, root: &WorkspaceRoot) -> WorkspaceIndexRead {
-        super::read_workspace_index_from_published(root, self.published)
+        self.published.map_or_else(
+            || {
+                WorkspaceIndexRead::Unavailable(WorkspaceIndexReadFailure::new(
+                    WorkspaceInventoryLimitationCode::SourceIndexUnavailable,
+                    "No current or retained source-index publication was admitted.".to_string(),
+                ))
+            },
+            |published| super::read_workspace_index_from_published(root, published),
+        )
     }
 
     fn read_dirty_workspace(&mut self, root: &WorkspaceRoot) -> DirtyWorkspaceRead {

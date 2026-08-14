@@ -26,7 +26,7 @@ internal object IntellijPsiRelationFactProjector : IntellijRelationFactProjector
      * Refinement<NativeRelationFact, IntellijRelationProjectionFailure>.
      *
      * Establishes exact related-declaration evidence and an exact occurrence range bound to the
-     * request selector's root, generation, scope, and relation family. Projection failures are
+     * request selector's root, current epoch, scope, and relation family. Projection failures are
      * closed as unsupported items; all live IntelliJ values remain inside this call.
      */
     override fun project(

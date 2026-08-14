@@ -141,6 +141,7 @@ mod final_review_tests {
                         repository_overlay_file: None,
                     },
                 ),
+                retained_workspace_generation: RetainedWorkspaceGenerationStatus::None,
                 readiness: RuntimeReadiness::ready(),
                 schema_version: SCHEMA_VERSION,
             }),

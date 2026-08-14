@@ -15,6 +15,54 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     registry.register("HealthResponse", HealthResponse.serializer())
     registry.register("RuntimeStatusResponse", RuntimeStatusResponse.serializer())
     registry.register("RuntimeReadiness", RuntimeReadiness.serializer())
+    registry.register("CurrentCapabilityLaneFreshness", CurrentCapabilityLaneFreshness.serializer())
+    registry.register("RetainedCapabilityLaneFreshness", RetainedCapabilityLaneFreshness.serializer())
+    registry.register("PreviousCapabilityLaneFreshness", PreviousCapabilityLaneFreshness.serializer())
+    registry.register("CurrentCapabilityLaneEvidence", CurrentCapabilityLaneEvidence.serializer())
+    registry.register("RetainedCapabilityLaneEvidence", RetainedCapabilityLaneEvidence.serializer())
+    registry.register("PreviousCapabilityLaneEvidence", PreviousCapabilityLaneEvidence.serializer())
+    registry.register("CapabilityLaneBlocker", CapabilityLaneBlocker.serializer())
+    registry.register("CurrentCapabilityLaneReadiness", CurrentCapabilityLaneReadiness.serializer())
+    registry.register(
+        "CurrentCapabilityLaneReadiness.Available",
+        CurrentCapabilityLaneReadiness.Available.serializer(),
+    )
+    registry.register(
+        "CurrentCapabilityLaneReadiness.Building",
+        CurrentCapabilityLaneReadiness.Building.serializer(),
+    )
+    registry.register(
+        "CurrentCapabilityLaneReadiness.Blocked",
+        CurrentCapabilityLaneReadiness.Blocked.serializer(),
+    )
+    registry.register("RetainedCapabilityLaneFallback", RetainedCapabilityLaneFallback.serializer())
+    registry.register("RetainedCapabilityLaneFallback.None", RetainedCapabilityLaneFallback.None.serializer())
+    registry.register(
+        "RetainedCapabilityLaneFallback.Previous",
+        RetainedCapabilityLaneFallback.Previous.serializer(),
+    )
+    registry.register("RetainedCapabilityLaneReadiness", RetainedCapabilityLaneReadiness.serializer())
+    registry.register(
+        "RetainedCapabilityLaneReadiness.Available",
+        RetainedCapabilityLaneReadiness.Available.serializer(),
+    )
+    registry.register(
+        "RetainedCapabilityLaneReadiness.Building",
+        RetainedCapabilityLaneReadiness.Building.serializer(),
+    )
+    registry.register(
+        "RetainedCapabilityLaneReadiness.Blocked",
+        RetainedCapabilityLaneReadiness.Blocked.serializer(),
+    )
+    registry.register("RetainedWorkspaceGenerationStatus", RetainedWorkspaceGenerationStatus.serializer())
+    registry.register(
+        "RetainedWorkspaceGenerationStatus.None",
+        RetainedWorkspaceGenerationStatus.None.serializer(),
+    )
+    registry.register(
+        "RetainedWorkspaceGenerationStatus.Previous",
+        RetainedWorkspaceGenerationStatus.Previous.serializer(),
+    )
     registry.register("RuntimeReadinessLane", RuntimeReadinessLane.serializer())
     registry.register("RuntimeReadinessLane.Ready", RuntimeReadinessLane.Ready.serializer())
     registry.register("RuntimeReadinessLane.InProgress", RuntimeReadinessLane.InProgress.serializer())

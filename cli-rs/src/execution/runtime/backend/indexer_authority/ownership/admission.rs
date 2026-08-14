@@ -81,15 +81,11 @@ fn admitted_candidate<C: RequiredCapability>(
             ),
         ));
     };
-    if candidate.runtime_status.as_ref().is_some_and(|status| {
-        is_servable(status)
-            && status
-                .published_workspace_generation
-                .as_ref()
-                .is_some_and(|publication| {
-                    require_capability_publication::<C>(status, publication).is_ok()
-                })
-    }) {
+    if candidate
+        .runtime_status
+        .as_ref()
+        .is_some_and(|status| is_servable(status) && C::admit(status).is_ok())
+    {
         return Ok(candidate);
     }
     Err(CandidateAdmissionRejection::PresentButNotReady {
@@ -208,6 +204,9 @@ fn construct_admitted_runtime<C: RequiredCapability>(
             .map_err(|blocker| lifecycle_rejection(&request, blocker))?,
     };
     let capabilities = parse_admitted_capabilities(&request, &candidate)?;
+    let capability_evidence = C::admit(runtime_status)
+        .map_err(|blocker| lifecycle_rejection(&request, blocker))?;
+    let capability = C::finish(lifecycle.clone(), capability_evidence);
     let rejection_root = request.workspace_root.clone();
     let rejection_kind = request.workspace_kind;
     let admission = AdmittedIndexerRuntime {
@@ -217,6 +216,7 @@ fn construct_admitted_runtime<C: RequiredCapability>(
         candidate,
         capabilities,
         lifecycle,
+        capability,
         origin,
         process_identity,
         observed_socket_file_identity,
@@ -226,41 +226,6 @@ fn construct_admitted_runtime<C: RequiredCapability>(
         .and_then(|epoch| epoch.capability_ready().map(|_| ()))
         .map_err(|error| runtime_cli_rejection(&rejection_root, rejection_kind, error))?;
     Ok(admission)
-}
-
-fn require_capability_publication<C: RequiredCapability>(
-    status: &RuntimeStatusResponse,
-    publication: &crate::published_workspace::PublishedWorkspaceGenerationManifest,
-) -> Result<()> {
-    let model_ready = status.state == RuntimeState::Ready
-        && status.active()
-        && !status.indexing()
-        && !status.source_module_names.is_empty();
-    if !model_ready || publication.source_revision == 0 {
-        return Err(capability_unavailable());
-    }
-    match C::REQUIREMENT {
-        CapabilityRequirement::Source => Ok(()),
-        CapabilityRequirement::Reference
-            if status.reference_index_ready()
-                && publication.reference_revision == publication.source_revision =>
-        {
-            Ok(())
-        }
-        CapabilityRequirement::Graph
-            if status.graph_index_ready()
-                && matches!(
-                    publication.graph_publication,
-                    crate::published_workspace::PublishedGraphEvidence::Ready { revision }
-                        if revision == publication.source_revision
-                ) =>
-        {
-            Ok(())
-        }
-        CapabilityRequirement::Reference | CapabilityRequirement::Graph => {
-            Err(capability_unavailable())
-        }
-    }
 }
 
 fn capability_unavailable() -> CliError {

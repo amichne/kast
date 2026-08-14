@@ -2,6 +2,9 @@ package io.github.amichne.kast.idea.backend
 
 import io.github.amichne.kast.api.contract.RuntimeReadinessLane
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeEpoch
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeLaneState
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeRevision
 import io.github.amichne.kast.idea.testPublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.spi.EdtHeartbeatTimeout
 import io.github.amichne.kast.workspace.spi.RuntimeLivenessAdmission
@@ -18,6 +21,7 @@ class KastRuntimeReadinessTest {
                 liveness = RuntimeLivenessAdmission.Live,
                 admission = IdeaIndexSemanticAdmission.Status.Ready(testPublishedWorkspaceGeneration()),
                 model = IdeaModelReadinessObservation.Indexing.fromDiscoveredModuleCount(1),
+                current = currentRuntime(),
             ),
         )
 
@@ -36,11 +40,12 @@ class KastRuntimeReadinessTest {
                 ),
                 admission = IdeaIndexSemanticAdmission.Status.Ready(testPublishedWorkspaceGeneration()),
                 model = IdeaModelReadinessObservation.Settled,
+                current = currentRuntime(),
             ),
         )
 
         assertTrue(readiness.runtime is RuntimeReadinessLane.Blocked)
-        assertTrue(readiness.model is RuntimeReadinessLane.Ready)
+        assertTrue(readiness.model is RuntimeReadinessLane.Blocked)
         assertTrue(readiness.semanticGraph is RuntimeReadinessLane.Ready)
         assertTrue(readiness.mutation is RuntimeReadinessLane.Blocked)
     }
@@ -49,4 +54,8 @@ class KastRuntimeReadinessTest {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Expected refined value, got $failure")
     }
+
+    private fun currentRuntime(): CurrentRuntimeLaneState = CurrentRuntimeLaneState.Available(
+        CurrentRuntimeEpoch(CurrentRuntimeRevision.first()),
+    )
 }

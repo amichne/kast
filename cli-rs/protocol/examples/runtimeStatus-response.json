@@ -9,24 +9,68 @@
         "dependentModuleNamesBySourceModuleName": {},
         "readiness": {
             "runtime": {
-                "type": "READY"
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
             },
             "model": {
-                "type": "READY"
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
+            },
+            "workspaceFiles": {
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
+            },
+            "compiler": {
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
+            },
+            "sourceIndex": {
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
             },
             "references": {
-                "type": "READY"
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
             },
             "semanticGraph": {
-                "type": "READY"
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
             },
             "mutation": {
-                "type": "READY"
+                "type": "AVAILABLE",
+                "evidence": {
+                    "revision": 1,
+                    "freshness": "CURRENT"
+                }
             }
         },
         "referenceCoverageState": "COMPLETE",
         "referenceCoverageLimitations": [],
-        "schemaVersion": 7
+        "retainedWorkspaceGeneration": {
+            "type": "NONE"
+        },
+        "schemaVersion": 8
     },
     "id": 1,
     "jsonrpc": "2.0"

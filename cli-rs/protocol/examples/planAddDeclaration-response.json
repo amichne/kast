@@ -86,7 +86,7 @@
             },
             "postimageSha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
         },
-        "schemaVersion": 7
+        "schemaVersion": 8
     },
     "id": 1,
     "jsonrpc": "2.0"

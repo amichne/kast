@@ -5,7 +5,12 @@ package io.github.amichne.kast.idea.backend.workspace
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.FileTypeIndex
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionItem
@@ -25,6 +30,18 @@ import io.github.amichne.kast.idea.backend.diagnostics.*
 import io.github.amichne.kast.idea.backend.mutation.*
 import io.github.amichne.kast.idea.backend.workspace.*
 import io.github.amichne.kast.idea.backend.*
+
+internal fun KastIndexerBackend.kotlinFileType(): FileType? =
+    FileTypeManager.getInstance().findFileTypeByName("Kotlin")
+
+internal fun KastIndexerBackend.kotlinCandidateFiles(scope: GlobalSearchScope): List<VirtualFile> =
+    kotlinFileType()?.let { fileType ->
+        FileTypeIndex.getFiles(fileType, scope)
+            .asSequence()
+            .filter { file -> file.isValid && !file.isDirectory && isWorkspaceFile(file.path) }
+            .sortedBy { file -> file.path }
+            .toList()
+    } ?: emptyList()
 
 internal suspend fun KastIndexerBackend.codeActionsOperation(query: ParsedCodeActionsQuery): CodeActionsResult = withContext(readDispatcher) {
         readAction {

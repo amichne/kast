@@ -28,7 +28,7 @@ data class RuntimeStatusResponse(
     @DocField(description = "Map from source module name to its dependency module names.", defaultValue = "emptyMap()")
     val dependentModuleNamesBySourceModuleName: Map<String, List<String>> = emptyMap(),
     @DocField(
-        description = "Independent readiness evidence for the runtime, Gradle model, references, semantic graph, and mutation lanes.",
+        description = "Independent readiness evidence for runtime, model, workspace-file, compiler, source-index, reference, graph, and mutation lanes.",
     )
     val readiness: RuntimeReadiness,
     @DocField(
@@ -50,6 +50,12 @@ data class RuntimeStatusResponse(
         defaultValue = "null",
     )
     val publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus? = null,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    @DocField(
+        description = "Closed status of the previous workspace publication retained for explicitly stale persisted reads.",
+        defaultValue = "NONE",
+    )
+    val retainedWorkspaceGeneration: RetainedWorkspaceGenerationStatus = RetainedWorkspaceGenerationStatus.None,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 ) {
@@ -69,13 +75,9 @@ data class RuntimeStatusResponse(
     }
 
     fun withReferenceCoverage(coverage: ReferenceCoverage): RuntimeStatusResponse {
-        val updatedReadiness = readiness.copy(
-            references = RuntimeReadinessLane.fromReferenceCoverage(coverage),
-        )
         return copy(
             referenceCoverageState = coverage.state,
             referenceCoverageLimitations = coverage.limitations,
-            readiness = updatedReadiness,
         )
     }
 }

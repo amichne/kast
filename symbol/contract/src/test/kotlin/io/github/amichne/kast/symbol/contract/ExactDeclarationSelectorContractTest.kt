@@ -1,13 +1,13 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
@@ -226,8 +226,8 @@ class ExactDeclarationSelectorContractTest {
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun lease(): SemanticReadLease =
-        SemanticReadLease(root(), EvidenceGeneration.parse(19L).refined())
+    private fun lease(): CurrentWorkspaceReadLease =
+        CurrentWorkspaceReadLease(root(), CurrentWorkspaceEpoch.parse(19L).refined())
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
         is Refinement.Refined -> value

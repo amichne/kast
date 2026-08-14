@@ -1,7 +1,7 @@
 package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 
 private const val MAX_EXACT_DECLARATION_IDENTITY_LENGTH = 1024
 private const val MAX_EXACT_DECLARATION_RUNTIME_TYPE_LENGTH = 512
@@ -18,7 +18,7 @@ enum class SymbolDiscoverySelectionFailure {
  * names, qualified names, file paths, or source offsets.
  */
 class SymbolDiscoverySelection private constructor(
-    val lease: SemanticReadLease,
+    val lease: CurrentWorkspaceReadLease,
     val scope: SymbolSearchScope,
     val candidate: SymbolDiscoveryCandidate,
 ) {
@@ -29,7 +29,7 @@ class SymbolDiscoverySelection private constructor(
          * Refinement<SymbolDiscoverySelection, SymbolDiscoverySelectionFailure>.
          *
          * Establishes that the selected value is the declaration candidate stored at [rawOrdinal]
-         * in the exact generation/scope-bound batch. [SymbolDiscoverySelectionFailure] is the closed
+         * in the exact current-epoch/scope-bound batch. [SymbolDiscoverySelectionFailure] is the closed
          * expected failure. Raw ordinals may be extracted only at a bounded result-presentation or
          * transport boundary.
          */
@@ -234,11 +234,11 @@ enum class ExactDeclarationSelectorIssueFailure {
 }
 
 /**
- * Opaque, detached selector whose identity is bound to one root, generation, scope, file, source
+ * Opaque, detached selector whose identity is bound to one root, current epoch, scope, file, source
  * range, name, qualified-identity state, and IntelliJ declaration implementation type.
  */
 class ExactDeclarationSelector private constructor(
-    val lease: SemanticReadLease,
+    val lease: CurrentWorkspaceReadLease,
     val scope: SymbolSearchScope,
     val file: SymbolDiscoveryFileIdentity,
     val range: ExactDeclarationTextRange,
@@ -300,7 +300,7 @@ enum class ExactDeclarationRevalidationFailure {
 
 /**
  * Proof that an exact selector resolved to identical native declaration evidence in its current
- * generation and scope.
+ * current epoch and scope.
  */
 class RevalidatedExactDeclaration private constructor(
     val selector: ExactDeclarationSelector,

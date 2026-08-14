@@ -43,11 +43,11 @@ interface AnalysisBackend {
     suspend fun runtimeStatus(): RuntimeStatusResponse {
         val capabilities = capabilities()
         return RuntimeStatusResponse(
-            state = RuntimeState.READY,
+            state = RuntimeState.DEGRADED,
             backendName = capabilities.backendName,
             backendVersion = capabilities.backendVersion,
             workspaceRoot = capabilities.workspaceRoot,
-            readiness = RuntimeReadiness.ready(),
+            readiness = RuntimeReadiness.blocked(CapabilityLaneBlocker.CAPABILITY_UNAVAILABLE),
         )
     }
 

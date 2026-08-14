@@ -127,7 +127,10 @@ pub(crate) struct ValidatedWorkspaceLease {
 }
 
 impl ValidatedWorkspaceLease {
-    pub(crate) fn authorizes(&self, admission: &AdmittedIndexerRuntime) -> bool {
+    pub(crate) fn authorizes<C: lifecycle_typestate::RequiredCapability>(
+        &self,
+        admission: &AdmittedIndexerRuntime<C>,
+    ) -> bool {
         self.runtime.descriptor_path == admission.candidate().descriptor_path
             && self.runtime.descriptor == admission.candidate().descriptor
             && process_identity_is_live(&self.runtime.process)

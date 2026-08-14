@@ -9,6 +9,8 @@ import io.github.amichne.kast.api.contract.skill.KastNativeReadCompleteness
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorOperationFamily
 import io.github.amichne.kast.idea.backend.workspace.nativePublicSymbolReader
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeInvalidation
+import io.github.amichne.kast.idea.backend.semantic.ProgressiveRuntimeAvailability
 import io.github.amichne.kast.server.NativePublicSymbolReadResult
 import io.github.amichne.kast.server.PublicSymbolReadMatch
 import io.github.amichne.kast.server.PublicSymbolReadProjection
@@ -22,50 +24,30 @@ import kotlinx.coroutines.runBlocking
 @TestApplication
 internal class NativePublicSymbolReadTest : KastIndexerBackendContractTestFixture() {
     @Test
-    fun `native public read returns an exact generation-bound definition with bounded work`() =
+    fun `native public read serves one current compiler epoch and rejects epoch movement`() =
         runBlocking {
             ensureProjectReady()
             val sourceRoot = readAction {
                 Path.of(mainSourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
             }
             val workspaceRoot = sourceRoot.parent
-            val model = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
-                listOf(workspaceRoot),
-                true,
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                listOf(
-                    IdeaGradleProjectLoadBridge.GradleModuleAssociation(
-                        mainModuleFixture.get().name,
-                        workspaceRoot,
-                        workspaceRoot,
-                        ":",
-                        false,
-                        false,
-                        listOf(
-                            IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(
-                                "main",
-                                listOf(authoredGradleSourceRoot(sourceRoot)),
-                            ),
-                        ),
-                    ),
-                ),
-            )
+            val model = workspaceModel(workspaceRoot, sourceRoot)
             val backend = backend(
                 workspaceRoot = workspaceRoot,
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(
+                    currentStatus = {
+                        IdeaIndexSemanticAdmission.Status.Pending(
+                            "persisted source, reference, and graph evidence is still building",
+                        )
+                    },
+                ),
+                progressiveRuntimeAvailability = ProgressiveRuntimeAvailability.alreadyCurrent(),
                 workspaceModelReader = { model },
             )
             val reader = backend.nativePublicSymbolReader()
 
             val result = reader.read(
-                PublicSymbolReadQuery(
-                    workspaceRoot = NormalizedPath.of(workspaceRoot),
-                    pattern = NonBlankString("greet"),
-                    maxResults = PositiveInt(10),
-                    match = PublicSymbolReadMatch.EXACT_NAME,
-                    projection = PublicSymbolReadProjection.DECLARATION_SCOPE_AND_DOCUMENTATION,
-                ),
+                query(workspaceRoot),
             )
 
             val completed = result as NativePublicSymbolReadResult.Completed
@@ -92,6 +74,65 @@ internal class NativePublicSymbolReadTest : KastIndexerBackendContractTestFixtur
             assertEquals(0L, completed.evidence.work.gradleImportCount)
             assertEquals(0L, completed.evidence.work.graphBuildCount)
             assertEquals(0L, completed.evidence.work.sqliteWriteCount)
-            assertTrue(completed.evidence.generation > 0L)
+            assertEquals(1L, completed.evidence.generation)
+
+            val invalidatingAvailability = ProgressiveRuntimeAvailability.alreadyCurrent()
+            val invalidatingBackend = backend(
+                workspaceRoot = workspaceRoot,
+                progressiveRuntimeAvailability = invalidatingAvailability,
+                workspaceModelReader = {
+                    when (val invalidation = invalidatingAvailability.invalidate()) {
+                        is CurrentRuntimeInvalidation.Invalidated -> Unit
+                        is CurrentRuntimeInvalidation.AlreadyUnavailable ->
+                            error("Expected an available compiler epoch: ${invalidation.state}")
+                    }
+                    model
+                },
+            )
+
+            assertEquals(
+                NativePublicSymbolReadResult.Rejected(
+                    io.github.amichne.kast.server.NativePublicSymbolReadFailure
+                        .RUNTIME_OR_SEMANTIC_UNAVAILABLE,
+                ),
+                invalidatingBackend.nativePublicSymbolReader().read(query(workspaceRoot)),
+            )
         }
+
+    private fun query(workspaceRoot: Path): PublicSymbolReadQuery =
+        PublicSymbolReadQuery(
+            workspaceRoot = NormalizedPath.of(workspaceRoot),
+            pattern = NonBlankString("greet"),
+            maxResults = PositiveInt(10),
+            match = PublicSymbolReadMatch.EXACT_NAME,
+            projection = PublicSymbolReadProjection.DECLARATION_SCOPE_AND_DOCUMENTATION,
+        )
+
+    private fun workspaceModel(
+        workspaceRoot: Path,
+        sourceRoot: Path,
+    ): IdeaGradleProjectLoadBridge.GradleWorkspaceModel =
+        IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            listOf(workspaceRoot),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            listOf(
+                IdeaGradleProjectLoadBridge.GradleModuleAssociation(
+                    mainModuleFixture.get().name,
+                    workspaceRoot,
+                    workspaceRoot,
+                    ":",
+                    false,
+                    false,
+                    listOf(
+                        IdeaGradleProjectLoadBridge.GradleSourceSetAssociation(
+                            "main",
+                            listOf(authoredGradleSourceRoot(sourceRoot)),
+                        ),
+                    ),
+                ),
+            ),
+        )
 }

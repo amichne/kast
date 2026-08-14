@@ -1,6 +1,6 @@
 package io.github.amichne.kast.symbol.contract
 
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -18,21 +18,21 @@ value class ExactDeclarationFingerprint internal constructor(
 
 /**
  * Proof transition:
- * SemanticReadLease + SymbolSearchScope + ExactDeclarationEvidence to
+ * CurrentWorkspaceReadLease + SymbolSearchScope + ExactDeclarationEvidence to
  * ExactDeclarationFingerprint.
  *
  * Establishes a deterministic SHA-256 identity over an unambiguous, length-prefixed encoding of
- * the root, generation, complete scope policy, and detached native declaration evidence. Raw bytes
+ * the root, current epoch, complete scope policy, and detached native declaration evidence. Raw bytes
  * and digest text are created only inside this contract-owned sealing boundary.
  */
 internal fun exactDeclarationFingerprint(
-    lease: SemanticReadLease,
+    lease: CurrentWorkspaceReadLease,
     scope: SymbolSearchScope,
     evidence: ExactDeclarationEvidence,
 ): ExactDeclarationFingerprint {
     val canonical = buildString {
         appendFingerprintField(lease.workspaceRoot.value)
-        appendFingerprintField(lease.generation.value.toString())
+        appendFingerprintField(lease.epoch.value.toString())
         scope.appendFingerprintFields(this)
         when (val file = evidence.file) {
             is SymbolDiscoveryFileIdentity.Workspace -> {

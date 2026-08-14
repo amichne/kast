@@ -3,7 +3,7 @@ package io.github.amichne.kast.symbol.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleProjectIdentity
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import java.nio.file.Path
@@ -104,10 +104,10 @@ sealed interface SymbolSearchScope {
 
 /**
  * Detached operation policy for compiling one native symbol search scope. The lease binds the
- * request to one canonical workspace and published evidence generation; [scope] carries only
- * readable authority and cannot grant edit or mutation authority.
+ * request to one canonical workspace and current compiler epoch; [scope] carries only readable
+ * authority and cannot grant edit or mutation authority.
  */
 data class SymbolSearchScopeRequest(
-    val lease: SemanticReadLease,
+    val lease: CurrentWorkspaceReadLease,
     val scope: SymbolSearchScope,
 )

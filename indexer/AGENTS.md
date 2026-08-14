@@ -75,8 +75,9 @@ not a foreground IDE plugin.
   readiness. `WorkspaceSemanticGate` admits only evidence from the current
   published workspace generation; blocked or moving lanes cannot be rendered
   as ready.
-- The first public native symbol route compiles the imported model, runs one
-  bounded IntelliJ read, and returns detached definitions with generation,
+- The first public native symbol route admits the current compiler epoch
+  independently of persisted evidence, compiles the imported model, runs one
+  bounded IntelliJ read, and returns detached definitions with epoch,
   completeness, stage, work, byte, and selector-handle evidence.
 - Workspace events enter through `WorkspaceTransitionIngress`. Coalesce
   compatible work while retaining the newest source-content freshness claims,

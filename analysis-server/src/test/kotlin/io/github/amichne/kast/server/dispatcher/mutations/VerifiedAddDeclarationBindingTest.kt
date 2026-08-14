@@ -3,6 +3,7 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import io.github.amichne.kast.server.change.NativeVerifiedAddDeclarationOperations
 import io.github.amichne.kast.server.change.VerifiedAddDeclarationApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
@@ -130,7 +131,7 @@ class VerifiedAddDeclarationBindingTest : AnalysisDispatcherTestSupport() {
                     put("proposedDeclaration", "class Added")
                     put("generation", 7)
                 })
-                put("schemaVersion", 7)
+                put("schemaVersion", SCHEMA_VERSION)
             },
             planWire,
         )
@@ -162,7 +163,7 @@ class VerifiedAddDeclarationBindingTest : AnalysisDispatcherTestSupport() {
                     put("declarationKind", "CLASS")
                 })
                 put("postimageSha256", "a".repeat(64))
-                put("schemaVersion", 7)
+                put("schemaVersion", SCHEMA_VERSION)
             },
             applyWire,
         )

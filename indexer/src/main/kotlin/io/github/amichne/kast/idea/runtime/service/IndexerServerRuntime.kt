@@ -1,6 +1,8 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.idea.backend.semantic.CurrentRuntimeBlocker
+import io.github.amichne.kast.idea.backend.semantic.ProgressiveRuntimeAvailability
 import io.github.amichne.kast.idea.backend.workspace.nativePublicSymbolBinding
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
@@ -176,12 +178,14 @@ object IndexerServerRuntime {
         }
         val manifestFileCountProvider = sourceIndexStore.prepareManifestFileCountProvider()
         val semanticAdmission = IdeaIndexSemanticAdmission(project)
+        val progressiveRuntimeAvailability = ProgressiveRuntimeAvailability()
         val indexingProgress = WorkspaceIndexingProgressAuthority()
         val transitionIngress = WorkspaceTransitionIngress(
             semanticAdmission = semanticAdmission,
             indexingProgress = indexingProgress,
         )
         if (indexAdmission is IndexerAdmission.Failed) {
+            progressiveRuntimeAvailability.block(CurrentRuntimeBlocker.RUNTIME_FAILED)
             semanticAdmission.fail(indexAdmission.error.indexAdmissionFailureDetail())
         }
         val addDeclarationBootstrap = when (
@@ -234,6 +238,7 @@ object IndexerServerRuntime {
                 },
                 workspaceIndexingScopeCache = indexingScopeCache,
                 workspaceSemanticReadAuthority = semanticAdmission,
+                progressiveRuntimeAvailability = progressiveRuntimeAvailability,
                 workspaceTransitionRequester = transitionIngress,
                 runtimeCapabilityLeases = runtimeCapabilityLeases,
                 addDeclarationPlanPersistence = addDeclarationBootstrap.persistence,
@@ -314,6 +319,7 @@ object IndexerServerRuntime {
                 diagnostics = diagnostics,
                 indexStore = sourceIndexStore,
                 semanticAdmission = semanticAdmission,
+                progressiveRuntimeAvailability = progressiveRuntimeAvailability,
                 initialProjectModelAuthority = initialProjectModelAuthority,
                 gitWorktreeRegistrationProof = registrationProof,
                 indexingProgress = indexingProgress,

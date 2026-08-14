@@ -50,82 +50,14 @@ pub struct RuntimeStatusResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub published_workspace_generation:
         Option<crate::published_workspace::PublishedWorkspaceGenerationManifest>,
+    #[serde(default)]
+    pub retained_workspace_generation: RetainedWorkspaceGenerationStatus,
     pub readiness: RuntimeReadiness,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RuntimeReadiness {
-    pub runtime: RuntimeReadinessLane,
-    pub model: RuntimeReadinessLane,
-    pub references: RuntimeReadinessLane,
-    pub semantic_graph: RuntimeReadinessLane,
-    pub mutation: RuntimeReadinessLane,
-}
-
-impl RuntimeReadiness {
-    #[cfg(test)]
-    pub(crate) fn ready() -> Self {
-        Self {
-            runtime: RuntimeReadinessLane::Ready,
-            model: RuntimeReadinessLane::Ready,
-            references: RuntimeReadinessLane::Ready,
-            semantic_graph: RuntimeReadinessLane::Ready,
-            mutation: RuntimeReadinessLane::Ready,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum RuntimeReadinessLane {
-    Ready,
-    InProgress { progress: Value },
-    Blocked,
-}
-
-impl RuntimeStatusResponse {
-    pub(crate) fn validate_protocol(self) -> Result<Self> {
-        let aligned = match self.state {
-            RuntimeState::Starting => matches!(self.readiness.runtime, RuntimeReadinessLane::InProgress { .. }),
-            RuntimeState::Indexing => matches!(self.readiness.runtime, RuntimeReadinessLane::Ready)
-                && matches!(self.readiness.model, RuntimeReadinessLane::InProgress { .. }),
-            RuntimeState::Ready => matches!(self.readiness.runtime, RuntimeReadinessLane::Ready)
-                && matches!(self.readiness.model, RuntimeReadinessLane::Ready),
-            RuntimeState::Degraded => matches!(self.readiness.runtime, RuntimeReadinessLane::Blocked)
-                || matches!(self.readiness.model, RuntimeReadinessLane::Blocked),
-        };
-        if !aligned {
-            return Err(CliError::new(
-                "RUNTIME_STATUS_INVALID",
-                "Runtime epoch state contradicts its tagged readiness lanes.",
-            ));
-        }
-        Ok(self)
-    }
-
-    pub fn healthy(&self) -> bool {
-        !matches!(self.readiness.runtime, RuntimeReadinessLane::Blocked)
-    }
-
-    pub fn active(&self) -> bool {
-        matches!(self.readiness.runtime, RuntimeReadinessLane::Ready)
-    }
-
-    pub fn indexing(&self) -> bool {
-        matches!(self.readiness.model, RuntimeReadinessLane::InProgress { .. })
-    }
-
-    pub fn reference_index_ready(&self) -> bool {
-        matches!(self.readiness.references, RuntimeReadinessLane::Ready)
-    }
-
-    pub fn graph_index_ready(&self) -> bool {
-        matches!(self.readiness.semantic_graph, RuntimeReadinessLane::Ready)
-    }
-}
+include!("readiness_types.rs");
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

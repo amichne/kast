@@ -78,7 +78,7 @@ internal fun interface IntellijNativeRelationSearch {
 
 enum class IntellijNativeRelationRejection {
     WORKSPACE_ROOT_MISMATCH,
-    GENERATION_MOVED,
+    CURRENT_EPOCH_MOVED,
     DUMB_MODE,
     PROJECT_DISPOSED,
     STALE_SELECTOR,

@@ -48,11 +48,21 @@ internal class IdeaIndexSemanticAdmission(
                     .executeSynchronously()
                 val pending = when (inspection) {
                     Inspection.Ready -> {
-                        status.set(Status.Pending("compiler model is ready; workspace generation is not verified"))
+                        status.set(
+                            Status.Pending(
+                                detail = "compiler model is ready; workspace generation is not verified",
+                                retainedPublication = status.get().retainedPublication(),
+                            ),
+                        )
                         return
                     }
                     is Inspection.Pending -> inspection.also {
-                        status.set(Status.Pending(it.detail))
+                        status.set(
+                            Status.Pending(
+                                detail = it.detail,
+                                retainedPublication = status.get().retainedPublication(),
+                            ),
+                        )
                     }
                 }
                 val elapsedMillis = elapsedMillisSince(startedAtNanos)
@@ -93,7 +103,7 @@ internal class IdeaIndexSemanticAdmission(
         require(detail.isNotBlank()) { "Dirty semantic-admission detail must not be blank" }
         transitionLock.withLock {
             revision.incrementAndGet()
-            status.set(Status.Pending(detail))
+            status.set(Status.Pending(detail, status.get().retainedPublication()))
         }
     }
 
@@ -104,7 +114,7 @@ internal class IdeaIndexSemanticAdmission(
             val ready = admissionStatus as? Status.Ready
                 ?: throw RecoveryAuditAdmissionUnavailableException(admissionStatus)
             val auditRevision = revision.incrementAndGet()
-            status.set(Status.Pending(detail))
+            status.set(Status.Pending(detail, RetainedPublication.Previous(ready.generation)))
             while (activeReaders > 0 || activeMutation) readersDrained.await()
             val currentRevision = revision.get()
             if (currentRevision != auditRevision) {
@@ -133,7 +143,7 @@ internal class IdeaIndexSemanticAdmission(
         require(detail.isNotBlank()) { "Reconciliation detail must not be blank" }
         return transitionLock.withLock {
             val nextRevision = revision.incrementAndGet()
-            status.set(Status.Pending(detail))
+            status.set(Status.Pending(detail, status.get().retainedPublication()))
             while (activeReaders > 0 || activeMutation) readersDrained.await()
             ReconciliationToken(nextRevision)
         }
@@ -146,7 +156,7 @@ internal class IdeaIndexSemanticAdmission(
             val ready = admissionStatus as? Status.Ready
                 ?: throw WorkspaceMutationAdmissionUnavailableException(admissionStatus)
             val mutationRevision = revision.incrementAndGet()
-            status.set(Status.Pending(detail))
+            status.set(Status.Pending(detail, RetainedPublication.Previous(ready.generation)))
             while (activeReaders > 0 || activeMutation) readersDrained.await()
             val currentRevision = revision.get()
             if (currentRevision != mutationRevision) {
@@ -313,7 +323,10 @@ internal class IdeaIndexSemanticAdmission(
     sealed interface Status {
         data class Ready(val generation: PublishedWorkspaceGenerationManifest) : Status
 
-        data class Pending(val detail: String) : Status {
+        data class Pending(
+            val detail: String,
+            val retainedPublication: RetainedPublication = RetainedPublication.None,
+        ) : Status {
             init {
                 require(detail.isNotBlank()) { "Pending semantic-admission detail must not be blank" }
             }
@@ -326,7 +339,29 @@ internal class IdeaIndexSemanticAdmission(
         }
     }
 
+    sealed interface RetainedPublication {
+        data object None : RetainedPublication
+
+        data class Previous(
+            val generation: PublishedWorkspaceGenerationManifest,
+        ) : RetainedPublication
+    }
+
     private companion object {
         const val NANOS_PER_MILLISECOND = 1_000_000L
     }
+}
+
+/**
+ * Proof transition: `IdeaIndexSemanticAdmission.Status -> RetainedPublication`.
+ *
+ * Preserves a previously committed manifest while a transition is pending without converting it
+ * back into current read authority. Failed and never-published states remain explicit absence.
+ */
+private fun IdeaIndexSemanticAdmission.Status.retainedPublication():
+    IdeaIndexSemanticAdmission.RetainedPublication = when (this) {
+    is IdeaIndexSemanticAdmission.Status.Ready ->
+        IdeaIndexSemanticAdmission.RetainedPublication.Previous(generation)
+    is IdeaIndexSemanticAdmission.Status.Pending -> retainedPublication
+    is IdeaIndexSemanticAdmission.Status.Failed -> IdeaIndexSemanticAdmission.RetainedPublication.None
 }

@@ -144,6 +144,21 @@ class IdeaIndexSemanticAdmissionTest {
     }
 
     @Test
+    fun `transition retains the previous publication without admitting it as current`() {
+        val generation = publishedGeneration()
+        val admission = readyAdmission(generation)
+
+        admission.dirty("source file changed")
+
+        val pending = admission.status() as IdeaIndexSemanticAdmission.Status.Pending
+        assertEquals(
+            IdeaIndexSemanticAdmission.RetainedPublication.Previous(generation),
+            pending.retainedPublication,
+        )
+        assertThrows(IllegalStateException::class.java) { admission.openRead() }
+    }
+
+    @Test
     fun `event withdraws readiness without waiting for a slow publication commit`() {
         val admission = readyAdmission()
         val token = admission.beginReconciliation("workspace reconciliation is active")

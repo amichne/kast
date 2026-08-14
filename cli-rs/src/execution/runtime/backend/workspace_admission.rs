@@ -60,6 +60,8 @@ pub struct SemanticBackendCandidateEvidence {
 }
 
 pub(crate) type SemanticWorkspaceAdmission = AdmittedIndexerRuntime;
+pub(crate) type WorkspaceFilesAdmission =
+    AdmittedIndexerRuntime<lifecycle_typestate::WorkspaceFilesCapability>;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SemanticWorkspaceRejection {
@@ -114,6 +116,10 @@ impl ReferenceReadyRuntime {
     pub(crate) fn source_revision(&self) -> u64 {
         self.ready.source().revision().value()
     }
+
+    pub(crate) fn freshness(&self) -> lifecycle_typestate::PublishedCapabilityFreshness {
+        self.ready.source().freshness()
+    }
 }
 
 pub(crate) fn demand_reference_ready_runtime(
@@ -139,17 +145,6 @@ pub(crate) fn demand_reference_ready_runtime(
                 "Reference-ready admission returned no runtime epoch evidence.",
             )
         })?;
-    if status.state != RuntimeState::Ready
-        || !status.active()
-        || status.indexing()
-        || status.source_module_names.is_empty()
-        || !status.reference_index_ready()
-    {
-        return Err(CliError::new(
-            "REFERENCE_READY_EVIDENCE_INVALID",
-            "Reference-ready admission returned an epoch without committed source and reference evidence.",
-        ));
-    }
     Ok(ReferenceReadyRuntime {
         ready,
         backend_name: status.backend_name.clone(),
@@ -164,6 +159,26 @@ pub(crate) fn semantic_workspace_route(
         semantic_runtime_args(requested_workspace_root, true, false),
         semantic_demand_availability(),
         lifecycle_typestate::Demand::<lifecycle_typestate::SourceCapability>::new(),
+    )
+}
+
+pub(crate) fn compiler_workspace_route(
+    requested_workspace_root: Option<PathBuf>,
+) -> Result<SemanticWorkspaceRoute<lifecycle_typestate::CompilerCapability>> {
+    semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, true, false),
+        semantic_demand_availability(),
+        lifecycle_typestate::Demand::<lifecycle_typestate::CompilerCapability>::new(),
+    )
+}
+
+pub(crate) fn workspace_files_route(
+    requested_workspace_root: Option<PathBuf>,
+) -> Result<SemanticWorkspaceRoute<lifecycle_typestate::WorkspaceFilesCapability>> {
+    semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, true, false),
+        semantic_demand_availability(),
+        lifecycle_typestate::Demand::<lifecycle_typestate::WorkspaceFilesCapability>::new(),
     )
 }
 
@@ -262,12 +277,16 @@ fn semantic_workspace_route_with_availability<C: lifecycle_typestate::RequiredCa
 
 pub(crate) fn semantic_mutation_workspace_route(
     requested_workspace_root: Option<PathBuf>,
-) -> Result<SemanticWorkspaceRoute> {
-    semantic_workspace_route_reuse_only(requested_workspace_root)
+) -> Result<SemanticWorkspaceRoute<lifecycle_typestate::MutationCapability>> {
+    semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, false, true),
+        indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
+        lifecycle_typestate::Demand::<lifecycle_typestate::MutationCapability>::new(),
+    )
 }
 
-pub(crate) fn compiler_backed_workspace_evidence(
-    admission: &SemanticWorkspaceAdmission,
+pub(crate) fn compiler_backed_workspace_evidence<C: lifecycle_typestate::RequiredCapability>(
+    admission: &AdmittedIndexerRuntime<C>,
     runtime_status: &RuntimeStatusResponse,
 ) -> Option<SemanticWorkspaceEvidence> {
     let runtime_root = config::normalize(PathBuf::from(&runtime_status.workspace_root));

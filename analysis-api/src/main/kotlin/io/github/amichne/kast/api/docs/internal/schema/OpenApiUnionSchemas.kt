@@ -14,7 +14,9 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesContinuationResu
 import kotlinx.serialization.KSerializer
 
 internal fun SchemaRegistry.manualUnionSchema(componentName: String): Map<String, Any?>? =
-    manualMutationProofUnionSchema(componentName) ?: when (componentName) {
+    manualMutationProofUnionSchema(componentName)
+        ?: manualProgressiveReadinessSchema(componentName)
+        ?: when (componentName) {
         "RuntimeReadinessProgress" -> runtimeReadinessProgressSchema()
         "RuntimeReadinessLane" -> discriminatedUnion(
             "type",

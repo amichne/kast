@@ -13,7 +13,6 @@ import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
@@ -31,7 +30,8 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceEpoch
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -227,9 +227,9 @@ class IntellijNativeDiscoveryTest {
     ): SymbolDiscoveryRequest {
         val workspaceRoot =
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
-        val lease = SemanticReadLease(
+        val lease = CurrentWorkspaceReadLease(
             workspaceRoot = workspaceRoot,
-            generation = EvidenceGeneration.parse(19L).refined(),
+            epoch = CurrentWorkspaceEpoch.parse(19L).refined(),
         )
         return SymbolDiscoveryRequest(
             scope = SymbolSearchScopeRequest(

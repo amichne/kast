@@ -2,7 +2,7 @@ package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
@@ -79,7 +79,7 @@ value class SymbolDiscoverySourceOffset private constructor(
          * Proof transition:
          * Int to Refinement<SymbolDiscoverySourceOffset, SymbolDiscoveryCandidateFailure>.
          *
-         * Establishes a non-negative source offset for a generation-bound discovery candidate.
+         * Establishes a non-negative source offset for an epoch-bound discovery candidate.
          * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw offsets may be
          * extracted only at native projection, exact-selector resolution, or transport boundaries.
          */
@@ -163,7 +163,7 @@ sealed interface SymbolDiscoveryCandidateLocation {
 
 @ConsistentCopyVisibility
 data class SymbolDiscoveryCandidate private constructor(
-    val lease: SemanticReadLease,
+    val lease: CurrentWorkspaceReadLease,
     val kind: SymbolDiscoveryKind,
     val name: SymbolDiscoveryCandidateName,
     val location: SymbolDiscoveryCandidateLocation,
@@ -190,7 +190,7 @@ data class SymbolDiscoveryCandidate private constructor(
     private fun canonicalProjection(): String = buildString {
         append(lease.workspaceRoot.value)
         append('\u0000')
-        append(lease.generation.value)
+        append(lease.epoch.value)
         append('\u0000')
         append(kind.name)
         append('\u0000')
@@ -209,10 +209,10 @@ data class SymbolDiscoveryCandidate private constructor(
     companion object {
         /**
          * Proof transition:
-         * SymbolDiscoveryKind + String + SemanticReadLease + Path? + String + Int? to
+         * SymbolDiscoveryKind + String + CurrentWorkspaceReadLease + Path? + String + Int? to
          * Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure>.
          *
-         * Establishes a generation-bound detached candidate with a bounded name, exact file
+         * Establishes an epoch-bound detached candidate with a bounded name, exact file
          * identity, and a non-negative declaration offset exactly when class or symbol discovery
          * requires one.
          * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Raw IntelliJ values
@@ -221,7 +221,7 @@ data class SymbolDiscoveryCandidate private constructor(
         fun fromBoundary(
             kind: SymbolDiscoveryKind,
             rawName: String,
-            lease: SemanticReadLease,
+            lease: CurrentWorkspaceReadLease,
             nativePath: Path?,
             virtualFileUrl: String,
             rawOffset: Int?,
@@ -269,7 +269,7 @@ data class SymbolDiscoveryCandidate private constructor(
         private val DISCOVERY_CANDIDATE_ORDER =
             compareBy<SymbolDiscoveryCandidate>(
                 { it.lease.workspaceRoot.value },
-                { it.lease.generation.value },
+                { it.lease.epoch.value },
                 { it.kind.ordinal },
                 { it.name.value },
                 { it.location.file.stableValue },

@@ -6,7 +6,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.symbol.contract.NativeRelationOutcome
 import io.github.amichne.kast.symbol.contract.NativeRelationRequest
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.CurrentWorkspaceReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
 sealed interface IntellijNativeRelationResult {
@@ -32,18 +32,18 @@ class IntellijNativeRelationAdapter private constructor(
 
     /**
      * Proof transition:
-     * Project + current SemanticReadLease + NativeRelationRequest +
+     * Project + current CurrentWorkspaceReadLease + NativeRelationRequest +
      * WorkspaceSearchScopeModelCompilation to IntellijNativeRelationResult.
      *
-     * Establishes current exact root/generation admission, recompiles the selector's retained scope,
+     * Establishes current exact root/epoch admission, recompiles the selector's retained scope,
      * and executes one bounded relation family inside a restartable write-priority IntelliJ read.
-     * Root/generation, scope, subject identity, environment, and bounded coverage failures are
+     * Root/epoch, scope, subject identity, environment, and bounded coverage failures are
      * closed by [IntellijNativeRelationResult]. Platform cancellation propagates through
      * [readAction]. No live IntelliJ value survives the request.
      */
     suspend fun read(
         project: Project,
-        currentLease: SemanticReadLease,
+        currentLease: CurrentWorkspaceReadLease,
         request: NativeRelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): IntellijNativeRelationResult {
@@ -59,8 +59,8 @@ class IntellijNativeRelationAdapter private constructor(
                     when (admission.reason) {
                         IntellijExactSelectorRejection.WORKSPACE_ROOT_MISMATCH ->
                             IntellijNativeRelationRejection.WORKSPACE_ROOT_MISMATCH
-                        IntellijExactSelectorRejection.GENERATION_MOVED ->
-                            IntellijNativeRelationRejection.GENERATION_MOVED
+                        IntellijExactSelectorRejection.CURRENT_EPOCH_MOVED ->
+                            IntellijNativeRelationRejection.CURRENT_EPOCH_MOVED
                         else -> IntellijNativeRelationRejection.INTERNAL_INVARIANT
                     },
                 )

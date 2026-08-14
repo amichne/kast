@@ -1,5 +1,14 @@
 package io.github.amichne.kast.api.contract
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
 sealed interface RequiredLifecycleCapability {
     data object Source : RequiredLifecycleCapability
     data object Reference : RequiredLifecycleCapability
@@ -46,6 +55,7 @@ sealed interface RuntimeEpochIdResolution {
     data class Rejected(val failure: RuntimeEpochIdFailure) : RuntimeEpochIdResolution
 }
 
+@Serializable(with = EvidenceRevision.Serializer::class)
 @JvmInline
 value class EvidenceRevision private constructor(val value: Long) {
     companion object {
@@ -60,6 +70,26 @@ value class EvidenceRevision private constructor(val value: Long) {
             EvidenceRevisionResolution.Rejected(EvidenceRevisionFailure.NotPositive(value))
         } else {
             EvidenceRevisionResolution.Resolved(EvidenceRevision(value))
+        }
+    }
+
+    object Serializer : KSerializer<EvidenceRevision> {
+        override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(
+            serialName = "io.github.amichne.kast.api.contract.EvidenceRevision",
+            kind = PrimitiveKind.LONG,
+        )
+
+        override fun serialize(encoder: Encoder, value: EvidenceRevision) {
+            encoder.encodeLong(value.value)
+        }
+
+        override fun deserialize(decoder: Decoder): EvidenceRevision = when (
+            val resolution = parse(decoder.decodeLong())
+        ) {
+            is EvidenceRevisionResolution.Resolved -> resolution.revision
+            is EvidenceRevisionResolution.Rejected -> throw SerializationException(
+                "Invalid evidence revision: ${resolution.failure}",
+            )
         }
     }
 }

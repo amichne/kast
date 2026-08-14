@@ -13,8 +13,8 @@ transport, or composition.
 - `IntellijNativeDiscoveryQuery.kt` performs platform matching, scoped native name/element
   processing, bounded collection, deterministic ordering, qualification, and timing.
 - `IntellijDiscoveryProjection.kt` converts only already-in-scope live items into detached
-  generation-bound candidates.
-- `IntellijExactSelectorResolver.kt` admits the current root/generation, recompiles the discovery
+  current-epoch-bound candidates.
+- `IntellijExactSelectorResolver.kt` admits the current root/epoch, recompiles the discovery
   scope, and issues or revalidates an exact selector inside one restartable read.
 - `IntellijPsiExactDeclarationLookup.kt` resolves the candidate's retained file/name/offset to one
   scope-contained declaration and detaches exact range, qualified-identity state, and runtime type.
@@ -25,7 +25,7 @@ transport, or composition.
 - `IntellijPsiNativeRelationSearch.kt` revalidates the exact live subject and performs one-hop
   reference, definition, or outgoing-reference traversal through native IntelliJ facilities.
 - `IntellijPsiRelationFactProjector.kt` detaches live related declarations and occurrences into
-  generation/scope-bound exact relation facts.
+  current-epoch/scope-bound exact relation facts.
 
 ## Adapter invariants
 
@@ -39,7 +39,7 @@ transport, or composition.
 - Admit libraries only for an explicit workspace-wide policy through
   `ProjectScope.getLibrariesScope`, whose platform contract is backed by project-file-index
   library membership; never turn library readability into source or edit authority.
-- Bind every compiled capability to the request lease's canonical root and generation.
+- Bind every compiled capability to the request lease's canonical root and current compiler epoch.
 - Keep `Project`, `VirtualFile`, and `GlobalSearchScope` internal and request-local. Retain no PSI
   or other live IDE object across requests.
 - Ordinary reads do not refresh, import Gradle, write files, mutate PSI, persist evidence, build a
@@ -55,7 +55,7 @@ transport, or composition.
 - Apply record, byte, work, and elapsed limits before retaining live items; every nonterminal cap
   remains visible in the detached outcome.
 - Exact resolution must consume a batch-owned selection. Missing files/elements, scope rejection,
-  multiple matching PSI ancestors, unsupported declarations, root/generation drift, and changed
+  multiple matching PSI ancestors, unsupported declarations, root/current-epoch drift, and changed
   native evidence are distinct closed failures; never guess among collisions.
 - Relation search receives only the selector's compiled scope. Use `ReferencesSearch` for exact
   resolved references, `DefinitionsScopedSearch` with deep traversal disabled for native

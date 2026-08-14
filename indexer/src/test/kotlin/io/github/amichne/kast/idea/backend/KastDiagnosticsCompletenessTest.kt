@@ -1,7 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.idea.diagnostics.*
-
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -297,25 +295,25 @@ internal class KastDiagnosticsCompletenessTest : KastDiagnosticsCompletenessFixt
     }
 
     @Test
-    fun `indexing produces pending semantic evidence independently of runtime health`() {
+    fun `indexing blocks compiler diagnostics until the current host is smart`() {
         ensureProjectReady()
         val validFile = Path.of(validFileFixture.get().virtualFile.path)
 
-        val (runtime, diagnostics) = DumbModeTestUtils.computeInDumbModeSynchronously(project) {
+        val (runtime, failure) = DumbModeTestUtils.computeInDumbModeSynchronously(project) {
             runBlocking {
-                backend().runtimeStatus() to backend().diagnostics(
-                    DiagnosticsQuery(filePaths = listOf(validFile.toString())),
-                )
+                val backend = backend()
+                backend.runtimeStatus() to runCatching {
+                    backend.diagnostics(
+                        DiagnosticsQuery(filePaths = listOf(validFile.toString())),
+                    )
+                }.exceptionOrNull()
             }
         }
 
         assertEquals(RuntimeState.INDEXING, runtime.state)
         assertFalse(runtime.readiness.runtime is RuntimeReadinessLane.Blocked)
-        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, diagnostics.semanticOutcome)
-        assertEquals(FileAnalysisState.PENDING_INDEX, diagnostics.fileStatuses.single().state)
-        assertEquals(0, diagnostics.analyzedFileCount)
-        assertEquals(1, diagnostics.skippedFileCount)
-        assertEquals("ANALYSIS_FAILURE", diagnostics.diagnostics.single().code)
+        assertTrue(failure is ConflictException)
+        assertTrue(failure?.message.orEmpty().contains("compiler"))
     }
 
     @Test
@@ -341,24 +339,25 @@ internal class KastDiagnosticsCompletenessTest : KastDiagnosticsCompletenessFixt
     }
 
     @Test
-    fun `outside source modules takes precedence over indexing`() {
+    fun `indexing blocks compiler diagnostics before source classification`() {
         ensureProjectReady()
         val outsideSourceFile = workspaceRoot.resolve("OutsideSourceDuringIndexing.kt")
         Files.writeString(outsideSourceFile, validSource)
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(outsideSourceFile)
 
         try {
-            val result = DumbModeTestUtils.computeInDumbModeSynchronously(project) {
+            val failure = DumbModeTestUtils.computeInDumbModeSynchronously(project) {
                 runBlocking {
-                    backend().diagnostics(
-                        DiagnosticsQuery(filePaths = listOf(outsideSourceFile.toString())),
-                    )
+                    runCatching {
+                        backend().diagnostics(
+                            DiagnosticsQuery(filePaths = listOf(outsideSourceFile.toString())),
+                        )
+                    }.exceptionOrNull()
                 }
             }
 
-            assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
-            assertEquals(FileAnalysisState.OUTSIDE_SOURCE_MODULES, result.fileStatuses.single().state)
-            assertEquals("ANALYSIS_FAILURE", result.diagnostics.single().code)
+            assertTrue(failure is ConflictException)
+            assertTrue(failure?.message.orEmpty().contains("compiler"))
         } finally {
             Files.deleteIfExists(outsideSourceFile)
         }
