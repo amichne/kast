@@ -3,16 +3,16 @@ package io.github.amichne.kast.change.recovery.filesystem
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidence
 import io.github.amichne.kast.change.contract.AddDeclarationRevalidationObservation
-import io.github.amichne.kast.change.contract.AddDeclarationSourceProvenance
 import io.github.amichne.kast.change.contract.AddDeclarationSourceOwner
+import io.github.amichne.kast.change.contract.AddDeclarationSourceProvenance
 import io.github.amichne.kast.change.contract.AddDeclarationTargetCapability
 import io.github.amichne.kast.change.contract.AddDeclarationTargetWritability
 import io.github.amichne.kast.change.contract.AddDeclarationVerificationContract
 import io.github.amichne.kast.change.contract.DeclaredWriteSet
 import io.github.amichne.kast.change.contract.DetachedCompilerEvidence
 import io.github.amichne.kast.change.contract.ExactFileContentProof
-import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationCompilerContext
+import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.ExpectedFileProof
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
@@ -21,15 +21,17 @@ import io.github.amichne.kast.change.recovery.contract.DurableAddDeclarationReco
 import io.github.amichne.kast.change.recovery.spi.DurableAddDeclarationRecoveryResult
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Base64
-import org.junit.jupiter.api.Assertions.assertArrayEquals
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertInstanceOf
-import org.junit.jupiter.api.io.TempDir
 
 class FilesystemAddDeclarationRecoveryPreparerTest {
     @TempDir
@@ -70,6 +72,37 @@ class FilesystemAddDeclarationRecoveryPreparerTest {
         assertEquals(DurableAddDeclarationRecoveryFailure.EXISTING_ARTIFACT_MISMATCH, rejected.failure)
         assertArrayEquals("tampered".toByteArray(), Files.readAllBytes(artifact))
         assertArrayEquals(PREIMAGE, Files.readAllBytes(fixture.target))
+    }
+
+    @Test
+    fun reviewRegression_failedPartialArtifactDoesNotPoisonRetry() {
+        val fixture = fixture()
+        val recoveryRoot = Files.createDirectory(tempDir.resolve("partial-recovery")).toRealPath()
+        val artifact = recoveryRoot.resolve("${fixture.plan.planId.value}.before")
+        val failing = assertInstanceOf<FilesystemAddDeclarationRecoveryPreparerOpenResult.Opened>(
+            FilesystemAddDeclarationRecoveryPreparer.openWithArtifactWriter(
+                recoveryRoot,
+                AddDeclarationRecoveryArtifactWriter { path, bytes ->
+                    Files.write(path, bytes.copyOf(3))
+                    throw IOException("simulated force failure")
+                },
+            ),
+        ).preparer
+
+        assertInstanceOf<DurableAddDeclarationRecoveryResult.Rejected>(
+            failing.prepare(fixture.revalidated.recovery),
+        )
+        assertFalse(Files.exists(artifact), "failed creation left a final partial artifact")
+        assertEquals(
+            emptyList<Path>(),
+            Files.list(recoveryRoot).use { paths ->
+                paths.filter { path -> path.fileName.toString().endsWith(".before.tmp") }.toList()
+            },
+            "failed creation left a staged partial artifact",
+        )
+        assertInstanceOf<DurableAddDeclarationRecoveryResult.Prepared>(
+            open(recoveryRoot).prepare(fixture.revalidated.recovery),
+        )
     }
 
     private fun open(root: Path): FilesystemAddDeclarationRecoveryPreparer =

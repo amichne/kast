@@ -49,10 +49,12 @@ import io.github.amichne.kast.kernel.Refinement
 import java.security.MessageDigest
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 
@@ -73,6 +75,25 @@ class AddDeclarationApplyServiceTest {
         assertEquals(fixture.plan, applied.record.plan)
         assertEquals(AddDeclarationMutationProgress.BEGUN, applied.record.mutationProgress)
         assertEquals(listOf("begin", "complete"), journal.events)
+    }
+
+    @Test
+    fun reviewRegression_executorCancellationEscapesService() = runTest {
+        val fixture = fixture()
+        val cancellation = CancellationException("cancel before command entry")
+        val service = AddDeclarationApplicationService(
+            ApplyJournal(fixture.recovery.record),
+            AddDeclarationApplyExecutor { throw cancellation },
+        )
+        var observed: CancellationException? = null
+
+        try {
+            service.apply(fixture.recovery)
+        } catch (failure: CancellationException) {
+            observed = failure
+        }
+
+        assertSame(cancellation, observed)
     }
 
     @Test

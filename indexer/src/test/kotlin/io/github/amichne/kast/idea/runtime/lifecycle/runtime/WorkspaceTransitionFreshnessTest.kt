@@ -4,6 +4,7 @@ import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
 import io.github.amichne.kast.workspace.contract.TransitionBlocker
 import io.github.amichne.kast.workspace.contract.TransitionBlockerKind
@@ -11,6 +12,7 @@ import io.github.amichne.kast.workspace.contract.TransitionPhase
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailure
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
 import io.github.amichne.kast.idea.transition.captureSourceWorkspaceTransitionRequest
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
@@ -89,6 +91,78 @@ class WorkspaceTransitionFreshnessTest {
             activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
         ),
     )
+}
+
+class WorkspaceTransitionIngressReviewRegressionTest {
+    @Test
+    fun `uncovered request dispatches before a newer generation can satisfy its waiter`() {
+        val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(30))
+        val next = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(31))
+        val admission = raceReadyAdmission(initial)
+        val order = mutableListOf<String>()
+        var observations = 0
+        val ingress = WorkspaceTransitionIngress(
+            semanticAdmission = admission,
+            admissionObservation = WorkspaceTransitionAdmissionObservation {
+                observations += 1
+                when (observations) {
+                    1 -> IdeaIndexSemanticAdmission.Status.Ready(initial).also { order += "route" }
+                    2 -> IdeaIndexSemanticAdmission.Status.Ready(next).also { order += "accept" }
+                    else -> IdeaIndexSemanticAdmission.Status.Ready(next)
+                }
+            },
+            transitionAwaiter = raceAwaiter(),
+        )
+        ingress.bindRequest { order += "dispatch" }
+
+        try {
+            val outcome = runBlocking {
+                ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
+            }
+
+            assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), outcome)
+            assertEquals(listOf("route", "dispatch", "accept"), order)
+        } finally {
+            ingress.close()
+        }
+    }
+
+    @Test
+    fun `uncovered request retains a blocked outcome published during dispatch`() {
+        val initial = testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(32))
+        val admission = raceReadyAdmission(initial)
+        val blocker = TransitionBlocker(
+            phase = TransitionPhase.Reconciling,
+            kind = TransitionBlockerKind.AdapterFailure,
+            detail = "compiler reconciliation failed",
+        )
+        val ingress = WorkspaceTransitionIngress(admission, raceAwaiter())
+        ingress.bindRequest {
+            ingress.observe(
+                WorkspaceTransitionSnapshot(
+                    lifecycle = WorkspaceLifecycle.Blocked,
+                    pendingSignals = emptySet(),
+                    published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+                    blocker = blocker,
+                    observedEventCount = 32,
+                    activeSourceFreshness = WorkspaceSourceFreshness.Absent,
+                ),
+            )
+        }
+
+        try {
+            val outcome = runBlocking {
+                ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
+            }
+
+            assertEquals(
+                WorkspaceTransitionOutcome.Rejected(WorkspaceTransitionFailure.Blocked(blocker)),
+                outcome,
+            )
+        } finally {
+            ingress.close()
+        }
+    }
 }
 
 internal fun assertCoveredSourcePublicationRace(workspaceRoot: Path) {

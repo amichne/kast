@@ -15,34 +15,19 @@ import io.github.amichne.kast.change.apply.service.AddDeclarationRecoveryRequire
 import io.github.amichne.kast.change.apply.service.ApplyRecoveryPreparedAddDeclarationResult
 import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyPreconditionFailure
 import io.github.amichne.kast.change.contract.AddDeclarationMutationProgress
-import io.github.amichne.kast.change.contract.AddDeclarationPlanId
 import io.github.amichne.kast.change.contract.AddDeclarationRevalidationObservation
 import io.github.amichne.kast.change.contract.AddDeclarationSourceProvenance
 import io.github.amichne.kast.change.contract.AddDeclarationTargetWritability
-import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RevalidatedAddDeclaration
-import io.github.amichne.kast.change.journal.contract.AddDeclarationApplyJournal
-import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanJournal
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage
-import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
-import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
-import io.github.amichne.kast.change.journal.contract.BeginAddDeclarationApply
-import io.github.amichne.kast.change.journal.contract.BeginAddDeclarationApplyResult
-import io.github.amichne.kast.change.journal.contract.CompleteAddDeclarationApply
-import io.github.amichne.kast.change.journal.contract.CompleteAddDeclarationApplyResult
 import io.github.amichne.kast.change.journal.contract.LoadAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.PersistedAddDeclarationPlan
-import io.github.amichne.kast.change.journal.contract.RawAddDeclarationPlanApprovalEvidence
-import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecovery
-import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecoveryResult
-import io.github.amichne.kast.change.journal.contract.StoreAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournal
 import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournalOpenResult
 import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistenceService
 import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclarationRecoveryPreparer
 import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclarationRecoveryPreparerOpenResult
 import io.github.amichne.kast.change.recovery.service.AddDeclarationRecoveryPreparationService
-import io.github.amichne.kast.change.journal.contract.JournaledAddDeclarationRecovery
 import io.github.amichne.kast.change.recovery.service.PrepareApprovedAddDeclarationRecoveryResult
 import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationCompilerEnvironment
 import io.github.amichne.kast.change.verify.intellij.IntellijAddDeclarationCompilerEnvironmentResult
@@ -54,17 +39,17 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedFunction
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 
 @TestApplication
 internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSupport() {
@@ -81,7 +66,10 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         val fixture = fixture("fun applied(value: String): String = value")
         val service = AddDeclarationApplicationService(
             journal = fixture.journal,
-            executor = IntellijAddDeclarationApplyExecutor(project),
+            executor = IntellijAddDeclarationApplyExecutor(
+                project,
+                runtime = documentedIntellijIdeaRuntime,
+            ),
         )
 
         val outcome = service.apply(fixture.recovery)
@@ -122,10 +110,13 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
             val fixture = fixture("fun kip035Verified() {}")
             val applied = assertInstanceOf<
                 ApplyRecoveryPreparedAddDeclarationResult.AppliedUnverified,
-            >(
+                >(
                 AddDeclarationApplicationService(
                     journal = fixture.journal,
-                    executor = IntellijAddDeclarationApplyExecutor(project),
+                    executor = IntellijAddDeclarationApplyExecutor(
+                        project,
+                        runtime = documentedIntellijIdeaRuntime,
+                    ),
                 ).apply(fixture.recovery),
             )
             val publication = PublishedWorkspaceGeneration(
@@ -136,11 +127,13 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
                 applied.record.plan,
                 publication,
             ).refined()
+
             fun executor(
                 beforeRead: () -> Unit = {},
             ): IntellijAddDeclarationVerificationExecutor =
                 IntellijAddDeclarationVerificationExecutor(
                     project = project,
+                    runtime = documentedIntellijIdeaRuntime,
                     publications = {
                         PublishedWorkspaceGenerationState.Published(publication)
                     },
@@ -178,12 +171,15 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         val moved = moveTargetOutsideExecutor(fixture, "// external movement")
         val service = AddDeclarationApplicationService(
             journal = fixture.journal,
-            executor = IntellijAddDeclarationApplyExecutor(project),
+            executor = IntellijAddDeclarationApplyExecutor(
+                project,
+                runtime = documentedIntellijIdeaRuntime,
+            ),
         )
 
         val recovery = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RecoveryRequiredBeforeMutation,
-        >(
+            >(
             service.apply(fixture.recovery),
         )
         val physical = assertInstanceOf<AddDeclarationRecoveryRequiredFailure.PhysicalBeforeMutation>(
@@ -204,13 +200,14 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
             journal = fixture.journal,
             executor = IntellijAddDeclarationApplyExecutor(
                 project = project,
+                runtime = documentedIntellijIdeaRuntime,
                 beforeWriteCommand = { moved = moveTargetOutsideExecutor(fixture, "// raced movement") },
             ),
         )
 
         val recovery = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RecoveryRequiredBeforeMutation,
-        >(
+            >(
             service.apply(fixture.recovery),
         )
 
@@ -224,12 +221,15 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         val before = Files.readAllBytes(fixture.target)
         val service = AddDeclarationApplicationService(
             journal = fixture.journal,
-            executor = IntellijAddDeclarationApplyExecutor(project),
+            executor = IntellijAddDeclarationApplyExecutor(
+                project,
+                runtime = documentedIntellijIdeaRuntime,
+            ),
         )
 
         val recovery = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RecoveryRequiredBeforeMutation,
-        >(
+            >(
             service.apply(fixture.recovery),
         )
         val physical = assertInstanceOf<AddDeclarationRecoveryRequiredFailure.PhysicalBeforeMutation>(
@@ -251,13 +251,14 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
             journal = fixture.journal,
             executor = IntellijAddDeclarationApplyExecutor(
                 project = project,
+                runtime = documentedIntellijIdeaRuntime,
                 beforePreparation = { error("simulated adapter failure") },
             ),
         )
 
         val recovery = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RecoveryRequiredMutationOutcomeUnknown,
-        >(service.apply(fixture.recovery))
+            >(service.apply(fixture.recovery))
 
         assertEquals(AddDeclarationMutationProgress.MAY_HAVE_BEGUN, recovery.physicalProgress)
         assertInstanceOf<AddDeclarationRecoveryRequiredFailure.PhysicalOutcomeUnknown>(
@@ -265,7 +266,7 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         )
     }
 
-    private suspend fun fixture(declaration: String): ApplyFixture {
+    private suspend fun fixture(declaration: String): AddDeclarationApplyIntellijFixture {
         ensureProjectReady()
         val targetFile = applyTargetFixture.get() as KtFile
         val target = Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize()
@@ -275,7 +276,7 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         val sqlite = assertInstanceOf<SqliteAddDeclarationPlanJournalOpenResult.Opened>(
             SqliteAddDeclarationPlanJournal.open(stateRoot.resolve("journal.db")),
         ).journal
-        val journal = CapturingJournal(sqlite)
+        val journal = CapturingAddDeclarationApplyJournal(sqlite)
         val backend = backend(
             workspaceRoot = workspaceRoot,
             workspaceModelReader = model(workspaceRoot, sourceRoot),
@@ -294,7 +295,7 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
             journal.load(storedPlan.planId),
         ).record
         val awaiting = assertInstanceOf<PersistedAddDeclarationPlan.AwaitingApproval>(stored)
-        val approved = approve(journal, awaiting)
+        val approved = approveAddDeclarationPlan(journal, awaiting)
         val plan = approved.plan
         val revalidated = RevalidatedAddDeclaration.admit(
             plan,
@@ -314,7 +315,7 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         val recovery = assertInstanceOf<PrepareApprovedAddDeclarationRecoveryResult.Prepared>(
             AddDeclarationRecoveryPreparationService(journal, preparer).prepare(approved, revalidated),
         ).recovery
-        return ApplyFixture(
+        return AddDeclarationApplyIntellijFixture(
             target = target,
             targetFile = targetFile,
             plan = plan,
@@ -323,70 +324,15 @@ internal class AddDeclarationApplyIntellijTest : ExactAdditionPlanningTestSuppor
         )
     }
 
-    private fun approve(
-        journal: AddDeclarationPlanJournal,
-        awaiting: PersistedAddDeclarationPlan.AwaitingApproval,
-    ): PersistedAddDeclarationPlan.Approved {
-        val evidence = RawAddDeclarationPlanApprovalEvidence(
-            planId = awaiting.plan.planId.value,
-            approvedBy = "agent:operator",
-            evidenceSha256 = "a".repeat(64),
-        ).refine().refined()
-        val command = ApproveAddDeclarationPlan.admit(
-            planId = awaiting.plan.planId,
-            expectedVersion = awaiting.version,
-            evidence = evidence,
-        ).refined()
-        return assertInstanceOf<ApproveAddDeclarationPlanResult.Approved>(
-            journal.approve(command),
-        ).record
-    }
-
-    private fun moveTargetOutsideExecutor(fixture: ApplyFixture, comment: String): ByteArray {
+    private fun moveTargetOutsideExecutor(
+        fixture: AddDeclarationApplyIntellijFixture,
+        comment: String,
+    ): ByteArray {
         val moved = Files.readAllBytes(fixture.target) + "\n$comment".toByteArray(StandardCharsets.UTF_8)
         Files.write(fixture.target, moved)
         return moved
     }
 
-    private class CapturingJournal(
-        private val delegate: AddDeclarationApplyJournal,
-    ) : AddDeclarationApplyJournal {
-        var storedPlan: PlannedAddDeclaration? = null
-            private set
-
-        override fun store(plan: PlannedAddDeclaration): StoreAddDeclarationPlanResult {
-            val result = delegate.store(plan)
-            if (result !is StoreAddDeclarationPlanResult.Rejected) storedPlan = plan
-            return result
-        }
-
-        override fun load(planId: AddDeclarationPlanId): LoadAddDeclarationPlanResult =
-            delegate.load(planId)
-
-        override fun approve(command: ApproveAddDeclarationPlan): ApproveAddDeclarationPlanResult =
-            delegate.approve(command)
-
-        override fun prepareRecovery(
-            command: PrepareAddDeclarationRecovery,
-        ): PrepareAddDeclarationRecoveryResult = delegate.prepareRecovery(command)
-
-        override fun beginApply(
-            command: BeginAddDeclarationApply,
-        ): BeginAddDeclarationApplyResult = delegate.beginApply(command)
-
-        override fun completeApply(
-            command: CompleteAddDeclarationApply,
-        ): CompleteAddDeclarationApplyResult = delegate.completeApply(command)
-    }
-
     private fun <T, F> Refinement<T, F>.refined(): T =
         assertInstanceOf<Refinement.Refined<T>>(this).value
-
-    private data class ApplyFixture(
-        val target: Path,
-        val targetFile: KtFile,
-        val plan: PlannedAddDeclaration,
-        val journal: AddDeclarationApplyJournal,
-        val recovery: JournaledAddDeclarationRecovery,
-    )
 }

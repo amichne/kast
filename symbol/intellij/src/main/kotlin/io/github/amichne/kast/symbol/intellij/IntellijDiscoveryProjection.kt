@@ -40,6 +40,29 @@ internal fun interface IntellijDiscoveryCandidateProjector {
     ): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure>
 }
 
+enum class IntellijDiscoveryItemAdmission {
+    ADMITTED,
+    FILTERED,
+    UNSUPPORTED,
+}
+
+fun interface IntellijDiscoveryItemAdmissionPolicy {
+    /**
+     * Proof transition: `NavigationItem -> IntellijDiscoveryItemAdmission`.
+     *
+     * Establishes whether a live provider item belongs to the request's precise semantic domain
+     * before it can consume a returned-record budget. Filtered items are proven outside the
+     * requested domain; unsupported items preserve qualified coverage. The live item may be
+     * inspected only inside the request-local native read.
+     */
+    fun admit(item: NavigationItem): IntellijDiscoveryItemAdmission
+}
+
+internal data object AdmitEveryIntellijDiscoveryItem : IntellijDiscoveryItemAdmissionPolicy {
+    override fun admit(item: NavigationItem): IntellijDiscoveryItemAdmission =
+        IntellijDiscoveryItemAdmission.ADMITTED
+}
+
 internal object IntellijPsiDiscoveryItemFile : IntellijDiscoveryItemFile {
     override fun find(item: NavigationItem): IntellijDiscoveryItemFileResult {
         val file = when (item) {

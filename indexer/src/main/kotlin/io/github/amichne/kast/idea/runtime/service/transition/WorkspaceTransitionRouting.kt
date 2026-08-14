@@ -10,6 +10,20 @@ import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailure
 
+/** Observes the current compiler-backed admission without owning mutation or publication effects. */
+internal fun interface WorkspaceTransitionAdmissionObservation {
+    fun status(): IdeaIndexSemanticAdmission.Status
+}
+
+/** Retains successful dispatch or a finite ingress failure without nullable control state. */
+internal sealed interface WorkspaceTransitionDispatch {
+    data object Dispatched : WorkspaceTransitionDispatch
+
+    data class Rejected(
+        val failure: WorkspaceTransitionFailure,
+    ) : WorkspaceTransitionDispatch
+}
+
 internal sealed interface TransitionObservation {
     data object Unobserved : TransitionObservation
 

@@ -45,13 +45,14 @@ import io.github.amichne.kast.symbol.intellij.IntellijDetachedDefinitionProjecti
 import io.github.amichne.kast.symbol.intellij.IntellijFastSymbolReadAdapter
 import io.github.amichne.kast.symbol.intellij.IntellijFastSymbolReadResult
 import io.github.amichne.kast.symbol.intellij.IntellijNativeDefinitionProjector
+import io.github.amichne.kast.symbol.intellij.IntellijReadNanoClock
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
-import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import java.nio.charset.StandardCharsets
 
 private const val NATIVE_SYMBOL_WORK_LIMIT = 100_000L
 private const val NATIVE_SYMBOL_BYTE_LIMIT = 1_048_576L
@@ -69,7 +70,7 @@ internal class IdeaNativePublicSymbolReader(
     private val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
     private val readDispatcher: CoroutineDispatcher,
     private val elapsedLimitMillis: Long,
-    private val clock: () -> Long = System::nanoTime,
+    private val clock: IntellijReadNanoClock = IntellijReadNanoClock(System::nanoTime),
 ) : NativePublicSymbolReader {
     /**
      * Proof transition:
@@ -86,7 +87,7 @@ internal class IdeaNativePublicSymbolReader(
                 NativePublicSymbolReadFailure.WORKSPACE_ROOT_MISMATCH,
             )
         }
-        val admissionStartedAt = clock()
+        val admissionStartedAt = clock.now()
         return try {
             semanticGate.current { lease ->
                 val admissionNanoseconds = elapsedSince(admissionStartedAt)
@@ -111,11 +112,12 @@ internal class IdeaNativePublicSymbolReader(
                 }
                 val native: IntellijFastSymbolReadResult<DetachedKastSymbol> =
                     withContext(readDispatcher) {
-                        IntellijFastSymbolReadAdapter<DetachedKastSymbol>().read(
+                        IntellijFastSymbolReadAdapter<DetachedKastSymbol>(clock).read(
                             project = project,
                             request = request,
                             modelCompilation = modelCompilation,
                             projector = projector(query),
+                            itemAdmission = query.nativeItemAdmission(),
                         )
                     }
                 when (native) {
@@ -196,10 +198,12 @@ internal class IdeaNativePublicSymbolReader(
         }
 
     private fun elapsedSince(startedAt: Long): Long =
-        (clock() - startedAt).coerceAtLeast(0L)
+        (clock.now() - startedAt).coerceAtLeast(0L)
 }
 
-internal fun KastIndexerBackend.nativePublicSymbolReader(): NativePublicSymbolReader =
+internal fun KastIndexerBackend.nativePublicSymbolReader(
+    clock: IntellijReadNanoClock = IntellijReadNanoClock(System::nanoTime),
+): NativePublicSymbolReader =
     IdeaNativePublicSymbolReader(
         project = project,
         workspaceRoot = NormalizedPath.of(workspaceRoot),
@@ -208,6 +212,7 @@ internal fun KastIndexerBackend.nativePublicSymbolReader(): NativePublicSymbolRe
         workspaceModelReader = workspaceModelReader,
         readDispatcher = readDispatcher,
         elapsedLimitMillis = limits.requestTimeoutMillis,
+        clock = clock,
     )
 
 internal fun KastIndexerBackend.nativePublicSymbolBinding(): PublicSymbolReadBinding.Native =

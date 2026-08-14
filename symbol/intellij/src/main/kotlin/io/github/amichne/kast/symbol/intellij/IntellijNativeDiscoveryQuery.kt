@@ -46,18 +46,47 @@ internal sealed interface IntellijNativeDiscoveryExecution {
     ) : IntellijNativeDiscoveryExecution
 }
 
-internal fun interface IntellijDiscoveryNanoClock {
+fun interface IntellijReadNanoClock {
+    /** Returns a monotonic nanosecond observation at the native-read effect boundary. */
     fun now(): Long
 }
 
-internal object SystemIntellijDiscoveryNanoClock : IntellijDiscoveryNanoClock {
+internal typealias IntellijDiscoveryNanoClock = IntellijReadNanoClock
+
+internal object SystemIntellijDiscoveryNanoClock : IntellijReadNanoClock {
     override fun now(): Long = System.nanoTime()
+}
+
+@JvmInline
+internal value class IntellijDiscoveryElapsedLimitNanoseconds private constructor(
+    val value: Long,
+) {
+    companion object {
+        /**
+         * Proof transition:
+         * `SymbolDiscoveryRequest -> IntellijDiscoveryElapsedLimitNanoseconds`.
+         *
+         * Establishes the request's non-negative elapsed limit in saturated nanoseconds. Raw
+         * nanoseconds may be extracted only at the monotonic-clock comparison boundary.
+         */
+        fun from(request: SymbolDiscoveryRequest): IntellijDiscoveryElapsedLimitNanoseconds {
+            val millis = request.budget.resources.elapsedTimeLimit.value
+            val nanoseconds = if (millis > Long.MAX_VALUE / NANOS_PER_MILLISECOND) {
+                Long.MAX_VALUE
+            } else {
+                millis * NANOS_PER_MILLISECOND
+            }
+            return IntellijDiscoveryElapsedLimitNanoseconds(nanoseconds)
+        }
+    }
 }
 
 internal class IntellijNativeDiscoveryQuery(
     private val itemFile: IntellijDiscoveryItemFile = IntellijPsiDiscoveryItemFile,
     private val projector: IntellijDiscoveryCandidateProjector =
         IntellijPsiDiscoveryCandidateProjector,
+    private val itemAdmission: IntellijDiscoveryItemAdmissionPolicy =
+        AdmitEveryIntellijDiscoveryItem,
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
@@ -102,6 +131,7 @@ internal class IntellijNativeDiscoveryQuery(
             request = request,
             itemFile = itemFile,
             projector = projector,
+            itemAdmission = itemAdmission,
             environmentState = environmentState,
             cancellationCheck = cancellationCheck,
             clock = clock,
@@ -175,6 +205,7 @@ private class BoundedNativeDiscoveryCollector(
     private val request: SymbolDiscoveryRequest,
     private val itemFile: IntellijDiscoveryItemFile,
     private val projector: IntellijDiscoveryCandidateProjector,
+    private val itemAdmission: IntellijDiscoveryItemAdmissionPolicy,
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock,
@@ -201,7 +232,7 @@ private class BoundedNativeDiscoveryCollector(
             }
             IntellijDiscoveryEnvironmentState.READY -> Unit
         }
-        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds()) {
+        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value) {
             qualifyAndHalt(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
             return false
         }
@@ -227,11 +258,14 @@ private class BoundedNativeDiscoveryCollector(
         if (!compiledScope.nativeScope.contains(file)) {
             return true
         }
-        if (candidates.size >= request.budget.resources.resultLimit.value) {
-            qualifyAndHalt(SymbolDiscoveryQualification.RESULT_LIMIT_REACHED)
-            return false
+        when (itemAdmission.admit(item)) {
+            IntellijDiscoveryItemAdmission.ADMITTED -> Unit
+            IntellijDiscoveryItemAdmission.FILTERED -> return true
+            IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
+                qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+                return true
+            }
         }
-
         val projectionStartedAt = clock.now()
         val projected = projector.project(request, item, file)
         projectionNanoseconds = saturatedAdd(
@@ -247,6 +281,10 @@ private class BoundedNativeDiscoveryCollector(
         }
         if (candidate in candidates) {
             return true
+        }
+        if (candidates.size >= request.budget.resources.resultLimit.value) {
+            qualifyAndHalt(SymbolDiscoveryQualification.RESULT_LIMIT_REACHED)
+            return false
         }
         val candidateBytes = candidate.projectedUtf8Size()
         if (candidateBytes.value > request.budget.returnedBytes.value - encodedBytes) {
@@ -268,7 +306,7 @@ private class BoundedNativeDiscoveryCollector(
     }
 
     fun finish(): IntellijNativeDiscoveryExecution {
-        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds()) {
+        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value) {
             qualify(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
         }
         val totalNanoseconds = elapsedSince(startedAt)
@@ -314,14 +352,9 @@ private class BoundedNativeDiscoveryCollector(
     private fun elapsedSince(start: Long): Long = (clock.now() - start).coerceAtLeast(0L)
 }
 
-private fun SymbolDiscoveryRequest.elapsedLimitNanoseconds(): Long {
-    val millis = budget.resources.elapsedTimeLimit.value
-    return if (millis > Long.MAX_VALUE / NANOS_PER_MILLISECOND) {
-        Long.MAX_VALUE
-    } else {
-        millis * NANOS_PER_MILLISECOND
-    }
-}
+internal fun SymbolDiscoveryRequest.elapsedLimitNanoseconds():
+    IntellijDiscoveryElapsedLimitNanoseconds =
+    IntellijDiscoveryElapsedLimitNanoseconds.from(this)
 
 private fun Long.byteMeasure(): SymbolDiscoveryByteCount =
     when (val parsed = SymbolDiscoveryByteCount.parse(this)) {

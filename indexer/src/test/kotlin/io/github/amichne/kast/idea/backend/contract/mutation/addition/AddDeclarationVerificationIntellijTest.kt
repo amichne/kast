@@ -30,9 +30,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import java.nio.file.Path
-import java.security.MessageDigest
-import java.util.Base64
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -40,6 +37,9 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
+import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.Base64
 
 @TestApplication
 internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContractTestFixture() {
@@ -133,6 +133,7 @@ internal class AddDeclarationVerificationIntellijTest : KastIndexerBackendContra
         beforeRead: () -> Unit = {},
     ): IntellijAddDeclarationVerificationExecutor = IntellijAddDeclarationVerificationExecutor(
         project = project,
+        runtime = documentedIntellijIdeaRuntime,
         publications = {
             PublishedWorkspaceGenerationState.Published(publication)
         },

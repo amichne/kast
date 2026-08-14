@@ -102,7 +102,9 @@ value class WorkspaceSourcePath private constructor(
                 return Refinement.Rejected(WorkspaceSourcePathFailure.NOT_NORMALIZED)
             }
             return Refinement.Refined(
-                WorkspaceSourcePath(normalized.toString().replace('\\', '/')),
+                WorkspaceSourcePath(
+                    normalized.joinToString(separator = "/") { segment -> segment.toString() },
+                ),
             )
         }
     }

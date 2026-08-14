@@ -1,6 +1,5 @@
 package io.github.amichne.kast.change.verify.intellij
 
-import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -9,6 +8,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.change.contract.AddDeclarationCompilerContextFile
+import io.github.amichne.kast.change.contract.AddDeclarationIntellijRuntimeAdmission
+import io.github.amichne.kast.change.contract.AddDeclarationIntellijRuntimeAuthority
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationCompilerContext
 import io.github.amichne.kast.change.verify.spi.AddDeclarationObservedIdentity
@@ -19,18 +20,19 @@ import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationReject
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationResult
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.concurrent.CancellationException
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 class IntellijAddDeclarationVerificationExecutor(
     private val project: Project,
     private val publications: IntellijPublishedWorkspaceGenerationAuthority,
     private val environment: IntellijAddDeclarationCompilerEnvironmentAuthority,
+    private val runtime: AddDeclarationIntellijRuntimeAuthority = liveVerificationRuntimeAuthority(),
     private val beforeRead: () -> Unit = ProgressManager::checkCanceled,
 ) : AddDeclarationVerificationExecutor() {
     /**
@@ -47,7 +49,7 @@ class IntellijAddDeclarationVerificationExecutor(
         command: AddDeclarationVerificationCommand,
     ): AddDeclarationVerificationResult = try {
         beforeRead()
-        if (runtimeCompatibility() == RuntimeCompatibility.Unsupported) {
+        if (runtime.current() is AddDeclarationIntellijRuntimeAdmission.Unsupported) {
             return rejected(command, AddDeclarationVerificationLimitation.UNSUPPORTED_RUNTIME)
         }
         if (publicationObservation(command) == PublicationObservation.Moved) {
@@ -225,52 +227,33 @@ class IntellijAddDeclarationVerificationExecutor(
         }
         return CurrentContextFiles.Observed(observed)
     }
-
-    /**
-     * Proof transition: current IntelliJ build authority to [RuntimeCompatibility].
-     *
-     * Supported proves the exact pinned IDE product and build. Unsupported is the only closed
-     * contrary state. Raw build strings are extracted only at this IntelliJ boundary.
-     */
-    private fun runtimeCompatibility(): RuntimeCompatibility {
-        val build = ApplicationInfo.getInstance().build
-        return if (
-            build.productCode == SUPPORTED_PRODUCT_CODE &&
-            build.asStringWithoutProductCode() == SUPPORTED_RUNTIME_BUILD
-        ) {
-            RuntimeCompatibility.Supported
-        } else {
-            RuntimeCompatibility.Unsupported
-        }
-    }
-
-    private companion object {
-        const val SUPPORTED_PRODUCT_CODE: String = "IC"
-        const val SUPPORTED_RUNTIME_BUILD: String = "261.25134.95"
-    }
 }
 
 private enum class PublicationObservation { Exact, Moved }
-private enum class RuntimeCompatibility { Supported, Unsupported }
 private sealed interface CurrentContextFiles {
     data class Observed(val files: List<AddDeclarationCompilerContextFile>) : CurrentContextFiles
     data object Unavailable : CurrentContextFiles
 }
+
 private sealed interface LocatedDeclaration {
     data class Found(val declaration: KtNamedDeclaration) : LocatedDeclaration
     data object Absent : LocatedDeclaration
     data object Ambiguous : LocatedDeclaration
 }
+
 /**
  * Proof transition: exact top-level PSI and approved range to [LocatedDeclaration].
  *
  * Found carries the sole declaration with the exact UTF-16 range. Absent and Ambiguous are the
  * closed expected failures. PSI is retained only inside the scoped read.
  */
-private fun locateDeclaration(target: KtFile, range: VerifiedDeclarationRange): LocatedDeclaration {
+private fun locateDeclaration(
+    target: KtFile,
+    range: VerifiedDeclarationRange,
+): LocatedDeclaration {
     val candidates = target.declarations.filterIsInstance<KtNamedDeclaration>().filter { declaration ->
         declaration.textRange.startOffset == range.startOffset &&
-            declaration.textRange.endOffset == range.endOffset
+        declaration.textRange.endOffset == range.endOffset
     }
     return when (candidates.size) {
         0 -> LocatedDeclaration.Absent
@@ -278,11 +261,13 @@ private fun locateDeclaration(target: KtFile, range: VerifiedDeclarationRange): 
         else -> LocatedDeclaration.Ambiguous
     }
 }
+
 private sealed interface DeclarationIdentityInput {
     data class Observed(
         val name: CompilerObservedDeclarationName,
         val kind: AddDeclarationKind,
     ) : DeclarationIdentityInput
+
     data object Unsupported : DeclarationIdentityInput
 }
 
@@ -385,7 +370,7 @@ private fun IntellijAddDeclarationSemanticProofFailure.toLimitation(): AddDeclar
             AddDeclarationVerificationLimitation.EXISTING_BINDINGS_CHANGED
         IntellijAddDeclarationSemanticProofFailure.OUTBOUND_SCOPE_INCOMPLETE,
         IntellijAddDeclarationSemanticProofFailure.OUTBOUND_COUNT_INVALID,
-        -> AddDeclarationVerificationLimitation.OUTBOUND_SCOPE_INCOMPLETE
+            -> AddDeclarationVerificationLimitation.OUTBOUND_SCOPE_INCOMPLETE
         IntellijAddDeclarationSemanticProofFailure.EXISTING_BINDINGS_CHANGED ->
             AddDeclarationVerificationLimitation.EXISTING_BINDINGS_CHANGED
     }

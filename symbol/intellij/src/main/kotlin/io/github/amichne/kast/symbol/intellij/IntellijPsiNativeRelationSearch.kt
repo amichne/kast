@@ -51,8 +51,41 @@ private enum class IntellijReferenceSubjectResolution {
     MISMATCH,
 }
 
+enum class IntellijInvocationReferenceAdmission {
+    INVOCATION,
+    NON_INVOCATION,
+    UNSUPPORTED,
+}
+
+enum class IntellijNestedRelationTraversal {
+    DESCEND,
+    SKIP_NESTED_DECLARATION,
+}
+
+interface IntellijRelationSemanticPolicy {
+    /**
+     * Proof transition: `PsiReference -> IntellijInvocationReferenceAdmission`.
+     *
+     * Establishes whether one resolved reference is an actual invocation, a proven non-call use,
+     * or an unsupported language shape. Live PSI remains inside the request-local relation read.
+     */
+    fun invocation(reference: PsiReference): IntellijInvocationReferenceAdmission
+
+    /**
+     * Proof transition: `PsiNamedElement + PsiElement -> IntellijNestedRelationTraversal`.
+     *
+     * Establishes whether traversal remains in the selected subject's executable body or has
+     * crossed a nested declaration boundary whose references belong to another callable/type.
+     */
+    fun nestedTraversal(
+        subject: PsiNamedElement,
+        element: PsiElement,
+    ): IntellijNestedRelationTraversal
+}
+
 internal class IntellijPsiNativeRelationSearch(
     private val project: com.intellij.openapi.project.Project,
+    private val semanticPolicy: IntellijRelationSemanticPolicy,
     private val exactLookup: IntellijPsiExactDeclarationLookup =
         IntellijPsiExactDeclarationLookup(project),
 ) : IntellijNativeRelationSearch {
@@ -99,8 +132,8 @@ internal class IntellijPsiNativeRelationSearch(
         )
         return when (request.family) {
             NativeRelationFamily.REFERENCES,
-            NativeRelationFamily.CALLERS,
-                -> searchState.references()
+                -> searchState.references(invocationsOnly = false)
+            NativeRelationFamily.CALLERS -> searchState.references(invocationsOnly = true)
             NativeRelationFamily.IMPLEMENTATIONS,
             NativeRelationFamily.INHERITORS,
             NativeRelationFamily.OVERRIDES,
@@ -117,7 +150,7 @@ internal class IntellijPsiNativeRelationSearch(
         private val limitations = linkedSetOf<NativeRelationLimitation>()
         private var state = IntellijRelationStreamState.STREAMING
 
-        fun references(): IntellijNativeRelationSearchResult {
+        fun references(invocationsOnly: Boolean): IntellijNativeRelationSearchResult {
             val terminal = ReferencesSearch.search(
                 subject,
                 compiledScope.nativeScope,
@@ -130,14 +163,27 @@ internal class IntellijPsiNativeRelationSearch(
                         true
                     }
                     IntellijReferenceSubjectResolution.MATCHES -> when (
-                        val related = reference.element.nearestNamedDeclaration()
+                        val admission = if (invocationsOnly) {
+                            semanticPolicy.invocation(reference)
+                        } else {
+                            IntellijInvocationReferenceAdmission.INVOCATION
+                        }
                     ) {
-                        IntellijNamedRelationTarget.Unsupported -> {
+                        IntellijInvocationReferenceAdmission.NON_INVOCATION -> true
+                        IntellijInvocationReferenceAdmission.UNSUPPORTED -> {
                             limitations += NativeRelationLimitation.UNSUPPORTED_ITEM
                             true
                         }
-                        is IntellijNamedRelationTarget.Found ->
-                            emit(reference, related.declaration)
+                        IntellijInvocationReferenceAdmission.INVOCATION -> when (
+                            val related = reference.element.nearestNamedDeclaration()
+                        ) {
+                            IntellijNamedRelationTarget.Unsupported -> {
+                                limitations += NativeRelationLimitation.UNSUPPORTED_ITEM
+                                true
+                            }
+                            is IntellijNamedRelationTarget.Found ->
+                                emit(reference, related.declaration)
+                        }
                     }
                 }
             })
@@ -192,20 +238,34 @@ internal class IntellijPsiNativeRelationSearch(
                             return
                         }
                         ProgressManager.checkCanceled()
+                        if (
+                            element !== subject &&
+                            semanticPolicy.nestedTraversal(subject, element) ==
+                            IntellijNestedRelationTraversal.SKIP_NESTED_DECLARATION
+                        ) {
+                            return
+                        }
                         element.references.forEach { reference ->
                             if (state == IntellijRelationStreamState.HALTED) {
                                 return@forEach
                             }
-                            when (val related = reference.resolvedNamedTarget()) {
-                                IntellijResolvedRelationTarget.Unresolved ->
-                                    limitations += NativeRelationLimitation.UNRESOLVED_TARGET
-                                is IntellijResolvedRelationTarget.Found -> {
-                                    if (compiledScope.nativeScope.contains(related.file) &&
-                                        !emit(reference, related.declaration)
-                                    ) {
-                                        stopWalking()
+                            when (semanticPolicy.invocation(reference)) {
+                                IntellijInvocationReferenceAdmission.NON_INVOCATION -> Unit
+                                IntellijInvocationReferenceAdmission.UNSUPPORTED ->
+                                    limitations += NativeRelationLimitation.UNSUPPORTED_ITEM
+                                IntellijInvocationReferenceAdmission.INVOCATION ->
+                                    when (val related = reference.resolvedNamedTarget()) {
+                                        IntellijResolvedRelationTarget.Unresolved ->
+                                            limitations +=
+                                                NativeRelationLimitation.UNRESOLVED_TARGET
+                                        is IntellijResolvedRelationTarget.Found -> {
+                                            if (compiledScope.nativeScope.contains(related.file) &&
+                                                !emit(reference, related.declaration)
+                                            ) {
+                                                stopWalking()
+                                            }
+                                        }
                                     }
-                                }
                             }
                         }
                         if (state == IntellijRelationStreamState.STREAMING) {
@@ -286,7 +346,7 @@ private fun PsiElement.nearestNamedDeclaration(): IntellijNamedRelationTarget =
     generateSequence(this as PsiElement?) { it.parent }
         .filterIsInstance<PsiNamedElement>()
         .firstOrNull()
-    ?.let(IntellijNamedRelationTarget::Found)
+        ?.let(IntellijNamedRelationTarget::Found)
     ?: IntellijNamedRelationTarget.Unsupported
 
 /**

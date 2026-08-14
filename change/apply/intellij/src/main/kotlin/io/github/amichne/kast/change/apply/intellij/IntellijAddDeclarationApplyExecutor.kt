@@ -1,6 +1,5 @@
 package io.github.amichne.kast.change.apply.intellij
 
-import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -22,21 +21,24 @@ import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyCommand
 import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyExecutor
 import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyPreconditionFailure
 import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyRecoveryFailure
-import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyUncertainFailure
 import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyResult
+import io.github.amichne.kast.change.apply.spi.AddDeclarationApplyUncertainFailure
 import io.github.amichne.kast.change.contract.AddDeclarationApplyObservation
+import io.github.amichne.kast.change.contract.AddDeclarationIntellijRuntimeAdmission
+import io.github.amichne.kast.change.contract.AddDeclarationIntellijRuntimeAuthority
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicReference
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.CancellationException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 class IntellijAddDeclarationApplyExecutor(
     private val project: Project,
+    private val runtime: AddDeclarationIntellijRuntimeAuthority = liveIntellijRuntimeAuthority(),
     private val beforePreparation: () -> Unit = ProgressManager::checkCanceled,
     private val beforeWriteCommand: () -> Unit = {},
 ) : AddDeclarationApplyExecutor {
@@ -51,6 +53,8 @@ class IntellijAddDeclarationApplyExecutor(
     override suspend fun apply(command: AddDeclarationApplyCommand): AddDeclarationApplyResult {
         return try {
             applyGuarded(command)
+        } catch (failure: CancellationException) {
+            throw failure
         } catch (_: Exception) {
             outcomeUnknown(AddDeclarationApplyUncertainFailure.WRITE_COMMAND_FAILED)
         }
@@ -64,14 +68,7 @@ class IntellijAddDeclarationApplyExecutor(
         } catch (_: ProcessCanceledException) {
             return rejectedBefore(AddDeclarationApplyPreconditionFailure.CANCELLED)
         }
-        val build = ApplicationInfo.getInstance().build
-        if (admitIntellijRuntime(
-                productCode = build.productCode,
-                build = build.asStringWithoutProductCode(),
-                supportedProductCode = SUPPORTED_PRODUCT_CODE,
-                supportedBuild = SUPPORTED_RUNTIME_BUILD,
-            ) is IntellijRuntimeAdmission.Unsupported
-        ) {
+        if (runtime.current() is AddDeclarationIntellijRuntimeAdmission.Unsupported) {
             return rejectedBefore(AddDeclarationApplyPreconditionFailure.UNSUPPORTED_RUNTIME)
         }
         val prepared = when (val result = prepare(command)) {
@@ -105,7 +102,15 @@ class IntellijAddDeclarationApplyExecutor(
         if (DumbService.getInstance(project).isDumb) {
             return@readAction rejectedPreparation(AddDeclarationApplyPreconditionFailure.DUMB_MODE)
         }
-        val path = Path.of(command.plan.target.targetPath.value)
+        val targetIdentity = when (val admitted = EffectBoundAddDeclarationTarget.admit(
+            command.plan.target,
+        )) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return@readAction rejectedPreparation(
+                AddDeclarationApplyPreconditionFailure.TARGET_INVALIDATED,
+            )
+        }
+        val path = targetIdentity.path
         val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(path)
                           ?: return@readAction rejectedPreparation(
                               AddDeclarationApplyPreconditionFailure.TARGET_NOT_FOUND,
@@ -144,7 +149,7 @@ class IntellijAddDeclarationApplyExecutor(
                 when (result.failure) {
                     ExactIntellijSourceImagesFailure.PREIMAGE_BYTES_MISMATCH,
                     ExactIntellijSourceImagesFailure.NORMALIZED_DOCUMENT_MISMATCH,
-                    -> AddDeclarationApplyPreconditionFailure.TARGET_PREIMAGE_MISMATCH
+                        -> AddDeclarationApplyPreconditionFailure.TARGET_PREIMAGE_MISMATCH
                     ExactIntellijSourceImagesFailure.INVALID_UTF8 ->
                         AddDeclarationApplyPreconditionFailure.APPROVED_POSTIMAGE_UNREPRESENTABLE
                 },
@@ -173,6 +178,7 @@ class IntellijAddDeclarationApplyExecutor(
         }
         IntellijAddDeclarationPreparation.Ready(
             target = target,
+            targetIdentity = targetIdentity,
             declaration = declaration,
             document = document,
             sourceImages = sourceImages,
@@ -198,17 +204,17 @@ class IntellijAddDeclarationApplyExecutor(
         val progress = AtomicReference(IntellijApplyAttemptProgress.NOT_BEGUN)
         val commandExecution = try {
             runOnEdt {
-                when (val final = finalPrecondition(prepared)) {
-                    IntellijFinalPrecondition.Ready -> Unit
+                val final = when (val checked = finalPrecondition(prepared)) {
+                    is IntellijFinalPrecondition.Ready -> checked
                     is IntellijFinalPrecondition.Rejected ->
                         return@runOnEdt IntellijCommandExecution.RejectedBeforeMutation(
-                            final.failure,
+                            checked.failure,
                         )
                 }
                 try {
-                    val platformResult = WriteCommandAction.writeCommandAction(project, prepared.target)
-                        .withName(COMMAND_NAME)
-                        .withGroupId(COMMAND_GROUP)
+                    val platformResult = WriteCommandAction.writeCommandAction(project, final.target)
+                        .withName(ADD_DECLARATION_COMMAND_NAME)
+                        .withGroupId(ADD_DECLARATION_COMMAND_GROUP)
                         .compute<IntellijCommandExecution, RuntimeException> {
                             val formattedCopy = CodeStyleManager.getInstance(project).reformat(
                                 prepared.declaration.copy(),
@@ -221,17 +227,17 @@ class IntellijAddDeclarationApplyExecutor(
                             }
                             progress.set(IntellijApplyAttemptProgress.MAY_HAVE_BEGUN)
                             if (prepared.prefixWhitespace.isNotEmpty()) {
-                                prepared.target.add(
+                                final.target.add(
                                     PsiParserFacade.getInstance(project).createWhiteSpaceFromText(
                                         prepared.prefixWhitespace,
                                     ),
                                 )
                                 progress.set(IntellijApplyAttemptProgress.BEGUN)
                             }
-                            val added = prepared.target.add(formattedCopy) as KtDeclaration
+                            val added = final.target.add(formattedCopy) as KtDeclaration
                             progress.set(IntellijApplyAttemptProgress.BEGUN)
                             CodeStyleManager.getInstance(project).reformat(added, true)
-                            prepared.target.add(
+                            final.target.add(
                                 PsiParserFacade.getInstance(project).createWhiteSpaceFromText("\n"),
                             )
                             PsiDocumentManager.getInstance(project).commitDocument(prepared.document)
@@ -319,36 +325,47 @@ class IntellijAddDeclarationApplyExecutor(
     private fun finalPrecondition(
         prepared: IntellijAddDeclarationPreparation.Ready,
     ): IntellijFinalPrecondition {
+        val targetIdentity = when (val admitted = prepared.targetIdentity.revalidate()) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return IntellijFinalPrecondition.Rejected(
+                AddDeclarationApplyPreconditionFailure.TARGET_INVALIDATED,
+            )
+        }
+        if (Path.of(prepared.target.virtualFile.path).toAbsolutePath().normalize() != targetIdentity.path) {
+            return IntellijFinalPrecondition.Rejected(
+                AddDeclarationApplyPreconditionFailure.TARGET_INVALIDATED,
+            )
+        }
         val physicalBytes = try {
-            Files.readAllBytes(Path.of(prepared.target.virtualFile.path))
+            Files.readAllBytes(targetIdentity.path)
         } catch (_: Exception) {
             return IntellijFinalPrecondition.Rejected(
                 AddDeclarationApplyPreconditionFailure.TARGET_BYTES_UNAVAILABLE,
             )
         }
         return when {
-        prepared.sourceImages.admitPreimage(physicalBytes) is Refinement.Rejected ->
-            IntellijFinalPrecondition.Rejected(
-                AddDeclarationApplyPreconditionFailure.TARGET_PREIMAGE_MISMATCH,
+            prepared.sourceImages.admitPreimage(physicalBytes) is Refinement.Rejected ->
+                IntellijFinalPrecondition.Rejected(
+                    AddDeclarationApplyPreconditionFailure.TARGET_PREIMAGE_MISMATCH,
+                )
+            !prepared.target.isValid || !prepared.declaration.isValid ->
+                IntellijFinalPrecondition.Rejected(AddDeclarationApplyPreconditionFailure.TARGET_INVALIDATED)
+            !prepared.target.virtualFile.isWritable -> IntellijFinalPrecondition.Rejected(
+                AddDeclarationApplyPreconditionFailure.TARGET_READ_ONLY,
             )
-        !prepared.target.isValid || !prepared.declaration.isValid ->
-            IntellijFinalPrecondition.Rejected(AddDeclarationApplyPreconditionFailure.TARGET_INVALIDATED)
-        !prepared.target.virtualFile.isWritable -> IntellijFinalPrecondition.Rejected(
-            AddDeclarationApplyPreconditionFailure.TARGET_READ_ONLY,
-        )
-        DumbService.getInstance(project).isDumb -> IntellijFinalPrecondition.Rejected(
-            AddDeclarationApplyPreconditionFailure.DUMB_MODE,
-        )
-        prepared.document.text != prepared.sourceImages.normalizedPreimage.text ->
-            IntellijFinalPrecondition.Rejected(
-                AddDeclarationApplyPreconditionFailure.TARGET_PREIMAGE_MISMATCH,
+            DumbService.getInstance(project).isDumb -> IntellijFinalPrecondition.Rejected(
+                AddDeclarationApplyPreconditionFailure.DUMB_MODE,
             )
-        else -> try {
-            ProgressManager.checkCanceled()
-            IntellijFinalPrecondition.Ready
-        } catch (_: ProcessCanceledException) {
-            IntellijFinalPrecondition.Rejected(AddDeclarationApplyPreconditionFailure.CANCELLED)
-        }
+            prepared.document.text != prepared.sourceImages.normalizedPreimage.text ->
+                IntellijFinalPrecondition.Rejected(
+                    AddDeclarationApplyPreconditionFailure.TARGET_PREIMAGE_MISMATCH,
+                )
+            else -> try {
+                ProgressManager.checkCanceled()
+                IntellijFinalPrecondition.Ready(prepared.target)
+            } catch (_: ProcessCanceledException) {
+                IntellijFinalPrecondition.Rejected(AddDeclarationApplyPreconditionFailure.CANCELLED)
+            }
         }
     }
 
@@ -369,18 +386,13 @@ class IntellijAddDeclarationApplyExecutor(
         failure: AddDeclarationApplyUncertainFailure,
     ): AddDeclarationApplyResult.MutationOutcomeUnknown =
         AddDeclarationApplyResult.MutationOutcomeUnknown(failure)
+
     private fun recoveryRequiredAfter(
         failure: AddDeclarationApplyRecoveryFailure,
     ): AddDeclarationApplyResult.RecoveryRequiredAfterMutation =
         AddDeclarationApplyResult.RecoveryRequiredAfterMutation(failure)
+
     private fun rejectedPreparation(
         failure: AddDeclarationApplyPreconditionFailure,
     ): IntellijAddDeclarationPreparation.Rejected = IntellijAddDeclarationPreparation.Rejected(failure)
-
-    companion object {
-        const val COMMAND_NAME: String = "Kast add declaration"
-        const val COMMAND_GROUP: String = "kast.add-declaration"
-        const val SUPPORTED_PRODUCT_CODE: String = "IC"
-        const val SUPPORTED_RUNTIME_BUILD: String = "261.25134.95"
-    }
 }

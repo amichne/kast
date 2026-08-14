@@ -3,6 +3,7 @@ package io.github.amichne.kast.change.recovery.filesystem
 import io.github.amichne.kast.change.contract.AddDeclarationRecoveryMaterial
 import io.github.amichne.kast.change.recovery.contract.DurableAddDeclarationRecovery
 import io.github.amichne.kast.change.recovery.contract.DurableAddDeclarationRecoveryFailure
+import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclarationRecoveryPreparer.Companion.open
 import io.github.amichne.kast.change.recovery.spi.AddDeclarationRecoveryPreparer
 import io.github.amichne.kast.change.recovery.spi.DurableAddDeclarationRecoveryResult
 import io.github.amichne.kast.kernel.Refinement
@@ -15,6 +16,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.Base64
+import java.util.UUID
 
 enum class AddDeclarationRecoveryRootFailure {
     NOT_CANONICAL_ABSOLUTE,
@@ -75,6 +77,7 @@ sealed interface FilesystemAddDeclarationRecoveryPreparerOpenResult {
 
 class FilesystemAddDeclarationRecoveryPreparer private constructor(
     private val root: AddDeclarationRecoveryRoot,
+    private val artifactWriter: AddDeclarationRecoveryArtifactWriter,
 ) : AddDeclarationRecoveryPreparer {
     /**
      * Proof transition:
@@ -111,20 +114,36 @@ class FilesystemAddDeclarationRecoveryPreparer private constructor(
         artifact: Path,
         material: AddDeclarationRecoveryMaterial,
         bytes: ByteArray,
-    ): DurableAddDeclarationRecoveryResult = try {
-        FileChannel.open(
-            artifact,
-            StandardOpenOption.CREATE_NEW,
-            StandardOpenOption.WRITE,
-        ).use { channel ->
-            val buffer = ByteBuffer.wrap(bytes)
-            while (buffer.hasRemaining()) channel.write(buffer)
-            channel.force(true)
+    ): DurableAddDeclarationRecoveryResult {
+        val staged = root.path.resolve(".${material.planId.value}.${UUID.randomUUID()}.before.tmp")
+        return try {
+            artifactWriter.write(staged, bytes)
+            Files.createLink(artifact, staged)
+            forceDirectory()
+            Files.delete(staged)
+            forceDirectory()
+            prepared(material)
+        } catch (_: FileAlreadyExistsException) {
+            removeStagedArtifact(staged)
+            existing(artifact, material, bytes)
+        } catch (_: IOException) {
+            removeStagedArtifact(staged)
+            rejected(DurableAddDeclarationRecoveryFailure.STORAGE_UNAVAILABLE)
+        } catch (_: SecurityException) {
+            removeStagedArtifact(staged)
+            rejected(DurableAddDeclarationRecoveryFailure.STORAGE_UNAVAILABLE)
         }
-        forceDirectory()
-        prepared(material)
-    } catch (_: FileAlreadyExistsException) {
-        existing(artifact, material, bytes)
+    }
+
+    private fun removeStagedArtifact(staged: Path) {
+        try {
+            Files.deleteIfExists(staged)
+            forceDirectory()
+        } catch (_: IOException) {
+            return
+        } catch (_: SecurityException) {
+            return
+        }
     }
 
     private fun existing(
@@ -171,10 +190,35 @@ class FilesystemAddDeclarationRecoveryPreparer private constructor(
          */
         fun open(
             recoveryRoot: Path,
+        ): FilesystemAddDeclarationRecoveryPreparerOpenResult = open(
+            recoveryRoot,
+            NioAddDeclarationRecoveryArtifactWriter,
+        )
+
+        /**
+         * Proof transition:
+         * `(Path, AddDeclarationRecoveryArtifactWriter) ->
+         * FilesystemAddDeclarationRecoveryPreparerOpenResult`.
+         *
+         * An opened result carries the same canonical-root proof as [open] while retaining an
+         * injected physical writer at the test boundary. Expected failure remains closed by
+         * `FilesystemAddDeclarationRecoveryPreparerOpenFailure`.
+         */
+        internal fun openWithArtifactWriter(
+            recoveryRoot: Path,
+            artifactWriter: AddDeclarationRecoveryArtifactWriter,
+        ): FilesystemAddDeclarationRecoveryPreparerOpenResult = open(
+            recoveryRoot,
+            artifactWriter,
+        )
+
+        private fun open(
+            recoveryRoot: Path,
+            artifactWriter: AddDeclarationRecoveryArtifactWriter,
         ): FilesystemAddDeclarationRecoveryPreparerOpenResult =
             when (val admitted = AddDeclarationRecoveryRoot.admit(recoveryRoot)) {
                 is Refinement.Refined -> FilesystemAddDeclarationRecoveryPreparerOpenResult.Opened(
-                    FilesystemAddDeclarationRecoveryPreparer(admitted.value),
+                    FilesystemAddDeclarationRecoveryPreparer(admitted.value, artifactWriter),
                 )
                 is Refinement.Rejected -> FilesystemAddDeclarationRecoveryPreparerOpenResult.Rejected(
                     FilesystemAddDeclarationRecoveryPreparerOpenFailure.InvalidRecoveryRoot(
@@ -182,5 +226,30 @@ class FilesystemAddDeclarationRecoveryPreparer private constructor(
                     ),
                 )
             }
+    }
+}
+
+internal fun interface AddDeclarationRecoveryArtifactWriter {
+    @Throws(IOException::class)
+    fun write(
+        staged: Path,
+        bytes: ByteArray,
+    )
+}
+
+private data object NioAddDeclarationRecoveryArtifactWriter : AddDeclarationRecoveryArtifactWriter {
+    override fun write(
+        staged: Path,
+        bytes: ByteArray,
+    ) {
+        FileChannel.open(
+            staged,
+            StandardOpenOption.CREATE_NEW,
+            StandardOpenOption.WRITE,
+        ).use { channel ->
+            val buffer = ByteBuffer.wrap(bytes)
+            while (buffer.hasRemaining()) channel.write(buffer)
+            channel.force(true)
+        }
     }
 }

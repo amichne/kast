@@ -76,7 +76,7 @@ internal fun interface IntellijNativeRelationSearch {
     ): IntellijNativeRelationSearchResult
 }
 
-internal enum class IntellijNativeRelationRejection {
+enum class IntellijNativeRelationRejection {
     WORKSPACE_ROOT_MISMATCH,
     GENERATION_MOVED,
     DUMB_MODE,
@@ -234,6 +234,10 @@ private class BoundedIntellijRelationCollector(
         if (fact in facts) {
             return true
         }
+        if (facts.size >= request.budget.resources.resultLimit.value) {
+            qualifyAndHalt(NativeRelationLimitation.RESULT_LIMIT_REACHED)
+            return false
+        }
         val factBytes = fact.projectedUtf8Size()
         if (factBytes.value > request.budget.returnedBytes.value - encodedBytes) {
             qualifyAndHalt(NativeRelationLimitation.BYTE_LIMIT_REACHED)
@@ -310,10 +314,6 @@ private class BoundedIntellijRelationCollector(
             return EventAdmission.HALTED
         }
         workUnits += 1L
-        if (facts.size >= request.budget.resources.resultLimit.value) {
-            qualifyAndHalt(NativeRelationLimitation.RESULT_LIMIT_REACHED)
-            return EventAdmission.HALTED
-        }
         return EventAdmission.ADMITTED
     }
 

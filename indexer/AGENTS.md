@@ -20,9 +20,10 @@ not a foreground IDE plugin.
 - `idea/runtime/service` assembles the backend, source-index store, analysis
   server, indexing runtime, observers, and shutdown. Its `transition` subtree
   runs the event-driven reconciliation worker and publishes readiness.
-- `idea/transition` owns workspace signals, freshness claims, Git worktree
-  guards, semantic input identity, VFS observation, transition coordination,
-  retry/block state, and publication capability interfaces.
+- `idea/transition` owns host adapters for workspace signals, freshness claims,
+  Git worktree guards, semantic input identity, VFS observation, and publication
+  capabilities. `:workspace:service` owns host-neutral transition coordination,
+  retry/block state, and the publication protocol.
 - `idea/workspace` owns Gradle project/source-set production/test kind and
   authored/generated provenance, workspace identity, file inventory/paging/snapshots,
   indexing scope, stage versions, hydration, and project indexing.
@@ -43,9 +44,8 @@ not a foreground IDE plugin.
 
 ## Dependency boundary
 
-- `analysis-api`, `analysis-server`, `index-store`, `symbol:contract`,
-  `symbol:intellij`, and the operation-specific `change` planning and journal modules are
-  `compileOnly` inputs and explicit
+- Runtime-facing `analysis`, `index-store`, `workspace`, `symbol`, `evidence`, and
+  operation-specific `change` modules are `compileOnly` inputs and explicit
   `indexerPluginRuntime` payloads. The private plugin payload owns these jars
   at runtime.
 - IntelliJ core libraries belong to the launcher runtime; Kotlin, Java, Gradle,

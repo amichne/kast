@@ -1,13 +1,14 @@
 package io.github.amichne.kast.change.apply.intellij
 
+import io.github.amichne.kast.change.contract.AddDeclarationIntellijRuntimeAdmission
 import io.github.amichne.kast.change.contract.ExactFileContentProof
 import io.github.amichne.kast.kernel.Refinement
-import java.security.MessageDigest
-import java.util.Base64
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
+import java.security.MessageDigest
+import java.util.Base64
 
 class IntellijExactSourceImagesTest {
     @Test
@@ -59,14 +60,14 @@ class IntellijExactSourceImagesTest {
     }
 
     @Test
-    fun `runtime admission is exact to the pinned product and build`() {
+    fun `runtime admission is exact to the documented product and branch`() {
         assertEquals(
-            IntellijRuntimeAdmission.Supported,
-            admitIntellijRuntime("IC", "261.25134.95", "IC", "261.25134.95"),
+            AddDeclarationIntellijRuntimeAdmission.Supported.IntelliJIdea262,
+            admitIntellijRuntime("IC", "262.12345.67"),
         )
         assertEquals(
-            IntellijRuntimeAdmission.Unsupported,
-            admitIntellijRuntime("IU", "261.25134.95", "IC", "261.25134.95"),
+            AddDeclarationIntellijRuntimeAdmission.Unsupported,
+            admitIntellijRuntime("IC", "261.25134.95"),
         )
     }
 

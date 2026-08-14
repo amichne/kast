@@ -59,6 +59,9 @@ class WorkspaceResourceAdmissionController(
 ) {
     private val lock = Any()
     private val active = linkedMapOf<WorkspaceInitiationKey, ActiveWorkspaceInitiation>()
+    private val capacityReleases = WorkspaceExpensiveWork.entries.associateWith {
+        WorkspaceKindCapacityRelease()
+    }.toMutableMap()
     private var queuedWaiters = 0
 
     /**
@@ -92,7 +95,7 @@ class WorkspaceResourceAdmissionController(
                 is WorkspaceInitiationClaim.Reuse ->
                     return waitForExact(claim.entry, requestedAt, queueDuration)
                 is WorkspaceInitiationClaim.Queue -> {
-                    when (val waited = waitForCapacity(claim.entry, requestedAt, queueDuration)) {
+                    when (val waited = waitForCapacity(claim.release, requestedAt, queueDuration)) {
                         is WorkspaceCapacityWait.Retry -> queueDuration = waited.queueDuration
                         is WorkspaceCapacityWait.Complete -> return waited.result
                     }
@@ -148,7 +151,7 @@ class WorkspaceResourceAdmissionController(
                     WorkspaceResourceAdmissionAction.RETRY_AFTER_RELEASE,
                 )
             } else {
-                WorkspaceInitiationClaim.Queue(conflicts.first())
+                WorkspaceInitiationClaim.Queue(capacityReleases.getValue(key.kind))
             }
         }
         val entry = ActiveWorkspaceInitiation(key)
@@ -172,11 +175,15 @@ class WorkspaceResourceAdmissionController(
             entry.complete(WorkspaceInitiationCompletion.Failed)
             throw failure
         } finally {
-            synchronized(lock) {
-                if (active[entry.key] === entry) {
-                    active.remove(entry.key)
+            val release = synchronized(lock) {
+                check(active.remove(entry.key) === entry) {
+                    "Workspace initiation ownership moved before its owner released it"
+                }
+                capacityReleases.getValue(entry.key.kind).also {
+                    capacityReleases[entry.key.kind] = WorkspaceKindCapacityRelease()
                 }
             }
+            release.complete()
         }
     }
 
@@ -206,10 +213,10 @@ class WorkspaceResourceAdmissionController(
     }
 
     private fun waitForCapacity(
-        entry: ActiveWorkspaceInitiation,
+        release: WorkspaceKindCapacityRelease,
         requestedAt: Long,
         queueDuration: WorkspaceResourceDurationNanos,
-    ): WorkspaceCapacityWait = when (val waited = await(entry, requestedAt, queueDuration)) {
+    ): WorkspaceCapacityWait = when (val waited = await(release, requestedAt, queueDuration)) {
         is WorkspaceEntryWait.Completed ->
             WorkspaceCapacityWait.Retry(waited.queueDuration)
         is WorkspaceEntryWait.Rejected ->
@@ -217,7 +224,7 @@ class WorkspaceResourceAdmissionController(
     }
 
     private fun await(
-        entry: ActiveWorkspaceInitiation,
+        signal: WorkspaceAdmissionWaitSignal,
         requestedAt: Long,
         queueDuration: WorkspaceResourceDurationNanos,
     ): WorkspaceEntryWait {
@@ -245,7 +252,7 @@ class WorkspaceResourceAdmissionController(
         }
         val waitStarted = clock.nowNanos()
         val completed = try {
-            entry.await(remaining)
+            signal.await(remaining)
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
             return WorkspaceEntryWait.Rejected(
@@ -319,16 +326,14 @@ private data class WorkspaceInitiationKey(
     val root: CanonicalWorkspaceRoot,
     val kind: WorkspaceExpensiveWork,
 )
-
 private sealed interface WorkspaceExactInitiation {
     data object Absent : WorkspaceExactInitiation
 
     data class Present(val entry: ActiveWorkspaceInitiation) : WorkspaceExactInitiation
 }
-
 private class ActiveWorkspaceInitiation(
     val key: WorkspaceInitiationKey,
-) {
+) : WorkspaceAdmissionWaitSignal {
     private val finished = CountDownLatch(1)
     private val state = AtomicReference(WorkspaceInitiationCompletion.Running)
 
@@ -339,31 +344,41 @@ private class ActiveWorkspaceInitiation(
     }
 
     @Throws(InterruptedException::class)
-    fun await(timeoutNanos: Long): Boolean =
+    override fun await(timeoutNanos: Long): Boolean =
         finished.await(timeoutNanos, TimeUnit.NANOSECONDS)
 
     fun completion(): WorkspaceInitiationCompletion = state.get()
 }
+private fun interface WorkspaceAdmissionWaitSignal {
+    @Throws(InterruptedException::class)
+    fun await(timeoutNanos: Long): Boolean
+}
+private class WorkspaceKindCapacityRelease : WorkspaceAdmissionWaitSignal {
+    private val released = CountDownLatch(1)
 
+    fun complete(): Unit = released.countDown()
+
+    @Throws(InterruptedException::class)
+    override fun await(timeoutNanos: Long): Boolean =
+        released.await(timeoutNanos, TimeUnit.NANOSECONDS)
+}
 private enum class WorkspaceInitiationCompletion {
     Running,
     Succeeded,
     Failed,
 }
-
 private sealed interface WorkspaceInitiationClaim {
     data class Start(val entry: ActiveWorkspaceInitiation) : WorkspaceInitiationClaim
 
     data class Reuse(val entry: ActiveWorkspaceInitiation) : WorkspaceInitiationClaim
 
-    data class Queue(val entry: ActiveWorkspaceInitiation) : WorkspaceInitiationClaim
+    data class Queue(val release: WorkspaceKindCapacityRelease) : WorkspaceInitiationClaim
 
     data class Rejected(
         val blocker: WorkspaceResourceBlocker,
         val action: WorkspaceResourceAdmissionAction,
     ) : WorkspaceInitiationClaim
 }
-
 private sealed interface WorkspaceEntryWait {
     data class Completed(
         val queueDuration: WorkspaceResourceDurationNanos,
@@ -373,7 +388,6 @@ private sealed interface WorkspaceEntryWait {
         val result: WorkspaceResourceInitiationResult.Rejected,
     ) : WorkspaceEntryWait
 }
-
 private sealed interface WorkspaceCapacityWait {
     data class Retry(
         val queueDuration: WorkspaceResourceDurationNanos,

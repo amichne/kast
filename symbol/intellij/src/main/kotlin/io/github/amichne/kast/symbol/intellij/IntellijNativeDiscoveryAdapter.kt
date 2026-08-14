@@ -157,6 +157,8 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
 ) {
     constructor() : this(IntellijSearchScopeQueryAdapter(), SystemIntellijDiscoveryNanoClock)
 
+    constructor(clock: IntellijReadNanoClock) : this(IntellijSearchScopeQueryAdapter(), clock)
+
     /**
      * Proof transition:
      * Project + SymbolDiscoveryRequest + WorkspaceSearchScopeModelCompilation +
@@ -173,6 +175,8 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
         request: SymbolDiscoveryRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
         projector: IntellijNativeDefinitionProjector<Definition>,
+        itemAdmission: IntellijDiscoveryItemAdmissionPolicy =
+            AdmitEveryIntellijDiscoveryItem,
     ): IntellijFastSymbolReadResult<Definition> = readAction {
         var scopeCompilationNanoseconds = 0L
         val scopeStartedAt = clock.now()
@@ -186,6 +190,7 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                 environmentState = { project.discoveryEnvironmentState() },
                 cancellationCheck = ProgressManager::checkCanceled,
                 clock = clock,
+                itemAdmission = itemAdmission,
             )
             when (
                 val execution = query.discover(
@@ -212,7 +217,11 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                     var semanticNanoseconds = 0L
                     var definitionProjectionNanoseconds = 0L
                     var projectionBytes = 0L
-                    batch.candidates.indices.forEach { ordinal ->
+                    for (ordinal in batch.candidates.indices) {
+                        if (request.timeLimitReached(scopeStartedAt)) {
+                            extraQualifications += SymbolDiscoveryQualification.TIME_LIMIT_REACHED
+                            break
+                        }
                         val semanticStartedAt = clock.now()
                         val selection = when (
                             val selected = SymbolDiscoverySelection.select(batch, ordinal)
@@ -231,7 +240,7 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                                 extraQualifications +=
                                     SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE
                                 semanticNanoseconds += elapsedSince(semanticStartedAt)
-                                return@forEach
+                                continue
                             }
                             is IntellijExactSelectorResolution.ScopeRejected ->
                                 return@execute IntellijFastSymbolReadResult.Rejected(
@@ -246,7 +255,7 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                                 extraQualifications +=
                                     SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE
                                 semanticNanoseconds += elapsedSince(semanticStartedAt)
-                                return@forEach
+                                continue
                             }
                         }
                         val proof = when (
@@ -260,9 +269,28 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                                 )
                         }
                         semanticNanoseconds += elapsedSince(semanticStartedAt)
+                        if (request.timeLimitReached(scopeStartedAt)) {
+                            extraQualifications += SymbolDiscoveryQualification.TIME_LIMIT_REACHED
+                            break
+                        }
                         val projectionStartedAt = clock.now()
                         when (val projected = projector.project(live.declaration, proof)) {
                             is Refinement.Refined -> {
+                                definitionProjectionNanoseconds +=
+                                    elapsedSince(projectionStartedAt)
+                                if (request.timeLimitReached(scopeStartedAt)) {
+                                    extraQualifications +=
+                                        SymbolDiscoveryQualification.TIME_LIMIT_REACHED
+                                    break
+                                }
+                                if (
+                                    projected.value.encodedBytes.value >
+                                    request.budget.returnedBytes.value - projectionBytes
+                                ) {
+                                    extraQualifications +=
+                                        SymbolDiscoveryQualification.BYTE_LIMIT_REACHED
+                                    break
+                                }
                                 definitions += projected.value.definition
                                 projectionBytes =
                                     saturatedAdd(projectionBytes, projected.value.encodedBytes.value)
@@ -272,7 +300,6 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                                     projected.failure,
                                 )
                         }
-                        definitionProjectionNanoseconds += elapsedSince(projectionStartedAt)
                     }
                     val measuredBytes = when (
                         val parsed = NativeProjectionByteCount.parse(projectionBytes)
@@ -309,6 +336,9 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
 
     private fun elapsedSince(startedAt: Long): Long =
         (clock.now() - startedAt).coerceAtLeast(0L)
+
+    private fun SymbolDiscoveryRequest.timeLimitReached(startedAt: Long): Boolean =
+        elapsedSince(startedAt) >= elapsedLimitNanoseconds().value
 }
 
 private fun SymbolDiscoveryKind.isKotlinDeclarationContributor(

@@ -249,8 +249,7 @@ private fun publicationRequest(
 ): Refinement<WorkspaceTransitionRequest, AddDeclarationPublicationRequestFailure> {
     val relative = Path.of(applied.plan.intent.workspaceRoot.value)
         .relativize(Path.of(applied.plan.target.targetPath.value))
-        .toString()
-        .replace('\\', '/')
+        .joinToString(separator = "/") { segment -> segment.toString() }
     val path = when (val result = WorkspaceSourcePath.parse(relative)) {
         is Refinement.Refined -> result.value
         is Refinement.Rejected -> return Refinement.Rejected(

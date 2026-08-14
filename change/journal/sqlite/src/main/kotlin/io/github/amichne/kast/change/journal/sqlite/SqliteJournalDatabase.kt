@@ -69,6 +69,8 @@ interface SqliteJournalConnectionObserver {
 
     fun rollingBack(operation: SqliteJournalCommitOperation) = Unit
 
+    fun afterTransitionWrite(operation: SqliteJournalTransitionOperation) = Unit
+
     data object Disabled : SqliteJournalConnectionObserver {
         override fun opened() = Unit
 
@@ -80,6 +82,10 @@ enum class SqliteJournalCommitOperation {
     APPLY_ADMISSION,
     APPLY_COMPLETION,
     VERIFICATION_COMPLETION,
+}
+
+enum class SqliteJournalTransitionOperation {
+    APPROVAL,
 }
 
 internal class SqliteJournalConnections(
@@ -108,6 +114,10 @@ internal class SqliteJournalConnections(
 
     fun observeRollback(operation: SqliteJournalCommitOperation) {
         observer.rollingBack(operation)
+    }
+
+    fun observeTransitionWrite(operation: SqliteJournalTransitionOperation) {
+        observer.afterTransitionWrite(operation)
     }
 }
 

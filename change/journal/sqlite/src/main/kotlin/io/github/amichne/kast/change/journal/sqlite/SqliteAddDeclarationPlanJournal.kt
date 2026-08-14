@@ -135,6 +135,7 @@ class SqliteAddDeclarationPlanJournal private constructor(
         },
     ) {
         connections.use { connection ->
+            connection.autoCommit = false
             val nextVersion = command.expectedVersion.next().valueOrNull()
                               ?: return@use ApproveAddDeclarationPlanResult.Rejected(
                                   AddDeclarationPlanJournalFailure.StateVersionExhausted(
@@ -157,8 +158,11 @@ class SqliteAddDeclarationPlanJournal private constructor(
                 statement.setLong(7, command.expectedVersion.value)
                 statement.executeUpdate()
             }
-            val loaded = connection.loadRecord(command.planId)
             if (updated == 1) {
+                connections.observeTransitionWrite(SqliteJournalTransitionOperation.APPROVAL)
+            }
+            val loaded = connection.loadRecord(command.planId)
+            val result = if (updated == 1) {
                 val approved = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
                     ?.record as? PersistedAddDeclarationPlan.Approved
                     ?: return@use ApproveAddDeclarationPlanResult.Rejected(
@@ -187,6 +191,12 @@ class SqliteAddDeclarationPlanJournal private constructor(
                         )
                 }
             }
+            if (result is ApproveAddDeclarationPlanResult.Approved) {
+                connection.commit()
+            } else {
+                connection.rollback()
+            }
+            result
         }
     }
 
@@ -384,7 +394,6 @@ private fun ResultSet.toRecord(
 
 private fun corruptRecord(): Refinement.Rejected<SqliteAddDeclarationPlanRecordDecodeFailure> =
     Refinement.Rejected(SqliteAddDeclarationPlanRecordDecodeFailure.CORRUPT)
-
 private fun <T, F> Refinement<T, F>.valueOrNull(): T? = when (this) {
     is Refinement.Refined -> value
     is Refinement.Rejected -> null

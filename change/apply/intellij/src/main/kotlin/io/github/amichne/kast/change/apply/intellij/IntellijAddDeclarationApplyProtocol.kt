@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.psi.KtFile
 internal sealed interface IntellijAddDeclarationPreparation {
     data class Ready(
         val target: KtFile,
+        val targetIdentity: EffectBoundAddDeclarationTarget,
         val declaration: KtDeclaration,
         val document: Document,
         val sourceImages: ExactIntellijSourceImages,
@@ -79,36 +80,13 @@ internal fun commandFailure(progress: IntellijApplyAttemptProgress): IntellijCom
     }
 
 internal sealed interface IntellijFinalPrecondition {
-    data object Ready : IntellijFinalPrecondition
+    data class Ready(
+        val target: KtFile,
+    ) : IntellijFinalPrecondition
 
     data class Rejected(
         val failure: AddDeclarationApplyPreconditionFailure,
     ) : IntellijFinalPrecondition
-}
-
-internal sealed interface IntellijRuntimeAdmission {
-    data object Supported : IntellijRuntimeAdmission
-    data object Unsupported : IntellijRuntimeAdmission
-}
-
-/**
- * Proof transition:
- * raw IntelliJ product/build identity to `IntellijRuntimeAdmission`.
- *
- * Supported proves exact equality with the pinned KIP-030 runtime. Unsupported is the closed
- * expected outcome; raw build primitives are extracted only at the IntelliJ application boundary.
- */
-internal fun admitIntellijRuntime(
-    productCode: String,
-    build: String,
-    supportedProductCode: String,
-    supportedBuild: String,
-): IntellijRuntimeAdmission = if (
-    productCode == supportedProductCode && build == supportedBuild
-) {
-    IntellijRuntimeAdmission.Supported
-} else {
-    IntellijRuntimeAdmission.Unsupported
 }
 
 internal sealed interface IntellijAfterCommandObservation {

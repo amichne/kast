@@ -22,6 +22,7 @@ import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.RevalidatedAddDeclaration
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanJournalFailure
+import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanStage
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.LoadAddDeclarationPlanResult
@@ -124,6 +125,28 @@ class SqliteAddDeclarationPlanJournalTest {
         assertInstanceOf<AddDeclarationPlanJournalFailure.PriorStateMismatch>(loser.failure)
         assertEquals(0, observer.active.get())
         assertEquals(observer.opened.get(), observer.closed.get())
+    }
+
+    @Test
+    fun reviewRegression_approvalReloadIsAtomicAgainstRecoveryPreparation() {
+        val database = tempDir.resolve("approval-atomic.db")
+        val journal = open(database)
+        val plan = plan()
+        val awaiting = assertInstanceOf<StoreAddDeclarationPlanResult.Stored>(
+            journal.store(plan),
+        ).record
+        val observer = ApprovalRecoveryInterleavingObserver(
+            database = database,
+            planId = plan.planId.value,
+            targetPath = plan.target.targetPath.value,
+            beforeSha256 = plan.expectedFile.preimage.sha256.value,
+            beforeContentBase64 = plan.expectedFile.preimage.contentBase64,
+        )
+
+        val approved = open(database, observer).approve(approval(awaiting))
+
+        assertInstanceOf<ApproveAddDeclarationPlanResult.Approved>(approved)
+        assertEquals(AddDeclarationPlanStage.AWAITING_APPROVAL.name, observer.observedStage)
     }
 
     @Test

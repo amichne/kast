@@ -10,6 +10,7 @@ import io.github.amichne.kast.api.contract.skill.KastDiscoverRequest
 import io.github.amichne.kast.api.contract.skill.KastDiscoverResponse
 import io.github.amichne.kast.api.contract.skill.KastDiscoverSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastNativeReadCompleteness
+import io.github.amichne.kast.api.contract.skill.KastNativeReadQualification
 import io.github.amichne.kast.api.contract.skill.KastResolveAmbiguousResponse
 import io.github.amichne.kast.api.contract.skill.KastResolveCandidate
 import io.github.amichne.kast.api.contract.skill.KastResolveNotFoundResponse
@@ -215,7 +216,11 @@ internal suspend fun SkillRpcContext.discoverWithNativeIntellij(
                 selectorHandle = candidate.selectorHandle,
             )
         },
-        page = if (candidates.size > visible.size) {
+        page = if (
+            candidates.size > visible.size ||
+            KastNativeReadQualification.RESULT_LIMIT_REACHED in
+            completed.evidence.qualifications
+        ) {
             PageInfo(truncated = true, nextPageToken = visible.size.toString())
         } else {
             null

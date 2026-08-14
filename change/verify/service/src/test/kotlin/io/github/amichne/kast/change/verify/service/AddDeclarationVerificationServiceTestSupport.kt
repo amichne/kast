@@ -55,8 +55,11 @@ internal object AddDeclarationVerificationServiceTestSupport {
             SqliteAddDeclarationPlanJournal.open(database),
         ).journal
 
-    fun applied(journal: SqliteAddDeclarationPlanJournal): AppliedUnverifiedAddDeclaration {
-        val plan = plan()
+    fun applied(
+        journal: SqliteAddDeclarationPlanJournal,
+        target: String = TARGET,
+    ): AppliedUnverifiedAddDeclaration {
+        val plan = plan(target)
         val awaiting = assertInstanceOf<StoreAddDeclarationPlanResult.Stored>(journal.store(plan)).record
         val approval = RawAddDeclarationPlanApprovalEvidence(
             planId = plan.planId.value,
@@ -90,7 +93,7 @@ internal object AddDeclarationVerificationServiceTestSupport {
             plan,
             AddDeclarationApplyObservation.observe(
                 plan,
-                setOf(TARGET),
+                setOf(plan.target.targetPath.value),
                 plan.expectedFile.postimage,
                 AddDeclarationUndoAvailability.UNAVAILABLE,
             ).refined(),
@@ -129,10 +132,10 @@ internal object AddDeclarationVerificationServiceTestSupport {
     fun publication(value: Long): PublishedWorkspaceGeneration =
         PublishedWorkspaceGeneration(generation(value), WorkspaceStateIdentity("workspace-$value"))
 
-    fun plan(): PlannedAddDeclaration {
+    fun plan(targetPath: String = TARGET): PlannedAddDeclaration {
         val intent = RawAddDeclarationPlanRequest(
             ROOT,
-            TARGET,
+            targetPath,
             hash(BEFORE),
             "fun added(): Int = 1",
         ).refine().refined()
@@ -162,7 +165,7 @@ internal object AddDeclarationVerificationServiceTestSupport {
                     generation,
                     "3".repeat(64),
                     "4".repeat(64),
-                    TARGET,
+                    targetPath,
                     hash(BEFORE),
                     0,
                 ).refined(),

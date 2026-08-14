@@ -18,7 +18,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import java.nio.file.Path
 
-internal sealed interface IntellijSearchScopeFailure {
+sealed interface IntellijSearchScopeFailure {
     @ConsistentCopyVisibility
     data class ProjectModelRejected internal constructor(
         val failures: Set<WorkspaceSearchScopeModelFailure>,

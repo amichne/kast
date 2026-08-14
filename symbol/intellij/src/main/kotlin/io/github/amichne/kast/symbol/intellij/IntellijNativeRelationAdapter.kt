@@ -9,7 +9,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
-internal sealed interface IntellijNativeRelationResult {
+sealed interface IntellijNativeRelationResult {
     data class Read(
         val outcome: NativeRelationOutcome,
     ) : IntellijNativeRelationResult
@@ -23,9 +23,13 @@ internal sealed interface IntellijNativeRelationResult {
     ) : IntellijNativeRelationResult
 }
 
-internal class IntellijNativeRelationAdapter(
+class IntellijNativeRelationAdapter private constructor(
     private val scopeQuery: IntellijSearchScopeQueryAdapter = IntellijSearchScopeQueryAdapter(),
+    private val semanticPolicy: IntellijRelationSemanticPolicy,
 ) {
+    constructor(semanticPolicy: IntellijRelationSemanticPolicy) :
+        this(IntellijSearchScopeQueryAdapter(), semanticPolicy)
+
     /**
      * Proof transition:
      * Project + current SemanticReadLease + NativeRelationRequest +
@@ -72,7 +76,7 @@ internal class IntellijNativeRelationAdapter(
                     modelCompilation = modelCompilation,
                 ) { compiledScope ->
                     IntellijNativeRelationQuery(
-                        search = IntellijPsiNativeRelationSearch(project),
+                        search = IntellijPsiNativeRelationSearch(project, semanticPolicy),
                         projector = IntellijPsiRelationFactProjector,
                         environmentState = { project.discoveryEnvironmentState() },
                         cancellationCheck = ProgressManager::checkCanceled,

@@ -25,6 +25,7 @@ import io.github.amichne.kast.change.journal.contract.CompleteAddDeclarationAppl
 import io.github.amichne.kast.change.journal.contract.JournaledAddDeclarationRecovery
 import io.github.amichne.kast.kernel.Refinement
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -240,6 +241,8 @@ class AddDeclarationApplicationService(
         }
         val execution = try {
             executor.apply(command)
+        } catch (failure: CancellationException) {
+            throw failure
         } catch (_: Exception) {
             return@withLock recoveryUncertain(
                 admitted,
