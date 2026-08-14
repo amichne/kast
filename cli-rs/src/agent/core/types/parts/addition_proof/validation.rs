@@ -53,7 +53,7 @@ fn validate_addition_target_path(value: &str) -> std::result::Result<(), String>
     Ok(())
 }
 
-fn validate_strict_addition_text(
+pub(crate) fn validate_strict_addition_text(
     value: &str,
     allow_final_lf: bool,
 ) -> std::result::Result<(), String> {

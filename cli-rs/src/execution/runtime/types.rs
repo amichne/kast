@@ -145,7 +145,6 @@ pub enum SemanticMutationCapability {
     ExactFileImageCas,
     FileOperations,
     OptimizeImports,
-    PlanAddDeclaration,
     PlanAddFile,
     PlanReplacement,
     RefreshWorkspace,

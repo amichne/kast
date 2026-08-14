@@ -571,33 +571,6 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/raw/plan-add-declaration":
-    post:
-      operationId: planAddDeclaration
-      summary: Plan a compiler-proven top-level Kotlin declaration addition
-      tags:
-        - mutation
-      x-jsonrpc-method: raw/plan-add-declaration
-      x-kast-required-capability: PLAN_ADD_DECLARATION
-      requestBody:
-        required: true
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AddDeclarationPlanQuery"
-      responses:
-        200:
-          description: JSON-RPC success result
-          content:
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/AddDeclarationPlanResult"
-        default:
-          description: JSON-RPC error response
-          content:
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/JsonRpcErrorResponse"
   "/rpc/raw/verify-mutation-postcondition":
     post:
       operationId: verifyMutationPostcondition
@@ -1214,7 +1187,6 @@ components:
         - RENAME
         - PLAN_REPLACEMENT
         - PLAN_ADD_FILE
-        - PLAN_ADD_DECLARATION
         - VERIFY_MUTATION_POSTCONDITION
         - EXACT_FILE_OBSERVATION
         - EXACT_FILE_IMAGE_CAS

@@ -384,7 +384,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        12 operations for verified mutation planning, application, observation, recovery, and refresh.
+        11 operations for verified mutation planning, application, observation, recovery, and refresh.
 
     ??? info "raw/rename — Plan a symbol rename (dry-run by default)"
 
@@ -445,27 +445,6 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin proposedContent: String` | Exact proposed Kotlin source content. |
             | `#!kotlin postimage: ExactByteImage` | Exact UTF-8 postimage authorized for the absent target. |
             | `#!kotlin proof: ExactAddFileProof` | Complete compiler-backed add-file proof. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-
-    ??? info "raw/plan-add-declaration — Plan a compiler-proven top-level Kotlin declaration addition"
-
-        **Capability** &nbsp;·&nbsp; `PLAN_ADD_DECLARATION`
-
-        === "Input: AddDeclarationPlanQuery"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin targetPath: AdditionTargetPath` | Normalized absolute .kt path of the existing target file. |
-            | `#!kotlin expectedCurrentSha256: AdditionTargetPreimageSha256` | Required SHA-256 of the exact current target bytes. |
-            | `#!kotlin proposedDeclaration: String` | One complete inline top-level Kotlin declaration in normalized LF form. |
-        === "Output: AddDeclarationPlanResult"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin proposedDeclaration: String` | Exact normalized LF Kotlin declaration supplied by the caller. |
-            | `#!kotlin proposedContent: String` | Exact decoded postimage content, including its original line-separator form. |
-            | `#!kotlin image: ExactFileImage` | Exact target preimage and authorized postimage. |
-            | `#!kotlin proof: ExactAddDeclarationProof` | Complete compiler-backed add-declaration proof. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "raw/verify-mutation-postcondition — Verify one exact mutation postcondition"

@@ -28,15 +28,6 @@ fn applied_mutation_requires_idempotency_key_before_runtime_discovery() {
             content.clone(),
         ],
         vec![
-            "add-declaration".to_string(),
-            "--inside-file".to_string(),
-            target.clone(),
-            "--at".to_string(),
-            "file-bottom".to_string(),
-            "--content-file".to_string(),
-            content.clone(),
-        ],
-        vec![
             "add-implementation".to_string(),
             "--inside-scope".to_string(),
             "sample.Example".to_string(),

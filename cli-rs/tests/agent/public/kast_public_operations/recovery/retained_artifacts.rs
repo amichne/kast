@@ -14,25 +14,16 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
     std::fs::write(&target, preimage).expect("existing source");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = target.canonicalize().expect("canonical source");
-    let declaration = "class Added";
-    let preview = public_exact_add_declaration_preview(&workspace, &target, preimage, declaration);
-    let postimage = STANDARD_BASE64
-        .decode(
-            preview["image"]["postimage"]["contentBase64"]
-                .as_str()
-                .expect("postimage Base64"),
-        )
-        .expect("postimage");
+    let replacement = replacement_fixture(&target, preimage);
+    let postimage = replacement.postimage.clone();
     let binary = write_active_kast_for_test(&home, &config_home);
-    let plan_id = plan_add_declaration(
+    let plan_id = plan_replacement(
         &binary,
         &home,
         &config_home,
         &workspace,
         &fixture.path().join("retained-cas-plan.sock"),
-        &target,
-        declaration,
-        preview.clone(),
+        &replacement,
     );
     let artifact = target
         .parent()
@@ -44,7 +35,7 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
         &workspace,
         &fixture.path().join("retained-cas-apply.sock"),
         vec![
-            ("raw/plan-add-declaration", preview),
+            ("raw/plan-replacement", replacement.preview),
             (
                 "raw/exact-file-image-cas",
                 scripted_json_rpc_error_with_retained_artifact(

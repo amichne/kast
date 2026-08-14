@@ -91,6 +91,31 @@ pub(crate) fn spawn_scripted_mutating_indexer_backend(
     )
 }
 
+pub(crate) fn spawn_verified_add_declaration_binding_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    plan_result: serde_json::Value,
+    verified_receipt: serde_json::Value,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    spawn_strictly_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        2,
+        true,
+        unified_mutation_capabilities(),
+        vec![
+            ("change/plan-add-declaration", plan_result),
+            ("change/apply-add-declaration", verified_receipt),
+        ],
+    )
+}
+
 pub(crate) fn spawn_lease_only_mutating_indexer_backend(
     home: &Path,
     config_home: &Path,

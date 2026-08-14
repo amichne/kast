@@ -1,19 +1,15 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.contract.*
-import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.contract.result.*
-import io.github.amichne.kast.api.contract.selector.*
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.protocol.*
-import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.testing.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.io.path.readText
 
 class AnalysisDispatcherAddMutationTest : AnalysisDispatcherTestSupport() {
@@ -142,66 +138,6 @@ class AnalysisDispatcherAddMutationTest : AnalysisDispatcherTestSupport() {
         assertEquals("CAPABILITY_NOT_SUPPORTED", error.error.data?.code)
         assertEquals(0, backend.applyCalls)
         assertFalse(Files.exists(targetFile))
-    }
-
-    @Test
-    fun `symbol add declaration dispatches file scope insertion`() {
-        val targetFile = sampleFile()
-        val contentFile = tempDir.resolve("declaration-content.kt")
-        Files.writeString(contentFile, "\nfun added() = Unit\n")
-
-        val result = dispatchSuccess<KastScopeMutationResponse>(
-            method = "symbol/add-declaration",
-            params = json.encodeToJsonElement(
-                KastAddDeclarationRequest.serializer(),
-                KastAddDeclarationRequest(
-                    workspaceRoot = tempDir.toString(),
-                    placement = KastPlacementSelector(
-                        scope = KastFilePlacementScope(targetFile.toString()),
-                        anchor = KastAtPlacementAnchor(KastPlacementAnchor.FILE_BOTTOM),
-                    ),
-                    contentFile = contentFile.toString(),
-                ),
-            ),
-        )
-
-        val success = result as KastScopeMutationSuccessResponse
-        assertEquals(KastScopeMutationOperation.ADD_DECLARATION, success.operation)
-        assertEquals(true, success.applied)
-        assertEquals(targetFile.toString(), success.placement?.filePath)
-        assertTrue(targetFile.readText().endsWith("\nfun added() = Unit\n"))
-    }
-
-    @Test
-    fun `symbol add declaration after symbol uses declaration scope end`() {
-        val targetFile = sampleFile()
-        val contentFile = tempDir.resolve("after-declaration-content.kt")
-        Files.writeString(contentFile, "\nfun added() = Unit\n")
-
-        val result = dispatchSuccess<KastScopeMutationResponse>(
-            method = "symbol/add-declaration",
-            params = json.encodeToJsonElement(
-                KastAddDeclarationRequest.serializer(),
-                KastAddDeclarationRequest(
-                    workspaceRoot = tempDir.toString(),
-                    placement = KastPlacementSelector(
-                        scope = KastFilePlacementScope(targetFile.toString()),
-                        anchor = KastAfterSymbolPlacementAnchor(
-                            symbol = "greet",
-                            fileHint = targetFile.toString(),
-                            kind = WrapperNamedSymbolKind.FUNCTION,
-                        ),
-                    ),
-                    contentFile = contentFile.toString(),
-                ),
-            ),
-        )
-
-        val success = result as KastScopeMutationSuccessResponse
-        assertEquals(KastScopeMutationOperation.ADD_DECLARATION, success.operation)
-        assertEquals(true, success.applied)
-        assertTrue(targetFile.readText().contains("fun greet() = \"hi\"\nfun added() = Unit\n"))
-        assertFalse(targetFile.readText().contains("fun greet\nfun added()"))
     }
 
     @Test

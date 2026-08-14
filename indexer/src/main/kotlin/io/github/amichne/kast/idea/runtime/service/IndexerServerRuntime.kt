@@ -20,17 +20,18 @@ import io.github.amichne.kast.api.contract.RuntimeCapabilityLeaseRegistry
 import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceException
 import io.github.amichne.kast.api.protocol.AddDeclarationPlanPersistenceFailure
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
-import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournal
-import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournalOpenFailure
-import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationPlanJournalOpenResult
-import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistence
-import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistenceService
+import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclarationRecoveryPreparer
+import io.github.amichne.kast.change.recovery.filesystem.FilesystemAddDeclarationRecoveryPreparerOpenResult
+import io.github.amichne.kast.change.verify.intellij.IntellijPublishedWorkspaceGenerationAuthority
+import io.github.amichne.kast.idea.backend.mutation.liveAddDeclarationIntellijRuntimeAuthority
+import io.github.amichne.kast.idea.backend.mutation.verifiedAddDeclarationOperations
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
+import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
@@ -160,6 +161,9 @@ object IndexerServerRuntime {
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
         sourceIndexStore.ensureSchema()
         val workspaceGenerationStore = WorkspaceGenerationStore(sourceIndexStore)
+        val workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(
+            workspaceGenerationStore,
+        )
         when (val overlay = snapshotPreparation.overlaySeed) {
             is WorktreeOverlaySeed.None -> Unit
             is WorktreeOverlaySeed.Prepared -> {
@@ -180,19 +184,32 @@ object IndexerServerRuntime {
         if (indexAdmission is IndexerAdmission.Failed) {
             semanticAdmission.fail(indexAdmission.error.indexAdmissionFailureDetail())
         }
+        val addDeclarationBootstrap = when (
+            val bootstrap = openAddDeclarationPlanPersistence(
+                workspaceIdentity.workspaceIdentity.workspaceCacheDirectoryPath.resolve(
+                    ADD_DECLARATION_PLAN_JOURNAL_FILE_NAME,
+                ),
+            )
+        ) {
+            is AddDeclarationPlanPersistenceBootstrap.Ready -> bootstrap
+            is AddDeclarationPlanPersistenceBootstrap.Rejected -> {
+                sourceIndexStore.close()
+                throw AddDeclarationPlanPersistenceException.of(bootstrap.failure)
+            }
+        }
+        val recoveryPreparer = when (val opened = FilesystemAddDeclarationRecoveryPreparer.open(
+            workspaceIdentity.workspaceIdentity.workspaceCacheDirectoryPath,
+        )) {
+            is FilesystemAddDeclarationRecoveryPreparerOpenResult.Opened -> opened.preparer
+            is FilesystemAddDeclarationRecoveryPreparerOpenResult.Rejected -> {
+                sourceIndexStore.close()
+                throw AddDeclarationPlanPersistenceException.of(
+                    AddDeclarationPlanPersistenceFailure.STORAGE_UNAVAILABLE,
+                )
+            }
+        }
         var pluginBackend: KastIndexerBackend? = null
         val backend = try {
-            val addDeclarationPlanPersistence = when (
-                val bootstrap = openAddDeclarationPlanPersistence(
-                    workspaceIdentity.workspaceIdentity.workspaceCacheDirectoryPath.resolve(
-                        ADD_DECLARATION_PLAN_JOURNAL_FILE_NAME,
-                    ),
-                )
-            ) {
-                is AddDeclarationPlanPersistenceBootstrap.Ready -> bootstrap.persistence
-                is AddDeclarationPlanPersistenceBootstrap.Rejected ->
-                    throw AddDeclarationPlanPersistenceException.of(bootstrap.failure)
-            }
             val startedPluginBackend = KastIndexerBackend(
                 project = project,
                 workspaceRoot = workspaceIdentity.workspaceRootPath,
@@ -219,7 +236,7 @@ object IndexerServerRuntime {
                 workspaceSemanticReadAuthority = semanticAdmission,
                 workspaceTransitionRequester = transitionIngress,
                 runtimeCapabilityLeases = runtimeCapabilityLeases,
-                addDeclarationPlanPersistence = addDeclarationPlanPersistence,
+                addDeclarationPlanPersistence = addDeclarationBootstrap.persistence,
             )
             pluginBackend = startedPluginBackend
             ObservedAnalysisBackend(
@@ -240,6 +257,8 @@ object IndexerServerRuntime {
             throw failure
         }
         val server = try {
+            val startedPluginBackend = checkNotNull(pluginBackend)
+            val runtime = liveAddDeclarationIntellijRuntimeAuthority()
             AnalysisServer(
                 backend = backend,
                 config = indexerAnalysisServerConfig(
@@ -250,7 +269,19 @@ object IndexerServerRuntime {
                     workspaceFileCountProvider = manifestFileCountProvider,
                     runtimeCapabilityLeases = runtimeCapabilityLeases,
                 ),
-                publicSymbolReads = checkNotNull(pluginBackend).nativePublicSymbolBinding(),
+                publicSymbolReads = startedPluginBackend.nativePublicSymbolBinding(),
+                verifiedAddDeclarations = VerifiedAddDeclarationBinding.Native(
+                    startedPluginBackend.verifiedAddDeclarationOperations(
+                        workspaceRoot = workspaceIdentity.workspaceRootPath,
+                        journal = addDeclarationBootstrap.journal,
+                        transitions = transitionIngress,
+                        publications = IntellijPublishedWorkspaceGenerationAuthority(
+                            workspaceGenerationPublication::current,
+                        ),
+                        recoveryPreparer = recoveryPreparer,
+                        runtime = runtime,
+                    ),
+                ),
             ).start()
         } catch (failure: Throwable) {
             listOf<() -> Unit>(backend::close, sourceIndexStore::close).forEach { cleanupPhase ->
@@ -279,7 +310,7 @@ object IndexerServerRuntime {
                 project = project,
                 workspaceIdentity = workspaceIdentity,
                 config = config,
-                workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(workspaceGenerationStore),
+                workspaceGenerationPublication = workspaceGenerationPublication,
                 diagnostics = diagnostics,
                 indexStore = sourceIndexStore,
                 semanticAdmission = semanticAdmission,
@@ -346,45 +377,6 @@ object IndexerServerRuntime {
         }
     }
 }
-
-internal const val ADD_DECLARATION_PLAN_JOURNAL_FILE_NAME = "add-declaration-plans.db"
-
-internal sealed interface AddDeclarationPlanPersistenceBootstrap {
-    data class Ready(
-        val persistence: AddDeclarationPlanPersistence,
-    ) : AddDeclarationPlanPersistenceBootstrap
-
-    data class Rejected(
-        val failure: AddDeclarationPlanPersistenceFailure,
-    ) : AddDeclarationPlanPersistenceBootstrap
-}
-
-/**
- * Proof transition: `Path -> AddDeclarationPlanPersistenceBootstrap`.
- *
- * A ready result establishes an initialized workspace-scoped SQLite journal whose bootstrap
- * connection is closed and which exposes only detached plan persistence. The closed expected
- * failure is `AddDeclarationPlanPersistenceFailure`; the raw database path is extracted only by
- * the SQLite journal adapter.
- */
-internal fun openAddDeclarationPlanPersistence(
-    databasePath: Path,
-): AddDeclarationPlanPersistenceBootstrap =
-    when (val opened = SqliteAddDeclarationPlanJournal.open(databasePath)) {
-        is SqliteAddDeclarationPlanJournalOpenResult.Opened ->
-            AddDeclarationPlanPersistenceBootstrap.Ready(
-                AddDeclarationPlanPersistenceService(opened.journal),
-            )
-        is SqliteAddDeclarationPlanJournalOpenResult.Rejected ->
-            AddDeclarationPlanPersistenceBootstrap.Rejected(
-                when (opened.failure) {
-                    is SqliteAddDeclarationPlanJournalOpenFailure.InvalidDatabasePath ->
-                        AddDeclarationPlanPersistenceFailure.DATABASE_PATH_INVALID
-                    SqliteAddDeclarationPlanJournalOpenFailure.StorageUnavailable ->
-                        AddDeclarationPlanPersistenceFailure.STORAGE_UNAVAILABLE
-                },
-            )
-    }
 
 private fun Throwable.indexAdmissionFailureDetail(): String =
     message?.takeIf(String::isNotBlank) ?: this::class.qualifiedName.orEmpty()

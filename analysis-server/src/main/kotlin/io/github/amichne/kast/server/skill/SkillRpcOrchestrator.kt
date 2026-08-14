@@ -38,9 +38,6 @@ internal class SkillRpcOrchestrator(
 
     suspend fun addFile(request: KastAddFileRequest): KastScopeMutationResponse = context.addFile(request)
 
-    suspend fun addDeclaration(request: KastAddDeclarationRequest): KastScopeMutationResponse =
-        context.addDeclaration(request)
-
     suspend fun addImplementation(request: KastAddImplementationRequest): KastScopeMutationResponse =
         context.addImplementation(request)
 

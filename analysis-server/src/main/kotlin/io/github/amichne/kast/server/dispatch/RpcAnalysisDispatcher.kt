@@ -17,6 +17,7 @@ import io.github.amichne.kast.server.dispatch.RpcMethodRouter
 import io.github.amichne.kast.server.dispatch.RpcMethodResult
 import io.github.amichne.kast.server.dispatch.RpcRequestWaitPolicy
 import io.github.amichne.kast.server.dispatch.UnknownRpcMethodException
+import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
@@ -37,6 +38,8 @@ class RpcAnalysisDispatcher(
     private val config: AnalysisServerConfig,
     private val publicSymbolReads: PublicSymbolReadBinding =
         PublicSymbolReadBinding.LegacyAnalysisBackend,
+    private val verifiedAddDeclarations: VerifiedAddDeclarationBinding =
+        VerifiedAddDeclarationBinding.Unavailable,
     private val json: Json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -47,6 +50,7 @@ class RpcAnalysisDispatcher(
         backend = backend,
         config = config,
         publicSymbolReads = publicSymbolReads,
+        verifiedAddDeclarations = verifiedAddDeclarations,
         json = json,
     )
     private val lifecycleLock = ReentrantLock()

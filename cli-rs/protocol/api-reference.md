@@ -204,7 +204,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "REFRESH_WORKSPACE",
                         "PLAN_REPLACEMENT",
                         "PLAN_ADD_FILE",
-                        "PLAN_ADD_DECLARATION",
                         "VERIFY_MUTATION_POSTCONDITION",
                         "EXACT_FILE_OBSERVATION",
                         "EXACT_FILE_IMAGE_CAS",
@@ -1592,7 +1591,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        12 operations for verified mutation planning, application, observation, recovery, and refresh.
+        11 operations for verified mutation planning, application, observation, recovery, and refresh.
 
     ??? example "raw/rename — Plan a symbol rename (dry-run by default)"
 
@@ -2046,152 +2045,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             - The target must belong to one proven Kotlin source root and must not exist.
             - Collision or rebinding uncertainty fails before any source write.
-
-        **Error codes** &nbsp;·&nbsp; `ADDITION_PROOF_INCOMPLETE`, `CONFLICT`
-
-    ??? example "raw/plan-add-declaration — Plan a compiler-proven top-level Kotlin declaration addition"
-
-        Plans one top-level Kotlin declaration at compiler-proven file bottom without writing. The result binds the exact target preimage, insertion policy, semantic proof, and postimage.
-
-        **Capability** &nbsp;·&nbsp; `PLAN_ADD_DECLARATION`
-
-        === "Input: AddDeclarationPlanQuery"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin targetPath: AdditionTargetPath` | Normalized absolute .kt path of the existing target file. |
-            | `#!kotlin expectedCurrentSha256: AdditionTargetPreimageSha256` | Required SHA-256 of the exact current target bytes. |
-            | `#!kotlin proposedDeclaration: String` | One complete inline top-level Kotlin declaration in normalized LF form. |
-        === "Output: AddDeclarationPlanResult"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin proposedDeclaration: String` | Exact normalized LF Kotlin declaration supplied by the caller. |
-            | `#!kotlin proposedContent: String` | Exact decoded postimage content, including its original line-separator form. |
-            | `#!kotlin image: ExactFileImage` | Exact target preimage and authorized postimage. |
-            | `#!kotlin proof: ExactAddDeclarationProof` | Complete compiler-backed add-declaration proof. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "Internal protocol"
-
-            ```text
-            JSON-RPC method: raw/plan-add-declaration
-            Params: see Request tab
-            ```
-        === "Request"
-
-            ```json
-            {
-                "method": "raw/plan-add-declaration",
-                "params": {
-                    "targetPath": "/workspace/src/Sample.kt",
-                    "expectedCurrentSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
-                    "proposedDeclaration": "class AddedDeclaration"
-                },
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        === "Response"
-
-            ```json
-            {
-                "result": {
-                    "proposedDeclaration": "class AddedDeclaration",
-                    "proposedContent": "package sample\n\nfun greet() = \"hi\"\n\nfun use() = greet()\n\nclass AddedDeclaration\n",
-                    "image": {
-                        "filePath": "/workspace/src/Sample.kt",
-                        "preimage": {
-                            "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
-                            "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
-                        },
-                        "postimage": {
-                            "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQoKY2xhc3MgQWRkZWREZWNsYXJhdGlvbgo=",
-                            "sha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
-                        }
-                    },
-                    "proof": {
-                        "targetPath": "/workspace/src/Sample.kt",
-                        "targetPreimageSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
-                        "owner": {
-                            "sourceRoot": "/workspace/src",
-                            "ideaModuleName": "fake-module",
-                            "gradleBuildRoot": "/workspace",
-                            "gradleProjectPath": ":",
-                            "sourceSetName": "main"
-                        },
-                        "packageIdentity": {
-                            "type": "NAMED",
-                            "segments": [
-                                "sample"
-                            ]
-                        },
-                        "declaration": {
-                            "packageIdentity": {
-                                "type": "NAMED",
-                                "segments": [
-                                    "sample"
-                                ]
-                            },
-                            "name": "AddedDeclaration",
-                            "kind": "CLASS",
-                            "relativeRange": {
-                                "startOffset": 0,
-                                "endOffset": 22
-                            },
-                            "collisionSignature": "e64171523428714b6d5dca5a3d8739f3265e6b267e52ac315ace72295350fe89"
-                        },
-                        "insertion": {
-                            "offset": 56
-                        },
-                        "newlinePolicy": "PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF",
-                        "context": {
-                            "requiredGeneration": 1,
-                            "projectModelFingerprint": "c607333230003cbcf63e833b44fc64f58b24a42aa76f582b76fa61c3c2f2807e",
-                            "classpathFingerprint": "c1511bc29bf5e76224f2b435f95ead72025c15f10967d8703d195ced3eeb9dc7",
-                            "contextFileHashes": [
-                                {
-                                    "filePath": "/workspace/src/Sample.kt",
-                                    "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
-                                }
-                            ]
-                        },
-                        "collisionEvidence": {
-                            "declarationCardinality": 1,
-                            "dimensions": [
-                                "EXACT_DECLARATION_IDENTITIES",
-                                "COMPLETE_OWNING_SOURCE_SCOPE",
-                                "COMPLETE_DEPENDENT_SCOPE",
-                                "NO_COMPILER_COLLISION"
-                            ]
-                        },
-                        "outboundEvidence": {
-                            "cardinality": 0,
-                            "occurrences": []
-                        },
-                        "rebindingBaseline": {
-                            "cardinality": 0,
-                            "dimensions": [
-                                "EXACT_OCCURRENCE_CARDINALITY",
-                                "COMPLETE_DEPENDENT_SCOPE",
-                                "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
-                                "COMPLETE_JAVA_LOOKUP_SCOPE",
-                                "EVERY_CURRENT_BINDING_CAPTURED",
-                                "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE"
-                            ],
-                            "occurrences": []
-                        },
-                        "postimageSha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
-                    },
-                    "schemaVersion": 7
-                },
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        !!! note "Behavioral notes"
-
-            - The current target bytes must match expectedCurrentSha256.
-            - The closed append policy preserves existing bytes and adds one final LF.
 
         **Error codes** &nbsp;·&nbsp; `ADDITION_PROOF_INCOMPLETE`, `CONFLICT`
 

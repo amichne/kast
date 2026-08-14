@@ -5,13 +5,13 @@ use crate::cli::{
     AgentDiagnosticsViewArgs, AgentExactSymbolSelectorArgs, AgentHierarchyArgs,
     AgentHierarchyDirection, AgentImpactArgs, AgentImpactField, AgentImpactPageToken,
     AgentImpactViewArgs, AgentImplementationsArgs, AgentMutationApplyArgs, AgentMutationField,
-    AgentMutationViewArgs, AgentNativeGraphArgs, AgentPlacementAnchor, AgentReferencesArgs,
-    AgentRelationField, AgentRelationPageToken, AgentRelationViewArgs, AgentRenameArgs,
-    AgentReplaceDeclarationArgs, AgentRepositoryArgs, AgentRepositoryField, AgentRepositoryIntent,
-    AgentRepositoryViewArgs, AgentReusableSymbolSelector, AgentReusableSymbolSelectorArgs,
-    AgentRuntimeArgs, AgentScopedMutationArgs, AgentSelectorHandle, AgentStatementMutationArgs,
-    AgentSymbolArgs, AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs,
-    AgentVerifyField, AgentVerifyViewArgs, AgentWorkspaceFilesArgs, AgentWorkspaceFilesField,
+    AgentMutationViewArgs, AgentNativeGraphArgs, AgentReferencesArgs, AgentRelationField,
+    AgentRelationPageToken, AgentRelationViewArgs, AgentRenameArgs, AgentReplaceDeclarationArgs,
+    AgentRepositoryArgs, AgentRepositoryField, AgentRepositoryIntent, AgentRepositoryViewArgs,
+    AgentReusableSymbolSelector, AgentReusableSymbolSelectorArgs, AgentRuntimeArgs,
+    AgentScopedMutationArgs, AgentSelectorHandle, AgentStatementMutationArgs, AgentSymbolArgs,
+    AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField,
+    AgentVerifyViewArgs, AgentWorkspaceFilesArgs, AgentWorkspaceFilesField,
     AgentWorkspaceFilesViewArgs, NativeGraphOperation, NativeGraphScope, WorkspaceDirtyFilter,
     WorkspaceDriftFilter, WorkspaceFileKindFilter, WorkspaceFilesPublicPageToken,
     WorkspaceModuleSelector, WorkspacePackageSelector, WorkspaceRelativeGlob,
@@ -78,7 +78,6 @@ pub(crate) fn execute_leased_raw_value(
             "raw/rename"
                 | "raw/plan-replacement"
                 | "raw/plan-add-file"
-                | "raw/plan-add-declaration"
                 | "raw/exact-file-observation"
                 | "raw/workspace-refresh"
                 | "raw/diagnostics"
@@ -121,9 +120,6 @@ pub(crate) fn execute_leased_raw_value(
         }
         (LeasedRawOperation::ReadOnly, "raw/plan-add-file") => {
             &[runtime::SemanticMutationCapability::PlanAddFile]
-        }
-        (LeasedRawOperation::ReadOnly, "raw/plan-add-declaration") => {
-            &[runtime::SemanticMutationCapability::PlanAddDeclaration]
         }
         (LeasedRawOperation::ReadOnly, "raw/exact-file-observation") => {
             &[runtime::SemanticMutationCapability::ExactFileObservation]

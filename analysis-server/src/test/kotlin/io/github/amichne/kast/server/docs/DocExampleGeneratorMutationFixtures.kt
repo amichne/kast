@@ -11,7 +11,6 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.SymbolIdentity
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.query.AddDeclarationPlanQuery
 import io.github.amichne.kast.api.contract.query.AddFilePlanQuery
 import io.github.amichne.kast.api.contract.query.ExactFileImageQuery
 import io.github.amichne.kast.api.contract.query.MutationPostconditionAuthority
@@ -126,17 +125,6 @@ internal fun buildDocExampleGeneratorMutationFixture(
             json.encodeToJsonElement(
                 AddFilePlanQuery.serializer(),
                 AddFilePlanQuery(addFile.proof.targetPath, addFile.proposedContent),
-            ),
-        ),
-        "planAddDeclaration" to request(
-            "raw/plan-add-declaration",
-            json.encodeToJsonElement(
-                AddDeclarationPlanQuery.serializer(),
-                AddDeclarationPlanQuery(
-                    addDeclaration.proof.targetPath,
-                    addDeclaration.proof.targetPreimageSha256,
-                    addDeclaration.proposedDeclaration,
-                ),
             ),
         ),
         "verifyMutationPostcondition" to request(

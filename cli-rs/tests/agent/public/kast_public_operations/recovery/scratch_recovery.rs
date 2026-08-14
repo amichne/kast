@@ -17,18 +17,15 @@ fn public_recover_restores_declared_quarantine_scratch_after_cas_is_sigkilled() 
     std::fs::write(&target, preimage).expect("existing source");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = target.canonicalize().expect("canonical source");
-    let declaration = "class Added";
-    let preview = public_exact_add_declaration_preview(&workspace, &target, preimage, declaration);
+    let replacement = replacement_fixture(&target, preimage);
     let binary = write_active_kast_for_test(&home, &config_home);
-    let plan_id = plan_add_declaration(
+    let plan_id = plan_replacement(
         &binary,
         &home,
         &config_home,
         &workspace,
         &fixture.path().join("sigkill-cas-plan.sock"),
-        &target,
-        declaration,
-        preview.clone(),
+        &replacement,
     );
     let entered = fixture.path().join("sigkill-cas.entered");
     let release = fixture.path().join("sigkill-cas.release");
@@ -39,7 +36,7 @@ fn public_recover_restores_declared_quarantine_scratch_after_cas_is_sigkilled() 
         &fixture.path().join("sigkill-cas.sock"),
         &entered,
         &release,
-        vec![("raw/plan-add-declaration", preview)],
+        vec![("raw/plan-replacement", replacement.preview)],
     );
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "apply", "--plan-id", &plan_id])
@@ -224,32 +221,23 @@ fn assert_reverse_quarantine_only_recovery(case: &str, preimage: &[u8]) {
     std::fs::write(&target, preimage).expect("present source preimage");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = target.canonicalize().expect("canonical source");
-    let declaration = "class Added";
-    let preview = public_exact_add_declaration_preview(&workspace, &target, preimage, declaration);
-    let postimage = STANDARD_BASE64
-        .decode(
-            preview["image"]["postimage"]["contentBase64"]
-                .as_str()
-                .expect("postimage Base64"),
-        )
-        .expect("postimage bytes");
+    let replacement = replacement_fixture(&target, preimage);
+    let postimage = replacement.postimage.clone();
     let binary = write_active_kast_for_test(&home, &config_home);
-    let plan_id = plan_add_declaration(
+    let plan_id = plan_replacement(
         &binary,
         &home,
         &config_home,
         &workspace,
         &fixture.path().join(format!("{case}-plan.sock")),
-        &target,
-        declaration,
-        preview.clone(),
+        &replacement,
     );
     let apply_backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
         &fixture.path().join(format!("{case}-apply.sock")),
-        vec![("raw/plan-add-declaration", preview)],
+        vec![("raw/plan-replacement", replacement.preview)],
     );
     let interrupted = installed_public_kast(&binary, &home, &config_home, &workspace)
         .env("KAST_TEST_MUTATION_FAILURE_POINT", "AFTER_ALL_WRITES")
@@ -373,6 +361,6 @@ fn public_recover_materializes_a_nonempty_present_preimage_from_reverse_quaranti
 
 #[cfg(unix)]
 #[test]
-fn public_recover_materializes_an_empty_present_preimage_from_reverse_quarantine_only() {
-    assert_reverse_quarantine_only_recovery("reverse-empty-present", b"");
+fn public_recover_preserves_a_whitespace_only_present_preimage_from_reverse_quarantine_only() {
+    assert_reverse_quarantine_only_recovery("reverse-whitespace-present", b"\n");
 }

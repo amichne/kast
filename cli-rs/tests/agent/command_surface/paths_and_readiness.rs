@@ -32,79 +32,14 @@ fn relative_file_target_requires_explicit_workspace_root() {
 }
 
 #[test]
-fn agent_mutation_plans_preserve_scope_and_anchor_identity() {
+fn remaining_agent_mutation_plans_preserve_scope_and_anchor_identity() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let source_root = workspace.join("src");
-    std::fs::create_dir_all(&source_root).expect("source root");
-    let file_path = source_root
-        .canonicalize()
-        .expect("canonical source root")
-        .join("App.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
     let content_file = temp.path().join("snippet.kt");
     std::fs::write(&content_file, "println(\"added\")\n").expect("snippet");
-
-    let declaration = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "add-declaration",
-            "--inside-scope",
-            "sample.Container",
-            "--after-symbol",
-            "sample.Container.existing",
-            "--content-file",
-            content_file.to_str().expect("snippet"),
-        ])
-        .args(["--workspace-root", workspace.to_str().expect("workspace")])
-        .output()
-        .expect("declaration plan");
-    assert!(
-        declaration.status.success(),
-        "{}",
-        String::from_utf8_lossy(&declaration.stdout)
-    );
-    let declaration: serde_json::Value = serde_json::from_slice(&declaration.stdout).expect("json");
-    assert_eq!(
-        declaration["result"]["plan"]["placement"],
-        serde_json::json!({
-            "scope": {"type": "NAMED_SCOPE", "insideScope": "sample.Container"},
-            "anchor": {"type": "AFTER_SYMBOL", "symbol": "sample.Container.existing"}
-        })
-    );
-
-    let file_anchor = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "add-declaration",
-            "--inside-file",
-            file_path.to_str().expect("file path"),
-            "--at",
-            "file-bottom",
-            "--content-file",
-            content_file.to_str().expect("snippet"),
-        ])
-        .args(["--workspace-root", workspace.to_str().expect("workspace")])
-        .output()
-        .expect("file anchor plan");
-    assert!(
-        file_anchor.status.success(),
-        "{}",
-        String::from_utf8_lossy(&file_anchor.stdout)
-    );
-    let file_anchor: serde_json::Value = serde_json::from_slice(&file_anchor.stdout).expect("json");
-    assert_eq!(
-        file_anchor["result"]["plan"]["placement"],
-        serde_json::json!({
-            "scope": {"type": "FILE_SCOPE", "insideFile": file_path},
-            "anchor": {"type": "AT_ANCHOR", "anchor": "file-bottom"}
-        })
-    );
 
     let before_symbol = kast(&home, &config_home)
         .args([

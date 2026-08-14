@@ -95,14 +95,6 @@ internal suspend fun RpcMethodRouter.dispatchRawMethod(
             },
         ),
     )
-    "raw/plan-add-declaration" -> encode(
-        AddDeclarationPlanResult.serializer(),
-        backend.planAddDeclaration(
-            decodeParams(AddDeclarationPlanQuery.serializer(), params).parsed().also {
-                requireMutationCapability(MutationCapability.PLAN_ADD_DECLARATION)
-            },
-        ),
-    )
     "raw/verify-mutation-postcondition" -> encode(
         MutationPostconditionResult.serializer(),
         backend.verifyMutationPostcondition(

@@ -22,57 +22,14 @@ fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
     )
 }
 
-fn execute_agent_add_declaration(args: AgentScopedMutationArgs) -> AgentEnvelope {
-    let inside_file = match args.inside_file {
-        Some(inside_file) => match normalize_agent_file_target(&args.runtime, &inside_file) {
-            Ok(inside_file) => Some(inside_file),
-            Err(error) => {
-                return error_envelope("agent/add-declaration".to_string(), None, error);
-            }
-        },
-        None => None,
-    };
-    let exact_file_bottom = args.inside_scope.is_none()
-        && inside_file
-            .as_ref()
-            .is_some_and(|file| Path::new(file).is_file())
-        && args.at == Some(AgentPlacementAnchor::FileBottom)
-        && args.after_symbol.is_none()
-        && args.before_symbol.is_none();
-    let placement = match scoped_placement_params(
-        args.inside_scope,
-        inside_file.clone(),
-        args.at.map(|anchor| anchor.canonical().to_string()),
-        args.after_symbol,
-        args.before_symbol,
-    ) {
-        Ok(placement) => placement,
-        Err(error) => return error_envelope("agent/add-declaration".to_string(), None, error),
-    };
-    let params = json!({
-        "placement": placement,
-        "contentFile": args.content_file.display().to_string(),
-    });
-    if !args.mutation.apply {
-        let request = json_rpc_request("symbol/add-declaration", params);
-        if exact_file_bottom {
-            return execute_agent_add_declaration_preview(
-                args.runtime,
-                request,
-                inside_file.expect("exact file-bottom placement has one file"),
-                args.content_file,
-            );
-        }
-        return mutation_plan_envelope("agent/add-declaration", "add-declaration", request);
-    }
-    execute_agent_mutation(
-        "agent/add-declaration",
-        "symbol/add-declaration",
-        "ADD_DECLARATION",
-        "add-declaration",
-        params,
-        args.mutation,
-        args.runtime,
+fn execute_agent_add_declaration(_args: AgentScopedMutationArgs) -> AgentEnvelope {
+    error_envelope(
+        "agent/add-declaration".to_string(),
+        None,
+        agent_error(
+            "KAST_VERIFIED_ADD_DECLARATION_WORKFLOW_REQUIRED",
+            "Use `kast change plan add-declaration --file ...`, then approve the durable plan with `kast change apply --plan-id ...`.",
+        ),
     )
 }
 

@@ -53,10 +53,6 @@ internal suspend fun RpcMethodRouter.dispatchSkillMethod(
         KastScopeMutationResponse.serializer(),
         skillRpc.addFile(decodeParams(KastAddFileRequest.serializer(), params)),
     )
-    "symbol/add-declaration" -> encode(
-        KastScopeMutationResponse.serializer(),
-        skillRpc.addDeclaration(decodeParams(KastAddDeclarationRequest.serializer(), params)),
-    )
     "symbol/add-implementation" -> encode(
         KastScopeMutationResponse.serializer(),
         skillRpc.addImplementation(decodeParams(KastAddImplementationRequest.serializer(), params)),

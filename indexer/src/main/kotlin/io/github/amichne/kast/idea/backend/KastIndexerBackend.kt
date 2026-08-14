@@ -6,7 +6,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -30,14 +29,12 @@ import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
 import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
-import io.github.amichne.kast.shared.analysis.visibility
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Path
 import java.util.UUID
 import io.github.amichne.kast.idea.*
-import io.github.amichne.kast.idea.edit.*
 import io.github.amichne.kast.idea.mutation.SecureWorkspaceMutation
 import io.github.amichne.kast.idea.backend.references.*
 import io.github.amichne.kast.idea.backend.relationships.*
@@ -318,10 +315,10 @@ internal class KastIndexerBackend(
     override suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult =
         workspaceSemanticGate.current { planAddFileOperation(query) }
 
-    override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult =
-        persistAddDeclarationPlanViaBinding(
-            workspaceSemanticGate.current { lease -> planAddDeclarationViaBinding(query, lease) },
-        )
+    override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult {
+        val planned = workspaceSemanticGate.current { lease -> planAddDeclarationViaBinding(query, lease) }
+        return persistAddDeclarationPlanViaBinding(planned)
+    }
 
     override suspend fun verifyMutationPostcondition(
         query: ParsedMutationPostconditionQuery,

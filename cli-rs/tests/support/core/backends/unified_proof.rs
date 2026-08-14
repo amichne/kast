@@ -8,7 +8,6 @@ pub(super) fn unified_mutation_capabilities() -> Vec<&'static str> {
         "EXACT_FILE_OBSERVATION",
         "EXACT_FILE_IMAGE_CAS",
         "PLAN_ADD_FILE",
-        "PLAN_ADD_DECLARATION",
         "PLAN_REPLACEMENT",
         "VERIFY_MUTATION_POSTCONDITION",
         "MUTATION_SCRATCH_RECOVERY",

@@ -33,14 +33,23 @@ internal fun KastIndexerBackend.liveAddDeclarationVerificationExecutor(
     publications: WorkspaceGenerationPublication,
 ): IntellijAddDeclarationVerificationExecutor = addDeclarationVerificationExecutor(
     publications = publications,
-    runtime = {
-        val build = ApplicationInfo.getInstance().build
-        AddDeclarationIntellijRuntimeAdmission.admit(
-            build.productCode,
-            build.asStringWithoutProductCode(),
-        )
-    },
+    runtime = liveAddDeclarationIntellijRuntimeAuthority(),
 )
+
+/**
+ * Proof transition: the installed IntelliJ application to [AddDeclarationIntellijRuntimeAuthority].
+ *
+ * The returned authority re-admits the live product/build for every apply or verification command.
+ * Unsupported hosts remain the closed `AddDeclarationIntellijRuntimeAdmission.Unsupported` state.
+ * Raw product and build strings are extracted only at this indexer runtime boundary.
+ */
+internal fun liveAddDeclarationIntellijRuntimeAuthority(): AddDeclarationIntellijRuntimeAuthority = {
+    val build = ApplicationInfo.getInstance().build
+    AddDeclarationIntellijRuntimeAdmission.admit(
+        build.productCode,
+        build.asStringWithoutProductCode(),
+    )
+}
 
 /**
  * Proof transition: a live indexer backend, current workspace publication authority, and admitted
@@ -54,9 +63,25 @@ internal fun KastIndexerBackend.liveAddDeclarationVerificationExecutor(
 internal fun KastIndexerBackend.addDeclarationVerificationExecutor(
     publications: WorkspaceGenerationPublication,
     runtime: AddDeclarationIntellijRuntimeAuthority,
+): IntellijAddDeclarationVerificationExecutor = addDeclarationVerificationExecutor(
+    publications = IntellijPublishedWorkspaceGenerationAuthority(publications::current),
+    runtime = runtime,
+)
+
+/**
+ * Proof transition: a live indexer backend, narrow current-publication authority, and admitted
+ * IntelliJ runtime authority to [IntellijAddDeclarationVerificationExecutor].
+ *
+ * The returned executor re-observes exact publication and compiler-environment evidence on every
+ * verification. Expected failures remain closed by the executor result. Raw IntelliJ state is
+ * extracted only by the compiler-environment adapter below.
+ */
+internal fun KastIndexerBackend.addDeclarationVerificationExecutor(
+    publications: IntellijPublishedWorkspaceGenerationAuthority,
+    runtime: AddDeclarationIntellijRuntimeAuthority,
 ): IntellijAddDeclarationVerificationExecutor = IntellijAddDeclarationVerificationExecutor(
     project = project,
-    publications = IntellijPublishedWorkspaceGenerationAuthority(publications::current),
+    publications = publications,
     environment = LiveAddDeclarationCompilerEnvironmentAuthority(this),
     runtime = runtime,
 )

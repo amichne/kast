@@ -61,7 +61,13 @@ if [[ -n "$output" ]]; then
   cp "${KAST_SNAPSHOT_TEST_ARCHIVE:?}" "$output"
 else
   [[ "$url" == "${KAST_SNAPSHOT_TEST_API_URL:?}" ]]
-  printf '[\n  {"tag_name":"%s","prerelease":true}' "${KAST_SNAPSHOT_TEST_TAG:?}"
+  printf '%s\n' '['
+  printf '%s\n' '  {"tag_name":"snapshot-ffffffffffff","draft":false,"prerelease":true,"published_at":"2026-08-13T12:00:00Z"},'
+  printf '%s\n' '  {"tag_name":"snapshot-aaaaaaaaaaaa","draft":false,"prerelease":true,"published_at":"2026-08-14T12:00:00Z"},'
+  printf '  {"tag_name":"%s","draft":false,"prerelease":true,"published_at":"2026-08-14T12:00:00Z"},\n' "${KAST_SNAPSHOT_TEST_TAG:?}"
+  printf '%s\n' '  {"tag_name":"snapshot-draft000000","draft":true,"prerelease":true,"published_at":"2026-08-16T12:00:00Z"},'
+  printf '%s\n' '  {"tag_name":"snapshot-stable00000","draft":false,"prerelease":false,"published_at":"2026-08-17T12:00:00Z"},'
+  printf '%s' '  {"tag_name":"snapshot-unpublished0","draft":false,"prerelease":true,"published_at":null}'
   for ((index = 0; index < 8192; index++)); do
     printf ',\n  {"ignored_release":"%080d"}' "$index"
   done

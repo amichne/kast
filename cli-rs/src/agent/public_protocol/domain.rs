@@ -146,21 +146,39 @@ impl WorkspaceKotlinPath {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct PlanId(Uuid);
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum PlanId {
+    Legacy(Uuid),
+    VerifiedAddDeclaration(VerifiedAddDeclarationPlanId),
+}
 
 impl PlanId {
     pub(crate) fn parse(value: &str) -> Result<Self, &'static str> {
-        parse_v4_id(value)
-            .map(Self)
-            .ok_or("Plan IDs must be canonical lowercase version-4 UUIDs returned by Kast.")
-    }
-
-    pub(crate) fn uuid(self) -> Uuid {
-        self.0
+        if let Some(id) = parse_v4_id(value) {
+            return Ok(Self::Legacy(id));
+        }
+        VerifiedAddDeclarationPlanId::parse(value)
+            .map(Self::VerifiedAddDeclaration)
+            .ok_or("Plan IDs must be canonical UUIDs or verified add-declaration SHA-256 IDs.")
     }
 }
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(crate) struct VerifiedAddDeclarationPlanId(String);
 
+impl VerifiedAddDeclarationPlanId {
+    pub(crate) fn parse(value: &str) -> Option<Self> {
+        (value.len() == 64
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()))
+        .then(|| Self(value.to_string()))
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct RecoveryId(Uuid);
 

@@ -65,41 +65,6 @@ pub(super) fn plan_add_file(
         .to_string()
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn plan_add_declaration(
-    binary: &Path,
-    home: &Path,
-    config_home: &Path,
-    workspace: &Path,
-    socket: &Path,
-    target: &Path,
-    declaration: &str,
-    preview: Value,
-) -> String {
-    let backend = spawn_scripted_indexer_backend(
-        home,
-        config_home,
-        workspace,
-        socket,
-        vec![("raw/plan-add-declaration", preview)],
-    );
-    let mut change = installed_public_kast(binary, home, config_home, workspace);
-    change.args([
-        "change",
-        "plan",
-        "add-declaration",
-        "--file",
-        target.to_str().expect("target"),
-    ]);
-    let change = run_with_stdin(change, declaration);
-    assert!(change.status.success(), "{change:?}");
-    backend.join().expect("add-declaration planner backend");
-    decode(&change)["planId"]
-        .as_str()
-        .expect("plan id")
-        .to_string()
-}
-
 pub(super) fn change_add_file(
     binary: &Path,
     home: &Path,
@@ -211,71 +176,6 @@ pub(super) fn public_exact_add_file_preview(
     })
 }
 
-pub(super) fn public_exact_add_declaration_preview(
-    workspace: &Path,
-    target: &Path,
-    preimage: &[u8],
-    declaration: &str,
-) -> Value {
-    let normalized_preimage = std::str::from_utf8(preimage)
-        .expect("UTF-8 fixture")
-        .strip_prefix('\u{feff}')
-        .unwrap_or(std::str::from_utf8(preimage).expect("UTF-8 fixture"))
-        .replace("\r\n", "\n")
-        .replace('\r', "\n");
-    let separator = if normalized_preimage.is_empty() || normalized_preimage.ends_with("\n\n") {
-        ""
-    } else if normalized_preimage.ends_with('\n') {
-        "\n"
-    } else {
-        "\n\n"
-    };
-    let mut postimage = preimage.to_vec();
-    postimage.extend_from_slice(format!("{separator}{declaration}\n").as_bytes());
-    let preimage_sha256 = source_sha256(preimage);
-    let postimage_sha256 = source_sha256(&postimage);
-    json!({
-        "proposedDeclaration": declaration,
-        "proposedContent": String::from_utf8(postimage.clone()).expect("UTF-8 fixture"),
-        "image": {
-            "filePath": target,
-            "preimage": {
-                "contentBase64": STANDARD_BASE64.encode(preimage),
-                "sha256": preimage_sha256,
-            },
-            "postimage": {
-                "contentBase64": STANDARD_BASE64.encode(&postimage),
-                "sha256": postimage_sha256,
-            },
-        },
-        "proof": {
-            "targetPath": target,
-            "targetPreimageSha256": preimage_sha256,
-            "owner": public_addition_owner(workspace, target),
-            "packageIdentity": {"type": "ROOT"},
-            "declaration": public_addition_declaration(declaration.encode_utf16().count()),
-            "insertion": {"offset": normalized_preimage.encode_utf16().count()},
-            "newlinePolicy": "PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF",
-            "context": public_addition_context(vec![json!({
-                "filePath": target,
-                "sha256": preimage_sha256,
-            })]),
-            "collisionEvidence": {
-                "declarationCardinality": 1,
-                "dimensions": public_addition_collision_dimensions(),
-            },
-            "outboundEvidence": {"cardinality": 0, "occurrences": []},
-            "rebindingBaseline": {
-                "cardinality": 0,
-                "dimensions": public_addition_rebinding_dimensions(),
-                "occurrences": [],
-            },
-            "postimageSha256": postimage_sha256,
-        },
-        "schemaVersion": 7,
-    })
-}
-
 pub(super) fn successful_add_file_result(target: &Path) -> Value {
     json!({
         "type": "SUCCEEDED",
@@ -379,9 +279,17 @@ pub(super) fn independent_diagnostics(
 
 #[path = "support/output.rs"]
 mod output;
+#[path = "support/replacement.rs"]
+mod replacement;
 #[path = "support/verification_failure.rs"]
 mod verification_failure;
+#[path = "support/verified_add_declaration.rs"]
+mod verified_add_declaration;
 pub(super) use output::{assert_selector_forwarding, decode, decode_envelope};
+pub(super) use replacement::{plan_replacement, replacement_fixture};
 pub(super) use verification_failure::{
     assert_independent_verification_failure_rolls_back, successful_verified_add_file_script,
+};
+pub(super) use verified_add_declaration::{
+    verified_add_declaration_plan_result, verified_add_declaration_receipt,
 };

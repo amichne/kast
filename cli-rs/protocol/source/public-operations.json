@@ -1017,7 +1017,7 @@
         }
       ],
       "rpcMethods": [
-        "raw/plan-add-declaration"
+        "change/plan-add-declaration"
       ],
       "successors": [
         "change.apply"
@@ -1097,6 +1097,7 @@
         }
       ],
       "rpcMethods": [
+        "change/apply-add-declaration",
         "raw/apply-edits",
         "raw/verify-mutation-postcondition"
       ],

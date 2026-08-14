@@ -12,6 +12,19 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
     };
     let selector = prepared.selector().map(str::to_string);
     let content = PreparedPlanContent::read_for(&prepared)?;
+    if let PreparedOperation::AddDeclaration { path } = &prepared {
+        return run_verified_add_declaration_plan(
+            workspace_root,
+            path.clone(),
+            content.ok_or_else(|| {
+                CliError::new(
+                    "KAST_PLAN_CONTENT_UNAVAILABLE",
+                    "The verified add-declaration operation requires Kotlin declaration content.",
+                )
+            })?,
+            output_format,
+        );
+    }
     let plan_id = Uuid::new_v4();
     let paths = PlanPaths::new(plan_id);
     let preview_content = content

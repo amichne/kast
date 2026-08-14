@@ -27,7 +27,6 @@
             "REFRESH_WORKSPACE",
             "PLAN_REPLACEMENT",
             "PLAN_ADD_FILE",
-            "PLAN_ADD_DECLARATION",
             "VERIFY_MUTATION_POSTCONDITION",
             "EXACT_FILE_OBSERVATION",
             "EXACT_FILE_IMAGE_CAS",

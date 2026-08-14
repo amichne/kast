@@ -70,7 +70,7 @@ fn exact_file_image_cas_catalog_declares_closed_byte_authority() {
 }
 
 #[test]
-fn addition_planner_catalog_declares_both_terminal_request_schemas() {
+fn addition_planner_catalog_retires_raw_add_declaration() {
     let catalog = catalog();
     let add_file = &catalog["commands"]["raw/plan-add-file"];
     assert_eq!(add_file["responseType"], "AddFilePlanResult");
@@ -79,19 +79,7 @@ fn addition_planner_catalog_declares_both_terminal_request_schemas() {
         serde_json::json!(["targetPath", "proposedContent"])
     );
 
-    let add_declaration = &catalog["commands"]["raw/plan-add-declaration"];
-    assert_eq!(
-        add_declaration["responseType"],
-        "AddDeclarationPlanResult"
-    );
-    assert_eq!(
-        add_declaration["request"]["required"],
-        serde_json::json!([
-            "targetPath",
-            "expectedCurrentSha256",
-            "proposedDeclaration"
-        ])
-    );
+    assert!(catalog["commands"].get("raw/plan-add-declaration").is_none());
 }
 
 fn request_required(request: &Value) -> impl Iterator<Item = &str> {

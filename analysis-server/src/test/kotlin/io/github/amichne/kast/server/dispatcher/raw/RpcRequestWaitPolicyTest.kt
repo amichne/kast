@@ -15,6 +15,7 @@ class RpcRequestWaitPolicyTest {
             "raw/apply-edits",
             "raw/exact-file-image-cas",
             "raw/recover-mutation-scratch",
+            "change/apply-add-declaration",
         ).forEach { method ->
             assertEquals(
                 RpcRequestWaitPolicy.BackendProgressDeadline,

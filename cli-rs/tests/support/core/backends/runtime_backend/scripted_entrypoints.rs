@@ -48,6 +48,7 @@ pub(crate) fn spawn_scripted_indexer_backend_for_published_workspace_read(
         None,
         None,
         1,
+        false,
         scripted_results,
         ScriptedRuntimeAuthority::PublishExact,
     )
@@ -138,6 +139,7 @@ fn spawn_registered_scripted_backend(
         keepalive_until,
         scratch_crash_gate,
         0,
+        false,
         scripted_results,
         ScriptedRuntimeAuthority::ReuseRegistered,
     );
@@ -228,6 +230,38 @@ pub(super) fn spawn_scripted_backend(
         keepalive_until,
         scratch_crash_gate,
         0,
+        false,
+        scripted_results,
+        ScriptedRuntimeAuthority::PublishExact,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn spawn_strictly_scripted_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    invocation_count: usize,
+    semantic_ready: bool,
+    mutation_capabilities: Vec<&'static str>,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    spawn_scripted_backend_with_additional_runtime_status_requests(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        "indexer",
+        invocation_count,
+        semantic_ready,
+        mutation_capabilities,
+        None,
+        None,
+        None,
+        None,
+        0,
+        true,
         scripted_results,
         ScriptedRuntimeAuthority::PublishExact,
     )
@@ -263,6 +297,7 @@ pub(crate) fn spawn_published_semantic_read_backend_for_reads(
         None,
         None,
         read_count,
+        false,
         vec![],
         ScriptedRuntimeAuthority::PublishExact,
     )
@@ -290,6 +325,7 @@ pub(crate) fn spawn_ready_scripted_indexer_backend_for_invocations(
         None,
         None,
         invocation_count.saturating_mul(3),
+        false,
         scripted_results,
         ScriptedRuntimeAuthority::PublishExact,
     )

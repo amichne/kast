@@ -91,7 +91,6 @@ class DocExampleGeneratorTest {
         val operationIds = setOf(
             "planReplacement",
             "planAddFile",
-            "planAddDeclaration",
             "verifyMutationPostcondition",
             "exactFileObservation",
             "exactFileImageCas",

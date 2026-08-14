@@ -1,8 +1,5 @@
 package io.github.amichne.kast.api.contract
 
-import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.*
-
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,7 +7,6 @@ enum class MutationCapability {
     RENAME,
     PLAN_REPLACEMENT,
     PLAN_ADD_FILE,
-    PLAN_ADD_DECLARATION,
     VERIFY_MUTATION_POSTCONDITION,
     EXACT_FILE_OBSERVATION,
     EXACT_FILE_IMAGE_CAS,

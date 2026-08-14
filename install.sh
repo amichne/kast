@@ -157,12 +157,71 @@ latest_snapshot_tag() {
   tag="$(
     curl -fsSL -H 'Accept: application/vnd.github+json' "$RELEASES_API_URL" \
       | awk '
-          found == 0 && /"tag_name"[[:space:]]*:[[:space:]]*"snapshot-[^"]+"/ {
-            value = $0
-            sub(/^.*"tag_name"[[:space:]]*:[[:space:]]*"/, "", value)
-            sub(/".*$/, "", value)
-            print value
-            found = 1
+          function finish_release() {
+            if (release_tag !~ /^snapshot-/) {
+              return
+            }
+            if (release_draft != "false" || release_prerelease != "true") {
+              return
+            }
+            if (release_published_at == "") {
+              return
+            }
+            release_key = "T" release_published_at
+            best_key = "T" best_published_at
+            release_tag_key = "T" release_tag
+            best_tag_key = "T" best_tag
+            if (best_published_at == "" ||
+                release_key > best_key ||
+                (release_key == best_key && release_tag_key > best_tag_key)) {
+              best_tag = release_tag
+              best_published_at = release_published_at
+            }
+          }
+
+          function reset_release() {
+            release_tag = ""
+            release_draft = ""
+            release_prerelease = ""
+            release_published_at = ""
+          }
+
+          /"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"/ {
+            finish_release()
+            reset_release()
+            release_tag = $0
+            sub(/^.*"tag_name"[[:space:]]*:[[:space:]]*"/, "", release_tag)
+            sub(/".*$/, "", release_tag)
+          }
+
+          release_tag != "" && /"draft"[[:space:]]*:[[:space:]]*(true|false)/ {
+            release_draft = $0
+            sub(/^.*"draft"[[:space:]]*:[[:space:]]*/, "", release_draft)
+            sub(/[,}].*$/, "", release_draft)
+          }
+
+          release_tag != "" && /"prerelease"[[:space:]]*:[[:space:]]*(true|false)/ {
+            release_prerelease = $0
+            sub(/^.*"prerelease"[[:space:]]*:[[:space:]]*/, "", release_prerelease)
+            sub(/[,}].*$/, "", release_prerelease)
+          }
+
+          release_tag != "" && /"published_at"[[:space:]]*:/ {
+            release_published_at = $0
+            sub(/^.*"published_at"[[:space:]]*:[[:space:]]*/, "", release_published_at)
+            if (release_published_at ~ /^null/) {
+              release_published_at = ""
+            } else {
+              sub(/^"/, "", release_published_at)
+              sub(/".*$/, "", release_published_at)
+            }
+          }
+
+          END {
+            finish_release()
+            if (best_tag != "") {
+              print best_tag
+            }
           }
         '
   )"
