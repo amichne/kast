@@ -227,8 +227,13 @@ fn agent_symbol_not_found_does_not_discover() {
     let stdout: Value = serde_json::from_slice(&output.stdout).expect("symbol json");
     assert_eq!(stdout["result"]["outcome"], "NOT_FOUND");
     let requests = handle.join().expect("scripted backend");
-    assert_eq!(requests.len(), 3, "expected only runtime probes plus resolve");
+    assert_eq!(
+        requests.len(),
+        4,
+        "expected runtime admission, resolve, and current-lane postvalidation"
+    );
     assert_eq!(requests[2]["method"], "symbol/resolve");
+    assert_eq!(requests[3]["method"], "runtime/status");
 }
 
 #[test]
@@ -273,8 +278,13 @@ fn review_comment_regression_wrapped_ambiguity_candidates_remain_selectable() {
     assert_eq!(stdout["result"]["candidates"][0]["selectorHandle"], "ksh1.alpha-parse");
     assert_eq!(stdout["result"]["candidates"][1]["selectorHandle"], "ksh1.beta-parse");
     let requests = handle.join().expect("scripted backend");
-    assert_eq!(requests.len(), 3, "expected only runtime probes plus resolve");
+    assert_eq!(
+        requests.len(),
+        4,
+        "expected runtime admission, resolve, and current-lane postvalidation"
+    );
     assert_eq!(requests[2]["method"], "symbol/resolve");
+    assert_eq!(requests[3]["method"], "runtime/status");
 }
 
 #[path = "cases/symbol_fallbacks.rs"]

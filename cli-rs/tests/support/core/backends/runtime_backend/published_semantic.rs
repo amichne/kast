@@ -68,16 +68,14 @@ pub(crate) fn spawn_open_published_semantic_read_backend(
                         "backendVersion": "scripted-test",
                         "workspaceRoot": workspace.display().to_string(),
                         "sourceModuleNames": [":fixture"],
-                        "readiness": {
-                            "runtime": {"type": "READY"},
-                            "model": {"type": "READY"},
-                            "references": {"type": "READY"},
-                            "semanticGraph": {"type": "READY"},
-                            "mutation": {"type": "READY"}
-                        },
-                        "schemaVersion": 7
+                        "readiness": ready_runtime_readiness(),
+                        "schemaVersion": api_schema_version()
                     });
                     if let Some(published) = &published {
+                        align_available_retained_lanes_with_publication(
+                            &mut status,
+                            published,
+                        );
                         status["publishedWorkspaceGeneration"] = published.clone();
                     }
                     status
@@ -93,7 +91,7 @@ pub(crate) fn spawn_open_published_semantic_read_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": api_schema_version()
                 }),
                 method => panic!("unexpected published semantic method: {method}"),
             };
@@ -162,6 +160,6 @@ pub(crate) fn runtime_descriptor_for_process_test(
         "transport": "uds",
         "socketPath": socket_path.display().to_string(),
         "pid": pid,
-        "schemaVersion": 7
+        "schemaVersion": api_schema_version()
     })
 }

@@ -32,7 +32,7 @@ fn relative_file_paths_are_canonical_in_every_compact_json_view() {
         workspace.clone(),
         complete_refresh_for(&expected),
         complete_clean_diagnostics_for(&expected),
-        12,
+        18,
     );
     let views: [&[&str]; 3] = [&[], &["--fields", "analysis"], &["--count"]];
     let outputs = views.map(|view| {
@@ -119,7 +119,7 @@ fn canonical_relative_path_is_reported_in_every_output_format() {
         workspace.clone(),
         complete_refresh_for(std::slice::from_ref(&expected)),
         complete_clean_diagnostics_for(std::slice::from_ref(&expected)),
-        12,
+        18,
     );
     let outputs = ["json", "human", "toon"].map(|format| {
         run_diagnostics_arguments(
@@ -174,7 +174,7 @@ fn deleted_relative_file_reaches_refresh_with_canonical_path() {
         workspace.clone(),
         complete_removed_refresh(&missing),
         incomplete_diagnostics(&missing),
-        4,
+        6,
     );
     let output = run_diagnostics_arguments(
         &home,
@@ -233,7 +233,7 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
         workspace.clone(),
         complete_refresh(&canonical_test_path(&file)),
         incomplete_diagnostics(&canonical_test_path(&file)),
-        12,
+        18,
     );
 
     let json_output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
@@ -286,7 +286,7 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
         workspace.clone(),
         incomplete_refresh(&canonical_test_path(&file)),
         complete_clean_diagnostics(&canonical_test_path(&file)),
-        3,
+        4,
     );
 
     let output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
@@ -295,7 +295,12 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
 
     assert_eq!(
         request_methods(&requests),
-        ["runtime/status", "capabilities", "raw/workspace-refresh"],
+        [
+            "runtime/status",
+            "capabilities",
+            "raw/workspace-refresh",
+            "runtime/status"
+        ],
     );
     assert!(!output.status.success(), "{document:#}");
     assert_eq!(document["ok"], false, "{document:#}");
@@ -322,7 +327,9 @@ fn ordinary_compiler_diagnostic_remains_a_successful_complete_analysis() {
             "runtime/status",
             "capabilities",
             "raw/workspace-refresh",
-            "raw/diagnostics"
+            "runtime/status",
+            "raw/diagnostics",
+            "runtime/status"
         ],
     );
     assert!(
@@ -355,7 +362,9 @@ fn clean_file_remains_a_successful_complete_analysis() {
             "runtime/status",
             "capabilities",
             "raw/workspace-refresh",
-            "raw/diagnostics"
+            "runtime/status",
+            "raw/diagnostics",
+            "runtime/status"
         ],
     );
     assert!(

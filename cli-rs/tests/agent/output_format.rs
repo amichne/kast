@@ -389,8 +389,9 @@ fn agent_rename_plan_is_read_only_until_apply() {
     );
     let requests = backend.join().expect("rename backend");
     assert_eq!(requests[2]["method"], "symbol/resolve");
-    assert_eq!(requests[3]["method"], "raw/rename");
-    assert_eq!(requests[3]["params"]["dryRun"], true);
+    assert_eq!(requests[3]["method"], "runtime/status");
+    assert_eq!(requests[4]["method"], "raw/rename");
+    assert_eq!(requests[4]["params"]["dryRun"], true);
     assert_eq!(
         std::fs::read(workspace.join("OrderService.kt")).expect("source after"),
         source_before,

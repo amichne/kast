@@ -1,5 +1,13 @@
 use super::*;
 
+#[derive(Default)]
+struct ScriptedMutationBackendControls {
+    mutation_file_write: Option<(PathBuf, Vec<u8>)>,
+    mutation_gate: Option<(PathBuf, PathBuf)>,
+    keepalive_until: Option<PathBuf>,
+    scratch_crash_gate: Option<ScriptedScratchCrashGate>,
+}
+
 pub(crate) fn scripted_json_rpc_error(
     code: &str,
     message: &str,
@@ -48,19 +56,11 @@ pub(crate) fn spawn_scripted_indexer_backend(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_scripted_indexer_read_backend_with_postvalidation(
         home,
         config_home,
         workspace,
         socket_path,
-        "indexer",
-        1,
-        true,
-        vec![],
-        None,
-        None,
-        None,
-        None,
         scripted_results,
     )
 }
@@ -74,19 +74,35 @@ pub(crate) fn spawn_scripted_mutating_indexer_backend(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_ready_mutating_scripted_backend(
         home,
         config_home,
         workspace,
         socket_path,
-        "indexer",
-        1,
-        false,
-        unified_mutation_capabilities(),
-        None,
-        None,
-        None,
-        None,
+        ScriptedMutationBackendControls::default(),
+        scripted_results,
+    )
+}
+
+pub(crate) fn spawn_scripted_mutating_indexer_backend_until_marker(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    shutdown_marker: &Path,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    spawn_ready_mutating_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        ScriptedMutationBackendControls {
+            keepalive_until: Some(shutdown_marker.to_path_buf()),
+            ..Default::default()
+        },
         scripted_results,
     )
 }
@@ -125,19 +141,15 @@ pub(crate) fn spawn_lease_only_mutating_indexer_backend(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_ready_mutating_scripted_backend(
         home,
         config_home,
         workspace,
         socket_path,
-        "indexer",
-        1,
-        false,
-        unified_mutation_capabilities(),
-        None,
-        None,
-        Some(shutdown_marker.to_path_buf()),
-        None,
+        ScriptedMutationBackendControls {
+            keepalive_until: Some(shutdown_marker.to_path_buf()),
+            ..Default::default()
+        },
         vec![],
     )
 }
@@ -153,19 +165,15 @@ pub(crate) fn spawn_scripted_mutating_indexer_backend_with_file_write(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_ready_mutating_scripted_backend(
         home,
         config_home,
         workspace,
         socket_path,
-        "indexer",
-        1,
-        false,
-        unified_mutation_capabilities(),
-        Some((file_path.to_path_buf(), contents.to_vec())),
-        None,
-        None,
-        None,
+        ScriptedMutationBackendControls {
+            mutation_file_write: Some((file_path.to_path_buf(), contents.to_vec())),
+            ..Default::default()
+        },
         scripted_results,
     )
 }
@@ -184,19 +192,16 @@ pub(crate) fn spawn_gated_mutating_indexer_backend_with_file_write(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_ready_mutating_scripted_backend(
         home,
         config_home,
         workspace,
         socket_path,
-        "indexer",
-        1,
-        false,
-        unified_mutation_capabilities(),
-        Some((file_path.to_path_buf(), contents.to_vec())),
-        Some((entered_marker.to_path_buf(), release_marker.to_path_buf())),
-        None,
-        None,
+        ScriptedMutationBackendControls {
+            mutation_file_write: Some((file_path.to_path_buf(), contents.to_vec())),
+            mutation_gate: Some((entered_marker.to_path_buf(), release_marker.to_path_buf())),
+            ..Default::default()
+        },
         scripted_results,
     )
 }
@@ -291,23 +296,19 @@ pub(crate) fn spawn_gated_prepared_scratch_crash_backend(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_ready_mutating_scripted_backend(
         home,
         config_home,
         workspace,
         socket_path,
-        "indexer",
-        1,
-        false,
-        unified_mutation_capabilities(),
-        None,
-        None,
-        None,
-        Some(ScriptedScratchCrashGate {
-            mode: ScriptedScratchCrash::PreparedPostimage,
-            entered_marker: entered_marker.to_path_buf(),
-            release_marker: release_marker.to_path_buf(),
-        }),
+        ScriptedMutationBackendControls {
+            scratch_crash_gate: Some(ScriptedScratchCrashGate {
+                mode: ScriptedScratchCrash::PreparedPostimage,
+                entered_marker: entered_marker.to_path_buf(),
+                release_marker: release_marker.to_path_buf(),
+            }),
+            ..Default::default()
+        },
         scripted_results,
     )
 }
@@ -324,23 +325,19 @@ pub(crate) fn spawn_gated_quarantine_scratch_crash_backend(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_ready_mutating_scripted_backend(
         home,
         config_home,
         workspace,
         socket_path,
-        "indexer",
-        1,
-        false,
-        unified_mutation_capabilities(),
-        None,
-        None,
-        None,
-        Some(ScriptedScratchCrashGate {
-            mode: ScriptedScratchCrash::QuarantinePreimage,
-            entered_marker: entered_marker.to_path_buf(),
-            release_marker: release_marker.to_path_buf(),
-        }),
+        ScriptedMutationBackendControls {
+            scratch_crash_gate: Some(ScriptedScratchCrashGate {
+                mode: ScriptedScratchCrash::QuarantinePreimage,
+                entered_marker: entered_marker.to_path_buf(),
+                release_marker: release_marker.to_path_buf(),
+            }),
+            ..Default::default()
+        },
         scripted_results,
     )
 }
@@ -357,23 +354,47 @@ pub(crate) fn spawn_gated_foreign_prepared_scratch_backend(
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
+    spawn_ready_mutating_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        ScriptedMutationBackendControls {
+            scratch_crash_gate: Some(ScriptedScratchCrashGate {
+                mode: ScriptedScratchCrash::PreparedForeign,
+                entered_marker: entered_marker.to_path_buf(),
+                release_marker: release_marker.to_path_buf(),
+            }),
+            ..Default::default()
+        },
+        scripted_results,
+    )
+}
+
+fn spawn_ready_mutating_scripted_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    controls: ScriptedMutationBackendControls,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    spawn_scripted_backend_with_additional_runtime_status_requests(
         home,
         config_home,
         workspace,
         socket_path,
         "indexer",
         1,
-        false,
+        true,
         unified_mutation_capabilities(),
-        None,
-        None,
-        None,
-        Some(ScriptedScratchCrashGate {
-            mode: ScriptedScratchCrash::PreparedForeign,
-            entered_marker: entered_marker.to_path_buf(),
-            release_marker: release_marker.to_path_buf(),
-        }),
+        controls.mutation_file_write,
+        controls.mutation_gate,
+        controls.keepalive_until,
+        controls.scratch_crash_gate,
+        1,
+        false,
         scripted_results,
+        ScriptedRuntimeAuthority::PublishExact,
     )
 }

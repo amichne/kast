@@ -27,6 +27,9 @@ pub(crate) fn spawn_sequenced_indexer_backend(
                 {
                     result["publishedWorkspaceGeneration"] = published.clone();
                 }
+                if let Some(published) = &published {
+                    align_available_retained_lanes_with_publication(&mut result, published);
+                }
             }
             (method, result)
         })

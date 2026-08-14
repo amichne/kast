@@ -76,11 +76,7 @@ fn workspace_files_runtime_status(workspace: &std::path::Path) -> serde_json::Va
         "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
-        "readiness": {
-            "runtime": {"type": "READY"}, "model": {"type": "READY"},
-            "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
-            "mutation": {"type": "READY"}
-        },
+        "readiness": ready_runtime_readiness(),
         "schemaVersion": api_schema_version()
     })
 }

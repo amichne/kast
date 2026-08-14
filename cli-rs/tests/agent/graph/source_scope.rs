@@ -22,11 +22,12 @@ fn agent_graph_source_scope_does_not_wait_for_relationship_stage() {
             [],
         )
         .expect("make unrelated lib relationship stage pending");
-    let handle = spawn_scripted_indexer_backend(
+    let handle = spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &socket_path,
+        2,
         vec![
             (
                 "raw/semantic-graph",

@@ -19,11 +19,13 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     let declaration = "class Added";
     let plan_id = "a".repeat(64);
     let preview = verified_add_declaration_plan_result(&plan_id, &target, declaration, 7);
-    let backend = spawn_scripted_indexer_backend(
+    let planner_shutdown = fixture.path().join("plan-add-declaration.shutdown");
+    let backend = spawn_scripted_mutating_indexer_backend_until_marker(
         &home,
         &config_home,
         &workspace,
         &fixture.path().join("plan-add-declaration.sock"),
+        &planner_shutdown,
         vec![("change/plan-add-declaration", preview.clone())],
     );
     let binary = write_active_kast_for_test(&home, &config_home);
@@ -46,6 +48,7 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
         !String::from_utf8_lossy(&change.stdout).contains("contentBase64"),
         "public add-declaration plan must redact exact image bytes"
     );
+    std::fs::write(&planner_shutdown, "stop\n").expect("planner shutdown");
     backend.join().expect("add-declaration planner backend");
     let public = decode(&change);
     assert_eq!(public["preview"]["proposedDeclaration"], declaration);
@@ -99,11 +102,13 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
 
     std::fs::write(&target, preimage).expect("reset add-declaration preimage");
     let tamper_plan_id = "b".repeat(64);
-    let tamper_plan_backend = spawn_scripted_indexer_backend(
+    let tamper_shutdown = fixture.path().join("add-declaration-tamper-plan.shutdown");
+    let tamper_plan_backend = spawn_scripted_mutating_indexer_backend_until_marker(
         &home,
         &config_home,
         &workspace,
         &fixture.path().join("add-declaration-tamper-plan.sock"),
+        &tamper_shutdown,
         vec![(
             "change/plan-add-declaration",
             verified_add_declaration_plan_result(&tamper_plan_id, &target, declaration, 7),
@@ -119,6 +124,7 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     ]);
     let tamper_change = run_with_stdin(tamper_change, declaration);
     assert!(tamper_change.status.success(), "{tamper_change:?}");
+    std::fs::write(&tamper_shutdown, "stop\n").expect("tamper planner shutdown");
     tamper_plan_backend
         .join()
         .expect("add-declaration tamper planner");

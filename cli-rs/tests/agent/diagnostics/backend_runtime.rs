@@ -65,22 +65,20 @@ fn spawn_fake_backend(
                 .to_string();
             requests.push(request.clone());
             let result = match method.as_str() {
-                "runtime/status" => json!({
-                    "state": "READY",
-                    "backendName": "indexer",
-                    "backendVersion": "diagnostics-test",
-                    "workspaceRoot": workspace.display().to_string(),
-                    "sourceModuleNames": [":fixture"],
-                    "readiness": {
-                        "runtime": {"type": "READY"},
-                        "model": {"type": "READY"},
-                        "references": {"type": "READY"},
-                        "semanticGraph": {"type": "READY"},
-                        "mutation": {"type": "READY"}
-                    },
-                    "publishedWorkspaceGeneration": published.clone(),
-                    "schemaVersion": api_schema_version()
-                }),
+                "runtime/status" => {
+                    let mut status = json!({
+                        "state": "READY",
+                        "backendName": "indexer",
+                        "backendVersion": "diagnostics-test",
+                        "workspaceRoot": workspace.display().to_string(),
+                        "sourceModuleNames": [":fixture"],
+                        "readiness": ready_runtime_readiness(),
+                        "publishedWorkspaceGeneration": published.clone(),
+                        "schemaVersion": api_schema_version()
+                    });
+                    align_available_retained_lanes_with_publication(&mut status, &published);
+                    status
+                }
                 "capabilities" => json!({
                     "backendName": "indexer",
                     "backendVersion": "diagnostics-test",

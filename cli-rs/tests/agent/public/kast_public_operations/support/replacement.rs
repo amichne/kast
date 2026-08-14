@@ -101,7 +101,7 @@ pub(crate) fn replacement_fixture(target: &Path, preimage: &[u8]) -> Replacement
                 "sha256": source_sha256(&postimage),
             },
         }],
-        "schemaVersion": 7,
+        "schemaVersion": api_schema_version(),
     });
     ReplacementFixture {
         preview,
@@ -120,7 +120,7 @@ pub(crate) fn plan_replacement(
     fixture: &ReplacementFixture,
 ) -> String {
     let selector = "ksh1.issued-recovery-replacement-selector";
-    let backend = spawn_scripted_indexer_backend(
+    let backend = spawn_scripted_mutating_indexer_backend(
         home,
         config_home,
         workspace,

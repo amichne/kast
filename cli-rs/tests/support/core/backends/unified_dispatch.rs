@@ -45,7 +45,7 @@ pub(super) fn unified_raw_result(
                 "status": "COMMITTED",
                 "previousSha256": previous_sha256,
                 "resultSha256": result_sha256,
-                "schemaVersion": 7,
+                "schemaVersion": api_schema_version(),
             }))
         }
         "raw/apply-edits" => {
@@ -95,7 +95,7 @@ pub(super) fn unified_raw_result(
                 "affectedFiles": [path],
                 "createdFiles": created_files,
                 "deletedFiles": deleted_files,
-                "schemaVersion": 7,
+                "schemaVersion": api_schema_version(),
             }))
         }
         "raw/workspace-refresh" => Some(unified_refresh(

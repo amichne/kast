@@ -274,7 +274,11 @@ fn public_recover_consumes_declared_prepared_scratch_after_apply_is_sigkilled() 
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
     let receipt = decode(&recovered);
     assert_eq!(receipt["outcome"], "ROLLED_BACK", "{receipt:#}");
-    assert_eq!(receipt["schemaVersion"], 7, "{receipt:#}");
+    assert_eq!(
+        receipt["schemaVersion"],
+        api_schema_version(),
+        "{receipt:#}"
+    );
     assert!(
         !target.exists(),
         "typed recovery retains the absent preimage"

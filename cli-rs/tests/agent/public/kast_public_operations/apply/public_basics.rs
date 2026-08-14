@@ -85,7 +85,11 @@ fn public_apply_owns_lease_and_returns_verified_receipt() {
     );
     let receipt = decode(&apply);
     assert_eq!(receipt["outcome"], "VERIFIED", "{receipt:#}");
-    assert_eq!(receipt["schemaVersion"], 7, "{receipt:#}");
+    assert_eq!(
+        receipt["schemaVersion"],
+        api_schema_version(),
+        "{receipt:#}"
+    );
     assert_eq!(receipt["lease"]["state"], "RELEASED", "{receipt:#}");
     assert_eq!(
         receipt["lease"]

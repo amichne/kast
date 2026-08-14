@@ -91,11 +91,12 @@ fn review_comment_regression_relationship_failures_retain_validated_subject_evid
             ),
             _ => unreachable!(),
         };
-        let backend = support::spawn_scripted_indexer_backend(
+        let backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
             &home,
             &config,
             &workspace,
             &fixture.path().join("relationship.sock"),
+            2,
             vec![
                 (
                     "selector/identity",
@@ -150,8 +151,19 @@ fn review_comment_regression_relationship_failures_retain_validated_subject_evid
             );
         }
         let requests = backend.join().expect("relationship backend");
+        let semantic_requests = requests
+            .iter()
+            .filter(|request| {
+                !matches!(
+                    request["method"].as_str(),
+                    Some("runtime/status" | "capabilities")
+                )
+            })
+            .collect::<Vec<_>>();
         assert_eq!(
-            requests.last().expect("relationship request")["method"],
+            semantic_requests
+                .last()
+                .expect("relationship semantic request")["method"],
             "symbol/callers"
         );
     }
@@ -177,11 +189,12 @@ fn review_comment_regression_references_retain_containing_symbol_evidence() {
             "preview": "Bar()"
         })
     };
-    let backend = support::spawn_scripted_indexer_backend(
+    let backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config,
         &workspace,
         &fixture.path().join("references.sock"),
+        2,
         vec![
             (
                 "selector/identity",
@@ -260,8 +273,19 @@ fn review_comment_regression_references_retain_containing_symbol_evidence() {
         "{value:#}",
     );
     let requests = backend.join().expect("references backend");
+    let semantic_requests = requests
+        .iter()
+        .filter(|request| {
+            !matches!(
+                request["method"].as_str(),
+                Some("runtime/status" | "capabilities")
+            )
+        })
+        .collect::<Vec<_>>();
     assert_eq!(
-        requests.last().expect("references request")["method"],
+        semantic_requests
+            .last()
+            .expect("references semantic request")["method"],
         "symbol/references"
     );
 }

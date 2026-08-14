@@ -115,15 +115,16 @@ fn spawn_operation_backend(
     );
     std::thread::spawn(move || {
         let _exact_test_runtime = exact_test_runtime;
-        let mut requests = Vec::new();
-        while requests.iter().all(|request: &Value| {
-            request["method"]
-                != if dependent_symbol {
-                    "symbol/resolve"
-                } else {
-                    "mutation/submit"
-                }
-        }) {
+        let mut requests: Vec<Value> = Vec::new();
+        while if dependent_symbol {
+            !requests.windows(2).any(|pair| {
+                pair[0]["method"] == "symbol/resolve" && pair[1]["method"] == "runtime/status"
+            })
+        } else {
+            requests
+                .iter()
+                .all(|request: &Value| request["method"] != "mutation/submit")
+        } {
             let (mut stream, _) = listener.accept().expect("accept client");
             let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
             let mut line = String::new();
@@ -137,11 +138,7 @@ fn spawn_operation_backend(
                     "backendVersion": "test",
                     "workspaceRoot": workspace,
                     "sourceModuleNames": [":fixture"],
-                    "readiness": {
-                        "runtime": {"type": "READY"}, "model": {"type": "READY"},
-                        "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
-                        "mutation": {"type": "READY"}
-                    },
+                    "readiness": ready_runtime_readiness(),
                     "publishedWorkspaceGeneration": published.clone(),
                     "schemaVersion": api_schema_version()
                 }),

@@ -5,11 +5,7 @@ fn ready_runtime(workspace: &std::path::Path) -> serde_json::Value {
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "sourceModuleNames": ["app"],
-        "readiness": {
-            "runtime": {"type": "READY"}, "model": {"type": "READY"},
-            "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
-            "mutation": {"type": "READY"}
-        },
+        "readiness": ready_runtime_readiness(),
         "schemaVersion": api_schema_version()
     })
 }
@@ -151,11 +147,14 @@ fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing()
                     "workspaceRoot": workspace.display().to_string(),
                     "sourceModuleNames": ["app"],
                     "readiness": {
-                        "runtime": {"type": "READY"},
-                        "model": {"type": "IN_PROGRESS", "progress": {}},
-                        "references": {"type": "BLOCKED"},
-                        "semanticGraph": {"type": "IN_PROGRESS", "progress": {}},
-                        "mutation": {"type": "BLOCKED"}
+                        "runtime": available_current_lane(1),
+                        "model": building_current_lane(),
+                        "workspaceFiles": building_current_lane(),
+                        "compiler": building_current_lane(),
+                        "sourceIndex": building_retained_lane(),
+                        "references": blocked_retained_lane(),
+                        "semanticGraph": building_retained_lane(),
+                        "mutation": blocked_current_lane()
                     },
                     "schemaVersion": api_schema_version()
                 }),
@@ -207,7 +206,10 @@ fn verify_fails_incomplete_semantic_graph_coverage_without_discarding_runtime_ev
             ("capabilities", capabilities.clone()),
             ("health", serde_json::json!({"ok": true, "status": "READY"})),
             ("runtime/status", runtime.clone()),
+            ("runtime/status", runtime.clone()),
+            ("runtime/status", runtime.clone()),
             ("capabilities", capabilities),
+            ("runtime/status", runtime.clone()),
             ("runtime/status", runtime),
         ],
     );
@@ -270,7 +272,10 @@ fn verify_verbose_reports_execution_level_semantic_graph_issue() {
             ("capabilities", capabilities.clone()),
             ("health", serde_json::json!({"ok": true, "status": "READY"})),
             ("runtime/status", runtime.clone()),
+            ("runtime/status", runtime.clone()),
+            ("runtime/status", runtime.clone()),
             ("capabilities", capabilities),
+            ("runtime/status", runtime.clone()),
             ("runtime/status", runtime),
         ],
     );

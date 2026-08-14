@@ -90,13 +90,14 @@ fn agent_rename_without_apply_returns_identity_first_plan_without_applied_mutati
     );
     let requests = backend.join().expect("scripted backend");
     assert_eq!(requests[2]["method"], "symbol/resolve");
-    assert_eq!(requests[3]["method"], "raw/rename");
-    assert_eq!(requests[3]["params"]["dryRun"], true);
+    assert_eq!(requests[3]["method"], "runtime/status");
+    assert_eq!(requests[4]["method"], "raw/rename");
+    assert_eq!(requests[4]["params"]["dryRun"], true);
     assert_eq!(
-        requests[3]["params"]["position"]["startOffset"],
+        requests[4]["params"]["position"]["startOffset"],
         Value::Null
     );
-    assert_eq!(requests[3]["params"]["position"]["offset"], 10);
+    assert_eq!(requests[4]["params"]["position"]["offset"], 10);
     assert!(
         !stdout["result"]["request"].to_string().contains("offset"),
         "public identity request must not depend on a caller-provided offset: {stdout}"

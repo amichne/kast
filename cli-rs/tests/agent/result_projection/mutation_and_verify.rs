@@ -10,41 +10,65 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let file = workspace.join("src/Added.kt");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let backend = spawn_scripted_mutating_indexer_backend(
+    let runtime = json!({
+        "state": "READY",
+        "backendName": "indexer",
+        "backendVersion": "scripted-test",
+        "workspaceRoot": workspace.display().to_string(),
+        "readiness": ready_runtime_readiness(),
+        "schemaVersion": api_schema_version()
+    });
+    let capabilities = json!({
+        "backendName": "indexer",
+        "backendVersion": "scripted-test",
+        "workspaceRoot": workspace.display().to_string(),
+        "readCapabilities": [],
+        "mutationCapabilities": ["RENAME"],
+        "limits": {
+            "requestTimeoutMillis": 60000,
+            "maxResults": 1000,
+            "maxConcurrentRequests": 4
+        },
+        "schemaVersion": api_schema_version()
+    });
+    let mutation_result = json!({
+        "type": "SUCCEEDED",
+        "result": {
+            "type": "RENAME_RESULT",
+            "response": {
+                "ok": true,
+                "editCount": 1,
+                "affectedFiles": [file.display().to_string()],
+                "applyResult": {
+                    "applied": [{
+                        "filePath": file.display().to_string(),
+                        "startOffset": 0,
+                        "endOffset": 5,
+                        "newText": "Renamed"
+                    }],
+                    "affectedFiles": [file.display().to_string()],
+                    "createdFiles": [],
+                    "deletedFiles": []
+                },
+                "diagnostics": {
+                    "errorCount": 0,
+                    "warningCount": 1
+                }
+            }
+        },
+        "deduplicated": false
+    });
+    let backend = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,
         &socket_path,
-        vec![(
-            "mutation/submit",
-            json!({
-                "type": "SUCCEEDED",
-                "result": {
-                    "type": "RENAME_RESULT",
-                    "response": {
-                        "ok": true,
-                        "editCount": 1,
-                        "affectedFiles": [file.display().to_string()],
-                        "applyResult": {
-                            "applied": [{
-                                "filePath": file.display().to_string(),
-                                "startOffset": 0,
-                                "endOffset": 5,
-                                "newText": "Renamed"
-                            }],
-                            "affectedFiles": [file.display().to_string()],
-                            "createdFiles": [],
-                            "deletedFiles": []
-                        },
-                        "diagnostics": {
-                            "errorCount": 0,
-                            "warningCount": 1
-                        }
-                    }
-                },
-                "deduplicated": false
-            }),
-        )],
+        vec![
+            ("runtime/status", runtime.clone()),
+            ("capabilities", capabilities),
+            ("mutation/submit", mutation_result),
+            ("runtime/status", runtime),
+        ],
     );
     let output = kast_at(&binary, &home, &config_home)
         .args([
@@ -100,13 +124,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
-        "readiness": {
-            "runtime": {"type": "READY"},
-            "model": {"type": "READY"},
-            "references": {"type": "READY"},
-            "semanticGraph": {"type": "READY"},
-            "mutation": {"type": "READY"}
-        },
+        "readiness": ready_runtime_readiness(),
         "schemaVersion": api_schema_version()
     });
     let capabilities = json!({
@@ -136,8 +154,11 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
             .into_iter()
             .chain([
                 ("health", json!({"ok": true, "status": "READY"})),
-                ("runtime/status", runtime),
+                ("runtime/status", runtime.clone()),
+                ("runtime/status", runtime.clone()),
+                ("runtime/status", runtime.clone()),
                 ("capabilities", capabilities),
+                ("runtime/status", runtime),
             ])
             .collect(),
     );

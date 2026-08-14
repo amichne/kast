@@ -117,10 +117,10 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         "edit": edit,
         "proof": proof,
         "fileImages": file_images.clone(),
-        "schemaVersion": 7
+        "schemaVersion": api_schema_version()
     });
     let socket = fixture.path().join("replacement-authority.sock");
-    let backend = spawn_scripted_indexer_backend(
+    let backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -220,7 +220,7 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     assert_eq!(decode(&replay), verified_receipt);
 
     std::fs::write(&declaration_file, &preimage).expect("reset replacement preimage");
-    let tamper_plan_backend = spawn_scripted_indexer_backend(
+    let tamper_plan_backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,

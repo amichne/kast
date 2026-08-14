@@ -18,7 +18,7 @@ fn continuations_are_operation_bound_and_stale_closed() {
     let selector = "ksh1.pagination-proof";
     let raw_continuation = "3f63f3a8-23c1-4be8-a707-dde43fbabf55";
 
-    let first_backend = support::spawn_scripted_indexer_backend_for_invocations(
+    let first_backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
@@ -75,7 +75,7 @@ fn continuations_are_operation_bound_and_stale_closed() {
     let first_requests = first_backend.join().expect("first reference backend");
     assert!(first_requests[1]["params"].get("pageToken").is_none());
 
-    let stale_backend = support::spawn_scripted_indexer_backend_for_invocations(
+    let stale_backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
@@ -120,7 +120,7 @@ fn continuations_are_operation_bound_and_stale_closed() {
         .expect("stale reference request");
     assert_eq!(stale_request["params"]["pageToken"], raw_continuation);
 
-    let mismatch_backend = support::spawn_scripted_indexer_backend_for_invocations(
+    let mismatch_backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,

@@ -2,13 +2,14 @@
 fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
     let fixture = GitWorkspaceFixture::new();
     let workspace = std::fs::canonicalize(fixture.linked()).expect("canonical linked");
-    let home = fixture.linked().join("test-home");
-    let config_home = fixture.linked().join("test-config");
+    let fixture_root = workspace.parent().expect("linked fixture root");
+    let home = fixture_root.join("home");
+    let config_home = fixture_root.join("config");
     let socket_path = fixture.socket_path("linked-symbol.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
     let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 3);
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 4);
 
     let symbol = kast(&home, &config_home)
         .args([
@@ -37,7 +38,12 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
     assert_eq!(output["result"]["source"], "compiler");
     assert_eq!(
         backend.join().expect("backend thread"),
-        vec!["runtime/status", "capabilities", "symbol/resolve"]
+        vec![
+            "runtime/status",
+            "capabilities",
+            "symbol/resolve",
+            "runtime/status"
+        ]
     );
 }
 
@@ -45,8 +51,9 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
 fn prepared_linked_worktree_supports_read_only_diagnostics() {
     let fixture = GitWorkspaceFixture::new();
     let workspace = std::fs::canonicalize(fixture.linked()).expect("canonical linked");
-    let home = fixture.linked().join("test-home");
-    let config_home = fixture.linked().join("test-config");
+    let fixture_root = workspace.parent().expect("linked fixture root");
+    let home = fixture_root.join("home");
+    let config_home = fixture_root.join("config");
     let socket_path = fixture.socket_path("linked-diagnostics.sock");
     std::fs::create_dir_all(&home).expect("home");
     let file = workspace.join("lib/Foo.kt");
@@ -54,7 +61,7 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
     std::fs::write(&file, "package lib\n\nclass Foo\n").expect("source file");
     let listener = bind_semantic_listener(&socket_path);
     let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 4);
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 6);
     let diagnostics = kast(&home, &config_home)
         .args([
             "--output",
@@ -84,7 +91,9 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
             "runtime/status",
             "capabilities",
             "raw/workspace-refresh",
-            "raw/diagnostics"
+            "runtime/status",
+            "raw/diagnostics",
+            "runtime/status"
         ]
     );
 }

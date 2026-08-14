@@ -23,11 +23,14 @@ fn agent_graph_refresh_requires_ready_before_semantic_graph_rpc() {
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "readiness": {
-                        "runtime": {"type": "READY"},
-                        "model": {"type": "IN_PROGRESS", "progress": {}},
-                        "references": {"type": "BLOCKED"},
-                        "semanticGraph": {"type": "IN_PROGRESS", "progress": {}},
-                        "mutation": {"type": "BLOCKED"}
+                        "runtime": available_current_lane(1),
+                        "model": building_current_lane(),
+                        "workspaceFiles": building_current_lane(),
+                        "compiler": building_current_lane(),
+                        "sourceIndex": building_retained_lane(),
+                        "references": blocked_retained_lane(),
+                        "semanticGraph": building_retained_lane(),
+                        "mutation": blocked_current_lane()
                     },
                     "schemaVersion": api_schema_version()
                 }),

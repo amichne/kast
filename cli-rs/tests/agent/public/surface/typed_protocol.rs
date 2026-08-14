@@ -150,7 +150,7 @@ fn selectors_round_trip_verbatim_across_the_overloaded_vertical_slice() {
     let second_selector = "ksh1.second-overload-proof";
     let selected_symbol = protocol_symbol(&declaration_file, 20);
     let selected_identity = protocol_identity(&declaration_file, 20);
-    let backend = support::spawn_scripted_indexer_backend_for_invocations(
+    let backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,

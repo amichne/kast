@@ -183,7 +183,8 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
     let requests = backend.join().expect("replace handle backend");
     assert_eq!(requests[2]["method"], "selector/identity");
     assert_eq!(requests[2]["params"]["family"], "REPLACE_DECLARATION",);
-    assert_eq!(requests[3]["method"], "raw/plan-replacement");
+    assert_eq!(requests[3]["method"], "runtime/status");
+    assert_eq!(requests[4]["method"], "raw/plan-replacement");
 
     let missing_key = kast(&home, &config_home)
         .args([

@@ -172,7 +172,7 @@ pub(super) fn public_exact_add_file_preview(
             },
             "postimageSha256": sha256,
         },
-        "schemaVersion": 7,
+        "schemaVersion": api_schema_version(),
     })
 }
 
@@ -217,7 +217,7 @@ pub(super) fn independent_refresh(file: &Path) -> Value {
         "removedFileCount": 0,
         "attemptCount": 1,
         "elapsedMillis": 1,
-        "schemaVersion": 7
+        "schemaVersion": api_schema_version()
     })
 }
 
@@ -269,7 +269,7 @@ pub(super) fn independent_diagnostics(
             "total": total
         },
         "cardinality": {"type": "EXACT", "totalCount": total},
-        "schemaVersion": 7
+        "schemaVersion": api_schema_version()
     });
     if let Some(page) = page {
         result["page"] = page;

@@ -53,6 +53,10 @@ fn default_applied_mutation_maps_every_public_family_to_unavailable_semantic_dem
     std::fs::write(&content_file, "fun added() = Unit\n").expect("content");
 
     for mut args in applied_mutation_cases(&target_file, &content_file) {
+        let expected_code = match args.get(1).map(String::as_str) {
+            Some("add-declaration") => "KAST_VERIFIED_ADD_DECLARATION_WORKFLOW_REQUIRED",
+            _ => "RUNTIME_NOT_READY",
+        };
         args.extend([
             "--apply".to_string(),
             "--idempotency-key".to_string(),
@@ -68,7 +72,7 @@ fn default_applied_mutation_maps_every_public_family_to_unavailable_semantic_dem
         assert!(!mutation.status.success(), "unprepared mutation must fail");
         let output: serde_json::Value =
             serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
-        assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE", "{output:#}");
+        assert_eq!(output["error"]["code"], expected_code, "{output:#}");
     }
 }
 

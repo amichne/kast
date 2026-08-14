@@ -7,13 +7,14 @@ use support::*;
 fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     let fixture = GitWorkspaceFixture::new();
     let workspace = std::fs::canonicalize(fixture.primary()).expect("canonical primary");
-    let home = fixture.primary().join("test-home");
-    let config_home = fixture.primary().join("test-config");
+    let fixture_root = workspace.parent().expect("primary fixture root");
+    let home = fixture_root.join("home");
+    let config_home = fixture_root.join("config");
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
     let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 10);
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 16);
 
     let verify = kast(&home, &config_home)
         .args([
@@ -74,12 +75,18 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
             "capabilities",
             "health",
             "runtime/status",
+            "runtime/status",
+            "runtime/status",
             "capabilities",
+            "runtime/status",
             "runtime/status",
             "capabilities",
             "health",
             "runtime/status",
+            "runtime/status",
+            "runtime/status",
             "capabilities",
+            "runtime/status",
         ]
     );
 }
@@ -88,13 +95,14 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
 fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
     let fixture = GitWorkspaceFixture::new();
     let workspace = std::fs::canonicalize(fixture.linked()).expect("canonical linked");
-    let home = fixture.linked().join("test-home");
-    let config_home = fixture.linked().join("test-config");
+    let fixture_root = workspace.parent().expect("linked fixture root");
+    let home = fixture_root.join("home");
+    let config_home = fixture_root.join("config");
     let socket_path = fixture.socket_path("linked-verify-views.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
     let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 15);
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 24);
     let views: [&[&str]; 3] = [&[], &["--fields", "health"], &["--count"]];
 
     for view in views {
@@ -128,7 +136,7 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
             "view={view:?}: {output:#}",
         );
     }
-    assert_eq!(backend.join().expect("backend thread").len(), 15);
+    assert_eq!(backend.join().expect("backend thread").len(), 24);
 }
 
 #[test]
@@ -147,7 +155,7 @@ fn unprepared_disposable_checkout_can_use_indexer_read_only_workflows() {
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
     let _runtime = write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 12);
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 18);
     let install_manifest = install_manifest_path(&home);
     let homebrew_receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
     assert!(!install_manifest.exists());
@@ -232,7 +240,7 @@ fn unprepared_disposable_checkout_can_use_indexer_read_only_workflows() {
     );
     assert!(!install_manifest.exists());
     assert!(!homebrew_receipt.exists());
-    assert_eq!(backend.join().expect("backend thread").len(), 12);
+    assert_eq!(backend.join().expect("backend thread").len(), 18);
 }
 
 #[test]

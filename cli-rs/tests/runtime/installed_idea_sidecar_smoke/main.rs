@@ -8,8 +8,9 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use support::{
-    api_schema_version, default_install_root, default_socket_path_for_test,
-    spawn_ready_indexer_backend_after_marker, spawn_sequenced_indexer_backend,
+    api_schema_version, available_current_lane, available_retained_lane, blocked_retained_lane,
+    default_install_root, default_socket_path_for_test, spawn_ready_indexer_backend_after_marker,
+    spawn_sequenced_indexer_backend,
 };
 
 const SIDECAR_LAUNCH_MARKER: &str = "__KAST_SIDECAR_LAUNCH__";
@@ -274,11 +275,18 @@ fn runtime_status(workspace: &Path, references_ready: bool) -> serde_json::Value
         "workspaceRoot": workspace.display().to_string(),
         "sourceModuleNames": [":fixture"],
         "readiness": {
-            "runtime": {"type": "READY"},
-            "model": {"type": "READY"},
-            "references": {"type": if references_ready { "READY" } else { "BLOCKED" }},
-            "semanticGraph": {"type": "READY"},
-            "mutation": {"type": "READY"}
+            "runtime": available_current_lane(1),
+            "model": available_current_lane(1),
+            "workspaceFiles": available_current_lane(1),
+            "compiler": available_current_lane(1),
+            "sourceIndex": available_retained_lane(1),
+            "references": if references_ready {
+                available_retained_lane(1)
+            } else {
+                blocked_retained_lane()
+            },
+            "semanticGraph": available_retained_lane(1),
+            "mutation": available_current_lane(1)
         },
         "schemaVersion": api_schema_version()
     })

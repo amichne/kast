@@ -16,7 +16,7 @@ fn exact_routes_reject_substitutes_through_closed_selector_authentication() {
         "kgns1.graph-node-selector-cannot-substitute",
         "ksh1.valid-looking-but-malformed",
     ];
-    let backend = support::spawn_scripted_indexer_backend_for_invocations(
+    let backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,

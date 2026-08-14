@@ -20,11 +20,13 @@ fn change_add_declaration_normalizes_one_terminal_line_ending() {
         let target = target.canonicalize().expect("canonical target");
         let plan_id = source_sha256(case.as_bytes());
         let preview = verified_add_declaration_plan_result(&plan_id, &target, declaration, 7);
-        let backend = spawn_scripted_indexer_backend(
+        let planner_shutdown = fixture.path().join(format!("{case}.shutdown"));
+        let backend = spawn_scripted_mutating_indexer_backend_until_marker(
             &home,
             &config_home,
             &workspace,
             &fixture.path().join(format!("{case}.sock")),
+            &planner_shutdown,
             vec![("change/plan-add-declaration", preview)],
         );
         let binary = write_active_kast_for_test(&home, &config_home);
@@ -37,6 +39,7 @@ fn change_add_declaration_normalizes_one_terminal_line_ending() {
             target.to_str().expect("target"),
         ]);
         let change = run_with_stdin(change, input);
+        std::fs::write(&planner_shutdown, "stop\n").expect("planner shutdown");
         let requests = backend
             .join()
             .unwrap_or_else(|_| panic!("{case} planner backend"));
@@ -89,12 +92,14 @@ fn change_add_declaration_retains_typed_rejection_for_invalid_content() {
         std::fs::write(&target, "class Existing\n").expect("existing source");
         let workspace = workspace.canonicalize().expect("canonical workspace");
         let target = target.canonicalize().expect("canonical target");
+        let planner_shutdown = fixture.path().join(format!("invalid-{case}.shutdown"));
         let backend = (case == "multiple-declarations").then(|| {
-            spawn_scripted_indexer_backend(
+            spawn_scripted_mutating_indexer_backend_until_marker(
                 &home,
                 &config_home,
                 &workspace,
                 &fixture.path().join(format!("invalid-{case}.sock")),
+                &planner_shutdown,
                 vec![(
                     "change/plan-add-declaration",
                     scripted_json_rpc_error(
@@ -117,6 +122,7 @@ fn change_add_declaration_retains_typed_rejection_for_invalid_content() {
         ]);
         let change = run_with_stdin(change, input);
         if let Some(backend) = backend {
+            std::fs::write(&planner_shutdown, "stop\n").expect("invalid planner shutdown");
             backend
                 .join()
                 .unwrap_or_else(|_| panic!("{case} planner backend"));

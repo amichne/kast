@@ -159,10 +159,10 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
         "affectedFiles": [declaration_file, reference_file],
         "proof": proof,
         "fileImages": file_images.clone(),
-        "schemaVersion": 7
+        "schemaVersion": api_schema_version()
     });
     let socket = fixture.path().join("rename-authority.sock");
-    let backend = spawn_scripted_indexer_backend(
+    let backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -288,7 +288,7 @@ fn change_rename_persists_restart_safe_exact_file_authority() {
 
     std::fs::write(&declaration_file, &declaration_preimage).expect("reset declaration preimage");
     std::fs::write(&reference_file, &reference_preimage).expect("reset reference preimage");
-    let restart_plan_backend = spawn_scripted_indexer_backend(
+    let restart_plan_backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,

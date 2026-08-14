@@ -13,7 +13,9 @@ fn truncated_page_can_hide_analysis_failure_without_invalidating_evidence() {
             "runtime/status",
             "capabilities",
             "raw/workspace-refresh",
-            "raw/diagnostics"
+            "runtime/status",
+            "raw/diagnostics",
+            "runtime/status"
         ],
     );
     assert!(!output.status.success(), "{document:#}");
@@ -97,7 +99,9 @@ fn assert_invalid_semantic_evidence(file_name: &str, diagnostics: fn(&Path) -> V
             "runtime/status",
             "capabilities",
             "raw/workspace-refresh",
-            "raw/diagnostics"
+            "runtime/status",
+            "raw/diagnostics",
+            "runtime/status"
         ],
     );
     assert!(!output.status.success(), "{document:#}");
@@ -131,7 +135,7 @@ fn run_single_json_scenario(
         workspace.clone(),
         complete_refresh(&canonical_test_path(&file)),
         diagnostics(&canonical_test_path(&file)),
-        4,
+        6,
     );
     let output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
     let requests = backend.join().expect("fake diagnostics backend");
@@ -237,7 +241,9 @@ fn expected_diagnostics_methods() -> Vec<&'static str> {
         "runtime/status",
         "capabilities",
         "raw/workspace-refresh",
+        "runtime/status",
         "raw/diagnostics",
+        "runtime/status",
     ]
     .to_vec()
 }

@@ -112,7 +112,10 @@ fn agent_symbol_uses_indexed_exact_only_when_compiler_is_unavailable() {
             .is_some_and(|code| !code.is_empty()),
         "{stdout}"
     );
-    assert_eq!(backend.join().expect("ready indexer").len(), 6);
+    let requests = backend.join().expect("ready indexer");
+    assert_eq!(requests.len(), 7);
+    assert_eq!(requests[3]["method"], "runtime/status");
+    assert_eq!(requests[6]["method"], "runtime/status");
 }
 
 #[test]
@@ -166,7 +169,10 @@ fn agent_symbol_indexed_exact_cardinality_ignores_presentation_limit() {
                 .len(),
             2
         );
-        assert_eq!(backend.join().expect("ready indexer").len(), 6);
+        let requests = backend.join().expect("ready indexer");
+        assert_eq!(requests.len(), 7);
+        assert_eq!(requests[3]["method"], "runtime/status");
+        assert_eq!(requests[6]["method"], "runtime/status");
     }
 }
 
@@ -220,7 +226,12 @@ fn agent_symbol_indexed_file_hint_is_literal_and_suffix_equivalent() {
         let stdout: Value = serde_json::from_slice(&output.stdout).expect("fallback json");
         assert_eq!(stdout["result"]["outcome"], expected_outcome);
     }
-    assert_eq!(backend.join().expect("ready indexer").len(), 12);
+    let requests = backend.join().expect("ready indexer");
+    assert_eq!(requests.len(), 14);
+    assert_eq!(requests[3]["method"], "runtime/status");
+    assert_eq!(requests[6]["method"], "runtime/status");
+    assert_eq!(requests[10]["method"], "runtime/status");
+    assert_eq!(requests[13]["method"], "runtime/status");
 }
 
 fn compiler_unavailable() -> serde_json::Value {
@@ -287,5 +298,8 @@ fn agent_symbol_operational_resolve_failure_never_falls_back() {
     assert!(!output.status.success());
     let stdout: Value = serde_json::from_slice(&output.stdout).expect("failure json");
     assert_eq!(stdout["error"]["code"], "RESOLVE_FAILURE");
-    assert_eq!(handle.join().expect("scripted backend").len(), 3);
+    let requests = handle.join().expect("scripted backend");
+    assert_eq!(requests.len(), 4);
+    assert_eq!(requests[2]["method"], "symbol/resolve");
+    assert_eq!(requests[3]["method"], "runtime/status");
 }

@@ -25,6 +25,33 @@ pub(crate) fn spawn_scripted_indexer_backend_for_invocations(
     )
 }
 
+pub(crate) fn spawn_scripted_indexer_read_backend_with_postvalidation(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    spawn_scripted_backend_with_additional_runtime_status_requests(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        "indexer",
+        1,
+        true,
+        vec![],
+        None,
+        None,
+        None,
+        None,
+        1,
+        false,
+        scripted_results,
+        ScriptedRuntimeAuthority::PublishExact,
+    )
+}
+
 pub(crate) fn spawn_scripted_indexer_backend_for_published_workspace_read(
     home: &Path,
     config_home: &Path,
@@ -324,7 +351,7 @@ pub(crate) fn spawn_ready_scripted_indexer_backend_for_invocations(
         None,
         None,
         None,
-        invocation_count.saturating_mul(3),
+        invocation_count.saturating_mul(4),
         false,
         scripted_results,
         ScriptedRuntimeAuthority::PublishExact,

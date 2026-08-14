@@ -68,14 +68,14 @@ fn spawn_ready_demo_backend(
                         "backendVersion": "demo-test",
                         "workspaceRoot": server_workspace.display().to_string(),
                         "sourceModuleNames": [":fixture"],
-                        "readiness": {
-                            "runtime": {"type": "READY"}, "model": {"type": "READY"},
-                            "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
-                            "mutation": {"type": "READY"}
-                        },
+                        "readiness": ready_runtime_readiness(),
                         "schemaVersion": api_schema_version()
                     });
                     if let Some(published_generation) = &published_generation {
+                        align_available_retained_lanes_with_publication(
+                            &mut status,
+                            published_generation,
+                        );
                         status["publishedWorkspaceGeneration"] = published_generation.clone();
                     }
                     status

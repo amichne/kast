@@ -366,15 +366,13 @@ printf '%s\n' '{{"status":"ready"}}'
         started.elapsed() < std::time::Duration::from_secs(2),
         "SessionStart waited for public semantic readiness",
     );
-    for _ in 0..100 {
-        if public_invocation.is_file() {
-            break;
-        }
+    let invocation_deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while !public_invocation.is_file() && std::time::Instant::now() < invocation_deadline {
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
     assert!(
         public_invocation.is_file(),
-        "public `kast up` was not launched"
+        "public `kast up` was not launched: {output:?}"
     );
     assert!(
         output.status.success(),

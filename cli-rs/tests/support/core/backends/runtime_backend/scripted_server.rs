@@ -1,11 +1,11 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ScriptedRuntimeAuthority {
+pub(super) enum ScriptedRuntimeAuthority {
     PublishExact,
     ReuseRegistered,
 }
 
 #[allow(clippy::too_many_arguments)]
-fn spawn_scripted_backend_with_additional_runtime_status_requests(
+pub(super) fn spawn_scripted_backend_with_additional_runtime_status_requests(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -59,7 +59,8 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
         let mut unified_session_active = false;
         let mut unified_session_complete = false;
         let mut unified_semantic_verification_complete = false;
-        let mut idle_deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let mut operation_started = false;
+        let mut idle_deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
         while requests.len() < expected_requests
             || scripted_results.len() > 0
             || (unified_session_active
@@ -91,24 +92,38 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
             let method = request["method"].as_str().expect("method");
             let result = match method {
                 "runtime/status" => {
+                    let published =
+                        published_workspace_generation_for_test(&server_workspace);
                     let mut status = serde_json::json!({
                         "state": "READY",
                         "backendName": server_backend_name.as_str(),
                         "backendVersion": "scripted-test",
                         "workspaceRoot": server_workspace.display().to_string(),
                         "sourceModuleNames": [":fixture"],
-                        "readiness": {
-                            "runtime": {"type": "READY"},
-                            "model": {"type": "READY"},
-                            "references": {"type": if semantic_ready { "READY" } else { "BLOCKED" }},
-                            "semanticGraph": {"type": if semantic_ready { "READY" } else { "BLOCKED" }},
-                            "mutation": {"type": "READY"}
+                        "readiness": if semantic_ready {
+                            ready_runtime_readiness()
+                        } else {
+                            serde_json::json!({
+                                "runtime": available_current_lane(1),
+                                "model": available_current_lane(1),
+                                "workspaceFiles": available_current_lane(1),
+                                "compiler": available_current_lane(1),
+                                "sourceIndex": blocked_retained_lane(),
+                                "references": blocked_retained_lane(),
+                                "semanticGraph": blocked_retained_lane(),
+                                "mutation": blocked_current_lane()
+                            })
                         },
-                        "schemaVersion": 7
+                        "schemaVersion": api_schema_version()
                     });
-                    if let Some(published) =
-                        published_workspace_generation_for_test(&server_workspace)
-                    {
+                    if let Some(published) = published {
+                        if !semantic_ready {
+                            expose_published_retained_lanes(&mut status, &published);
+                        }
+                        align_available_retained_lanes_with_publication(
+                            &mut status,
+                            &published,
+                        );
                         status["publishedWorkspaceGeneration"] = published;
                     }
                     status
@@ -133,9 +148,10 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 7
+                    "schemaVersion": api_schema_version()
                 }),
                 _ => {
+                    operation_started = true;
                     if matches!(
                         method,
                         "raw/rename"
@@ -237,9 +253,11 @@ fn spawn_scripted_backend_with_additional_runtime_status_requests(
             requests.push(request);
             idle_deadline = std::time::Instant::now()
                 + if unified_session_active {
-                    std::time::Duration::from_secs(1)
+                    std::time::Duration::from_secs(5)
+                } else if operation_started {
+                    std::time::Duration::from_secs(20)
                 } else {
-                    std::time::Duration::from_secs(10)
+                    std::time::Duration::from_secs(60)
                 };
             let response = if let Some(error) = result.get("__kastTestJsonRpcError") {
                 serde_json::json!({"jsonrpc":"2.0","id":1,"error":error})
@@ -268,5 +286,23 @@ pub(crate) fn publish_scripted_workspace_capabilities(workspace: &Path) {
     connection
         .execute("UPDATE schema_version SET generation = 1 WHERE generation = 0", [])
         .expect("scripted source revision");
-    publish_workspace_database_for_test(workspace);
+    let source_index_generation = connection
+        .query_row("SELECT generation FROM schema_version LIMIT 1", [], |row| {
+            row.get::<_, i64>(0)
+        })
+        .expect("scripted source-index generation");
+    drop(connection);
+    match published_workspace_generation_for_test(workspace) {
+        Some(publication)
+            if publication["sourceIndexGeneration"].as_i64()
+                == Some(source_index_generation) => {}
+        _ => {
+            let publication = publish_workspace_database_for_test(workspace);
+            assert_eq!(
+                publication["sourceIndexGeneration"].as_i64(),
+                Some(source_index_generation),
+                "scripted runtime publication must carry the exact database generation",
+            );
+        }
+    }
 }

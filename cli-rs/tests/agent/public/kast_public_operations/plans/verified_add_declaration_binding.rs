@@ -24,7 +24,7 @@ fn change_add_declaration_apply_uses_verified_operation_binding_without_raw_bypa
             "proposedDeclaration": declaration,
             "generation": 7,
         },
-        "schemaVersion": 7,
+        "schemaVersion": api_schema_version(),
     });
     let verified_receipt = json!({
         "outcome": "VERIFIED",
@@ -43,7 +43,7 @@ fn change_add_declaration_apply_uses_verified_operation_binding_without_raw_bypa
             "declarationKind": "CLASS",
         },
         "postimageSha256": postimage_sha256,
-        "schemaVersion": 7,
+        "schemaVersion": api_schema_version(),
     });
     let backend = support::spawn_verified_add_declaration_binding_backend(
         &home,

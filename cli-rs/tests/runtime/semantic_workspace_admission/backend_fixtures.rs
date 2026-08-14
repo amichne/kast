@@ -124,11 +124,7 @@ impl ObservedSemanticBackend {
                             "backendVersion": "admission-test",
                             "workspaceRoot": workspace.display().to_string(),
                             "sourceModuleNames": [":fixture"],
-                            "readiness": {
-                                "runtime": {"type": "READY"}, "model": {"type": "READY"},
-                                "references": {"type": "READY"}, "semanticGraph": {"type": "READY"},
-                                "mutation": {"type": "READY"}
-                            },
+                            "readiness": ready_runtime_readiness(),
                             "schemaVersion": api_schema_version()
                         });
                         if let Some(published) = &published {
@@ -240,20 +236,29 @@ fn spawn_verify_backend(
                     "backendVersion": "admission-test",
                     "schemaVersion": api_schema_version()
                 }),
-                "runtime/status" => serde_json::json!({
-                    "state": "READY",
-                    "backendName": backend_name,
-                    "backendVersion": "admission-test",
-                    "workspaceRoot": workspace.display().to_string(),
-                    "sourceModuleNames": [":analysis-api", ":indexer"],
-                    "readiness": {
-                        "runtime": {"type": "READY"}, "model": {"type": "READY"},
-                        "references": {"type": "BLOCKED"}, "semanticGraph": {"type": "READY"},
-                        "mutation": {"type": "READY"}
-                    },
-                    "publishedWorkspaceGeneration": published.clone(),
-                    "schemaVersion": api_schema_version()
-                }),
+                "runtime/status" => {
+                    let mut status = serde_json::json!({
+                        "state": "READY",
+                        "backendName": backend_name,
+                        "backendVersion": "admission-test",
+                        "workspaceRoot": workspace.display().to_string(),
+                        "sourceModuleNames": [":analysis-api", ":indexer"],
+                        "readiness": {
+                            "runtime": available_current_lane(1),
+                            "model": available_current_lane(1),
+                            "workspaceFiles": available_current_lane(1),
+                            "compiler": available_current_lane(1),
+                            "sourceIndex": available_retained_lane(1),
+                            "references": blocked_retained_lane(),
+                            "semanticGraph": available_retained_lane(1),
+                            "mutation": available_current_lane(1)
+                        },
+                        "publishedWorkspaceGeneration": published.clone(),
+                        "schemaVersion": api_schema_version()
+                    });
+                    align_available_retained_lanes_with_publication(&mut status, &published);
+                    status
+                }
                 "capabilities" => serde_json::json!({
                     "backendName": backend_name,
                     "backendVersion": "admission-test",

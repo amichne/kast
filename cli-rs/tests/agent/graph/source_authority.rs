@@ -90,11 +90,12 @@ fn agent_graph_scope_blocks_selected_pending_updates_but_ignores_proven_nonmembe
     std::fs::write(&app_main, "package sample\nclass App\n").expect("source");
     let index = seed_graph_source_scope_index(&workspace);
     index.seed_pending_update_at(4, "Lib.kt", false);
-    let handle = spawn_scripted_indexer_backend(
+    let handle = spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &temp.path().join("indexer.sock"),
+        1,
         vec![(
             "raw/semantic-graph",
             json!({

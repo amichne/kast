@@ -16,6 +16,7 @@ use support::{
     spawn_gated_prepared_scratch_crash_backend, spawn_gated_quarantine_scratch_crash_backend,
     spawn_lease_only_mutating_indexer_backend, spawn_scripted_indexer_backend,
     spawn_scripted_indexer_backend_for_invocations, spawn_scripted_mutating_indexer_backend,
+    spawn_scripted_mutating_indexer_backend_until_marker,
     spawn_scripted_mutating_indexer_backend_with_file_write, workspace_database_path_for_test,
     workspace_files::WorkspaceIndexFixture, write_active_kast_for_test,
 };

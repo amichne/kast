@@ -208,11 +208,12 @@ fn one_issued_selector_round_trips_verbatim_through_every_relation_consumer() {
 
     for (index, (args, operation, method, family, subject)) in cases.into_iter().enumerate() {
         let identity = subject.clone();
-        let backend = support::spawn_scripted_indexer_backend(
+        let backend = support::spawn_ready_scripted_indexer_backend_for_invocations(
             &home,
             &config,
             &workspace,
             &fixture.path().join(format!("relation-{index}.sock")),
+            1,
             vec![
                 (
                     "selector/identity",

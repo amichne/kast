@@ -255,11 +255,12 @@ fn agent_replacement_preview_projects_exact_compiler_proof_and_inline_request() 
 
     let requests = backend.join().expect("replacement backend");
     assert_eq!(requests[2]["method"], "symbol/resolve");
-    assert_eq!(requests[3]["method"], "raw/plan-replacement");
-    assert_eq!(requests[3]["params"]["proposedDeclaration"], proposed);
-    assert_eq!(requests[3]["params"]["target"], preview["proof"]["target"],);
+    assert_eq!(requests[3]["method"], "runtime/status");
+    assert_eq!(requests[4]["method"], "raw/plan-replacement");
+    assert_eq!(requests[4]["params"]["proposedDeclaration"], proposed);
+    assert_eq!(requests[4]["params"]["target"], preview["proof"]["target"],);
     assert!(
-        requests[3]["params"].get("contentFile").is_none(),
+        requests[4]["params"].get("contentFile").is_none(),
         "raw proof request must carry exact inline content: {requests:#?}",
     );
 }

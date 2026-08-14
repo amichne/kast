@@ -146,7 +146,11 @@ fn public_apply_classifies_exact_source_drift_before_semantic_revalidation() {
     assert_eq!(apply.status.code(), Some(1), "{apply:?}");
     let receipt = decode(&apply);
     assert_eq!(receipt["outcome"], "CONFLICTED", "{receipt:#}");
-    assert_eq!(receipt["schemaVersion"], 7, "{receipt:#}");
+    assert_eq!(
+        receipt["schemaVersion"],
+        api_schema_version(),
+        "{receipt:#}"
+    );
     assert_eq!(
         std::fs::read(&target).expect("foreign source retained"),
         foreign
@@ -212,7 +216,11 @@ fn public_apply_persists_stable_rejected_and_conflicted_outcomes() {
         rejected_receipt["outcome"], "REJECTED",
         "{rejected_receipt:#}"
     );
-    assert_eq!(rejected_receipt["schemaVersion"], 7, "{rejected_receipt:#}");
+    assert_eq!(
+        rejected_receipt["schemaVersion"],
+        api_schema_version(),
+        "{rejected_receipt:#}"
+    );
     assert!(
         !rejected_target.exists(),
         "rejection retained absent pre-state"
@@ -268,7 +276,8 @@ fn public_apply_persists_stable_rejected_and_conflicted_outcomes() {
         "{conflicted_receipt:#}"
     );
     assert_eq!(
-        conflicted_receipt["schemaVersion"], 7,
+        conflicted_receipt["schemaVersion"],
+        api_schema_version(),
         "{conflicted_receipt:#}"
     );
     assert_eq!(
