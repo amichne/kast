@@ -62,16 +62,20 @@ private fun RpcMethodRouter.requireVerifiedAddFileOperations() =
  * be extracted only here at the JSON-RPC boundary.
  */
 private fun JsonObject.admitPlanRequest(): VerifiedAddFilePlanRequest {
-    requireExactFields(PLAN_REQUEST_FIELDS)
-    val workspaceRoot = normalizedWorkspace(stringField("workspaceRoot"))
-    val target = stringField("targetPath").refinedBy(VerifiedAddFileTargetPath::refine)
+    val fields = when (val admission = ExactVerifiedAddFileFields.admit(this, PLAN_REQUEST_FIELDS)) {
+        is VerifiedAddFileExactFieldsAdmission.Admitted -> admission.value
+        is VerifiedAddFileExactFieldsAdmission.Rejected ->
+            throw admission.failure.toValidationException()
+    }
+    val workspaceRoot = normalizedWorkspace(fields.stringField("workspaceRoot"))
+    val target = fields.stringField("targetPath").refinedBy(VerifiedAddFileTargetPath::refine)
     if (!Path.of(target.value).startsWith(workspaceRoot.toJavaPath())) {
         throw ValidationException("TARGET_OUTSIDE_WORKSPACE")
     }
     return VerifiedAddFilePlanRequest(
         workspaceRoot = workspaceRoot,
         targetPath = target,
-        proposedContent = stringField("proposedContent").refinedBy(VerifiedAddFileContent::refine),
+        proposedContent = fields.stringField("proposedContent").refinedBy(VerifiedAddFileContent::refine),
     )
 }
 
@@ -83,17 +87,25 @@ private fun JsonObject.admitPlanRequest(): VerifiedAddFilePlanRequest {
  * [ValidationException]; primitives may be extracted only here at the JSON-RPC boundary.
  */
 private fun JsonObject.admitApplyRequest(): VerifiedAddFileApplyRequest {
-    requireExactFields(APPLY_REQUEST_FIELDS)
-    val approval = this["approvalEvidence"] as? JsonObject
+    val fields = when (val admission = ExactVerifiedAddFileFields.admit(this, APPLY_REQUEST_FIELDS)) {
+        is VerifiedAddFileExactFieldsAdmission.Admitted -> admission.value
+        is VerifiedAddFileExactFieldsAdmission.Rejected ->
+            throw admission.failure.toValidationException()
+    }
+    val approval = fields["approvalEvidence"] as? JsonObject
         ?: throw ValidationException("MALFORMED_WIRE_REQUEST")
-    approval.requireExactFields(APPROVAL_FIELDS)
+    val approvalFields = when (val admission = ExactVerifiedAddFileFields.admit(approval, APPROVAL_FIELDS)) {
+        is VerifiedAddFileExactFieldsAdmission.Admitted -> admission.value
+        is VerifiedAddFileExactFieldsAdmission.Rejected ->
+            throw admission.failure.toValidationException()
+    }
     return VerifiedAddFileApplyRequest(
-        workspaceRoot = normalizedWorkspace(stringField("workspaceRoot")),
-        planId = stringField("planId").refinedBy(VerifiedAddFilePlanId::refine),
-        expectedVersion = longField("expectedVersion").refinedBy(VerifiedAddFilePlanVersion::refine),
+        workspaceRoot = normalizedWorkspace(fields.stringField("workspaceRoot")),
+        planId = fields.stringField("planId").refinedBy(VerifiedAddFilePlanId::refine),
+        expectedVersion = fields.longField("expectedVersion").refinedBy(VerifiedAddFilePlanVersion::refine),
         approvalEvidence = VerifiedAddFileApprovalEvidence(
-            approvedBy = approval.stringField("approvedBy").refinedBy(VerifiedAddFileApprovedBy::refine),
-            evidenceSha256 = approval.stringField("evidenceSha256")
+            approvedBy = approvalFields.stringField("approvedBy").refinedBy(VerifiedAddFileApprovedBy::refine),
+            evidenceSha256 = approvalFields.stringField("evidenceSha256")
                 .refinedBy(VerifiedAddFileApprovalEvidenceSha256::refine),
         ),
     )
@@ -113,18 +125,61 @@ private inline fun <T> Long.refinedBy(
     is VerifiedAddFileRefinement.Rejected -> throw ValidationException(refinement.failure.name)
 }
 
-private fun JsonObject.requireExactFields(expected: Set<String>) {
-    if (keys != expected) throw ValidationException("MALFORMED_WIRE_REQUEST")
+private class ExactVerifiedAddFileFields private constructor(
+    private val fields: JsonObject,
+) {
+    operator fun get(name: String): JsonElement? = fields[name]
+
+    companion object {
+        /**
+         * Proof transition:
+         * `(JsonObject, Set<String>) -> VerifiedAddFileExactFieldsAdmission`.
+         *
+         * [VerifiedAddFileExactFieldsAdmission.Admitted] proves the object contains exactly the
+         * operation-owned field set. Missing or additional fields produce the closed
+         * [VerifiedAddFileExactFieldsFailure]. Raw values may be extracted only by the field
+         * readers at this JSON-RPC request boundary.
+         */
+        fun admit(
+            candidate: JsonObject,
+            expected: Set<String>,
+        ): VerifiedAddFileExactFieldsAdmission =
+            if (candidate.keys == expected) {
+                VerifiedAddFileExactFieldsAdmission.Admitted(ExactVerifiedAddFileFields(candidate))
+            } else {
+                VerifiedAddFileExactFieldsAdmission.Rejected(
+                    VerifiedAddFileExactFieldsFailure.MALFORMED_WIRE_REQUEST,
+                )
+            }
+    }
 }
 
-private fun JsonObject.stringField(name: String): String {
+private sealed interface VerifiedAddFileExactFieldsAdmission {
+    data class Admitted(val value: ExactVerifiedAddFileFields) : VerifiedAddFileExactFieldsAdmission
+
+    data class Rejected(
+        val failure: VerifiedAddFileExactFieldsFailure,
+    ) : VerifiedAddFileExactFieldsAdmission
+}
+
+private enum class VerifiedAddFileExactFieldsFailure {
+    MALFORMED_WIRE_REQUEST,
+}
+
+private fun VerifiedAddFileExactFieldsFailure.toValidationException(): ValidationException =
+    ValidationException(
+        message = "Invalid verified add-file request: $name",
+        details = mapOf("failure" to name),
+    )
+
+private fun ExactVerifiedAddFileFields.stringField(name: String): String {
     val primitive = this[name] as? JsonPrimitive
         ?: throw ValidationException("MALFORMED_WIRE_REQUEST")
     if (!primitive.isString) throw ValidationException("MALFORMED_WIRE_REQUEST")
     return primitive.content
 }
 
-private fun JsonObject.longField(name: String): Long {
+private fun ExactVerifiedAddFileFields.longField(name: String): Long {
     val primitive = this[name] as? JsonPrimitive
         ?: throw ValidationException("MALFORMED_WIRE_REQUEST")
     return primitive.takeUnless(JsonPrimitive::isString)?.longOrNull

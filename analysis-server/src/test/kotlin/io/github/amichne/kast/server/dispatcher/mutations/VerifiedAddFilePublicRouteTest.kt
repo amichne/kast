@@ -255,6 +255,39 @@ class VerifiedAddFilePublicRouteTest : AnalysisDispatcherTestSupport() {
     }
 
     @Test
+    fun `missing and additional request fields fail before binding lookup`() {
+        val approval = applyParams()["approvalEvidence"]!!.jsonObject
+        val cases = listOf(
+            "change/plan-add-file" to JsonObject(
+                planParams().filterKeys { it != "proposedContent" },
+            ),
+            "change/plan-add-file" to JsonObject(
+                planParams() + ("unexpected" to JsonPrimitive(true)),
+            ),
+            "change/apply-add-file" to JsonObject(
+                applyParams().filterKeys { it != "expectedVersion" },
+            ),
+            "change/apply-add-file" to JsonObject(
+                applyParams() + (
+                    "approvalEvidence" to JsonObject(
+                        approval + ("unexpected" to JsonPrimitive(true)),
+                    )
+                ),
+            ),
+        )
+
+        cases.forEach { (method, params) ->
+            val error = json.decodeFromJsonElement(
+                JsonRpcErrorResponse.serializer(),
+                dispatchRaw(method, params),
+            )
+
+            assertEquals("VALIDATION_ERROR", error.error.data?.code, method)
+            assertEquals("MALFORMED_WIRE_REQUEST", error.error.data?.details?.get("failure"), method)
+        }
+    }
+
+    @Test
     fun `verified add file lifecycle fails closed without an operation-specific binding`() {
         listOf(
             "change/plan-add-file" to buildJsonObject {
