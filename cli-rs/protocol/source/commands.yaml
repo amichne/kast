@@ -46,7 +46,6 @@ categories:
   - symbol/hierarchy
   - symbol/rename
   - symbol/write-and-validate
-  - symbol/add-file
   - symbol/add-implementation
   - symbol/add-statement
   - symbol/replace-declaration
@@ -1444,27 +1443,6 @@ commands:
     - SELECTOR_HANDLE_REJECTED
     successType: AVAILABLE
     summary: Authenticate an opaque selector handle for one operation family and recover its compact exact identity
-  symbol/add-file:
-    category: symbol
-    dataSource: backend
-    failureType: SCOPE_MUTATION_FAILURE
-    method: symbol/add-file
-    request:
-      fields:
-        contentFile:
-          type: string
-        filePath:
-          type: string
-        workspaceRoot:
-          nullable: true
-          optional: true
-          type: string
-      required:
-      - filePath
-      - contentFile
-    responseType: KastScopeMutationResponse
-    successType: SCOPE_MUTATION_SUCCESS
-    summary: Create a Kotlin file from a content file and validate the result
   symbol/add-implementation:
     category: symbol
     dataSource: backend

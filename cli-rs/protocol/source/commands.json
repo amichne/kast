@@ -22,7 +22,6 @@
       "symbol/hierarchy",
       "symbol/rename",
       "symbol/write-and-validate",
-      "symbol/add-file",
       "symbol/add-implementation",
       "symbol/add-statement",
       "symbol/replace-declaration"
@@ -1396,34 +1395,6 @@
         "name": "kast_write_and_validate",
         "description": "Apply a Kotlin edit and validate it in one call. Pass the type discriminator plus the fields for that variant. Prefer this over generic edit/create tools for .kt and .kts changes."
       }
-    },
-    "symbol/add-file": {
-      "method": "symbol/add-file",
-      "category": "symbol",
-      "summary": "Create a Kotlin file from a content file and validate the result",
-      "dataSource": "backend",
-      "request": {
-        "fields": {
-          "workspaceRoot": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "filePath": {
-            "type": "string"
-          },
-          "contentFile": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "filePath",
-          "contentFile"
-        ]
-      },
-      "responseType": "KastScopeMutationResponse",
-      "successType": "SCOPE_MUTATION_SUCCESS",
-      "failureType": "SCOPE_MUTATION_FAILURE"
     },
     "symbol/add-implementation": {
       "method": "symbol/add-implementation",

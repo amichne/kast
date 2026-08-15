@@ -74,6 +74,7 @@ fn addition_planner_catalog_retires_raw_addition_planners() {
     let catalog = catalog();
     assert!(catalog["commands"].get("raw/plan-add-file").is_none());
     assert!(catalog["commands"].get("raw/plan-add-declaration").is_none());
+    assert!(catalog["commands"].get("symbol/add-file").is_none());
 }
 
 #[test]

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `47`.
+Catalog version: `dev`. Methods: `46`.
 
 #### Method families
 
@@ -54,7 +54,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | --- | --- | --- | --- |
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit` |
-| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
+| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/plan-replacement`<br>`raw/exact-file-image-cas`<br>`raw/exact-file-observation`<br>`raw/inspect-mutation-scratch`<br>`raw/recover-mutation-scratch`<br>`raw/verify-mutation-postcondition`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `graph` | Cataloged JSON-RPC methods. | sqlite | `graph/coverage` |
 | `repository` | Cataloged JSON-RPC methods. | sqlite | `repository/query` |
@@ -98,7 +98,6 @@ uses a discriminated response envelope.
 | `symbol/hierarchy` | `symbol` | backend | Page exact type hierarchy relationships | `direction` | `workspaceRoot`<br>`selectorHandle`<br>`selector`<br>`depth`<br>`maxResults`<br>`pageToken` | `KastHierarchyResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID`<br>`SELECTOR_HANDLE_REJECTED` |
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type`<br>`RENAME_BY_SYMBOL_REQUEST`: `symbol`, `newName`<br>`RENAME_BY_OFFSET_REQUEST`: `filePath`, `offset`, `newName` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
 | `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type`<br>`CREATE_FILE_REQUEST`: `filePath`<br>`INSERT_AT_OFFSET_REQUEST`: `filePath`, `offset`<br>`REPLACE_RANGE_REQUEST`: `filePath`, `startOffset`, `endOffset` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
-| `symbol/add-file` | `symbol` | backend | Create a Kotlin file from a content file and validate the result | `filePath`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/add-implementation` | `symbol` | backend | Insert implementation content into a file or named Kotlin scope and validate the result | `placement`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/add-statement` | `symbol` | backend | Insert statement content into a named executable Kotlin scope and validate the result | `insideScope`<br>`anchor`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/replace-declaration` | `symbol` | backend | Replace a named Kotlin declaration using declaration-scope evidence and validate the result | `symbol`<br>`contentFile` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
@@ -426,20 +425,6 @@ Request variants:
 
 Response type: `KastWriteAndValidateResponse`.
 Result variants: `WRITE_AND_VALIDATE_SUCCESS`, `WRITE_AND_VALIDATE_FAILURE`.
-
-</details>
-
-<details markdown="1">
-<summary><code>symbol/add-file</code> - Create a Kotlin file from a content file and validate the result</summary>
-
-| Field | Type | Required | Nullable | Values |
-| --- | --- | --- | --- | --- |
-| `workspaceRoot` | `string` | no | yes |  |
-| `filePath` | `string` | yes | no |  |
-| `contentFile` | `string` | yes | no |  |
-
-Response type: `KastScopeMutationResponse`.
-Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
 
 </details>
 
