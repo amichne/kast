@@ -95,7 +95,7 @@ class WorkspaceIndexingScopeTest {
             "src/main/App.kt",
             "src/test/AppTest.kt",
             "build/generated/Generated.kt",
-            "cli-rs/target/debug/generated/Generated.kt",
+            "build/generated/runtime/Generated.kt",
             ".gradle/cache/Cache.kt",
             "out/classes/Output.kt",
             ".idea/metadata/Idea.kt",
@@ -112,7 +112,7 @@ class WorkspaceIndexingScopeTest {
     @Test
     fun `large excluded output scope does not remain retained after resolution`() {
         val outputCandidates = List(20_000) { index ->
-            workspace.resolve("cli-rs/target/debug/incremental/$index/Generated.kt")
+            workspace.resolve("build/generated/incremental/$index/Generated.kt")
         }
         val sourceCandidates = List(64) { index ->
             workspace.resolve("module-$index/src/main/kotlin/Source$index.kt")

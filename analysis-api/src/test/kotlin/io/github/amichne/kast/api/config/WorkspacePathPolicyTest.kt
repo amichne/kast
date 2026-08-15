@@ -12,7 +12,7 @@ class WorkspacePathPolicyTest {
             "build/generated/Foo.kt",
             ".gradle/cache/Foo.kt",
             "out/classes/Foo.kt",
-            "cli-rs/target/debug/deps/Foo.kt",
+            "build/generated/deps/Foo.kt",
             ".idea/Foo.kt",
         )) {
             assertTrue(WorkspacePathPolicy.isHardExcluded(Path.of(path)), path)

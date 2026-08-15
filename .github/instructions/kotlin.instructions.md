@@ -8,7 +8,7 @@ applyTo: "**/kotlin/**/*.kt"
 
 This standard applies to all generated code. The principles are language-agnostic.
 Kotlin is the primary exemplar language; when generating code in other languages,
-apply the equivalent idioms (e.g., Rust's newtype pattern, TypeScript's branded types,
+apply the equivalent idioms (e.g., Swift's wrapper types, TypeScript's branded types,
 Java's sealed classes).
 
 ---
@@ -46,7 +46,7 @@ else       -> "Unknown"
 ```
 
 **Language-agnostic rule:** If a concept has a finite set of shapes, model them as
-a sum type (sealed class/interface, enum, tagged union, Rust enum, TypeScript
+a sum type (sealed class/interface, enum, tagged union, Swift enum, TypeScript
 discriminated union). Never model them as a string tag + untyped payload.
 
 ---
@@ -114,7 +114,7 @@ override fun toString(): String = raw
 **Language-agnostic rule:** The type's constructor is the single gatekeeper of
 validity. If you can write `val x = SomeType(bogusInput)` and get a live instance,
 the design is broken. Use private constructors + factory methods, `init` blocks,
-or the language's equivalent (Rust `pub fn new() -> Result<Self>`, TypeScript
+or the language's equivalent (Swift failable initializer, TypeScript
 branded types with assertion functions).
 
 ---

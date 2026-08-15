@@ -171,8 +171,7 @@ repair Kast. Resolve the typed indexer blocker instead.
 | included `build-logic` | `kast.*` conventions and reusable Gradle task types | Version catalog; no product project | `build-logic/AGENTS.md` |
 
 `analysis-api/src/testFixtures` is an independently consumed Gradle source-set
-variant with its own nearer `AGENTS.md`. The Rust `cli-rs` crate is outside the
-Gradle project graph and follows `cli-rs/AGENTS.md`.
+variant with its own nearer `AGENTS.md`.
 
 ## Dependency direction
 
@@ -191,9 +190,8 @@ workspace, symbol, evidence, and change contracts -> kernel
 ```
 
 `build-logic` configures the graph but does not become a product dependency.
-The repository root orchestrates generated protocol/docs output, portable
-indexer packaging, and the Rust development CLI; it must not become a shared
-domain-code module.
+The repository root orchestrates Gradle verification and portable indexer
+packaging; it must not become a shared domain-code module.
 
 ## Progressive instruction disclosure
 
@@ -229,6 +227,6 @@ Use widening proof and stop at the first ring that fully covers the change:
 6. Run `python3 .github/scripts/check-repository-shape.py --root .` on the
    final tracked tree. Governed files may have at most 400 physical lines and
    governed directories at most 10 direct children.
-7. Run the owning shell/Rust contracts as well when generated protocol,
+7. Run the owning shell contracts as well when generated protocol,
    installation, CLI lifecycle, runtime compatibility, or distribution layout
    crosses the Gradle boundary.

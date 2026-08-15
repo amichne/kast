@@ -23,5 +23,5 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enforce no-Rust product boundary
+      - name: Enforce retired-product boundary
         run: python3 .github/scripts/check-no-rust-product.py --root .

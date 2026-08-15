@@ -21,15 +21,9 @@ RETIRED_SCRIPT_FILES = frozenset(
     }
 )
 RETAINED_BINARY_NAMES = frozenset({"kast", "kastctl"})
-REFERENCE_ROOTS = (
-    ".github/",
-    "docs/",
-    "gradle/",
-    "packaging/",
-    "scripts/",
-)
 FORBIDDEN_REFERENCES = (
     ("CLI_RS", re.compile(r"(?i)(?:^|[^A-Za-z0-9_])cli-rs(?:[^A-Za-z0-9_]|$)")),
+    ("RUST_LANGUAGE", re.compile(r"(?i)(?:^|[^A-Za-z0-9_])rust(?:[^A-Za-z0-9_]|$)")),
     (
         "RUST_TOOLCHAIN",
         re.compile(
@@ -79,10 +73,7 @@ def tracked_paths(root: Path) -> tuple[str, ...]:
 
 
 def is_reference_surface(path: str) -> bool:
-    return (
-        path == "build.gradle.kts"
-        or path.startswith(REFERENCE_ROOTS)
-    )
+    return path != SELF
 
 
 def path_violations(path: str) -> list[Violation]:
@@ -112,6 +103,7 @@ def reference_violations(root: Path, path: str) -> list[Violation]:
         contents = (root / path).read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         return []
+    contents = contents.replace(SELF, "")
     violations: list[Violation] = []
     lines = contents.splitlines()
     for code, pattern in FORBIDDEN_REFERENCES:

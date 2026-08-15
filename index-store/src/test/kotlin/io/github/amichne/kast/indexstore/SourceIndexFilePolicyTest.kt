@@ -37,7 +37,7 @@ class SourceIndexFilePolicyTest {
             "/workspace/plugin/build/distributions/Plugin.kt",
             "/workspace/.gradle/caches/Foo.kt",
             "/workspace/out/production/Foo.kt",
-            "/workspace/cli-rs/target/debug/deps/Foo.kt",
+            "/workspace/build/generated/deps/Foo.kt",
             "/workspace/.idea/Foo.kt",
         )) {
             assertFalse(policy.isEligible(Path.of(path)), path)

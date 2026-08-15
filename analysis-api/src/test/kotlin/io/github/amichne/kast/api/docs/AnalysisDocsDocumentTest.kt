@@ -6,24 +6,7 @@ import io.github.amichne.kast.api.protocol.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.nio.file.Files
-import java.nio.file.Path
-
 class AnalysisDocsDocumentTest {
-
-    @Test
-    fun `checked in capabilities markdown matches generated document`() {
-        val expected = repoRoot().resolve("cli-rs/protocol/capabilities.md").toFile().readText()
-        val generated = DocsDocument.renderCapabilities()
-        assertEquals(expected, generated, "cli-rs/protocol/capabilities.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
-    }
-
-    @Test
-    fun `checked in api-reference markdown matches generated document`() {
-        val expected = repoRoot().resolve("cli-rs/protocol/api-reference.md").toFile().readText()
-        val generated = DocsDocument.renderApiReference()
-        assertEquals(expected, generated, "cli-rs/protocol/api-reference.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
-    }
 
     @Test
     fun `generated capabilities page contains a section for every JSON-RPC method`() {
@@ -207,8 +190,4 @@ class AnalysisDocsDocumentTest {
         }
         assertTrue(violations.isEmpty(), "Bare constant names in @DocField.defaultValue:\n${violations.joinToString("\n")}")
     }
-
-    private fun repoRoot(): Path =
-        generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-            .first { Files.isDirectory(it.resolve("docs")) }
 }

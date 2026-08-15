@@ -1,13 +1,3 @@
-# Machine-owned artifacts are outside the hand-authored repository-shape gate.
-/cli-rs/Cargo.lock repository-shape=lock linguist-generated=true
-/cli-rs/protocol/api-reference.md repository-shape=generated linguist-generated=true
-/cli-rs/protocol/capabilities.md repository-shape=generated linguist-generated=true
-/cli-rs/protocol/examples/** repository-shape=generated linguist-generated=true
-/cli-rs/protocol/openapi.yaml repository-shape=generated linguist-generated=true
-/cli-rs/protocol/source/commands.schema.json repository-shape=generated linguist-generated=true
-/cli-rs/protocol/source/commands.yaml repository-shape=generated linguist-generated=true
-/cli-rs/protocol/source/requests/** repository-shape=generated linguist-generated=true
-
 # Frozen benchmark captures and rendered reports remain reproducibility evidence.
 /benchmarks/repository-intelligence/baselines/** repository-shape=generated linguist-generated=true
 /benchmarks/repository-intelligence/baselines/README.md !repository-shape -linguist-generated
