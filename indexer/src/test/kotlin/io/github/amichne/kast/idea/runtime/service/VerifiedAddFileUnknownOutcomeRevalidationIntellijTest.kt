@@ -38,6 +38,49 @@ import org.junit.jupiter.api.assertInstanceOf
 @TestApplication
 internal class VerifiedAddFileUnknownOutcomeRevalidationIntellijTest : ExactAdditionPlanningTestSupport() {
     @Test
+    fun `recovery-only unknown outcome never creates an absent target`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
+        val target = sourceRoot.resolve("UnknownRecoveryMustNotApply.kt")
+        val content = "package demo\n\nclass UnknownRecoveryMustNotApply\n"
+        val generation = AtomicLong(1L)
+        val backend = backend(
+            workspaceRoot,
+            psiGeneration = generation::get,
+            workspaceTransitionRequester = TestWorkspaceTransitionRequester(
+                onReconcile = {
+                    testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(generation.incrementAndGet()))
+                },
+            ),
+            workspaceModelReader = model(workspaceRoot, sourceRoot),
+        )
+        val operations = backend.verifiedAddFileOperations(workspaceRoot)
+        val planned = assertInstanceOf<VerifiedAddFilePlanResult.Planned>(
+            operations.plan(planRequest(workspaceRoot, target, content)),
+        )
+        val journal = VerifiedAddFilePlanJournal(backend.workspaceIdentity.workspaceIdentity)
+        val persisted = assertInstanceOf<VerifiedAddFileJournalRead.Loaded>(
+            journal.load(planned.planId),
+        ).plan
+        val recovery = assertInstanceOf<VerifiedAddFileProofAdmission.Admitted<VerifiedAddFileRecoveryPrepared>>(
+            VerifiedAddFileRecoveryPrepared.readmitPersisted(
+                persisted.planned,
+                verifiedAddFileRecoveryId(persisted.planned),
+            ),
+        ).value
+        persisted.lifecycle = PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown(recovery)
+        assertEquals(VerifiedAddFileJournalWrite.Stored, journal.store(persisted))
+
+        val outcome = backend.verifiedAddFileOperations(workspaceRoot).apply(
+            applyRequest(workspaceRoot, planned, VerifiedAddFileApplyMode.RECOVER),
+        )
+
+        assertInstanceOf<VerifiedAddFileApplyResult.RolledBack>(outcome)
+        assertFalse(Files.exists(target), "recovery-only authority must not create an absent target")
+    }
+
+    @Test
     fun `absent unknown write outcome revalidates before restart recovery`() = runBlocking {
         ensureProjectReady()
         val sourceRoot = sourceRoot()
@@ -89,11 +132,12 @@ internal class VerifiedAddFileUnknownOutcomeRevalidationIntellijTest : ExactAddi
     private fun applyRequest(
         workspaceRoot: Path,
         planned: VerifiedAddFilePlanResult.Planned,
+        mode: VerifiedAddFileApplyMode = VerifiedAddFileApplyMode.APPLY,
     ): VerifiedAddFileApplyRequest = VerifiedAddFileApplyRequest(
         workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
         planId = planned.planId,
         expectedVersion = refined(VerifiedAddFilePlanVersion.refine(0L)),
-        mode = VerifiedAddFileApplyMode.APPLY,
+        mode = mode,
         approvalEvidence = VerifiedAddFileApprovalEvidence(
             approvedBy = refined(VerifiedAddFileApprovedBy.refine("kast-public-cli")),
             evidenceSha256 = refined(
