@@ -86,12 +86,28 @@ fn public_recover_restores_absent_prestate_after_prepared_native_interruption() 
     assert!(!target.exists());
     recover_backend.join().expect("prepared recovery backend");
 
+    let replay_backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("prepared-replay.sock"),
+        vec![("change/apply-add-file", rolled_back.clone())],
+    );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal prepared recovery replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");
     assert_eq!(decode(&replay), rolled_back);
+    assert_eq!(
+        replay_backend
+            .join()
+            .expect("prepared replay backend")
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        1,
+    );
 }
 
 #[test]

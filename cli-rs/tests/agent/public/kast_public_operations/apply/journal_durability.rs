@@ -117,10 +117,26 @@ fn verified_add_file_recovery_state_is_private_durable_and_replayable() {
             .expect("terminal JSON");
     assert_eq!(terminal["state"]["state"], "TERMINAL");
     assert_eq!(terminal["state"]["result"], rolled_back);
+    let replay_backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("durable-recovery-replay.sock"),
+        vec![("change/apply-add-file", rolled_back.clone())],
+    );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("durable terminal replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");
     assert_eq!(decode(&replay), rolled_back);
+    assert_eq!(
+        replay_backend
+            .join()
+            .expect("durable terminal replay backend")
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        1,
+    );
 }

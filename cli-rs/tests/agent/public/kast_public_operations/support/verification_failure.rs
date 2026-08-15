@@ -68,15 +68,14 @@ pub(crate) fn assert_independent_verification_failure_rolls_back(
         ["change/apply-add-file"],
     );
 
+    let rolled_back =
+        verified_add_file_rolled_back(&target, content, "PSI_ADMISSION", "PSI_NOT_ADMITTED");
     let recover_backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
         &fixture.path().join(format!("{case}-recover.sock")),
-        vec![(
-            "change/apply-add-file",
-            verified_add_file_rolled_back(&target, content, "PSI_ADMISSION", "PSI_NOT_ADMITTED"),
-        )],
+        vec![("change/apply-add-file", rolled_back.clone())],
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "recover", "--recovery-id", &plan_id])
@@ -95,10 +94,26 @@ pub(crate) fn assert_independent_verification_failure_rolls_back(
     );
     recover_backend.join().expect("recovery backend");
 
+    let replay_backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join(format!("{case}-replay.sock")),
+        vec![("change/apply-add-file", rolled_back)],
+    );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal recovery replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");
     assert_eq!(decode(&replay), recovered_receipt);
+    assert_eq!(
+        replay_backend
+            .join()
+            .expect("terminal recovery replay backend")
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        1,
+    );
 }

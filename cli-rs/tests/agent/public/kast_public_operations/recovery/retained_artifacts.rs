@@ -207,10 +207,26 @@ fn public_recover_preserves_native_recovery_until_server_reports_terminal_rollba
         3,
     );
 
+    let replay_backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("retained-native-replay.sock"),
+        vec![("change/apply-add-file", rolled_back.clone())],
+    );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal retained-artifact replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");
     assert_eq!(decode(&replay), rolled_back);
+    assert_eq!(
+        replay_backend
+            .join()
+            .expect("retained native replay backend")
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        1,
+    );
 }

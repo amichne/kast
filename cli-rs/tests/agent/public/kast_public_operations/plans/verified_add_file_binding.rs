@@ -250,12 +250,28 @@ fn verified_add_file_publication_failure_retains_recovery_until_terminal_rollbac
         ["change/apply-add-file", "change/apply-add-file"],
     );
 
+    let replay_backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("publication-replay.sock"),
+        vec![("change/apply-add-file", rolled_back.clone())],
+    );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal rollback replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");
     assert_eq!(decode(&replay), rolled_back);
+    assert_eq!(
+        replay_backend
+            .join()
+            .expect("publication replay backend")
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        1,
+    );
 }
 
 #[test]
