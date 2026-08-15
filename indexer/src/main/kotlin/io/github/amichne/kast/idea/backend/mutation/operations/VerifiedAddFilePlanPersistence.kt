@@ -23,6 +23,7 @@ import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
 import io.github.amichne.kast.server.change.VerifiedAddFileTargetPath
 import java.io.IOException
 import java.nio.channels.FileChannel
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
@@ -38,9 +39,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Effect transition: `Path -> VerifiedAddFileJournalDirectoryDurability`.
- * `DURABLE` proves the atomically replaced journal entry is stable. `UNAVAILABLE` is the closed
- * expected failure. Raw paths are consumed only at this journal persistence boundary.
+ * Effect transition: `Path -> VerifiedAddFileJournalDirectoryDurability`. `DURABLE` proves the
+ * atomically replaced entry is stable; `UNAVAILABLE` is the closed failure. Raw paths are consumed
+ * only at this journal persistence boundary.
  */
 internal enum class VerifiedAddFileJournalDirectoryDurability { DURABLE, UNAVAILABLE }
 internal fun interface VerifiedAddFileJournalDirectoryDurabilityBarrier {
@@ -104,10 +105,10 @@ internal class VerifiedAddFilePlanJournal(
     }
 
     /**
-     * Proof transition: PersistedVerifiedAddFilePlan to VerifiedAddFileJournalWrite.
-     * Atomically publishes and fsyncs the exact workspace-scoped plan/lifecycle record before the
-     * native operation responds. The closed failure is journal UNAVAILABLE. Raw filesystem access is
-     * restricted to this operation-metadata persistence boundary.
+     * Proof transition: `PersistedVerifiedAddFilePlan -> VerifiedAddFileJournalWrite`. Initial
+     * authority is create-only; later lifecycle authority atomically replaces and fsyncs only that
+     * exact record. The closed failure is `UNAVAILABLE`; raw filesystem access is restricted to this
+     * operation-metadata boundary.
      */
     fun store(plan: PersistedVerifiedAddFilePlan): VerifiedAddFileJournalWrite {
         val encoded = try {
@@ -124,23 +125,28 @@ internal class VerifiedAddFilePlanJournal(
             try {
                 Files.writeString(temporary, encoded)
                 FileChannel.open(temporary, WRITE).use { it.force(true) }
-                Files.move(
-                    temporary,
-                    directory.resolve("${plan.planId.value}.json"),
-                    ATOMIC_MOVE,
-                    REPLACE_EXISTING,
-                )
+                val destination = directory.resolve("${plan.planId.value}.json")
+                if (plan.lifecycle is PersistedVerifiedAddFileLifecycle.AwaitingApproval) {
+                    try {
+                        Files.createLink(destination, temporary)
+                    } catch (_: FileAlreadyExistsException) {
+                        return when (val existing = load(plan.planId)) {
+                            is VerifiedAddFileJournalRead.Loaded -> VerifiedAddFileJournalWrite.Stored
+                            is VerifiedAddFileJournalRead.Rejected -> VerifiedAddFileJournalWrite.Rejected(existing.failure)
+                        }
+                    }
+                } else {
+                    Files.move(temporary, destination, ATOMIC_MOVE, REPLACE_EXISTING)
+                }
                 if (directoryDurability.persist(directory) != VerifiedAddFileJournalDirectoryDurability.DURABLE) {
                     return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE)
                 }
             } finally {
                 Files.deleteIfExists(temporary)
             }
-        } catch (_: IOException) {
-            return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE)
-        } catch (_: SecurityException) {
-            return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE)
-        }
+        } catch (_: IOException) { return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE) }
+        catch (_: SecurityException) { return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE) }
+        catch (_: UnsupportedOperationException) { return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE) }
         livePlans.putIfAbsent(plan.planId.value, plan)
         return VerifiedAddFileJournalWrite.Stored
     }
@@ -157,9 +163,8 @@ private data class DurablePlanRecord(
 ) {
     /**
      * Proof transition: persisted record plus workspace and requested PlanId to journal read.
-     * Reconstructs only a strong plan whose complete persisted authority agrees with the owning
-     * workspace and requested identity. Every mismatch is a closed CORRUPT journal failure.
-     * Raw fields are extracted only at this serialized-record boundary.
+     * Reconstructs only authority agreeing with the owner and requested identity. Every mismatch is
+     * closed `CORRUPT`; raw fields are extracted only at this serialized-record boundary.
      */
     fun readmit(owner: WorkspaceIdentity, requestedId: VerifiedAddFilePlanId): VerifiedAddFileJournalRead {
         if (schemaVersion != JOURNAL_SCHEMA || workspaceRoot != owner.workspaceRoot.value) return corrupt()
@@ -238,9 +243,7 @@ private data class DurableReceiptRecord(
     val generation: MutationSemanticGeneration, val packageIdentity: AdditionKotlinPackage,
     val declarations: List<AdditionTopLevelDeclaration>,
 ) {
-    fun toReceipt() = VerifiedAddFileReceipt(
-        targetPath, postimageSha256, generation, packageIdentity, declarations,
-    )
+    fun toReceipt() = VerifiedAddFileReceipt(targetPath, postimageSha256, generation, packageIdentity, declarations)
 }
 
 /**
@@ -392,7 +395,6 @@ private fun AppliedVerifiedAddFile.toDurableRecord() = DurableApplicationRecord(
 )
 
 private fun corrupt() = VerifiedAddFileJournalRead.Rejected(VerifiedAddFileJournalFailure.CORRUPT)
-
 private const val JOURNAL_SCHEMA = 2
 private const val JOURNAL_DIRECTORY = "verified-add-file-plans"
 private val JOURNAL_JSON = Json { encodeDefaults = true; explicitNulls = false; ignoreUnknownKeys = false }

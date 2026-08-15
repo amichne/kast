@@ -5,11 +5,13 @@ import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.testFramework.junit5.TestApplication
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.idea.backend.mutation.operations.PersistedVerifiedAddFileLifecycle
 import io.github.amichne.kast.idea.backend.mutation.operations.PersistedVerifiedAddFilePlan
 import io.github.amichne.kast.idea.backend.mutation.operations.PlanAttempt
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalDirectoryDurability
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalDirectoryDurabilityBarrier
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalFailure
+import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalRead
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalWrite
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFilePlanJournal
 import io.github.amichne.kast.idea.backend.mutation.operations.planVerifiedAddFile
@@ -44,6 +46,56 @@ import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlanningTestSupport() {
+    @Test
+    fun `stale initial journal publication cannot replace a newer terminal lifecycle`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
+        val target = sourceRoot.resolve("ConcurrentInitialPlan.kt")
+        val content = "package demo\n\nclass ConcurrentInitialPlan\n"
+        val generation = AtomicLong(1L)
+        val backend = backend(
+            workspaceRoot,
+            psiGeneration = generation::get,
+            workspaceTransitionRequester = TestWorkspaceTransitionRequester(
+                onReconcile = {
+                    testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(generation.incrementAndGet()))
+                },
+            ),
+            workspaceModelReader = model(workspaceRoot, sourceRoot),
+        )
+        val intent = VerifiedAddFileIntent(
+            workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
+            targetPath = refined(VerifiedAddFileTargetPath.refine(target.toString())),
+            content = refined(VerifiedAddFileContent.refine(content)),
+        )
+        val planned = assertInstanceOf<PlanAttempt.Planned>(
+            planVerifiedAddFile(backend, intent, VerifiedAddFileProgress.PLANNING),
+        ).plan
+        val staleInitial = PersistedVerifiedAddFilePlan(
+            verifiedAddFilePlanId(planned),
+            refined(VerifiedAddFilePlanVersion.refine(0L)),
+            planned,
+        )
+        val staleJournal = VerifiedAddFilePlanJournal(backend.workspaceIdentity.workspaceIdentity)
+        assertEquals(VerifiedAddFileJournalWrite.Stored, staleJournal.store(staleInitial))
+        val operations = backend.verifiedAddFileOperations(workspaceRoot)
+        val publicPlan = assertInstanceOf<VerifiedAddFilePlanResult.Planned>(
+            operations.plan(planRequest(workspaceRoot, target, content)),
+        )
+        assertInstanceOf<VerifiedAddFileApplyResult.Verified>(
+            operations.apply(applyRequest(workspaceRoot, publicPlan)),
+        )
+
+        assertEquals(VerifiedAddFileJournalWrite.Stored, staleJournal.store(staleInitial))
+
+        val reloaded = assertInstanceOf<VerifiedAddFileJournalRead.Loaded>(
+            VerifiedAddFilePlanJournal(backend.workspaceIdentity.workspaceIdentity).load(publicPlan.planId),
+        )
+        assertInstanceOf<PersistedVerifiedAddFileLifecycle.Terminal.Verified>(reloaded.plan.lifecycle)
+        Unit
+    }
+
     @Test
     fun `post-effect journal failure returns recovery authority instead of plan rejection`() = runBlocking {
         ensureProjectReady()
