@@ -242,14 +242,12 @@ private class IntellijVerifiedAddFileOperations(
     private suspend fun applyPlanned(exactPlan: VerifiedAddFilePlan, persisted: PersistedVerifiedAddFilePlan): VerifiedAddFileResult {
         val intent = exactPlan.intent
         val replanned = planVerifiedAddFile(backend, intent, VerifiedAddFileProgress.REVALIDATION)
-        if (replanned !is PlanAttempt.Planned) {
-            return rejected(
-                VerifiedAddFileProgress.REVALIDATION,
-                VerifiedAddFileFailure.PLAN_REVALIDATION_FAILED,
-            )
+        val replannedExact = when (replanned) {
+            is PlanAttempt.Planned -> replanned.plan.exact
+            is PlanAttempt.Rejected -> return replanned.result
         }
         val revalidated = when (
-            val admission = RevalidatedVerifiedAddFilePlan.admit(exactPlan, replanned.plan.exact)
+            val admission = RevalidatedVerifiedAddFilePlan.admit(exactPlan, replannedExact)
         ) {
             is VerifiedAddFileAdmission.Admitted -> admission.value
             is VerifiedAddFileAdmission.Rejected -> return rejected(
