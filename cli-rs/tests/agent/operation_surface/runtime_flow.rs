@@ -1,3 +1,6 @@
+use sha2::Digest as _;
+use std::os::unix::process::CommandExt as _;
+
 #[test]
 fn dependent_symbol_command_observes_the_completed_edit() {
     let fixture = MutationFixture::new();
@@ -6,21 +9,28 @@ fn dependent_symbol_command_observes_the_completed_edit() {
         &fixture.config_home,
         &fixture.workspace,
         &fixture.temp.path().join("indexer.sock"),
-        Some(mutation_result(false)),
         true,
     );
-    assert!(fixture.apply("dependent-key").status.success());
-    let symbol = kast_at(&fixture.binary, &fixture.home, &fixture.config_home)
+    let plan = fixture.plan();
+    assert!(plan.status.success(), "plan failed: {plan:?}");
+    let plan = decode_public_result(&plan);
+    let plan_id = plan["planId"].as_str().expect("plan id");
+    let applied = fixture.apply(plan_id);
+    assert!(applied.status.success(), "apply failed: {applied:?}");
+    assert_eq!(
+        std::fs::read_to_string(fixture.target()).expect("applied target"),
+        fixture.content,
+    );
+    let symbol = fixture
+        .public_command()
         .args([
             "--output",
             "json",
-            "agent",
             "symbol",
+            "resolve",
             "--query",
             "Added",
-            "--workspace-root",
         ])
-        .arg(&fixture.workspace)
         .output()
         .expect("dependent symbol command");
     assert!(
@@ -28,10 +38,22 @@ fn dependent_symbol_command_observes_the_completed_edit() {
         "dependent symbol failed: {}",
         String::from_utf8_lossy(&symbol.stdout)
     );
-    let symbol: Value = serde_json::from_slice(&symbol.stdout).expect("symbol result");
-    assert_eq!(symbol["result"]["outcome"], "RESOLVED", "{symbol}");
-    assert_eq!(symbol["result"]["identity"]["fqName"], "sample.Added");
-    backend.join().expect("dependent backend");
+    let symbol = decode_public_result(&symbol);
+    assert_eq!(symbol["type"], "resolved", "{symbol}");
+    assert_eq!(symbol["symbol"]["fqName"], "sample.Added");
+    let requests = backend.join().expect("dependent backend");
+    assert_eq!(
+        requests
+            .iter()
+            .filter_map(|request| request["method"].as_str())
+            .filter(|method| !matches!(*method, "runtime/status" | "capabilities"))
+            .collect::<Vec<_>>(),
+        [
+            "change/plan-add-file",
+            "change/apply-add-file",
+            "symbol/resolve",
+        ],
+    );
 }
 
 struct MutationFixture {
@@ -40,7 +62,7 @@ struct MutationFixture {
     config_home: std::path::PathBuf,
     binary: std::path::PathBuf,
     workspace: std::path::PathBuf,
-    content_file: std::path::PathBuf,
+    content: &'static str,
 }
 
 impl MutationFixture {
@@ -49,14 +71,14 @@ impl MutationFixture {
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
         let workspace = temp.path().join("workspace");
-        let content_file = temp.path().join("Added.kt");
         std::fs::create_dir_all(&workspace).expect("workspace");
         std::fs::write(
             workspace.join("settings.gradle.kts"),
             "rootProject.name = \"mutation-fixture\"\n",
         )
         .expect("settings");
-        std::fs::write(&content_file, "class Added\n").expect("content");
+        std::fs::create_dir_all(workspace.join("src")).expect("source root");
+        let workspace = workspace.canonicalize().expect("canonical workspace");
         let binary = write_active_kast_for_test(&home, &config_home);
         Self {
             temp,
@@ -64,22 +86,69 @@ impl MutationFixture {
             config_home,
             binary,
             workspace,
-            content_file,
+            content: "package sample\nclass Added\n",
         }
     }
 
-    fn apply(&self, key: &str) -> std::process::Output {
-        kast_at(&self.binary, &self.home, &self.config_home)
-            .args(["--output", "json", "agent", "add-file"])
-            .arg("--workspace-root")
-            .arg(&self.workspace)
-            .arg("--file-path")
-            .arg(self.workspace.join("src/Added.kt"))
-            .arg("--content-file")
-            .arg(&self.content_file)
-            .args(["--apply", "--idempotency-key", key])
+    fn target(&self) -> std::path::PathBuf {
+        self.workspace.join("src/Added.kt")
+    }
+
+    fn public_command(&self) -> Command {
+        let mut command = kast_at(&self.binary, &self.home, &self.config_home);
+        command
+            .arg0("kast")
+            .current_dir(&self.workspace)
+            .env("KAST_HOME", self.home.join(".local/share/kast"));
+        command
+    }
+
+    fn plan(&self) -> std::process::Output {
+        let mut command = self.public_command();
+        command
+            .args(["--output", "json", "change", "plan", "add-file", "--file"])
+            .arg(self.target());
+        run_with_stdin(command, self.content)
+    }
+
+    fn apply(&self, plan_id: &str) -> std::process::Output {
+        self.public_command()
+            .args([
+                "--output",
+                "json",
+                "change",
+                "apply",
+                "--plan-id",
+                plan_id,
+            ])
             .output()
-            .expect("apply mutation")
+            .expect("apply verified add-file plan")
+    }
+}
+
+fn run_with_stdin(mut command: Command, stdin: &str) -> std::process::Output {
+    let mut child = command
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("spawn public Kast command");
+    child
+        .stdin
+        .take()
+        .expect("stdin")
+        .write_all(stdin.as_bytes())
+        .expect("write stdin");
+    child.wait_with_output().expect("wait for public Kast command")
+}
+
+fn decode_public_result(output: &std::process::Output) -> Value {
+    let envelope: Value =
+        serde_json::from_slice(&output.stdout).expect("structured public command output");
+    if envelope["schemaVersion"] == 3 && envelope["result"].is_object() {
+        envelope["result"].clone()
+    } else {
+        envelope
     }
 }
 
@@ -88,7 +157,6 @@ fn spawn_operation_backend(
     config_home: &std::path::Path,
     workspace: &std::path::Path,
     socket_path: &std::path::Path,
-    terminal_result: Option<Value>,
     dependent_symbol: bool,
 ) -> std::thread::JoinHandle<Vec<Value>> {
     let descriptor_dir = default_descriptor_dir(home);
@@ -116,13 +184,16 @@ fn spawn_operation_backend(
     std::thread::spawn(move || {
         let _exact_test_runtime = exact_test_runtime;
         let mut requests = Vec::new();
+        let content = "package sample\nclass Added\n";
+        let target = workspace.join("src/Added.kt");
+        let plan_id = verified_add_file_plan_id(&workspace, &target, content);
+        let terminal_method = if dependent_symbol {
+            "symbol/resolve"
+        } else {
+            "change/apply-add-file"
+        };
         while requests.iter().all(|request: &Value| {
-            request["method"]
-                != if dependent_symbol {
-                    "symbol/resolve"
-                } else {
-                    "mutation/submit"
-                }
+            request["method"] != terminal_method
         }) {
             let (mut stream, _) = listener.accept().expect("accept client");
             let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
@@ -150,7 +221,15 @@ fn spawn_operation_backend(
                     "backendVersion": "test",
                     "workspaceRoot": workspace,
                     "readCapabilities": ["symbol/resolve"],
-                    "mutationCapabilities": ["APPLY_EDITS"],
+                    "mutationCapabilities": [
+                        "APPLY_EDITS",
+                        "FILE_OPERATIONS",
+                        "EXACT_FILE_OBSERVATION",
+                        "EXACT_FILE_IMAGE_CAS",
+                        "VERIFY_MUTATION_POSTCONDITION",
+                        "MUTATION_SCRATCH_RECOVERY",
+                        "REFRESH_WORKSPACE"
+                    ],
                     "limits": {
                         "requestTimeoutMillis": 60000,
                         "maxResults": 1000,
@@ -158,29 +237,42 @@ fn spawn_operation_backend(
                     },
                     "schemaVersion": api_schema_version()
                 }),
-                "mutation/submit" => match terminal_result.as_ref() {
-                    Some(result) => {
-                        let added = workspace.join("src/Added.kt");
-                        std::fs::create_dir_all(added.parent().expect("source parent"))
-                            .expect("source directory");
-                        std::fs::write(&added, "package sample\nclass Added\n")
-                            .expect("applied edit");
-                        result.clone()
-                    }
-                    None => {
-                        let added = workspace.join("src/Added.kt");
-                        std::fs::create_dir_all(added.parent().expect("source parent"))
-                            .expect("source directory");
-                        std::fs::write(&added, "package sample\nclass Added\n")
-                            .expect("server-owned edit");
-                        requests.push(request);
-                        return requests;
-                    }
-                },
+                "change/plan-add-file" => json!({
+                    "planId": plan_id,
+                    "planVersion": 0,
+                    "stage": "AWAITING_APPROVAL",
+                    "operation": "add-file",
+                    "preview": {
+                        "targetPath": target,
+                        "proposedContent": content,
+                        "generation": 7,
+                    },
+                    "schemaVersion": api_schema_version(),
+                }),
+                "change/apply-add-file" => {
+                    std::fs::create_dir_all(target.parent().expect("source parent"))
+                        .expect("source directory");
+                    std::fs::write(&target, content).expect("server-owned edit");
+                    json!({
+                        "outcome": "VERIFIED",
+                        "planId": plan_id,
+                        "planVersion": 5,
+                        "operation": "add-file",
+                        "publication": {"generation": 8},
+                        "identity": {
+                            "targetPath": target,
+                            "packageName": "sample",
+                            "declarations": [{"name": "Added", "kind": "CLASS"}],
+                        },
+                        "postimageSha256": source_sha256(content.as_bytes()),
+                        "schemaVersion": api_schema_version(),
+                    })
+                }
                 "symbol/resolve" => json!({
                     "type": "RESOLVE_SUCCESS",
                     "ok": true,
                     "source": "compiler",
+                    "selectorHandle": "ksh1.operation-added",
                     "symbol": {
                         "fqName": "sample.Added",
                         "kind": "CLASS",
@@ -208,18 +300,25 @@ fn spawn_operation_backend(
     })
 }
 
-fn mutation_result(deduplicated: bool) -> Value {
-    json!({
-        "type": "SUCCEEDED",
-        "result": {
-            "type": "SCOPE_MUTATION_RESULT",
-            "response": {
-                "editCount": 0,
-                "affectedFiles": [],
-                "createdFiles": [],
-                "diagnostics": {"errorCount": 0, "warningCount": 0}
-            }
-        },
-        "deduplicated": deduplicated
-    })
+fn source_sha256(content: &[u8]) -> String {
+    hex::encode(sha2::Sha256::digest(content))
+}
+
+fn verified_add_file_plan_id(
+    workspace: &std::path::Path,
+    target: &std::path::Path,
+    content: &str,
+) -> String {
+    format!(
+        "af-{}",
+        source_sha256(
+            format!(
+                "{}\0{}\0{}\07",
+                workspace.display(),
+                target.display(),
+                content,
+            )
+            .as_bytes(),
+        ),
+    )
 }

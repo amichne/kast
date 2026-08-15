@@ -203,7 +203,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "OPTIMIZE_IMPORTS",
                         "REFRESH_WORKSPACE",
                         "PLAN_REPLACEMENT",
-                        "PLAN_ADD_FILE",
                         "VERIFY_MUTATION_POSTCONDITION",
                         "EXACT_FILE_OBSERVATION",
                         "EXACT_FILE_IMAGE_CAS",
