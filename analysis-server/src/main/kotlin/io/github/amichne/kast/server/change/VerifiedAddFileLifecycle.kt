@@ -13,7 +13,6 @@ data class VerifiedAddFileReceipt(
     val packageIdentity: AdditionKotlinPackage,
     val declarations: List<AdditionTopLevelDeclaration>,
 )
-
 enum class VerifiedAddFilePlanStage {
     AWAITING_APPROVAL,
     APPROVED,
@@ -281,6 +280,11 @@ private fun classifyRejectedLifecycle(
             else -> VerifiedAddFileLifecycleCompatibility.Incompatible
         }
         VerifiedAddFileProgress.REVALIDATION -> when (candidate.failure) {
+            VerifiedAddFileFailure.TARGET_ALREADY_EXISTS,
+            VerifiedAddFileFailure.TARGET_GENERATED,
+            VerifiedAddFileFailure.TARGET_AMBIGUOUSLY_OWNED,
+            VerifiedAddFileFailure.TARGET_SYMLINK_ESCAPE,
+            VerifiedAddFileFailure.PACKAGE_OR_DECLARATION_INVALID,
             VerifiedAddFileFailure.STALE_PLAN_VERSION,
             VerifiedAddFileFailure.APPROVAL_REJECTED,
             VerifiedAddFileFailure.PLAN_REVALIDATION_FAILED,

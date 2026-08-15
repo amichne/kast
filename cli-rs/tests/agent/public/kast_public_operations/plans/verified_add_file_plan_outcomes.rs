@@ -148,3 +148,62 @@ fn verified_add_file_prewrite_rejection_retains_retryable_plan_authority() {
         2,
     );
 }
+
+#[test]
+fn verified_add_file_revalidation_preserves_every_typed_planner_rejection() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(workspace.join("src/main/kotlin")).expect("source root");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let target = workspace.join("src/main/kotlin/Revalidation.kt");
+    let content = b"package sample\nclass Revalidation\n";
+    let binary = write_active_kast_for_test(&home, &config_home);
+    let plan_id = plan_add_file(
+        &binary,
+        &home,
+        &config_home,
+        &workspace,
+        "src/main/kotlin/Revalidation.kt",
+        std::str::from_utf8(content).expect("Kotlin content"),
+    );
+    let expected = [
+        "TARGET_ALREADY_EXISTS",
+        "TARGET_GENERATED",
+        "TARGET_AMBIGUOUSLY_OWNED",
+        "TARGET_SYMLINK_ESCAPE",
+        "PACKAGE_OR_DECLARATION_INVALID",
+    ]
+    .map(|failure| verified_add_file_rejected(&target, content, "REVALIDATION", failure));
+    let backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("planner-rejections.sock"),
+        expected
+            .iter()
+            .cloned()
+            .map(|result| ("change/apply-add-file", result))
+            .collect(),
+    );
+
+    for expected in expected {
+        let rejected = installed_public_kast(&binary, &home, &config_home, &workspace)
+            .args(["change", "apply", "--plan-id", &plan_id])
+            .output()
+            .expect("typed planner rejection");
+        assert_eq!(rejected.status.code(), Some(1), "{rejected:?}");
+        assert_eq!(decode(&rejected), expected);
+    }
+    assert_eq!(
+        backend
+            .join()
+            .expect("planner rejection backend")
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        5,
+    );
+}

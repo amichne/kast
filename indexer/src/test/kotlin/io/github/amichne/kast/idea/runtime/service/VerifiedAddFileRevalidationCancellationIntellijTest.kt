@@ -33,6 +33,35 @@ import org.junit.jupiter.api.assertInstanceOf
 @TestApplication
 internal class VerifiedAddFileRevalidationCancellationIntellijTest : ExactAdditionPlanningTestSupport() {
     @Test
+    fun `apply preserves an existing-target rejection from semantic revalidation`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
+        val target = sourceRoot.resolve("ExistingAtRevalidation.kt")
+        val content = "package demo\n\nclass ExistingAtRevalidation\n"
+        val operations = backend(
+            workspaceRoot,
+            workspaceModelReader = model(workspaceRoot, sourceRoot),
+        ).verifiedAddFileOperations(workspaceRoot)
+        val planned = assertInstanceOf<VerifiedAddFilePlanResult.Planned>(
+            operations.plan(planRequest(workspaceRoot, target, content)),
+        )
+        val foreign = "package demo\n\nclass Foreign\n"
+        Files.writeString(target, foreign)
+
+        val outcome = operations.apply(applyRequest(workspaceRoot, planned))
+
+        val rejected = assertInstanceOf<VerifiedAddFileApplyResult.Rejected>(outcome)
+        assertEquals(VerifiedAddFileProgress.REVALIDATION, rejected.progress)
+        assertEquals(VerifiedAddFileFailure.TARGET_ALREADY_EXISTS, rejected.failure)
+        assertInstanceOf<VerifiedAddFileApplyResultAdmission.Admitted>(
+            AdmittedVerifiedAddFileApplyResult.admit(rejected),
+        )
+        assertEquals(foreign, Files.readString(target))
+        Unit
+    }
+
+    @Test
     fun `apply preserves cancellation from semantic plan revalidation`() = runBlocking {
         ensureProjectReady()
         val sourceRoot = sourceRoot()

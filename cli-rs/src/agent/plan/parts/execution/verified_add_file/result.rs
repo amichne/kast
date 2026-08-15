@@ -313,7 +313,12 @@ fn rejected_failure_matches(
                 | VerifiedAddFileFailure::Cancelled
         ) | (
             VerifiedAddFileProgress::Revalidation,
-            VerifiedAddFileFailure::StalePlanVersion
+            VerifiedAddFileFailure::TargetAlreadyExists
+                | VerifiedAddFileFailure::TargetGenerated
+                | VerifiedAddFileFailure::TargetAmbiguouslyOwned
+                | VerifiedAddFileFailure::TargetSymlinkEscape
+                | VerifiedAddFileFailure::PackageOrDeclarationInvalid
+                | VerifiedAddFileFailure::StalePlanVersion
                 | VerifiedAddFileFailure::ApprovalRejected
                 | VerifiedAddFileFailure::PlanRevalidationFailed
                 | VerifiedAddFileFailure::Cancelled
