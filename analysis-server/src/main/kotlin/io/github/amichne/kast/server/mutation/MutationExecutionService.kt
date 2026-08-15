@@ -52,7 +52,20 @@ internal class MutationExecutionService(
         val outcome = try {
             when (mutation) {
                 is KastSemanticMutation.Rename -> skillRpc.rename(mutation.request).toOutcome()
-                is KastSemanticMutation.AddFile -> skillRpc.addFile(mutation.request).toOutcome()
+                is KastSemanticMutation.AddFile -> ExecutionOutcome.Failed(
+                    KastMutationFailure.Thrown(
+                        ApiErrorResponse(
+                            requestId = mutation.idempotencyKey.value,
+                            code = "VERIFIED_ADD_FILE_WORKFLOW_REQUIRED",
+                            message = "Add-file mutations require change/plan-add-file and change/apply-add-file",
+                            retryable = false,
+                            details = mapOf(
+                                "planMethod" to "change/plan-add-file",
+                                "applyMethod" to "change/apply-add-file",
+                            ),
+                        ),
+                    ),
+                )
                 is KastSemanticMutation.AddImplementation -> skillRpc.addImplementation(mutation.request).toOutcome()
                 is KastSemanticMutation.AddStatement -> skillRpc.addStatement(mutation.request).toOutcome()
                 is KastSemanticMutation.ReplaceDeclaration -> skillRpc.replaceDeclaration(mutation.request).toOutcome()

@@ -14,15 +14,14 @@ import io.github.amichne.kast.api.client.SocketFileIdentity
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
 import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
+import io.github.amichne.kast.api.contract.mutation.KastMutationFailure
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.testing.FakeAnalysisBackend
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -30,6 +29,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.api.assertInstanceOf
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
@@ -52,12 +52,11 @@ class AnalysisServerOwnershipTest {
     }
 
     @Test
-    fun `mutation retry joins its terminal result without reapplying`() {
+    fun `mutation retry joins the retired add-file terminal without writing`() {
         val socketPath = tempDir.resolve("run").resolve("mutation-retry.sock")
         val target = tempDir.resolve("src/Retried.kt")
         val contentFile = tempDir.resolve("retried-content.kt")
         Files.writeString(contentFile, "package sample\n\nclass Retried\n")
-        val applyStarted = CompletableDeferred<Unit>()
         val mutation = KastSemanticMutation.AddFile(
             idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect"),
             request = KastAddFileRequest(
@@ -68,13 +67,13 @@ class AnalysisServerOwnershipTest {
         )
 
         AnalysisServer(
-            backend = AdmittedApplyBackend(FakeAnalysisBackend.sample(tempDir), applyStarted),
+            backend = FakeAnalysisBackend.sample(tempDir),
             config = AnalysisServerConfig(
                 transport = AnalysisTransport.UnixDomainSocket(socketPath),
                 descriptorDirectory = tempDir.resolve("mutation-retry-instances"),
             ),
         ).start().use {
-            sendWithoutReadingResponse(
+            callSocket(
                 socketPath = socketPath,
                 request = JsonRpcRequest(
                     id = JsonPrimitive(1),
@@ -82,8 +81,6 @@ class AnalysisServerOwnershipTest {
                     params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
                 ),
             )
-            runBlocking { withTimeout(1_000) { applyStarted.await() } }
-
             val response = callSocket(
                 socketPath = socketPath,
                 request = JsonRpcRequest(
@@ -95,9 +92,11 @@ class AnalysisServerOwnershipTest {
             val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
             val terminal = json.decodeFromJsonElement(KastMutationExecutionResult.serializer(), success.result)
 
-            assertTrue(terminal is KastMutationExecutionResult.Succeeded)
+            val failed = assertInstanceOf<KastMutationExecutionResult.Failed>(terminal)
+            val refusal = assertInstanceOf<KastMutationFailure.Thrown>(failed.failure)
+            assertEquals("VERIFIED_ADD_FILE_WORKFLOW_REQUIRED", refusal.error.code)
             assertTrue(terminal.deduplicated)
-            assertEquals("package sample\n\nclass Retried\n", Files.readString(target))
+            assertFalse(Files.exists(target))
         }
     }
 
@@ -113,19 +112,6 @@ class AnalysisServerOwnershipTest {
             writer.newLine()
             writer.flush()
             checkNotNull(reader.readLine())
-        }
-    }
-
-    private fun sendWithoutReadingResponse(
-        socketPath: Path,
-        request: JsonRpcRequest,
-    ) {
-        SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
-            channel.connect(UnixDomainSocketAddress.of(socketPath))
-            val writer = Channels.newWriter(channel, StandardCharsets.UTF_8.name()).buffered()
-            writer.write(json.encodeToString(JsonRpcRequest.serializer(), request))
-            writer.newLine()
-            writer.flush()
         }
     }
 
