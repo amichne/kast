@@ -23,6 +23,8 @@ enum class ModuleRoleConvention(
     WORKSPACE(ModuleRole.WORKSPACE_ADAPTER, "kast.role.workspace"),
     TRANSPORT(ModuleRole.TRANSPORT, "kast.role.transport"),
     COMPOSITION(ModuleRole.COMPOSITION, "kast.role.composition"),
+    CLI(ModuleRole.CLI, "kast.role.cli"),
+    INDEXER_HOST(ModuleRole.INDEXER_HOST, "kast.role.indexer-host"),
 }
 
 sealed interface ModuleRoleConventionRequirement {
@@ -100,7 +102,7 @@ internal object ModulePolicyValidator {
                 }
                 if (
                     module.role == ModuleRole.CONTRACT &&
-                    module.id != ModuleId.PROTOCOL_REGISTRY &&
+                    module.id !in setOf(ModuleId.PROTOCOL_REGISTRY, ModuleId.PROTOCOL_WIRE) &&
                     dependencyId == ModuleId.PROTOCOL_REGISTRY
                 ) {
                     add(ArchitecturePolicyFailure.FeatureContractDependsOnRegistry(module.id))
@@ -161,6 +163,7 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.SERVICE,
             inwardRoles,
             safeReadCosts,
+            allowedEffects = setOf(ForbiddenEffect.WORKSPACE_TRANSITION),
         )
         ModuleRole.INTELLIJ_READ_ADAPTER -> boundary(
             role,
@@ -168,6 +171,7 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.INTELLIJ_READ,
             inwardRoles,
             safeReadCosts,
+            allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         )
         ModuleRole.INTELLIJ_WRITE_ADAPTER -> boundary(
             role,
@@ -175,7 +179,12 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.INTELLIJ_WRITE,
             inwardRoles,
             safeReadCosts,
-            allowedEffects = setOf(ForbiddenEffect.INTELLIJ_WRITE),
+            allowedEffects = setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.INTELLIJ_WRITE,
+                ForbiddenEffect.FILESYSTEM_WRITE,
+                ForbiddenEffect.SOURCE_FILESYSTEM_WRITE,
+            ),
         )
         ModuleRole.FILESYSTEM_WRITE_ADAPTER -> boundary(
             role,
@@ -202,7 +211,12 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.WORKSPACE,
             inwardRoles,
             safeReadCosts,
-            allowedEffects = setOf(ForbiddenEffect.GRADLE_IMPORT, ForbiddenEffect.GRAPH_BUILD),
+            allowedEffects = setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.GRADLE_PLATFORM,
+                ForbiddenEffect.GRADLE_IMPORT,
+                ForbiddenEffect.GRAPH_BUILD,
+            ),
         )
         ModuleRole.TRANSPORT -> boundary(
             role,
@@ -210,7 +224,7 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.TRANSPORT,
             inwardRoles,
             safeReadCosts,
-            allowedEffects = setOf(ForbiddenEffect.ANALYSIS_BACKEND),
+            allowedEffects = emptySet(),
         )
         ModuleRole.COMPOSITION -> boundary(
             role = role,
@@ -218,11 +232,23 @@ private object ModuleRoleBoundaries {
             convention = ModuleRoleConvention.COMPOSITION,
             allowedDependencyRoles = ModuleRole.entries.toSet() - ModuleRole.LEGACY_HOST,
             allowedDependencyCosts = ModuleCost.entries.toSet() - ModuleCost.LEGACY,
-            allowedEffects = setOf(
-                ForbiddenEffect.ANALYSIS_BACKEND,
-                ForbiddenEffect.GRAPH_BUILD,
-                ForbiddenEffect.PROCESS_CONTROL,
-            ),
+            allowedEffects = emptySet(),
+        )
+        ModuleRole.CLI -> boundary(
+            role,
+            ModuleCost.RUNTIME_ORCHESTRATION,
+            ModuleRoleConvention.CLI,
+            setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT),
+            setOf(ModuleCost.HOST_NEUTRAL),
+            allowedEffects = setOf(ForbiddenEffect.PROCESS_CONTROL),
+        )
+        ModuleRole.INDEXER_HOST -> boundary(
+            role,
+            ModuleCost.RUNTIME_ORCHESTRATION,
+            ModuleRoleConvention.INDEXER_HOST,
+            setOf(ModuleRole.COMPOSITION),
+            setOf(ModuleCost.RUNTIME_ORCHESTRATION),
+            allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         )
     }
 

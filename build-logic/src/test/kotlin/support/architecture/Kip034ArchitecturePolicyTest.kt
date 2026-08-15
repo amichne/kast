@@ -64,7 +64,7 @@ class Kip034ArchitecturePolicyTest {
                 .intersect(directConsumerOwners),
         )
         assertEquals(
-            setOf(ForbiddenEffect.INTELLIJ_WRITE),
+            setOf(ForbiddenEffect.INTELLIJ_PLATFORM, ForbiddenEffect.INTELLIJ_WRITE),
             architecture.modules.getValue(ModuleId.CHANGE_APPLY_INTELLIJ).allowedEffects,
         )
         assertEquals(

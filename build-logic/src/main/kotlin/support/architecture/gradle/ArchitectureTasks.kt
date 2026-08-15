@@ -6,6 +6,7 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
@@ -25,11 +26,18 @@ import support.architecture.BytecodeScanOutcome
 import support.architecture.JvmEffectScanner
 import support.architecture.KastArchitecturePolicy
 import support.architecture.LegacyViolationKey
+import support.architecture.ModuleId
 import support.architecture.ObservedArchitecture
 import support.architecture.ValidatedArchitecturePolicy
 import support.architecture.projection.ArchitectureProjection
 import java.nio.file.Files
 import java.nio.file.Path
+
+enum class ArchitectureVerificationMode {
+    TARGET,
+    MIGRATION,
+    AUTOMATIC,
+}
 
 @CacheableTask
 abstract class GenerateKastArchitectureProjectionTask : DefaultTask() {
@@ -54,6 +62,7 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         observedExportedProjectDependencies.convention(emptyList())
         observedModuleRoleConventions.convention(emptyList())
         classDirectoryOwners.convention(emptyList())
+        verificationMode.convention(ArchitectureVerificationMode.AUTOMATIC)
     }
 
     @get:Input
@@ -71,6 +80,9 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
     @get:Input
     abstract val classDirectoryOwners: ListProperty<String>
 
+    @get:Input
+    abstract val verificationMode: Property<ArchitectureVerificationMode>
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val compiledClassDirectories: ConfigurableFileCollection
@@ -87,8 +99,9 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     @TaskAction
     fun verify() {
-        val policy = canonicalPolicy()
-        verifyProjection(policy)
+        val canonical = canonicalPolicy()
+        verifyProjection(canonical)
+        val policy = selectPolicy(canonical)
         val graph = when (
             val parsed = ArchitectureObservationParser.parse(
                 policy,
@@ -138,6 +151,16 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
             )
         }
     }
+
+    private fun selectPolicy(canonical: ValidatedArchitecturePolicy): ValidatedArchitecturePolicy =
+        when (verificationMode.get()) {
+            ArchitectureVerificationMode.TARGET -> canonical.targetView()
+            ArchitectureVerificationMode.MIGRATION -> canonical
+            ArchitectureVerificationMode.AUTOMATIC -> {
+                val targetPaths = canonical.targetModules.keys.mapTo(linkedSetOf(), ModuleId::projectPath)
+                if (observedProjectPaths.get().all(targetPaths::contains)) canonical.targetView() else canonical
+            }
+        }
 
     private fun verifyProjection(policy: ValidatedArchitecturePolicy) {
         val projection = projectionFile.get().asFile.toPath()

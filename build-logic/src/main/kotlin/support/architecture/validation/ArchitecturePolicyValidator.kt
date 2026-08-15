@@ -11,6 +11,7 @@ import support.architecture.process.MutationRuntimeTopologyValidator
 object KastArchitecturePolicy {
     internal fun definition(): ArchitecturePolicyDefinition = ArchitecturePolicyDefinition(
         modules = KastPlatformModules.all,
+        targetModules = KastCleanSlateModules.all,
         mutationDeliveryTasks = KastMutationDelivery.all,
         mutationRuntimeProcesses = KastMutationRuntimeProcesses.all,
         legacyAllowances = KastArchitectureLegacyBaseline.all,
@@ -21,10 +22,10 @@ object KastArchitecturePolicy {
     /**
      * Proof transition: `ArchitecturePolicyDefinition -> ValidatedArchitecturePolicy`.
      *
-     * Establishes unique identities, complete references, and acyclic platform-module, mutation
-     * runtime, and mutation delivery graphs, including exact alternative apply-lane and recovery
-     * topology. [ArchitecturePolicyValidation.Invalid] is the closed expected failure. Raw graph
-     * extraction is permitted only in Gradle task and JSON projection adapters.
+     * Establishes unique identities, complete references, and acyclic current and clean-slate
+     * module graphs in addition to the migration-time runtime and delivery graphs.
+     * [ArchitecturePolicyValidation.Invalid] is the closed expected failure. Raw graph extraction
+     * is permitted only in Gradle task and JSON projection adapters.
      */
     fun validate(): ArchitecturePolicyValidation = ArchitecturePolicyValidator.validate(definition())
 }
@@ -57,6 +58,22 @@ object ArchitecturePolicyValidator {
         val validatedModules = moduleValidations
             .filterIsInstance<ModulePolicyValidation.Valid>()
             .associate { validation -> validation.module.id to validation.module }
+        val duplicateTargetModules = definition.targetModules
+            .groupingBy(ModulePolicy::id)
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+            .map(ArchitecturePolicyFailure::DuplicateTargetModule)
+        val targetModules = definition.targetModules.associateBy(ModulePolicy::id)
+        val targetModuleValidations = definition.targetModules.map { module ->
+            ModulePolicyValidator.validate(module, targetModules)
+        }
+        val targetModuleFailures = targetModuleValidations
+            .filterIsInstance<ModulePolicyValidation.Invalid>()
+            .flatMap(ModulePolicyValidation.Invalid::failures)
+        val validatedTargetModules = targetModuleValidations
+            .filterIsInstance<ModulePolicyValidation.Valid>()
+            .associate { validation -> validation.module.id to validation.module }
         val missingModuleDependencies = definition.modules.flatMap { module ->
             module.allowedProjectDependencies
                 .filterNot(modules::containsKey)
@@ -65,6 +82,17 @@ object ArchitecturePolicyValidator {
         val moduleSort = topologicalOrder(
             nodes = modules.keys,
             dependencies = { modules.getValue(it).allowedProjectDependencies.filter(modules::containsKey).toSet() },
+        )
+        val missingTargetModuleDependencies = definition.targetModules.flatMap { module ->
+            module.allowedProjectDependencies
+                .filterNot(targetModules::containsKey)
+                .map { ArchitecturePolicyFailure.MissingTargetModuleDependency(module.id, it) }
+        }
+        val targetModuleSort = topologicalOrder(
+            nodes = targetModules.keys,
+            dependencies = {
+                targetModules.getValue(it).allowedProjectDependencies.filter(targetModules::containsKey).toSet()
+            },
         )
         val compositionFailures = buildList {
             definition.modules
@@ -91,6 +119,33 @@ object ArchitecturePolicyValidator {
                 if (missing.isNotEmpty() || unexpected.isNotEmpty()) {
                     add(
                         ArchitecturePolicyFailure.InvalidRuntimeCompositionDependencies(
+                            missing = missing,
+                            unexpected = unexpected,
+                        ),
+                    )
+                }
+            }
+        }
+        val targetCompositionFailures = buildList {
+            definition.targetModules
+                .filter { module ->
+                    module.role == ModuleRole.COMPOSITION &&
+                    module.id != ModuleId.RUNTIME_COMPOSITION
+                }
+                .forEach { module ->
+                    add(ArchitecturePolicyFailure.UnexpectedTargetCompositionOwner(module.id))
+                }
+            val composition = targetModules[ModuleId.RUNTIME_COMPOSITION]
+            if (composition?.role != ModuleRole.COMPOSITION) {
+                add(ArchitecturePolicyFailure.MissingTargetRuntimeComposition)
+            } else {
+                val excluded = setOf(ModuleId.CLI, ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION)
+                val expectedDependencies = targetModules.keys - excluded
+                val missing = expectedDependencies - composition.allowedProjectDependencies
+                val unexpected = composition.allowedProjectDependencies - expectedDependencies
+                if (missing.isNotEmpty() || unexpected.isNotEmpty()) {
+                    add(
+                        ArchitecturePolicyFailure.InvalidTargetRuntimeCompositionDependencies(
                             missing = missing,
                             unexpected = unexpected,
                         ),
@@ -210,10 +265,17 @@ object ArchitecturePolicyValidator {
 
         val failures = buildList {
             addAll(duplicateModules)
+            addAll(duplicateTargetModules)
             addAll(missingModuleDependencies)
+            addAll(missingTargetModuleDependencies)
             addAll(moduleFailures)
+            addAll(targetModuleFailures)
             addAll(compositionFailures)
+            addAll(targetCompositionFailures)
             moduleSort.cycle?.let { add(ArchitecturePolicyFailure.ModuleDependencyCycle(it)) }
+            targetModuleSort.cycle?.let {
+                add(ArchitecturePolicyFailure.TargetModuleDependencyCycle(it))
+            }
             addAll(duplicateMutationDeliveryTasks)
             addAll(missingMutationDeliveryDependencies)
             addAll(missingMutationDeliveryOwnerModules)
@@ -243,9 +305,11 @@ object ArchitecturePolicyValidator {
                     ArchitecturePolicyValidation.Valid(
                         ValidatedArchitecturePolicy(
                             modules = validatedModules,
+                            targetModules = validatedTargetModules,
                             mutationDeliveryTasks = mutationDeliveryTasks,
                             mutationRuntimeTopology = mutationRuntimeTopologyValidation.topology,
                             moduleOrder = moduleSort.order,
+                            targetModuleOrder = targetModuleSort.order,
                             mutationDeliveryOrder = mutationDeliverySort.order,
                             mutationRuntimeProcessOrder = mutationRuntimeSort.order,
                             legacyAllowances = definition.legacyAllowances.toSet(),

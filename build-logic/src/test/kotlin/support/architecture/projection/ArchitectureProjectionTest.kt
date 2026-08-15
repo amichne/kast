@@ -23,10 +23,11 @@ class ArchitectureProjectionTest {
         val root = Json.parseToJsonElement(first).jsonObject
 
         assertEquals(first, second)
-        assertEquals(7, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(8, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("KOTLIN", root.getValue("policyAuthority").jsonPrimitive.content)
         assertEquals("REPOSITORY_WIDE", root.getValue("enforcementScope").jsonPrimitive.content)
-        assertEquals("MUTATION", root.getValue("workflowScope").jsonPrimitive.content)
+        assertEquals("CLEAN_SLATE_DELIVERY", root.getValue("workflowScope").jsonPrimitive.content)
+        assertEquals(30, root.getValue("targetModules").jsonArray.size)
         assertEquals(38, root.getValue("modules").jsonArray.size)
         assertEquals(20, root.getValue("mutationRuntimeProcesses").jsonArray.size)
         assertEquals(34, root.getValue("mutationDeliveryTasks").jsonArray.size)
