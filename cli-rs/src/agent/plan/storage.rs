@@ -160,21 +160,7 @@ fn read_stdin() -> Result<Vec<u8>> {
     Ok(content)
 }
 
-fn ensure_private_directory(path: &Path) -> Result<()> {
-    fs::create_dir_all(path)?;
-    let metadata = fs::symlink_metadata(path)?;
-    if metadata.file_type().is_symlink() || !metadata.is_dir() {
-        return Err(CliError::new(
-            "KAST_PLAN_STORE_INVALID",
-            format!(
-                "The private plan store {} is not a directory.",
-                path.display()
-            ),
-        ));
-    }
-    set_mode(path, 0o700)?;
-    Ok(())
-}
+include!("parts/storage/private_directory.rs");
 
 fn write_plan(path: &Path, plan: &StoredPlan) -> Result<()> {
     let mut encoded = serde_json::to_vec(plan)?;
@@ -370,6 +356,9 @@ fn sync_directory(path: &Path) -> Result<()> {
 }
 
 include!("parts/storage/projection.rs");
+
+#[cfg(test)]
+include!("parts/storage/private_directory_test.rs");
 
 fn remove_if_exists(path: &Path) {
     let _ = fs::remove_file(path);
