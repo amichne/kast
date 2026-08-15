@@ -153,8 +153,17 @@ private class IntellijVerifiedAddFileOperations(
                     lifecycle.progress,
                     lifecycle.failure,
                 )
-                is PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown ->
-                    applyPreparedPlan(lifecycle.recovery)
+                is PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown -> when (val resume = lifecycle.admitResume()) {
+                    VerifiedAddFileUnknownOutcomeAdmission.RevalidateAbsentTarget ->
+                        applyPlanned(approved.planned, persisted)
+                    is VerifiedAddFileUnknownOutcomeAdmission.Reconcile ->
+                        VerifiedAddFileResult.NonDestructiveReconciliationRequired(
+                            lifecycle.recovery, VerifiedAddFileProgress.SOURCE_APPLICATION,
+                            VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED,
+                            io.github.amichne.kast.server.change.VerifiedAddFileReconciliationAction.INSPECT_TARGET,
+                            resume.observation,
+                        )
+                }
                 PersistedVerifiedAddFileLifecycle.AwaitingApproval ->
                     applyPlanned(approved.planned, persisted)
                 is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->

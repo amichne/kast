@@ -47,6 +47,35 @@ internal fun prepareVerifiedAddFileRecovery(
         verifiedAddFileRecoveryId(revalidated.planned),
     )
 
+internal sealed interface VerifiedAddFileUnknownOutcomeAdmission {
+    data object RevalidateAbsentTarget : VerifiedAddFileUnknownOutcomeAdmission
+    data class Reconcile(
+        val observation: VerifiedAddFileNonDestructiveObservation,
+    ) : VerifiedAddFileUnknownOutcomeAdmission
+}
+
+/**
+ * Proof transition: `ApplyOutcomeUnknown -> VerifiedAddFileUnknownOutcomeAdmission`.
+ *
+ * An exact absent target permits semantic replanning before source application. A present or
+ * unprovable target retains only non-destructive reconciliation authority. Raw target status is
+ * extracted only at this recovery filesystem boundary.
+ */
+internal fun PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown.admitResume():
+    VerifiedAddFileUnknownOutcomeAdmission {
+    val target = Path.of(recovery.plan.planned.intent.targetPath.value)
+    return when {
+        Files.notExists(target, NOFOLLOW_LINKS) ->
+            VerifiedAddFileUnknownOutcomeAdmission.RevalidateAbsentTarget
+        Files.exists(target, NOFOLLOW_LINKS) -> VerifiedAddFileUnknownOutcomeAdmission.Reconcile(
+            VerifiedAddFileNonDestructiveObservation.TARGET_OBSERVATION_ALLOWED,
+        )
+        else -> VerifiedAddFileUnknownOutcomeAdmission.Reconcile(
+            VerifiedAddFileNonDestructiveObservation.COMMIT_EVIDENCE_INCOMPLETE,
+        )
+    }
+}
+
 /**
  * Effect transition:
  * `AppliedVerifiedAddFile -> VerifiedAddFileRecoveryDisposition`.
