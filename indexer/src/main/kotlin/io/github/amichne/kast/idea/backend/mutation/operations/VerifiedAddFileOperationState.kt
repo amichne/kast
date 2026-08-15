@@ -1,7 +1,5 @@
 package io.github.amichne.kast.idea.backend.mutation.operations
 
-import io.github.amichne.kast.api.protocol.AdditionProofIncompleteException
-import io.github.amichne.kast.api.protocol.AdditionProofLimitation
 import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.contract.result.AdditionKotlinPackage
 import io.github.amichne.kast.api.contract.result.AdditionPostimageSha256
@@ -11,13 +9,11 @@ import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.MutationPostconditionEvidence
 import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
 import io.github.amichne.kast.server.change.RevalidatedVerifiedAddFilePlan
-import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalChallenge
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
 import io.github.amichne.kast.server.change.VerifiedAddFilePlan
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanId
-import io.github.amichne.kast.server.change.VerifiedAddFilePlanStage
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanVersion
 import io.github.amichne.kast.server.change.VerifiedAddFileProgress
 import io.github.amichne.kast.server.change.VerifiedAddFileReceipt
@@ -33,14 +29,20 @@ internal class PersistedVerifiedAddFilePlan(
     val planId: VerifiedAddFilePlanId,
     val initialVersion: VerifiedAddFilePlanVersion,
     val planned: VerifiedAddFilePlan,
+    initialLifecycle: PersistedVerifiedAddFileLifecycle =
+        PersistedVerifiedAddFileLifecycle.AwaitingApproval,
 ) {
     val approvalChallenge = VerifiedAddFileApprovalChallenge.persisted(planId, initialVersion, planned)
     val gate = Mutex()
-    var lifecycle: PersistedVerifiedAddFileLifecycle = PersistedVerifiedAddFileLifecycle.AwaitingApproval
+    var lifecycle: PersistedVerifiedAddFileLifecycle = initialLifecycle
 }
 
 internal sealed interface PersistedVerifiedAddFileLifecycle {
     data object AwaitingApproval : PersistedVerifiedAddFileLifecycle
+
+    data class ApplyOutcomeUnknown(
+        val recovery: VerifiedAddFileRecoveryPrepared,
+    ) : PersistedVerifiedAddFileLifecycle
 
     data class RecoveryRequired(
         val application: AppliedVerifiedAddFile,
@@ -66,66 +68,31 @@ internal sealed interface PersistedVerifiedAddFileLifecycle {
     }
 }
 
-internal sealed interface PlanAttempt {
-    data class Planned(val plan: VerifiedAddFilePlan) : PlanAttempt
-    data class Rejected(val result: VerifiedAddFileResult.Rejected) : PlanAttempt
+internal sealed interface VerifiedAddFileJournalRead {
+    data class Loaded(val plan: PersistedVerifiedAddFilePlan) : VerifiedAddFileJournalRead
+    data class Rejected(val failure: VerifiedAddFileJournalFailure) : VerifiedAddFileJournalRead
 }
 
-internal sealed interface TargetAdmission {
-    data object Admitted : TargetAdmission
-    data class Rejected(val failure: VerifiedAddFileFailure) : TargetAdmission
-
-    companion object {
-        fun symlinkEscape(): Rejected = Rejected(VerifiedAddFileFailure.TARGET_SYMLINK_ESCAPE)
-    }
+internal sealed interface VerifiedAddFileJournalWrite {
+    data object Stored : VerifiedAddFileJournalWrite
+    data class Rejected(val failure: VerifiedAddFileJournalFailure) : VerifiedAddFileJournalWrite
 }
 
-internal fun rejected(
-    progress: VerifiedAddFileProgress,
-    failure: VerifiedAddFileFailure,
-): VerifiedAddFileResult.Rejected = VerifiedAddFileResult.Rejected(progress, failure)
+internal enum class VerifiedAddFileJournalFailure { MISSING, CORRUPT, UNAVAILABLE }
 
-internal fun applyRejected(
-    request: VerifiedAddFileApplyRequest,
-    progress: VerifiedAddFileProgress,
-    failure: VerifiedAddFileFailure,
-): VerifiedAddFileApplyResult.Rejected = VerifiedAddFileApplyResult.Rejected(
-    planId = request.planId,
-    planVersion = request.expectedVersion,
-    stage = progress.toStage(),
-    progress = progress,
-    failure = failure,
-)
-
-internal fun VerifiedAddFileProgress.toStage(): VerifiedAddFilePlanStage = when (this) {
-    VerifiedAddFileProgress.INTENT_ADMISSION,
-    VerifiedAddFileProgress.PLANNING,
-    -> VerifiedAddFilePlanStage.AWAITING_APPROVAL
-    VerifiedAddFileProgress.REVALIDATION -> VerifiedAddFilePlanStage.APPROVED
-    VerifiedAddFileProgress.RECOVERY_PREPARATION -> VerifiedAddFilePlanStage.RECOVERY_PREPARED
-    VerifiedAddFileProgress.SOURCE_APPLICATION -> VerifiedAddFilePlanStage.APPLY_ADMITTED
-    VerifiedAddFileProgress.WORKSPACE_PUBLICATION,
-    VerifiedAddFileProgress.PSI_ADMISSION,
-    -> VerifiedAddFilePlanStage.APPLIED_UNVERIFIED
+internal sealed interface DurableLifecycleAdmission {
+    data class Admitted(val lifecycle: PersistedVerifiedAddFileLifecycle) : DurableLifecycleAdmission
+    data object Rejected : DurableLifecycleAdmission
 }
 
-internal fun wireVersion(raw: Long): VerifiedAddFilePlanVersion =
-    when (val refinement = VerifiedAddFilePlanVersion.refine(raw)) {
-        is io.github.amichne.kast.server.change.VerifiedAddFileRefinement.Refined -> refinement.value
-        is io.github.amichne.kast.server.change.VerifiedAddFileRefinement.Rejected -> error(
-            "Static add-file lifecycle version violated its typed boundary: ${refinement.failure}",
-        )
-    }
+internal sealed interface DurableApplicationAdmission {
+    data class Admitted(val application: AppliedVerifiedAddFile) : DurableApplicationAdmission
+    data object Rejected : DurableApplicationAdmission
+}
 
-internal fun AdditionProofIncompleteException.toVerifiedFailure(): VerifiedAddFileFailure = when {
-    AdditionProofLimitation.TARGET_ALREADY_EXISTS in limitations -> VerifiedAddFileFailure.TARGET_ALREADY_EXISTS
-    AdditionProofLimitation.GENERATED_SOURCE_READ_ONLY in limitations -> VerifiedAddFileFailure.TARGET_GENERATED
-    AdditionProofLimitation.SOURCE_OWNER_AMBIGUOUS in limitations ->
-        VerifiedAddFileFailure.TARGET_AMBIGUOUSLY_OWNED
-    AdditionProofLimitation.OUTSIDE_WORKSPACE_AUTHORITY in limitations ||
-        AdditionProofLimitation.HARD_EXCLUDED_MUTATION_TARGET in limitations ->
-        VerifiedAddFileFailure.TARGET_SYMLINK_ESCAPE
-    else -> VerifiedAddFileFailure.PACKAGE_OR_DECLARATION_INVALID
+internal sealed interface DurableRecoveryIdAdmission {
+    data class Admitted(val recoveryId: VerifiedAddFileRecoveryId) : DurableRecoveryIdAdmission
+    data object Rejected : DurableRecoveryIdAdmission
 }
 
 internal sealed interface VerifiedAddFileProofAdmission<out T> {
@@ -193,6 +160,31 @@ internal class VerifiedAddFileRecoveryPrepared private constructor(
                 )
             }
         }
+
+        /**
+         * Proof transition: `(VerifiedAddFilePlan, VerifiedAddFileRecoveryId)`
+         * to `VerifiedAddFileProofAdmission<VerifiedAddFileRecoveryPrepared>`.
+         *
+         * Re-admits a persisted recovery capability only when its identity is derived from the exact
+         * strong plan. The closed failure is [VerifiedAddFileFailure.PLAN_NOT_FOUND]. Raw persisted
+         * values may be supplied only by the workspace-scoped add-file journal boundary.
+         */
+        fun readmitPersisted(
+            planned: VerifiedAddFilePlan,
+            recoveryId: VerifiedAddFileRecoveryId,
+        ): VerifiedAddFileProofAdmission<VerifiedAddFileRecoveryPrepared> {
+            if (recoveryId != verifiedAddFileRecoveryId(planned)) {
+                return VerifiedAddFileProofAdmission.Rejected(VerifiedAddFileFailure.PLAN_NOT_FOUND)
+            }
+            return when (val revalidation = RevalidatedVerifiedAddFilePlan.admit(planned, planned.exact)) {
+                is io.github.amichne.kast.server.change.VerifiedAddFileAdmission.Admitted ->
+                    VerifiedAddFileProofAdmission.Admitted(
+                        VerifiedAddFileRecoveryPrepared(revalidation.value, recoveryId),
+                    )
+                is io.github.amichne.kast.server.change.VerifiedAddFileAdmission.Rejected ->
+                    VerifiedAddFileProofAdmission.Rejected(VerifiedAddFileFailure.PLAN_NOT_FOUND)
+            }
+        }
     }
 }
 
@@ -222,6 +214,29 @@ internal class AppliedVerifiedAddFile private constructor(
                 VerifiedAddFileProofAdmission.Rejected(
                     VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED,
                 )
+            }
+        }
+
+        /**
+         * Proof transition: `(VerifiedAddFileRecoveryPrepared, AdditionTargetPath,
+         * AdditionPostimageSha256) -> VerifiedAddFileProofAdmission<AppliedVerifiedAddFile>`.
+         *
+         * Re-admits persisted application authority only when target and postimage equal the exact
+         * compiler-backed plan. The closed failure is [VerifiedAddFileFailure.PLAN_NOT_FOUND]. Raw
+         * persisted values may be supplied only by the workspace-scoped add-file journal boundary.
+         */
+        fun readmitPersisted(
+            recovery: VerifiedAddFileRecoveryPrepared,
+            targetPath: AdditionTargetPath,
+            postimageSha256: AdditionPostimageSha256,
+        ): VerifiedAddFileProofAdmission<AppliedVerifiedAddFile> {
+            val proof = recovery.plan.planned.exact.proof
+            return if (targetPath == proof.targetPath && postimageSha256 == proof.postimageSha256) {
+                VerifiedAddFileProofAdmission.Admitted(
+                    AppliedVerifiedAddFile(recovery, targetPath, postimageSha256),
+                )
+            } else {
+                VerifiedAddFileProofAdmission.Rejected(VerifiedAddFileFailure.PLAN_NOT_FOUND)
             }
         }
 

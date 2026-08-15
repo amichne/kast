@@ -1,8 +1,7 @@
 import org.gradle.jvm.tasks.Jar
 
 plugins {
-    id("kast.runtime-app")
-    kotlin("plugin.serialization")
+    id("kast.runtime-serialization-app")
 }
 
 extra["kastIncludeShadowJar"] = "false"
@@ -52,6 +51,7 @@ private fun extractedIdeaFiles(
 val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/lib/**/*.jar")
     exclude("**/plugins/**")
+    exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar", "**/lib/intellij.libraries.ktor.utils.jar")
 }
 
 val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {

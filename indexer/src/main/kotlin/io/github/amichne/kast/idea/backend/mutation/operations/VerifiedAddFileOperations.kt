@@ -1,9 +1,6 @@
 package io.github.amichne.kast.idea.backend.mutation.operations
 
 import com.intellij.openapi.progress.ProcessCanceledException
-import io.github.amichne.kast.api.contract.CreateFileParentPolicy
-import io.github.amichne.kast.api.contract.FileOperation
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.MutationPostconditionAuthority
 import io.github.amichne.kast.api.contract.query.MutationPostconditionQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
@@ -21,22 +18,14 @@ import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
 import io.github.amichne.kast.server.change.VerifiedAddFileIntent
 import io.github.amichne.kast.server.change.VerifiedAddFilePlan
-import io.github.amichne.kast.server.change.VerifiedAddFilePlanId
-import io.github.amichne.kast.server.change.VerifiedAddFilePlanPreview
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanRequest
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanResult
-import io.github.amichne.kast.server.change.VerifiedAddFilePlanStage
-import io.github.amichne.kast.server.change.VerifiedAddFilePlanVersion
 import io.github.amichne.kast.server.change.VerifiedAddFileProgress
-import io.github.amichne.kast.server.change.VerifiedAddFileReceipt
 import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryDisposition
 import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryDispositionAction
 import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
-import java.security.MessageDigest
 import java.nio.file.Path
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CancellationException
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
@@ -58,7 +47,7 @@ private class IntellijVerifiedAddFileOperations(
     private val backend: KastIndexerBackend,
     private val workspaceRoot: Path,
 ) : NativeVerifiedAddFileOperations {
-    private val plans = ConcurrentHashMap<String, PersistedVerifiedAddFilePlan>()
+    private val journal = VerifiedAddFilePlanJournal(backend.workspaceIdentity.workspaceIdentity)
 
     override suspend fun plan(request: VerifiedAddFilePlanRequest): VerifiedAddFilePlanResult {
         if (request.workspaceRoot.toJavaPath() != workspaceRoot) {
@@ -85,8 +74,19 @@ private class IntellijVerifiedAddFileOperations(
             initialVersion = version,
             planned = planned,
         )
-        val authoritative = plans.putIfAbsent(planId.value, persisted) ?: persisted
-        return authoritative.toWirePlan()
+        when (val existing = journal.load(planId)) {
+            is VerifiedAddFileJournalRead.Loaded -> return existing.plan.toWirePlan()
+            is VerifiedAddFileJournalRead.Rejected -> if (
+                existing.failure != VerifiedAddFileJournalFailure.MISSING
+            ) {
+                return VerifiedAddFilePlanResult.Rejected(VerifiedAddFileFailure.PLAN_NOT_FOUND)
+            }
+        }
+        return when (journal.store(persisted)) {
+            VerifiedAddFileJournalWrite.Stored -> persisted.toWirePlan()
+            is VerifiedAddFileJournalWrite.Rejected ->
+                VerifiedAddFilePlanResult.Rejected(VerifiedAddFileFailure.PLAN_NOT_FOUND)
+        }
     }
 
     override suspend fun apply(request: VerifiedAddFileApplyRequest): VerifiedAddFileApplyResult {
@@ -97,12 +97,14 @@ private class IntellijVerifiedAddFileOperations(
                 VerifiedAddFileFailure.WORKSPACE_MISMATCH,
             )
         }
-        val persisted = plans[request.planId.value]
-            ?: return applyRejected(
+        val persisted = when (val loaded = journal.load(request.planId)) {
+            is VerifiedAddFileJournalRead.Loaded -> loaded.plan
+            is VerifiedAddFileJournalRead.Rejected -> return applyRejected(
                 request,
                 VerifiedAddFileProgress.INTENT_ADMISSION,
                 VerifiedAddFileFailure.PLAN_NOT_FOUND,
             )
+        }
         return persisted.gate.withLock {
             val lifecycle = persisted.lifecycle
             if (request.expectedVersion != persisted.initialVersion) {
@@ -133,6 +135,7 @@ private class IntellijVerifiedAddFileOperations(
                 is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->
                     return@withLock lifecycle.result
                 PersistedVerifiedAddFileLifecycle.AwaitingApproval,
+                is PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown,
                 is PersistedVerifiedAddFileLifecycle.RecoveryRequired,
                 is PersistedVerifiedAddFileLifecycle.ReconciliationRequired,
                 -> Unit
@@ -150,12 +153,15 @@ private class IntellijVerifiedAddFileOperations(
                     lifecycle.progress,
                     lifecycle.failure,
                 )
-                PersistedVerifiedAddFileLifecycle.AwaitingApproval -> applyApprovedPlan(approved)
+                is PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown ->
+                    applyPreparedPlan(lifecycle.recovery)
+                PersistedVerifiedAddFileLifecycle.AwaitingApproval ->
+                    applyPlanned(approved.planned, persisted)
                 is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->
                     error("non-destructive reconciliation replay returned above")
                 is PersistedVerifiedAddFileLifecycle.Terminal -> error("terminal replay returned above")
             }
-            when (result) {
+            val wireResult = when (result) {
                 is VerifiedAddFileResult.Verified -> VerifiedAddFileApplyResult.Verified(
                     planId = persisted.planId,
                     planVersion = wireVersion(TERMINAL_PLAN_VERSION),
@@ -228,16 +234,21 @@ private class IntellijVerifiedAddFileOperations(
                             PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired(it)
                     }
             }
+            when (result) {
+                is VerifiedAddFileResult.Rejected -> wireResult
+                else -> when (journal.store(persisted)) {
+                    VerifiedAddFileJournalWrite.Stored -> wireResult
+                    is VerifiedAddFileJournalWrite.Rejected -> applyRejected(
+                        request,
+                        VerifiedAddFileProgress.REVALIDATION,
+                        VerifiedAddFileFailure.PLAN_NOT_FOUND,
+                    )
+                }
+            }
         }
     }
 
-    private suspend fun applyApprovedPlan(
-        approved: ApprovedVerifiedAddFilePlan,
-    ): VerifiedAddFileResult = applyPlanned(approved.planned)
-
-    private suspend fun applyPlanned(
-        exactPlan: VerifiedAddFilePlan,
-    ): VerifiedAddFileResult {
+    private suspend fun applyPlanned(exactPlan: VerifiedAddFilePlan, persisted: PersistedVerifiedAddFilePlan): VerifiedAddFileResult {
         val intent = exactPlan.intent
         val replanned = planVerifiedAddFile(backend, intent, VerifiedAddFileProgress.REVALIDATION)
         if (replanned !is PlanAttempt.Planned) {
@@ -264,6 +275,19 @@ private class IntellijVerifiedAddFileOperations(
                 admission.failure,
             )
         }
+        persisted.lifecycle = PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown(recovery)
+        if (journal.store(persisted) is VerifiedAddFileJournalWrite.Rejected) {
+            persisted.lifecycle = PersistedVerifiedAddFileLifecycle.AwaitingApproval
+            return rejected(
+                VerifiedAddFileProgress.RECOVERY_PREPARATION,
+                VerifiedAddFileFailure.PLAN_NOT_FOUND,
+            )
+        }
+        return applyPreparedPlan(recovery)
+    }
+
+    private suspend fun applyPreparedPlan(recovery: VerifiedAddFileRecoveryPrepared): VerifiedAddFileResult {
+        val exactPlan = recovery.plan.planned
         val writeAuthorization = when (
             val admission = VerifiedAddFileVcsWriteAuthorized.admit(recovery)
         ) {
@@ -284,7 +308,7 @@ private class IntellijVerifiedAddFileOperations(
             is VerifiedAddFileSourceApplication.CommitUnproven -> return sourceApplication.toResult()
         }
         val refresh = try {
-            backend.refresh(RefreshQuery(filePaths = listOf(intent.targetPath.value)).parsed())
+            backend.refresh(RefreshQuery(filePaths = listOf(exactPlan.intent.targetPath.value)).parsed())
         } catch (_: ProcessCanceledException) {
             return VerifiedAddFileResult.RecoveryRequired(
                 application,
@@ -373,9 +397,4 @@ private class IntellijVerifiedAddFileOperations(
         }
         return VerifiedAddFileResult.Verified(verification.toReceipt())
     }
-
 }
-
-
-private const val INITIAL_PLAN_VERSION = 0L
-private const val TERMINAL_PLAN_VERSION = 5L
