@@ -245,9 +245,9 @@ internal class AppliedVerifiedAddFile private constructor(
          * to `VerifiedAddFileProofAdmission<AppliedVerifiedAddFile>`.
          *
          * Establishes from structured backend evidence that this one-operation request committed
-         * creation of exactly the planned target and no deletion. The closed expected failure is
-         * [VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED]. Raw exception details are extracted
-         * only at this partial-application admission boundary.
+         * creation of exactly the planned target, no deletion, and no retained recovery artifact.
+         * The closed expected failure is [VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED]. Raw
+         * exception details are extracted only at this partial-application admission boundary.
          */
         fun admit(
             recovery: VerifiedAddFileRecoveryPrepared,
@@ -258,7 +258,12 @@ internal class AppliedVerifiedAddFile private constructor(
                 failure.details["failedFile"] == proof.targetPath.value &&
                 failure.details["appliedFiles"] == proof.targetPath.value &&
                 failure.details["createdFiles"] == proof.targetPath.value &&
-                failure.details["deletedFiles"].isNullOrEmpty()
+                failure.details["deletedFiles"].isNullOrEmpty() &&
+                failure.details.keys.none { key ->
+                    key == "recoveryFilePathCount" ||
+                        key == "recoveryFilePath" ||
+                        key.startsWith("recoveryFilePath.")
+                }
             ) {
                 VerifiedAddFileProofAdmission.Admitted(
                     AppliedVerifiedAddFile(recovery, proof.targetPath, proof.postimageSha256),
