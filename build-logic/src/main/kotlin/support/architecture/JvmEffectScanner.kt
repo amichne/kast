@@ -205,6 +205,13 @@ private object EffectRules {
         val owner = target.owner.internalName
         val name = target.name.value
         if (
+            moduleRole != ModuleRole.LEGACY_HOST &&
+            (owner.startsWith("com/intellij/") ||
+             owner.startsWith("org/jetbrains/kotlin/analysis/api/"))
+        ) {
+            add(ForbiddenEffect.INTELLIJ_PLATFORM)
+        }
+        if (
             owner == "com/intellij/openapi/command/WriteCommandAction" ||
             (owner.startsWith("com/intellij/openapi/application/") && name.contains("writeAction", true)) ||
             (owner.startsWith("com/intellij/psi/") && name in psiMutators)
@@ -220,6 +227,9 @@ private object EffectRules {
         }
         if (owner.startsWith("java/sql/") || owner.startsWith("org/sqlite/")) {
             add(ForbiddenEffect.JDBC)
+        }
+        if (moduleRole != ModuleRole.LEGACY_HOST && owner.startsWith("org/gradle/")) {
+            add(ForbiddenEffect.GRADLE_PLATFORM)
         }
         if (isGradleImportAuthority(owner, name)) {
             add(ForbiddenEffect.GRADLE_IMPORT)

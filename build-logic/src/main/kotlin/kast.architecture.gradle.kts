@@ -3,6 +3,7 @@ import org.gradle.api.tasks.SourceSetContainer
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastArchitectureProjectionTask
+import support.architecture.gradle.ArchitectureVerificationMode
 import support.architecture.gradle.VerifyKastArchitectureTask
 
 plugins {
@@ -19,30 +20,58 @@ tasks.register<GenerateKastArchitectureProjectionTask>("generateKastArchitecture
     projectionFile.set(architectureProjection)
 }
 
-val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyKastArchitecture") {
+fun registerArchitectureVerification(
+    name: String,
+    descriptionText: String,
+    mode: ArchitectureVerificationMode,
+) = tasks.register<VerifyKastArchitectureTask>(name) {
     group = "verification"
-    description = "Verifies the platform topology, mutation workflow, compiled effects, and migration baseline."
+    description = descriptionText
     projectionFile.set(architectureProjection)
     rootDirectory.set(layout.projectDirectory)
-    reportFile.set(layout.buildDirectory.file("reports/kast-architecture/verification.json"))
+    reportFile.set(layout.buildDirectory.file("reports/kast-architecture/$name.json"))
+    verificationMode.set(mode)
 }
+
+val verifyKastModuleGraph = registerArchitectureVerification(
+    "verifyKastModuleGraph",
+    "Verifies the clean-slate target module graph against observed project membership and edges.",
+    ArchitectureVerificationMode.AUTOMATIC,
+)
+val verifyForbiddenEffects = registerArchitectureVerification(
+    "verifyForbiddenEffects",
+    "Verifies compiled references against the sole clean-slate effect owners.",
+    ArchitectureVerificationMode.AUTOMATIC,
+)
+val verifyKastArchitecture = registerArchitectureVerification(
+    "verifyKastArchitecture",
+    "Verifies the migration graph, compiled effects, and exact migration baseline.",
+    ArchitectureVerificationMode.MIGRATION,
+)
+val architectureVerifications = listOf(
+    verifyKastModuleGraph,
+    verifyForbiddenEffects,
+    verifyKastArchitecture,
+)
 
 subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
         val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
-        verifyKastArchitecture.configure {
-            observedProjectPaths.add(modulePath)
-            compiledClassDirectories.from(mainSourceSet.map { it.output.classesDirs })
-            classDirectoryOwners.addAll(
-                mainSourceSet.map { sourceSet ->
-                    sourceSet.output.classesDirs.files.map { directory ->
-                        val relative = rootProject.projectDir.toPath().relativize(directory.toPath())
-                        "$modulePath${VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR}${relative.joinToString("/")}"
-                    }
-                },
-            )
-            dependsOn(tasks.named("classes"))
+        architectureVerifications.forEach { verification ->
+            verification.configure {
+                observedProjectPaths.add(modulePath)
+                compiledClassDirectories.from(mainSourceSet.map { it.output.classesDirs })
+                classDirectoryOwners.addAll(
+                    mainSourceSet.map { sourceSet ->
+                        sourceSet.output.classesDirs.files.map { directory ->
+                            val relative = rootProject.projectDir.toPath().relativize(directory.toPath())
+                            "$modulePath${VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR}${relative.joinToString("/")}"
+                        }
+                    },
+                )
+                dependsOn(tasks.named("classes"))
+            }
         }
     }
 
@@ -70,10 +99,12 @@ subprojects {
             .map { convention ->
                 "$path${ArchitectureObservationParser.ROLE_SEPARATOR}${convention.pluginId}"
             }
-        verifyKastArchitecture.configure {
-            observedProjectDependencies.addAll(dependencies)
-            observedExportedProjectDependencies.addAll(exportedDependencies)
-            observedModuleRoleConventions.addAll(roleConventions)
+        architectureVerifications.forEach { verification ->
+            verification.configure {
+                observedProjectDependencies.addAll(dependencies)
+                observedExportedProjectDependencies.addAll(exportedDependencies)
+                observedModuleRoleConventions.addAll(roleConventions)
+            }
         }
     }
 }

@@ -1,9 +1,311 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "policyAuthority": "KOTLIN",
   "policySource": "build-logic/src/main/kotlin/support/architecture",
   "enforcementScope": "REPOSITORY_WIDE",
-  "workflowScope": "MUTATION",
+  "workflowScope": "CLEAN_SLATE_DELIVERY",
+  "targetModules": [
+    {
+      "id": "KERNEL",
+      "projectPath": ":kernel",
+      "lifecycle": "ACTIVE",
+      "role": "KERNEL",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.kernel"},
+      "allowedProjectDependencies": [],
+      "allowedEffects": []
+    },
+    {
+      "id": "PROTOCOL_CONTRACT",
+      "projectPath": ":protocol:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
+      "id": "WORKSPACE_CONTRACT",
+      "projectPath": ":workspace:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
+      "id": "SYMBOL_CONTRACT",
+      "projectPath": ":symbol:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "RELATION_CONTRACT",
+      "projectPath": ":relation:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "TRAVERSAL_CONTRACT",
+      "projectPath": ":traversal:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":relation:contract", ":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "DIAGNOSTIC_CONTRACT",
+      "projectPath": ":diagnostic:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_CONTRACT",
+      "projectPath": ":change:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":diagnostic:contract", ":kernel", ":relation:contract", ":symbol:contract", ":traversal:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "EVIDENCE_CONTRACT",
+      "projectPath": ":evidence:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":change:contract", ":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "PROTOCOL_REGISTRY",
+      "projectPath": ":protocol:registry",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":change:contract", ":diagnostic:contract", ":kernel", ":protocol:contract", ":relation:contract", ":symbol:contract", ":traversal:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "PROTOCOL_WIRE",
+      "projectPath": ":protocol:wire",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":protocol:contract", ":protocol:registry"],
+      "allowedEffects": []
+    },
+    {
+      "id": "WORKSPACE_SERVICE",
+      "projectPath": ":workspace:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":evidence:contract", ":workspace:contract"],
+      "allowedEffects": ["WORKSPACE_TRANSITION"]
+    },
+    {
+      "id": "WORKSPACE_INTELLIJ",
+      "projectPath": ":workspace:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "WORKSPACE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.workspace"},
+      "allowedProjectDependencies": [":workspace:contract"],
+      "allowedEffects": ["GRADLE_IMPORT", "GRADLE_PLATFORM", "GRAPH_BUILD", "INTELLIJ_PLATFORM"]
+    },
+    {
+      "id": "SYMBOL_SERVICE",
+      "projectPath": ":symbol:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "SYMBOL_INTELLIJ",
+      "projectPath": ":symbol:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
+      "allowedProjectDependencies": [":symbol:contract", ":workspace:contract"],
+      "allowedEffects": ["INTELLIJ_PLATFORM"]
+    },
+    {
+      "id": "RELATION_SERVICE",
+      "projectPath": ":relation:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":relation:contract", ":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "RELATION_INTELLIJ",
+      "projectPath": ":relation:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
+      "allowedProjectDependencies": [":relation:contract", ":symbol:contract", ":workspace:contract"],
+      "allowedEffects": ["INTELLIJ_PLATFORM"]
+    },
+    {
+      "id": "TRAVERSAL_SERVICE",
+      "projectPath": ":traversal:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":relation:contract", ":traversal:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "DIAGNOSTIC_SERVICE",
+      "projectPath": ":diagnostic:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":diagnostic:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "DIAGNOSTIC_INTELLIJ",
+      "projectPath": ":diagnostic:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_READ_ADAPTER",
+      "cost": "BOUNDED_READ",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
+      "allowedProjectDependencies": [":diagnostic:contract", ":workspace:contract"],
+      "allowedEffects": ["INTELLIJ_PLATFORM"]
+    },
+    {
+      "id": "CHANGE_PLAN",
+      "projectPath": ":change:plan",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:contract", ":diagnostic:contract", ":relation:contract", ":symbol:contract", ":traversal:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_APPLY",
+      "projectPath": ":change:apply",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_VERIFY",
+      "projectPath": ":change:verify",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:contract", ":diagnostic:contract", ":evidence:contract", ":relation:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_RECOVERY",
+      "projectPath": ":change:recovery",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":change:contract", ":evidence:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CHANGE_INTELLIJ",
+      "projectPath": ":change:intellij",
+      "lifecycle": "ACTIVE",
+      "role": "INTELLIJ_WRITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-write"},
+      "allowedProjectDependencies": [":change:contract", ":workspace:contract"],
+      "allowedEffects": ["FILESYSTEM_WRITE", "INTELLIJ_PLATFORM", "INTELLIJ_WRITE", "SOURCE_FILESYSTEM_WRITE"]
+    },
+    {
+      "id": "EVIDENCE_SQLITE",
+      "projectPath": ":evidence:sqlite",
+      "lifecycle": "ACTIVE",
+      "role": "SQLITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.sqlite"},
+      "allowedProjectDependencies": [":change:contract", ":evidence:contract", ":workspace:contract"],
+      "allowedEffects": ["JDBC"]
+    },
+    {
+      "id": "RUNTIME_SERVER",
+      "projectPath": ":runtime:server",
+      "lifecycle": "ACTIVE",
+      "role": "TRANSPORT",
+      "cost": "RUNTIME_ORCHESTRATION",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.transport"},
+      "allowedProjectDependencies": [":change:contract", ":diagnostic:contract", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":relation:contract", ":symbol:contract", ":traversal:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "CLI",
+      "projectPath": ":cli",
+      "lifecycle": "ACTIVE",
+      "role": "CLI",
+      "cost": "RUNTIME_ORCHESTRATION",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.cli"},
+      "allowedProjectDependencies": [":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire"],
+      "allowedEffects": ["PROCESS_CONTROL"]
+    },
+    {
+      "id": "RUNTIME_COMPOSITION",
+      "projectPath": ":runtime:composition",
+      "lifecycle": "ACTIVE",
+      "role": "COMPOSITION",
+      "cost": "RUNTIME_ORCHESTRATION",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.composition"},
+      "allowedProjectDependencies": [":change:apply", ":change:contract", ":change:intellij", ":change:plan", ":change:recovery", ":change:verify", ":diagnostic:contract", ":diagnostic:intellij", ":diagnostic:service", ":evidence:contract", ":evidence:sqlite", ":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":relation:contract", ":relation:intellij", ":relation:service", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":symbol:service", ":traversal:contract", ":traversal:service", ":workspace:contract", ":workspace:intellij", ":workspace:service"],
+      "allowedEffects": []
+    },
+    {
+      "id": "INDEXER",
+      "projectPath": ":indexer",
+      "lifecycle": "ACTIVE",
+      "role": "INDEXER_HOST",
+      "cost": "RUNTIME_ORCHESTRATION",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.indexer-host"},
+      "allowedProjectDependencies": [":runtime:composition"],
+      "allowedEffects": ["INTELLIJ_PLATFORM"]
+    }
+  ],
   "modules": [
     {
       "id": "ANALYSIS_API",
@@ -123,7 +425,7 @@
       "cost": "BOUNDED_READ",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
       "allowedProjectDependencies": [":change:contract", ":change:plan:spi", ":workspace:contract"],
-      "allowedEffects": []
+      "allowedEffects": ["INTELLIJ_PLATFORM"]
     },
     {
       "id": "CHANGE_PLAN_SERVICE",
@@ -153,7 +455,7 @@
       "cost": "PHYSICAL_EFFECT",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-write"},
       "allowedProjectDependencies": [":change:apply:spi", ":change:contract"],
-      "allowedEffects": ["INTELLIJ_WRITE"]
+      "allowedEffects": ["INTELLIJ_PLATFORM", "INTELLIJ_WRITE"]
     },
     {
       "id": "CHANGE_APPLY_SERVICE",
@@ -203,7 +505,7 @@
       "cost": "BOUNDED_READ",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
       "allowedProjectDependencies": [":change:contract", ":change:verify:spi", ":workspace:contract"],
-      "allowedEffects": []
+      "allowedEffects": ["INTELLIJ_PLATFORM"]
     },
     {
       "id": "WORKSPACE_SPI",
@@ -273,7 +575,7 @@
       "cost": "BOUNDED_READ",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
       "allowedProjectDependencies": [":symbol:contract", ":workspace:contract", ":workspace:spi"],
-      "allowedEffects": []
+      "allowedEffects": ["INTELLIJ_PLATFORM"]
     },
     {
       "id": "WORKSPACE_INTELLIJ",
@@ -283,7 +585,7 @@
       "cost": "PHYSICAL_EFFECT",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.workspace"},
       "allowedProjectDependencies": [":workspace:contract", ":workspace:spi"],
-      "allowedEffects": ["GRADLE_IMPORT"]
+      "allowedEffects": ["GRADLE_IMPORT", "GRADLE_PLATFORM", "INTELLIJ_PLATFORM"]
     },
     {
       "id": "WORKSPACE_SERVICE",
@@ -373,7 +675,7 @@
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.transport"},
       "allowedProjectDependencies": [":change:contract", ":protocol:registry", ":runtime:bindings"],
-      "allowedEffects": ["ANALYSIS_BACKEND"]
+      "allowedEffects": []
     },
     {
       "id": "RUNTIME_COMPOSITION",
@@ -383,7 +685,7 @@
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.composition"},
       "allowedProjectDependencies": [":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:contract", ":evidence:spi", ":evidence:sqlite", ":kernel", ":protocol:continuation", ":protocol:registry", ":runtime:bindings", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service", ":workspace:spi"],
-      "allowedEffects": ["ANALYSIS_BACKEND"]
+      "allowedEffects": []
     }
   ],
   "mutationRuntimeProcesses": [

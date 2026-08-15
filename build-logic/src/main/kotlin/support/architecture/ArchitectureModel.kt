@@ -23,13 +23,17 @@ enum class ModuleRole {
     WORKSPACE_ADAPTER,
     COMPOSITION,
     TRANSPORT,
+    CLI,
+    INDEXER_HOST,
 }
 
 enum class ForbiddenEffect {
+    INTELLIJ_PLATFORM,
     INTELLIJ_WRITE,
     FILESYSTEM_WRITE,
     SOURCE_FILESYSTEM_WRITE,
     JDBC,
+    GRADLE_PLATFORM,
     GRADLE_IMPORT,
     RECURSIVE_VFS_REFRESH,
     WORKSPACE_TRANSITION,
@@ -39,12 +43,15 @@ enum class ForbiddenEffect {
 }
 
 enum class ModuleId(val projectPath: String) {
+    CLI(":cli"),
     ANALYSIS_API(":analysis-api"),
     ANALYSIS_SERVER(":analysis-server"),
     INDEX_STORE(":index-store"),
     INDEXER(":indexer"),
     KERNEL(":kernel"),
+    PROTOCOL_CONTRACT(":protocol:contract"),
     PROTOCOL_REGISTRY(":protocol:registry"),
+    PROTOCOL_WIRE(":protocol:wire"),
     WORKSPACE_CONTRACT(":workspace:contract"),
     WORKSPACE_SPI(":workspace:spi"),
     WORKSPACE_SERVICE(":workspace:service"),
@@ -52,9 +59,23 @@ enum class ModuleId(val projectPath: String) {
     EVIDENCE_CONTRACT(":evidence:contract"),
     EVIDENCE_SPI(":evidence:spi"),
     SYMBOL_CONTRACT(":symbol:contract"),
+    SYMBOL_SERVICE(":symbol:service"),
     SYMBOL_INTELLIJ(":symbol:intellij"),
+    RELATION_CONTRACT(":relation:contract"),
+    RELATION_SERVICE(":relation:service"),
+    RELATION_INTELLIJ(":relation:intellij"),
+    TRAVERSAL_CONTRACT(":traversal:contract"),
+    TRAVERSAL_SERVICE(":traversal:service"),
+    DIAGNOSTIC_CONTRACT(":diagnostic:contract"),
+    DIAGNOSTIC_SERVICE(":diagnostic:service"),
+    DIAGNOSTIC_INTELLIJ(":diagnostic:intellij"),
     PROTOCOL_CONTINUATION(":protocol:continuation"),
     CHANGE_CONTRACT(":change:contract"),
+    CHANGE_PLAN(":change:plan"),
+    CHANGE_APPLY(":change:apply"),
+    CHANGE_VERIFY(":change:verify"),
+    CHANGE_RECOVERY(":change:recovery"),
+    CHANGE_INTELLIJ(":change:intellij"),
     CHANGE_PLAN_SPI(":change:plan:spi"),
     CHANGE_PLAN_INTELLIJ(":change:plan:intellij"),
     CHANGE_PLAN_SERVICE(":change:plan:service"),
@@ -231,6 +252,7 @@ data class MutationDeliveryTaskPolicy(
 
 data class ArchitecturePolicyDefinition(
     val modules: List<ModulePolicy>,
+    val targetModules: List<ModulePolicy>,
     val mutationDeliveryTasks: List<MutationDeliveryTaskPolicy>,
     val mutationRuntimeProcesses: List<MutationRuntimeProcessPolicy>,
     val legacyAllowances: List<LegacyAllowance> = emptyList(),
@@ -251,9 +273,11 @@ sealed interface ArchitecturePolicyValidation {
 
 class ValidatedArchitecturePolicy internal constructor(
     val modules: Map<ModuleId, ValidatedModulePolicy>,
+    val targetModules: Map<ModuleId, ValidatedModulePolicy>,
     val mutationDeliveryTasks: Map<MutationDeliveryTaskId, MutationDeliveryTaskPolicy>,
     val mutationRuntimeTopology: ValidatedMutationRuntimeTopology,
     val moduleOrder: List<ModuleId>,
+    val targetModuleOrder: List<ModuleId>,
     val mutationDeliveryOrder: List<MutationDeliveryTaskId>,
     val mutationRuntimeProcessOrder: List<MutationRuntimeProcessId>,
     val legacyAllowances: Set<LegacyAllowance>,
@@ -265,4 +289,18 @@ class ValidatedArchitecturePolicy internal constructor(
 ) {
     val mutationRuntimeProcesses: Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>
         get() = mutationRuntimeTopology.processes
+
+    internal fun targetView(): ValidatedArchitecturePolicy = ValidatedArchitecturePolicy(
+        modules = targetModules,
+        targetModules = targetModules,
+        mutationDeliveryTasks = mutationDeliveryTasks,
+        mutationRuntimeTopology = mutationRuntimeTopology,
+        moduleOrder = targetModuleOrder,
+        targetModuleOrder = targetModuleOrder,
+        mutationDeliveryOrder = mutationDeliveryOrder,
+        mutationRuntimeProcessOrder = mutationRuntimeProcessOrder,
+        legacyAllowances = emptySet(),
+        legacyMigrationEdges = emptyMap(),
+        legacyImplementationBridges = emptyMap(),
+    )
 }

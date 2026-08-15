@@ -18,7 +18,7 @@ dependencyResolutionManagement {
     }
 }
 
-include(
+val migrationProjects = listOf(
     ":analysis-api",
     ":analysis-server",
     ":change:contract",
@@ -52,3 +52,42 @@ include(
     ":workspace:service",
     ":workspace:spi",
 )
+
+val cleanSlateProjects = listOf(
+    ":kernel",
+    ":protocol:contract",
+    ":protocol:registry",
+    ":protocol:wire",
+    ":workspace:contract",
+    ":workspace:service",
+    ":workspace:intellij",
+    ":symbol:contract",
+    ":symbol:service",
+    ":symbol:intellij",
+    ":relation:contract",
+    ":relation:service",
+    ":relation:intellij",
+    ":traversal:contract",
+    ":traversal:service",
+    ":diagnostic:contract",
+    ":diagnostic:service",
+    ":diagnostic:intellij",
+    ":change:contract",
+    ":change:plan",
+    ":change:apply",
+    ":change:verify",
+    ":change:recovery",
+    ":change:intellij",
+    ":evidence:contract",
+    ":evidence:sqlite",
+    ":runtime:server",
+    ":runtime:composition",
+    ":cli",
+    ":indexer",
+)
+
+val materializedCleanSlateProjects = cleanSlateProjects.filter { projectPath ->
+    file(projectPath.removePrefix(":").replace(':', '/')).isDirectory
+}
+
+include(*(migrationProjects + materializedCleanSlateProjects).distinct().toTypedArray())
