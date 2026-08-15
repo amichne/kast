@@ -49,9 +49,10 @@ internal fun applyRejected(
     request: VerifiedAddFileApplyRequest,
     progress: VerifiedAddFileProgress,
     failure: VerifiedAddFileFailure,
+    admittedPlanVersion: VerifiedAddFilePlanVersion = request.expectedVersion,
 ): VerifiedAddFileApplyResult.Rejected = VerifiedAddFileApplyResult.Rejected(
     planId = request.planId,
-    planVersion = request.expectedVersion,
+    planVersion = admittedPlanVersion,
     stage = progress.toStage(),
     progress = progress,
     failure = failure,

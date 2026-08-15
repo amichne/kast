@@ -112,6 +112,7 @@ private class IntellijVerifiedAddFileOperations(
                     request,
                     VerifiedAddFileProgress.REVALIDATION,
                     VerifiedAddFileFailure.STALE_PLAN_VERSION,
+                    admittedPlanVersion = persisted.initialVersion,
                 )
             }
             val approved = when (

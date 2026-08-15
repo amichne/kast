@@ -14,10 +14,12 @@ import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.api.contract.result.AdditionKotlinPackage
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileOperations
+import io.github.amichne.kast.server.change.AdmittedVerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileContent
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyResultAdmission
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidence
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidenceSha256
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovedBy
@@ -96,6 +98,11 @@ internal class VerifiedAddFileOperationsIntellijTest : ExactAdditionPlanningTest
             operations.apply(applyRequest(workspaceRoot, planned, expectedVersion = 1L)),
         )
         assertEquals(VerifiedAddFileFailure.STALE_PLAN_VERSION, stale.failure)
+        assertEquals(planned.planVersion, stale.planVersion)
+        assertInstanceOf<VerifiedAddFileApplyResultAdmission.Admitted>(
+            AdmittedVerifiedAddFileApplyResult.admit(stale),
+            "stale-version rejection must remain admissible at the public result boundary",
+        )
         val unapproved = assertInstanceOf<VerifiedAddFileApplyResult.Rejected>(
             operations.apply(
                 applyRequest(
