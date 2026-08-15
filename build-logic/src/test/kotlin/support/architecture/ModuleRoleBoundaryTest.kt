@@ -28,6 +28,8 @@ class ModuleRoleBoundaryTest {
             ModuleRole.WORKSPACE_ADAPTER to "kast.role.workspace",
             ModuleRole.TRANSPORT to "kast.role.transport",
             ModuleRole.COMPOSITION to "kast.role.composition",
+            ModuleRole.CLI to "kast.role.cli",
+            ModuleRole.INDEXER_HOST to "kast.role.indexer-host",
         )
 
         assertEquals(
@@ -210,10 +212,12 @@ class ModuleRoleBoundaryTest {
 
         assertEquals(
             setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.INTELLIJ_WRITE,
                 ForbiddenEffect.FILESYSTEM_WRITE,
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE,
                 ForbiddenEffect.JDBC,
+                ForbiddenEffect.GRADLE_PLATFORM,
                 ForbiddenEffect.GRADLE_IMPORT,
                 ForbiddenEffect.RECURSIVE_VFS_REFRESH,
                 ForbiddenEffect.WORKSPACE_TRANSITION,

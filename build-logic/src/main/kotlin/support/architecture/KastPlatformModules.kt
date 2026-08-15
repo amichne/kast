@@ -250,7 +250,7 @@ internal object KastPlatformModules {
                     ModuleId.INDEX_STORE,
                     ModuleId.INDEXER,
                     ModuleId.RUNTIME_COMPOSITION,
-                )
+                ) + cleanSlateOnlyModuleIds()
             }.toTypedArray(),
         ),
     )
@@ -286,17 +286,48 @@ internal object KastPlatformModules {
             -> setOf(ForbiddenEffect.ANALYSIS_BACKEND, ForbiddenEffect.FILESYSTEM_WRITE)
         ModuleId.INDEX_STORE -> setOf(ForbiddenEffect.JDBC, ForbiddenEffect.FILESYSTEM_WRITE)
         ModuleId.INDEXER -> setOf(ForbiddenEffect.FILESYSTEM_WRITE)
-        ModuleId.WORKSPACE_INTELLIJ -> setOf(ForbiddenEffect.GRADLE_IMPORT)
+        ModuleId.WORKSPACE_INTELLIJ -> setOf(
+            ForbiddenEffect.INTELLIJ_PLATFORM,
+            ForbiddenEffect.GRADLE_PLATFORM,
+            ForbiddenEffect.GRADLE_IMPORT,
+        )
         ModuleId.CHANGE_JOURNAL_SQLITE,
         ModuleId.EVIDENCE_SQLITE,
             -> setOf(ForbiddenEffect.JDBC)
-        ModuleId.CHANGE_APPLY_INTELLIJ -> setOf(ForbiddenEffect.INTELLIJ_WRITE)
+        ModuleId.SYMBOL_INTELLIJ,
+        ModuleId.CHANGE_PLAN_INTELLIJ,
+        ModuleId.CHANGE_VERIFY_INTELLIJ,
+            -> setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
+        ModuleId.CHANGE_APPLY_INTELLIJ -> setOf(
+            ForbiddenEffect.INTELLIJ_PLATFORM,
+            ForbiddenEffect.INTELLIJ_WRITE,
+        )
         ModuleId.CHANGE_APPLY_FILESYSTEM,
         ModuleId.CHANGE_RECOVERY_FILESYSTEM,
             -> setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
         ModuleId.RUNTIME_COMPOSITION,
         ModuleId.RUNTIME_SERVER,
-            -> setOf(ForbiddenEffect.ANALYSIS_BACKEND)
+            -> emptySet()
         else -> emptySet()
     }
+
+    private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
+        ModuleId.CLI,
+        ModuleId.PROTOCOL_CONTRACT,
+        ModuleId.PROTOCOL_WIRE,
+        ModuleId.SYMBOL_SERVICE,
+        ModuleId.RELATION_CONTRACT,
+        ModuleId.RELATION_SERVICE,
+        ModuleId.RELATION_INTELLIJ,
+        ModuleId.TRAVERSAL_CONTRACT,
+        ModuleId.TRAVERSAL_SERVICE,
+        ModuleId.DIAGNOSTIC_CONTRACT,
+        ModuleId.DIAGNOSTIC_SERVICE,
+        ModuleId.DIAGNOSTIC_INTELLIJ,
+        ModuleId.CHANGE_PLAN,
+        ModuleId.CHANGE_APPLY,
+        ModuleId.CHANGE_VERIFY,
+        ModuleId.CHANGE_RECOVERY,
+        ModuleId.CHANGE_INTELLIJ,
+    )
 }

@@ -6,7 +6,14 @@ import support.architecture.process.MutationRuntimeTopologyFailure
 sealed interface ArchitecturePolicyFailure {
     data class DuplicateModule(val id: ModuleId) : ArchitecturePolicyFailure
 
+    data class DuplicateTargetModule(val id: ModuleId) : ArchitecturePolicyFailure
+
     data class MissingModuleDependency(
+        val module: ModuleId,
+        val missing: ModuleId,
+    ) : ArchitecturePolicyFailure
+
+    data class MissingTargetModuleDependency(
         val module: ModuleId,
         val missing: ModuleId,
     ) : ArchitecturePolicyFailure
@@ -34,7 +41,13 @@ sealed interface ArchitecturePolicyFailure {
 
     data object MissingRuntimeComposition : ArchitecturePolicyFailure
 
+    data object MissingTargetRuntimeComposition : ArchitecturePolicyFailure
+
     data class UnexpectedCompositionOwner(
+        val module: ModuleId,
+    ) : ArchitecturePolicyFailure
+
+    data class UnexpectedTargetCompositionOwner(
         val module: ModuleId,
     ) : ArchitecturePolicyFailure
 
@@ -43,7 +56,14 @@ sealed interface ArchitecturePolicyFailure {
         val unexpected: Set<ModuleId>,
     ) : ArchitecturePolicyFailure
 
+    data class InvalidTargetRuntimeCompositionDependencies(
+        val missing: Set<ModuleId>,
+        val unexpected: Set<ModuleId>,
+    ) : ArchitecturePolicyFailure
+
     data class ModuleDependencyCycle(val members: Set<ModuleId>) : ArchitecturePolicyFailure
+
+    data class TargetModuleDependencyCycle(val members: Set<ModuleId>) : ArchitecturePolicyFailure
 
     data class DuplicateMutationDeliveryTask(val id: MutationDeliveryTaskId) : ArchitecturePolicyFailure
 
