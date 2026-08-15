@@ -87,6 +87,13 @@ class VerifiedAddFilePublicRouteTest : AnalysisDispatcherTestSupport() {
                 VerifiedAddFileProgress.PLANNING,
                 VerifiedAddFileFailure.TARGET_GENERATED,
             ),
+            VerifiedAddFileApplyResult.Rejected(
+                planId,
+                initialVersion,
+                VerifiedAddFilePlanStage.RECOVERY_PREPARED,
+                VerifiedAddFileProgress.RECOVERY_PREPARATION,
+                VerifiedAddFileFailure.PLAN_NOT_FOUND,
+            ),
             VerifiedAddFileApplyResult.RolledBack(
                 planId,
                 terminalVersion,

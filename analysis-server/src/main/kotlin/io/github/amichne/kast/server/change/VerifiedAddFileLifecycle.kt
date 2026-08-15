@@ -292,6 +292,7 @@ private fun classifyRejectedLifecycle(
             VerifiedAddFileFailure.TARGET_ALREADY_EXISTS,
             VerifiedAddFileFailure.TARGET_NOT_WRITABLE,
             VerifiedAddFileFailure.TARGET_SYMLINK_ESCAPE,
+            VerifiedAddFileFailure.PLAN_NOT_FOUND,
             -> VerifiedAddFileLifecycleCompatibility.Compatible(candidate)
             else -> VerifiedAddFileLifecycleCompatibility.Incompatible
         }
