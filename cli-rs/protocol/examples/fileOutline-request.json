@@ -1,8 +1,0 @@
-{
-    "method": "raw/file-outline",
-    "params": {
-        "filePath": "/workspace/src/Sample.kt"
-    },
-    "id": 1,
-    "jsonrpc": "2.0"
-}

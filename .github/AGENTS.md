@@ -1,121 +1,18 @@
 # GitHub integration guide
 
-This file applies to `.github/` and descendants and owns the repository's
-authored GitHub automation.
+This tree owns repository automation.
 
-## Authored surfaces
+CI admits only the Kotlin/Gradle product surface. The repository-contract job
+owns the no-Rust and repository-shape gates. The Kotlin job owns architecture
+verification and the Gradle test graph.
 
-These files are hand-authored and may be edited directly when they own the
-change:
+Do not add a second build, packaging, installation, or release authority.
+Release and documentation automation are introduced only by their owning
+clean-slate delivery tasks.
 
-- `.github/workflows/*.yml`
-- `.github/scripts/**`
-- `.github/ci/*.json`
-- `.github/dependabot.yml`
-
-Do not add provider-specific assistant trigger workflows. Hosted agents install
-the same verified release bundles through `install.sh`.
-
-Run the narrowest script or workflow contract that covers the edit. For docs
-contract changes, run both docs contract scripts and `zensical build --clean`.
-For release workflow changes, run `.github/scripts/release/test-release-workflow-contract.sh`.
-The release workflow owns the private indexer payload and the four platform
-setup bundles. Every bundle carries `idea-home/plugins/kast-indexer` inside
-that payload and enters validation through its private `libexec/kastctl setup`.
-It must not publish a foreground IDEA ZIP or update feed.
-For CLI terminal command or executable example changes, run
-`.github/scripts/docs/test-terminal-command-contract.sh`.
-The local transactional setup gate lives in
-`.github/scripts/install/test-local-development-refresh-contract.sh`. Keep it wired in
-the independent `local-authority-contracts` CI job whenever refresh
-orchestration or bundle activation changes. Its Gradle graph packages one
-complete development bundle and invokes `libexec/kastctl setup --source`.
-Umbrella source contracts must not rerun focused owners. The setup contract
-owns source presence, activation, rollback, and retired-path assertions; the runtime compatibility contract owns
-deterministic source and manifest rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
-indexer tests run in their Gradle owners, documentation rendering runs in the
-documentation workflow, and installer, release, provenance, and asset
-contracts run once in their named jobs. A focused Rust integration test must
-not return success by skipping when an outer installer environment variable is
-absent.
-
-The Linux build-and-test job exclusively owns the JVM indexer test suite and
-its reports. The source-bound Linux indexer job is the sole pull-request
-portable-distribution producer and owns its no-fat-jar assertion, artifact,
-and ledger. Do not add a platform build for an archive that is neither shipped
-nor consumed. Production macOS and Linux installation authority is the active
-setup receipt under `KAST_HOME`.
-
-The `workflow-contracts` job is the static CI fanout gate. It must not install
-Java, initialize Gradle, install Rust, or execute an installed-development
-workflow. It captures and ledgers the immutable source snapshot consumed by
-the existing Rust and Linux producers; this static identity step must not turn
-into a second build owner. `.github/ci/issue-401-workflow-model.json` records
-the expanded DAG, stable proof-output ownership, and timing samples. Keep
-output equivalence blocking. A moved proof needs an explicit typed
-`retiredProofOutputReplacements` entry naming its current owner. A proof for a
-deliberately removed product property may be removed from both normalized
-graphs only when an accepted ADR records that scope contraction; unexplained
-loss remains a failure. Keep timing provisional until five comparable
-successful candidate runs exist; historical baseline-only sampling gaps remain
-explicit warnings rather than weakening the candidate gate. List integrated
-non-PR proofs explicitly in `canaryTaskIds` so
-they remain in the output inventory without inflating the required
-pull-request critical path. Run `.github/scripts/ci/test-ci-workflow-model.sh`
-whenever jobs, `needs` edges, proof owners, canary classification, or timing
-evidence change.
-Workstation semantic proof runs through the exact-root Kast indexer and the
-active setup CLI. Foreground IDEA is not an installation,
-lifecycle, or semantic authority.
-Linux release indexer packaging and action-runtime contracts remain separate
-CI/release concerns and must not be described as developer-machine authority.
-
-`packaging/indexer/runtime-compatibility.json` owns typed installed-host
-runtime pairs and IntelliJ build ranges. It remains a non-semantic setup and
-admission input, not a readiness source or generated release asset. Run the
-dedicated runtime compatibility contract whenever that source or its metadata
-consumers change.
-
-Publishable CI artifacts are single-producer per commit. Producer jobs must
-write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
-built, and downstream packaging or publication jobs must verify that receipt
-against the exact downloaded file before consuming it. Do not add a publishing
-job that rebuilds a receipt-owned artifact; add a new producer receipt or make
-the publisher consume an existing one. Pull-request Linux packaging is owned
-by explicit release layers. `source-bound-cli` and
-`source-bound-indexer` build the single release CLI and indexer while
-their required Rust and Kotlin validation jobs run independently.
-Downstream Linux packaging consumes the verified release components
-without creating a developer-machine generation.
-Raw CLI archives contain the revision-matched `kast` binary.
-
-## Verify
-
-For docs contract changes, run:
+Run the narrowest changed script locally, followed by:
 
 ```console
-.github/scripts/docs/test-docs-content-contract.sh
-.github/scripts/docs/test-docs-navigation-contract.sh
-zensical build --clean
-```
-
-For terminal commands and executable examples, run:
-
-```console
-.github/scripts/docs/test-terminal-command-contract.sh
-```
-
-For setup authority changes, run:
-
-```console
-.github/scripts/ci/test-ci-workflow-model.sh
-.github/scripts/install/test-local-development-refresh-contract.sh
-```
-
-For installed-indexer release distribution changes, run:
-
-```console
-.github/scripts/runtime/test-runtime-compatibility-contract.sh
-.github/scripts/release/test-release-workflow-contract.sh
-.github/scripts/install/test-macos-installer-contract.sh
+python3 .github/scripts/check-no-rust-product.py --root .
+python3 .github/scripts/check-repository-shape.py --root .
 ```

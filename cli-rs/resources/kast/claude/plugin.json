@@ -1,6 +1,0 @@
-{
-  "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
-  "hooks": "./hooks/hooks.json",
-  "name": "kast",
-  "version": "${KAST_VERSION}"
-}
