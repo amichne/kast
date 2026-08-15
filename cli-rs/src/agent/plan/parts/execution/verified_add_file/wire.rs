@@ -12,7 +12,15 @@ struct VerifiedAddFileApplyRequest<'a> {
     workspace_root: &'a str,
     plan_id: &'a str,
     expected_version: u64,
+    mode: VerifiedAddFileApplyMode,
     approval_evidence: VerifiedAddFileApprovalEvidence,
+}
+
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum VerifiedAddFileApplyMode {
+    Apply,
+    Recover,
 }
 
 #[derive(Serialize)]

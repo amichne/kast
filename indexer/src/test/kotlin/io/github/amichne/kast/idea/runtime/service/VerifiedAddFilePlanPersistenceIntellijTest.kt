@@ -19,6 +19,7 @@ import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFilePl
 import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileOperations
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.server.change.NativeVerifiedAddFileOperations
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyMode
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidence
@@ -349,6 +350,7 @@ internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlannin
         workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
         planId = planned.planId,
         expectedVersion = refined(VerifiedAddFilePlanVersion.refine(0L)),
+        mode = VerifiedAddFileApplyMode.APPLY,
         approvalEvidence = VerifiedAddFileApprovalEvidence(
             approvedBy = refined(VerifiedAddFileApprovedBy.refine("kast-public-cli")),
             evidenceSha256 = refined(

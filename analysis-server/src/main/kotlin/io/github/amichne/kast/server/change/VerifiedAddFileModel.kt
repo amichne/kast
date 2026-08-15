@@ -20,6 +20,7 @@ enum class VerifiedAddFileValueFailure {
     PLAN_VERSION_NEGATIVE,
     APPROVED_BY_NOT_TRIMMED_NON_BLANK,
     APPROVAL_EVIDENCE_SHA256_NOT_CANONICAL,
+    APPLY_MODE_UNSUPPORTED,
 }
 
 sealed interface VerifiedAddFileRefinement<out T> {
@@ -213,10 +214,32 @@ class VerifiedAddFileApprovalEvidence(
     val evidenceSha256: VerifiedAddFileApprovalEvidenceSha256,
 )
 
+enum class VerifiedAddFileApplyMode {
+    APPLY,
+    RECOVER;
+
+    companion object {
+        /**
+         * Proof transition: `String -> VerifiedAddFileRefinement<VerifiedAddFileApplyMode>`.
+         *
+         * Establishes one closed mutation intent: fresh approved apply or recovery-only replay.
+         * The closed failure is [VerifiedAddFileValueFailure.APPLY_MODE_UNSUPPORTED]. Raw wire text
+         * may be extracted only at the JSON-RPC request boundary.
+         */
+        fun refine(raw: String): VerifiedAddFileRefinement<VerifiedAddFileApplyMode> =
+            entries.firstOrNull { it.name == raw }
+                ?.let(VerifiedAddFileRefinement<VerifiedAddFileApplyMode>::Refined)
+                ?: VerifiedAddFileRefinement.Rejected(
+                    VerifiedAddFileValueFailure.APPLY_MODE_UNSUPPORTED,
+                )
+    }
+}
+
 class VerifiedAddFileApplyRequest(
     val workspaceRoot: NormalizedPath,
     val planId: VerifiedAddFilePlanId,
     val expectedVersion: VerifiedAddFilePlanVersion,
+    val mode: VerifiedAddFileApplyMode,
     val approvalEvidence: VerifiedAddFileApprovalEvidence,
 )
 

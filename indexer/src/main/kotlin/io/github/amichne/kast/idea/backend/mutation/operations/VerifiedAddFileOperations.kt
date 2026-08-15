@@ -13,6 +13,7 @@ import io.github.amichne.kast.server.change.NativeVerifiedAddFileOperations
 import io.github.amichne.kast.server.change.VerifiedAddFileAdmission
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalChallenge
 import io.github.amichne.kast.server.change.RevalidatedVerifiedAddFilePlan
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyMode
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
@@ -128,18 +129,6 @@ private class IntellijVerifiedAddFileOperations(
                     admission.failure,
                 )
             }
-            when (lifecycle) {
-                is PersistedVerifiedAddFileLifecycle.Terminal.Verified ->
-                    return@withLock lifecycle.result
-                is PersistedVerifiedAddFileLifecycle.Terminal.RolledBack ->
-                    return@withLock lifecycle.result
-                PersistedVerifiedAddFileLifecycle.AwaitingApproval,
-                is PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown,
-                is PersistedVerifiedAddFileLifecycle.RecoveryRequired,
-                is PersistedVerifiedAddFileLifecycle.ReconciliationRequired,
-                is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired,
-                -> Unit
-            }
             val result = when (lifecycle) {
                 is PersistedVerifiedAddFileLifecycle.RecoveryRequired -> recoverVerifiedAddFileFailure(
                     backend,
@@ -164,11 +153,19 @@ private class IntellijVerifiedAddFileOperations(
                             resume.observation,
                         )
                 }
-                PersistedVerifiedAddFileLifecycle.AwaitingApproval ->
-                    applyPlanned(approved.planned, persisted)
+                PersistedVerifiedAddFileLifecycle.AwaitingApproval -> when (request.mode) {
+                    VerifiedAddFileApplyMode.APPLY -> applyPlanned(approved.planned, persisted)
+                    VerifiedAddFileApplyMode.RECOVER -> VerifiedAddFileResult.Rejected(
+                        VerifiedAddFileProgress.INTENT_ADMISSION,
+                        VerifiedAddFileFailure.PLAN_NOT_FOUND,
+                    )
+                }
                 is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->
                     lifecycle.reconcile(backend)
-                is PersistedVerifiedAddFileLifecycle.Terminal -> error("terminal replay returned above")
+                is PersistedVerifiedAddFileLifecycle.Terminal.Verified ->
+                    return@withLock lifecycle.result
+                is PersistedVerifiedAddFileLifecycle.Terminal.RolledBack ->
+                    return@withLock lifecycle.result
             }
             val retainedLifecycle = persisted.lifecycle
             val wireResult = when (result) {

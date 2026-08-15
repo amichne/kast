@@ -104,6 +104,7 @@ fn change_add_file_apply_uses_verified_operation_binding_without_raw_bypass() {
     assert_eq!(apply_request["params"]["workspaceRoot"], workspace.display().to_string());
     assert_eq!(apply_request["params"]["planId"], plan_id);
     assert_eq!(apply_request["params"]["expectedVersion"], 0);
+    assert_eq!(apply_request["params"]["mode"], "APPLY");
     assert_eq!(
         apply_request["params"]["approvalEvidence"]["approvedBy"],
         "kast-public-cli",

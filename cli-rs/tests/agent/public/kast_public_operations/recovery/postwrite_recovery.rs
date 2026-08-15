@@ -165,6 +165,13 @@ fn rolled_back_recovery_reacquires_native_authority_instead_of_replaying_local_c
     assert_eq!(
         requests
             .iter()
+            .find(|request| request["method"] == "change/apply-add-file")
+            .expect("native rollback request")["params"]["mode"],
+        "RECOVER",
+    );
+    assert_eq!(
+        requests
+            .iter()
             .filter(|request| request["method"] == "change/apply-add-file")
             .count(),
         1,

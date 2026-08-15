@@ -13,6 +13,7 @@ import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileOp
 import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileRecoveryId
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyMode
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidence
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidenceSha256
@@ -92,6 +93,7 @@ internal class VerifiedAddFileUnknownOutcomeRevalidationIntellijTest : ExactAddi
         workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
         planId = planned.planId,
         expectedVersion = refined(VerifiedAddFilePlanVersion.refine(0L)),
+        mode = VerifiedAddFileApplyMode.APPLY,
         approvalEvidence = VerifiedAddFileApprovalEvidence(
             approvedBy = refined(VerifiedAddFileApprovedBy.refine("kast-public-cli")),
             evidenceSha256 = refined(

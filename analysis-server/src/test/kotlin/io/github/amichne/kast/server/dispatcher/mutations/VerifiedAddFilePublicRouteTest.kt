@@ -13,6 +13,7 @@ import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
 import io.github.amichne.kast.server.change.NativeVerifiedAddFileOperations
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyMode
 import io.github.amichne.kast.server.change.VerifiedAddFileBinding
 import io.github.amichne.kast.server.change.VerifiedAddFileContent
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
@@ -165,6 +166,7 @@ class VerifiedAddFilePublicRouteTest : AnalysisDispatcherTestSupport() {
         assertEquals(tempDir.toAbsolutePath().normalize().toString(), observedApply?.workspaceRoot?.value)
         assertEquals(planId, observedApply?.planId)
         assertEquals(initialVersion, observedApply?.expectedVersion)
+        assertEquals(VerifiedAddFileApplyMode.APPLY, observedApply?.mode)
         assertEquals("kast-public-cli", observedApply?.approvalEvidence?.approvedBy?.value)
         assertEquals("b".repeat(64), observedApply?.approvalEvidence?.evidenceSha256?.value)
     }
@@ -299,6 +301,7 @@ class VerifiedAddFilePublicRouteTest : AnalysisDispatcherTestSupport() {
                 put("workspaceRoot", tempDir.toAbsolutePath().normalize().toString())
                 put("planId", "af-" + "4".repeat(64))
                 put("expectedVersion", 0)
+                put("mode", "APPLY")
                 put("approvalEvidence", buildJsonObject {
                     put("approvedBy", "kast-public-cli")
                     put("evidenceSha256", "b".repeat(64))
@@ -344,6 +347,7 @@ class VerifiedAddFilePublicRouteTest : AnalysisDispatcherTestSupport() {
         put("workspaceRoot", tempDir.toAbsolutePath().normalize().toString())
         put("planId", "af-" + "4".repeat(64))
         put("expectedVersion", 0)
+        put("mode", "APPLY")
         put("approvalEvidence", buildJsonObject {
             put("approvedBy", "kast-public-cli")
             put("evidenceSha256", "b".repeat(64))

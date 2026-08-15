@@ -17,6 +17,7 @@ import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileOp
 import io.github.amichne.kast.server.change.AdmittedVerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileContent
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyMode
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResultAdmission
@@ -347,6 +348,7 @@ internal class VerifiedAddFileOperationsIntellijTest : ExactAdditionPlanningTest
         workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
         planId = planned.planId,
         expectedVersion = refined(VerifiedAddFilePlanVersion.refine(expectedVersion)),
+        mode = VerifiedAddFileApplyMode.APPLY,
         approvalEvidence = VerifiedAddFileApprovalEvidence(
             approvedBy = refined(VerifiedAddFileApprovedBy.refine("kast-public-cli")),
             evidenceSha256 = refined(

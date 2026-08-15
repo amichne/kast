@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileOperations
 import io.github.amichne.kast.server.change.AdmittedVerifiedAddFileApplyResult
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyMode
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyRequest
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResultAdmission
@@ -81,6 +82,7 @@ internal class VerifiedAddFileRevalidationCancellationIntellijTest : ExactAdditi
         workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
         planId = planned.planId,
         expectedVersion = refined(VerifiedAddFilePlanVersion.refine(0L)),
+        mode = VerifiedAddFileApplyMode.APPLY,
         approvalEvidence = VerifiedAddFileApprovalEvidence(
             approvedBy = refined(VerifiedAddFileApprovedBy.refine("kast-public-cli")),
             evidenceSha256 = refined(

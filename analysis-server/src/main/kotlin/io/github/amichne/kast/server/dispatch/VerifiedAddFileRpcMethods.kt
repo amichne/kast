@@ -12,6 +12,7 @@ import io.github.amichne.kast.server.change.VerifiedAddFileApplyResultAdmission
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidence
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidenceSha256
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovedBy
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyMode
 import io.github.amichne.kast.server.change.VerifiedAddFileBinding
 import io.github.amichne.kast.server.change.VerifiedAddFileContent
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanId
@@ -103,6 +104,7 @@ private fun JsonObject.admitApplyRequest(): VerifiedAddFileApplyRequest {
         workspaceRoot = normalizedWorkspace(fields.stringField("workspaceRoot")),
         planId = fields.stringField("planId").refinedBy(VerifiedAddFilePlanId::refine),
         expectedVersion = fields.longField("expectedVersion").refinedBy(VerifiedAddFilePlanVersion::refine),
+        mode = fields.stringField("mode").refinedBy(VerifiedAddFileApplyMode::refine),
         approvalEvidence = VerifiedAddFileApprovalEvidence(
             approvedBy = approvalFields.stringField("approvedBy").refinedBy(VerifiedAddFileApprovedBy::refine),
             evidenceSha256 = approvalFields.stringField("evidenceSha256")
@@ -309,5 +311,6 @@ private const val PLAN_ADD_FILE_METHOD = "change/plan-add-file"
 private const val APPLY_ADD_FILE_METHOD = "change/apply-add-file"
 private const val VERIFIED_ADD_FILE_CAPABILITY = "VERIFIED_ADD_FILE"
 private val PLAN_REQUEST_FIELDS = setOf("workspaceRoot", "targetPath", "proposedContent")
-private val APPLY_REQUEST_FIELDS = setOf("workspaceRoot", "planId", "expectedVersion", "approvalEvidence")
+private val APPLY_REQUEST_FIELDS =
+    setOf("workspaceRoot", "planId", "expectedVersion", "mode", "approvalEvidence")
 private val APPROVAL_FIELDS = setOf("approvedBy", "evidenceSha256")

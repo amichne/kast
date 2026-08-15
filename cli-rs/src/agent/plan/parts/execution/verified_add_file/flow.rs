@@ -102,7 +102,13 @@ fn run_verified_add_file_apply(
     let authority = StoredVerifiedAddFileApplyInFlight::prepare(&plan);
     plan.state = StoredVerifiedAddFileState::ApplyOutcomeUnknown { authority };
     write_verified_add_file_plan(&paths.plan, &plan)?;
-    execute_verified_add_file(&paths, &mut plan, &workspace_root, output_format)
+    execute_verified_add_file(
+        &paths,
+        &mut plan,
+        &workspace_root,
+        VerifiedAddFileApplyMode::Apply,
+        output_format,
+    )
 }
 
 fn run_verified_add_file_recover(
@@ -137,19 +143,27 @@ fn run_verified_add_file_recover(
             ));
         }
     }
-    execute_verified_add_file(&paths, &mut plan, &workspace_root, output_format)
+    execute_verified_add_file(
+        &paths,
+        &mut plan,
+        &workspace_root,
+        VerifiedAddFileApplyMode::Recover,
+        output_format,
+    )
 }
 
 fn execute_verified_add_file(
     paths: &VerifiedAddFilePaths,
     plan: &mut StoredVerifiedAddFilePlan,
     workspace_root: &Path,
+    mode: VerifiedAddFileApplyMode,
     output_format: OutputFormat,
 ) -> Result<i32> {
     let params = VerifiedAddFileApplyRequest {
         workspace_root: &plan.workspace_root,
         plan_id: plan.plan_id.as_str(),
         expected_version: plan.plan_version.value(),
+        mode,
         approval_evidence: verified_add_file_approval(plan),
     };
     let raw = verified_add_file_rpc(workspace_root, VerifiedAddFileRpcOperation::Apply, &params)?;
