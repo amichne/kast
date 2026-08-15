@@ -54,7 +54,10 @@ fn run_verified_add_file_plan(
         state: StoredVerifiedAddFileState::AwaitingApproval,
     };
     ensure_private_directory(&paths.directory)?;
-    write_verified_add_file_plan(&paths.plan, &stored, false)?;
+    match publish_initial_verified_add_file_plan(&paths.plan, &stored)? {
+        VerifiedAddFileInitialPublication::Stored
+        | VerifiedAddFileInitialPublication::Replayed => {}
+    }
     print_plan_protocol(
         plan_output_context(
             output_format,
@@ -98,7 +101,7 @@ fn run_verified_add_file_apply(
     }
     let authority = StoredVerifiedAddFileApplyInFlight::prepare(&plan);
     plan.state = StoredVerifiedAddFileState::ApplyOutcomeUnknown { authority };
-    write_verified_add_file_plan(&paths.plan, &plan, true)?;
+    write_verified_add_file_plan(&paths.plan, &plan)?;
     execute_verified_add_file(&paths, &mut plan, &workspace_root, output_format)
 }
 
@@ -163,7 +166,7 @@ fn execute_verified_add_file(
     let transition = AdmittedVerifiedAddFileResultPersistence::from_result(result)?;
     let (result, state) = transition.into_parts();
     plan.state = state;
-    write_verified_add_file_plan(&paths.plan, plan, true)?;
+    write_verified_add_file_plan(&paths.plan, plan)?;
     output::print_structured(&result, output_format)?;
     Ok(result.exit_code())
 }

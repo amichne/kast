@@ -1,4 +1,58 @@
 #[test]
+fn identical_verified_add_file_plan_retry_replays_persisted_authority() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(workspace.join("src/main/kotlin")).expect("source root");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let target = workspace.join("src/main/kotlin/Replay.kt");
+    let content = "package sample\nclass Replay\n";
+    let plan_id = verified_add_file_plan_id(&target, content.as_bytes());
+    let response = json!({
+        "planId": plan_id,
+        "planVersion": 0,
+        "stage": "AWAITING_APPROVAL",
+        "operation": "add-file",
+        "preview": {
+            "targetPath": target,
+            "proposedContent": content,
+            "generation": 7,
+        },
+        "schemaVersion": 7,
+    });
+    let backend = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("replayed-plan.sock"),
+        vec![
+            ("change/plan-add-file", response.clone()),
+            ("change/plan-add-file", response.clone()),
+        ],
+    );
+    let binary = write_active_kast_for_test(&home, &config_home);
+
+    let mut first = installed_public_kast(&binary, &home, &config_home, &workspace);
+    first.args(["change", "plan", "add-file", "--file", "src/main/kotlin/Replay.kt"]);
+    let first = run_with_stdin(first, content);
+    assert!(first.status.success(), "{first:?}");
+
+    let mut retry = installed_public_kast(&binary, &home, &config_home, &workspace);
+    retry.args(["change", "plan", "add-file", "--file", "src/main/kotlin/Replay.kt"]);
+    let retry = run_with_stdin(retry, content);
+
+    assert!(retry.status.success(), "{retry:?}");
+    assert_eq!(decode(&retry), decode(&first));
+    let requests = backend.join().expect("replayed plan backend");
+    assert_eq!(
+        requests.iter().filter(|request| request["method"] == "change/plan-add-file").count(),
+        2,
+    );
+}
+
+#[test]
 fn verified_add_file_plan_rejection_preserves_the_typed_native_failure() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");

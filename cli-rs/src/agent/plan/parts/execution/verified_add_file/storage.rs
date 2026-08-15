@@ -4,6 +4,11 @@ struct VerifiedAddFilePaths {
     lock: PathBuf,
 }
 
+enum VerifiedAddFileInitialPublication {
+    Stored,
+    Replayed,
+}
+
 impl VerifiedAddFilePaths {
     fn new(plan_id: &crate::agent::public_protocol::VerifiedAddFilePlanId) -> Self {
         let directory = manifest::default_install_root().join("state/agent-plans");
@@ -96,24 +101,58 @@ fn read_verified_add_file_plan(
     Ok(plan)
 }
 
-fn write_verified_add_file_plan(
-    path: &Path,
-    plan: &StoredVerifiedAddFilePlan,
-    replace: bool,
-) -> Result<()> {
+fn write_verified_add_file_plan(path: &Path, plan: &StoredVerifiedAddFilePlan) -> Result<()> {
     let mut encoded = serde_json::to_vec(plan)?;
     encoded.push(b'\n');
     let temporary = path.with_extension(format!("json.tmp-{}", Uuid::new_v4()));
     write_private_file(&temporary, &encoded)?;
-    let result = if replace {
-        fs::rename(&temporary, path)
-            .map_err(CliError::from)
-            .and_then(|_| sync_directory(path.parent().expect("plan path parent")))
-    } else {
-        rename_private_file(&temporary, path)
-    };
+    let result = fs::rename(&temporary, path)
+        .map_err(CliError::from)
+        .and_then(|_| sync_directory(path.parent().expect("plan path parent")));
     if result.is_err() {
         remove_if_exists(&temporary);
     }
     result
+}
+
+fn publish_initial_verified_add_file_plan(
+    path: &Path,
+    plan: &StoredVerifiedAddFilePlan,
+) -> Result<VerifiedAddFileInitialPublication> {
+    let mut encoded = serde_json::to_vec(plan)?;
+    encoded.push(b'\n');
+    let temporary = path.with_extension(format!("json.tmp-{}", Uuid::new_v4()));
+    write_private_file(&temporary, &encoded)?;
+    let result = match fs::hard_link(&temporary, path) {
+        Ok(()) => sync_directory(path.parent().expect("plan path parent"))
+            .map(|()| VerifiedAddFileInitialPublication::Stored),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            re_admit_existing_initial_plan(path, plan)
+        }
+        Err(error) => Err(error.into()),
+    };
+    remove_if_exists(&temporary);
+    result
+}
+
+fn re_admit_existing_initial_plan(
+    path: &Path,
+    expected: &StoredVerifiedAddFilePlan,
+) -> Result<VerifiedAddFileInitialPublication> {
+    let existing = read_verified_add_file_plan(path, &expected.plan_id)?;
+    if existing.schema_version != expected.schema_version
+        || existing.workspace_root != expected.workspace_root
+        || existing.plan_id != expected.plan_id
+        || existing.plan_version != expected.plan_version
+        || existing.target_path != expected.target_path
+        || existing.proposed_content != expected.proposed_content
+        || existing.postimage_sha256 != expected.postimage_sha256
+        || existing.planned_generation != expected.planned_generation
+    {
+        return Err(CliError::new(
+            "KAST_PLAN_INVALID",
+            "The existing verified add-file plan does not match the reissued server authority.",
+        ));
+    }
+    Ok(VerifiedAddFileInitialPublication::Replayed)
 }
