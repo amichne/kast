@@ -30,7 +30,6 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
         val ordinaryScript = file(workspaceRoot.resolve("app/scripts/check.main.kts"))
         val rootSource = file(workspaceRoot.resolve("app/src/main/kotlin/App.kt"))
         val generatedOutput = file(workspaceRoot.resolve("build/generated/Generated.kt"))
-        val rustGeneratedOutput = file(workspaceRoot.resolve("cli-rs/target/debug/generated/Generated.kt"))
         val includedSource = file(includedRoot.resolve("app/src/main/kotlin/Included.kt"))
         val sharedSource = file(workspaceRoot.resolve("shared/Shared.kt"))
         val outsideSource = workspaceRoot.parent.resolve("outside-workspace/Outside.kt").toAbsolutePath().normalize()
@@ -45,7 +44,6 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
                         ordinaryScript,
                         sharedSource,
                         generatedOutput,
-                        rustGeneratedOutput,
                         outsideSource,
                     ),
                 ),
@@ -98,7 +96,6 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
         source.modules.forEach { module ->
             assertFalse(outsideSource.toString() in module.filePaths(WorkspaceFileKindDomain.SOURCE_ONLY))
             assertFalse(generatedOutput.toString() in module.filePaths(WorkspaceFileKindDomain.SOURCE_ONLY))
-            assertFalse(rustGeneratedOutput.toString() in module.filePaths(WorkspaceFileKindDomain.SOURCE_ONLY))
         }
     }
 

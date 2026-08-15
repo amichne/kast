@@ -36,14 +36,12 @@ internal cross-process contract, not a public user API.
   `FileIndexUpdate`, `IndexedPackageEvidence`, graph, stage, and reference
   values before calling this module.
 - `analysis-server` declares an implementation dependency, but storage
-  ownership remains here. `indexer` is the read/write host; Rust readers use
-  the same schema through the CLI-owned workspace path.
+  ownership remains here. `indexer` is the read/write host.
 - Resolve the database through `WorkspaceIdentity`, whose roots come from the
   active CLI receipt. No backend or plugin may derive a competing database
   location.
-- `cli-rs/protocol/source-index-schema-version.txt` is the sole checked-in
-  schema-version authority. Build logic generates the Kotlin constant and
-  `cli-rs/build.rs` generates the Rust constant from that file.
+- `store/SourceIndexSchemaVersion.kt` is the Kotlin source authority for the
+  source-index schema version.
 
 ## Storage invariants
 
@@ -53,7 +51,7 @@ internal cross-process contract, not a public user API.
 - Register `sqlite-jdbc` inside this module before `DriverManager` access;
   plugin classloaders do not make implicit JDBC discovery reliable.
 - Keep schema tables, required columns/nullability, primary/foreign keys,
-  constraints, indexes, Kotlin queries, and Rust readers aligned. Older,
+  constraints, indexes, and Kotlin queries aligned. Older,
   malformed, or partially compatible schemas fail closed through the owning
   reset/rebuild boundary.
 - `schema_version.generation` is the source-index change token. Every committed
@@ -105,16 +103,15 @@ internal cross-process contract, not a public user API.
   it must not become a second implementation of each store.
 - Snapshot and overlay changes usually cross `snapshot`, `sqlite/lifecycle`,
   `sqlite/overlay`, and indexer publication. Verify all four boundaries.
-- A schema change always includes the version source, generated Kotlin/Rust
-  alignment, schema validation, reset/migration behavior, and affected readers.
+- A schema change always includes the version source, schema validation,
+  reset/migration behavior, and affected readers.
 
 ## Verification ladder
 
 1. Run the focused class, for example:
    `./gradlew :index-store:test --tests '<fully.qualified.TestClass>'`.
 2. Run `./gradlew :index-store:test`.
-3. Schema changes also require the build-logic generator test and Rust
-   `source_index_schema_version_smoke` alignment test.
+3. Schema changes also require the focused schema and lifecycle tests.
 4. Snapshot, overlay, generation, page, reference, stage, or completeness
    changes require the matching `:indexer:test` class that exercises the
    production host.

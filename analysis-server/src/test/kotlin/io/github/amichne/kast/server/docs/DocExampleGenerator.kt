@@ -208,12 +208,12 @@ object DocExampleGenerator {
     private const val PUBLIC_WORKSPACE_PAGE_HANDLE = "00000000-0000-4000-8000-000000000003"
 }
 
-private fun repoRoot(): Path =
-    generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-        .first { Files.isDirectory(it.resolve("docs")) }
-
 fun main(args: Array<String>) {
-    val outputDir = if (args.isNotEmpty()) Path.of(args[0]) else repoRoot().resolve("cli-rs/protocol/examples")
+    val outputDir = if (args.isNotEmpty()) {
+        Path.of(args[0])
+    } else {
+        Path.of("build/generated/kast-protocol/examples")
+    }
     Files.createDirectories(outputDir)
     val examples = DocExampleGenerator.generateExamples()
     examples.forEach { (operationId, pair) ->

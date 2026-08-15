@@ -13,8 +13,8 @@ the consuming projects.
 - `support/publishing` owns Maven coordinates, metadata, signing, and target
   selection.
 - `support/tasks` owns IDEA distribution extraction, test-tag selection,
-  generated protocol versions, runtime library synchronization, classpath
-  layout proof, indexer-version generation, and wrapper scripts.
+  runtime library synchronization, classpath layout proof, indexer-version
+  generation, and wrapper scripts.
 - `support/architecture` owns the typed module graph, effect policy, migration
   baseline, and checked-in architecture projection.
 - `src/test/kotlin` contains task and convention contract tests.
@@ -44,10 +44,6 @@ the consuming projects.
   class-entry checks stronger than filename conventions.
 - `ExtractIdeaDistributionTask` rejects zip-slip paths and replaces a
   versioned extraction atomically.
-- Protocol constants are generated from the three checked-in files under
-  `cli-rs/protocol/`: `api-schema-version.txt`,
-  `install-receipt-schema-version.txt`, and
-  `source-index-schema-version.txt`. Never add a second literal authority.
 - Add every direct project dependency to the typed architecture policy in the
   same change. Regenerate the checked-in projection from that policy.
 - Publishing configuration must reject missing or blank artifact metadata and
@@ -57,12 +53,10 @@ the consuming projects.
 
 1. Run the focused task test, for example:
    `./gradlew -p build-logic test --tests DefaultTestTagSelectionTest`,
-   `WriteProtocolSchemaVersionsTaskTest`,
-   `WriteSourceIndexSchemaVersionTaskTest`, or
    `RuntimeClasspathAssertionsTest`.
 2. Run `./gradlew -p build-logic test`.
 3. Exercise the narrowest consumer task. Runtime-layout changes require
    `./gradlew :indexer:verifyPortableDistLayout :indexer:portableDistZip`;
-   protocol-generation changes require the owning module generator.
+   shared-task changes require the owning module consumer.
 4. Run `./gradlew build` when a convention plugin, toolchain, dependency
    bundle, test policy, publishing rule, or shared task contract changed.

@@ -124,10 +124,10 @@ data class KastConfig(
         }
 
         /**
-         * Loads the Rust CLI's fully resolved runtime configuration handoff.
+         * Loads the CLI boundary's fully resolved runtime configuration handoff.
          *
          * This path intentionally avoids TOML parsing in the JVM backend; the
-         * Rust CLI owns config file parsing and passes this JSON to the indexer.
+         * The CLI boundary owns config-file parsing and passes this JSON to the indexer.
          */
         fun loadResolvedJson(
             configFile: Path,
