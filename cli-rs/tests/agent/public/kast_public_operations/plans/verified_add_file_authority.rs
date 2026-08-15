@@ -86,6 +86,51 @@ fn verified_add_file_plan_stage_and_persisted_request_tampering_fail_closed() {
 }
 
 #[test]
+fn recovery_preparation_plan_not_found_remains_a_typed_rejection() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(workspace.join("src/main/kotlin")).expect("source root");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let target = workspace.join("src/main/kotlin/JournalFailure.kt");
+    let content = b"package sample\nclass JournalFailure\n";
+    let binary = write_active_kast_for_test(&home, &config_home);
+    let plan_id = plan_add_file(
+        &binary,
+        &home,
+        &config_home,
+        &workspace,
+        "src/main/kotlin/JournalFailure.kt",
+        std::str::from_utf8(content).expect("Kotlin content"),
+    );
+    let expected = verified_add_file_rejected(
+        &target,
+        content,
+        "RECOVERY_PREPARATION",
+        "PLAN_NOT_FOUND",
+    );
+    let backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("journal-failure.sock"),
+        vec![("change/apply-add-file", expected.clone())],
+    );
+
+    let rejected = installed_public_kast(&binary, &home, &config_home, &workspace)
+        .args(["change", "apply", "--plan-id", &plan_id])
+        .output()
+        .expect("typed journal-publication rejection");
+
+    assert_eq!(rejected.status.code(), Some(1), "{rejected:?}");
+    assert_eq!(decode(&rejected), expected);
+    backend.join().expect("journal failure backend");
+    assert!(!target.exists());
+}
+
+#[test]
 fn verified_add_file_terminal_hash_and_result_matrix_tampering_fail_closed() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");

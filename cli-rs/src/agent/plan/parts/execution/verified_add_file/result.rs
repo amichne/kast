@@ -322,6 +322,7 @@ fn rejected_failure_matches(
             VerifiedAddFileFailure::TargetAlreadyExists
                 | VerifiedAddFileFailure::TargetNotWritable
                 | VerifiedAddFileFailure::TargetSymlinkEscape
+                | VerifiedAddFileFailure::PlanNotFound
         ) | (
             VerifiedAddFileProgress::SourceApplication,
             VerifiedAddFileFailure::VcsWritePromptRejected
