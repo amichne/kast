@@ -37,6 +37,11 @@ internal class PersistedVerifiedAddFilePlan(
     var lifecycle: PersistedVerifiedAddFileLifecycle = initialLifecycle
 }
 
+internal enum class VerifiedAddFileNonDestructiveObservation {
+    TARGET_OBSERVATION_ALLOWED,
+    COMMIT_EVIDENCE_INCOMPLETE,
+}
+
 internal sealed interface PersistedVerifiedAddFileLifecycle {
     data object AwaitingApproval : PersistedVerifiedAddFileLifecycle
 
@@ -59,7 +64,11 @@ internal sealed interface PersistedVerifiedAddFileLifecycle {
     ) : PersistedVerifiedAddFileLifecycle
 
     data class NonDestructiveReconciliationRequired(
-        val result: VerifiedAddFileApplyResult.ReconciliationRequired,
+        val recovery: VerifiedAddFileRecoveryPrepared,
+        val progress: VerifiedAddFileProgress,
+        val failure: VerifiedAddFileFailure,
+        val action: VerifiedAddFileReconciliationAction,
+        val observation: VerifiedAddFileNonDestructiveObservation,
     ) : PersistedVerifiedAddFileLifecycle
 
     sealed interface Terminal : PersistedVerifiedAddFileLifecycle {
@@ -377,9 +386,10 @@ internal sealed interface VerifiedAddFileResult {
         val action: VerifiedAddFileReconciliationAction,
     ) : VerifiedAddFileResult
     data class NonDestructiveReconciliationRequired(
-        val recoveryId: VerifiedAddFileRecoveryId,
+        val recovery: VerifiedAddFileRecoveryPrepared,
         val progress: VerifiedAddFileProgress,
         val failure: VerifiedAddFileFailure,
         val action: VerifiedAddFileReconciliationAction,
+        val observation: VerifiedAddFileNonDestructiveObservation,
     ) : VerifiedAddFileResult
 }

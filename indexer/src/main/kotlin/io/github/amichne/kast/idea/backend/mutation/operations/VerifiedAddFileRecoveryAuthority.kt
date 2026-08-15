@@ -9,11 +9,18 @@ import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.server.change.AdmittedVerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.RevalidatedVerifiedAddFilePlan
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyResultAdmission
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
+import io.github.amichne.kast.server.change.VerifiedAddFilePlanId
+import io.github.amichne.kast.server.change.VerifiedAddFilePlanVersion
 import io.github.amichne.kast.server.change.VerifiedAddFileReconciliationAction
 import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryDisposition
 import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryDispositionAction
+import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryId
+import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
 import io.github.amichne.kast.server.change.VerifiedAddFileProgress
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -119,6 +126,12 @@ private sealed interface VerifiedAddFilePublishedAbsenceCandidate {
     ) : VerifiedAddFilePublishedAbsenceCandidate {
         override val target: Path = Path.of(application.targetPath.value)
     }
+
+    data class ObservedUnderNonDestructiveAuthority(
+        val recovery: VerifiedAddFileRecoveryPrepared,
+    ) : VerifiedAddFilePublishedAbsenceCandidate {
+        override val target: Path = Path.of(recovery.plan.planned.intent.targetPath.value)
+    }
 }
 
 /**
@@ -150,10 +163,11 @@ private fun admitCommittedVerifiedAddFileDelete(
  * Proof transition:
  * `VerifiedAddFilePublishedAbsenceCandidate -> VerifiedAddFileRecoveryDisposition`.
  *
- * Accepts either a structured committed exact delete or absence observed under artifact-free
- * [AppliedVerifiedAddFile] authority. RolledBack is emitted only after a focused refresh returns
- * the exact target as removed with a complete semantic outcome. Any incomplete publication retains
- * delete recovery authority. Raw target paths are extracted only at this refresh boundary.
+ * Accepts a structured committed exact delete, absence under artifact-free
+ * [AppliedVerifiedAddFile] authority, or absence under the original non-destructive recovery
+ * capability. RolledBack is emitted only after a focused refresh returns the exact target as
+ * removed with a complete semantic outcome. Any incomplete publication retains recovery
+ * authority. Raw target paths are extracted only at this refresh boundary.
  */
 private suspend fun verifyPublishedVerifiedAddFileAbsence(
     backend: KastIndexerBackend,
@@ -180,6 +194,139 @@ private suspend fun verifyPublishedVerifiedAddFileAbsence(
         VerifiedAddFileRecoveryDispositionAction.DELETE_CREATED_TARGET,
     )
 }
+
+/**
+ * Effect transition: `(VerifiedAddFileRecoveryPrepared, VerifiedAddFileProgress,
+ * VerifiedAddFileFailure, VerifiedAddFileReconciliationAction,
+ * VerifiedAddFileNonDestructiveObservation) -> VerifiedAddFileResult`.
+ *
+ * Re-observes an unproven source application without acquiring delete authority. An absent target
+ * reaches rollback only when the structured conflict admits target observation and exact focused
+ * publication proves removal. Incomplete commit evidence, a present target, cancellation, or
+ * incomplete publication preserves the same non-destructive reconciliation capability. Raw
+ * filesystem absence is observed only at this recovery boundary.
+ */
+internal suspend fun reconcileUnprovenVerifiedAddFileFailure(
+    backend: KastIndexerBackend,
+    recovery: VerifiedAddFileRecoveryPrepared,
+    progress: VerifiedAddFileProgress,
+    failure: VerifiedAddFileFailure,
+    action: VerifiedAddFileReconciliationAction,
+    observation: VerifiedAddFileNonDestructiveObservation,
+): VerifiedAddFileResult {
+    if (observation != VerifiedAddFileNonDestructiveObservation.TARGET_OBSERVATION_ALLOWED) {
+        return VerifiedAddFileResult.NonDestructiveReconciliationRequired(
+            recovery,
+            progress,
+            failure,
+            action,
+            observation,
+        )
+    }
+    val target = Path.of(recovery.plan.planned.intent.targetPath.value)
+    if (!Files.notExists(target, NOFOLLOW_LINKS)) {
+        return VerifiedAddFileResult.NonDestructiveReconciliationRequired(
+            recovery,
+            progress,
+            failure,
+            action,
+            observation,
+        )
+    }
+    return when (
+        verifyPublishedVerifiedAddFileAbsence(
+            backend,
+            VerifiedAddFilePublishedAbsenceCandidate.ObservedUnderNonDestructiveAuthority(recovery),
+        )
+    ) {
+        VerifiedAddFileRecoveryDisposition.RolledBack -> VerifiedAddFileResult.RolledBack(
+            progress,
+            failure,
+            VerifiedAddFileRecoveryDispositionAction.DELETE_CREATED_TARGET,
+        )
+        else -> VerifiedAddFileResult.NonDestructiveReconciliationRequired(
+            recovery,
+            progress,
+            failure,
+            action,
+            observation,
+        )
+    }
+}
+
+internal suspend fun PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired.reconcile(
+    backend: KastIndexerBackend,
+): VerifiedAddFileResult = reconcileUnprovenVerifiedAddFileFailure(
+    backend,
+    recovery,
+    progress,
+    failure,
+    action,
+    observation,
+)
+
+internal class VerifiedAddFileNonDestructivePersistenceTransition private constructor(
+    val wireResult: VerifiedAddFileApplyResult.ReconciliationRequired,
+    val lifecycle: PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired,
+) {
+    companion object {
+        /**
+         * Proof transition: `(VerifiedAddFileResult.NonDestructiveReconciliationRequired,
+         * VerifiedAddFilePlanId, VerifiedAddFilePlanVersion)` to
+         * `VerifiedAddFileNonDestructivePersistenceTransition`.
+         *
+         * Preserves the exact strong recovery capability in both the public wire result and its
+         * durable non-destructive lifecycle. Raw serialization is permitted only after this
+         * projection at the journal and RPC boundaries.
+         */
+        fun from(
+            result: VerifiedAddFileResult.NonDestructiveReconciliationRequired,
+            planId: VerifiedAddFilePlanId,
+            planVersion: VerifiedAddFilePlanVersion,
+        ): VerifiedAddFileNonDestructivePersistenceTransition =
+            VerifiedAddFileNonDestructivePersistenceTransition(
+                wireResult = VerifiedAddFileApplyResult.ReconciliationRequired(
+                    planId = planId,
+                    recoveryId = result.recovery.recoveryId,
+                    planVersion = planVersion,
+                    stage = result.progress.toStage(),
+                    progress = result.progress,
+                    failure = result.failure,
+                    action = result.action,
+                ),
+                lifecycle = PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired(
+                    result.recovery,
+                    result.progress,
+                    result.failure,
+                    result.action,
+                    result.observation,
+                ),
+            )
+    }
+}
+
+internal fun VerifiedAddFileResult.NonDestructiveReconciliationRequired.toPersistenceTransition(
+    planId: VerifiedAddFilePlanId,
+    planVersion: VerifiedAddFilePlanVersion,
+): VerifiedAddFileNonDestructivePersistenceTransition =
+    VerifiedAddFileNonDestructivePersistenceTransition.from(this, planId, planVersion)
+
+/** Proof transition: wire result to closed lifecycle admission through the finite result matrix. */
+internal fun admittedLifecycle(
+    candidate: VerifiedAddFileApplyResult,
+    lifecycle: (VerifiedAddFileApplyResult) -> PersistedVerifiedAddFileLifecycle,
+): DurableLifecycleAdmission = when (val result = AdmittedVerifiedAddFileApplyResult.admit(candidate)) {
+    is VerifiedAddFileApplyResultAdmission.Admitted ->
+        DurableLifecycleAdmission.Admitted(lifecycle(result.value.result))
+    is VerifiedAddFileApplyResultAdmission.Rejected -> DurableLifecycleAdmission.Rejected
+}
+
+/** Proof transition: raw journal string to typed recovery identity or closed rejection. */
+internal fun refineRecoveryId(raw: String): DurableRecoveryIdAdmission =
+    when (val result = VerifiedAddFileRecoveryId.refine(raw)) {
+        is VerifiedAddFileRefinement.Refined -> DurableRecoveryIdAdmission.Admitted(result.value)
+        is VerifiedAddFileRefinement.Rejected -> DurableRecoveryIdAdmission.Rejected
+    }
 
 /**
  * Effect transition: (AppliedVerifiedAddFile, VerifiedAddFileProgress,

@@ -132,12 +132,11 @@ private class IntellijVerifiedAddFileOperations(
                     return@withLock lifecycle.result
                 is PersistedVerifiedAddFileLifecycle.Terminal.RolledBack ->
                     return@withLock lifecycle.result
-                is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->
-                    return@withLock lifecycle.result
                 PersistedVerifiedAddFileLifecycle.AwaitingApproval,
                 is PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown,
                 is PersistedVerifiedAddFileLifecycle.RecoveryRequired,
                 is PersistedVerifiedAddFileLifecycle.ReconciliationRequired,
+                is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired,
                 -> Unit
             }
             val result = when (lifecycle) {
@@ -158,7 +157,7 @@ private class IntellijVerifiedAddFileOperations(
                 PersistedVerifiedAddFileLifecycle.AwaitingApproval ->
                     applyPlanned(approved.planned, persisted)
                 is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->
-                    error("non-destructive reconciliation replay returned above")
+                    lifecycle.reconcile(backend)
                 is PersistedVerifiedAddFileLifecycle.Terminal -> error("terminal replay returned above")
             }
             val wireResult = when (result) {
@@ -221,18 +220,9 @@ private class IntellijVerifiedAddFileOperations(
                         )
                     }
                 is VerifiedAddFileResult.NonDestructiveReconciliationRequired ->
-                    VerifiedAddFileApplyResult.ReconciliationRequired(
-                        planId = persisted.planId,
-                        recoveryId = result.recoveryId,
-                        planVersion = persisted.initialVersion,
-                        stage = result.progress.toStage(),
-                        progress = result.progress,
-                        failure = result.failure,
-                        action = result.action,
-                    ).also {
-                        persisted.lifecycle =
-                            PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired(it)
-                    }
+                    result.toPersistenceTransition(persisted.planId, persisted.initialVersion).also {
+                        persisted.lifecycle = it.lifecycle
+                    }.wireResult
             }
             when (result) {
                 is VerifiedAddFileResult.Rejected -> wireResult

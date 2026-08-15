@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.mutation.operations.PlanAttempt
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileProofAdmission
+import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileNonDestructiveObservation
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileRecoveryPrepared
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileResult
 import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileSourceApplication
@@ -74,6 +75,10 @@ internal class VerifiedAddFileApplicationBoundaryIntellijTest : ExactAdditionPla
             )
 
             assertEquals(VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED, result.failure)
+            assertEquals(
+                VerifiedAddFileNonDestructiveObservation.TARGET_OBSERVATION_ALLOWED,
+                result.observation,
+            )
             assertEquals(content, Files.readString(target))
         }
 
@@ -124,6 +129,10 @@ internal class VerifiedAddFileApplicationBoundaryIntellijTest : ExactAdditionPla
 
         val unproven = assertInstanceOf<VerifiedAddFileSourceApplication.CommitUnproven>(application)
         assertEquals(VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED, unproven.failure)
+        assertEquals(
+            VerifiedAddFileNonDestructiveObservation.COMMIT_EVIDENCE_INCOMPLETE,
+            unproven.observation,
+        )
     }
 
     private fun <T> refined(refinement: VerifiedAddFileRefinement<T>): T =

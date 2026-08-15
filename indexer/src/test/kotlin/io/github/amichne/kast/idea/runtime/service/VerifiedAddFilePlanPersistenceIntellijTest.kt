@@ -84,7 +84,7 @@ internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlannin
     }
 
     @Test
-    fun `write outcome retains recovery authority across native operations recreation`() = runBlocking {
+    fun `unknown write outcome terminalizes after user removes the reconciled target`() = runBlocking {
         ensureProjectReady()
         val sourceRoot = sourceRoot()
         val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
@@ -115,6 +115,15 @@ internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlannin
         )
         assertEquals(planned.planId, reconciliation.planId)
         assertEquals(content, Files.readString(target))
+
+        Files.delete(target)
+        val terminal = operations(workspaceRoot, sourceRoot).apply(applyRequest(workspaceRoot, planned))
+
+        assertInstanceOf<VerifiedAddFileApplyResult.RolledBack>(
+            terminal,
+            "published user-resolved absence must terminalize non-destructive reconciliation: $terminal",
+        )
+        assertFalse(Files.exists(target))
     }
 
     @Test

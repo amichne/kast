@@ -7,10 +7,8 @@ import io.github.amichne.kast.api.contract.result.AdditionPostimageSha256
 import io.github.amichne.kast.api.contract.result.AdditionTargetPath
 import io.github.amichne.kast.api.contract.result.AdditionTopLevelDeclaration
 import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
-import io.github.amichne.kast.server.change.AdmittedVerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileAdmission
 import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
-import io.github.amichne.kast.server.change.VerifiedAddFileApplyResultAdmission
 import io.github.amichne.kast.server.change.VerifiedAddFileContent
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
 import io.github.amichne.kast.server.change.VerifiedAddFileIntent
@@ -20,7 +18,6 @@ import io.github.amichne.kast.server.change.VerifiedAddFilePlanVersion
 import io.github.amichne.kast.server.change.VerifiedAddFileProgress
 import io.github.amichne.kast.server.change.VerifiedAddFileReceipt
 import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryDispositionAction
-import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryId
 import io.github.amichne.kast.server.change.VerifiedAddFileReconciliationAction
 import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
 import io.github.amichne.kast.server.change.VerifiedAddFileTargetPath
@@ -201,6 +198,7 @@ private sealed interface DurableLifecycleRecord {
         val progress: VerifiedAddFileProgress,
         val failure: VerifiedAddFileFailure,
         val action: VerifiedAddFileReconciliationAction,
+        val observation: VerifiedAddFileNonDestructiveObservation,
     ) : DurableLifecycleRecord
 
     @Serializable @SerialName("verified")
@@ -285,13 +283,23 @@ private fun DurableLifecycleRecord.readmit(
             is DurableRecoveryIdAdmission.Admitted -> result.recoveryId
             DurableRecoveryIdAdmission.Rejected -> return DurableLifecycleAdmission.Rejected
         }
+        val prepared = when (
+            val result = VerifiedAddFileRecoveryPrepared.readmitPersisted(planned, recovery)
+        ) {
+            is VerifiedAddFileProofAdmission.Admitted -> result.value
+            is VerifiedAddFileProofAdmission.Rejected -> return DurableLifecycleAdmission.Rejected
+        }
         return admittedLifecycle(
             VerifiedAddFileApplyResult.ReconciliationRequired(
                 planId, recovery, initialVersion, progress.toStage(), progress, failure, action,
             ),
         ) {
             PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired(
-                it as VerifiedAddFileApplyResult.ReconciliationRequired,
+                prepared,
+                progress,
+                failure,
+                action,
+                observation,
             )
         }
     }
@@ -337,23 +345,6 @@ private fun DurableApplicationRecord.readmit(planned: VerifiedAddFilePlan): Dura
     }
 }
 
-/** Proof transition: wire result to closed lifecycle admission through the finite result matrix. */
-private fun admittedLifecycle(
-    candidate: VerifiedAddFileApplyResult,
-    lifecycle: (VerifiedAddFileApplyResult) -> PersistedVerifiedAddFileLifecycle,
-): DurableLifecycleAdmission = when (val result = AdmittedVerifiedAddFileApplyResult.admit(candidate)) {
-    is VerifiedAddFileApplyResultAdmission.Admitted ->
-        DurableLifecycleAdmission.Admitted(lifecycle(result.value.result))
-    is VerifiedAddFileApplyResultAdmission.Rejected -> DurableLifecycleAdmission.Rejected
-}
-
-/** Proof transition: raw journal string to typed recovery identity or closed rejection. */
-private fun refineRecoveryId(raw: String): DurableRecoveryIdAdmission =
-    when (val result = VerifiedAddFileRecoveryId.refine(raw)) {
-        is VerifiedAddFileRefinement.Refined -> DurableRecoveryIdAdmission.Admitted(result.value)
-        is VerifiedAddFileRefinement.Rejected -> DurableRecoveryIdAdmission.Rejected
-    }
-
 private fun PersistedVerifiedAddFilePlan.toDurableRecord(owner: WorkspaceIdentity) = DurablePlanRecord(
     JOURNAL_SCHEMA, owner.workspaceRoot.value, planId.value, initialVersion.value,
     planned.exact, lifecycle.toDurableRecord(),
@@ -372,7 +363,7 @@ private fun PersistedVerifiedAddFileLifecycle.toDurableRecord(): DurableLifecycl
         )
     is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->
         DurableLifecycleRecord.NonDestructiveReconciliationRequired(
-            result.recoveryId.value, result.progress, result.failure, result.action,
+            recovery.recoveryId.value, progress, failure, action, observation,
         )
     is PersistedVerifiedAddFileLifecycle.Terminal.Verified -> DurableLifecycleRecord.Verified(
         DurableReceiptRecord(
@@ -391,7 +382,7 @@ private fun AppliedVerifiedAddFile.toDurableRecord() = DurableApplicationRecord(
 
 private fun corrupt() = VerifiedAddFileJournalRead.Rejected(VerifiedAddFileJournalFailure.CORRUPT)
 
-private const val JOURNAL_SCHEMA = 1
+private const val JOURNAL_SCHEMA = 2
 private const val JOURNAL_DIRECTORY = "verified-add-file-plans"
 private val JOURNAL_JSON = Json {
     encodeDefaults = true

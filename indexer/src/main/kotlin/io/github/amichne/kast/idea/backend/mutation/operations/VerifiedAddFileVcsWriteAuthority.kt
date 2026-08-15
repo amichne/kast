@@ -14,7 +14,6 @@ import io.github.amichne.kast.server.change.VerifiedAddFileAdmission
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
 import io.github.amichne.kast.server.change.VerifiedAddFileProgress
 import io.github.amichne.kast.server.change.VerifiedAddFileReconciliationAction
-import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryId
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 
@@ -29,8 +28,9 @@ internal sealed interface VerifiedAddFileSourceApplication {
     ) : VerifiedAddFileSourceApplication
 
     data class CommitUnproven(
-        val recoveryId: VerifiedAddFileRecoveryId,
+        val recovery: VerifiedAddFileRecoveryPrepared,
         val failure: VerifiedAddFileFailure,
+        val observation: VerifiedAddFileNonDestructiveObservation,
     ) : VerifiedAddFileSourceApplication
 }
 
@@ -72,19 +72,22 @@ internal class VerifiedAddFileVcsWriteAuthorized private constructor(
                     VerifiedAddFileSourceApplication.Applied(admission.value)
                 is VerifiedAddFileProofAdmission.Rejected ->
                     VerifiedAddFileSourceApplication.CommitUnproven(
-                        recovery.recoveryId,
+                        recovery,
                         admission.failure,
+                        VerifiedAddFileNonDestructiveObservation.COMMIT_EVIDENCE_INCOMPLETE,
                     )
             }
         } catch (_: ProcessCanceledException) {
             VerifiedAddFileSourceApplication.CommitUnproven(
-                recovery.recoveryId,
+                recovery,
                 VerifiedAddFileFailure.CANCELLED,
+                VerifiedAddFileNonDestructiveObservation.COMMIT_EVIDENCE_INCOMPLETE,
             )
         } catch (_: CancellationException) {
             VerifiedAddFileSourceApplication.CommitUnproven(
-                recovery.recoveryId,
+                recovery,
                 VerifiedAddFileFailure.CANCELLED,
+                VerifiedAddFileNonDestructiveObservation.COMMIT_EVIDENCE_INCOMPLETE,
             )
         } catch (failure: PartialApplyException) {
             when (val admission = AppliedVerifiedAddFile.admit(recovery, failure)) {
@@ -95,19 +98,22 @@ internal class VerifiedAddFileVcsWriteAuthorized private constructor(
                     )
                 is VerifiedAddFileProofAdmission.Rejected ->
                     VerifiedAddFileSourceApplication.CommitUnproven(
-                        recovery.recoveryId,
+                        recovery,
                         admission.failure,
+                        VerifiedAddFileNonDestructiveObservation.COMMIT_EVIDENCE_INCOMPLETE,
                     )
             }
         } catch (_: ConflictException) {
             VerifiedAddFileSourceApplication.CommitUnproven(
-                recovery.recoveryId,
+                recovery,
                 VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED,
+                VerifiedAddFileNonDestructiveObservation.TARGET_OBSERVATION_ALLOWED,
             )
         } catch (_: Exception) {
             VerifiedAddFileSourceApplication.CommitUnproven(
-                recovery.recoveryId,
+                recovery,
                 VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED,
+                VerifiedAddFileNonDestructiveObservation.COMMIT_EVIDENCE_INCOMPLETE,
             )
         }
     }
@@ -148,13 +154,15 @@ internal class VerifiedAddFileVcsWriteAuthorized private constructor(
  * Proof-preserving projection:
  * `VerifiedAddFileSourceApplication.CommitUnproven -> VerifiedAddFileResult`.
  *
- * Retains only a recovery identity and emits non-destructive reconciliation; it cannot acquire the
- * [AppliedVerifiedAddFile] capability required by exact-CAS deletion.
+ * Retains the strong recovery capability plus the closed observation mode and emits
+ * non-destructive reconciliation; it cannot acquire the [AppliedVerifiedAddFile] capability
+ * required by exact-CAS deletion.
  */
 internal fun VerifiedAddFileSourceApplication.CommitUnproven.toResult(): VerifiedAddFileResult =
     VerifiedAddFileResult.NonDestructiveReconciliationRequired(
-        recoveryId = recoveryId,
+        recovery = recovery,
         progress = VerifiedAddFileProgress.SOURCE_APPLICATION,
         failure = failure,
         action = VerifiedAddFileReconciliationAction.INSPECT_TARGET,
+        observation = observation,
     )
