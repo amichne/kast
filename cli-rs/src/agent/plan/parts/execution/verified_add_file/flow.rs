@@ -21,13 +21,26 @@ fn run_verified_add_file_plan(
         proposed_content: source.as_str(),
     };
     let raw = verified_add_file_rpc(&workspace_root, VerifiedAddFileRpcOperation::Plan, &params)?;
-    let response: RawVerifiedAddFilePlanResponse = serde_json::from_value(raw).map_err(|error| {
+    let response: RawVerifiedAddFilePlanResult = serde_json::from_value(raw).map_err(|error| {
         CliError::new(
             "KAST_VERIFIED_ADD_FILE_PLAN_INVALID",
             format!("The operation-specific plan response violated its closed contract: {error}"),
         )
     })?;
-    let response = response.admit(&workspace_root_text, &target, &source)?;
+    let response = match response.admit(&workspace_root_text, &target, &source)? {
+        VerifiedAddFilePlanResult::Planned(response) => response,
+        VerifiedAddFilePlanResult::Rejected(rejection) => {
+            print_plan_protocol(
+                plan_output_context(
+                    output_format,
+                    crate::agent::public_protocol::OperationId::ChangePlanAddFile,
+                ),
+                crate::agent::public_protocol::OperationStatus::Rejected,
+                &rejection,
+            )?;
+            return Ok(1);
+        }
+    };
     let paths = VerifiedAddFilePaths::new(&response.plan_id);
     let stored = StoredVerifiedAddFilePlan {
         schema_version: VERIFIED_ADD_FILE_STORE_SCHEMA_VERSION,

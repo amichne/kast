@@ -1,4 +1,5 @@
 include!("verified_add_file/model.rs");
+include!("verified_add_file/plan.rs");
 include!("verified_add_file/authority.rs");
 include!("verified_add_file/result.rs");
 include!("verified_add_file/wire.rs");

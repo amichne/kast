@@ -1,4 +1,45 @@
 #[test]
+fn verified_add_file_plan_rejection_preserves_the_typed_native_failure() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(workspace.join("src/main/kotlin")).expect("source root");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let backend = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("rejected-plan.sock"),
+        vec![(
+            "change/plan-add-file",
+            json!({
+                "failure": "TARGET_GENERATED",
+                "operation": "add-file",
+                "schemaVersion": 7,
+            }),
+        )],
+    );
+    let binary = write_active_kast_for_test(&home, &config_home);
+    let mut plan = installed_public_kast(&binary, &home, &config_home, &workspace);
+    plan.args([
+        "change",
+        "plan",
+        "add-file",
+        "--file",
+        "src/main/kotlin/Generated.kt",
+    ]);
+
+    let rejected = run_with_stdin(plan, "package sample\nclass Generated\n");
+
+    assert_eq!(rejected.status.code(), Some(1), "{rejected:?}");
+    assert_eq!(decode_envelope(&rejected)["status"], "rejected");
+    assert_eq!(decode(&rejected)["failure"], "TARGET_GENERATED");
+    backend.join().expect("rejected plan backend");
+}
+
+#[test]
 fn verified_add_file_plan_stage_and_persisted_request_tampering_fail_closed() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");
