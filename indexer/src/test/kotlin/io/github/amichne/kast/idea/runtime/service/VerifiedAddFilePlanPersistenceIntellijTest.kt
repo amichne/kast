@@ -5,6 +5,15 @@ import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.testFramework.junit5.TestApplication
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.idea.backend.mutation.operations.PersistedVerifiedAddFilePlan
+import io.github.amichne.kast.idea.backend.mutation.operations.PlanAttempt
+import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalDirectoryDurability
+import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalDirectoryDurabilityBarrier
+import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalFailure
+import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFileJournalWrite
+import io.github.amichne.kast.idea.backend.mutation.operations.VerifiedAddFilePlanJournal
+import io.github.amichne.kast.idea.backend.mutation.operations.planVerifiedAddFile
+import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFilePlanId
 import io.github.amichne.kast.idea.backend.mutation.operations.verifiedAddFileOperations
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.server.change.NativeVerifiedAddFileOperations
@@ -14,8 +23,10 @@ import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidence
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovalEvidenceSha256
 import io.github.amichne.kast.server.change.VerifiedAddFileApprovedBy
 import io.github.amichne.kast.server.change.VerifiedAddFileContent
+import io.github.amichne.kast.server.change.VerifiedAddFileIntent
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanRequest
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanResult
+import io.github.amichne.kast.server.change.VerifiedAddFileProgress
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanVersion
 import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
 import io.github.amichne.kast.server.change.VerifiedAddFileTargetPath
@@ -31,6 +42,49 @@ import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlanningTestSupport() {
+    @Test
+    fun `journal store rejects after replacement until its directory is durable`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
+        val target = sourceRoot.resolve("DirectoryDurability.kt")
+        val content = "package demo\n\nclass DirectoryDurability\n"
+        val backend = backend(
+            workspaceRoot,
+            workspaceModelReader = model(workspaceRoot, sourceRoot),
+        )
+        val intent = VerifiedAddFileIntent(
+            workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
+            targetPath = refined(VerifiedAddFileTargetPath.refine(target.toString())),
+            content = refined(VerifiedAddFileContent.refine(content)),
+        )
+        val planned = assertInstanceOf<PlanAttempt.Planned>(
+            planVerifiedAddFile(backend, intent, VerifiedAddFileProgress.PLANNING),
+        ).plan
+        val persisted = PersistedVerifiedAddFilePlan(
+            verifiedAddFilePlanId(planned),
+            refined(VerifiedAddFilePlanVersion.refine(0L)),
+            planned,
+        )
+        val barrier = VerifiedAddFileJournalDirectoryDurabilityBarrier { directory ->
+            assertTrue(
+                Files.isRegularFile(directory.resolve("${persisted.planId.value}.json")),
+                "the atomic replacement must precede parent-directory synchronization",
+            )
+            VerifiedAddFileJournalDirectoryDurability.UNAVAILABLE
+        }
+
+        val result = VerifiedAddFilePlanJournal(
+            backend.workspaceIdentity.workspaceIdentity,
+            barrier,
+        ).store(persisted)
+
+        assertEquals(
+            VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE),
+            result,
+        )
+    }
+
     @Test
     fun `planned authority survives native operations recreation`() = runBlocking {
         ensureProjectReady()

@@ -25,6 +25,7 @@ import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.StandardOpenOption.READ
@@ -36,8 +37,34 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/**
+ * Effect transition: `Path -> VerifiedAddFileJournalDirectoryDurability`.
+ * `DURABLE` proves the atomically replaced journal entry is stable. `UNAVAILABLE` is the closed
+ * expected failure. Raw paths are consumed only at this journal persistence boundary.
+ */
+internal enum class VerifiedAddFileJournalDirectoryDurability { DURABLE, UNAVAILABLE }
+internal fun interface VerifiedAddFileJournalDirectoryDurabilityBarrier {
+    fun persist(directory: Path): VerifiedAddFileJournalDirectoryDurability
+}
+
+private val FILE_CHANNEL_JOURNAL_DIRECTORY_DURABILITY =
+    VerifiedAddFileJournalDirectoryDurabilityBarrier { directory ->
+        try {
+            FileChannel.open(directory, READ).use { it.force(true) }
+            VerifiedAddFileJournalDirectoryDurability.DURABLE
+        } catch (_: IOException) {
+            VerifiedAddFileJournalDirectoryDurability.UNAVAILABLE
+        } catch (_: SecurityException) {
+            VerifiedAddFileJournalDirectoryDurability.UNAVAILABLE
+        } catch (_: UnsupportedOperationException) {
+            VerifiedAddFileJournalDirectoryDurability.UNAVAILABLE
+        }
+    }
+
 internal class VerifiedAddFilePlanJournal(
     private val workspaceIdentity: WorkspaceIdentity,
+    private val directoryDurability: VerifiedAddFileJournalDirectoryDurabilityBarrier =
+        FILE_CHANNEL_JOURNAL_DIRECTORY_DURABILITY,
 ) {
     private val livePlans = java.util.concurrent.ConcurrentHashMap<String, PersistedVerifiedAddFilePlan>()
     private val directory = workspaceIdentity.workspaceCacheDirectoryPath.resolve(JOURNAL_DIRECTORY)
@@ -46,8 +73,8 @@ internal class VerifiedAddFilePlanJournal(
      * Proof transition: VerifiedAddFilePlanId to VerifiedAddFileJournalRead.
      * Re-admits one workspace-scoped serialized plan and lifecycle only after workspace, PlanId,
      * version, target, content, recovery identity, and application postimage agree with the exact
-     * compiler plan. Missing, corrupt, and unavailable records are closed journal failures. Raw
-     * paths are used only at this metadata boundary.
+     * compiler plan. Missing, corrupt, and unavailable records are closed journal failures. Raw paths
+     * are used only at this metadata boundary.
      */
     fun load(planId: VerifiedAddFilePlanId): VerifiedAddFileJournalRead {
         livePlans[planId.value]?.let { return VerifiedAddFileJournalRead.Loaded(it) }
@@ -79,8 +106,8 @@ internal class VerifiedAddFilePlanJournal(
     /**
      * Proof transition: PersistedVerifiedAddFilePlan to VerifiedAddFileJournalWrite.
      * Atomically publishes and fsyncs the exact workspace-scoped plan/lifecycle record before the
-     * native operation responds. The closed failure is journal UNAVAILABLE. Raw filesystem access
-     * is restricted to this operation-metadata persistence boundary.
+     * native operation responds. The closed failure is journal UNAVAILABLE. Raw filesystem access is
+     * restricted to this operation-metadata persistence boundary.
      */
     fun store(plan: PersistedVerifiedAddFilePlan): VerifiedAddFileJournalWrite {
         val encoded = try {
@@ -103,6 +130,9 @@ internal class VerifiedAddFilePlanJournal(
                     ATOMIC_MOVE,
                     REPLACE_EXISTING,
                 )
+                if (directoryDurability.persist(directory) != VerifiedAddFileJournalDirectoryDurability.DURABLE) {
+                    return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE)
+                }
             } finally {
                 Files.deleteIfExists(temporary)
             }
@@ -127,7 +157,6 @@ private data class DurablePlanRecord(
 ) {
     /**
      * Proof transition: persisted record plus workspace and requested PlanId to journal read.
-     *
      * Reconstructs only a strong plan whose complete persisted authority agrees with the owning
      * workspace and requested identity. Every mismatch is a closed CORRUPT journal failure.
      * Raw fields are extracted only at this serialized-record boundary.
@@ -170,61 +199,43 @@ private data class DurablePlanRecord(
 private sealed interface DurableLifecycleRecord {
     @Serializable @SerialName("awaitingApproval")
     data object AwaitingApproval : DurableLifecycleRecord
-
     @Serializable @SerialName("applyOutcomeUnknown")
-    data class ApplyOutcomeUnknown(
-        val recoveryId: String,
-    ) : DurableLifecycleRecord
-
+    data class ApplyOutcomeUnknown(val recoveryId: String) : DurableLifecycleRecord
     @Serializable @SerialName("recoveryRequired")
     data class RecoveryRequired(
-        val application: DurableApplicationRecord,
-        val progress: VerifiedAddFileProgress,
-        val failure: VerifiedAddFileFailure,
-        val action: VerifiedAddFileRecoveryDispositionAction,
+        val application: DurableApplicationRecord, val progress: VerifiedAddFileProgress,
+        val failure: VerifiedAddFileFailure, val action: VerifiedAddFileRecoveryDispositionAction,
     ) : DurableLifecycleRecord
-
     @Serializable @SerialName("reconciliationRequired")
     data class ReconciliationRequired(
-        val application: DurableApplicationRecord,
-        val progress: VerifiedAddFileProgress,
-        val failure: VerifiedAddFileFailure,
-        val action: VerifiedAddFileReconciliationAction,
+        val application: DurableApplicationRecord, val progress: VerifiedAddFileProgress,
+        val failure: VerifiedAddFileFailure, val action: VerifiedAddFileReconciliationAction,
     ) : DurableLifecycleRecord
-
     @Serializable @SerialName("nonDestructiveReconciliationRequired")
     data class NonDestructiveReconciliationRequired(
-        val recoveryId: String,
-        val progress: VerifiedAddFileProgress,
-        val failure: VerifiedAddFileFailure,
-        val action: VerifiedAddFileReconciliationAction,
+        val recoveryId: String, val progress: VerifiedAddFileProgress,
+        val failure: VerifiedAddFileFailure, val action: VerifiedAddFileReconciliationAction,
         val observation: VerifiedAddFileNonDestructiveObservation,
     ) : DurableLifecycleRecord
-
     @Serializable @SerialName("verified")
     data class Verified(val receipt: DurableReceiptRecord) : DurableLifecycleRecord
-
     @Serializable @SerialName("rolledBack")
     data class RolledBack(
-        val progress: VerifiedAddFileProgress,
-        val failure: VerifiedAddFileFailure,
+        val progress: VerifiedAddFileProgress, val failure: VerifiedAddFileFailure,
         val action: VerifiedAddFileRecoveryDispositionAction,
     ) : DurableLifecycleRecord
 }
 
 @Serializable
 private data class DurableApplicationRecord(
-    val recoveryId: String,
-    val targetPath: AdditionTargetPath,
+    val recoveryId: String, val targetPath: AdditionTargetPath,
     val postimageSha256: AdditionPostimageSha256,
 )
 
 @Serializable
 private data class DurableReceiptRecord(
-    val targetPath: AdditionTargetPath,
-    val postimageSha256: AdditionPostimageSha256,
-    val generation: MutationSemanticGeneration,
-    val packageIdentity: AdditionKotlinPackage,
+    val targetPath: AdditionTargetPath, val postimageSha256: AdditionPostimageSha256,
+    val generation: MutationSemanticGeneration, val packageIdentity: AdditionKotlinPackage,
     val declarations: List<AdditionTopLevelDeclaration>,
 ) {
     fun toReceipt() = VerifiedAddFileReceipt(
@@ -384,8 +395,4 @@ private fun corrupt() = VerifiedAddFileJournalRead.Rejected(VerifiedAddFileJourn
 
 private const val JOURNAL_SCHEMA = 2
 private const val JOURNAL_DIRECTORY = "verified-add-file-plans"
-private val JOURNAL_JSON = Json {
-    encodeDefaults = true
-    explicitNulls = false
-    ignoreUnknownKeys = false
-}
+private val JOURNAL_JSON = Json { encodeDefaults = true; explicitNulls = false; ignoreUnknownKeys = false }
