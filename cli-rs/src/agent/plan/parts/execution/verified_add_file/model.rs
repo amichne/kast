@@ -213,7 +213,6 @@ enum StoredVerifiedAddFileState {
     ApplyOutcomeUnknown {
         authority: StoredVerifiedAddFileApplyInFlight,
     },
-    Rejected { result: StoredRejectedAddFileResult },
     RecoveryRequired { result: StoredRecoveryAddFileResult },
     ReconciliationRequired { result: StoredReconciliationAddFileResult },
     Terminal { result: StoredTerminalAddFileResult },

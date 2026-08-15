@@ -82,10 +82,6 @@ fn run_verified_add_file_apply(
     }
     match &plan.state {
         StoredVerifiedAddFileState::AwaitingApproval => {}
-        StoredVerifiedAddFileState::Rejected { result } => {
-            output::print_structured(result.as_result(), output_format)?;
-            return Ok(result.as_result().exit_code());
-        }
         StoredVerifiedAddFileState::Terminal { result } if result.as_result().is_verified() => {}
         StoredVerifiedAddFileState::Terminal { result } => {
             output::print_structured(result.as_result(), output_format)?;
@@ -164,7 +160,9 @@ fn execute_verified_add_file(
         )
     })?;
     let result = result.admit(plan)?;
-    plan.state = StoredVerifiedAddFileState::from_result(result.clone())?;
+    let transition = AdmittedVerifiedAddFileResultPersistence::from_result(result)?;
+    let (result, state) = transition.into_parts();
+    plan.state = state;
     write_verified_add_file_plan(&paths.plan, plan, true)?;
     output::print_structured(&result, output_format)?;
     Ok(result.exit_code())

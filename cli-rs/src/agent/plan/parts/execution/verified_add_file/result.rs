@@ -94,31 +94,55 @@ macro_rules! stored_add_file_result {
     };
 }
 
-stored_add_file_result!(StoredRejectedAddFileResult, Rejected);
 stored_add_file_result!(StoredRecoveryAddFileResult, RecoveryRequired);
 stored_add_file_result!(StoredReconciliationAddFileResult, ReconciliationRequired);
 stored_add_file_result!(StoredTerminalAddFileResult, Verified | RolledBack);
 
-impl StoredVerifiedAddFileState {
+struct AdmittedVerifiedAddFileResultPersistence {
+    result: VerifiedAddFileApplyResult,
+    state: StoredVerifiedAddFileState,
+}
+
+impl AdmittedVerifiedAddFileResultPersistence {
     fn from_result(result: VerifiedAddFileApplyResult) -> Result<Self> {
         if result.is_verified() || result.is_rolled_back() {
             return StoredTerminalAddFileResult::try_from(result)
-                .map(|result| Self::Terminal { result })
+                .map(|stored| Self {
+                    result: stored.as_result().clone(),
+                    state: StoredVerifiedAddFileState::Terminal { result: stored },
+                })
                 .map_err(|message| CliError::new("KAST_VERIFIED_ADD_FILE_RESULT_INVALID", message));
         }
         if result.is_recovery_required() {
             return StoredRecoveryAddFileResult::try_from(result)
-                .map(|result| Self::RecoveryRequired { result })
+                .map(|stored| Self {
+                    result: stored.as_result().clone(),
+                    state: StoredVerifiedAddFileState::RecoveryRequired { result: stored },
+                })
                 .map_err(|message| CliError::new("KAST_VERIFIED_ADD_FILE_RESULT_INVALID", message));
         }
         if result.is_reconciliation_required() {
             return StoredReconciliationAddFileResult::try_from(result)
-                .map(|result| Self::ReconciliationRequired { result })
+                .map(|stored| Self {
+                    result: stored.as_result().clone(),
+                    state: StoredVerifiedAddFileState::ReconciliationRequired { result: stored },
+                })
                 .map_err(|message| CliError::new("KAST_VERIFIED_ADD_FILE_RESULT_INVALID", message));
         }
-        StoredRejectedAddFileResult::try_from(result)
-            .map(|result| Self::Rejected { result })
-            .map_err(|message| CliError::new("KAST_VERIFIED_ADD_FILE_RESULT_INVALID", message))
+        if matches!(&result, VerifiedAddFileApplyResult::Rejected { .. }) {
+            return Ok(Self {
+                result,
+                state: StoredVerifiedAddFileState::AwaitingApproval,
+            });
+        }
+        Err(CliError::new(
+            "KAST_VERIFIED_ADD_FILE_RESULT_INVALID",
+            "The server result did not map to one closed persisted add-file state.",
+        ))
+    }
+
+    fn into_parts(self) -> (VerifiedAddFileApplyResult, StoredVerifiedAddFileState) {
+        (self.result, self.state)
     }
 }
 

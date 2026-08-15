@@ -338,4 +338,5 @@ include!("../../operations/refresh.rs");
 include!("../../operations/focused_refresh.rs");
 include!("verified_add_declaration_binding.rs");
 include!("verified_add_file_binding.rs");
+include!("verified_add_file_plan_outcomes.rs");
 include!("verified_add_file_authority.rs");

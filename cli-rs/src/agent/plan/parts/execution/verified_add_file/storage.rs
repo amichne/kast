@@ -79,9 +79,6 @@ fn read_verified_add_file_plan(
                 authority: authority.admit(&plan)?,
             }
         }
-        StoredVerifiedAddFileState::Rejected { result } => StoredVerifiedAddFileState::Rejected {
-            result: result.admit(&plan)?,
-        },
         StoredVerifiedAddFileState::RecoveryRequired { result } => {
             StoredVerifiedAddFileState::RecoveryRequired {
                 result: result.admit(&plan)?,
