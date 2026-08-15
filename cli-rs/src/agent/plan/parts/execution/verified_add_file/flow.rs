@@ -85,11 +85,7 @@ fn run_verified_add_file_apply(
     }
     match &plan.state {
         StoredVerifiedAddFileState::AwaitingApproval => {}
-        StoredVerifiedAddFileState::Terminal { result } if result.as_result().is_verified() => {}
-        StoredVerifiedAddFileState::Terminal { result } => {
-            output::print_structured(result.as_result(), output_format)?;
-            return Ok(result.as_result().exit_code());
-        }
+        StoredVerifiedAddFileState::Terminal { .. } => {}
         StoredVerifiedAddFileState::ApplyOutcomeUnknown { .. }
         | StoredVerifiedAddFileState::RecoveryRequired { .. }
         | StoredVerifiedAddFileState::ReconciliationRequired { .. } => {

@@ -134,7 +134,7 @@ fn rolled_back_recovery_reacquires_native_authority_instead_of_replaying_local_c
     let mut stored: Value =
         serde_json::from_slice(&std::fs::read(&plan_path).expect("recovery plan"))
             .expect("recovery plan JSON");
-    stored["state"] = json!({"state": "TERMINAL", "result": forged});
+    stored["state"] = json!({"state": "TERMINAL", "result": forged.clone()});
     std::fs::write(
         &plan_path,
         serde_json::to_vec(&stored).expect("forged rollback JSON"),
@@ -169,6 +169,43 @@ fn rolled_back_recovery_reacquires_native_authority_instead_of_replaying_local_c
             .expect("native rollback request")["params"]["mode"],
         "RECOVER",
     );
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|request| request["method"] == "change/apply-add-file")
+            .count(),
+        1,
+    );
+
+    let mut stored: Value =
+        serde_json::from_slice(&std::fs::read(&plan_path).expect("native rollback plan"))
+            .expect("native rollback plan JSON");
+    stored["state"] = json!({"state": "TERMINAL", "result": forged});
+    std::fs::write(
+        &plan_path,
+        serde_json::to_vec(&stored).expect("forged apply rollback JSON"),
+    )
+    .expect("forge local apply rollback");
+    let apply_backend = spawn_scripted_mutating_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &fixture.path().join("native-rollback-reapply.sock"),
+        vec![("change/apply-add-file", native.clone())],
+    );
+    let reapplied = installed_public_kast(&binary, &home, &config_home, &workspace)
+        .args(["change", "apply", "--plan-id", &plan_id])
+        .output()
+        .expect("native rollback apply reacquisition");
+
+    assert_eq!(reapplied.status.code(), Some(1), "{reapplied:?}");
+    assert_eq!(decode(&reapplied), native);
+    let requests = apply_backend.join().expect("native rollback apply backend");
+    let request = requests
+        .iter()
+        .find(|request| request["method"] == "change/apply-add-file")
+        .expect("native rollback apply request");
+    assert_eq!(request["params"]["mode"], "APPLY");
     assert_eq!(
         requests
             .iter()
