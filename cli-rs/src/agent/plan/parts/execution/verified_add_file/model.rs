@@ -121,18 +121,23 @@ impl VerifiedAddFileTarget {
                 "The persisted add-file target has no parent directory.",
             )
         })?;
-        let canonical_parent = parent.canonicalize().map_err(|error| {
+        let canonical_ancestor = deepest_existing_add_file_parent(parent)?;
+        let missing_suffix = parent.strip_prefix(&canonical_ancestor).map_err(|_| {
             CliError::new(
                 "KAST_PLAN_INVALID",
-                format!("The persisted add-file parent could not be proven: {error}"),
+                "The persisted add-file parent is not rooted at its canonical ancestor.",
             )
         })?;
-        let expected = canonical_parent.join(target.file_name().ok_or_else(|| {
+        let expected = canonical_ancestor.join(missing_suffix).join(target.file_name().ok_or_else(|| {
             CliError::new("KAST_PLAN_INVALID", "The persisted add-file target has no file name.")
         })?);
         (target.is_absolute()
+            && !target.components().any(|part| {
+                matches!(part, std::path::Component::CurDir | std::path::Component::ParentDir)
+            })
             && target.extension().and_then(|part| part.to_str()) == Some("kt")
             && expected == target
+            && canonical_ancestor.starts_with(workspace_root)
             && target.starts_with(workspace_root))
         .then_some(Self(value))
         .ok_or_else(|| {
@@ -141,6 +146,39 @@ impl VerifiedAddFileTarget {
                 "The persisted add-file target no longer belongs to the exact workspace.",
             )
         })
+    }
+}
+
+fn deepest_existing_add_file_parent(parent: &Path) -> Result<PathBuf> {
+    let mut candidate = parent;
+    loop {
+        match fs::symlink_metadata(candidate) {
+            Ok(metadata) if metadata.is_dir() => {
+                let canonical = candidate.canonicalize().map_err(CliError::from)?;
+                if canonical != candidate {
+                    return Err(CliError::new(
+                        "KAST_PLAN_INVALID",
+                        "The persisted add-file parent traverses a symbolic link.",
+                    ));
+                }
+                return Ok(canonical);
+            }
+            Ok(_) => {
+                return Err(CliError::new(
+                    "KAST_PLAN_INVALID",
+                    "The persisted add-file parent is obstructed by a non-directory path.",
+                ));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                candidate = candidate.parent().ok_or_else(|| {
+                    CliError::new(
+                        "KAST_PLAN_INVALID",
+                        "The persisted add-file target has no existing parent authority.",
+                    )
+                })?;
+            }
+            Err(error) => return Err(error.into()),
+        }
     }
 }
 

@@ -60,6 +60,9 @@ fn public_recover_restores_absent_prestate_after_prepared_native_interruption() 
             & 0o777,
         0o600,
     );
+    std::fs::remove_dir_all(workspace.join("src/main/kotlin"))
+        .expect("remove target parent before recovery");
+    assert!(!target.parent().expect("target parent").exists());
 
     let rolled_back = verified_add_file_rolled_back(
         &target,
