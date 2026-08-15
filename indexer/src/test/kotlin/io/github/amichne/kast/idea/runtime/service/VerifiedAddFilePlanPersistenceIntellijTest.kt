@@ -117,6 +117,39 @@ internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlannin
         assertEquals(content, Files.readString(target))
     }
 
+    @Test
+    fun `already absent target completes retained rollback after publication proof`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
+        val target = sourceRoot.resolve("LostDeleteResponse.kt")
+        val content = "package demo\n\nclass LostDeleteResponse\n"
+        val interrupted = backend(
+            workspaceRoot,
+            psiGeneration = { PsiModificationTracker.getInstance(project).modificationCount },
+            workspaceTransitionRequester = TestWorkspaceTransitionRequester(
+                onReconcile = { throw ProcessCanceledException() },
+            ),
+            workspaceModelReader = model(workspaceRoot, sourceRoot),
+        ).verifiedAddFileOperations(workspaceRoot)
+        val planned = assertInstanceOf<VerifiedAddFilePlanResult.Planned>(
+            interrupted.plan(planRequest(workspaceRoot, target, content)),
+        )
+        assertInstanceOf<VerifiedAddFileApplyResult.RecoveryRequired>(
+            interrupted.apply(applyRequest(workspaceRoot, planned)),
+        )
+        assertTrue(Files.exists(target))
+        Files.delete(target)
+
+        val recovered = operations(workspaceRoot, sourceRoot).apply(applyRequest(workspaceRoot, planned))
+
+        assertInstanceOf<VerifiedAddFileApplyResult.RolledBack>(
+            recovered,
+            "published absence must terminalize retained rollback authority: $recovered",
+        )
+        assertFalse(Files.exists(target))
+    }
+
     private fun operations(workspaceRoot: Path, sourceRoot: Path): NativeVerifiedAddFileOperations {
         val generation = AtomicLong(1L)
         return backend(

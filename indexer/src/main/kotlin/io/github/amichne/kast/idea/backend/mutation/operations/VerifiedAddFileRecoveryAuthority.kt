@@ -54,8 +54,9 @@ internal suspend fun recoverVerifiedAddFileTarget(
 ): VerifiedAddFileRecoveryDisposition {
     val target = Path.of(application.targetPath.value)
     if (Files.notExists(target, NOFOLLOW_LINKS)) {
-        return VerifiedAddFileRecoveryDisposition.RecoveryRequired(
-            VerifiedAddFileRecoveryDispositionAction.DELETE_CREATED_TARGET,
+        return verifyPublishedVerifiedAddFileAbsence(
+            backend,
+            VerifiedAddFilePublishedAbsenceCandidate.ObservedUnderRetainedAuthority(application),
         )
     }
     return try {
@@ -105,7 +106,19 @@ internal suspend fun recoverVerifiedAddFileTarget(
 private sealed interface VerifiedAddFileCommittedDeleteAdmission {
     data object Unproven : VerifiedAddFileCommittedDeleteAdmission
 
-    data class Admitted(val target: Path) : VerifiedAddFileCommittedDeleteAdmission
+    data class Admitted(
+        override val target: Path,
+    ) : VerifiedAddFileCommittedDeleteAdmission, VerifiedAddFilePublishedAbsenceCandidate
+}
+
+private sealed interface VerifiedAddFilePublishedAbsenceCandidate {
+    val target: Path
+
+    data class ObservedUnderRetainedAuthority(
+        val application: AppliedVerifiedAddFile,
+    ) : VerifiedAddFilePublishedAbsenceCandidate {
+        override val target: Path = Path.of(application.targetPath.value)
+    }
 }
 
 /**
@@ -121,8 +134,12 @@ private fun admitCommittedVerifiedAddFileDelete(
     target: Path,
 ): VerifiedAddFileCommittedDeleteAdmission {
     val committedTarget = failure.details["deletedFiles"]
-    val recoveryArtifactCount = failure.details["recoveryFilePathCount"]
-    return if (committedTarget == target.toString() && recoveryArtifactCount == null) {
+    val retainedRecoveryPath = failure.details.keys.any { key ->
+        key == "recoveryFilePathCount" ||
+            key == "recoveryFilePath" ||
+            key.startsWith("recoveryFilePath.")
+    }
+    return if (committedTarget == target.toString() && !retainedRecoveryPath) {
         VerifiedAddFileCommittedDeleteAdmission.Admitted(target)
     } else {
         VerifiedAddFileCommittedDeleteAdmission.Unproven
@@ -131,16 +148,18 @@ private fun admitCommittedVerifiedAddFileDelete(
 
 /**
  * Proof transition:
- * `VerifiedAddFileCommittedDeleteAdmission.Admitted -> VerifiedAddFileRecoveryDisposition`.
+ * `VerifiedAddFilePublishedAbsenceCandidate -> VerifiedAddFileRecoveryDisposition`.
  *
- * RolledBack is emitted only after a focused refresh returns the exact target as removed with a
- * complete semantic outcome. Any incomplete publication retains delete recovery authority.
+ * Accepts either a structured committed exact delete or absence observed under artifact-free
+ * [AppliedVerifiedAddFile] authority. RolledBack is emitted only after a focused refresh returns
+ * the exact target as removed with a complete semantic outcome. Any incomplete publication retains
+ * delete recovery authority. Raw target paths are extracted only at this refresh boundary.
  */
 private suspend fun verifyPublishedVerifiedAddFileAbsence(
     backend: KastIndexerBackend,
-    committed: VerifiedAddFileCommittedDeleteAdmission.Admitted,
+    candidate: VerifiedAddFilePublishedAbsenceCandidate,
 ): VerifiedAddFileRecoveryDisposition = try {
-    val target = committed.target.toString()
+    val target = candidate.target.toString()
     val refreshed = backend.refresh(RefreshQuery(filePaths = listOf(target)).parsed())
     if (
         refreshed.removedFiles == listOf(target) &&
