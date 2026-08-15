@@ -129,10 +129,7 @@ fn run_verified_add_file_recover(
             if result.as_result().recovery_id() == Some(&recovery_id) => {}
         StoredVerifiedAddFileState::Terminal { result }
             if result.as_result().is_rolled_back() =>
-        {
-            output::print_structured(result.as_result(), output_format)?;
-            return Ok(result.as_result().exit_code());
-        }
+        {}
         _ => {
             return Err(CliError::new(
                 "KAST_VERIFIED_ADD_FILE_RECOVERY_INVALID",
