@@ -49,7 +49,7 @@ internal fun applyRejected(
     request: VerifiedAddFileApplyRequest,
     progress: VerifiedAddFileProgress,
     failure: VerifiedAddFileFailure,
-    admittedPlanVersion: VerifiedAddFilePlanVersion = request.expectedVersion,
+    admittedPlanVersion: VerifiedAddFilePlanVersion = wireVersion(INITIAL_PLAN_VERSION),
 ): VerifiedAddFileApplyResult.Rejected = VerifiedAddFileApplyResult.Rejected(
     planId = request.planId,
     planVersion = admittedPlanVersion,
