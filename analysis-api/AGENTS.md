@@ -43,15 +43,10 @@ guide applies to the module except where the narrower
 - `analysis-server` may expose this module's types through its API.
   `index-store` may use its normalized identities. `indexer` implements
   `AnalysisBackend` and supplies host evidence.
-- The Rust CLI consumes the serialized protocol and generated artifacts under
-  `cli-rs/protocol`. Kotlin package names are not the cross-language contract;
-  serialized names, field sets, variants, schema versions, and generated
-  schemas are.
-- The checked-in version sources are
-  `cli-rs/protocol/api-schema-version.txt` and
-  `cli-rs/protocol/install-receipt-schema-version.txt`.
-  `generateProtocolSchemaVersions` is the sole Kotlin generator for their
-  constants.
+- Kotlin package names are not the serialized contract; serialized names,
+  field sets, variants, schema versions, and generated schemas are.
+- `api/protocol/SchemaVersion.kt` is the Kotlin source authority for the API
+  schema version.
 
 ## Contract invariants
 
@@ -113,7 +108,7 @@ guide applies to the module except where the narrower
   in `client` and require the corresponding CLI/install contract checks.
 - Backend operation or wire-model changes start in `contract` and
   `validation`, then flow outward to server routing, indexer implementation,
-  Rust protocol mapping, generated docs, and fixtures.
+  generated docs, and fixtures.
 - Generic token/store lifecycle changes start in `continuation`. Operation-
   specific continuation identity and projection stay with their result family.
 - OpenAPI and Markdown generators describe source contracts; do not hand-edit a
@@ -126,11 +121,8 @@ guide applies to the module except where the narrower
 2. Run `./gradlew :analysis-api:test`.
 3. For public models, backend methods, descriptors, configuration, or
    continuation behavior, run `./gradlew :analysis-server:test`.
-4. For OpenAPI or capability documentation, run
-   `./gradlew :analysis-api:generateOpenApiSpec :analysis-api:generateDocPages`
-   and the focused docs tests; use `:analysis-api:checkDocsBuild` when the site
-   rendering contract changed.
-5. For runtime compatibility, active-install paths, or host-facing contracts,
-   run the owning shell contract and affected `:indexer:test` class.
+4. For OpenAPI or capability documentation, run the focused docs tests.
+5. For active-install paths or host-facing contracts, run the affected
+   `:indexer:test` class.
 6. Run `./gradlew test` when the change crosses more than one downstream
    module.

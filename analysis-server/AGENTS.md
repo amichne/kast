@@ -41,7 +41,7 @@ process lifecycle selection.
   not import IntelliJ, Kotlin PSI/compiler, Gradle project-model, or workspace
   indexing implementation types.
 - CLI parsing, semantic-demand routing, process ownership, install state, and
-  selection of a runtime epoch belong to `cli-rs`. The server only validates
+  runtime-epoch selection remain outside this module. The server only validates
   the exact descriptor/socket/permit facts handed to its local boundary.
 
 ## Server invariants
@@ -51,7 +51,7 @@ process lifecycle selection.
   before invoking the backend. Unknown methods and invalid params remain
   distinct JSON-RPC errors.
 - Keep raw methods and public skill methods aligned with `AnalysisBackend`,
-  capability enums, serializers, OpenAPI/docs, Rust mappings, and fixtures.
+  capability enums, serializers, OpenAPI/docs, and fixtures.
   The server transports results; it must not manufacture missing semantic
   evidence.
 - Native public discover and resolve calls use only `PublicSymbolReadBinding`.
@@ -115,6 +115,5 @@ process lifecycle selection.
    `./gradlew :analysis-api:test`.
 4. For descriptor, close, deadline, capability-lease, continuation, or
    backend-routing changes, run the affected `:indexer:test` class.
-5. For example generation, run
-   `./gradlew :analysis-server:generateDocExamples` and its contract test.
+5. For example generation, run its focused contract test.
 6. Run `./gradlew test` when the change spans server, backend, and persistence.

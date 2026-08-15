@@ -1,19 +1,5 @@
 package io.github.amichne.kast.api.docs
 
-import com.networknt.schema.InputFormat
-import com.networknt.schema.SchemaRegistry as JsonSchemaRegistry
-import com.networknt.schema.SpecificationVersion
-import io.github.amichne.kast.api.docs.internal.SchemaRegistry as OpenApiSchemaRegistry
-import io.github.amichne.kast.api.docs.internal.registerOpenApiSchemas
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -41,33 +27,6 @@ class MutationProofOpenApiContractTest {
         assertVariant(yaml, "RelationshipResultEvidence.Complete", "COMPLETE")
         assertVariant(yaml, "ReplacementOutboundEvidence.Complete", "complete")
         assertVariant(yaml, "EXACT", "EXACT")
-    }
-
-    @Test
-    fun `generated replacement proof signatures validate against their OpenAPI union`() {
-        val example = Json.parseToJsonElement(
-            Files.readString(repoRoot().resolve("cli-rs/protocol/examples/planReplacement-response.json")),
-        ).jsonObject
-        val proof = example.getValue("result").jsonObject.getValue("proof").jsonObject
-        val openApiSchemas = OpenApiSchemaRegistry().also(::registerOpenApiSchemas).schemas
-        val schemaDocument = JsonObject(
-            linkedMapOf(
-                "\$schema" to JsonPrimitive("https://json-schema.org/draft/2020-12/schema"),
-                "\$ref" to JsonPrimitive("#/components/schemas/ReplacementDeclarationSignature"),
-                "components" to JsonObject(
-                    mapOf("schemas" to openApiSchemas.toJsonElement()),
-                ),
-            ),
-        )
-        val schema = JsonSchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
-            .getSchema(schemaDocument.toString(), InputFormat.JSON)
-
-        val errors = listOf("oldSignature", "proposedSignature").flatMap { field ->
-            schema.validate(proof.getValue(field).toString(), InputFormat.JSON)
-                .map { error -> "$field: $error" }
-        }
-
-        assertTrue(errors.isEmpty(), errors.joinToString("\n"))
     }
 
     private fun assertPropertyRef(
@@ -101,17 +60,4 @@ class MutationProofOpenApiContractTest {
         return nextComponent?.let { index -> afterStart.substring(0, index) } ?: afterStart
     }
 
-    private fun repoRoot(): Path =
-        generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-            .first { Files.isDirectory(it.resolve("cli-rs/protocol/examples")) }
-
-    private fun Any?.toJsonElement(): JsonElement = when (this) {
-        null -> JsonNull
-        is Boolean -> JsonPrimitive(this)
-        is Number -> JsonPrimitive(this)
-        is String -> JsonPrimitive(this)
-        is Map<*, *> -> JsonObject(entries.associate { (key, value) -> key.toString() to value.toJsonElement() })
-        is Iterable<*> -> JsonArray(map { it.toJsonElement() })
-        else -> error("Unsupported OpenAPI schema value: ${this::class.qualifiedName}")
-    }
 }

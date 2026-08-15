@@ -74,7 +74,7 @@ class KastIndexerLaunchOptionsTest {
     }
 
     @Test
-    fun `starter args load rust resolved runtime config file`() {
+    fun `starter args load resolved runtime config file`() {
         val runtimeConfig = tempDir.resolve("runtime-config.json").apply {
             writeText(
                 """

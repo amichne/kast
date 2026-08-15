@@ -24,8 +24,7 @@ import java.nio.file.Path
  * - **Capabilities** (`renderCapabilities`): overview with collapsed schema tables
  * - **API reference** (`renderApiReference`): expanded detail with examples and notes
  *
- * Generated pages are checked in under `cli-rs/protocol` and validated by
- * `AnalysisDocsDocumentTest`.
+ * Rendered pages are derived from the live Kotlin contract registry.
  */
 object DocsDocument {
 
@@ -312,27 +311,23 @@ object DocsDocument {
         else -> "$count operations."
     }
 
-    private var examplesDir: Path? = null
-
     private fun readExampleFile(filename: String): String? {
-        val dir = examplesDir ?: findExamplesDir().also { examplesDir = it }
+        val dir = findExamplesDir() ?: return null
         val file = dir.resolve(filename)
         return if (Files.exists(file)) file.toFile().readText().trimEnd() else null
     }
 
-    private fun findExamplesDir(): Path =
+    private fun findExamplesDir(): Path? =
         generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-            .map { it.resolve("cli-rs/protocol/examples") }
-            .first { Files.isDirectory(it) }
+            .map { it.resolve("build/generated/kast-protocol/examples") }
+            .firstOrNull { Files.isDirectory(it) }
 }
 
 fun main(args: Array<String>) {
     val outputDir = if (args.isNotEmpty()) {
         Path.of(args[0])
     } else {
-        generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-            .first { Files.isDirectory(it.resolve("cli-rs/protocol")) }
-            .resolve("cli-rs/protocol")
+        Path.of("build/generated/kast-protocol")
     }
     Files.createDirectories(outputDir)
     outputDir.resolve("capabilities.md").toFile().writeText(DocsDocument.renderCapabilities())

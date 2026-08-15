@@ -57,13 +57,11 @@ not a foreground IDE plugin.
 - `META-INF/plugin.xml` exists only to load the isolated private runtime. Do
   not add installable-plugin metadata, update feeds, signing, Marketplace
   publication, or foreground-project lifecycle.
-- `packaging/indexer/runtime-compatibility.json` is the sole checked-in host
-  compatibility source. An eligible installed IntelliJ IDEA or Android Studio
-  supplies matched runtime libraries; its foreground process is never a
-  semantic or lifecycle authority.
-- Process selection, semantic demand, setup, runtime epoch ownership, and
-  public CLI rendering remain in `cli-rs`. This module owns the already
-  admitted isolated process and its internal resources.
+- An eligible installed IntelliJ IDEA or Android Studio supplies matched runtime
+  libraries; its foreground process is never a semantic or lifecycle authority.
+- Process selection, semantic demand, setup, runtime-epoch ownership, and public
+  CLI rendering remain outside this module. This module owns the already admitted
+  isolated process and its internal resources.
 
 ## Runtime invariants
 
