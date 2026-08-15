@@ -16,7 +16,7 @@ from typing import Sequence
 
 MAX_PHYSICAL_LINES = 400
 MAX_DIRECT_CHILDREN = 10
-SOURCE_SUFFIXES = frozenset({".kt", ".kts", ".rs"})
+SOURCE_SUFFIXES = frozenset({".kt", ".kts"})
 SHAPE_ATTRIBUTE = "repository-shape"
 EXCLUDED_KINDS = frozenset({"binary", "generated", "lock"})
 REQUIRED_TRACKED_PATHS = frozenset({Path("indexer/build.gradle.kts")})
@@ -48,7 +48,6 @@ RETIRED_TEXT_MARKERS = (
 RETIREMENT_CONTRACT_PATHS = frozenset(
     {
         Path(".github/scripts/check-repository-shape.py"),
-        Path(".github/scripts/test-repository-shape-contract.sh"),
     }
 )
 RETIRED_TEXT_EXEMPT_PATHS = frozenset(
@@ -333,7 +332,7 @@ def emit(report: ShapeReport) -> None:
     print(f"  maxPhysicalLines: {MAX_PHYSICAL_LINES}")
     print(f"  maxDirectChildren: {MAX_DIRECT_CHILDREN}")
     print("scope:")
-    print("  files: trackedHandAuthoredKotlinAndRustSource")
+    print("  files: trackedHandAuthoredKotlinSource")
     print("  directories: trackedHandAuthoredRepositoryDescendants")
     print("  repositoryRoot: boundary")
     print("summary:")

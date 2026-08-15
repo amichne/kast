@@ -1,9 +1,0 @@
-{
-    "method": "raw/plan-add-file",
-    "params": {
-        "targetPath": "/workspace/src/Generated.kt",
-        "proposedContent": "package sample\n\nclass Generated\n"
-    },
-    "id": 1,
-    "jsonrpc": "2.0"
-}
