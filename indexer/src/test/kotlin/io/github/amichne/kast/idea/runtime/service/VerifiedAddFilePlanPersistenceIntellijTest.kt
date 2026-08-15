@@ -32,6 +32,8 @@ import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
 import io.github.amichne.kast.server.change.VerifiedAddFileTargetPath
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
+import java.nio.file.attribute.PosixFilePermission.OWNER_READ
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -42,6 +44,48 @@ import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlanningTestSupport() {
+    @Test
+    fun `post-effect journal failure returns recovery authority instead of plan rejection`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
+        val target = sourceRoot.resolve("TerminalPersistenceFailure.kt")
+        val content = "package demo\n\nclass TerminalPersistenceFailure\n"
+        val generation = AtomicLong(1L)
+        lateinit var journalDirectory: Path
+        val backend = backend(
+            workspaceRoot,
+            psiGeneration = generation::get,
+            workspaceTransitionRequester = TestWorkspaceTransitionRequester(
+                onReconcile = {
+                    Files.setPosixFilePermissions(journalDirectory, setOf(OWNER_READ, OWNER_EXECUTE))
+                    testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(generation.incrementAndGet()))
+                },
+            ),
+            workspaceModelReader = model(workspaceRoot, sourceRoot),
+        )
+        journalDirectory = backend.workspaceIdentity.workspaceIdentity.workspaceCacheDirectoryPath
+            .resolve("verified-add-file-plans")
+        val operations = backend.verifiedAddFileOperations(workspaceRoot)
+        val planned = assertInstanceOf<VerifiedAddFilePlanResult.Planned>(
+            operations.plan(planRequest(workspaceRoot, target, content)),
+        )
+        val originalPermissions = Files.getPosixFilePermissions(journalDirectory)
+
+        val outcome = try {
+            operations.apply(applyRequest(workspaceRoot, planned))
+        } finally {
+            Files.setPosixFilePermissions(journalDirectory, originalPermissions)
+        }
+
+        val recovery = assertInstanceOf<VerifiedAddFileApplyResult.RecoveryRequired>(
+            outcome,
+            "post-effect persistence failure must retain recovery authority: $outcome",
+        )
+        assertEquals(planned.planId.value, recovery.recoveryId.value)
+        assertEquals(content, Files.readString(target))
+    }
+
     @Test
     fun `journal store rejects after replacement until its directory is durable`() = runBlocking {
         ensureProjectReady()

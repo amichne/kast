@@ -161,6 +161,7 @@ private class IntellijVerifiedAddFileOperations(
                     lifecycle.reconcile(backend)
                 is PersistedVerifiedAddFileLifecycle.Terminal -> error("terminal replay returned above")
             }
+            val retainedLifecycle = persisted.lifecycle
             val wireResult = when (result) {
                 is VerifiedAddFileResult.Verified -> VerifiedAddFileApplyResult.Verified(
                     planId = persisted.planId,
@@ -229,11 +230,10 @@ private class IntellijVerifiedAddFileOperations(
                 is VerifiedAddFileResult.Rejected -> wireResult
                 else -> when (journal.store(persisted)) {
                     VerifiedAddFileJournalWrite.Stored -> wireResult
-                    is VerifiedAddFileJournalWrite.Rejected -> applyRejected(
-                        request,
-                        VerifiedAddFileProgress.REVALIDATION,
-                        VerifiedAddFileFailure.PLAN_NOT_FOUND,
-                    )
+                    is VerifiedAddFileJournalWrite.Rejected ->
+                        retainedLifecycle.toPostEffectJournalFailure(persisted).also {
+                            persisted.lifecycle = retainedLifecycle
+                        }
                 }
             }
         }

@@ -11,9 +11,12 @@ import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.server.change.VerifiedAddFileAdmission
+import io.github.amichne.kast.server.change.VerifiedAddFileApplyResult
 import io.github.amichne.kast.server.change.VerifiedAddFileFailure
 import io.github.amichne.kast.server.change.VerifiedAddFileProgress
 import io.github.amichne.kast.server.change.VerifiedAddFileReconciliationAction
+import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryDispositionAction
+import io.github.amichne.kast.server.change.VerifiedAddFileRecoveryId
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 
@@ -166,3 +169,49 @@ internal fun VerifiedAddFileSourceApplication.CommitUnproven.toResult(): Verifie
         action = VerifiedAddFileReconciliationAction.INSPECT_TARGET,
         observation = observation,
     )
+
+/**
+ * Proof-preserving projection:
+ * `(PersistedVerifiedAddFileLifecycle, PersistedVerifiedAddFilePlan) -> VerifiedAddFileApplyResult`.
+ *
+ * Preserves the last recovery-capable lifecycle when publishing a newer post-effect journal state
+ * fails. Terminal or awaiting states conservatively become delete recovery under the deterministic
+ * plan recovery identity. Raw serialization remains outside this operation boundary.
+ */
+internal fun PersistedVerifiedAddFileLifecycle.toPostEffectJournalFailure(
+    persisted: PersistedVerifiedAddFilePlan,
+): VerifiedAddFileApplyResult = when (this) {
+    is PersistedVerifiedAddFileLifecycle.ApplyOutcomeUnknown -> recoveryAfterJournalFailure(
+        persisted,
+        recovery.recoveryId,
+    )
+    is PersistedVerifiedAddFileLifecycle.RecoveryRequired -> VerifiedAddFileApplyResult.RecoveryRequired(
+        persisted.planId, application.recovery.recoveryId, persisted.initialVersion,
+        progress.toStage(), progress, failure, action,
+    )
+    is PersistedVerifiedAddFileLifecycle.ReconciliationRequired ->
+        VerifiedAddFileApplyResult.ReconciliationRequired(
+            persisted.planId, application.recovery.recoveryId, persisted.initialVersion,
+            progress.toStage(), progress, failure, action,
+        )
+    is PersistedVerifiedAddFileLifecycle.NonDestructiveReconciliationRequired ->
+        VerifiedAddFileResult.NonDestructiveReconciliationRequired(
+            recovery, progress, failure, action, observation,
+        ).toPersistenceTransition(persisted.planId, persisted.initialVersion).wireResult
+    PersistedVerifiedAddFileLifecycle.AwaitingApproval,
+    is PersistedVerifiedAddFileLifecycle.Terminal,
+    -> recoveryAfterJournalFailure(persisted, verifiedAddFileRecoveryId(persisted.planned))
+}
+
+private fun recoveryAfterJournalFailure(
+    persisted: PersistedVerifiedAddFilePlan,
+    recoveryId: VerifiedAddFileRecoveryId,
+): VerifiedAddFileApplyResult.RecoveryRequired = VerifiedAddFileApplyResult.RecoveryRequired(
+    persisted.planId,
+    recoveryId,
+    persisted.initialVersion,
+    VerifiedAddFileProgress.SOURCE_APPLICATION.toStage(),
+    VerifiedAddFileProgress.SOURCE_APPLICATION,
+    VerifiedAddFileFailure.SOURCE_APPLICATION_FAILED,
+    VerifiedAddFileRecoveryDispositionAction.DELETE_CREATED_TARGET,
+)
