@@ -101,6 +101,7 @@ private enum class RpcDeadlineAuthority {
             "raw/exact-file-image-cas",
             "raw/recover-mutation-scratch",
             "change/apply-add-declaration",
+            "change/apply-add-file",
             -> BACKEND_PROGRESS
             else -> ORDINARY_SERVER
         }
