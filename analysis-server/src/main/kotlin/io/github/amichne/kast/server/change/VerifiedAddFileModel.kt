@@ -13,6 +13,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 enum class VerifiedAddFileValueFailure {
+    WORKSPACE_ROOT_NOT_NORMALIZED_ABSOLUTE,
     TARGET_NOT_NORMALIZED_ABSOLUTE_KOTLIN,
     CONTENT_NOT_NORMALIZED_KOTLIN,
     PLAN_ID_NOT_CANONICAL,

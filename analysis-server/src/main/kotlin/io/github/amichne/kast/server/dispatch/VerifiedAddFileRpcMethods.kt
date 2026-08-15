@@ -1,5 +1,6 @@
 package io.github.amichne.kast.server.dispatch
 
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.result.AdditionKotlinPackage
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import io.github.amichne.kast.api.protocol.AnalysisException
@@ -21,6 +22,7 @@ import io.github.amichne.kast.server.change.VerifiedAddFilePlanResult
 import io.github.amichne.kast.server.change.VerifiedAddFilePlanVersion
 import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
 import io.github.amichne.kast.server.change.VerifiedAddFileTargetPath
+import io.github.amichne.kast.server.change.VerifiedAddFileValueFailure
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -28,6 +30,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /** Routes the public add-file method only through its operation-specific binding. */
@@ -68,7 +71,7 @@ private fun JsonObject.admitPlanRequest(): VerifiedAddFilePlanRequest {
         is VerifiedAddFileExactFieldsAdmission.Rejected ->
             throw admission.failure.toValidationException()
     }
-    val workspaceRoot = normalizedWorkspace(fields.stringField("workspaceRoot"))
+    val workspaceRoot = fields.stringField("workspaceRoot").refinedBy(::refineWorkspaceRoot)
     val target = fields.stringField("targetPath").refinedBy(VerifiedAddFileTargetPath::refine)
     if (!Path.of(target.value).startsWith(workspaceRoot.toJavaPath())) {
         throw ValidationException("TARGET_OUTSIDE_WORKSPACE")
@@ -101,7 +104,7 @@ private fun JsonObject.admitApplyRequest(): VerifiedAddFileApplyRequest {
             throw admission.failure.toValidationException()
     }
     return VerifiedAddFileApplyRequest(
-        workspaceRoot = normalizedWorkspace(fields.stringField("workspaceRoot")),
+        workspaceRoot = fields.stringField("workspaceRoot").refinedBy(::refineWorkspaceRoot),
         planId = fields.stringField("planId").refinedBy(VerifiedAddFilePlanId::refine),
         expectedVersion = fields.longField("expectedVersion").refinedBy(VerifiedAddFilePlanVersion::refine),
         mode = fields.stringField("mode").refinedBy(VerifiedAddFileApplyMode::refine),
@@ -113,19 +116,38 @@ private fun JsonObject.admitApplyRequest(): VerifiedAddFileApplyRequest {
     )
 }
 
+/**
+ * Proof transitions: wire `String` to verified target, content, PlanId, approval, mode, or
+ * [NormalizedPath] authority through the supplied operation-owned refinement.
+ *
+ * The output carries the transition's concrete invariant. [VerifiedAddFileValueFailure] is the
+ * closed expected failure and is projected only at this JSON-RPC boundary.
+ */
 private inline fun <T> String.refinedBy(
     transition: (String) -> VerifiedAddFileRefinement<T>,
 ): T = when (val refinement = transition(this)) {
     is VerifiedAddFileRefinement.Refined -> refinement.value
-    is VerifiedAddFileRefinement.Rejected -> throw ValidationException(refinement.failure.name)
+    is VerifiedAddFileRefinement.Rejected -> throw refinement.failure.toValidationException()
 }
 
+/**
+ * Proof transition: wire `Long -> VerifiedAddFilePlanVersion` through the supplied refinement.
+ *
+ * The output carries the non-negative plan-version invariant. [VerifiedAddFileValueFailure] is the
+ * closed expected failure and is projected only at this JSON-RPC boundary.
+ */
 private inline fun <T> Long.refinedBy(
     transition: (Long) -> VerifiedAddFileRefinement<T>,
 ): T = when (val refinement = transition(this)) {
     is VerifiedAddFileRefinement.Refined -> refinement.value
-    is VerifiedAddFileRefinement.Rejected -> throw ValidationException(refinement.failure.name)
+    is VerifiedAddFileRefinement.Rejected -> throw refinement.failure.toValidationException()
 }
+
+private fun VerifiedAddFileValueFailure.toValidationException(): ValidationException =
+    ValidationException(
+        message = "Invalid verified add-file value: $name",
+        details = mapOf("failure" to name),
+    )
 
 private class ExactVerifiedAddFileFields private constructor(
     private val fields: JsonObject,
@@ -188,13 +210,29 @@ private fun ExactVerifiedAddFileFields.longField(name: String): Long {
         ?: throw ValidationException("MALFORMED_WIRE_REQUEST")
 }
 
-private fun normalizedWorkspace(raw: String): io.github.amichne.kast.api.contract.NormalizedPath {
-    val path = runCatching { Path.of(raw) }.getOrNull()
-        ?: throw ValidationException("WORKSPACE_ROOT_NOT_NORMALIZED_ABSOLUTE")
-    if (!path.isAbsolute || path.normalize().toString() != raw) {
-        throw ValidationException("WORKSPACE_ROOT_NOT_NORMALIZED_ABSOLUTE")
+/**
+ * Proof transition: `String -> VerifiedAddFileRefinement<NormalizedPath>`.
+ *
+ * Establishes that the workspace root is syntactically valid, absolute, and already normalized.
+ * The closed failure is
+ * [VerifiedAddFileValueFailure.WORKSPACE_ROOT_NOT_NORMALIZED_ABSOLUTE]. Raw wire text may be
+ * extracted only at the verified add-file JSON-RPC request boundary.
+ */
+private fun refineWorkspaceRoot(raw: String): VerifiedAddFileRefinement<NormalizedPath> {
+    val path = try {
+        Path.of(raw)
+    } catch (_: InvalidPathException) {
+        return VerifiedAddFileRefinement.Rejected(
+            VerifiedAddFileValueFailure.WORKSPACE_ROOT_NOT_NORMALIZED_ABSOLUTE,
+        )
     }
-    return io.github.amichne.kast.api.contract.NormalizedPath.ofAbsolute(path)
+    return if (path.isAbsolute && path.normalize().toString() == raw) {
+        VerifiedAddFileRefinement.Refined(NormalizedPath.ofAbsolute(path))
+    } else {
+        VerifiedAddFileRefinement.Rejected(
+            VerifiedAddFileValueFailure.WORKSPACE_ROOT_NOT_NORMALIZED_ABSOLUTE,
+        )
+    }
 }
 
 private fun VerifiedAddFilePlanResult.toWire(): JsonObject = when (this) {

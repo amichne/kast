@@ -30,6 +30,7 @@ import io.github.amichne.kast.server.change.VerifiedAddFileReconciliationAction
 import io.github.amichne.kast.server.change.VerifiedAddFileReceipt
 import io.github.amichne.kast.server.change.VerifiedAddFileRefinement
 import io.github.amichne.kast.server.change.VerifiedAddFileTargetPath
+import io.github.amichne.kast.server.change.VerifiedAddFileValueFailure
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -287,6 +288,21 @@ class VerifiedAddFilePublicRouteTest : AnalysisDispatcherTestSupport() {
             assertEquals("VALIDATION_ERROR", error.error.data?.code, method)
             assertEquals("MALFORMED_WIRE_REQUEST", error.error.data?.details?.get("failure"), method)
         }
+    }
+
+    @Test
+    fun `workspace root normalization fails through the closed value protocol`() {
+        val params = JsonObject(applyParams() + ("workspaceRoot" to JsonPrimitive("relative/workspace")))
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            dispatchRaw("change/apply-add-file", params),
+        )
+
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+        assertEquals(
+            VerifiedAddFileValueFailure.WORKSPACE_ROOT_NOT_NORMALIZED_ABSOLUTE.name,
+            error.error.data?.details?.get("failure"),
+        )
     }
 
     @Test
