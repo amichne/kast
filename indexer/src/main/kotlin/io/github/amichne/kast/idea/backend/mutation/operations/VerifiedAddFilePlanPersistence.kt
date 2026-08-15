@@ -37,11 +37,10 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
 /**
  * Effect transition: `Path -> VerifiedAddFileJournalDirectoryDurability`. `DURABLE` proves the
- * atomically replaced entry is stable; `UNAVAILABLE` is the closed failure. Raw paths are consumed
- * only at this journal persistence boundary.
+ * published child entry is stable in its directory; `UNAVAILABLE` is the closed failure. Raw paths
+ * are consumed only at this journal persistence boundary.
  */
 internal enum class VerifiedAddFileJournalDirectoryDurability { DURABLE, UNAVAILABLE }
 internal fun interface VerifiedAddFileJournalDirectoryDurabilityBarrier {
@@ -61,7 +60,6 @@ private val FILE_CHANNEL_JOURNAL_DIRECTORY_DURABILITY =
             VerifiedAddFileJournalDirectoryDurability.UNAVAILABLE
         }
     }
-
 internal class VerifiedAddFilePlanJournal(
     private val workspaceIdentity: WorkspaceIdentity,
     private val directoryDurability: VerifiedAddFileJournalDirectoryDurabilityBarrier =
@@ -103,7 +101,6 @@ internal class VerifiedAddFilePlanJournal(
         }
         return if (read is VerifiedAddFileJournalRead.Loaded) VerifiedAddFileJournalRead.Loaded(livePlans.putIfAbsent(planId.value, read.plan) ?: read.plan) else read
     }
-
     /**
      * Proof transition: `PersistedVerifiedAddFilePlan -> VerifiedAddFileJournalWrite`. Initial
      * authority is create-only; later lifecycle authority atomically replaces and fsyncs only that
@@ -119,6 +116,9 @@ internal class VerifiedAddFilePlanJournal(
         try {
             Files.createDirectories(directory)
             if (!Files.isDirectory(directory, NOFOLLOW_LINKS)) {
+                return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE)
+            }
+            if (directoryDurability.persist(workspaceIdentity.workspaceCacheDirectoryPath) != VerifiedAddFileJournalDirectoryDurability.DURABLE) {
                 return VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE)
             }
             val temporary = Files.createTempFile(directory, ".verified-add-file-", ".tmp")

@@ -139,7 +139,7 @@ internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlannin
     }
 
     @Test
-    fun `journal store rejects after replacement until its directory is durable`() = runBlocking {
+    fun `new journal directory is durable before its first record`() = runBlocking {
         ensureProjectReady()
         val sourceRoot = sourceRoot()
         val workspaceRoot = commonWorkspaceRoot(sourceRoot.toString(), sampleFile.virtualFile.path)
@@ -162,19 +162,32 @@ internal class VerifiedAddFilePlanPersistenceIntellijTest : ExactAdditionPlannin
             refined(VerifiedAddFilePlanVersion.refine(0L)),
             planned,
         )
-        val barrier = VerifiedAddFileJournalDirectoryDurabilityBarrier { directory ->
-            assertTrue(
-                Files.isRegularFile(directory.resolve("${persisted.planId.value}.json")),
-                "the atomic replacement must precede parent-directory synchronization",
-            )
-            VerifiedAddFileJournalDirectoryDurability.UNAVAILABLE
+        val workspaceCache = sourceRoot.resolve("journal-parent-durability")
+        Files.createDirectory(workspaceCache)
+        val journalDirectory = workspaceCache.resolve("verified-add-file-plans")
+        val durableDirectories = mutableListOf<Path>()
+        val barrier = VerifiedAddFileJournalDirectoryDurabilityBarrier { durableDirectory ->
+            durableDirectories.add(durableDirectory)
+            if (durableDirectory == workspaceCache) {
+                VerifiedAddFileJournalDirectoryDurability.DURABLE
+            } else {
+                assertTrue(
+                    Files.isRegularFile(journalDirectory.resolve("${persisted.planId.value}.json")),
+                    "the record publication must precede journal-directory synchronization",
+                )
+                VerifiedAddFileJournalDirectoryDurability.UNAVAILABLE
+            }
         }
+        val isolatedIdentity = backend.workspaceIdentity.workspaceIdentity.copy(
+            workspaceCacheDirectory = NormalizedPath.ofAbsolute(workspaceCache),
+        )
 
         val result = VerifiedAddFilePlanJournal(
-            backend.workspaceIdentity.workspaceIdentity,
+            isolatedIdentity,
             barrier,
         ).store(persisted)
 
+        assertEquals(listOf(workspaceCache, journalDirectory), durableDirectories)
         assertEquals(
             VerifiedAddFileJournalWrite.Rejected(VerifiedAddFileJournalFailure.UNAVAILABLE),
             result,
