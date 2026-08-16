@@ -1,7 +1,7 @@
 use crate::SCHEMA_VERSION;
 use crate::cli::{
     AgentLeaseAccessArgs, AgentLeaseAcquireArgs, AgentWorkspaceLeaseId, BackendName,
-    DaemonStartArgs, RuntimeArgs,
+    BackgroundRuntimeStartArgs, DaemonStartArgs, RuntimeArgs,
 };
 use crate::config::{self, KastConfig, PathResolutionReport};
 use crate::daemon;
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 

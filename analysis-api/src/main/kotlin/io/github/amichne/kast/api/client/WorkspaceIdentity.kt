@@ -103,18 +103,61 @@ data class WorkspaceIdentity(
             val workspaceId = WorkspaceId(resolver.workspaceHash(canonicalWorkspaceRoot.toJavaPath()))
             val canonicalWorkspaceId = WorkspaceId(resolver.workspaceHash(canonicalWorkspaceRoot.toJavaPath()))
             val layout = resolver.resolveLayout(canonicalWorkspaceRoot.toJavaPath())
-            return WorkspaceIdentity(
+            return create(
                 workspaceRoot = normalizedWorkspaceRoot,
                 canonicalWorkspaceRoot = canonicalWorkspaceRoot,
                 workspaceId = workspaceId,
                 canonicalWorkspaceId = canonicalWorkspaceId,
-                repositoryDataDirectory = layout.repositoryDataDirectory
-                    ?.let(NormalizedPath::ofAbsolute),
-                workspaceDataDirectory = NormalizedPath.ofAbsolute(layout.workspaceDataDirectory),
-                workspaceCacheDirectory = NormalizedPath.ofAbsolute(layout.workspaceCacheDirectory),
-                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(layout.workspaceDatabasePath),
-                defaultSocketPath = NormalizedPath.ofAbsolute(defaultSocketPath(canonicalWorkspaceRoot.toJavaPath())),
+                repositoryDataDirectory = layout.repositoryDataDirectory,
+                workspaceDataDirectory = layout.workspaceDataDirectory,
                 descriptorDirectory = NormalizedPath.ofAbsolute(descriptorDirectory),
+            )
+        }
+
+        fun fromAdmittedWorkspaceLayout(
+            workspaceRoot: Path,
+            workspaceDataDirectory: Path,
+            repositoryDataDirectory: Path?,
+            descriptorDirectory: Path = defaultDescriptorDirectory(),
+        ): WorkspaceIdentity {
+            val normalizedWorkspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot)
+            val canonicalWorkspaceRoot = NormalizedPath.of(normalizedWorkspaceRoot.toJavaPath())
+            val workspaceId = WorkspaceId(
+                FileHashing.sha256(canonicalWorkspaceRoot.value).take(12),
+            )
+            return create(
+                workspaceRoot = normalizedWorkspaceRoot,
+                canonicalWorkspaceRoot = canonicalWorkspaceRoot,
+                workspaceId = workspaceId,
+                canonicalWorkspaceId = workspaceId,
+                repositoryDataDirectory = repositoryDataDirectory,
+                workspaceDataDirectory = workspaceDataDirectory,
+                descriptorDirectory = NormalizedPath.ofAbsolute(descriptorDirectory),
+            )
+        }
+
+        private fun create(
+            workspaceRoot: NormalizedPath,
+            canonicalWorkspaceRoot: NormalizedPath,
+            workspaceId: WorkspaceId,
+            canonicalWorkspaceId: WorkspaceId,
+            repositoryDataDirectory: Path?,
+            workspaceDataDirectory: Path,
+            descriptorDirectory: NormalizedPath,
+        ): WorkspaceIdentity {
+            val normalizedWorkspaceDataDirectory = NormalizedPath.ofAbsolute(workspaceDataDirectory)
+            val workspaceCacheDirectory = normalizedWorkspaceDataDirectory.toJavaPath().resolve("cache")
+            return WorkspaceIdentity(
+                workspaceRoot = workspaceRoot,
+                canonicalWorkspaceRoot = canonicalWorkspaceRoot,
+                workspaceId = workspaceId,
+                canonicalWorkspaceId = canonicalWorkspaceId,
+                repositoryDataDirectory = repositoryDataDirectory?.let(NormalizedPath::ofAbsolute),
+                workspaceDataDirectory = normalizedWorkspaceDataDirectory,
+                workspaceCacheDirectory = NormalizedPath.ofAbsolute(workspaceCacheDirectory),
+                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(workspaceCacheDirectory.resolve("source-index.db")),
+                defaultSocketPath = NormalizedPath.ofAbsolute(defaultSocketPath(canonicalWorkspaceRoot.toJavaPath())),
+                descriptorDirectory = descriptorDirectory,
                 gradleRoot = gradleRootIdentity(canonicalWorkspaceRoot.toJavaPath()),
             )
         }

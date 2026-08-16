@@ -164,3 +164,29 @@ fn default_wait_admits_an_indexer_after_a_full_initial_gradle_refresh() {
         ),
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn timed_out_spawned_indexer_is_stopped_before_control_returns() {
+    let mut child = Command::new("/bin/sh")
+        .args(["-c", "exec sleep 30"])
+        .spawn()
+        .expect("spawn timeout fixture");
+    let elapsed_ms = Cell::new(0_u64);
+
+    let candidate = poll_for_spawned_runtime_candidate(
+        &mut child,
+        1,
+        1,
+        || elapsed_ms.get(),
+        || None::<()>,
+        |duration_ms| elapsed_ms.set(elapsed_ms.get() + duration_ms),
+    )
+    .expect("bounded spawned runtime wait");
+
+    assert_eq!(candidate, None);
+    assert!(
+        child.try_wait().expect("inspect stopped fixture").is_some(),
+        "the exact child started by this admission must not outlive its timeout",
+    );
+}

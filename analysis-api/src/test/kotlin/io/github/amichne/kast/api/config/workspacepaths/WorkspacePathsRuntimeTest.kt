@@ -132,6 +132,26 @@ class WorkspacePathsRuntimeTest {
         }
 
         @Test
+        fun `admitted workspace identity uses exact launch paths without Git rediscovery`() {
+            val workspaceRoot = Files.createDirectories(tempDir.resolve("admitted-workspace"))
+            val workspaceData = tempDir.resolve("admitted-data/worktree")
+            val repositoryData = tempDir.resolve("admitted-data/repository")
+            val descriptors = tempDir.resolve("runtime/daemons")
+
+            val identity = WorkspaceIdentity.fromAdmittedWorkspaceLayout(
+                workspaceRoot = workspaceRoot,
+                workspaceDataDirectory = workspaceData,
+                repositoryDataDirectory = repositoryData,
+                descriptorDirectory = descriptors,
+            )
+
+            assertEquals(workspaceData.toAbsolutePath(), identity.workspaceDataDirectoryPath)
+            assertEquals(repositoryData.toAbsolutePath(), identity.repositoryDataDirectoryPath)
+            assertEquals(workspaceData.resolve("cache/source-index.db").toAbsolutePath(), identity.sourceIndexDatabaseFile)
+            assertEquals(descriptors.toAbsolutePath(), identity.descriptorDirectoryFile)
+        }
+
+        @Test
         fun `workspace aliases resolve to one canonical runtime identity`() {
             val realWorkspaceRoot = Files.createDirectories(tempDir.resolve("real-workspace"))
             val aliasWorkspaceRoot = tempDir.resolve("workspace-link")

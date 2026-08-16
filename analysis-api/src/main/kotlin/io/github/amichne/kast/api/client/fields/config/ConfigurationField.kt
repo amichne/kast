@@ -39,6 +39,7 @@ sealed class ConfigurationField<T> {
             CodexHooksEnabled(true),
             CodexSessionStartEnabled(true),
             CodexPostToolUseEnabled(true),
+            CodexAutoStartIndexer(IndexerAutoStartConsent.Unconfigured),
             PathsInstallRoot(defaultConfigInstallRoot().toString()),
             PathsBinDir(defaultConfigBinDir().toString()),
             PathsLibDir(defaultConfigLibDir().toString()),

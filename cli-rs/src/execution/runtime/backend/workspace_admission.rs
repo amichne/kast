@@ -120,6 +120,41 @@ pub(crate) fn semantic_workspace_route_for_runtime(
     semantic_workspace_route_with_availability(args, availability)
 }
 
+pub(crate) fn semantic_runtime_request_for_background(
+    args: RuntimeArgs,
+) -> Result<indexer_authority::SemanticRuntimeRequest> {
+    if args.accept_indexing != Some(true) {
+        return Err(CliError::new(
+            "BACKGROUND_INDEXER_CONSENT_REQUIRED",
+            "Background indexer start requires explicit --accept-indexing consent.",
+        ));
+    }
+    let workspace_root = workspace_root(args.workspace_root.clone())?;
+    let workspace_root = fs::canonicalize(&workspace_root).map_err(|error| {
+        CliError::new(
+            "WORKSPACE_ROOT_INVALID",
+            format!(
+                "Workspace root {} could not be canonicalized: {error}",
+                workspace_root.display()
+            ),
+        )
+    })?;
+    let config = KastConfig::load(&workspace_root)?;
+    let workspace_kind = classify_semantic_workspace(&workspace_root);
+    if !is_gradle_workspace(&workspace_root) {
+        return Err(unsupported_workspace_rejection(&workspace_root).into_cli_error());
+    }
+    Ok(indexer_authority::SemanticRuntimeRequest {
+        workspace_root,
+        config,
+        workspace_kind,
+        availability: indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
+        accept_indexing: true,
+        wait_timeout_ms: args.wait_timeout_ms,
+        runtime_args: args,
+    })
+}
+
 pub(crate) fn semantic_workspace_route_ready(
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<SemanticWorkspaceRoute> {

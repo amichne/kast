@@ -147,6 +147,96 @@ pub struct WorkspaceEnsureResult {
     pub schema_version: u32,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BackgroundRuntimeStartState {
+    Reused,
+    Started,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackgroundRuntimeStartResult {
+    pub workspace_root: String,
+    pub storage_root: String,
+    pub state: BackgroundRuntimeStartState,
+    pub pid: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_file: Option<String>,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RuntimeStartDeadline {
+    started_at: Instant,
+    timeout: Duration,
+}
+
+impl RuntimeStartDeadline {
+    pub(crate) fn after_millis(timeout_millis: u64) -> Self {
+        Self {
+            started_at: Instant::now(),
+            timeout: Duration::from_millis(timeout_millis),
+        }
+    }
+
+    pub(crate) fn for_background_start(
+        wait_timeout_millis: u64,
+        absolute: Option<crate::cli::RuntimeStartDeadlineUnixEpochMillis>,
+    ) -> Result<Self> {
+        let started_at = Instant::now();
+        let timeout = match absolute {
+            None => Duration::from_millis(wait_timeout_millis),
+            Some(absolute) => {
+                let now_millis = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(|error| {
+                        CliError::new(
+                            "RUNTIME_START_DEADLINE_CLOCK_INVALID",
+                            format!("The system clock cannot represent a runtime deadline: {error}"),
+                        )
+                    })?
+                    .as_millis();
+                let now_millis = u64::try_from(now_millis).map_err(|_| {
+                    CliError::new(
+                        "RUNTIME_START_DEADLINE_CLOCK_INVALID",
+                        "The system clock exceeds the runtime deadline representation.",
+                    )
+                })?;
+                Duration::from_millis(
+                    absolute
+                        .value()
+                        .saturating_sub(now_millis)
+                        .min(wait_timeout_millis),
+                )
+            }
+        };
+        Ok(Self {
+            started_at,
+            timeout,
+        })
+    }
+
+    pub(crate) fn remaining(self) -> Duration {
+        self.timeout.saturating_sub(self.started_at.elapsed())
+    }
+
+    pub(crate) fn is_elapsed(self) -> bool {
+        self.remaining().is_zero()
+    }
+
+    pub(crate) fn require_active(self) -> Result<()> {
+        if self.is_elapsed() {
+            Err(CliError::new(
+                "RUNTIME_START_TIMEOUT",
+                "The background runtime start deadline expired before launch admission.",
+            ))
+        } else {
+            Ok(())
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DaemonStopResult {

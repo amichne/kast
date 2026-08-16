@@ -3,8 +3,9 @@ use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::package::{PackageResult, SetupBundlePackageResult};
 use crate::runtime::{
-    DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
-    WorkspaceRestartResult, WorkspaceStatusResult,
+    BackgroundRuntimeStartResult, BackgroundRuntimeStartState, DaemonStopResult,
+    RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult, WorkspaceRestartResult,
+    WorkspaceStatusResult,
 };
 use crate::self_mgmt::SelfDoctorResult;
 use glamour::{Renderer, Style as GlamourStyle};

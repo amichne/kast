@@ -6,6 +6,7 @@
             &config_file,
             r#"[codex.hooks]
 postToolUse = false
+autoStartIndexer = true
 "#,
         )
         .unwrap();
@@ -16,6 +17,18 @@ postToolUse = false
         assert!(config.codex.hooks.enabled);
         assert!(config.codex.hooks.session_start);
         assert!(!config.codex.hooks.post_tool_use);
+        assert_eq!(
+            config.codex.hooks.auto_start_indexer,
+            IndexerAutoStartConsent::Enabled
+        );
+    }
+
+    #[test]
+    fn indexer_auto_start_consent_defaults_to_unconfigured() {
+        assert_eq!(
+            KastConfig::defaults().codex.hooks.auto_start_indexer,
+            IndexerAutoStartConsent::Unconfigured
+        );
     }
 
     #[test]

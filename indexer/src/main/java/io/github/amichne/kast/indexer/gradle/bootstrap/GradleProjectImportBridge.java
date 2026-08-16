@@ -37,9 +37,12 @@ import org.jetbrains.plugins.gradle.settings.GradleSystemSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
 import org.jetbrains.plugins.gradle.util.GradleImportingUtil;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +55,7 @@ import java.util.function.Consumer;
 public final class GradleProjectImportBridge {
     private static final String DISABLE_DEPENDENCY_SOURCE_DOWNLOADS =
         "-Didea.gradle.download.sources.force=false";
+    private static final String GRADLE_PROJECT_CACHE_PROPERTY = "-Dorg.gradle.projectcachedir=";
 
     private GradleProjectImportBridge() {
     }
@@ -64,9 +68,12 @@ public final class GradleProjectImportBridge {
         updateDownloadSources.accept(false);
     }
 
-    public static void configureIndexerImport(Project project) {
+    public static void configureIndexerImport(Project project, Path projectCacheDirectory) {
+        prepareProjectCacheDirectory(projectCacheDirectory);
         GradleSettings settings = GradleSettings.getInstance(project);
-        settings.setGradleVmOptions(withDependencySourceDownloadsDisabled(settings.getGradleVmOptions()));
+        settings.setGradleVmOptions(
+            withIndexerGradleVmOptions(settings.getGradleVmOptions(), projectCacheDirectory)
+        );
     }
 
     static String withDependencySourceDownloadsDisabled(String currentOptions) {
@@ -78,6 +85,29 @@ public final class GradleProjectImportBridge {
             return DISABLE_DEPENDENCY_SOURCE_DOWNLOADS;
         }
         return currentOptions + " " + DISABLE_DEPENDENCY_SOURCE_DOWNLOADS;
+    }
+
+    static String withIndexerGradleVmOptions(String currentOptions, Path projectCacheDirectory) {
+        List<String> arguments = currentOptions == null || currentOptions.isBlank()
+            ? new ArrayList<>()
+            : new ArrayList<>(ParametersListUtil.parse(currentOptions));
+        if (!arguments.contains(DISABLE_DEPENDENCY_SOURCE_DOWNLOADS)) {
+            arguments.add(DISABLE_DEPENDENCY_SOURCE_DOWNLOADS);
+        }
+        arguments.removeIf(argument -> argument.startsWith(GRADLE_PROJECT_CACHE_PROPERTY));
+        arguments.add(GRADLE_PROJECT_CACHE_PROPERTY + projectCacheDirectory.toAbsolutePath().normalize());
+        return ParametersListUtil.join(arguments);
+    }
+
+    static List<String> projectCacheArguments(Path projectCacheDirectory) {
+        return List.of(
+            "--project-cache-dir",
+            projectCacheDirectory.toAbsolutePath().normalize().toString()
+        );
+    }
+
+    static String projectCacheArgumentLine(Path projectCacheDirectory) {
+        return ParametersListUtil.join(projectCacheArguments(projectCacheDirectory));
     }
 
     public static boolean canLinkAndRefreshGradleProject(String externalProjectPath, Project project) {
@@ -92,7 +122,12 @@ public final class GradleProjectImportBridge {
         );
     }
 
-    public static void linkAndImportGradleProject(Project project, String externalProjectPath) {
+    public static void linkAndImportGradleProject(
+        Project project,
+        String externalProjectPath,
+        Path projectCacheDirectory
+    ) {
+        prepareProjectCacheDirectory(projectCacheDirectory);
         awaitStartupActivities(project, externalProjectPath);
         if (isGradleReloadActive(project)) {
             awaitGradleModelSettlement(project);
@@ -104,6 +139,7 @@ public final class GradleProjectImportBridge {
         CompletableFuture<Void> importFuture = new CompletableFuture<>();
         try {
             ImportSpecBuilder importSpec = new ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
+                .withArguments(projectCacheArgumentLine(projectCacheDirectory))
                 .withCallback(importFuture);
             if (hasLinkedGradleProject(project, externalProjectPath)) {
                 ExternalSystemUtil.refreshProject(externalProjectPath, importSpec);
@@ -125,6 +161,17 @@ public final class GradleProjectImportBridge {
             throw new IllegalStateException("Gradle project import failed: " + externalProjectPath, cause);
         } catch (TimeoutException error) {
             throw new IllegalStateException("Timed out importing Gradle project: " + externalProjectPath, error);
+        }
+    }
+
+    private static void prepareProjectCacheDirectory(Path projectCacheDirectory) {
+        try {
+            Files.createDirectories(projectCacheDirectory.toAbsolutePath().normalize());
+        } catch (IOException error) {
+            throw new IllegalStateException(
+                "Cannot create Kast-owned Gradle project cache: " + projectCacheDirectory,
+                error
+            );
         }
     }
 

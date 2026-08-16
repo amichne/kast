@@ -184,8 +184,11 @@ private fun Map<String, TomlConfigValue>.codexOverride(): CodexConfigOverride? {
     val enabled = booleanValue("codex.hooks.enabled")?.let(::CodexHooksEnabled)
     val sessionStart = booleanValue("codex.hooks.sessionstart")?.let(::CodexSessionStartEnabled)
     val postToolUse = booleanValue("codex.hooks.posttooluse")?.let(::CodexPostToolUseEnabled)
-    val hooks = takeIfAny(enabled, sessionStart, postToolUse) {
-        CodexHooksConfigOverride(enabled, sessionStart, postToolUse)
+    val autoStartIndexer = booleanValue("codex.hooks.autostartindexer")
+        ?.let(IndexerAutoStartConsent::fromBoolean)
+        ?.let(::CodexAutoStartIndexer)
+    val hooks = takeIfAny(enabled, sessionStart, postToolUse, autoStartIndexer) {
+        CodexHooksConfigOverride(enabled, sessionStart, postToolUse, autoStartIndexer)
     }
     return hooks?.let(::CodexConfigOverride)
 }

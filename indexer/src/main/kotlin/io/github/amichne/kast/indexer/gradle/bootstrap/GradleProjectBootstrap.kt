@@ -9,8 +9,8 @@ import io.github.amichne.kast.indexer.project.WorkspaceKind
 import java.nio.file.Path
 
 class GradleProjectBootstrap(
-    private val configureGradleImport: (Project) -> Unit = { project ->
-        GradleProjectImportBridge.configureIndexerImport(project)
+    private val configureGradleImport: (Project, Path) -> Unit = { project, projectCacheDirectory ->
+        GradleProjectImportBridge.configureIndexerImport(project, projectCacheDirectory)
     },
     private val waitForProjectModel: (Project) -> GradleModelSettlementEvidence = { project ->
         GradleProjectImportBridge.awaitGradleModelSettlement(project)
@@ -24,8 +24,13 @@ class GradleProjectBootstrap(
     private val hasLinkedGradleProject: (String, Project) -> Boolean = { externalProjectPath, project ->
         GradleProjectImportBridge.hasLinkedGradleProject(project, externalProjectPath)
     },
-    private val linkAndImportGradleProject: (Project, String) -> Unit = { project, externalProjectPath ->
-        GradleProjectImportBridge.linkAndImportGradleProject(project, externalProjectPath)
+    private val linkAndImportGradleProject: (Project, String, Path) -> Unit =
+        { project, externalProjectPath, projectCacheDirectory ->
+            GradleProjectImportBridge.linkAndImportGradleProject(
+                project,
+                externalProjectPath,
+                projectCacheDirectory,
+            )
     },
     private val waitBeforeReadinessRetry: () -> Unit = {
         try {
@@ -45,12 +50,13 @@ class GradleProjectBootstrap(
         project: Project,
         workspaceRoot: Path,
         workspaceKind: WorkspaceKind,
+        gradleProjectCacheDirectory: Path,
     ): ProjectModelBootstrapResult {
         if (workspaceKind != WorkspaceKind.GRADLE) {
             return ProjectModelBootstrapResult.Skipped("not a Gradle project")
         }
 
-        configureGradleImport(project)
+        configureGradleImport(project, gradleProjectCacheDirectory)
         val modelBeforeSync = inspectProjectModel(project)
         val externalProjectPath = workspaceRoot.toAbsolutePath().normalize().toString()
         if (!canLinkGradleProject(externalProjectPath, project)) {
@@ -71,7 +77,7 @@ class GradleProjectBootstrap(
             )
         }
 
-        linkAndImportGradleProject(project, externalProjectPath)
+        linkAndImportGradleProject(project, externalProjectPath, gradleProjectCacheDirectory)
         repeat(maxReadinessChecks) { attempt ->
             waitForProjectModel(project)
             latestModel = inspectProjectModel(project)

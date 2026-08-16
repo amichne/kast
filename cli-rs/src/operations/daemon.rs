@@ -7,13 +7,39 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 const INDEXER_MAIN_CLASS: &str = "io.github.amichne.kast.indexer.KastIndexerMainKt";
-#[cfg(target_os = "macos")]
 const INDEXER_STARTER_COMMAND: &str = "kast-indexer";
 
-pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child> {
+pub(crate) struct SpawnedIndexer {
+    pub(crate) child: Child,
+    pub(crate) storage_identity: IndexerStorageIdentity,
+}
+
+pub(crate) fn spawn_background(
+    args: DaemonStartArgs,
+    log_file: &Path,
+    admission: &crate::runtime::WorkspaceLaunchLock,
+    deadline: crate::runtime::RuntimeStartDeadline,
+) -> Result<SpawnedIndexer> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
-    let command = java_command(&args, &config)?;
+    let layout = IndexerProjectLayout::resolve(&args, &config)?;
+    if admission.storage_identity() != &layout.identity {
+        return Err(CliError::new(
+            "INDEXER_STORAGE_ADMISSION_MISMATCH",
+            format!(
+                "Indexer launch admission owns {}, but launch resolved {}.",
+                admission.storage_identity().storage_root().display(),
+                layout.identity.storage_root().display(),
+            ),
+        ));
+    }
+    require_no_legacy_indexer(layout.identity.workspace_root())?;
+    let mut storage_availability_probe = IndexerStorageAvailabilityProbe::acquire(&layout)?;
+    let bootstrap_token = IndexerBootstrapToken::new();
+    let bootstrap_receipt = bootstrap_token.receipt_file(&layout);
+    let _ = fs::remove_file(&bootstrap_receipt);
+    let mut command = java_command_for_layout(&args, &config, &layout)?;
+    command.push(bootstrap_token.argument());
     if let Some(parent) = log_file.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -26,32 +52,70 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child>
         .current_dir(workspace_root)
         .stdin(Stdio::null())
         .stdout(Stdio::from(log))
-        .stderr(Stdio::from(log_err))
-        .spawn()
-        .map_err(|error| {
+        .stderr(Stdio::from(log_err));
+    storage_availability_probe.arm_child_process(&mut process)?;
+    if deadline.is_elapsed() {
+        return Err(CliError::new(
+            "INDEXER_BOOTSTRAP_TIMEOUT",
+            format!(
+                "The runtime start deadline expired before launching the indexer for {}.",
+                layout.identity.workspace_root().display(),
+            ),
+        ));
+    }
+    let mut child = process.spawn().map_err(|error| {
+        if error
+            .raw_os_error()
+            .is_some_and(|code| code == libc::EACCES || code == libc::EAGAIN)
+        {
+            storage_in_use(layout.identity.workspace_root(), None)
+        } else {
             CliError::new(
                 "DAEMON_START_ERROR",
                 format!("Failed to auto-start the indexer: {error}",),
             )
-        })
+        }
+    })?;
+    drop(storage_availability_probe);
+    wait_for_indexer_bootstrap(&mut child, &layout, bootstrap_token, deadline)?;
+    Ok(SpawnedIndexer {
+        child,
+        storage_identity: layout.identity,
+    })
 }
 
-pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
+fn java_command_for_layout(
+    args: &DaemonStartArgs,
+    config: &KastConfig,
+    layout: &IndexerProjectLayout,
+) -> Result<Vec<String>> {
     #[cfg(target_os = "macos")]
     {
-        let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
-        let app = crate::runtime::resolve_installed_idea_sidecar_app(&workspace_root, config)?;
-        installed_idea_sidecar_java_command(args, config, &app)
+        let app = crate::runtime::resolve_installed_idea_sidecar_app(
+            layout.identity.workspace_root(),
+            config,
+        )?;
+        installed_idea_sidecar_java_command_for_layout(args, config, &app, layout)
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        linux_indexer_java_command(args, config)
+        linux_indexer_java_command_for_layout(args, config, layout)
     }
 }
 
-#[cfg_attr(target_os = "macos", allow(dead_code))]
+#[cfg(test)]
 fn linux_indexer_java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
+    let layout = IndexerProjectLayout::resolve(args, config)?;
+    linux_indexer_java_command_for_layout(args, config, &layout)
+}
+
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+fn linux_indexer_java_command_for_layout(
+    args: &DaemonStartArgs,
+    config: &KastConfig,
+    layout: &IndexerProjectLayout,
+) -> Result<Vec<String>> {
     let runtime_libs_dir = config::indexer_runtime_libs_dir(config, args.runtime_libs_dir.clone())?;
     let classpath = read_classpath(&runtime_libs_dir)?;
     let java_exec = env::var("JAVA_HOME")
@@ -69,10 +133,8 @@ fn linux_indexer_java_command(args: &DaemonStartArgs, config: &KastConfig) -> Re
     let idea_home = indexer_host_home(args, config)?;
     let runtime_config_file =
         write_runtime_config_file(args, config, Some(&runtime_libs_dir), &idea_home)?;
-    command.extend(indexer_jvm_args(&idea_home, config));
-    if let Ok(java_opts) = env::var("JAVA_OPTS") {
-        command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
-    }
+    let java_opts = env::var("JAVA_OPTS").ok();
+    extend_indexer_jvm_args(&mut command, java_opts.as_deref(), &idea_home, layout);
     command.push("-cp".to_string());
     command.push(classpath);
     command.push(INDEXER_MAIN_CLASS.to_string());
@@ -82,9 +144,13 @@ fn linux_indexer_java_command(args: &DaemonStartArgs, config: &KastConfig) -> Re
         "--runtime-config-file={}",
         runtime_config_file.display()
     ));
+    command.extend(layout.starter_arguments());
     Ok(command)
 }
 
+include!("parts/daemon/storage.rs");
+#[cfg(test)]
+include!("parts/daemon/storage/tests.rs");
 include!("parts/daemon/installed_idea.rs");
 
 fn write_runtime_config_file(
@@ -133,6 +199,7 @@ fn write_runtime_config_file(
 }
 
 fn apply_daemon_environment(command: &mut Command) {
+    config::remove_git_repository_environment(command);
     for (key, value) in daemon_environment() {
         command.env(key, value);
     }
@@ -155,7 +222,7 @@ fn indexer_host_home(args: &DaemonStartArgs, config: &KastConfig) -> Result<Path
         })
 }
 
-fn indexer_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
+fn indexer_jvm_args(idea_home: &Path, layout: &IndexerProjectLayout) -> Vec<String> {
     let jna_arch = match env::consts::ARCH {
         "aarch64" => "aarch64",
         _ => "amd64",
@@ -168,19 +235,14 @@ fn indexer_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
         "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader".to_string(),
         "-Didea.force.use.core.classloader=true".to_string(),
         "-Didea.vendor.name=JetBrains".to_string(),
-        "-Didea.paths.selector=KastIndexer".to_string(),
         format!(
-            "-Didea.config.path={}",
-            config.paths.cache_dir.join("idea-config").display()
+            "-Didea.paths.selector=KastIndexer-{}",
+            layout.identity.workspace_id
         ),
-        format!(
-            "-Didea.system.path={}",
-            config.paths.cache_dir.join("idea-system").display()
-        ),
-        format!(
-            "-Didea.log.path={}",
-            config.paths.logs_dir.join("idea").display()
-        ),
+        format!("-Didea.config.path={}", layout.idea_config.display()),
+        format!("-Didea.system.path={}", layout.idea_system.display()),
+        format!("-Didea.log.path={}", layout.idea_log.display()),
+        format!("-Didea.plugins.path={}", layout.plugins.display()),
         format!(
             "-Djna.boot.library.path={}",
             idea_home.join(format!("lib/jna/{jna_arch}")).display()
@@ -255,6 +317,18 @@ fn indexer_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
         .map(|module| format!("--add-opens={module}=ALL-UNNAMED")),
     );
     args
+}
+
+fn extend_indexer_jvm_args(
+    command: &mut Vec<String>,
+    ambient_java_opts: Option<&str>,
+    idea_home: &Path,
+    layout: &IndexerProjectLayout,
+) {
+    if let Some(java_opts) = ambient_java_opts {
+        command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
+    }
+    command.extend(indexer_jvm_args(idea_home, layout));
 }
 
 fn read_classpath(runtime_libs_dir: &Path) -> Result<String> {

@@ -184,6 +184,79 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
 }
 
 #[test]
+fn exact_worktree_auto_start_consent_round_trips_unset_enabled_and_disabled() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+
+    let listed = run(&home, &config_home, &workspace, &["list"]);
+    assert!(listed.status.success(), "list: {listed:?}");
+    let listed: serde_json::Value = serde_json::from_slice(&listed.stdout).expect("list JSON");
+    assert_eq!(
+        listed["effective"]["codex"]["hooks"]["autoStartIndexer"],
+        serde_json::Value::Null,
+    );
+
+    for (raw, expected) in [("true", true), ("false", false)] {
+        let set = run(
+            &home,
+            &config_home,
+            &workspace,
+            &["set", "codex.hooks.autoStartIndexer", raw],
+        );
+        assert!(set.status.success(), "set {raw}: {set:?}");
+        let set: serde_json::Value = serde_json::from_slice(&set.stdout).expect("set JSON");
+        assert_eq!(set["effectiveValue"], expected);
+    }
+
+    let unset = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["unset", "codex.hooks.autoStartIndexer"],
+    );
+    assert!(unset.status.success(), "unset: {unset:?}");
+    let unset: serde_json::Value = serde_json::from_slice(&unset.stdout).expect("unset JSON");
+    assert_eq!(unset["effectiveValue"], serde_json::Value::Null);
+}
+
+#[test]
+fn unresolved_linked_worktree_metadata_rejects_consent_without_local_fallback() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+    std::fs::write(
+        workspace.join(".git"),
+        "gitdir: ../common/.git/worktrees/missing\n",
+    )
+    .expect("dangling linked-worktree metadata");
+
+    let set = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["set", "codex.hooks.autoStartIndexer", "true"],
+    );
+
+    assert!(!set.status.success(), "set unexpectedly succeeded: {set:?}");
+    let error: serde_json::Value = serde_json::from_slice(&set.stdout).expect("error JSON");
+    assert_eq!(error["code"], "GIT_WORKTREE_METADATA_UNRESOLVABLE");
+    assert!(
+        !home
+            .join(".local/share/kast/state/data/workspaces/local")
+            .exists()
+    );
+}
+
+#[test]
 fn workspace_config_mutates_inline_tables() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -318,3 +391,4 @@ fn workspace_config_list_rejects_removed_phase_two_fields() {
 }
 
 include!("indexing_scope.rs");
+include!("git_identity.rs");

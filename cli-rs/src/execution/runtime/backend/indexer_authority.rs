@@ -296,6 +296,7 @@ fn construct_admitted_runtime(
 }
 
 include!("indexer_authority/runtime.rs");
+include!("indexer_authority/start.rs");
 
 #[cfg(test)]
 #[path = "indexer_authority/tests/mod.rs"]

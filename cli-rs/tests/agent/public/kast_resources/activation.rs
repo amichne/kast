@@ -218,6 +218,95 @@ fn every_harness_activation_requires_matching_cli_plugin_hook_and_skill() {
         }
     }
 }
+
+#[test]
+fn every_materialized_session_start_offers_consent_without_starting_runtime() {
+    for harness in HARNESSES {
+        let fixture = tempfile::tempdir().expect("temporary consent fixture");
+        let workspace = fixture.path().join("workspace");
+        let bin = fixture.path().join("bin");
+        fs::create_dir(&workspace).expect("create Gradle workspace");
+        fs::create_dir(&bin).expect("create provider bin directory");
+        fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+        write_provider(&bin.join(harness.name));
+        let provider_log = fixture.path().join("providers.log");
+        let kast_home = fixture.path().join("kast");
+        let mut path_entries = vec![bin];
+        path_entries.extend(std::env::split_paths(
+            &std::env::var_os("PATH").unwrap_or_else(|| OsString::from("/usr/bin:/bin")),
+        ));
+        let install = kast()
+            .args([
+                "__internal",
+                "resources",
+                "install",
+                "--harness",
+                harness.name,
+            ])
+            .env(
+                "PATH",
+                std::env::join_paths(path_entries).expect("provider PATH"),
+            )
+            .env("HOME", fixture.path().join("home"))
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_PROVIDER_LOG", provider_log)
+            .output()
+            .expect("materialize harness resources");
+        assert!(install.status.success(), "resource install: {install:?}");
+        let plugin_root = installed_plugin_root(&kast_home, harness.name);
+        let command = hook_command(&plugin_root, harness.hooks_path, harness.session_pointer);
+        install_control_binary(&kast_home);
+
+        let output = run_hook(
+            &command,
+            &workspace,
+            &kast_home,
+            &plugin_root,
+            session_start_input(&workspace),
+        );
+
+        assert!(output.status.success(), "{} hook: {output:?}", harness.name);
+        let response: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("consent response JSON");
+        let context = if harness.name == "copilot" {
+            assert!(response.get("hookSpecificOutput").is_none(), "{response:#}");
+            response
+                .get("additionalContext")
+                .and_then(serde_json::Value::as_str)
+                .expect("Copilot consent context")
+        } else {
+            assert_eq!(
+                response.pointer("/hookSpecificOutput/hookEventName"),
+                Some(&serde_json::json!("SessionStart")),
+            );
+            response
+                .pointer("/hookSpecificOutput/additionalContext")
+                .and_then(serde_json::Value::as_str)
+                .expect("Codex or Claude consent context")
+        };
+        assert!(context.contains("explicit consent"), "{context}");
+        assert!(
+            context.contains("codex.hooks.autoStartIndexer"),
+            "{context}"
+        );
+        assert!(
+            context.contains(workspace.to_string_lossy().as_ref()),
+            "{context}"
+        );
+        for forbidden in [
+            "state/data/workspaces",
+            "state/cache/idea-sidecars",
+            "state/runtime",
+            "state/logs",
+        ] {
+            assert!(
+                !kast_home.join(forbidden).exists(),
+                "an unconfigured hook must not create {forbidden}",
+            );
+        }
+    }
+}
+
 #[test]
 fn session_activation_requires_provider_and_resource_root_identity() {
     let fixture = tempfile::tempdir().expect("temporary activation identity fixture");

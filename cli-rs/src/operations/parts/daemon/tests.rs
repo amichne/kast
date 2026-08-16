@@ -11,11 +11,13 @@ mod tests {
         let mut file = fs::File::create(libs.join("classpath.txt")).unwrap();
         writeln!(file, "a.jar\nlib/b.jar").unwrap();
         let idea_home = temp.path().join("idea-home");
+        let workspace = temp.path().join("workspace");
+        fs::create_dir(&workspace).unwrap();
         let mut config = KastConfig::defaults();
         config.indexer.runtime_libs_dir = Some(libs.clone());
         config.indexer.host_home = Some(idea_home.clone());
         let args = DaemonStartArgs {
-            workspace_root: Some(temp.path().to_path_buf()),
+            workspace_root: Some(workspace),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -47,6 +49,8 @@ mod tests {
         fs::create_dir_all(&indexer_libs).unwrap();
         fs::write(indexer_libs.join("classpath.txt"), "indexer.jar\n").unwrap();
         let idea_home = temp.path().join("idea-home");
+        let workspace = temp.path().join("workspace");
+        fs::create_dir(&workspace).unwrap();
         let mut config = KastConfig::defaults();
         config.paths.cache_dir = temp.path().join("cache");
         config.paths.logs_dir = temp.path().join("logs");
@@ -55,7 +59,7 @@ mod tests {
         config.indexer.runtime_libs_dir = Some(indexer_libs.clone());
         config.indexer.host_home = Some(idea_home.clone());
         let args = DaemonStartArgs {
-            workspace_root: Some(temp.path().to_path_buf()),
+            workspace_root: Some(workspace),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -72,6 +76,7 @@ mod tests {
             profile_otlp_endpoint: None,
         };
 
+        let layout = IndexerProjectLayout::resolve(&args, &config).unwrap();
         let command = linux_indexer_java_command(&args, &config).unwrap();
 
         let cp = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
@@ -80,23 +85,49 @@ mod tests {
         assert!(command.contains(&format!("--idea-home={}", idea_home.display())));
         assert!(command.contains(&format!(
             "-Didea.config.path={}",
-            config.paths.cache_dir.join("idea-config").display()
+            layout.idea_config.display()
         )));
         assert!(command.contains(&format!(
             "-Didea.system.path={}",
-            config.paths.cache_dir.join("idea-system").display()
+            layout.idea_system.display()
         )));
         assert!(command.contains(&format!(
             "-Didea.log.path={}",
-            config.paths.logs_dir.join("idea").display()
+            layout.idea_log.display()
+        )));
+        assert!(command.contains(&format!(
+            "-Didea.plugins.path={}",
+            layout.plugins.display()
         )));
         assert!(command.contains(&"-Didea.force.use.core.classloader=true".to_string()));
-        assert!(
-            !command
-                .iter()
-                .any(|arg| arg.starts_with("-Didea.plugins.path="))
-        );
         assert!(command.contains(&"--add-opens=java.base/java.lang=ALL-UNNAMED".to_string()));
+    }
+
+    #[test]
+    fn managed_idea_paths_override_poisoned_ambient_java_options() {
+        let temp = tempfile::tempdir().unwrap();
+        let workspace = temp.path().join("workspace");
+        fs::create_dir(&workspace).unwrap();
+        let idea_home = temp.path().join("idea-home");
+        let mut config = KastConfig::defaults();
+        config.paths.cache_dir = temp.path().join("cache");
+        let layout = IndexerProjectLayout::for_workspace(&workspace, &config).unwrap();
+        let poison = "-Didea.config.path=/shared/config -Didea.system.path=/shared/system -Didea.log.path=/shared/log -Didea.plugins.path=/shared/plugins";
+        let mut command = Vec::new();
+
+        extend_indexer_jvm_args(&mut command, Some(poison), &idea_home, &layout);
+
+        for (prefix, expected) in [
+            ("-Didea.config.path=", &layout.idea_config),
+            ("-Didea.system.path=", &layout.idea_system),
+            ("-Didea.log.path=", &layout.idea_log),
+            ("-Didea.plugins.path=", &layout.plugins),
+        ] {
+            assert_eq!(
+                command.iter().rfind(|argument| argument.starts_with(prefix)),
+                Some(&format!("{prefix}{}", expected.display())),
+            );
+        }
     }
 
     #[test]
@@ -107,6 +138,8 @@ mod tests {
         fs::write(indexer_libs.join("classpath.txt"), "indexer.jar\n").unwrap();
         let idea_home = temp.path().join("idea-home");
         let runtime_dir = temp.path().join("runtime");
+        let workspace = temp.path().join("workspace");
+        fs::create_dir(&workspace).unwrap();
         let mut config = KastConfig::defaults();
         config.paths.cache_dir = temp.path().join("cache");
         config.paths.runtime_dir = runtime_dir.clone();
@@ -116,7 +149,7 @@ mod tests {
         config.indexer.host_home = Some(idea_home.clone());
         config.server.max_results = 42;
         let args = DaemonStartArgs {
-            workspace_root: Some(temp.path().to_path_buf()),
+            workspace_root: Some(workspace),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -226,6 +259,7 @@ mod tests {
             profile_otlp_endpoint: None,
         };
 
+        let layout = IndexerProjectLayout::resolve(&args, &config).unwrap();
         let command = installed_idea_sidecar_java_command(&args, &config, &app).unwrap();
 
         assert_eq!(
@@ -244,20 +278,24 @@ mod tests {
         assert!(command.contains(&"com.intellij.idea.Main".to_string()));
         assert!(command.contains(&"kast-indexer".to_string()));
         assert!(!command.contains(&"-Didea.force.use.core.classloader=true".to_string()));
-        let sidecar_root = config
-            .paths
-            .cache_dir
-            .join("idea-sidecars")
-            .join(config::workspace_hash(&workspace));
-        for name in ["idea-config", "idea-system", "idea-log", "plugins"] {
+        for path in [
+            &layout.idea_config,
+            &layout.idea_system,
+            &layout.idea_log,
+            &layout.plugins,
+        ] {
             assert!(
                 command
                     .iter()
-                    .any(|arg| arg.contains(&sidecar_root.join(name).display().to_string()))
+                    .any(|arg| arg.contains(&path.display().to_string()))
             );
         }
+        assert!(command.contains(&format!(
+            "--indexer-storage-root={}",
+            layout.identity.storage_root().display()
+        )));
         assert_eq!(
-            std::fs::canonicalize(sidecar_root.join("plugins/kast-indexer")).unwrap(),
+            std::fs::canonicalize(layout.plugins.join("kast-indexer")).unwrap(),
             std::fs::canonicalize(payload.parent().unwrap()).unwrap(),
         );
     }
@@ -325,4 +363,18 @@ mod tests {
         assert_eq!(environment[0].0, "KAST_CONFIG_HOME");
         assert_eq!(environment[0].1, config::kast_config_home());
     }
+
+    #[test]
+    fn daemon_child_removes_repository_selecting_git_environment() {
+        let mut command = Command::new("env");
+        command.env("GIT_DIR", "/poisoned/repository");
+
+        apply_daemon_environment(&mut command);
+
+        assert!(command.get_envs().any(|(key, value)| {
+            key == "GIT_DIR" && value.is_none()
+        }));
+    }
+
+    include!("tests/process_owner.rs");
 }

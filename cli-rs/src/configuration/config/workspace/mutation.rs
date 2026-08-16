@@ -76,6 +76,7 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec::new("codex.hooks.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.sessionStart", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.postToolUse", ConfigValueType::Boolean),
+    ConfigFieldSpec::new("codex.hooks.autoStartIndexer", ConfigValueType::Boolean),
     ConfigFieldSpec::string_list("indexing.criticalPaths", StringListField::CriticalPaths),
     ConfigFieldSpec::string_list("indexing.ignoredPaths", StringListField::IgnoredPaths),
     ConfigFieldSpec::positive("indexing.graph.batchSize"),
@@ -93,10 +94,7 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec::new("indexing.remote.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("cache.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("cache.writeDelayMillis", ConfigValueType::Integer),
-    ConfigFieldSpec::new(
-        "cache.sourceIndexSaveDelayMillis",
-        ConfigValueType::Integer,
-    ),
+    ConfigFieldSpec::new("cache.sourceIndexSaveDelayMillis", ConfigValueType::Integer),
     ConfigFieldSpec::new("watcher.debounceMillis", ConfigValueType::Integer),
     ConfigFieldSpec::positive("gradle.toolingApiTimeoutMillis"),
     ConfigFieldSpec::new("telemetry.enabled", ConfigValueType::Boolean),
@@ -335,10 +333,8 @@ pub fn unset_workspace_config(
     let config_path = workspace_config_path(&workspace_root)?;
     config_field(&key)?;
     let mut document = read_workspace_config(&config_path)?;
-    let removed = remove_document_value(
-        document.as_table_mut(),
-        &key.split('.').collect::<Vec<_>>(),
-    );
+    let removed =
+        remove_document_value(document.as_table_mut(), &key.split('.').collect::<Vec<_>>());
     let status = if removed {
         let contents = document.to_string();
         validate_toml(&contents)?;
@@ -357,9 +353,9 @@ fn mutation_result(
     status: ConfigMutationStatus,
 ) -> Result<WorkspaceConfigMutation> {
     let effective = serde_json::to_value(KastConfig::load(&workspace_root)?)?;
-    let effective_value = key.split('.').try_fold(&effective, |value, segment| {
-        value.as_object()?.get(segment)
-    });
+    let effective_value = key
+        .split('.')
+        .try_fold(&effective, |value, segment| value.as_object()?.get(segment));
     Ok(WorkspaceConfigMutation {
         ok: true,
         status,

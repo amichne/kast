@@ -16,6 +16,23 @@ Use the installed control CLI only for the requested developer operation.
 4. Pass the target root explicitly when the selected command accepts
    `--workspace-root`.
 
+When a Kast SessionStart hook asks for indexer auto-start consent, ask the user
+before any write or launch. After the user approves, use the routed CLI path:
+
+```shell
+<developerOperations.cli> config set codex.hooks.autoStartIndexer true --workspace-root "$PWD"
+<developerOperations.cli> developer runtime start-background --workspace-root "$PWD" --accept-indexing
+```
+
+If the user declines, persist only that decision:
+
+```shell
+<developerOperations.cli> config set codex.hooks.autoStartIndexer false --workspace-root "$PWD"
+```
+
+Use the canonical exact workspace path in place of `$PWD` when the session
+started below the project root. Do not run `start-background` after a decline.
+
 Keep compiler-backed discovery, diagnostics, graph analysis, and validated
 changes on the public `kast` interface. Treat setup, configuration writes,
 runtime stop or restart, raw RPC, and release operations as mutations. Run them

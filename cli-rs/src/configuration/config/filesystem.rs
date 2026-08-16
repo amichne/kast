@@ -67,18 +67,87 @@ const BUILD_MARKERS: &[&str] = &["build.gradle.kts", "build.gradle"];
 const MAX_UNIX_SOCKET_PATH_BYTES: usize = 100;
 
 pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
-    let root = normalize(workspace_root.to_path_buf());
-    let workspaces_root = manifest::resolve_paths()
-        .map(|paths| paths.data_dir)
-        .unwrap_or_else(|_| manifest::default_resolved_paths().data_dir)
-        .join("workspaces");
-    workspace_data_directory_from(&workspaces_root, &root)
+    Ok(admitted_workspace_data_layout(workspace_root)?.workspace_data_directory)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct AdmittedWorkspaceDataLayout {
+    pub(crate) workspace_data_directory: PathBuf,
+    pub(crate) repository_data_directory: Option<PathBuf>,
+}
+
+pub(crate) fn admitted_workspace_data_layout(
+    workspace_root: &Path,
+) -> Result<AdmittedWorkspaceDataLayout> {
+    let root = normalize(workspace_root.to_path_buf());
+    let workspaces_root = workspaces_root();
+    admitted_workspace_data_layout_from(&workspaces_root, &root)
+}
+
+#[cfg(test)]
 fn workspace_data_directory_from(workspaces_root: &Path, root: &Path) -> Result<PathBuf> {
-    if let Some(workspace) = git_workspace(root) {
-        return workspace_data_directory_for_git(workspaces_root, &workspace);
+    Ok(admitted_workspace_data_layout_from(workspaces_root, root)?.workspace_data_directory)
+}
+
+fn admitted_workspace_data_layout_from(
+    workspaces_root: &Path,
+    root: &Path,
+) -> Result<AdmittedWorkspaceDataLayout> {
+    match git_workspace_resolution(root)? {
+        GitWorkspaceResolution::Resolved(workspace) => Ok(AdmittedWorkspaceDataLayout {
+            workspace_data_directory: workspace_data_directory_for_git(workspaces_root, &workspace)?,
+            repository_data_directory: Some(git_repository_data_directory(workspaces_root, &workspace)),
+        }),
+        GitWorkspaceResolution::NotGit => Ok(AdmittedWorkspaceDataLayout {
+            workspace_data_directory: local_workspace_data_directory(workspaces_root, root)?,
+            repository_data_directory: None,
+        }),
+        GitWorkspaceResolution::Unresolvable { marker } => {
+            Err(unresolvable_git_metadata_error(root, &marker))
+        }
     }
+}
+
+pub(crate) fn exact_worktree_auto_start_consent(
+    workspace_root: &Path,
+) -> Result<IndexerAutoStartConsent> {
+    let root = normalize(workspace_root.to_path_buf());
+    exact_worktree_auto_start_consent_from(&workspaces_root(), &root)
+}
+
+fn exact_worktree_auto_start_consent_from(
+    workspaces_root: &Path,
+    root: &Path,
+) -> Result<IndexerAutoStartConsent> {
+    let data_directory = match git_workspace_resolution(root)? {
+        GitWorkspaceResolution::Resolved(workspace) => {
+            git_workspace_data_directory(workspaces_root, &workspace)
+        }
+        GitWorkspaceResolution::NotGit => local_workspace_data_directory(workspaces_root, root)?,
+        GitWorkspaceResolution::Unresolvable { marker } => {
+            return Err(unresolvable_git_metadata_error(root, &marker));
+        }
+    };
+    let config_path = data_directory.join("config.toml");
+    if !config_path.is_file() {
+        return Ok(IndexerAutoStartConsent::Unconfigured);
+    }
+    let consent = read_partial_config(&config_path)?
+        .codex
+        .and_then(|codex| codex.hooks)
+        .and_then(|hooks| hooks.auto_start_indexer)
+        .into();
+    Ok(consent)
+}
+
+fn workspaces_root() -> PathBuf {
+    manifest::resolve_paths()
+        .map(|paths| paths.data_dir)
+        .unwrap_or_else(|_| manifest::default_resolved_paths().data_dir)
+        .join("workspaces")
+}
+
+fn local_workspace_data_directory(workspaces_root: &Path, root: &Path) -> Result<PathBuf> {
     let id = local_workspace_id(workspaces_root, root)?;
     Ok(workspaces_root
         .join("local")
@@ -91,7 +160,10 @@ pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
 }
 
 fn fallback_socket_path(workspace_root: &Path) -> PathBuf {
-    env::temp_dir().join(format!("kast-indexer-{}.sock", workspace_hash(workspace_root)))
+    env::temp_dir().join(format!(
+        "kast-indexer-{}.sock",
+        workspace_hash(workspace_root)
+    ))
 }
 
 fn default_socket_path_for_config(config: &KastConfig, workspace_root: &Path) -> PathBuf {

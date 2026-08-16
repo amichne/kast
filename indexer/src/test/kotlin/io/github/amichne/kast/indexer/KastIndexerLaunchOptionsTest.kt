@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.io.path.writeText
 
 class KastIndexerLaunchOptionsTest {
@@ -39,26 +41,30 @@ class KastIndexerLaunchOptionsTest {
         val starter = KastIndexerApplicationStarter {
             runtimeThread = Thread.currentThread()
         }
+        val workspace = workspace()
 
         assertEquals(ApplicationStarter.NOT_IN_EDT, starter.requiredModality)
-        starter.main(listOf(KastIndexerApplicationStarter.COMMAND_NAME, "--workspace-root=/tmp/project"))
+        starter.main(
+            listOf(KastIndexerApplicationStarter.COMMAND_NAME, "--workspace-root=$workspace") + layoutArgs(),
+        )
 
         assertSame(caller, runtimeThread)
     }
 
     @Test
     fun `starter args drop command token and preserve existing server options`() {
+        val workspace = workspace()
         val options = IndexerServerOptions.parseStarterArgs(
             listOf(
                 KastIndexerApplicationStarter.COMMAND_NAME,
-                "--workspace-root=/tmp/project",
+                "--workspace-root=$workspace",
                 "--socket-path=/tmp/kast-indexer.sock",
                 "--smoke-only",
                 "--idea-home=/opt/idea",
-            ),
+            ) + layoutArgs(),
         )
 
-        assertEquals(Path.of("/tmp/project"), options.serverOptions.workspaceRoot)
+        assertEquals(workspace, options.serverOptions.workspaceRoot)
         assertEquals(
             Path.of("/tmp/kast-indexer.sock"),
             (options.serverOptions.transport as AnalysisTransport.UnixDomainSocket).socketPath,
@@ -68,6 +74,7 @@ class KastIndexerLaunchOptionsTest {
 
     @Test
     fun `starter args load rust resolved runtime config file`() {
+        val workspace = workspace()
         val runtimeConfig = tempDir.resolve("runtime-config.json").apply {
             writeText(
                 """
@@ -85,9 +92,9 @@ class KastIndexerLaunchOptionsTest {
         val options = IndexerServerOptions.parseStarterArgs(
             listOf(
                 KastIndexerApplicationStarter.COMMAND_NAME,
-                "--workspace-root=/tmp/project",
+                "--workspace-root=$workspace",
                 "--runtime-config-file=$runtimeConfig",
-            ),
+            ) + layoutArgs(),
         )
 
         assertEquals(42, options.serverOptions.maxResults)
@@ -115,6 +122,7 @@ class KastIndexerLaunchOptionsTest {
 
     @Test
     fun `starter args apply launch profiling override to resolved runtime config`() {
+        val workspace = workspace()
         val runtimeConfig = tempDir.resolve("runtime-config.json").apply {
             writeText("{}")
         }
@@ -122,16 +130,36 @@ class KastIndexerLaunchOptionsTest {
         val options = IndexerServerOptions.parseStarterArgs(
             listOf(
                 KastIndexerApplicationStarter.COMMAND_NAME,
-                "--workspace-root=/tmp/project",
+                "--workspace-root=$workspace",
                 "--runtime-config-file=$runtimeConfig",
                 "--profile",
                 "--profile-modes=cpu,alloc",
                 "--profile-duration=12",
-            ),
+            ) + layoutArgs(),
         )
 
         assertEquals(true, options.runtimeConfig?.profiling?.enabled?.value)
         assertEquals("cpu,alloc", options.runtimeConfig?.profiling?.modes?.value)
         assertEquals(12L, options.runtimeConfig?.profiling?.durationSeconds?.value)
+    }
+
+    private fun workspace(): Path = tempDir.resolve("project").also { Files.createDirectories(it) }
+
+    private fun layoutArgs(): List<String> {
+        val workspace = workspace().toRealPath()
+        val storageRoot = tempDir.resolve("kast-storage").also { Files.createDirectories(it) }.toRealPath()
+        val workspaceData = tempDir.resolve("workspace-data").also { Files.createDirectories(it) }.toRealPath()
+        val manifest = buildJsonObject {
+            put("schemaVersion", 1)
+            put("canonicalWorkspaceRoot", workspace.toString())
+            put("canonicalStorageRoot", storageRoot.toString())
+            put("workspaceDataDirectory", workspaceData.toString())
+        }
+        Files.writeString(storageRoot.resolve("launch-manifest.json"), manifest.toString())
+        return listOf(
+            "--indexer-storage-root=$storageRoot",
+            "--storage-lease-fd=0",
+            "--bootstrap-token=123e4567-e89b-42d3-a456-426614174000",
+        )
     }
 }

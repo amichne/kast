@@ -38,6 +38,7 @@ struct PartialCodexHooks {
     enabled: Option<bool>,
     session_start: Option<bool>,
     post_tool_use: Option<bool>,
+    auto_start_indexer: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

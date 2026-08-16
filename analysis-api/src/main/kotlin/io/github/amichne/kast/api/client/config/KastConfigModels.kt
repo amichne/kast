@@ -71,6 +71,7 @@ data class CodexHooksConfig(
     val enabled: CodexHooksEnabled = CodexHooksEnabled(true),
     val sessionStart: CodexSessionStartEnabled = CodexSessionStartEnabled(true),
     val postToolUse: CodexPostToolUseEnabled = CodexPostToolUseEnabled(true),
+    val autoStartIndexer: CodexAutoStartIndexer = CodexAutoStartIndexer(IndexerAutoStartConsent.Unconfigured),
 )
 
 data class PathsConfig(
@@ -109,6 +110,7 @@ data class CodexHooksConfigOverride(
     val enabled: CodexHooksEnabled? = null,
     val sessionStart: CodexSessionStartEnabled? = null,
     val postToolUse: CodexPostToolUseEnabled? = null,
+    val autoStartIndexer: CodexAutoStartIndexer? = null,
 )
 
 data class ServerConfigOverride(

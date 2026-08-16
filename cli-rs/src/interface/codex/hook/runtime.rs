@@ -1,5 +1,5 @@
-use crate::cli::{CodexHookEvent, KastHarness};
-use crate::config::{CodexHooksConfig, KastConfig};
+use crate::cli::{CodexHookEvent, KastHarness, RuntimeStartDeadlineUnixEpochMillis};
+use crate::config::{CodexHooksConfig, IndexerAutoStartConsent, KastConfig};
 use crate::error::{CliError, Result};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output, Stdio};
 
 const KOTLIN_SOURCE_SUFFIX: &str = concat!(".", "kt");
 const KOTLIN_SCRIPT_SUFFIX: &str = concat!(".", "kts");
@@ -15,6 +15,7 @@ const AGENT_PROVIDER_ENV: &str = "KAST_AGENT_PROVIDER";
 const AGENT_RESOURCE_ROOT_ENV: &str = "KAST_AGENT_RESOURCE_ROOT";
 
 include!("runtime/activation.rs");
+include!("runtime/session_start.rs");
 
 #[derive(Debug, Deserialize)]
 struct HookInput {
@@ -45,19 +46,19 @@ pub(crate) fn run(event: CodexHookEvent) -> Result<i32> {
         .as_ref()
         .map(AgentHarnessActivation::validate)
         .transpose()
-        .and_then(|_| evaluate(event))
+        .and_then(|_| evaluate(event, harness))
         .unwrap_or_else(|error| {
             if error.code == "KAST_AGENT_RESOURCES_INCOMPATIBLE" {
                 activation_rejection(event, harness, &error)
             } else {
-                additional_context(event, format!("{}: {}", error.code, error.message))
+                agent_context(harness, event, format!("{}: {}", error.code, error.message))
             }
         });
     print_json(&output)?;
     Ok(0)
 }
 
-fn evaluate(event: CodexHookEvent) -> Result<Value> {
+fn evaluate(event: CodexHookEvent, harness: Option<KastHarness>) -> Result<Value> {
     if event == CodexHookEvent::PreToolUse {
         return Ok(json!({}));
     }
@@ -65,7 +66,7 @@ fn evaluate(event: CodexHookEvent) -> Result<Value> {
         return Ok(json!({}));
     }
     let input = read_input()?;
-    evaluate_with_runner(event, input, run_kast)
+    evaluate_with_runner(event, harness, input, run_kast)
 }
 
 fn activation_rejection(
@@ -106,18 +107,45 @@ fn activation_rejection(
 
 fn evaluate_with_runner(
     event: CodexHookEvent,
+    harness: Option<KastHarness>,
     input: HookInput,
+    runner: impl Fn(&[OsString]) -> Result<String>,
+) -> Result<Value> {
+    evaluate_with_consent_and_runner(
+        event,
+        harness,
+        input,
+        crate::config::exact_worktree_auto_start_consent,
+        runner,
+    )
+}
+
+fn evaluate_with_consent_and_runner(
+    event: CodexHookEvent,
+    harness: Option<KastHarness>,
+    input: HookInput,
+    consent: impl FnOnce(&Path) -> Result<IndexerAutoStartConsent>,
     runner: impl Fn(&[OsString]) -> Result<String>,
 ) -> Result<Value> {
     let cwd = crate::config::normalize(input.cwd.clone().unwrap_or(std::env::current_dir()?));
     let Some(workspace) = crate::config::find_workspace_root_from(&cwd) else {
         return Ok(json!({}));
     };
-    Ok(match event {
-        CodexHookEvent::SessionStart => session_start_with_runner(&workspace, runner),
+    let output = match event {
+        CodexHookEvent::SessionStart => {
+            let harness = harness.ok_or_else(|| {
+                CliError::new(
+                    "KAST_AGENT_RESOURCES_INCOMPATIBLE",
+                    "SessionStart requires a validated agent-harness identity.",
+                )
+            })?;
+            let consent = consent(&workspace)?;
+            session_start_with_consent_and_runner(harness, &workspace, consent, runner)
+        }
         CodexHookEvent::PreToolUse => json!({}),
         CodexHookEvent::PostToolUse => post_tool_use_with_runner(&input, &workspace, &cwd, runner),
-    })
+    };
+    Ok(output)
 }
 
 fn hook_enabled(config: &CodexHooksConfig, event: CodexHookEvent) -> bool {
@@ -138,29 +166,6 @@ fn read_input() -> Result<HookInput> {
             format!("Codex hook input must be one JSON object: {error}"),
         )
     })
-}
-
-fn session_start_with_runner(
-    workspace: &Path,
-    runner: impl FnOnce(&[OsString]) -> Result<String>,
-) -> Value {
-    let args = [
-        OsString::from("--output"),
-        OsString::from("json"),
-        OsString::from("developer"),
-        OsString::from("runtime"),
-        OsString::from("up"),
-        OsString::from("--workspace-root"),
-        workspace.as_os_str().to_os_string(),
-        OsString::from("--accept-indexing"),
-    ];
-    match runner(&args) {
-        Ok(_) => json!({}),
-        Err(error) => additional_context(
-            CodexHookEvent::SessionStart,
-            advisory_result("Kast session launch", Err(error)),
-        ),
-    }
 }
 
 fn post_tool_use_with_runner(
@@ -207,33 +212,6 @@ fn diagnostics_args(workspace: &Path, path: &str) -> [OsString; 8] {
         OsString::from("--file-path"),
         OsString::from(path),
     ]
-}
-
-fn run_kast(args: &[OsString]) -> Result<String> {
-    let binary = std::env::current_exe()?;
-    let output = Command::new(&binary).args(args).output()?;
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if output.status.success() {
-        return Ok(stdout);
-    }
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let message = if stderr.is_empty() { stdout } else { stderr };
-    let mut error = CliError::new(
-        "CODEX_HOOK_COMMAND_FAILED",
-        format!(
-            "{} exited with {}: {message}",
-            binary.display(),
-            output.status
-        ),
-    );
-    error.details.insert(
-        "command".to_string(),
-        args.iter()
-            .map(|argument| argument.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(" "),
-    );
-    Err(error)
 }
 
 fn advisory_result(label: &str, result: Result<String>) -> String {
@@ -349,6 +327,14 @@ fn additional_context(event: CodexHookEvent, context: String) -> Value {
             "additionalContext": context
         }
     })
+}
+
+fn agent_context(harness: Option<KastHarness>, event: CodexHookEvent, context: String) -> Value {
+    if harness == Some(KastHarness::Copilot) {
+        json!({"additionalContext": context})
+    } else {
+        additional_context(event, context)
+    }
 }
 
 fn print_json(value: &Value) -> Result<()> {

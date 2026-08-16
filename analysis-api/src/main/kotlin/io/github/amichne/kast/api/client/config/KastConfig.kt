@@ -53,6 +53,7 @@ data class KastConfig(
                         enabled = CodexHooksEnabled(true),
                         sessionStart = CodexSessionStartEnabled(true),
                         postToolUse = CodexPostToolUseEnabled(true),
+                        autoStartIndexer = CodexAutoStartIndexer(IndexerAutoStartConsent.Unconfigured),
                     ),
                 ),
                 indexing = IndexingConfig(

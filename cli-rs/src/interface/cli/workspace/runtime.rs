@@ -2,6 +2,36 @@
 // one minute for process startup, model settlement, reconciliation, and publish.
 pub const DEFAULT_RUNTIME_WAIT_TIMEOUT_MS: u64 = 360_000;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RuntimeStartDeadlineUnixEpochMillis(u64);
+
+impl RuntimeStartDeadlineUnixEpochMillis {
+    pub(crate) fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub(crate) fn value(self) -> u64 {
+        self.0
+    }
+}
+
+impl std::fmt::Display for RuntimeStartDeadlineUnixEpochMillis {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl std::str::FromStr for RuntimeStartDeadlineUnixEpochMillis {
+    type Err = String;
+
+    fn from_str(raw: &str) -> std::result::Result<Self, Self::Err> {
+        raw.parse::<u64>().map(Self).map_err(|_| {
+            "the runtime start deadline must be Unix epoch milliseconds represented as an unsigned integer"
+                .to_string()
+        })
+    }
+}
+
 #[derive(Debug, Args, Clone)]
 pub struct RuntimeArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
@@ -52,6 +82,15 @@ pub struct RuntimeArgs {
     /// OTLP endpoint override while profiling is enabled.
     #[arg(long, hide = true)]
     pub profile_otlp_endpoint: Option<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct BackgroundRuntimeStartArgs {
+    #[command(flatten)]
+    pub runtime: RuntimeArgs,
+    /// Absolute hook deadline. This value can only reduce wait-timeout-ms.
+    #[arg(long, hide = true)]
+    pub start_deadline_unix_epoch_millis: Option<RuntimeStartDeadlineUnixEpochMillis>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -117,6 +156,8 @@ pub enum RuntimeCommand {
         after_help = "Examples:\n  kast developer runtime up --workspace-root \"$PWD\" --accept-indexing\n  kast developer runtime up --workspace-root /workspace --accept-indexing"
     )]
     Up(RuntimeArgs),
+    /// Start the exact-worktree indexer and return after its isolated bootstrap is admitted.
+    StartBackground(BackgroundRuntimeStartArgs),
     /// Check what backends are running.
     Status(RuntimeArgs),
     /// Stop the workspace daemon.
@@ -146,5 +187,41 @@ mod runtime_args_tests {
         };
 
         assert_eq!(args.wait_timeout_ms, 360_000);
+    }
+
+    #[test]
+    fn developer_runtime_exposes_background_start_for_agent_hooks() {
+        let cli = Cli::try_parse_from([
+            "kast",
+            "developer",
+            "runtime",
+            "start-background",
+            "--start-deadline-unix-epoch-millis",
+            "12345",
+            "--workspace-root",
+            "/workspace",
+            "--accept-indexing",
+        ])
+        .expect("background runtime start arguments");
+        let Some(Command::Developer(DeveloperArgs {
+            command:
+                DeveloperCommand::Runtime(RuntimeCommandArgs {
+                    command: RuntimeCommand::StartBackground(args),
+                }),
+        })) = cli.command
+        else {
+            panic!("expected developer runtime background start command");
+        };
+
+        assert_eq!(
+            args.runtime.workspace_root,
+            Some(PathBuf::from("/workspace"))
+        );
+        assert_eq!(args.runtime.accept_indexing, Some(true));
+        assert_eq!(
+            args.start_deadline_unix_epoch_millis
+                .map(RuntimeStartDeadlineUnixEpochMillis::value),
+            Some(12_345),
+        );
     }
 }

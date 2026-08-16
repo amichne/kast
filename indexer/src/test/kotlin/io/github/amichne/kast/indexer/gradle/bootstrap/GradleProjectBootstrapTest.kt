@@ -19,6 +19,9 @@ class GradleProjectBootstrapTest {
     @TempDir
     lateinit var tempDir: Path
 
+    private val gradleProjectCache: Path
+        get() = tempDir.resolve("gradle-project-cache")
+
     @Test
     @Suppress("DEPRECATION")
     fun `plain project open task skips external model import work before server registration`() {
@@ -73,7 +76,7 @@ class GradleProjectBootstrapTest {
         val workspace = tempDir.resolve("workspace")
         val phases = mutableListOf<String>()
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = { phases += "configure" },
+            configureGradleImport = { _, _ -> phases += "configure" },
             waitForProjectModel = { settlementEvidence() },
             inspectProjectModel = {
                 phases += "inspect"
@@ -83,7 +86,7 @@ class GradleProjectBootstrapTest {
             hasLinkedGradleProject = { _, _ -> true },
         )
 
-        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
 
         assertEquals(
             ProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
@@ -115,7 +118,7 @@ class GradleProjectBootstrapTest {
             ),
         )
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = {},
+            configureGradleImport = { _, _ -> },
             waitForProjectModel = {
                 waitCount += 1
                 settlementEvidence()
@@ -125,13 +128,13 @@ class GradleProjectBootstrapTest {
             },
             canLinkGradleProject = { _, _ -> true },
             hasLinkedGradleProject = { _, _ -> linked },
-            linkAndImportGradleProject = { _, externalProjectPath ->
+            linkAndImportGradleProject = { _, externalProjectPath, _ ->
                 linked = true
                 observedPaths += externalProjectPath
             },
         )
 
-        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
 
         assertEquals(
             ProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
@@ -154,7 +157,7 @@ class GradleProjectBootstrapTest {
             ),
         )
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = {},
+            configureGradleImport = { _, _ -> },
             waitForProjectModel = {
                 waitCount += 1
                 linked = true
@@ -163,10 +166,10 @@ class GradleProjectBootstrapTest {
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
             hasLinkedGradleProject = { _, _ -> linked },
-            linkAndImportGradleProject = { _, _ -> explicitImportCount += 1 },
+            linkAndImportGradleProject = { _, _, _ -> explicitImportCount += 1 },
         )
 
-        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
 
         assertEquals(
             ProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
@@ -190,7 +193,7 @@ class GradleProjectBootstrapTest {
             ),
         )
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = {},
+            configureGradleImport = { _, _ -> },
             waitForProjectModel = {
                 waitCount += 1
                 settlementEvidence()
@@ -198,13 +201,13 @@ class GradleProjectBootstrapTest {
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
             hasLinkedGradleProject = { _, _ -> linked },
-            linkAndImportGradleProject = { _, externalProjectPath ->
+            linkAndImportGradleProject = { _, externalProjectPath, _ ->
                 linked = true
                 observedPaths += externalProjectPath
             },
         )
 
-        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
 
         assertEquals(
             ProjectModelBootstrapResult.Ready(moduleNames = listOf(":fresh"), linkedGradleProject = true),
@@ -219,18 +222,18 @@ class GradleProjectBootstrapTest {
     fun `Gradle bootstrap fails closed when concurrent reload leaves exact root unlinked`() {
         val workspace = tempDir.resolve("workspace")
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = {},
+            configureGradleImport = { _, _ -> },
             waitForProjectModel = { settlementEvidence() },
             inspectProjectModel = { modelReadiness(moduleNames = listOf(":stale")) },
             canLinkGradleProject = { _, _ -> true },
             hasLinkedGradleProject = { _, _ -> false },
-            linkAndImportGradleProject = { _, _ -> },
+            linkAndImportGradleProject = { _, _, _ -> },
             waitBeforeReadinessRetry = {},
             maxReadinessChecks = 1,
         )
 
         val error = assertThrows(GradleModelUnavailableException::class.java) {
-            bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+            bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
         }
 
         assertTrue(error.message.orEmpty().contains(workspace.toAbsolutePath().normalize().toString()))
@@ -256,7 +259,7 @@ class GradleProjectBootstrapTest {
             ),
         )
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = {},
+            configureGradleImport = { _, _ -> },
             waitForProjectModel = {
                 waitCount += 1
                 settlementEvidence()
@@ -266,13 +269,13 @@ class GradleProjectBootstrapTest {
             },
             canLinkGradleProject = { _, _ -> true },
             hasLinkedGradleProject = { _, _ -> linked },
-            linkAndImportGradleProject = { _, externalProjectPath ->
+            linkAndImportGradleProject = { _, externalProjectPath, _ ->
                 linked = true
                 observedPaths += externalProjectPath
             },
         )
 
-        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
 
         assertEquals(
             ProjectModelBootstrapResult.Ready(moduleNames = listOf(":fresh"), linkedGradleProject = true),
@@ -348,7 +351,7 @@ class GradleProjectBootstrapTest {
             ),
         )
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = {},
+            configureGradleImport = { _, _ -> },
             waitForProjectModel = {
                 waitCount += 1
                 settlementEvidence()
@@ -356,12 +359,12 @@ class GradleProjectBootstrapTest {
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
             hasLinkedGradleProject = { _, _ -> true },
-            linkAndImportGradleProject = { _, _ -> },
+            linkAndImportGradleProject = { _, _, _ -> },
             waitBeforeReadinessRetry = { retryCount += 1 },
             maxReadinessChecks = 2,
         )
 
-        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+        val result = bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
 
         assertEquals(
             ProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
@@ -375,17 +378,17 @@ class GradleProjectBootstrapTest {
     fun `Gradle bootstrap fails when sync still reports no modules`() {
         val workspace = tempDir.resolve("workspace")
         val bootstrap = GradleProjectBootstrap(
-            configureGradleImport = {},
+            configureGradleImport = { _, _ -> },
             waitForProjectModel = { settlementEvidence() },
             inspectProjectModel = { modelReadiness() },
             canLinkGradleProject = { _, _ -> true },
-            linkAndImportGradleProject = { _, _ -> },
+            linkAndImportGradleProject = { _, _, _ -> },
             waitBeforeReadinessRetry = {},
             maxReadinessChecks = 1,
         )
 
         assertThrows(GradleModelUnavailableException::class.java) {
-            bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+            bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE, gradleProjectCache)
         }
     }
 

@@ -245,6 +245,15 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
             }
             Ok(0)
         }
+        cli::RuntimeCommand::StartBackground(args) => {
+            let result = runtime::workspace_start_background(args)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
+            } else {
+                output::print_background_runtime_start(&result)?;
+            }
+            Ok(0)
+        }
         cli::RuntimeCommand::Status(args) => {
             let result = runtime::workspace_status(args)?;
             if output_format.is_structured() {

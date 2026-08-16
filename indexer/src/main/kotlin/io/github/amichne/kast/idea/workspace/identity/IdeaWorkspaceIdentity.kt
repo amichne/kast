@@ -97,13 +97,14 @@ internal data class IdeaWorkspaceIdentity(
             project: Project,
             workspaceRoot: Path,
             descriptorDirectory: Path? = null,
+            workspaceIdentity: WorkspaceIdentity? = null,
         ): IdeaWorkspaceIdentity {
             val basePath = project.basePath ?: throw ValidationException(
                 message = "Kast IDEA edits require a project with a workspace root",
                 details = mapOf("ideaProjectName" to project.name),
             )
             return IdeaWorkspaceIdentity(
-                workspaceIdentity = if (descriptorDirectory == null) {
+                workspaceIdentity = workspaceIdentity ?: if (descriptorDirectory == null) {
                     WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot)
                 } else {
                     WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot, descriptorDirectory = descriptorDirectory)

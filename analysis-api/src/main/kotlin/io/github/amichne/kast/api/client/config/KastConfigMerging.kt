@@ -24,6 +24,7 @@ private fun CodexHooksConfig.merge(override: CodexHooksConfigOverride?): CodexHo
     enabled = override?.enabled ?: enabled,
     sessionStart = override?.sessionStart ?: sessionStart,
     postToolUse = override?.postToolUse ?: postToolUse,
+    autoStartIndexer = override?.autoStartIndexer ?: autoStartIndexer,
 )
 
 private fun ServerConfig.merge(override: ServerConfigOverride?): ServerConfig = copy(

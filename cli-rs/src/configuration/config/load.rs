@@ -144,6 +144,9 @@ impl KastConfig {
             if let Some(value) = hooks.post_tool_use {
                 self.codex.hooks.post_tool_use = value;
             }
+            if let Some(value) = hooks.auto_start_indexer {
+                self.codex.hooks.auto_start_indexer = Some(value).into();
+            }
         }
         if let Some(indexing) = partial.indexing {
             if let Some(value) = indexing.critical_paths {

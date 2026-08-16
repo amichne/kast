@@ -110,6 +110,7 @@ class KastConfigTest {
             "codex.hooks" to "enabled",
             "codex.hooks" to "sessionStart",
             "codex.hooks" to "postToolUse",
+            "codex.hooks" to "autoStartIndexer",
             "paths" to "installRoot",
             "paths" to "binDir",
             "paths" to "libDir",
@@ -132,6 +133,7 @@ class KastConfigTest {
             """
                 [codex.hooks]
                 sessionStart = false
+                autoStartIndexer = true
             """.trimIndent(),
         )
 
@@ -140,6 +142,36 @@ class KastConfigTest {
         assertEquals(true, hooks.enabled.value)
         assertEquals(false, hooks.sessionStart.value)
         assertEquals(true, hooks.postToolUse.value)
+        assertEquals(IndexerAutoStartConsent.Enabled, hooks.autoStartIndexer.value)
+    }
+
+    @Test
+    fun `indexer auto start consent defaults to unconfigured`() {
+        assertEquals(
+            IndexerAutoStartConsent.Unconfigured,
+            KastConfig.defaults().codex.hooks.autoStartIndexer.value,
+        )
+    }
+
+    @Test
+    fun `resolved runtime json preserves explicit indexer auto start consent`() {
+        val runtimeConfig = tempDir.resolve("runtime-config.json").also { path ->
+            path.writeText(
+                """
+                    {
+                      "codex": {
+                        "hooks": {
+                          "autoStartIndexer": false
+                        }
+                      }
+                    }
+                """.trimIndent(),
+            )
+        }
+
+        val consent = KastConfig.loadResolvedJson(runtimeConfig).codex.hooks.autoStartIndexer
+
+        assertEquals(IndexerAutoStartConsent.Disabled, consent.value)
     }
 
     @Test

@@ -19,13 +19,23 @@ struct InstalledIdeaProductLaunch {
     main_class: String,
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", test))]
 fn installed_idea_sidecar_java_command(
     args: &DaemonStartArgs,
     config: &KastConfig,
     app: &Path,
 ) -> Result<Vec<String>> {
-    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
+    let layout = IndexerProjectLayout::resolve(args, config)?;
+    installed_idea_sidecar_java_command_for_layout(args, config, app, &layout)
+}
+
+#[cfg(target_os = "macos")]
+fn installed_idea_sidecar_java_command_for_layout(
+    args: &DaemonStartArgs,
+    config: &KastConfig,
+    app: &Path,
+    layout: &IndexerProjectLayout,
+) -> Result<Vec<String>> {
     let idea_home = app.join("Contents");
     let resources = idea_home.join("Resources");
     let product_info_path = resources.join("product-info.json");
@@ -87,28 +97,8 @@ fn installed_idea_sidecar_java_command(
         .to_string_lossy()
         .into_owned();
 
-    let sidecar_root = config
-        .paths
-        .cache_dir
-        .join("idea-sidecars")
-        .join(config::workspace_hash(&workspace_root));
-    let idea_config = sidecar_root.join("idea-config");
-    let idea_system = sidecar_root.join("idea-system");
-    let idea_log = sidecar_root.join("idea-log");
-    let plugins = sidecar_root.join("plugins");
-    for directory in [&idea_config, &idea_system, &idea_log, &plugins] {
-        fs::create_dir_all(directory).map_err(|error| {
-            CliError::new(
-                "DAEMON_START_ERROR",
-                format!(
-                    "Cannot create isolated sidecar directory {}: {error}",
-                    directory.display(),
-                ),
-            )
-        })?;
-    }
     let payload_plugin = installed_sidecar_plugin(args, config)?;
-    let isolated_plugin = plugins.join("kast-indexer");
+    let isolated_plugin = layout.plugins.join("kast-indexer");
     ensure_isolated_plugin_link(&payload_plugin, &isolated_plugin)?;
     let runtime_config_file = write_runtime_config_file(args, config, None, &idea_home)?;
 
@@ -146,12 +136,12 @@ fn installed_idea_sidecar_java_command(
         format!("-Didea.home.path={}", idea_home.display()),
         format!(
             "-Didea.paths.selector=KastIndexer-{}",
-            config::workspace_hash(&workspace_root),
+            layout.identity.workspace_id,
         ),
-        format!("-Didea.config.path={}", idea_config.display()),
-        format!("-Didea.system.path={}", idea_system.display()),
-        format!("-Didea.log.path={}", idea_log.display()),
-        format!("-Didea.plugins.path={}", plugins.display()),
+        format!("-Didea.config.path={}", layout.idea_config.display()),
+        format!("-Didea.system.path={}", layout.idea_system.display()),
+        format!("-Didea.log.path={}", layout.idea_log.display()),
+        format!("-Didea.plugins.path={}", layout.plugins.display()),
         format!("-Dkast.sidecar.plugin.path={}", isolated_plugin.display()),
         "-Dsplash=false".to_string(),
     ]);
@@ -165,6 +155,7 @@ fn installed_idea_sidecar_java_command(
         "--runtime-config-file={}",
         runtime_config_file.display(),
     ));
+    command.extend(layout.starter_arguments());
     Ok(command)
 }
 

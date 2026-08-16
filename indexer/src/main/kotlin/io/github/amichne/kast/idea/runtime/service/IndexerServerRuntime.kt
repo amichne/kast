@@ -7,6 +7,7 @@ import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
@@ -29,15 +30,17 @@ object IndexerServerRuntime {
         config: KastConfig = KastConfig.load(workspaceRoot),
         lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
         startProjectIndexing: Boolean = true,
+        workspaceIdentity: WorkspaceIdentity? = null,
     ): RunningIndexer {
-        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
+        val ideaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(
             project = project,
             workspaceRoot = workspaceRoot,
             descriptorDirectory = config.paths.descriptorDir.toPath(),
+            workspaceIdentity = workspaceIdentity,
         )
         return startResolved(
             project = project,
-            workspaceIdentity = workspaceIdentity,
+            workspaceIdentity = ideaWorkspaceIdentity,
             transport = AnalysisTransport.UnixDomainSocket(socketPath),
             config = config,
             lifecycleController = lifecycleController,
@@ -52,15 +55,17 @@ object IndexerServerRuntime {
         config: KastConfig = KastConfig.load(workspaceRoot),
         lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
         startProjectIndexing: Boolean = true,
+        workspaceIdentity: WorkspaceIdentity? = null,
     ): RunningIndexer {
-        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
+        val ideaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(
             project = project,
             workspaceRoot = workspaceRoot,
             descriptorDirectory = config.paths.descriptorDir.toPath(),
+            workspaceIdentity = workspaceIdentity,
         )
         return startResolved(
             project = project,
-            workspaceIdentity = workspaceIdentity,
+            workspaceIdentity = ideaWorkspaceIdentity,
             transport = transport,
             config = config,
             lifecycleController = lifecycleController,

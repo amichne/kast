@@ -8,7 +8,9 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.idea.IndexerServerRuntime
 import io.github.amichne.kast.idea.RunningIndexer
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridge
+import io.github.amichne.kast.indexer.project.IndexerProjectLayout
 import io.github.amichne.kast.indexer.project.ProjectOpener
+import io.github.amichne.kast.indexer.storage.IndexerStorageLease
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -16,6 +18,7 @@ import kotlin.system.exitProcess
 
 data class IndexerServerOptions(
     val serverOptions: ServerLaunchOptions,
+    val projectLayout: IndexerProjectLayout,
     val runtimeConfig: KastConfig? = null,
     val smokeOnly: Boolean = false,
 ) {
@@ -30,6 +33,7 @@ data class IndexerServerOptions(
                 .filterNot { it == "--smoke-only" }
                 .filterNot { it.startsWith(IDEA_HOME_PREFIX) }
                 .filterNot { it.startsWith(RUNTIME_CONFIG_FILE_PREFIX) }
+                .filterNot(IndexerProjectLayout::isLayoutArgument)
                 .toTypedArray()
             val serverOptions = ServerLaunchOptions.parse(
                 args = serverArgs,
@@ -37,6 +41,7 @@ data class IndexerServerOptions(
             )
             return IndexerServerOptions(
                 serverOptions = serverOptions,
+                projectLayout = IndexerProjectLayout.parse(normalizedArgs, serverOptions.workspaceRoot),
                 runtimeConfig = runtimeConfig?.withOverrides(
                     KastConfigOverride(profiling = serverOptions.profilingOverride),
                 ),
@@ -58,12 +63,17 @@ data class IndexerServerOptions(
 
 class RunningKastIndexer internal constructor(
     val indexerRuntime: RunningIndexer,
+    private val storageLease: IndexerStorageLease,
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
-        indexerRuntime.close()
+        try {
+            indexerRuntime.close()
+        } finally {
+            storageLease.close()
+        }
     }
 
     fun await() {
@@ -91,23 +101,38 @@ object KastIndexerRuntime {
         configureSystemProperties()
         val serverOptions = options.serverOptions
         val workspaceRoot = serverOptions.workspaceRoot
-        GradleProjectImportBridge.configureIndexerApplication()
-        val project = projectOpener.openProject(workspaceRoot)
-        val config = options.runtimeConfig ?: KastConfig.load(
-            workspaceRoot = workspaceRoot,
-            overrides = KastConfigOverride(profiling = serverOptions.profilingOverride),
-        )
-        val indexerRuntime = IndexerServerRuntime.start(
-            project = project,
-            workspaceRoot = workspaceRoot,
-            transport = serverOptions.transport,
-            config = config,
-        )
-        val status = runBlocking { indexerRuntime.backend.runtimeStatus() }
-        check(status.backendName == "indexer") {
-            "Kast indexer started with unexpected runtime name: ${status.backendName}"
+        val storageLease = IndexerStorageLease.acquire(options.projectLayout)
+        try {
+            options.projectLayout.requireOwnedIdeaPaths()
+            GradleProjectImportBridge.configureIndexerApplication()
+            val project = projectOpener.openProject(
+                workspaceRoot = workspaceRoot,
+                layout = options.projectLayout,
+                onProjectIdentityOpened = { options.projectLayout.publishBootstrapReceipt() },
+            )
+            val config = options.runtimeConfig ?: KastConfig.load(
+                workspaceRoot = workspaceRoot,
+                overrides = KastConfigOverride(profiling = serverOptions.profilingOverride),
+            )
+            val workspaceIdentity = options.projectLayout.workspaceIdentity(
+                descriptorDirectory = config.paths.descriptorDir.toPath(),
+            )
+            val indexerRuntime = IndexerServerRuntime.start(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                transport = serverOptions.transport,
+                config = config,
+                workspaceIdentity = workspaceIdentity,
+            )
+            val status = runBlocking { indexerRuntime.backend.runtimeStatus() }
+            check(status.backendName == "indexer") {
+                "Kast indexer started with unexpected runtime name: ${status.backendName}"
+            }
+            return RunningKastIndexer(indexerRuntime, storageLease)
+        } catch (failure: Throwable) {
+            storageLease.close()
+            throw failure
         }
-        return RunningKastIndexer(indexerRuntime)
     }
 
     fun run(options: IndexerServerOptions) {

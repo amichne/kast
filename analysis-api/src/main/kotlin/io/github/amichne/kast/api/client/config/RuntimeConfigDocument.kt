@@ -20,6 +20,7 @@ private val runtimeConfigJson = Json {
 @Serializable
 private data class RuntimeConfigDocument(
     val server: RuntimeServerConfig? = null,
+    val codex: RuntimeCodexConfig? = null,
     val indexing: RuntimeIndexingConfig? = null,
     val cache: RuntimeCacheConfig? = null,
     val watcher: RuntimeWatcherConfig? = null,
@@ -31,6 +32,7 @@ private data class RuntimeConfigDocument(
 ) {
     fun toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
         server = server?.toOverride(),
+        codex = codex?.toOverride(),
         indexing = indexing?.toOverride(),
         cache = cache?.toOverride(),
         watcher = watcher?.toOverride(),
@@ -39,6 +41,32 @@ private data class RuntimeConfigDocument(
         profiling = profiling?.toOverride(),
         paths = paths?.toOverride(),
         cli = cli?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeCodexConfig(
+    val hooks: RuntimeCodexHooksConfig? = null,
+) {
+    fun toOverride(): CodexConfigOverride = CodexConfigOverride(
+        hooks = hooks?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeCodexHooksConfig(
+    val enabled: Boolean? = null,
+    val sessionStart: Boolean? = null,
+    val postToolUse: Boolean? = null,
+    val autoStartIndexer: Boolean? = null,
+) {
+    fun toOverride(): CodexHooksConfigOverride = CodexHooksConfigOverride(
+        enabled = enabled?.let(::CodexHooksEnabled),
+        sessionStart = sessionStart?.let(::CodexSessionStartEnabled),
+        postToolUse = postToolUse?.let(::CodexPostToolUseEnabled),
+        autoStartIndexer = autoStartIndexer
+            ?.let(IndexerAutoStartConsent::fromBoolean)
+            ?.let(::CodexAutoStartIndexer),
     )
 }
 

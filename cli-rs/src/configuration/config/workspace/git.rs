@@ -5,6 +5,13 @@ struct GitWorkspace {
     git_dir: PathBuf,
 }
 
+#[derive(Debug)]
+enum GitWorkspaceResolution {
+    Resolved(GitWorkspace),
+    NotGit,
+    Unresolvable { marker: PathBuf },
+}
+
 const MAX_LEGACY_REPOSITORY_DEPTH: usize = 32;
 
 fn git_workspace(workspace_root: &Path) -> Option<GitWorkspace> {
@@ -18,21 +25,75 @@ fn git_workspace(workspace_root: &Path) -> Option<GitWorkspace> {
     })
 }
 
+fn git_workspace_resolution(workspace_root: &Path) -> Result<GitWorkspaceResolution> {
+    if let Some(workspace) = git_workspace(workspace_root) {
+        return Ok(GitWorkspaceResolution::Resolved(workspace));
+    }
+    Ok(match nearest_git_marker(workspace_root)? {
+        Some(marker) => GitWorkspaceResolution::Unresolvable { marker },
+        None => GitWorkspaceResolution::NotGit,
+    })
+}
+
+fn nearest_git_marker(workspace_root: &Path) -> Result<Option<PathBuf>> {
+    for ancestor in workspace_root.ancestors() {
+        let marker = ancestor.join(".git");
+        match fs::symlink_metadata(&marker) {
+            Ok(_) => return Ok(Some(marker)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(None)
+}
+
 fn workspace_data_directory_for_git(
     workspaces_root: &Path,
     workspace: &GitWorkspace,
 ) -> Result<PathBuf> {
-    let repo_root = workspaces_root
-        .join("git/local")
-        .join(git_common_dir_hash(&workspace.common_dir));
+    let target = git_workspace_data_directory(workspaces_root, workspace);
+    let leaf = target
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| {
+            CliError::new(
+                "WORKSPACE_IDENTITY_INVALID",
+                format!("Kast workspace identity is not UTF-8: {}", target.display()),
+            )
+        })?;
+    migrate_legacy_git_workspace_state(workspaces_root, &target, leaf)?;
+    Ok(target)
+}
+
+fn git_workspace_data_directory(workspaces_root: &Path, workspace: &GitWorkspace) -> PathBuf {
+    let repo_root = git_repository_data_directory(workspaces_root, workspace);
     let leaf = format!(
         "{}--{}",
         workspace_slug(&workspace.toplevel),
         git_worktree_hash(&workspace.toplevel, &workspace.git_dir)
     );
-    let target = repo_root.join("worktrees").join(&leaf);
-    migrate_legacy_git_workspace_state(workspaces_root, &target, &leaf)?;
-    Ok(target)
+    repo_root.join("worktrees").join(leaf)
+}
+
+fn git_repository_data_directory(workspaces_root: &Path, workspace: &GitWorkspace) -> PathBuf {
+    workspaces_root
+        .join("git/local")
+        .join(git_common_dir_hash(&workspace.common_dir))
+}
+
+fn unresolvable_git_metadata_error(workspace_root: &Path, marker: &Path) -> CliError {
+    let mut error = CliError::new(
+        "GIT_WORKTREE_METADATA_UNRESOLVABLE",
+        "Git metadata is present, but Kast cannot resolve the exact worktree identity.",
+    );
+    error.details.insert(
+        "workspaceRoot".to_string(),
+        workspace_root.display().to_string(),
+    );
+    error
+        .details
+        .insert("gitMetadata".to_string(), marker.display().to_string());
+    error
 }
 
 fn migrate_legacy_git_workspace_state(
@@ -105,10 +166,7 @@ fn migrate_legacy_git_workspace_state(
     Ok(())
 }
 
-fn legacy_git_workspace_directories(
-    workspaces_root: &Path,
-    leaf: &str,
-) -> Result<Vec<PathBuf>> {
+fn legacy_git_workspace_directories(workspaces_root: &Path, leaf: &str) -> Result<Vec<PathBuf>> {
     let git_root = workspaces_root.join("git");
     if !is_real_directory(&git_root)? {
         return Ok(vec![]);
@@ -239,17 +297,49 @@ fn git_path(workspace_root: &Path, args: &[&str]) -> Option<PathBuf> {
 }
 
 fn git_output(workspace_root: &Path, args: &[&str]) -> Option<String> {
-    let output = std::process::Command::new("git")
-        .args(args)
-        .current_dir(workspace_root)
-        .output()
-        .ok()?;
+    let output = isolated_git_command(workspace_root).args(args).output().ok()?;
     if !output.status.success() {
         return None;
     }
     let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
     (!value.is_empty()).then_some(value)
 }
+
+fn isolated_git_command(workspace_root: &Path) -> std::process::Command {
+    let mut command = std::process::Command::new("git");
+    command.current_dir(workspace_root);
+    remove_git_repository_environment(&mut command);
+    command
+}
+
+pub(crate) fn remove_git_repository_environment(command: &mut std::process::Command) {
+    for variable in GIT_REPOSITORY_ENVIRONMENT {
+        command.env_remove(variable);
+    }
+}
+
+// Git exports repository-local variables to hooks. They must not select the
+// repository for an exact-worktree identity query in another directory.
+const GIT_REPOSITORY_ENVIRONMENT: &[&str] = &[
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+    "GIT_NAMESPACE",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+];
 
 fn local_workspace_id(workspaces_root: &Path, workspace_root: &Path) -> Result<String> {
     let registry_path = workspaces_root.join("local-workspaces.json");

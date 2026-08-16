@@ -14,6 +14,8 @@ pub(super) fn assert_developer_route_sources(root: &Path) {
         "developerOperations.cli",
         "developerOperations.helpArgs",
         "Do not assume `kastctl` is on `PATH`",
+        "codex.hooks.autoStartIndexer",
+        "developer runtime start-background",
     ] {
         assert!(developer_skill.contains(instruction), "{developer_skill}");
     }

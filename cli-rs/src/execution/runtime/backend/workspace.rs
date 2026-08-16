@@ -28,6 +28,20 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     workspace_ensure_result(&admission)
 }
 
+pub fn workspace_start_background(
+    args: BackgroundRuntimeStartArgs,
+) -> Result<BackgroundRuntimeStartResult> {
+    let deadline = RuntimeStartDeadline::for_background_start(
+        args.runtime.wait_timeout_ms,
+        args.start_deadline_unix_epoch_millis,
+    )?;
+    deadline.require_active()?;
+    let request = semantic_runtime_request_for_background(args.runtime)?;
+    deadline.require_active()?;
+    indexer_authority::start_indexer_runtime_background(request, deadline)
+        .map_err(|rejection| semantic_workspace_rejection(rejection).into_cli_error())
+}
+
 fn workspace_ensure_result(admission: &AdmittedIndexerRuntime) -> Result<WorkspaceEnsureResult> {
     let path_resolution = config::path_resolution_report(
         admission.config(),

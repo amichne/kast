@@ -112,6 +112,27 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
+pub fn print_background_runtime_start(result: &BackgroundRuntimeStartResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast background start");
+    mdln!(document);
+    mdln!(document, "- Workspace: `{}`", result.workspace_root);
+    mdln!(document, "- Storage: `{}`", result.storage_root);
+    mdln!(
+        document,
+        "- State: `{}`",
+        match result.state {
+            BackgroundRuntimeStartState::Reused => "REUSED",
+            BackgroundRuntimeStartState::Started => "STARTED",
+        }
+    );
+    mdln!(document, "- PID: {}", result.pid);
+    if let Some(log_file) = &result.log_file {
+        mdln!(document, "- Log file: `{log_file}`");
+    }
+    print_markdown(&document.into_string())
+}
+
 pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     let lifecycle_count = result

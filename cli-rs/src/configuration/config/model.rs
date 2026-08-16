@@ -51,6 +51,38 @@ pub struct CodexHooksConfig {
     pub enabled: bool,
     pub session_start: bool,
     pub post_tool_use: bool,
+    pub auto_start_indexer: IndexerAutoStartConsent,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum IndexerAutoStartConsent {
+    #[default]
+    Unconfigured,
+    Enabled,
+    Disabled,
+}
+
+impl From<Option<bool>> for IndexerAutoStartConsent {
+    fn from(value: Option<bool>) -> Self {
+        match value {
+            Some(true) => Self::Enabled,
+            Some(false) => Self::Disabled,
+            None => Self::Unconfigured,
+        }
+    }
+}
+
+impl Serialize for IndexerAutoStartConsent {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::Unconfigured => serializer.serialize_none(),
+            Self::Enabled => serializer.serialize_bool(true),
+            Self::Disabled => serializer.serialize_bool(false),
+        }
+    }
 }
 
 impl Default for CodexHooksConfig {
@@ -59,6 +91,7 @@ impl Default for CodexHooksConfig {
             enabled: true,
             session_start: true,
             post_tool_use: true,
+            auto_start_indexer: IndexerAutoStartConsent::Unconfigured,
         }
     }
 }
