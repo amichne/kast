@@ -98,6 +98,30 @@ class IntellijSourceWriteProtocolTest {
         assertInstanceOf(IntellijWriteProtocolResult.RejectedAfterRollback::class.java, result)
         assertEquals(rename.preimageText, session.text)
     }
+
+    @Test
+    fun `declaration replacement durability rejection restores the exact preimage`() {
+        val replacement = IntellijMutationInput(
+            sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
+            preimageText = "val unrelated = 1\nfun service() = 0\n",
+            postimageText = "val unrelated = 1\nfun service() = 1\n",
+            mutations = listOf(IntellijTextMutation(18, 35, "fun service() = 1")),
+        )
+        val session = FakeDocumentSession(replacement.preimageText, mutableListOf())
+
+        val result = IntellijSourceWriteProtocol().execute(
+            replacement,
+            MutationDurabilityBarrier {
+                MutationDurabilityResult.Rejected(
+                    MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED,
+                )
+            },
+            session,
+        )
+
+        assertInstanceOf(IntellijWriteProtocolResult.RejectedAfterRollback::class.java, result)
+        assertEquals(replacement.preimageText, session.text)
+    }
 }
 
 private class FakeDocumentSession(

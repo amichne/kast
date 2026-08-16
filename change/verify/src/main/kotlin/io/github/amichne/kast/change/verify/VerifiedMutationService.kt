@@ -6,6 +6,7 @@ import io.github.amichne.kast.change.contract.AddFileChangePlan
 import io.github.amichne.kast.change.contract.ChangePlanId
 import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
+import io.github.amichne.kast.change.contract.ReplaceDeclarationChangePlan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -228,6 +229,20 @@ class VerifiedMutationService(
         is RenameSymbolChangePlan -> when (evidence) {
             is RenameSymbolVerificationEvidence -> when (val proof =
                 CompleteRenameSymbolVerification.admit(
+                    plan,
+                    admitted.applied,
+                    resulting,
+                    evidence,
+                )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(proof.value)
+                is Refinement.Rejected -> Refinement.Rejected(proof.failure)
+            }
+            else -> evidenceMismatch()
+        }
+        is ReplaceDeclarationChangePlan -> when (evidence) {
+            is ReplaceDeclarationVerificationEvidence -> when (val proof =
+                CompleteReplaceDeclarationVerification.admit(
                     plan,
                     admitted.applied,
                     resulting,

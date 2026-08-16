@@ -26,6 +26,11 @@ sealed interface ChangeIntent {
         val newName: KotlinIdentifier,
         val occurrences: RenameSymbolOccurrenceSet,
     ) : ChangeIntent
+
+    class ReplaceDeclaration internal constructor(
+        val target: ReplaceDeclarationTarget,
+        val replacement: ReplacementDeclarationSourceText,
+    ) : ChangeIntent
 }
 
 /** Closed verification obligations retained by every semantic change plan. */
@@ -201,6 +206,13 @@ sealed interface SourceTextMutation {
         val range: ExactDeclarationTextRange,
         val expected: KotlinIdentifier,
         val replacement: KotlinIdentifier,
+    ) : SourceTextMutation
+
+    @ConsistentCopyVisibility
+    data class ReplaceDeclaration internal constructor(
+        val range: ExactDeclarationTextRange,
+        val expected: ExistingDeclarationSourceText,
+        val replacement: ReplacementDeclarationSourceText,
     ) : SourceTextMutation
 }
 

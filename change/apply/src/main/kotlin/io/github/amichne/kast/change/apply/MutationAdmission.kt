@@ -100,6 +100,10 @@ internal class DerivedMutationPostimage private constructor(
                         mutation.range.startInclusive,
                         mutation.range.endExclusive,
                     )
+                    is SourceTextMutation.ReplaceDeclaration -> MutationRange(
+                        mutation.range.startInclusive,
+                        mutation.range.endExclusive,
+                    )
                 }
                 mutation to range
             }
@@ -120,11 +124,17 @@ internal class DerivedMutationPostimage private constructor(
                 return Refinement.Rejected(MutationAdmissionFailure.MUTATION_OUT_OF_BOUNDS)
             }
             if (mutations.any { mutation ->
-                    mutation is SourceTextMutation.Replace &&
-                        preimage.text.substring(
+                    when (mutation) {
+                        is SourceTextMutation.Replace -> preimage.text.substring(
                             mutation.range.startInclusive,
                             mutation.range.endExclusive,
                         ) != mutation.expected.value
+                        is SourceTextMutation.ReplaceDeclaration -> preimage.text.substring(
+                            mutation.range.startInclusive,
+                            mutation.range.endExclusive,
+                        ) != mutation.expected.value
+                        else -> false
+                    }
                 }
             ) {
                 return Refinement.Rejected(
@@ -144,6 +154,10 @@ internal class DerivedMutationPostimage private constructor(
                             result.substring(offset)
                     }
                     is SourceTextMutation.Replace -> result.substring(
+                        0,
+                        mutation.range.startInclusive,
+                    ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
+                    is SourceTextMutation.ReplaceDeclaration -> result.substring(
                         0,
                         mutation.range.startInclusive,
                     ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
