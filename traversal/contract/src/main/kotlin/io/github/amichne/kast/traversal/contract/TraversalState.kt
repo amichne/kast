@@ -159,7 +159,7 @@ data class TraversalPendingRead private constructor(
             entry.node.endpoint.lease != plan.start.lease ||
                 entry.node.endpoint.scope != plan.scope ->
                 Refinement.Rejected(TraversalPendingReadFailure.FRONTIER_MISMATCH)
-            continuation.selector.value != entry.node.fingerprint.value ->
+            continuation.subject != entry.node.fingerprint ->
                 Refinement.Rejected(TraversalPendingReadFailure.SELECTOR_MISMATCH)
             continuation.meaning != plan.meaning ->
                 Refinement.Rejected(TraversalPendingReadFailure.MEANING_MISMATCH)

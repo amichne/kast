@@ -60,7 +60,12 @@ class TraversalService internal constructor(
                 budget = plan.budget.oneHop,
                 position = work.position,
             )
-            val read = reader.read(request)
+            val read = when (val outcome = reader.read(request)) {
+                is OneHopRelationRead.Completed -> outcome
+                OneHopRelationRead.Rejected -> return TraversalResult.Rejected(
+                    TraversalRejection.ReaderContractViolation,
+                )
+            }
             accounting.expandedFrontier += 1
             if (read.elapsedMillis.value > plan.budget.oneHop.resources.elapsedTimeLimit.value) {
                 return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
@@ -218,9 +223,9 @@ class TraversalService internal constructor(
                     responsePosition.continuation.fingerprint ==
                     position.continuation.fingerprint
         }
-        val matches = relationRequest.selector.fingerprint.value == request.node.fingerprint.value &&
-            relationRequest.selector.lease == request.node.endpoint.lease &&
-            relationRequest.selector.scope == request.scope &&
+        val matches = relationRequest.subject.fingerprint == request.node.fingerprint &&
+            relationRequest.subject.lease == request.node.endpoint.lease &&
+            relationRequest.subject.scope == request.scope &&
             relationRequest.meaning == request.meaning &&
             relationRequest.budget == request.budget &&
             positionMatches

@@ -1,7 +1,10 @@
 package io.github.amichne.kast.traversal.service
 
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
 import io.github.amichne.kast.traversal.contract.TraversalPendingState
 import io.github.amichne.kast.traversal.contract.TraversalPlan
@@ -9,6 +12,7 @@ import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.coroutines.Continuation
@@ -20,6 +24,92 @@ class TraversalServiceTest {
     private val a = fixture.selector("a", 10)
     private val b = fixture.selector("b", 20)
     private val c = fixture.selector("c", 30)
+
+    @Test
+    fun `public factory preserves exact related endpoint authority across hops`() {
+        val requests = mutableListOf<io.github.amichne.kast.relation.contract.RelationRequest>()
+        var related: RelationEndpoint.Resolved? = null
+        val relations = RelationOperations { request ->
+            requests += request
+            val targets = if (request.subject.fingerprint.value == a.fingerprint.value) {
+                listOf(fixture.endpoint(request.subject, b).also { related = it })
+            } else {
+                assertSame(related, request.subject)
+                emptyList()
+            }
+            fixture.completeRelationResult(request, targets)
+        }
+
+        val result = runSuspend { traversalOperations(relations).run(fixture.plan(a)) }
+
+        assertInstanceOf(TraversalResult.Complete::class.java, result)
+        assertEquals(2, requests.size)
+        assertSame(a, (requests.first().subject as RelationEndpoint.Subject).selector)
+        assertSame(related, requests.last().subject)
+    }
+
+    @Test
+    fun `public factory charges full one hop time authority before the next read`() {
+        val requests = mutableListOf<io.github.amichne.kast.relation.contract.RelationRequest>()
+        val relations = RelationOperations { request ->
+            requests += request
+            fixture.completeRelationResult(
+                request,
+                listOf(fixture.endpoint(request.subject, b)),
+            )
+        }
+        val plan = fixture.plan(
+            a,
+            aggregateTime = 10L,
+            oneHop = fixture.relationBudget(time = 10L),
+        )
+
+        val result = assertInstanceOf(
+            TraversalResult.Qualified::class.java,
+            runSuspend { traversalOperations(relations).run(plan) },
+        )
+
+        assertEquals(setOf(TraversalLimitation.TIME_LIMIT_REACHED), result.qualification.limitations)
+        assertEquals(1, requests.size)
+    }
+
+    @Test
+    fun `public factory resumes the exact relation continuation`() {
+        val requests = mutableListOf<io.github.amichne.kast.relation.contract.RelationRequest>()
+        val relations = RelationOperations { request ->
+            requests += request
+            when (request.position) {
+                RelationReadPosition.Start -> fixture.qualifiedRelationResult(request)
+                is RelationReadPosition.Resume -> fixture.completeRelationResult(request, emptyList())
+            }
+        }
+        val plan = fixture.plan(a)
+        val stopped = assertInstanceOf(
+            TraversalResult.Qualified::class.java,
+            runSuspend { traversalOperations(relations).run(plan) },
+        )
+        val resumed = TraversalPlan.resume(
+            a,
+            RelationMeaning.Callees,
+            plan.budget,
+            stopped.qualification.continuation,
+        ).refined()
+
+        assertInstanceOf(
+            TraversalResult.Complete::class.java,
+            runSuspend { traversalOperations(relations).run(resumed) },
+        )
+
+        val resumedPosition = assertInstanceOf(
+            RelationReadPosition.Resume::class.java,
+            requests.last().position,
+        )
+        assertEquals(
+            stopped.qualification.continuation.checkpoint
+                .let { (it.pending as TraversalPendingState.Active).read.relationContinuation.fingerprint },
+            resumedPosition.continuation.fingerprint,
+        )
+    }
 
     @Test
     fun `cycles terminate once and equivalent graph insertion orders are deterministic`() {
@@ -163,7 +253,8 @@ class TraversalServiceTest {
     fun `reader cannot widen identity scope meaning or one hop budget`() {
         val plan = fixture.plan(a)
         val escalatingReader = OneHopRelationReader { request ->
-            fixture.completeRead(request, b, emptyList())
+            val mismatched = request.copy(node = io.github.amichne.kast.traversal.contract.TraversalNode.start(b))
+            fixture.completeRead(mismatched, emptyList())
         }
 
         val result = runSuspend { TraversalService(escalatingReader).run(plan) }
