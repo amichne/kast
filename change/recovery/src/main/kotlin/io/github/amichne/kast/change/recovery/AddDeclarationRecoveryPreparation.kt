@@ -2,42 +2,44 @@ package io.github.amichne.kast.change.recovery
 
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
 import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage
 import io.github.amichne.kast.evidence.contract.RecoverySourcePath
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 
 enum class AddDeclarationRecoveryPreparationFailure {
     PLAN_BINDING_INVALID,
     SOURCE_PATH_INVALID,
     PREIMAGE_MISMATCH,
+    ABSENCE_MARKER_MISMATCH,
     WRITE_SET_NOT_SINGLETON,
 }
 
-/** Exact semantic change-plan binding plus hash-proven source preimage. */
+/** Exact semantic change-plan binding plus admitted existing or absent source precondition. */
 class AddDeclarationRecoveryPreparation private constructor(
     val planId: AddDeclarationPlanId,
     val binding: MutationPlanBinding,
     val source: RecoverySourcePath,
-    val expectedContent: WorkspaceSourceContentHash,
+    val precondition: PlannedSourcePrecondition,
     val preimage: RecoveryPreimage,
 ) {
     companion object {
         /**
          * Proof transition: `(AddDeclarationPlanId, RecoverySourcePath,
-         * WorkspaceSourceContentHash, RecoveryPreimage) -> Refinement<
+         * PlannedSourcePrecondition, RecoveryPreimage) -> Refinement<
          * AddDeclarationRecoveryPreparation, AddDeclarationRecoveryPreparationFailure>`.
          *
-         * Establishes one tamper-evident plan binding whose exact before bytes calculate to the
-         * plan's expected source identity. [AddDeclarationRecoveryPreparationFailure] is the
-         * closed expected failure. Raw plan identity and source bytes may enter only at this
-         * recovery-admission boundary and leave only at SQLite or physical recovery.
+         * Establishes one tamper-evident plan binding whose exact existing bytes calculate to the
+         * expected content identity or whose absent state carries the canonical marker.
+         * [AddDeclarationRecoveryPreparationFailure] is the closed expected failure. Raw plan
+         * identity and source bytes may enter only at this recovery-admission boundary and leave
+         * only at SQLite or physical recovery.
          */
-        fun admit(
+        internal fun admit(
             planId: AddDeclarationPlanId,
             source: RecoverySourcePath,
-            expectedContent: WorkspaceSourceContentHash,
+            precondition: PlannedSourcePrecondition,
             preimage: RecoveryPreimage,
         ): Refinement<AddDeclarationRecoveryPreparation, AddDeclarationRecoveryPreparationFailure> {
             val binding = when (val parsed = MutationPlanBinding.parse(planId.value)) {
@@ -46,17 +48,28 @@ class AddDeclarationRecoveryPreparation private constructor(
                     AddDeclarationRecoveryPreparationFailure.PLAN_BINDING_INVALID,
                 )
             }
-            if (preimage.digest.value != expectedContent.value) {
-                return Refinement.Rejected(
-                    AddDeclarationRecoveryPreparationFailure.PREIMAGE_MISMATCH,
-                )
+            when (precondition) {
+                is PlannedSourcePrecondition.Existing -> {
+                    if (preimage.digest.value != precondition.content.value) {
+                        return Refinement.Rejected(
+                            AddDeclarationRecoveryPreparationFailure.PREIMAGE_MISMATCH,
+                        )
+                    }
+                }
+                PlannedSourcePrecondition.Absent -> {
+                    if (preimage != ABSENT_SOURCE_RECOVERY_MARKER) {
+                        return Refinement.Rejected(
+                            AddDeclarationRecoveryPreparationFailure.ABSENCE_MARKER_MISMATCH,
+                        )
+                    }
+                }
             }
             return Refinement.Refined(
                 AddDeclarationRecoveryPreparation(
                     planId,
                     binding,
                     source,
-                    expectedContent,
+                    precondition,
                     preimage,
                 ),
             )
@@ -87,7 +100,10 @@ class AddDeclarationRecoveryPreparation private constructor(
                     AddDeclarationRecoveryPreparationFailure.SOURCE_PATH_INVALID,
                 )
             }
-            return admit(plan.planId, source, write.expectedContent, preimage)
+            return admit(plan.planId, source, write.precondition, preimage)
         }
     }
 }
+
+private val ABSENT_SOURCE_RECOVERY_MARKER: RecoveryPreimage =
+    RecoveryPreimage.fromBoundary(ByteArray(0))

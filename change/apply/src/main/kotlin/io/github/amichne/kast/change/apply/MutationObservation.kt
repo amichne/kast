@@ -39,14 +39,21 @@ enum class MutationSourceCaptureFailure {
     SOURCE_HASH_UNREPRESENTABLE,
 }
 
+/** Closed exact source state observed immediately before mutation admission. */
+sealed interface ObservedMutationPrecondition {
+    val source: SymbolDiscoveryFileIdentity.Workspace
+    val access: SourceWriteAccess
+    val recoveryPreimage: RecoveryPreimage
+}
+
 /** Exact detached source bytes, text, identity, and writability observed at one physical boundary. */
 class ObservedMutationSource private constructor(
-    val source: SymbolDiscoveryFileIdentity.Workspace,
+    override val source: SymbolDiscoveryFileIdentity.Workspace,
     val content: WorkspaceSourceContentHash,
-    val access: SourceWriteAccess,
+    override val access: SourceWriteAccess,
     internal val text: String,
-    internal val recoveryPreimage: RecoveryPreimage,
-) {
+    override val recoveryPreimage: RecoveryPreimage,
+) : ObservedMutationPrecondition {
     companion object {
         /**
          * Proof transition: `(WorkspaceFile, ByteArray, SourceWriteAccess) -> Refinement<
@@ -84,5 +91,32 @@ class ObservedMutationSource private constructor(
                 ObservedMutationSource(source, content, access, text, preimage),
             )
         }
+    }
+}
+
+/** Exact absent source identity plus its parent-derived creation access observation. */
+class ObservedAbsentMutationSource private constructor(
+    override val source: SymbolDiscoveryFileIdentity.Workspace,
+    override val access: SourceWriteAccess,
+    override val recoveryPreimage: RecoveryPreimage,
+) : ObservedMutationPrecondition {
+    companion object {
+        /**
+         * Proof transition: `(WorkspaceFile, SourceWriteAccess) ->
+         * ObservedAbsentMutationSource`.
+         *
+         * Establishes that the physical boundary observed no directory entry at the exact path,
+         * retains parent-derived creation access, and carries the canonical absence recovery
+         * marker. There is no expected failure because absence and access were already observed by
+         * the physical adapter. Raw filesystem state may enter only at that adapter boundary.
+         */
+        fun fromPhysicalBoundary(
+            source: SymbolDiscoveryFileIdentity.Workspace,
+            access: SourceWriteAccess,
+        ): ObservedAbsentMutationSource = ObservedAbsentMutationSource(
+            source,
+            access,
+            RecoveryPreimage.fromBoundary(ByteArray(0)),
+        )
     }
 }

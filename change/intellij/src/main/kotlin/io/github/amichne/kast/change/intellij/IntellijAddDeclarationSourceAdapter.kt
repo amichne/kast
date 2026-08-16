@@ -1,7 +1,6 @@
 package io.github.amichne.kast.change.intellij
 
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
@@ -12,7 +11,6 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
@@ -20,6 +18,7 @@ import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
 import io.github.amichne.kast.change.apply.AppliedSourceWrite
 import io.github.amichne.kast.change.apply.MutationAuthority
 import io.github.amichne.kast.change.apply.MutationDurabilityBarrier
+import io.github.amichne.kast.change.apply.MutationPreconditionAtIntellijBoundary
 import io.github.amichne.kast.change.apply.MutationSourceCaptureFailure
 import io.github.amichne.kast.change.apply.ObservedMutationSource
 import io.github.amichne.kast.change.apply.SourceObservationFailure
@@ -36,7 +35,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -46,6 +44,8 @@ class IntellijChangeSourceAdapter(
     private val project: Project,
 ) : AddDeclarationSourceObserver, AddDeclarationSourceWriter, AddDeclarationSourceRollback {
     private val protocol = IntellijSourceWriteProtocol()
+    private val addFile = IntellijAddFileSourcePrimitive(project)
+    private val existingRollback = IntellijExistingSourceRollback(project)
 
     /**
      * Proof transition: `WorkspaceFile -> SourceObservationResult`.
@@ -79,6 +79,16 @@ class IntellijChangeSourceAdapter(
     override fun write(
         authority: MutationAuthority,
         durability: MutationDurabilityBarrier,
+    ): SourceWriteResult = when (authority.intent) {
+        is ChangeIntent.AddFile -> addFile.write(authority, durability)
+        is ChangeIntent.AddDeclaration,
+        is ChangeIntent.RenameSymbol,
+            -> writeExisting(authority, durability)
+    }
+
+    private fun writeExisting(
+        authority: MutationAuthority,
+        durability: MutationDurabilityBarrier,
     ): SourceWriteResult {
         val prepared = when (val result = prepare(authority)) {
             is IntellijSourcePreparation.Ready -> result
@@ -97,7 +107,12 @@ class IntellijChangeSourceAdapter(
             lifetime,
         )
         return try {
-            val input = authority.toIntellijInput()
+            val input = when (val result = authority.toIntellijInput()) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return SourceWriteResult.RejectedBeforeMutation(
+                    result.failure,
+                )
+            }
             when (val result = protocol.execute(
                 input,
                 durability,
@@ -149,27 +164,22 @@ class IntellijChangeSourceAdapter(
             )
         }
         val preimage = planned.single().preimage.decodeAtRecoveryBoundary()
-        if (!preimage.contentEquals(authority.preimageTextAtIntellijBoundary().toByteArray())) {
-            return AddDeclarationRollbackResult.Rejected(
-                AddDeclarationRollbackFailure.CONTENT_DIVERGED,
+        return when (val expected = authority.preconditionAtIntellijBoundary()) {
+            MutationPreconditionAtIntellijBoundary.Absent -> addFile.rollback(
+                authority,
+                preimage,
+            )
+            is MutationPreconditionAtIntellijBoundary.Existing -> rollbackExisting(
+                authority, expected, preimage,
             )
         }
-        val path = Path.of(authority.source.path.value)
-        val current = try {
-            Files.readAllBytes(path)
-        } catch (_: Exception) {
-            return AddDeclarationRollbackResult.Rejected(
-                AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
-            )
-        }
-        if (current.contentEquals(preimage)) return AddDeclarationRollbackResult.RolledBack
-        if (!current.contentEquals(authority.postimageBytesAtIntellijBoundary())) {
-            return AddDeclarationRollbackResult.Rejected(
-                AddDeclarationRollbackFailure.CONTENT_DIVERGED,
-            )
-        }
-        return restorePhysicalSource(path, String(preimage, StandardCharsets.UTF_8), preimage)
     }
+
+    private fun rollbackExisting(
+        authority: MutationAuthority,
+        expected: MutationPreconditionAtIntellijBoundary.Existing,
+        preimage: ByteArray,
+    ): AddDeclarationRollbackResult = existingRollback.rollback(authority, expected, preimage)
 
     /**
      * Proof transition: `WorkspaceFile -> SourceObservationResult`.
@@ -181,6 +191,13 @@ class IntellijChangeSourceAdapter(
     private fun observeReady(
         source: SymbolDiscoveryFileIdentity.Workspace,
     ): SourceObservationResult {
+        when (val absence = addFile.observeIfAbsent(source)) {
+            IntellijAddFileAbsenceObservation.TargetPresent -> Unit
+            is IntellijAddFileAbsenceObservation.Observed -> return absence.result
+            is IntellijAddFileAbsenceObservation.Rejected -> return rejectedObservation(
+                absence.failure,
+            )
+        }
         val path = Path.of(source.path.value)
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
                    ?: return rejectedObservation(SourceObservationFailure.TARGET_NOT_FOUND)
@@ -253,10 +270,18 @@ class IntellijChangeSourceAdapter(
                      ?: return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_NOT_KOTLIN)
         val document = FileDocumentManager.getInstance().getDocument(file)
                        ?: return IntellijSourcePreparation.Rejected(SourceWriteFailure.DOCUMENT_UNAVAILABLE)
-        if (document.text != authority.preimageTextAtIntellijBoundary()) {
+        val preimage = when (val expected = authority.preconditionAtIntellijBoundary()) {
+            MutationPreconditionAtIntellijBoundary.Absent -> return IntellijSourcePreparation
+                .Rejected(SourceWriteFailure.PREIMAGE_CHANGED)
+            is MutationPreconditionAtIntellijBoundary.Existing -> expected.text
+        }
+        if (document.text != preimage) {
             return IntellijSourcePreparation.Rejected(SourceWriteFailure.PREIMAGE_CHANGED)
         }
         when (val intent = authority.intent) {
+            is ChangeIntent.AddFile -> return IntellijSourcePreparation.Rejected(
+                SourceWriteFailure.MUTATION_FAILED,
+            )
             is ChangeIntent.AddDeclaration -> {
                 val anchor = target.declarations.filter { declaration ->
                     declaration.textRange.startOffset == intent.target.range.startInclusive &&
@@ -296,52 +321,28 @@ class IntellijChangeSourceAdapter(
     }
 
     /**
-     * Proof transition: `(Path, String, ByteArray) -> AddDeclarationRollbackResult`.
+     * Proof transition: `MutationAuthority -> Refinement<IntellijMutationInput,
+     * SourceWriteFailure>`.
      *
-     * RolledBack establishes that the physical file equals the exact supplied recovery preimage.
-     * `AddDeclarationRollbackFailure` closes unavailable or rejected writes. Raw path, text, and
-     * bytes are admitted only from the already matched authority and durable recovery record.
+     * Establishes an existing-source preimage plus only exact in-file transformations for the
+     * document protocol. [SourceWriteFailure] closes absent or whole-file creation authority.
+     * Raw text extraction remains inside this adapter boundary.
      */
-    private fun restorePhysicalSource(
-        path: Path,
-        preimageText: String,
-        preimageBytes: ByteArray,
-    ): AddDeclarationRollbackResult {
-        val file = LocalFileSystem.getInstance().findFileByNioFile(path)
-                   ?: return rejectedRollback(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
-        val target = ReadAction.compute<KtFile?, RuntimeException> {
-            PsiManager.getInstance(project).findFile(file) as? KtFile
-        } ?: return rejectedRollback(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
-        val document = FileDocumentManager.getInstance().getDocument(file)
-                       ?: return rejectedRollback(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
-        return try {
-            onEdt {
-                WriteCommandAction.writeCommandAction(project, target)
-                    .withName("Kast rollback AddDeclaration")
-                    .compute<Unit, RuntimeException> {
-                        document.setText(preimageText)
-                        PsiDocumentManager.getInstance(project).commitDocument(document)
-                    }
-                FileDocumentManager.getInstance().saveDocument(document)
-            }
-            if (Files.readAllBytes(path).contentEquals(preimageBytes)) {
-                AddDeclarationRollbackResult.RolledBack
-            } else {
-                rejectedRollback(AddDeclarationRollbackFailure.WRITE_REJECTED)
-            }
-        } catch (cancellation: ProcessCanceledException) {
-            throw cancellation
-        } catch (_: Exception) {
-            rejectedRollback(AddDeclarationRollbackFailure.WRITE_REJECTED)
+    private fun MutationAuthority.toIntellijInput(): Refinement<
+        IntellijMutationInput,
+        SourceWriteFailure,
+    > {
+        val preimage = when (val expected = preconditionAtIntellijBoundary()) {
+            MutationPreconditionAtIntellijBoundary.Absent -> return Refinement.Rejected(
+                SourceWriteFailure.PREIMAGE_CHANGED,
+            )
+            is MutationPreconditionAtIntellijBoundary.Existing -> expected.text
         }
-    }
-
-    private fun MutationAuthority.toIntellijInput(): IntellijMutationInput = IntellijMutationInput(
-        source.path.value,
-        preimageTextAtIntellijBoundary(),
-        postimageTextAtIntellijBoundary(),
-        mutationsAtIntellijBoundary().map { mutation ->
+        val mutations = mutationsAtIntellijBoundary().map { mutation ->
             when (mutation) {
+                is SourceTextMutation.CreateFile -> return Refinement.Rejected(
+                    SourceWriteFailure.MUTATION_FAILED,
+                )
                 is SourceTextMutation.InsertAfterDeclaration -> IntellijTextMutation(
                     mutation.anchor.endExclusive,
                     mutation.anchor.endExclusive,
@@ -353,8 +354,16 @@ class IntellijChangeSourceAdapter(
                     mutation.replacement.value,
                 )
             }
-        },
-    )
+        }
+        return Refinement.Refined(
+            IntellijMutationInput(
+                source.path.value,
+                preimage,
+                postimageTextAtIntellijBoundary(),
+                mutations,
+            ),
+        )
+    }
 
     private fun rejectedObservation(failure: SourceObservationFailure) =
         SourceObservationResult.Rejected(failure)

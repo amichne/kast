@@ -23,6 +23,8 @@ resulting workspace generation and complete intent-specific detached evidence.
 - The observed semantic delta must exactly match the plan. RenameSymbol requires disappearance of
   the old declaration and references, one new declaration, and the exact retargeted-reference
   count.
+- AddFile requires one compiler-visible resulting file identity plus complete, error-free
+  diagnostics scoped exactly to the created source and its authority-derived postimage.
 - Only the exhaustive obligation evaluator may issue `VerifiedReceipt`.
 
 ## Verification

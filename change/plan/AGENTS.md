@@ -17,6 +17,8 @@ AddDeclaration and KCS-019 extends the same `ChangePlan` surface one intent at a
   journal, persistence, verification, or recovery effect.
 - RenameSymbol plans require one changed admitted identifier and a deterministic complete
   compiler-grounded occurrence set for the exact target.
+- AddFile plans require one authored source-root-owned Kotlin path and retain a whole-file
+  postimage behind an explicit absent precondition.
 
 ## Verification ladder
 

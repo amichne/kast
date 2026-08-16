@@ -40,8 +40,14 @@ class MutationAuthority private constructor(
     val expectedPostimage: WorkspaceSourceContentHash
         get() = admitted.write.postimage.content
 
-    /** Raw preimage text leaves only at the IntelliJ source-write boundary. */
-    fun preimageTextAtIntellijBoundary(): String = admitted.write.preimage.text
+    /** Closed exact preimage state leaves only at the IntelliJ source-write boundary. */
+    fun preconditionAtIntellijBoundary(): MutationPreconditionAtIntellijBoundary =
+        when (val preimage = admitted.write.preimage) {
+            is ObservedMutationSource -> MutationPreconditionAtIntellijBoundary.Existing(
+                preimage.text,
+            )
+            is ObservedAbsentMutationSource -> MutationPreconditionAtIntellijBoundary.Absent
+        }
 
     /** Raw postimage text leaves only at the IntelliJ source-write boundary. */
     fun postimageTextAtIntellijBoundary(): String = admitted.write.postimage.text
@@ -68,6 +74,15 @@ class MutationAuthority private constructor(
             recovery: PreparedAddDeclarationRecovery,
         ): MutationAuthority = MutationAuthority(admitted, recovery)
     }
+}
+
+/** Raw boundary projection that cannot confuse an absent target with an empty existing file. */
+sealed interface MutationPreconditionAtIntellijBoundary {
+    data class Existing(
+        val text: String,
+    ) : MutationPreconditionAtIntellijBoundary
+
+    data object Absent : MutationPreconditionAtIntellijBoundary
 }
 
 enum class MutationDurabilityFailure {
@@ -107,7 +122,7 @@ enum class SourceObservationFailure {
 
 sealed interface SourceObservationResult {
     data class Observed(
-        val source: ObservedMutationSource,
+        val source: ObservedMutationPrecondition,
     ) : SourceObservationResult
 
     data class Rejected(
