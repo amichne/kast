@@ -5,6 +5,14 @@ plugins {
 }
 
 group = providers.gradleProperty("GROUP").get()
+val kastBuildRootDirectory: File? = providers.environmentVariable("KAST_BUILD_ROOT")
+    .orNull
+    ?.trim()
+    ?.takeIf(String::isNotEmpty)
+    ?.let(::file)
+kastBuildRootDirectory?.let { root ->
+    layout.buildDirectory.set(root.resolve("gradle/root"))
+}
 val gitDescribeVersion: Provider<String> = providers.exec {
     commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")
     workingDir(rootDir)
@@ -28,6 +36,10 @@ version = providers.gradleProperty("version")
 subprojects {
     group = rootProject.group
     version = rootProject.version
+    kastBuildRootDirectory?.let { root ->
+        val projectBuildPath = path.removePrefix(":").replace(':', '/')
+        layout.buildDirectory.set(root.resolve("gradle/$projectBuildPath"))
+    }
 }
 
 tasks.register("stageIndexerDist") {
@@ -80,8 +92,18 @@ fun resolveCargoExecutable(): String {
     return "cargo"
 }
 
-val cliCompiledBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
-val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kastctl")
+val cargoTargetDirectory: File = providers.environmentVariable("CARGO_TARGET_DIR")
+    .orNull
+    ?.trim()
+    ?.takeIf(String::isNotEmpty)
+    ?.let(::file)
+    ?: layout.projectDirectory.dir("cli-rs/target").asFile
+val cliCompiledBinary: RegularFile = layout.file(
+    providers.provider { cargoTargetDirectory.resolve("debug/kast") },
+).get()
+val cliDevelopmentBinary: RegularFile = layout.file(
+    providers.provider { cargoTargetDirectory.resolve("debug/kastctl") },
+).get()
 val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentCliArchive = layout.buildDirectory.file("setup/kast-cli.zip")
 val developmentBundle = layout.buildDirectory.file(
