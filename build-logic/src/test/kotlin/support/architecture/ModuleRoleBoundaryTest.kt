@@ -158,6 +158,41 @@ class ModuleRoleBoundaryTest {
     }
 
     @Test
+    fun `transport exports inward contracts but rejects outward implementations`() {
+        val architecture = canonical()
+        val inward = ProjectDependencyObservation(
+            ModuleId.RUNTIME_SERVER,
+            ModuleId.PROTOCOL_WIRE,
+        )
+        val outward = ProjectDependencyObservation(
+            ModuleId.RUNTIME_SERVER,
+            ModuleId.SYMBOL_INTELLIJ,
+        )
+        val rejected = assertInstanceOf<ArchitectureAdmission.Rejected>(
+            ArchitectureAdmission.evaluate(
+                architecture,
+                ObservedArchitecture(
+                    modules = architecture.modules.values
+                        .filter { it.lifecycle == ModuleLifecycle.ACTIVE }
+                        .mapTo(mutableSetOf(), ValidatedModulePolicy::id),
+                    projectDependencies = emptySet(),
+                    effects = emptySet(),
+                    exportedProjectDependencies = setOf(inward, outward),
+                ),
+            ),
+        )
+
+        assertTrue(
+            ArchitectureViolation.ForbiddenExportedProjectDependency(inward) !in
+                rejected.violations,
+        )
+        assertTrue(
+            ArchitectureViolation.ForbiddenExportedProjectDependency(outward) in
+                rejected.violations,
+        )
+    }
+
+    @Test
     fun `Gradle role and exported edge observations parse into typed evidence`() {
         val architecture = canonical()
         val dependency = ProjectDependencyObservation(ModuleId.SYMBOL_INTELLIJ, ModuleId.SYMBOL_CONTRACT)

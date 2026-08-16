@@ -7,6 +7,70 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class ModuleDependencyDirectionTest {
     @Test
+    fun `materialized runtime server is active contract-only transport`() {
+        val module = canonical().modules.getValue(ModuleId.RUNTIME_SERVER)
+
+        assertEquals(ModuleLifecycle.ACTIVE, module.lifecycle)
+        assertEquals(ModuleRole.TRANSPORT, module.role)
+        assertEquals(
+            setOf(ModuleId.PROTOCOL_CONTRACT, ModuleId.PROTOCOL_WIRE),
+            module.allowedProjectDependencies,
+        )
+        assertEquals(emptySet<ForbiddenEffect>(), module.allowedEffects)
+    }
+
+    @Test
+    fun `runtime server rejects outward implementation dependencies`() {
+        val definition = KastArchitecturePolicy.definition()
+            .withDependency(ModuleId.RUNTIME_SERVER, ModuleId.SYMBOL_INTELLIJ)
+
+        val invalid = assertInstanceOf<ArchitecturePolicyValidation.Invalid>(
+            ArchitecturePolicyValidator.validate(definition),
+        )
+
+        assertTrue(
+            ArchitecturePolicyFailure.ForbiddenModuleRoleDependency(
+                ModuleId.RUNTIME_SERVER,
+                ModuleId.SYMBOL_INTELLIJ,
+                ModuleRole.INTELLIJ_READ_ADAPTER,
+            ) in invalid.failures,
+        )
+    }
+
+    @Test
+    fun `runtime server rejects observed platform effects`() {
+        val definition = KastArchitecturePolicy.definition().copy(legacyAllowances = emptyList())
+        val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
+            ArchitecturePolicyValidator.validate(definition),
+        ).architecture
+        val effect = EffectObservation(
+            module = ModuleId.RUNTIME_SERVER,
+            effect = ForbiddenEffect.INTELLIJ_PLATFORM,
+            caller = JvmMember.of("example/RuntimeServer", "dispatch", "()V"),
+            target = JvmMember.of("com/intellij/openapi/project/Project", "getName", "()Ljava/lang/String;"),
+        )
+        val observation = ObservedArchitecture(
+            modules = definition.modules
+                .filter { it.lifecycle == ModuleLifecycle.ACTIVE }
+                .mapTo(mutableSetOf(), ModulePolicy::id),
+            projectDependencies = definition.legacyImplementationBridges
+                .filter { it.lifecycle == LegacyImplementationBridgeLifecycle.ACTIVE }
+                .mapTo(mutableSetOf(), LegacyImplementationBridgePolicy::dependency),
+            effects = setOf(effect),
+        )
+
+        val rejected = assertInstanceOf<ArchitectureAdmission.Rejected>(
+            ArchitectureAdmission.evaluate(architecture, observation),
+        )
+
+        assertTrue(
+            ArchitectureViolation.UnbaselinedLegacyViolation(
+                LegacyViolationKey.ForbiddenEffectUse(effect),
+            ) in rejected.violations,
+        )
+    }
+
+    @Test
     fun `materialized protocol substrate has active host neutral migration authority`() {
         val architecture = canonical()
         val expected = mapOf(
