@@ -36,3 +36,12 @@ data class ChangeRuntimePorts(
     val recoveryRollback: AddDeclarationRollbackPort,
     val verificationObserver: ChangeVerificationObserver,
 )
+
+/** Physical change effects retained while composition owns durable recovery evidence. */
+internal data class InstalledChangePhysicalPorts(
+    val sourceObserver: AddDeclarationSourceObserver,
+    val sourceWriter: AddDeclarationSourceWriter,
+    val sourceRollback: AddDeclarationSourceRollback,
+    val recoveryRollback: AddDeclarationRollbackPort,
+    val verificationObserver: ChangeVerificationObserver,
+)

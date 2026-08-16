@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -19,6 +20,7 @@ enum class InstalledWorkspaceRootFailure {
 /** Canonical settings-owned workspace root admitted for one installed runtime. */
 class InstalledWorkspaceRoot private constructor(
     internal val path: Path,
+    internal val canonicalRoot: CanonicalWorkspaceRoot,
 ) {
     companion object {
         /**
@@ -64,7 +66,13 @@ class InstalledWorkspaceRoot private constructor(
                     InstalledWorkspaceRootFailure.SETTINGS_MARKER_UNAVAILABLE,
                 )
             }
-            return Refinement.Refined(InstalledWorkspaceRoot(physical))
+            val canonical = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(physical)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return Refinement.Rejected(
+                    InstalledWorkspaceRootFailure.UNAVAILABLE,
+                )
+            }
+            return Refinement.Refined(InstalledWorkspaceRoot(physical, canonical))
         }
     }
 }
@@ -144,6 +152,14 @@ sealed interface InstalledKastRuntimeFailure {
 
 /** Closed production-graph assembly failures. */
 sealed interface InstalledRuntimeAssemblyFailure {
+    data class Persistence(
+        val failure: InstalledRuntimePersistenceFailure,
+    ) : InstalledRuntimeAssemblyFailure
+
+    data class WorkspacePublication(
+        val failure: InstalledRuntimeWorkspaceFailure,
+    ) : InstalledRuntimeAssemblyFailure
+
     data class WorkspaceHandler(
         val failure: WorkspaceInspectHandlerConstructionFailure,
     ) : InstalledRuntimeAssemblyFailure
@@ -151,6 +167,20 @@ sealed interface InstalledRuntimeAssemblyFailure {
     data class Composition(
         val failures: Set<KastRuntimeCompositionFailure>,
     ) : InstalledRuntimeAssemblyFailure
+}
+
+/** Finite composition-owned persistence bootstrap failures. */
+enum class InstalledRuntimePersistenceFailure {
+    WORKSPACE_PUBLICATION_UNAVAILABLE,
+    MUTATION_RECOVERY_UNAVAILABLE,
+}
+
+/** Finite initial exact-root publication failures. */
+enum class InstalledRuntimeWorkspaceFailure {
+    NO_PUBLICATION,
+    INVALIDATED,
+    BLOCKED,
+    ROOT_MISMATCH,
 }
 
 /** Installed construction exports only the composition-owned dispatch capability. */
