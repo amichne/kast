@@ -14,5 +14,6 @@ dependencies {
     implementation(project(":evidence:spi"))
     implementation(project(":index-store"))
     implementation(project(":workspace:contract"))
+    implementation(libs.sqlite.jdbc)
     testImplementation(project(":analysis-api"))
 }
