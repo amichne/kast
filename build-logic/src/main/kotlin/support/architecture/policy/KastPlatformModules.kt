@@ -41,13 +41,22 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_SPI,
         ),
         active(ModuleId.KERNEL, ModuleRole.KERNEL),
+        active(ModuleId.PROTOCOL_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         active(
             ModuleId.PROTOCOL_REGISTRY,
             ModuleRole.CONTRACT,
             ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
+            ModuleId.PROTOCOL_WIRE,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_REGISTRY,
         ),
         active(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         active(ModuleId.WORKSPACE_SPI, ModuleRole.SPI, ModuleId.WORKSPACE_CONTRACT),
@@ -313,8 +322,6 @@ internal object KastPlatformModules {
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
         ModuleId.CLI,
-        ModuleId.PROTOCOL_CONTRACT,
-        ModuleId.PROTOCOL_WIRE,
         ModuleId.SYMBOL_SERVICE,
         ModuleId.RELATION_CONTRACT,
         ModuleId.RELATION_SERVICE,
