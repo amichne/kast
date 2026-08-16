@@ -6,10 +6,7 @@ import io.github.amichne.kast.evidence.contract.GenerationPublication
 import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
-import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
-import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspacePublicationCurrency
-import io.github.amichne.kast.evidence.spi.WorkspacePublicationAuthority
-import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationAuthority
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInProgressException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
@@ -18,15 +15,16 @@ import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceWakeup
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.contract.TransitionRun
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureClassifier
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionOperations
 import io.github.amichne.kast.workspace.service.WorkspaceTransitionCoordinator
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailureClassifier
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOperations
 import java.util.concurrent.CancellationException
 import java.time.Duration
 
@@ -164,11 +162,9 @@ internal class WorkspaceTransitionWorker(
             requireStableGitWorktreeTransition()
             val result = checkNotNull(cycleResult) { "Verified transition has no indexing result" }
             val token = checkNotNull(reconciliationToken) { "Verified transition has no admission token" }
-            var committed: WorkspacePublicationCommit? = null
             return when (val publication = semanticAdmission.publishReady(token) {
                 requireStableGitWorktreeTransition()
-                workspaceGenerationPublication.commit(prepared).also { committed = it }
-                    .let(workspaceGenerationPublication::storedCommit)
+                workspaceGenerationPublication.commit(prepared).commit
             }) {
                 is IdeaIndexSemanticAdmission.ReadyPublication.Admitted -> {
                     lastValidConfig = cycleConfig
@@ -178,14 +174,14 @@ internal class WorkspaceTransitionWorker(
                             snapshotPublication = checkNotNull(cycleCandidate).snapshotPublication,
                         ),
                     )
-                    GenerationPublication.Published(checkNotNull(committed))
+                    GenerationPublication.Published(publication.commit)
                 }
 
                 IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedBeforeCommit ->
                     GenerationPublication.InvalidatedBeforeCommit
 
                 is IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedAfterCommit ->
-                    GenerationPublication.InvalidatedAfterCommit(checkNotNull(committed))
+                    GenerationPublication.InvalidatedAfterCommit(publication.commit)
             }
         }
 
@@ -281,14 +277,15 @@ internal class WorkspaceTransitionWorker(
     }
 
     private fun recoveryAuditOutcome(
-        expectedPublished: PublishedWorkspaceGenerationManifest,
+        expectedPublished: PublishedWorkspaceGeneration,
     ): RecoveryAuditOutcome {
         return try {
             requireActive()
-            when (workspaceGenerationPublication.currency(expectedPublished)) {
-                is IndexStoreWorkspacePublicationCurrency.Current -> Unit
-                is IndexStoreWorkspacePublicationCurrency.Moved ->
-                    return RecoveryAuditOutcome.WorkspaceDrift
+            if (
+                workspaceGenerationPublication.current() !=
+                PublishedWorkspaceGenerationState.Published(expectedPublished)
+            ) {
+                return RecoveryAuditOutcome.WorkspaceDrift
             }
             requireStableGitWorktreeTransition()
             refreshWorkspace(setOf(WorkspaceSignal.RecoveryProbe))
@@ -306,12 +303,16 @@ internal class WorkspaceTransitionWorker(
                 }
                 val currentIdentity = captureCandidate(auditConfig, currentBuildInputs).identity
                 requireStableGitWorktreeTransition()
-                if (currentIdentity.value != expectedPublished.identity.value) {
+                if (currentIdentity != expectedPublished.identity) {
                     return RecoveryAuditOutcome.WorkspaceDrift
                 }
-                when (workspaceGenerationPublication.currency(expectedPublished)) {
-                    is IndexStoreWorkspacePublicationCurrency.Current -> RecoveryAuditOutcome.Current
-                    is IndexStoreWorkspacePublicationCurrency.Moved -> RecoveryAuditOutcome.WorkspaceDrift
+                if (
+                    workspaceGenerationPublication.current() ==
+                    PublishedWorkspaceGenerationState.Published(expectedPublished)
+                ) {
+                    RecoveryAuditOutcome.Current
+                } else {
+                    RecoveryAuditOutcome.WorkspaceDrift
                 }
             }
         } catch (failure: Throwable) {
@@ -332,9 +333,7 @@ internal class WorkspaceTransitionWorker(
                 throw failure
             }
 
-            is CancellationException,
-            is ProcessCanceledException,
-                -> throw failure
+            is CancellationException -> throw failure
         }
     }
 

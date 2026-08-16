@@ -8,7 +8,7 @@ import io.github.amichne.kast.idea.transition.WorkspaceTransitionRetryException
 import io.github.amichne.kast.workspace.contract.TransitionBlockerKind
 import io.github.amichne.kast.workspace.contract.TransitionBlocker
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailureDisposition
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureDisposition
 import java.util.concurrent.CancellationException
 
 internal enum class WorkspaceWorkerWaitOutcome {

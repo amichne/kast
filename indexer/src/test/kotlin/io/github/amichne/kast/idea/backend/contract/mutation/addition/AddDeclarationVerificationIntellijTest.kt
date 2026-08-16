@@ -27,7 +27,6 @@ import io.github.amichne.kast.change.verify.spi.AddDeclarationObservedSourceRang
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationCommand
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationLimitation
 import io.github.amichne.kast.change.verify.spi.AddDeclarationVerificationResult
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.mutation.AdditionOwnerSnapshot
 import io.github.amichne.kast.idea.backend.mutation.addDeclarationVerificationExecutor
@@ -236,7 +235,7 @@ internal class AddDeclarationVerificationIntellijTest : ExactAdditionPlanningTes
             WorkspaceSemanticGeneration(8),
             WorkspaceStateIdentity("verified-add-declaration-g1"),
         )
-        val publication = manifest.detachedPublication()
+        val publication = manifest
         val command = AddDeclarationVerificationCommand.admit(plan, publication).refined()
         return VerificationFixture(
             plan,

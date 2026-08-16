@@ -3,8 +3,7 @@ package io.github.amichne.kast.idea
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.junit5.TestApplication
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -46,7 +45,7 @@ class RecoveryAuditAdmissionTest {
     }
 
     private fun readyAdmission(
-        generation: PublishedWorkspaceGenerationManifest = publishedGeneration(),
+        generation: PublishedWorkspaceGeneration = publishedGeneration(),
     ): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(
         project = projectStub(),
         inspectProject = { IdeaIndexSemanticAdmission.Inspection.Ready },
@@ -54,12 +53,12 @@ class RecoveryAuditAdmissionTest {
         admission.await { false }
         val token = admission.beginReconciliation("test generation is verified")
         check(
-            admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
+            admission.publishReady(token) { testWorkspacePublicationCommit(generation) } is
                 IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
         )
     }
 
-    private fun publishedGeneration(): PublishedWorkspaceGenerationManifest = testPublishedWorkspaceGeneration(
+    private fun publishedGeneration(): PublishedWorkspaceGeneration = testPublishedWorkspaceGeneration(
         generation = WorkspaceSemanticGeneration(1),
         identity = WorkspaceStateIdentity("test-workspace-state"),
     )

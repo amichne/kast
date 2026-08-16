@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
@@ -15,8 +14,7 @@ import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationSta
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailure
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
 import io.github.amichne.kast.idea.transition.captureSourceWorkspaceTransitionRequest
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.indexer.gradle.settlement.MonotonicClock
 import io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiter
@@ -120,7 +118,7 @@ class WorkspaceTransitionIngressReviewRegressionTest {
                 ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
             }
 
-            assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), outcome)
+            assertEquals(WorkspaceTransitionOutcome.Published(next), outcome)
             assertEquals(listOf("route", "dispatch", "accept"), order)
         } finally {
             ingress.close()
@@ -142,7 +140,7 @@ class WorkspaceTransitionIngressReviewRegressionTest {
                 WorkspaceTransitionSnapshot(
                     lifecycle = WorkspaceLifecycle.Blocked,
                     pendingSignals = emptySet(),
-                    published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+                    published = PublishedWorkspaceGenerationState.Published(initial),
                     blocker = blocker,
                     observedEventCount = 32,
                     activeSourceFreshness = WorkspaceSourceFreshness.Absent,
@@ -184,7 +182,7 @@ internal fun assertCoveredSourcePublicationRace(workspaceRoot: Path) {
         WorkspaceTransitionSnapshot(
             lifecycle = WorkspaceLifecycle.Reconciling,
             pendingSignals = emptySet(),
-            published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+            published = PublishedWorkspaceGenerationState.Published(initial),
             blocker = null,
             observedEventCount = 4,
             activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
@@ -195,7 +193,7 @@ internal fun assertCoveredSourcePublicationRace(workspaceRoot: Path) {
     try {
         val published = runBlocking { ingress.reconcile(request) }
 
-        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next), published)
         assertFalse(transitionRequested.get())
     } finally {
         ingress.close()
@@ -229,7 +227,7 @@ internal fun assertCoveredSourceStaleReadyRace(workspaceRoot: Path) {
         WorkspaceTransitionSnapshot(
             lifecycle = WorkspaceLifecycle.Reconciling,
             pendingSignals = emptySet(),
-            published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+            published = PublishedWorkspaceGenerationState.Published(initial),
             blocker = null,
             observedEventCount = 5,
             activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
@@ -239,7 +237,7 @@ internal fun assertCoveredSourceStaleReadyRace(workspaceRoot: Path) {
     try {
         val published = runBlocking { ingress.reconcile(request) }
 
-        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next), published)
         assertFalse(transitionRequested.get())
     } finally {
         ingress.close()
@@ -259,7 +257,7 @@ internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
         WorkspaceTransitionSnapshot(
             lifecycle = WorkspaceLifecycle.Reconciling,
             pendingSignals = emptySet(),
-            published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+            published = PublishedWorkspaceGenerationState.Published(initial),
             blocker = null,
             observedEventCount = 6,
             activeSourceFreshness = WorkspaceSourceFreshness.Claimed(request.claims),
@@ -282,7 +280,7 @@ internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
             WorkspaceTransitionSnapshot(
                 lifecycle = WorkspaceLifecycle.Blocked,
                 pendingSignals = emptySet(),
-                published = PublishedWorkspaceGenerationState.Published(initial.detachedPublication()),
+                published = PublishedWorkspaceGenerationState.Published(initial),
                 blocker = blocker,
                 observedEventCount = 7,
                 activeSourceFreshness = WorkspaceSourceFreshness.Absent,
@@ -294,23 +292,23 @@ internal fun assertCoveredSourceBlockedRegistrationRace(workspaceRoot: Path) {
 }
 
 private fun raceReadyAdmission(
-    generation: PublishedWorkspaceGenerationManifest,
+    generation: PublishedWorkspaceGeneration,
 ): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(raceProjectStub()).also { admission ->
     val token = admission.beginReconciliation("test generation")
     check(
-        admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
+        admission.publishReady(token) { testWorkspacePublicationCommit(generation) } is
             IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
     )
 }
 
 private fun racePublish(
     admission: IdeaIndexSemanticAdmission,
-    generation: PublishedWorkspaceGenerationManifest,
+    generation: PublishedWorkspaceGeneration,
 ) {
     admission.dirty("test transition")
     val token = admission.beginReconciliation("test reconciliation")
     check(
-        admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
+        admission.publishReady(token) { testWorkspacePublicationCommit(generation) } is
             IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
     )
 }
@@ -334,11 +332,11 @@ private fun raceAwaiter(
 }
 
 private fun raceReadySnapshot(
-    generation: PublishedWorkspaceGenerationManifest,
+    generation: PublishedWorkspaceGeneration,
 ): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
     lifecycle = WorkspaceLifecycle.Ready,
     pendingSignals = emptySet(),
-    published = PublishedWorkspaceGenerationState.Published(generation.detachedPublication()),
+    published = PublishedWorkspaceGenerationState.Published(generation),
     blocker = null,
     observedEventCount = generation.generation.value,
     activeSourceFreshness = WorkspaceSourceFreshness.Absent,

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
@@ -12,13 +11,12 @@ import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.spi.WorkspaceMutationAdmissionState
 import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionFailure
 import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionOutcome
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.indexer.gradle.settlement.MonotonicClock
 import io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiter
@@ -75,7 +73,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.RecoveryAudit))
         }
 
-        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next), published)
     }
 
     @Test
@@ -106,7 +104,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
         }
 
-        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next), published)
         assertTrue(transitionRequested.get())
     }
 
@@ -168,7 +166,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
         }
 
-        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next), published)
     }
 
     @Test
@@ -206,7 +204,7 @@ class WorkspaceTransitionIngressTest {
             ingress.reconcile(WorkspaceTransitionRequest.Unkeyed(WorkspaceSignal.Source))
         }
 
-        assertEquals(WorkspaceTransitionOutcome.Published(next.detachedPublication()), published)
+        assertEquals(WorkspaceTransitionOutcome.Published(next), published)
     }
 
     @Test
@@ -231,7 +229,7 @@ class WorkspaceTransitionIngressTest {
         }
 
         assertEquals(
-            WorkspaceMutationTransitionOutcome.Completed("result", next.detachedPublication()),
+            WorkspaceMutationTransitionOutcome.Completed("result", next),
             result,
         )
         assertEquals(listOf("mutation", "signal", "published"), order)
@@ -305,46 +303,46 @@ class WorkspaceTransitionIngressTest {
     }
 
     private fun readyAdmission(
-        generation: PublishedWorkspaceGenerationManifest,
+        generation: PublishedWorkspaceGeneration,
     ): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(workspaceTransitionProjectStub()).also { admission ->
         val token = admission.beginReconciliation("test generation")
         check(
-            admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
+            admission.publishReady(token) { testWorkspacePublicationCommit(generation) } is
                 IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
         )
     }
 
     private fun publish(
         admission: IdeaIndexSemanticAdmission,
-        generation: PublishedWorkspaceGenerationManifest,
+        generation: PublishedWorkspaceGeneration,
     ) {
         admission.dirty("test transition")
         val token = admission.beginReconciliation("test reconciliation")
         check(
-            admission.publishReady(token) { WorkspaceGenerationCommit(generation) } is
+            admission.publishReady(token) { testWorkspacePublicationCommit(generation) } is
                 IdeaIndexSemanticAdmission.ReadyPublication.Admitted,
         )
     }
 
     private fun readySnapshot(
-        generation: PublishedWorkspaceGenerationManifest,
+        generation: PublishedWorkspaceGeneration,
     ): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
         lifecycle = WorkspaceLifecycle.Ready,
         pendingSignals = emptySet(),
-        published = PublishedWorkspaceGenerationState.Published(generation.detachedPublication()),
+        published = PublishedWorkspaceGenerationState.Published(generation),
         blocker = null,
         observedEventCount = generation.generation.value,
         activeSourceFreshness = WorkspaceSourceFreshness.Absent,
     )
 
     private fun activeSnapshot(
-        generation: PublishedWorkspaceGenerationManifest,
+        generation: PublishedWorkspaceGeneration,
         lifecycle: WorkspaceLifecycle,
         observedEventCount: TestTransitionEventCount,
     ): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
         lifecycle = lifecycle,
         pendingSignals = emptySet(),
-        published = PublishedWorkspaceGenerationState.Published(generation.detachedPublication()),
+        published = PublishedWorkspaceGenerationState.Published(generation),
         blocker = null,
         observedEventCount = observedEventCount.value,
         activeSourceFreshness = WorkspaceSourceFreshness.Unkeyed,

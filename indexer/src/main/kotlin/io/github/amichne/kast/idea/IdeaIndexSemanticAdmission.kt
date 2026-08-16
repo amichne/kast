@@ -2,9 +2,9 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
 import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthority
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -162,7 +162,7 @@ internal class IdeaIndexSemanticAdmission(
 
     fun publishReady(
         token: ReconciliationToken,
-        publish: () -> WorkspaceGenerationCommit,
+        publish: () -> WorkspacePublicationCommit,
     ): ReadyPublication {
         if (transitionLock.withLock { revision.get() != token.revision }) {
             return ReadyPublication.InvalidatedBeforeCommit
@@ -172,7 +172,7 @@ internal class IdeaIndexSemanticAdmission(
             if (revision.get() != token.revision) {
                 return@withLock ReadyPublication.InvalidatedAfterCommit(commit)
             }
-            status.set(Status.Ready(commit.manifest))
+            status.set(Status.Ready(commit.publication))
             ReadyPublication.Admitted(commit)
         }
     }
@@ -217,12 +217,12 @@ internal class IdeaIndexSemanticAdmission(
 
     class RecoveryAuditToken internal constructor(
         internal val revision: Long,
-        val generation: PublishedWorkspaceGenerationManifest,
+        val generation: PublishedWorkspaceGeneration,
     )
 
     class WorkspaceReadToken internal constructor(
         internal val revision: Long,
-        val generation: PublishedWorkspaceGenerationManifest,
+        val generation: PublishedWorkspaceGeneration,
         private val release: () -> Unit,
     ) : AutoCloseable {
         private val closed = AtomicBoolean(false)
@@ -233,7 +233,7 @@ internal class IdeaIndexSemanticAdmission(
     }
 
     class WorkspaceMutationToken internal constructor(
-        val generation: PublishedWorkspaceGenerationManifest,
+        val generation: PublishedWorkspaceGeneration,
         private val release: () -> Unit,
     ) : AutoCloseable {
         private val closed = AtomicBoolean(false)
@@ -282,18 +282,18 @@ internal class IdeaIndexSemanticAdmission(
     )
 
     sealed interface RecoveryAuditRestoration {
-        data class Restored(val generation: PublishedWorkspaceGenerationManifest) : RecoveryAuditRestoration
+        data class Restored(val generation: PublishedWorkspaceGeneration) : RecoveryAuditRestoration
 
         data object Invalidated : RecoveryAuditRestoration
     }
 
     sealed interface ReadyPublication {
-        data class Admitted(val commit: WorkspaceGenerationCommit) : ReadyPublication
+        data class Admitted(val commit: WorkspacePublicationCommit) : ReadyPublication
 
         data object InvalidatedBeforeCommit : ReadyPublication
 
         data class InvalidatedAfterCommit(
-            val commit: WorkspaceGenerationCommit,
+            val commit: WorkspacePublicationCommit,
         ) : ReadyPublication
     }
 
@@ -311,7 +311,7 @@ internal class IdeaIndexSemanticAdmission(
     }
 
     sealed interface Status {
-        data class Ready(val generation: PublishedWorkspaceGenerationManifest) : Status
+        data class Ready(val generation: PublishedWorkspaceGeneration) : Status
 
         data class Pending(val detail: String) : Status {
             init {

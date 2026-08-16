@@ -8,7 +8,7 @@ aggregate backend.
 
 - Live `Project`, VFS, and External System objects remain inside adapter calls.
 - Gradle import and recursive VFS refresh are explicit transition effects, never ordinary reads.
-- The adapter consumes only workspace contracts and SPIs and retains no live object across calls.
+- The adapter consumes only workspace contracts and retains no live object across calls.
 - No duplicate refresh/import implementation or fallback may remain in the legacy host.
 
 ## Verification ladder

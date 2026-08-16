@@ -8,7 +8,7 @@ It has no live IDE, filesystem, Gradle, database, transport, or aggregate-backen
 - Signals invalidate and conflate; one active cycle settles, refreshes, captures, reconciles,
   verifies, and publishes through narrow ports.
 - New events withdraw readiness without waiting and prevent an older candidate from publishing.
-- Publication is one begin, prepare, commit-or-discard protocol through `:evidence:spi`.
+- Publication is one begin, prepare, commit-or-discard protocol through `:evidence:contract`.
 - Cancellation escapes; finite retry and blocker outcomes retain pending work.
 - Resource admission brackets only expensive initiation; semantic readiness waits and operation
   execution remain outside the controller.
