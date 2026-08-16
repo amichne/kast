@@ -7,6 +7,55 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class ModuleDependencyDirectionTest {
     @Test
+    fun `materialized CLI is active inward only process boundary`() {
+        val architecture = canonical()
+        val module = architecture.modules.getValue(ModuleId.CLI)
+
+        assertEquals(ModuleLifecycle.ACTIVE, module.lifecycle)
+        assertEquals(ModuleRole.CLI, module.role)
+        assertEquals(
+            setOf(
+                ModuleId.KERNEL,
+                ModuleId.PROTOCOL_CONTRACT,
+                ModuleId.PROTOCOL_REGISTRY,
+                ModuleId.PROTOCOL_WIRE,
+            ),
+            module.allowedProjectDependencies,
+        )
+        assertEquals(setOf(ForbiddenEffect.PROCESS_CONTROL), module.allowedEffects)
+        assertTrue(
+            ModuleId.CLI !in architecture.modules
+                .getValue(ModuleId.RUNTIME_COMPOSITION)
+                .allowedProjectDependencies,
+        )
+    }
+
+    @Test
+    fun `CLI rejects outward implementation dependency and foreign effect`() {
+        val definition = KastArchitecturePolicy.definition()
+            .withDependency(ModuleId.CLI, ModuleId.SYMBOL_INTELLIJ)
+            .withEffect(ModuleId.CLI, ForbiddenEffect.JDBC)
+
+        val invalid = assertInstanceOf<ArchitecturePolicyValidation.Invalid>(
+            ArchitecturePolicyValidator.validate(definition),
+        )
+
+        assertTrue(
+            ArchitecturePolicyFailure.ForbiddenModuleRoleDependency(
+                ModuleId.CLI,
+                ModuleId.SYMBOL_INTELLIJ,
+                ModuleRole.INTELLIJ_READ_ADAPTER,
+            ) in invalid.failures,
+        )
+        assertTrue(
+            ArchitecturePolicyFailure.ForbiddenModuleRoleEffect(
+                ModuleId.CLI,
+                ForbiddenEffect.JDBC,
+            ) in invalid.failures,
+        )
+    }
+
+    @Test
     fun `materialized runtime server is active contract-only transport`() {
         val module = canonical().modules.getValue(ModuleId.RUNTIME_SERVER)
 
@@ -128,7 +177,8 @@ class ModuleDependencyDirectionTest {
             .mapTo(mutableSetOf(), ValidatedModulePolicy::id)
         assertEquals(ModuleRole.COMPOSITION, composition.role)
         assertEquals(
-            architecture.modules.keys - legacyHosts - ModuleId.RUNTIME_COMPOSITION,
+            architecture.modules.keys - legacyHosts -
+                setOf(ModuleId.CLI, ModuleId.RUNTIME_COMPOSITION),
             composition.allowedProjectDependencies,
         )
         assertEquals(
@@ -232,6 +282,19 @@ class ModuleDependencyDirectionTest {
         modules = modules.map { module ->
             if (module.id == consumer) {
                 module.copy(allowedProjectDependencies = module.allowedProjectDependencies + dependency)
+            } else {
+                module
+            }
+        },
+    )
+
+    private fun ArchitecturePolicyDefinition.withEffect(
+        moduleId: ModuleId,
+        effect: ForbiddenEffect,
+    ): ArchitecturePolicyDefinition = copy(
+        modules = modules.map { module ->
+            if (module.id == moduleId) {
+                module.copy(allowedEffects = module.allowedEffects + effect)
             } else {
                 module
             }

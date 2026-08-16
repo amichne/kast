@@ -110,6 +110,7 @@ object ArchitecturePolicyValidator {
                 val expectedDependencies = modules.values
                     .filter { module ->
                         module.id != ModuleId.RUNTIME_COMPOSITION &&
+                        module.id != ModuleId.CLI &&
                         module.role != ModuleRole.LEGACY_HOST &&
                         module.lifecycle != ModuleLifecycle.RETIRED
                     }

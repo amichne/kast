@@ -698,6 +698,16 @@
       "allowedEffects": []
     },
     {
+      "id": "CLI",
+      "projectPath": ":cli",
+      "lifecycle": "ACTIVE",
+      "role": "CLI",
+      "cost": "RUNTIME_ORCHESTRATION",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.cli"},
+      "allowedProjectDependencies": [":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire"],
+      "allowedEffects": ["PROCESS_CONTROL"]
+    },
+    {
       "id": "RUNTIME_COMPOSITION",
       "projectPath": ":runtime:composition",
       "lifecycle": "PLANNED",

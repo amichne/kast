@@ -248,6 +248,14 @@ internal object KastPlatformModules {
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_WIRE,
         ),
+        active(
+            ModuleId.CLI,
+            ModuleRole.CLI,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_REGISTRY,
+            ModuleId.PROTOCOL_WIRE,
+        ),
         planned(
             ModuleId.RUNTIME_COMPOSITION,
             ModuleRole.COMPOSITION,
@@ -256,6 +264,7 @@ internal object KastPlatformModules {
                     ModuleId.ANALYSIS_API,
                     ModuleId.ANALYSIS_SERVER,
                     ModuleId.INDEX_STORE,
+                    ModuleId.CLI,
                     ModuleId.INDEXER,
                     ModuleId.RUNTIME_COMPOSITION,
                 ) + cleanSlateOnlyModuleIds()
@@ -316,11 +325,11 @@ internal object KastPlatformModules {
         ModuleId.RUNTIME_COMPOSITION,
         ModuleId.RUNTIME_SERVER,
             -> emptySet()
+        ModuleId.CLI -> setOf(ForbiddenEffect.PROCESS_CONTROL)
         else -> emptySet()
     }
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.CLI,
         ModuleId.SYMBOL_SERVICE,
         ModuleId.RELATION_CONTRACT,
         ModuleId.RELATION_SERVICE,
