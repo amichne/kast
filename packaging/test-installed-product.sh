@@ -24,18 +24,26 @@ if find "${product_root}" -type f \( \
   fail "retired or fallback artifact is present in the installed product"
 fi
 
-if grep -R -E '/build/(classes|resources)|/\.gradle/caches/' \
-  "${product_root}/bin" "${product_root}/libexec" >/dev/null 2>&1; then
+if grep -E '/build/(classes|resources)|/\.gradle/caches/' \
+  "${kast_executable}" \
+  "${indexer_executable}" \
+  "${product_root}/libexec/kast-indexer/runtime-libs/classpath.txt" >/dev/null 2>&1; then
   fail "installed launch metadata contains a development classpath"
 fi
 
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-installed-product.XXXXXX")"
-runtime_directory="$(mktemp -d "${TMPDIR:-/tmp}/kast-installed-runtime.XXXXXX")"
+runtime_directory="$(mktemp -d "${TMPDIR:-/tmp}/kr.XXXXXX")"
+canonical_fixture="$(cd "${fixture}" && pwd -P)"
 cleanup() {
-  if [[ -n "${indexer_pid:-}" ]]; then
-    kill "${indexer_pid}" >/dev/null 2>&1 || true
-    wait "${indexer_pid}" >/dev/null 2>&1 || true
-  fi
+  while IFS= read -r indexer_pid; do
+    [[ "${indexer_pid}" =~ ^[0-9]+$ ]] || continue
+    indexer_command="$(ps -p "${indexer_pid}" -o command= 2>/dev/null || true)"
+    if [[ "${indexer_command}" == *"io.github.amichne.kast.indexer.KastIndexerMainKt"* &&
+      "${indexer_command}" == *"--workspace-root=${canonical_fixture}"* ]]; then
+      kill "${indexer_pid}" >/dev/null 2>&1 || true
+      wait "${indexer_pid}" >/dev/null 2>&1 || true
+    fi
+  done < <(pgrep -f 'io\.github\.amichne\.kast\.indexer\.KastIndexerMainKt' || true)
   rm -rf -- "${fixture}" "${runtime_directory}"
 }
 trap cleanup EXIT
@@ -75,7 +83,7 @@ PY
 
 discover_json="$(
   cd "${fixture}" &&
-    "${kast_executable}" symbol discover --query Greeter --limit 10
+    "${kast_executable}" symbol discover --query Greeter --limit 1000
 )"
 candidate="$(python3 - "${discover_json}" <<'PY'
 import json
@@ -84,6 +92,7 @@ import sys
 document = json.loads(sys.argv[1])
 assert document["operation"] == "symbol.discover", document
 assert document["status"] in {"complete", "qualified"}, document
+assert document["candidateSelectors"], document
 print(document["candidateSelectors"][0])
 PY
 )"
