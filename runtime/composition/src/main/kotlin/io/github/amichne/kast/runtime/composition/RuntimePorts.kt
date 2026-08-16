@@ -4,6 +4,7 @@ import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
+import io.github.amichne.kast.change.intellij.InstalledAddDeclarationIntentCompiler
 import io.github.amichne.kast.change.verify.ChangeVerificationObserver
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceStore
@@ -43,5 +44,5 @@ internal data class InstalledChangePhysicalPorts(
     val sourceWriter: AddDeclarationSourceWriter,
     val sourceRollback: AddDeclarationSourceRollback,
     val recoveryRollback: AddDeclarationRollbackPort,
-    val verificationObserver: ChangeVerificationObserver,
+    val intentCompiler: InstalledAddDeclarationIntentCompiler,
 )
