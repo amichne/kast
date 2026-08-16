@@ -74,13 +74,13 @@ data class RelationBatch private constructor(
             encodedBytes: RelationByteCount,
             examinedWorkUnits: RelationWorkCount,
         ): Refinement<RelationBatch, RelationBatchFailure> {
-            if (facts.any { it.subject !== request.selector }) {
+            if (facts.any { it.subject !== request.subject }) {
                 return Refinement.Rejected(RelationBatchFailure.SUBJECT_MISMATCH)
             }
             if (facts.any { it.meaning != request.meaning }) {
                 return Refinement.Rejected(RelationBatchFailure.MEANING_MISMATCH)
             }
-            if (facts.any { it.generation != request.selector.lease.generation }) {
+            if (facts.any { it.generation != request.subject.lease.generation }) {
                 return Refinement.Rejected(RelationBatchFailure.GENERATION_MISMATCH)
             }
             if (facts.any { it.coverage != RelationFactCoverage.EXACT_COMPILER_CONFIRMED }) {
@@ -303,7 +303,8 @@ fun interface RelationOperations {
      *
      * A complete or qualified result establishes current-generation, exact compiler-grounded
      * one-hop evidence. [RelationReadRejection] is the closed expected failure. Raw selector,
-     * continuation, and budget inputs may enter only before [RelationRequest] construction.
+     * endpoint, continuation, and budget inputs may enter only before [RelationRequest]
+     * construction.
      */
     suspend fun read(request: RelationRequest): RelationReadResult
 }

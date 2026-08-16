@@ -135,7 +135,7 @@ class RelationServiceTest {
         )
 
         assertEquals(0, result.coverage.knownMinimum.value)
-        assertEquals(request.selector.fingerprint, result.coverage.continuation.selector)
+        assertEquals(request.subject.fingerprint, result.coverage.continuation.subject)
     }
 
     private fun emptyBatch(request: RelationRequest): RelationBatch = RelationBatch.create(
