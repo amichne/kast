@@ -5,6 +5,7 @@ import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastArchitectureProjectionTask
 import support.architecture.gradle.ArchitectureVerificationMode
 import support.architecture.gradle.VerifyKastArchitectureTask
+import support.architecture.gradle.VerifyNoLegacyArchitectureTask
 
 plugins {
     base
@@ -48,6 +49,22 @@ val verifyKastArchitecture = registerArchitectureVerification(
     "Verifies the migration graph, compiled effects, and exact migration baseline.",
     ArchitectureVerificationMode.MIGRATION,
 )
+val verifyNoLegacyArchitecture = tasks.register<VerifyNoLegacyArchitectureTask>(
+    "verifyNoLegacyArchitecture",
+) {
+    group = "verification"
+    description = "Rejects every legacy aggregate, backend, compatibility route, and authority."
+    rootDirectory.set(layout.projectDirectory)
+    reportFile.set(
+        layout.buildDirectory.file("reports/kast-architecture/verifyNoLegacyArchitecture.txt"),
+    )
+    observedLegacyModuleRoots.set(
+        providers.provider {
+            listOf("analysis-api", "analysis-server", "index-store")
+                .filter { root -> layout.projectDirectory.dir(root).asFile.isDirectory }
+        },
+    )
+}
 val architectureVerifications = listOf(
     verifyKastModuleGraph,
     verifyForbiddenEffects,
@@ -58,6 +75,16 @@ subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
         val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
+        verifyNoLegacyArchitecture.configure {
+            observedProjectPaths.add(modulePath)
+            productionSourceFiles.from(
+                mainSourceSet.map { sourceSet ->
+                    sourceSet.allSource.matching {
+                        include("**/*.java", "**/*.kt")
+                    }
+                },
+            )
+        }
         architectureVerifications.forEach { verification ->
             verification.configure {
                 observedProjectPaths.add(modulePath)
