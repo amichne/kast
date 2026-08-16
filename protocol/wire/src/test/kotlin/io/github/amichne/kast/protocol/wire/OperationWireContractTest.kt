@@ -61,7 +61,10 @@ class OperationWireContractTest {
         canonicalBindings().forEach { binding ->
             val request = TestRequest("request:${binding.operation.id.value}")
             val encodedRequest = binding.encodeRequest(request).encodedDocument()
-            assertEquals(WireDecoding.Decoded(request), binding.decodeRequest(encodedRequest))
+            val admittedRequest = WireRequestEnvelope.admit(encodedRequest).admittedRequest()
+            assertEquals(binding.schema, admittedRequest.schema)
+            assertEquals(binding.operation, admittedRequest.operation)
+            assertEquals(WireDecoding.Decoded(request), binding.decodeRequest(admittedRequest))
 
             val evidence = EvidenceEnvelope(
                 operation = binding.operation.id,
@@ -86,9 +89,11 @@ class OperationWireContractTest {
         val encoded = binding.encodeRequest(TestRequest("request")).encodedDocument()
         val unknownSchema = schemaIdentity("kast.unknown.v1")
         val withUnknownSchema = encoded.replace(binding.schema.value, unknownSchema.value)
+        val admittedUnknownSchema =
+            WireRequestEnvelope.admit(withUnknownSchema).admittedRequest()
         assertEquals(
             WireDecoding.Rejected(WireFailure.UnknownSchema(unknownSchema)),
-            binding.decodeRequest(withUnknownSchema),
+            binding.decodeRequest(admittedUnknownSchema),
         )
 
         val unknownOperation = "symbol.missing"
@@ -97,10 +102,43 @@ class OperationWireContractTest {
             "\"operation\":\"$unknownOperation\"",
         )
         assertEquals(
-            WireDecoding.Rejected(
+            WireRequestAdmission.Rejected(
                 WireFailure.UnknownOperation(operationId = operationId(unknownOperation)),
             ),
-            binding.decodeRequest(withUnknownOperation),
+            WireRequestEnvelope.admit(withUnknownOperation),
+        )
+    }
+
+    @Test
+    fun `request admission rejects outcome bodies before dispatch`() {
+        val binding = canonicalBindings().first()
+        val evidence = EvidenceEnvelope(
+            operation = binding.operation.id,
+            generation = EvidenceGeneration.parse(17).refinedValue(),
+            payload = TestResult("result"),
+        )
+        val outcome = binding.encodeOutcome(OperationOutcome.Complete(evidence)).encodedDocument()
+
+        assertEquals(
+            WireRequestAdmission.Rejected(
+                WireFailure.UnexpectedBody(
+                    expected = setOf(WireBodyKind.REQUEST),
+                    observed = WireBodyKind.COMPLETE,
+                ),
+            ),
+            WireRequestEnvelope.admit(outcome),
+        )
+    }
+
+    @Test
+    fun `only the matching binding decodes an admitted request`() {
+        val (expectedBinding, wrongBinding) = canonicalBindings().take(2)
+        val encoded = expectedBinding.encodeRequest(TestRequest("request")).encodedDocument()
+        val admitted = WireRequestEnvelope.admit(encoded).admittedRequest()
+
+        assertEquals(
+            WireDecoding.Rejected(WireFailure.UnknownSchema(expectedBinding.schema)),
+            wrongBinding.decodeRequest(admitted),
         )
     }
 
@@ -157,6 +195,11 @@ class OperationWireContractTest {
     private fun WireEncoding.encodedDocument(): String = when (this) {
         is WireEncoding.Encoded -> document
         is WireEncoding.Rejected -> error("Expected encoded document, got $failure")
+    }
+
+    private fun WireRequestAdmission.admittedRequest(): AdmittedWireRequest = when (this) {
+        is WireRequestAdmission.Admitted -> request
+        is WireRequestAdmission.Rejected -> error("Expected admitted request, got $failure")
     }
 
     @Serializable

@@ -2,7 +2,6 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.kernel.OperationId
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -14,16 +13,8 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-
-private val wireJson = Json {
-    encodeDefaults = true
-    explicitNulls = false
-}
 
 /** A typed operation definition paired with generated serializers for every wire value. */
 class OperationWireBinding<
@@ -49,24 +40,20 @@ class OperationWireBinding<
     }
 
     /**
-     * Proof transition: `String -> WireDecoding<Request>`.
+     * Proof transition: `AdmittedWireRequest -> WireDecoding<Request>`.
      *
-     * Establishes this binding's schema and canonical operation identity before returning a
-     * generated-serializer-decoded request. [WireFailure] is the closed expected failure. Raw
-     * request fields may leave this type only through the operation handler boundary.
+     * Establishes that the admitted request names this binding's exact schema and canonical
+     * operation before returning a generated-serializer-decoded request. [WireFailure] is the
+     * closed expected failure. Raw request fields may leave this type only through the operation
+     * handler boundary.
      */
-    fun decodeRequest(document: String): WireDecoding<Request> {
-        val body = when (val admission = decodeAndAdmit(document)) {
-            is WireEnvelopeAdmission.Admitted -> admission.body
-            is WireEnvelopeAdmission.Rejected -> return WireDecoding.Rejected(admission.failure)
+    fun decodeRequest(request: AdmittedWireRequest): WireDecoding<Request> {
+        when (val admission = admitBindingIdentity(request.schema, request.operation)) {
+            BindingIdentityAdmission.Admitted -> Unit
+            is BindingIdentityAdmission.Rejected ->
+                return WireDecoding.Rejected(admission.failure)
         }
-        return when (body) {
-            is WireBodyDocument.Request ->
-                decodeValue(serializers.request, body.value, WireValueRole.REQUEST)
-            else -> WireDecoding.Rejected(
-                WireFailure.UnexpectedBody(setOf(WireBodyKind.REQUEST), body.kind()),
-            )
-        }
+        return decodeValue(serializers.request, request.value, WireValueRole.REQUEST)
     }
 
     fun encodeOutcome(
@@ -89,10 +76,16 @@ class OperationWireBinding<
     fun decodeOutcome(
         document: String,
     ): WireDecoding<OperationOutcome<Result, Qualification, Rejection>> {
-        val body = when (val admission = decodeAndAdmit(document)) {
-            is WireEnvelopeAdmission.Admitted -> admission.body
+        val envelope = when (val admission = admitWireEnvelope(document)) {
+            is WireEnvelopeAdmission.Admitted -> admission.envelope
             is WireEnvelopeAdmission.Rejected -> return WireDecoding.Rejected(admission.failure)
         }
+        when (val admission = admitBindingIdentity(envelope.schema, envelope.operation)) {
+            BindingIdentityAdmission.Admitted -> Unit
+            is BindingIdentityAdmission.Rejected ->
+                return WireDecoding.Rejected(admission.failure)
+        }
+        val body = envelope.body
         return when (body) {
             is WireBodyDocument.Complete -> decodeComplete(body)
             is WireBodyDocument.Qualified -> decodeQualified(body)
@@ -224,47 +217,25 @@ class OperationWireBinding<
     }
 
     /**
-     * Proof transition: `String -> WireEnvelopeAdmission`.
+     * Proof transition: `SchemaIdentity + CanonicalOperation -> BindingIdentityAdmission`.
      *
-     * Establishes a structurally valid envelope carrying this binding's refined schema and
-     * canonical operation. [WireFailure] is the closed expected failure. Raw envelope values stay
-     * inside the wire module.
+     * Establishes this binding's exact schema and operation pair. [WireFailure.UnknownSchema] and
+     * [WireFailure.UnexpectedOperation] are the closed expected failures. Raw identity extraction
+     * is permitted only at [WireRequestEnvelope] and outcome-envelope admission.
      */
-    private fun decodeAndAdmit(document: String): WireEnvelopeAdmission {
-        val envelope = try {
-            wireJson.decodeFromString(WireEnvelopeDocument.serializer(), document)
-        } catch (_: SerializationException) {
-            return WireEnvelopeAdmission.Rejected(WireFailure.MalformedEnvelope)
-        }
-
-        val observedSchema = when (val refined = SchemaIdentity.parse(envelope.schema)) {
-            is Refinement.Refined -> refined.value
-            is Refinement.Rejected -> return WireEnvelopeAdmission.Rejected(
-                WireFailure.InvalidSchemaIdentity(refined.failure),
-            )
-        }
+    private fun admitBindingIdentity(
+        observedSchema: SchemaIdentity,
+        observedOperation: CanonicalOperation,
+    ): BindingIdentityAdmission {
         if (observedSchema != schema) {
-            return WireEnvelopeAdmission.Rejected(WireFailure.UnknownSchema(observedSchema))
-        }
-
-        val operationId = when (val refined = OperationId.parse(envelope.operation)) {
-            is Refinement.Refined -> refined.value
-            is Refinement.Rejected -> return WireEnvelopeAdmission.Rejected(
-                WireFailure.InvalidOperationIdentity(refined.failure),
-            )
-        }
-        val observedOperation = when (val resolution = CanonicalOperation.resolve(operationId)) {
-            is CanonicalOperationResolution.Known -> resolution.operation
-            is CanonicalOperationResolution.Unknown -> return WireEnvelopeAdmission.Rejected(
-                WireFailure.UnknownOperation(resolution.id),
-            )
+            return BindingIdentityAdmission.Rejected(WireFailure.UnknownSchema(observedSchema))
         }
         if (observedOperation != operation) {
-            return WireEnvelopeAdmission.Rejected(
+            return BindingIdentityAdmission.Rejected(
                 WireFailure.UnexpectedOperation(operation, observedOperation),
             )
         }
-        return WireEnvelopeAdmission.Admitted(envelope.body)
+        return BindingIdentityAdmission.Admitted
     }
 
     private fun encodeEnvelope(body: WireBodyDocument): WireEncoding = try {
@@ -330,14 +301,12 @@ private sealed interface WireValueEncoding {
     ) : WireValueEncoding
 }
 
-private sealed interface WireEnvelopeAdmission {
-    data class Admitted(
-        val body: WireBodyDocument,
-    ) : WireEnvelopeAdmission
+private sealed interface BindingIdentityAdmission {
+    data object Admitted : BindingIdentityAdmission
 
     data class Rejected(
         val failure: WireFailure,
-    ) : WireEnvelopeAdmission
+    ) : BindingIdentityAdmission
 }
 
 private sealed interface EvidenceOperationAdmission {
@@ -346,55 +315,4 @@ private sealed interface EvidenceOperationAdmission {
     data class Rejected(
         val failure: WireFailure,
     ) : EvidenceOperationAdmission
-}
-
-@Serializable
-private data class WireEnvelopeDocument(
-    val schema: String,
-    val operation: String,
-    val body: WireBodyDocument,
-)
-
-@Serializable
-private sealed interface WireBodyDocument {
-    @Serializable
-    @SerialName("request")
-    data class Request(
-        val value: JsonElement,
-    ) : WireBodyDocument
-
-    @Serializable
-    @SerialName("complete")
-    data class Complete(
-        val generation: Long,
-        val result: JsonElement,
-    ) : WireBodyDocument
-
-    @Serializable
-    @SerialName("qualified")
-    data class Qualified(
-        val generation: Long,
-        val result: JsonElement,
-        val qualification: JsonElement,
-    ) : WireBodyDocument
-
-    @Serializable
-    @SerialName("rejected")
-    data class Rejected(
-        val rejection: JsonElement,
-    ) : WireBodyDocument
-}
-
-private fun WireBodyDocument.kind(): WireBodyKind = when (this) {
-    is WireBodyDocument.Request -> WireBodyKind.REQUEST
-    is WireBodyDocument.Complete -> WireBodyKind.COMPLETE
-    is WireBodyDocument.Qualified -> WireBodyKind.QUALIFIED
-    is WireBodyDocument.Rejected -> WireBodyKind.REJECTED
-}
-
-private fun WireBodyDocument.valueRole(): WireValueRole = when (this) {
-    is WireBodyDocument.Request -> WireValueRole.REQUEST
-    is WireBodyDocument.Complete -> WireValueRole.RESULT
-    is WireBodyDocument.Qualified -> WireValueRole.RESULT
-    is WireBodyDocument.Rejected -> WireValueRole.REJECTION
 }
