@@ -134,6 +134,20 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_CONTRACT,
         ),
         active(
+            ModuleId.TRAVERSAL_CONTRACT,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
+            ModuleId.TRAVERSAL_SERVICE,
+            ModuleRole.SERVICE,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.TRAVERSAL_CONTRACT,
+        ),
+        active(
             ModuleId.PROTOCOL_CONTINUATION,
             ModuleRole.SERVICE,
             ModuleId.KERNEL,
@@ -359,8 +373,6 @@ internal object KastPlatformModules {
     }
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.TRAVERSAL_CONTRACT,
-        ModuleId.TRAVERSAL_SERVICE,
         ModuleId.DIAGNOSTIC_CONTRACT,
         ModuleId.DIAGNOSTIC_SERVICE,
         ModuleId.DIAGNOSTIC_INTELLIJ,
