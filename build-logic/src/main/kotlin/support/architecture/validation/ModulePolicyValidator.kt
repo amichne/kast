@@ -69,7 +69,8 @@ internal object ModulePolicyValidator {
      * Proof transition: `(ModulePolicy, declared ModulePolicy graph) -> ValidatedModulePolicy`.
      *
      * Establishes that the module's direct dependencies, registry direction, independent dependency
-     * costs, and allowed effects remain within its declared role boundary.
+     * costs, and allowed effects remain within its declared role boundary or the closed KCS-017
+     * collapsed-module edge set.
      * [ModulePolicyValidation.Invalid] is the closed expected failure. Raw module policy
      * construction is permitted only in the canonical architecture definition and policy tests.
      */
@@ -82,7 +83,11 @@ internal object ModulePolicyValidator {
             module.allowedProjectDependencies.forEach { dependencyId ->
                 val dependency = modules[dependencyId] ?: return@forEach
                 val dependencyBoundary = ModuleRoleBoundaries.forRole(dependency.role)
-                if (dependency.role !in boundary.allowedDependencyRoles) {
+                val observation = ProjectDependencyObservation(module.id, dependency.id)
+                if (
+                    dependency.role !in boundary.allowedDependencyRoles &&
+                    observation !in KastCleanSlateCrossRoleDependencies.all
+                ) {
                     add(
                         ArchitecturePolicyFailure.ForbiddenModuleRoleDependency(
                             module.id,
@@ -120,6 +125,14 @@ internal object ModulePolicyValidator {
             ModulePolicyValidation.Invalid(failures)
         }
     }
+}
+
+internal object KastCleanSlateCrossRoleDependencies {
+    val all: Set<ProjectDependencyObservation> = setOf(
+        ProjectDependencyObservation(ModuleId.CHANGE_APPLY, ModuleId.CHANGE_RECOVERY),
+        ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_APPLY),
+        ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_RECOVERY),
+    )
 }
 
 private object ModuleRoleBoundaries {
