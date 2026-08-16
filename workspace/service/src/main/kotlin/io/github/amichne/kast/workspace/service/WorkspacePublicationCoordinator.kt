@@ -8,6 +8,7 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationPreparation
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateReconciliation
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
@@ -106,6 +107,69 @@ class WorkspacePublicationCoordinator(
             }
         }
         return commitIfCurrent(cycle, prepared)
+    }
+
+    /**
+     * Proof transition: `SemanticReadLease -> ResultingWorkspacePublicationResult`.
+     *
+     * Establishes that reconciliation begins only from the exact currently published lease and
+     * returns only a same-root, strictly newer complete publication. Expected stale, unavailable,
+     * invalidated, blocked, or invalid-result states are closed by
+     * [ResultingWorkspacePublicationFailure]. Raw workspace effects remain in the injected ports.
+     */
+    fun reconcileAfter(prior: SemanticReadLease): ResultingWorkspacePublicationResult {
+        when (val beginning = beginResultingCycle(prior)) {
+            ResultingCycleBeginning.Started -> Unit
+            is ResultingCycleBeginning.Rejected ->
+                return ResultingWorkspacePublicationResult.Rejected(beginning.failure)
+        }
+        return when (val run = reconcile()) {
+            is WorkspacePublicationRun.Published -> when (val admitted =
+                ResultingWorkspacePublication.admit(prior, run.workspace)
+            ) {
+                is io.github.amichne.kast.kernel.Refinement.Refined ->
+                    ResultingWorkspacePublicationResult.Published(admitted.value)
+                is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                    ResultingWorkspacePublicationResult.Rejected(
+                        ResultingWorkspacePublicationFailure.InvalidResult(admitted.failure),
+                    )
+            }
+            WorkspacePublicationRun.NoWork -> ResultingWorkspacePublicationResult.Rejected(
+                ResultingWorkspacePublicationFailure.NoPublication,
+            )
+            WorkspacePublicationRun.Invalidated -> ResultingWorkspacePublicationResult.Rejected(
+                ResultingWorkspacePublicationFailure.Invalidated,
+            )
+            is WorkspacePublicationRun.Blocked -> ResultingWorkspacePublicationResult.Rejected(
+                ResultingWorkspacePublicationFailure.Blocked(run.blocker),
+            )
+        }
+    }
+
+    private fun beginResultingCycle(prior: SemanticReadLease): ResultingCycleBeginning = synchronized(lock) {
+        when (val current = runtimeState) {
+            is WorkspaceRuntimeState.Ready -> if (current.workspace.readLease == prior) {
+                observedRevision = observedRevision.next()
+                pendingSignals += WorkspaceSignal.Source
+                runtimeState = WorkspaceRuntimeState.Reconciling
+                ResultingCycleBeginning.Started
+            } else {
+                ResultingCycleBeginning.Rejected(
+                    ResultingWorkspacePublicationFailure.PriorPublicationMismatch(
+                        prior,
+                        current.workspace.readLease,
+                    ),
+                )
+            }
+            WorkspaceRuntimeState.Absent,
+            WorkspaceRuntimeState.Starting,
+            WorkspaceRuntimeState.Reconciling,
+            is WorkspaceRuntimeState.Blocked,
+            WorkspaceRuntimeState.Stopping,
+                -> ResultingCycleBeginning.Rejected(
+                    ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable,
+                )
+        }
     }
 
     private fun beginCycle(): CycleBeginning = synchronized(lock) {
@@ -266,4 +330,12 @@ private sealed interface CycleBeginning {
 private enum class CycleCurrency {
     Current,
     Invalidated,
+}
+
+private sealed interface ResultingCycleBeginning {
+    data object Started : ResultingCycleBeginning
+
+    data class Rejected(
+        val failure: ResultingWorkspacePublicationFailure,
+    ) : ResultingCycleBeginning
 }
