@@ -2,80 +2,42 @@
 set -Eeuo pipefail
 
 RELEASES_URL="${KAST_RELEASES_URL:-https://github.com/amichne/kast/releases}"
-RELEASES_API_URL="${KAST_RELEASES_API_URL:-https://api.github.com/repos/amichne/kast/releases}"
 setup_scratch=""
+install_candidate=""
 
 cleanup() {
+  if [[ -n "$install_candidate" && -d "$install_candidate" ]]; then
+    find "$install_candidate" -depth -delete
+  fi
   if [[ -n "$setup_scratch" && -d "$setup_scratch" ]]; then
     find "$setup_scratch" -depth -delete
   fi
 }
 trap cleanup EXIT
 
-kast_repository_root() {
-  local script_directory repository_root
-  command -v git >/dev/null 2>&1 || return 1
-  script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)" || return 1
-  repository_root="$(git -C "$script_directory" rev-parse --show-toplevel 2>/dev/null)" || return 1
-  [[ "$repository_root" == "$script_directory" ]] || return 1
-  [[ -x "$repository_root/gradlew" && -f "$repository_root/settings.gradle.kts" ]] || return 1
-  git -C "$repository_root" ls-files --error-unmatch \
-    install.sh gradlew settings.gradle.kts >/dev/null 2>&1 || return 1
-  grep -Eq '^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*"kast"[[:space:]]*$' \
-    "$repository_root/settings.gradle.kts" || return 1
-  printf '%s\n' "$repository_root"
-}
-
 usage() {
   cat >&2 <<'USAGE'
-Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>] [--snapshot] [--force]
-                  [--harness <codex|claude|copilot|none>]...
+Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>] [--force]
 
-Downloads one platform bundle when --source is omitted, then delegates every
-installation write to:
-
-  libexec/kastctl setup --source <bundle>
+Installs the latest portable Kast release. Exact-version downloads are checked
+against the SHA-256 sidecar published with the release before they are installed.
 
 Options:
-  --harness HARNESS  Install resources for one agent harness. Repeatable.
-                     Defaults to every detected harness; none disables it.
-  --source PATH      Install a local bundle directory or tar.gz archive.
+  --source PATH      Install a local portable bundle directory or tar.gz archive.
   --version VERSION  Install an exact release instead of the latest release.
-  --snapshot         Install the latest snapshot build.
-  --force            Remove prior Kast-owned state, configuration, and selected
-                     harness resources before reinstalling.
+  --force            Replace an existing installation of the selected version.
   -h, --help         Show this help.
 
 Environment:
-  KAST_HOME          Active install root. Defaults to ~/.local/share/kast.
+  KAST_HOME          Install root. Defaults to ~/.local/share/kast.
   KAST_RELEASES_URL  Release base URL. Defaults to the Kast GitHub releases.
-  KAST_RELEASES_API_URL
-                     Releases API used to resolve the latest snapshot.
 USAGE
-  if kast_repository_root >/dev/null; then
-    cat >&2 <<'USAGE'
-
-Repository development:
-  ./install.sh --development [--clean] [--harness <codex|claude|copilot|none>]...
-
-  --development  Build, install, and ready this Kast Git worktree.
-  --clean        Reinstall Kast-owned state; preserve build caches.
-USAGE
-  fi
 }
 
 supports_color() {
   [[ -z "${NO_COLOR:-}" ]] || return 1
   [[ "${CLICOLOR_FORCE:-}" != "1" ]] || return 0
   [[ -t 2 && "${TERM:-}" != "dumb" ]]
-}
-
-supports_unicode() {
-  [[ "${KAST_ASCII:-}" != "1" ]] || return 1
-  case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
-    C|POSIX) return 1 ;;
-    *) return 0 ;;
-  esac
 }
 
 colorize() {
@@ -88,44 +50,17 @@ colorize() {
   fi
 }
 
-ui_glyph() {
-  local kind="$1"
-  if supports_unicode; then
-    case "$kind" in
-      step) printf '◆' ;;
-      success) printf '✓' ;;
-      warning) printf '!' ;;
-      error) printf '×' ;;
-      *) printf '›' ;;
-    esac
-  else
-    case "$kind" in
-      step) printf '*' ;;
-      success) printf '+' ;;
-      warning) printf '!' ;;
-      error) printf 'x' ;;
-      *) printf '>' ;;
-    esac
-  fi
-}
-
 ui_line() {
-  local kind="$1" color="$2"
+  local glyph="$1" color="$2"
   shift 2
-  printf '  %s %s\n' "$(colorize "$color" "$(ui_glyph "$kind")")" "$*" >&2
+  printf '  %s %s\n' "$(colorize "$color" "$glyph")" "$*" >&2
 }
-ui_step() { ui_line step 36 "$*"; }
-ui_success() { ui_line success 32 "$*"; }
-ui_warning() { ui_line warning 33 "$*"; }
-ui_info() { ui_line info 2 "$*"; }
-ui_detail() { printf '    %s\n' "$(colorize 2 "$*")" >&2; }
-
-print_banner() {
-  printf '\n  %s\n\n' "$(colorize '1;36' "$(ui_glyph step) KAST INSTALLER")" >&2
-}
+ui_step() { ui_line '*' 36 "$*"; }
+ui_success() { ui_line '+' 32 "$*"; }
+ui_warning() { ui_line '!' 33 "$*"; }
 
 die() {
-  ui_line error 31 "$*"
+  ui_line 'x' 31 "$*"
   exit 1
 }
 
@@ -133,269 +68,177 @@ require() {
   command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
 }
 
-platform() {
-  local os arch
-  os="$(uname -s)"
-  arch="$(uname -m)"
-  case "${os}:${arch}" in
-    Darwin:x86_64) printf 'macos-x64\n' ;;
-    Darwin:arm64|Darwin:aarch64) printf 'macos-arm64\n' ;;
-    Linux:x86_64|Linux:amd64) printf 'linux-x64\n' ;;
-    Linux:arm64|Linux:aarch64) printf 'linux-arm64\n' ;;
-    *) die "unsupported platform: ${os} ${arch}" ;;
-  esac
-}
-
 latest_version() {
-  local effective
+  local effective version
   effective="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "${RELEASES_URL}/latest")"
-  printf '%s\n' "${effective##*/}"
+  version="${effective##*/}"
+  valid_version "$version" || die "latest release has an invalid version: $version"
+  printf '%s\n' "$version"
 }
 
-latest_snapshot_tag() {
-  local tag
-  tag="$(
-    curl -fsSL -H 'Accept: application/vnd.github+json' "$RELEASES_API_URL" \
-      | awk '
-          function finish_release() {
-            if (release_tag !~ /^snapshot-/) {
-              return
-            }
-            if (release_draft != "false" || release_prerelease != "true") {
-              return
-            }
-            if (release_published_at == "") {
-              return
-            }
-            release_key = "T" release_published_at
-            best_key = "T" best_published_at
-            release_tag_key = "T" release_tag
-            best_tag_key = "T" best_tag
-            if (best_published_at == "" ||
-                release_key > best_key ||
-                (release_key == best_key && release_tag_key > best_tag_key)) {
-              best_tag = release_tag
-              best_published_at = release_published_at
-            }
-          }
-
-          function reset_release() {
-            release_tag = ""
-            release_draft = ""
-            release_prerelease = ""
-            release_published_at = ""
-          }
-
-          /"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"/ {
-            finish_release()
-            reset_release()
-            release_tag = $0
-            sub(/^.*"tag_name"[[:space:]]*:[[:space:]]*"/, "", release_tag)
-            sub(/".*$/, "", release_tag)
-          }
-
-          release_tag != "" && /"draft"[[:space:]]*:[[:space:]]*(true|false)/ {
-            release_draft = $0
-            sub(/^.*"draft"[[:space:]]*:[[:space:]]*/, "", release_draft)
-            sub(/[,}].*$/, "", release_draft)
-          }
-
-          release_tag != "" && /"prerelease"[[:space:]]*:[[:space:]]*(true|false)/ {
-            release_prerelease = $0
-            sub(/^.*"prerelease"[[:space:]]*:[[:space:]]*/, "", release_prerelease)
-            sub(/[,}].*$/, "", release_prerelease)
-          }
-
-          release_tag != "" && /"published_at"[[:space:]]*:/ {
-            release_published_at = $0
-            sub(/^.*"published_at"[[:space:]]*:[[:space:]]*/, "", release_published_at)
-            if (release_published_at ~ /^null/) {
-              release_published_at = ""
-            } else {
-              sub(/^"/, "", release_published_at)
-              sub(/".*$/, "", release_published_at)
-            }
-          }
-
-          END {
-            finish_release()
-            if (best_tag != "") {
-              print best_tag
-            }
-          }
-        '
-  )"
-  [[ -n "$tag" ]] || die 'no published snapshot is available'
-  printf '%s\n' "$tag"
+valid_version() {
+  [[ "$1" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
 }
 
-download_artifact() {
+download() {
   local label="$1" url="$2" destination="$3"
   ui_step "Downloading ${label}"
   curl -fsSL --output "$destination" "$url"
-  ui_success "${label} downloaded"
 }
 
-run_quiet() {
-  local output_file="${setup_scratch}/command-output"
-  if "$@" >"$output_file" 2>&1; then
-    return 0
+sha256() {
+  local archive="$1"
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$archive" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$archive" | awk '{print $1}'
+  else
+    die 'missing required command: shasum or sha256sum'
   fi
-  [[ ! -s "$output_file" ]] || sed -n '1,160p' "$output_file" >&2
-  return 1
 }
 
-install_agent_harnesses() {
-  local replace="$1"
-  shift
-  (($# > 0)) || return 0
-  local agent_path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
-  local harness
-  local -a args=(__internal resources install)
-  ((replace == 0)) || args+=(--force)
-  [[ -x "$agent_path" ]] || die "installed Kast agent CLI is missing: $agent_path"
-  for harness in "$@"; do
-    args+=(--harness "$harness")
-  done
-  ui_step "Connecting agent harnesses"
-  "$agent_path" "${args[@]}" || die "agent harness installation failed"
-  ui_success "Agent harnesses connected"
+verify_checksum() {
+  local archive="$1" checksum_file="$2" archive_name="$3"
+  local expected_digest expected_name extra actual_digest line_count
+  line_count="$(wc -l <"$checksum_file" | tr -d '[:space:]')"
+  [[ "$line_count" == 1 ]] || die "invalid checksum sidecar for $archive_name"
+  read -r expected_digest expected_name extra <"$checksum_file"
+  [[ -z "${extra:-}" ]] || die "invalid checksum sidecar for $archive_name"
+  expected_name="${expected_name#\*}"
+  [[ "$expected_digest" =~ ^[0-9a-fA-F]{64}$ && "$expected_name" == "$archive_name" ]] \
+    || die "invalid checksum sidecar for $archive_name"
+  actual_digest="$(sha256 "$archive")"
+  expected_digest="$(printf '%s' "$expected_digest" | tr '[:upper:]' '[:lower:]')"
+  [[ "$actual_digest" == "$expected_digest" ]] || die "checksum mismatch for $archive_name"
+  ui_success 'Checksum verified'
 }
 
-finish_install() {
-  local setup_profile="${1:-standard}"
-  local bin_dir="${HOME}/.local/bin"
-  local install_root="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin"
-  ui_success "Kast is ready"
-  ui_detail "${bin_dir}/kast -> ${install_root}/kast"
-  if [[ "$setup_profile" == development ]]; then
-    ui_detail "${bin_dir}/kastctl -> ${KAST_HOME:-${HOME}/.local/share/kast}/current/libexec/kastctl"
+infer_version() {
+  local source="$1" source_name
+  source_name="${source%/}"
+  source_name="${source_name##*/}"
+  case "$source_name" in
+    kast-v[0-9]*.[0-9]*.[0-9]*) printf '%s\n' "${source_name#kast-}" ;;
+    kast-portable-v[0-9]*.[0-9]*.[0-9]*.tar.gz)
+      source_name="${source_name#kast-portable-}"
+      printf '%s\n' "${source_name%.tar.gz}"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+extract_bundle() {
+  local archive="$1" extraction_root="$2" discovered_root="" root_count=0 entry
+  require tar
+  mkdir -p "$extraction_root"
+  ui_step 'Extracting Kast bundle'
+  tar -xzf "$archive" -C "$extraction_root"
+  while IFS= read -r entry; do
+    discovered_root="$entry"
+    root_count=$((root_count + 1))
+  done < <(find "$extraction_root" -mindepth 1 -maxdepth 1 -type d -print)
+  [[ "$root_count" == 1 ]] || die "bundle archive must contain exactly one root directory: $archive"
+  [[ -z "$(find "$extraction_root" -mindepth 1 -maxdepth 1 ! -type d -print -quit)" ]] \
+    || die "bundle archive contains content outside its root directory: $archive"
+  printf '%s\n' "$discovered_root"
+}
+
+validate_bundle() {
+  local bundle_root="$1"
+  [[ -x "$bundle_root/bin/kast" ]] || die "bundle agent CLI is missing: $bundle_root/bin/kast"
+  [[ -x "$bundle_root/libexec/kast-indexer/kast-indexer" ]] \
+    || die "bundle indexer is missing: $bundle_root/libexec/kast-indexer/kast-indexer"
+}
+
+atomic_link() {
+  local link_target="$1" link_path="$2" temporary_link
+  temporary_link="${link_path}.kast-install.$$"
+  [[ ! -e "$temporary_link" && ! -L "$temporary_link" ]] \
+    || die "temporary activation path already exists: $temporary_link"
+  ln -s "$link_target" "$temporary_link"
+  mv -f "$temporary_link" "$link_path"
+}
+
+install_bundle() {
+  local bundle_root="$1" version="$2" force="$3"
+  local install_root release_root active_path bin_directory launcher
+  install_root="${KAST_HOME:-${HOME:?HOME must be set}/.local/share/kast}"
+  release_root="$install_root/releases/$version"
+  active_path="$install_root/current"
+  bin_directory="${HOME:?HOME must be set}/.local/bin"
+  launcher="$bin_directory/kast"
+
+  [[ ! -e "$active_path" || -L "$active_path" ]] || die "activation path is not a symlink: $active_path"
+  [[ ! -e "$launcher" || -L "$launcher" ]] || die "launcher path is not a symlink: $launcher"
+  mkdir -p "$install_root/releases" "$bin_directory"
+
+  if [[ -e "$release_root" || -L "$release_root" ]]; then
+    ((force == 1)) || die "Kast $version is already installed; use --force to replace it"
+    find "$release_root" -depth -delete
   fi
-  if [[ ":${PATH:-}:" != *":${bin_dir}:"* ]]; then
-    ui_warning "${bin_dir} is not on PATH"
-    ui_detail 'export PATH="$HOME/.local/bin:$PATH"'
+
+  install_candidate="$(mktemp -d "$install_root/.install-${version}.XXXXXX")"
+  cp -R "$bundle_root/." "$install_candidate"
+  validate_bundle "$install_candidate"
+  mv "$install_candidate" "$release_root"
+  install_candidate=""
+
+  atomic_link "releases/$version" "$active_path"
+  atomic_link "$install_root/current/bin/kast" "$launcher"
+  ui_success "Kast $version installed"
+  printf '    %s -> %s\n' "$launcher" "$install_root/current/bin/kast" >&2
+  if [[ ":${PATH:-}:" != *":${bin_directory}:"* ]]; then
+    ui_warning "$bin_directory is not on PATH"
+    # This is a command for the user's shell.
+    # shellcheck disable=SC2016
+    printf '    export PATH="$HOME/.local/bin:$PATH"\n' >&2
   fi
 }
 
 main() {
-  local source="" version="" artifact_version="" bundle_root="" bundle_archive="" platform_id=""
-  local force=0 snapshot=0 development=0 development_clean=0 repository_root="" active_agent=""
-  local harness requested none_selected=0 already_selected
-  local -a setup_args=() gradle_args=() requested_harnesses=() selected_harnesses=()
+  local source="" version="" bundle_root="" bundle_archive="" checksum_file=""
+  local archive_name release_url inferred_version="" force=0
 
-  while [[ $# -gt 0 ]]; do
+  while (($# > 0)); do
     case "$1" in
       --source) [[ $# -ge 2 ]] || die '--source requires a value'; source="$2"; shift 2 ;;
       --version) [[ $# -ge 2 ]] || die '--version requires a value'; version="$2"; shift 2 ;;
-      --snapshot) snapshot=1; shift ;;
       --force) force=1; shift ;;
-      --development) development=1; shift ;;
-      --clean) development_clean=1; shift ;;
-      --harness)
-        [[ $# -ge 2 ]] || die '--harness requires a value'
-        case "$2" in
-          codex|claude|copilot|none) requested_harnesses+=("$2") ;;
-          *) die "unknown harness: $2" ;;
-        esac
-        shift 2
-        ;;
       -h|--help|help) usage; return 0 ;;
       *) die "unknown argument: $1" ;;
     esac
   done
 
-  if ((development == 1 || development_clean == 1)); then
-    repository_root="$(kast_repository_root)" \
-      || die 'development options are available only from the Kast Git repository'
-  fi
-  ((development_clean == 0 || development == 1)) || die '--clean requires --development'
-  if ((development == 1)) && { [[ -n "$source" || -n "$version" ]] || ((snapshot == 1 || force == 1)); }; then
-    die '--development cannot be combined with release installer options'
-  fi
-  if ((snapshot == 1)) && [[ -n "$source" || -n "$version" ]]; then
-    die '--snapshot cannot be combined with --source or --version'
-  fi
-
-  if ((${#requested_harnesses[@]} == 0)); then
-    for harness in codex claude copilot; do
-      command -v "$harness" >/dev/null 2>&1 && selected_harnesses+=("$harness")
-    done
-  else
-    for harness in "${requested_harnesses[@]}"; do
-      if [[ "$harness" == "none" ]]; then
-        none_selected=1
-        continue
-      fi
-      already_selected=0
-      for requested in "${selected_harnesses[@]}"; do
-        [[ "$requested" == "$harness" ]] && already_selected=1
-      done
-      ((already_selected == 1)) || selected_harnesses+=("$harness")
-    done
-    if ((none_selected == 1 && ${#selected_harnesses[@]} > 0)); then
-      die 'none cannot be combined with another harness'
-    fi
-  fi
-
-  print_banner
-  setup_scratch="$(mktemp -d "${TMPDIR:-/tmp}/kast-setup.XXXXXX")"
-
-  if ((development == 1)); then
-    gradle_args=("$repository_root/gradlew" "--project-dir" "$repository_root")
-    ((development_clean == 0)) || gradle_args+=("-PkastDevelopmentClean=true")
-    gradle_args+=(refreshDevelopmentMachine --no-daemon --console=plain)
-    ui_step "Refreshing the local development installation"
-    run_quiet "${gradle_args[@]}" || die "local development setup failed"
-    ui_success "Local development installation refreshed"
-    install_agent_harnesses "$development_clean" "${selected_harnesses[@]}"
-    active_agent="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
-    [[ -x "$active_agent" ]] || die "installed Kast agent CLI is missing: $active_agent"
-    ui_step "Building the repository database"
-    (cd -- "$repository_root" && run_quiet "$active_agent" up) \
-      || die "repository database did not become ready"
-    ui_success "Repository database ready"
-    finish_install development
-    return 0
+  setup_scratch="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
+  if [[ -n "$source" && -z "$version" ]]; then
+    inferred_version="$(infer_version "$source" || true)"
+    version="$inferred_version"
   fi
 
   if [[ -z "$source" ]]; then
     require curl
-    ui_step "Resolving release"
-    ((snapshot == 0)) || version="$(latest_snapshot_tag)"
     version="${version:-$(latest_version)}"
-    artifact_version="$version"
-    ((snapshot == 0)) || artifact_version="snapshot"
-    platform_id="$(platform)"
-    ui_info "${version} · ${platform_id}"
-    bundle_archive="${setup_scratch}/kast-bundle.tar.gz"
-    source="${RELEASES_URL}/download/${version}/kast-${platform_id}-${artifact_version}.tar.gz"
-    download_artifact "Kast bundle" "$source" "$bundle_archive"
+    valid_version "$version" || die "invalid release version: $version"
+    archive_name="kast-portable-${version}.tar.gz"
+    release_url="${RELEASES_URL}/download/${version}"
+    bundle_archive="$setup_scratch/$archive_name"
+    checksum_file="$setup_scratch/${archive_name}.sha256"
+    download "Kast $version" "$release_url/$archive_name" "$bundle_archive"
+    download 'SHA-256 checksum' "$release_url/${archive_name}.sha256" "$checksum_file"
+    verify_checksum "$bundle_archive" "$checksum_file" "$archive_name"
     source="$bundle_archive"
   fi
 
+  valid_version "$version" || die 'a local bundle requires --version vX.Y.Z or a versioned bundle name'
   if [[ -d "$source" ]]; then
     bundle_root="$(cd -- "$source" && pwd -P)"
   else
-    require tar
     [[ -f "$source" ]] || die "bundle source does not exist: $source"
-    ui_step "Extracting Kast bundle"
-    mkdir -p "${setup_scratch}/bundle"
-    tar -xzf "$source" -C "${setup_scratch}/bundle"
-    bundle_root="$(find "${setup_scratch}/bundle" -mindepth 1 -maxdepth 1 -type d -print -quit)"
-    [[ -n "$bundle_root" ]] || die "bundle archive has no root directory: $source"
+    bundle_root="$(extract_bundle "$source" "$setup_scratch/bundle")"
   fi
 
-  [[ -x "${bundle_root}/libexec/kastctl" ]] \
-    || die "bundle control CLI is missing: ${bundle_root}/libexec/kastctl"
-  [[ -x "${bundle_root}/bin/kast" ]] \
-    || die "bundle agent CLI is missing: ${bundle_root}/bin/kast"
-  ui_step "Installing Kast"
-  setup_args=("${bundle_root}/libexec/kastctl" setup --source "$bundle_root")
-  ((force == 0)) || setup_args+=(--force)
-  run_quiet "${setup_args[@]}" || die "Kast setup failed"
-  ui_success "Kast installed"
-  install_agent_harnesses "$force" "${selected_harnesses[@]}"
-  finish_install standard
+  validate_bundle "$bundle_root"
+  install_bundle "$bundle_root" "$version" "$force"
 }
 
 main "$@"
