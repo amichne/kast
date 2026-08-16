@@ -52,6 +52,7 @@ dependencies {
     compileOnly("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
+    compileOnly("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:util-text-matching:$ideaPlatformBuild")
     compileOnly(kotlinPluginLibs)
@@ -60,6 +61,7 @@ dependencies {
     testImplementation("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
+    testImplementation("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util-text-matching:$ideaPlatformBuild")
 }
