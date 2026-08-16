@@ -11,15 +11,29 @@ import io.github.amichne.kast.runtime.server.TypedOperationBinding
 class KastRuntimeComposition private constructor(
     val operations: DirectKastOperations,
     private val server: RuntimeServer,
-) {
+) : KastRuntimeDispatchOperations {
     /**
-     * Proof transition: `String -> ServerDispatch`.
+     * Proof transition: `String -> KastRuntimeDispatch`.
      *
      * Preserves canonical wire admission and exact target operation routing. Closed request,
      * decoding, semantic, and response failures remain data. Raw documents may cross only this
      * outer indexer transport boundary.
      */
-    suspend fun dispatch(document: String): ServerDispatch = server.dispatch(document)
+    override suspend fun dispatch(document: String): KastRuntimeDispatch = when (
+        val dispatch = server.dispatch(document)
+    ) {
+        is ServerDispatch.Responded -> KastRuntimeDispatch.Responded(dispatch.document)
+        is ServerDispatch.Rejected -> KastRuntimeDispatch.Rejected(
+            when (dispatch.failure) {
+                is io.github.amichne.kast.runtime.server.ServerDispatchFailure.RequestAdmissionFailed ->
+                    KastRuntimeDispatchFailure.REQUEST_ADMISSION_FAILED
+                is io.github.amichne.kast.runtime.server.ServerDispatchFailure.RequestDecodingFailed ->
+                    KastRuntimeDispatchFailure.REQUEST_DECODING_FAILED
+                is io.github.amichne.kast.runtime.server.ServerDispatchFailure.ResponseEncodingFailed ->
+                    KastRuntimeDispatchFailure.RESPONSE_ENCODING_FAILED
+            },
+        )
+    }
 
     companion object {
         /**
@@ -105,6 +119,35 @@ class KastRuntimeComposition private constructor(
             }
         }
     }
+}
+
+/** Narrow composition-owned dispatch capability supplied to the isolated indexer host. */
+fun interface KastRuntimeDispatchOperations {
+    /**
+     * Proof transition: `String -> KastRuntimeDispatch`.
+     *
+     * Establishes canonical request admission and exact operation routing. Expected failures are
+     * closed by [KastRuntimeDispatch.Rejected]. Raw documents may cross only the outer host frame.
+     */
+    suspend fun dispatch(document: String): KastRuntimeDispatch
+}
+
+/** Composition-owned dispatch result exposed to the isolated indexer host. */
+sealed interface KastRuntimeDispatch {
+    data class Responded(
+        val document: String,
+    ) : KastRuntimeDispatch
+
+    data class Rejected(
+        val failure: KastRuntimeDispatchFailure,
+    ) : KastRuntimeDispatch
+}
+
+/** Closed transport failure projection that does not export runtime-server implementation types. */
+enum class KastRuntimeDispatchFailure {
+    REQUEST_ADMISSION_FAILED,
+    REQUEST_DECODING_FAILED,
+    RESPONSE_ENCODING_FAILED,
 }
 
 private data class NamedOperationBinding(
