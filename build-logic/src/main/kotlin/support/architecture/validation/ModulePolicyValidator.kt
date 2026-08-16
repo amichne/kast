@@ -69,8 +69,8 @@ internal object ModulePolicyValidator {
      * Proof transition: `(ModulePolicy, declared ModulePolicy graph) -> ValidatedModulePolicy`.
      *
      * Establishes that the module's direct dependencies, registry direction, independent dependency
-     * costs, and allowed effects remain within its declared role boundary or the closed KCS-017
-     * collapsed-module edge set.
+     * costs, and allowed effects remain within its declared role boundary or the closed KCS-017 and
+     * KCS-018 collapsed-module edge set.
      * [ModulePolicyValidation.Invalid] is the closed expected failure. Raw module policy
      * construction is permitted only in the canonical architecture definition and policy tests.
      */
@@ -130,6 +130,7 @@ internal object ModulePolicyValidator {
 internal object KastCleanSlateCrossRoleDependencies {
     val all: Set<ProjectDependencyObservation> = setOf(
         ProjectDependencyObservation(ModuleId.CHANGE_APPLY, ModuleId.CHANGE_RECOVERY),
+        ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_RECOVERY),
     )

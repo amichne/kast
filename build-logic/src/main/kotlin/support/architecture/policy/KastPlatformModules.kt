@@ -168,6 +168,13 @@ internal object KastPlatformModules {
             ModuleId.EVIDENCE_CONTRACT,
         ),
         active(
+            ModuleId.CHANGE_VERIFY,
+            ModuleRole.SERVICE,
+            ModuleId.CHANGE_APPLY, ModuleId.CHANGE_CONTRACT,
+            ModuleId.DIAGNOSTIC_CONTRACT, ModuleId.RELATION_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
             ModuleId.CHANGE_INTELLIJ,
             ModuleRole.INTELLIJ_WRITE_ADAPTER,
             ModuleId.CHANGE_APPLY,
@@ -326,7 +333,7 @@ internal object KastPlatformModules {
                     ModuleId.CLI,
                     ModuleId.INDEXER,
                     ModuleId.RUNTIME_COMPOSITION,
-                ) + cleanSlateOnlyModuleIds()
+                )
             }.toTypedArray(),
         ),
     ) + KastDiagnosticModules.all
@@ -390,8 +397,4 @@ internal object KastPlatformModules {
         ModuleId.CLI -> setOf(ForbiddenEffect.PROCESS_CONTROL)
         else -> emptySet()
     }
-
-    private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.CHANGE_VERIFY,
-    )
 }
