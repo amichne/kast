@@ -9,6 +9,9 @@ contains no persistence implementation and performs no I/O.
 - Open and prepared publication capabilities are opaque and owner-specific.
 - Only a prepared capability can be committed; invalidation before and after commit remain
   distinct outcomes.
+- Mutation recovery evidence binds one plan identity to deterministic exact pre-write images,
+  applied write sets, and a digest-chained closed state. The contract owns no JDBC or rollback
+  effect.
 - Do not import JDBC, SQLite, IntelliJ, Gradle, filesystem, transport, server, or legacy hosts.
 
 ## Verification ladder
