@@ -43,7 +43,6 @@ private val kotlinPluginLibs: ConfigurableFileCollection = files(
 dependencies {
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
-    implementation(project(":workspace:spi"))
 
     symbolIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
