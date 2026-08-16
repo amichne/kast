@@ -690,11 +690,11 @@
     {
       "id": "RUNTIME_SERVER",
       "projectPath": ":runtime:server",
-      "lifecycle": "PLANNED",
+      "lifecycle": "ACTIVE",
       "role": "TRANSPORT",
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.transport"},
-      "allowedProjectDependencies": [":change:contract", ":protocol:registry", ":runtime:bindings"],
+      "allowedProjectDependencies": [":protocol:contract", ":protocol:wire"],
       "allowedEffects": []
     },
     {

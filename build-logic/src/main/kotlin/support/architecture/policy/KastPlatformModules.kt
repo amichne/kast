@@ -242,12 +242,11 @@ internal object KastPlatformModules {
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        planned(
+        active(
             ModuleId.RUNTIME_SERVER,
             ModuleRole.TRANSPORT,
-            ModuleId.PROTOCOL_REGISTRY,
-            ModuleId.CHANGE_CONTRACT,
-            ModuleId.RUNTIME_BINDINGS,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_WIRE,
         ),
         planned(
             ModuleId.RUNTIME_COMPOSITION,

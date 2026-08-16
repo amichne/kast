@@ -224,6 +224,7 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.TRANSPORT,
             inwardRoles,
             safeReadCosts,
+            allowedExportedDependencyRoles = inwardRoles,
             allowedEffects = emptySet(),
         )
         ModuleRole.COMPOSITION -> boundary(
