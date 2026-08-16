@@ -1,5 +1,7 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.projection
 
+import io.github.amichne.kast.cli.CliProjection
+import io.github.amichne.kast.cli.TypedCliProjection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 /** The exact eleven generated wire projections installed behind the public CLI. */
