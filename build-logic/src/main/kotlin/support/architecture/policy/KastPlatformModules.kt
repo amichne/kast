@@ -312,7 +312,7 @@ internal object KastPlatformModules {
                 ) + cleanSlateOnlyModuleIds()
             }.toTypedArray(),
         ),
-    )
+    ) + KastDiagnosticModules.all
 
     private fun active(
         id: ModuleId,
@@ -373,9 +373,6 @@ internal object KastPlatformModules {
     }
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.DIAGNOSTIC_CONTRACT,
-        ModuleId.DIAGNOSTIC_SERVICE,
-        ModuleId.DIAGNOSTIC_INTELLIJ,
         ModuleId.CHANGE_PLAN,
         ModuleId.CHANGE_APPLY,
         ModuleId.CHANGE_VERIFY,
