@@ -74,7 +74,7 @@ class CompleteChangePlanningEvidence private constructor(
                 )
             }
             if (
-                relations.any { it.batch.request.selector.lease != target.lease } ||
+                relations.any { it.batch.request.subject.lease != target.lease } ||
                 traversals.any { it.page.plan.start.lease != target.lease } ||
                 diagnostics.any { it.batch.scope.lease != target.lease }
             ) {
@@ -84,7 +84,7 @@ class CompleteChangePlanningEvidence private constructor(
             }
             if (
                 relations.any {
-                    it.batch.request.selector.fingerprint != target.selector.fingerprint
+                    it.batch.request.subject.fingerprint.value != target.selector.fingerprint.value
                 } ||
                 traversals.any {
                     it.page.plan.start.fingerprint != target.selector.fingerprint
@@ -126,7 +126,7 @@ typealias CompleteAddDeclarationPlanningEvidence = CompleteChangePlanningEvidenc
 
 private fun relationProjection(result: RelationReadResult.Complete): String = buildString {
     val request = result.batch.request
-    appendPlanningField(request.selector.fingerprint.value)
+    appendPlanningField(request.subject.fingerprint.value)
     appendPlanningField(request.meaning.canonicalKey())
     appendPlanningField(
         when (val position = request.position) {
