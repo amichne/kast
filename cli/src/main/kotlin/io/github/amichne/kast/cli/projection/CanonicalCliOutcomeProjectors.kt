@@ -1,5 +1,8 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.projection
 
+import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.cli.CliOutcomeProjector
+import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyQualification

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition
+package io.github.amichne.kast.runtime.composition.change
 
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.ObservedMutationSource
@@ -18,6 +18,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.runtime.composition.InstalledSemanticBudgets
+import io.github.amichne.kast.runtime.composition.SemanticRuntimePorts
+import io.github.amichne.kast.runtime.composition.installedSemanticBudgets
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity

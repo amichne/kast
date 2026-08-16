@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.cli.projection.canonicalCliProjections
 import java.io.IOException
 import java.net.URISyntaxException
 import java.nio.file.InvalidPathException

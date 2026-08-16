@@ -395,7 +395,6 @@ class IntellijChangeSourceAdapter(
 
     private fun rejectedObservation(failure: SourceObservationFailure) =
         SourceObservationResult.Rejected(failure)
-
     private fun rejectedRollback(failure: AddDeclarationRollbackFailure) =
         AddDeclarationRollbackResult.Rejected(failure)
 }

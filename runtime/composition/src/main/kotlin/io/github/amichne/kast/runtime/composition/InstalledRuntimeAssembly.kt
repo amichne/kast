@@ -10,6 +10,8 @@ import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabase
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.intellij.InstalledRelationScopeOperations
 import io.github.amichne.kast.relation.intellij.installedIntellijRelationCompiler
+import io.github.amichne.kast.runtime.composition.change.InstalledChangePlanningAdmission
+import io.github.amichne.kast.runtime.composition.change.InstalledChangeVerificationObserver
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelBoundary
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelReadOperations
