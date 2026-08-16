@@ -62,24 +62,30 @@ data class WorkspaceCandidate(
 class ReconciledWorkspace private constructor(
     val candidate: WorkspaceCandidate,
     val coverage: CompleteWorkspaceEvidenceCoverage,
+    sourceRoots: Iterable<SourceRoot>,
 ) {
+    val sourceRoots: List<SourceRoot> = sourceRoots.toList()
+
     companion object {
         /**
-         * Proof transition: `(WorkspaceCandidate, Set<WorkspaceEvidenceKind>) ->
-         * Refinement<ReconciledWorkspace, WorkspaceEvidenceCoverageFailure>`.
+         * Proof transition: `(WorkspaceCandidate, Set<WorkspaceEvidenceKind>,
+         * Iterable<SourceRoot>) -> Refinement<ReconciledWorkspace,
+         * WorkspaceEvidenceCoverageFailure>`.
          *
          * Establishes complete evidence coverage for the exact captured candidate. The closed
-         * expected failure retains every missing family. Raw evidence-family sets may enter only
-         * from the workspace reconciliation adapter.
+         * expected failure retains every missing family. Admitted source-root ownership and
+         * provenance remain attached to the reconciled candidate. Raw evidence-family sets may
+         * enter only from the workspace reconciliation adapter.
          */
         fun admit(
             candidate: WorkspaceCandidate,
             observed: Set<WorkspaceEvidenceKind>,
+            sourceRoots: Iterable<SourceRoot> = emptyList(),
         ): Refinement<ReconciledWorkspace, WorkspaceEvidenceCoverageFailure> = when (
             val coverage = CompleteWorkspaceEvidenceCoverage.admit(observed)
         ) {
             is Refinement.Refined -> Refinement.Refined(
-                ReconciledWorkspace(candidate, coverage.value),
+                ReconciledWorkspace(candidate, coverage.value, sourceRoots),
             )
             is Refinement.Rejected -> coverage
         }
@@ -109,14 +115,17 @@ class PublishedWorkspace private constructor(
     val coverage: CompleteWorkspaceEvidenceCoverage
         get() = reconciled.coverage
 
+    val sourceRoots: List<SourceRoot>
+        get() = reconciled.sourceRoots
+
     companion object {
         /**
          * Proof transition: `(ReconciledWorkspace, EvidenceGeneration) -> PublishedWorkspace`.
          *
          * Establishes one immutable publication whose canonical root, admitted source state,
-         * complete evidence coverage, semantic generation, and generation-bound read lease cannot
-         * vary independently. Raw root and generation extraction is permitted only at physical
-         * workspace and evidence-persistence boundaries.
+         * complete evidence coverage, typed source roots, semantic generation, and
+         * generation-bound read lease cannot vary independently. Raw root and generation
+         * extraction is permitted only at physical workspace and evidence-persistence boundaries.
          */
         fun publish(
             reconciled: ReconciledWorkspace,
