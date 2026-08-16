@@ -100,6 +100,12 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_CONTRACT,
         ),
         active(
+            ModuleId.SYMBOL_SERVICE,
+            ModuleRole.SERVICE,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
             ModuleId.SYMBOL_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
             ModuleId.SYMBOL_CONTRACT,
@@ -331,7 +337,6 @@ internal object KastPlatformModules {
     }
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.SYMBOL_SERVICE,
         ModuleId.RELATION_CONTRACT,
         ModuleId.RELATION_SERVICE,
         ModuleId.RELATION_INTELLIJ,

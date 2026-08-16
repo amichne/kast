@@ -7,6 +7,46 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class ModuleDependencyDirectionTest {
     @Test
+    fun `materialized symbol service is active host neutral discovery owner`() {
+        val architecture = canonical()
+        val module = architecture.modules.getValue(ModuleId.SYMBOL_SERVICE)
+
+        assertEquals(ModuleLifecycle.ACTIVE, module.lifecycle)
+        assertEquals(ModuleRole.SERVICE, module.role)
+        assertEquals(
+            setOf(ModuleId.SYMBOL_CONTRACT, ModuleId.WORKSPACE_CONTRACT),
+            module.allowedProjectDependencies,
+        )
+        assertEquals(emptySet<ForbiddenEffect>(), module.allowedEffects)
+        assertTrue(ModuleId.RELATION_CONTRACT !in architecture.modules)
+    }
+
+    @Test
+    fun `symbol service rejects outward implementation dependency and foreign effect`() {
+        val definition = KastArchitecturePolicy.definition()
+            .withDependency(ModuleId.SYMBOL_SERVICE, ModuleId.SYMBOL_INTELLIJ)
+            .withEffect(ModuleId.SYMBOL_SERVICE, ForbiddenEffect.INTELLIJ_PLATFORM)
+
+        val invalid = assertInstanceOf<ArchitecturePolicyValidation.Invalid>(
+            ArchitecturePolicyValidator.validate(definition),
+        )
+
+        assertTrue(
+            ArchitecturePolicyFailure.ForbiddenModuleRoleDependency(
+                ModuleId.SYMBOL_SERVICE,
+                ModuleId.SYMBOL_INTELLIJ,
+                ModuleRole.INTELLIJ_READ_ADAPTER,
+            ) in invalid.failures,
+        )
+        assertTrue(
+            ArchitecturePolicyFailure.ForbiddenModuleRoleEffect(
+                ModuleId.SYMBOL_SERVICE,
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+            ) in invalid.failures,
+        )
+    }
+
+    @Test
     fun `workspace publication service admits only inward publication contracts and transition ports`() {
         val module = canonical().modules.getValue(ModuleId.WORKSPACE_SERVICE)
 
