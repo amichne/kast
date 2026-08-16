@@ -1,10 +1,9 @@
 package io.github.amichne.kast.relation.contract
 
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.symbol.contract.SymbolSelectorFingerprint
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -104,9 +103,9 @@ value class RelationContinuationFingerprint internal constructor(
     }
 }
 
-/** Opaque resume authority bound to one exact selector, meaning, generation, and work position. */
+/** Opaque resume authority bound to one exact subject, meaning, generation, and work position. */
 class RelationContinuation private constructor(
-    val selector: SymbolSelectorFingerprint,
+    val subject: RelationEndpointFingerprint,
     val meaning: RelationMeaning,
     val generation: EvidenceGeneration,
     val nextWorkOffset: RelationWorkOffset,
@@ -116,7 +115,7 @@ class RelationContinuation private constructor(
         /**
          * Proof transition: `(RelationRequest, RelationWorkOffset) -> RelationContinuation`.
          *
-         * Establishes an opaque continuation bound to the request's exact selector, closed
+         * Establishes an opaque continuation bound to the request's exact subject, closed
          * meaning, and generation at the next native work position. Raw offset extraction is
          * permitted only inside a bounded relation compiler or continuation transport codec.
          */
@@ -125,17 +124,17 @@ class RelationContinuation private constructor(
             nextWorkOffset: RelationWorkOffset,
         ): RelationContinuation {
             val canonical = buildString {
-                appendContinuationField(request.selector.fingerprint.value)
+                appendContinuationField(request.subject.fingerprint.value)
                 appendContinuationField(request.meaning.canonicalName())
-                appendContinuationField(request.selector.lease.generation.value.toString())
+                appendContinuationField(request.subject.lease.generation.value.toString())
                 appendContinuationField(nextWorkOffset.value.toString())
             }
             val digest = MessageDigest.getInstance("SHA-256")
                 .digest(canonical.toByteArray(StandardCharsets.UTF_8))
             return RelationContinuation(
-                selector = request.selector.fingerprint,
+                subject = request.subject.fingerprint,
                 meaning = request.meaning,
-                generation = request.selector.lease.generation,
+                generation = request.subject.lease.generation,
                 nextWorkOffset = nextWorkOffset,
                 fingerprint = RelationContinuationFingerprint(
                     digest.joinToString(separator = "") { byte ->
@@ -162,14 +161,14 @@ sealed interface RelationReadPosition {
 }
 
 enum class RelationResumeFailure {
-    SELECTOR_MISMATCH,
+    SUBJECT_MISMATCH,
     MEANING_MISMATCH,
     GENERATION_MISMATCH,
 }
 
 /** Exact one-hop request; construction admits either the first page or a bound continuation. */
 class RelationRequest private constructor(
-    val selector: SymbolSelector,
+    val subject: RelationEndpoint,
     val meaning: RelationMeaning,
     val budget: RelationBudget,
     val position: RelationReadPosition,
@@ -179,37 +178,102 @@ class RelationRequest private constructor(
          * Proof transition: `(SymbolSelector, RelationMeaning, RelationBudget) -> RelationRequest`.
          *
          * Establishes the initial page of exactly one closed semantic relation from one exact
-         * compiler-grounded selector. Primitive symbol identity cannot enter this boundary.
+         * compiler-grounded selector, retained as the request's subject endpoint. Primitive symbol
+         * identity cannot enter this boundary.
          */
         fun start(
             selector: SymbolSelector,
             meaning: RelationMeaning,
             budget: RelationBudget,
-        ): RelationRequest = RelationRequest(selector, meaning, budget, RelationReadPosition.Start)
+        ): RelationRequest = RelationRequest(
+            RelationEndpoint.subject(selector),
+            meaning,
+            budget,
+            RelationReadPosition.Start,
+        )
+
+        /**
+         * Proof transition: `(RelationEndpoint.Resolved, RelationMeaning, RelationBudget) ->
+         * RelationRequest`.
+         *
+         * Establishes the initial page of the next closed semantic hop from an already exact,
+         * compiler-grounded related endpoint. The endpoint's root, generation, scope, declaration,
+         * and compiler identity remain sealed; primitive reconstruction is not permitted.
+         */
+        fun start(
+            subject: RelationEndpoint.Resolved,
+            meaning: RelationMeaning,
+            budget: RelationBudget,
+        ): RelationRequest = RelationRequest(
+            subject,
+            meaning,
+            budget,
+            RelationReadPosition.Start,
+        )
 
         /**
          * Proof transition: `(SymbolSelector, RelationMeaning, RelationBudget,
          * RelationContinuation) -> Refinement<RelationRequest, RelationResumeFailure>`.
          *
-         * Establishes that continuation authority belongs to the exact selector, meaning, and
-         * generation of this one-hop read. [RelationResumeFailure] is the closed expected failure.
-         * Raw continuation decoding may occur only before this admission boundary.
+         * Establishes that continuation authority belongs to the exact selector subject, meaning,
+         * and generation of this one-hop read. [RelationResumeFailure] is the closed expected
+         * failure. Raw continuation decoding may occur only before this admission boundary.
          */
         fun resume(
             selector: SymbolSelector,
             meaning: RelationMeaning,
             budget: RelationBudget,
             continuation: RelationContinuation,
+        ): Refinement<RelationRequest, RelationResumeFailure> = admitResume(
+            RelationEndpoint.subject(selector),
+            meaning,
+            budget,
+            continuation,
+        )
+
+        /**
+         * Proof transition: `(RelationEndpoint.Resolved, RelationMeaning, RelationBudget,
+         * RelationContinuation) -> Refinement<RelationRequest, RelationResumeFailure>`.
+         *
+         * Establishes that continuation authority belongs to the same exact resolved endpoint,
+         * meaning, and generation. [RelationResumeFailure] is the closed expected failure. Raw
+         * continuation decoding may occur only before this admission boundary.
+         */
+        fun resume(
+            subject: RelationEndpoint.Resolved,
+            meaning: RelationMeaning,
+            budget: RelationBudget,
+            continuation: RelationContinuation,
+        ): Refinement<RelationRequest, RelationResumeFailure> = admitResume(
+            subject,
+            meaning,
+            budget,
+            continuation,
+        )
+
+        /**
+         * Proof transition: `(RelationEndpoint, RelationMeaning, RelationBudget,
+         * RelationContinuation) -> Refinement<RelationRequest, RelationResumeFailure>`.
+         *
+         * Establishes exact subject, meaning, and generation ownership for resumed one-hop work.
+         * [RelationResumeFailure] is the closed expected failure. Raw continuation extraction is
+         * permitted only at the outer public start/resume or transport boundary.
+         */
+        private fun admitResume(
+            subject: RelationEndpoint,
+            meaning: RelationMeaning,
+            budget: RelationBudget,
+            continuation: RelationContinuation,
         ): Refinement<RelationRequest, RelationResumeFailure> = when {
-            continuation.selector != selector.fingerprint ->
-                Refinement.Rejected(RelationResumeFailure.SELECTOR_MISMATCH)
+            continuation.subject != subject.fingerprint ->
+                Refinement.Rejected(RelationResumeFailure.SUBJECT_MISMATCH)
             continuation.meaning != meaning ->
                 Refinement.Rejected(RelationResumeFailure.MEANING_MISMATCH)
-            continuation.generation != selector.lease.generation ->
+            continuation.generation != subject.lease.generation ->
                 Refinement.Rejected(RelationResumeFailure.GENERATION_MISMATCH)
             else -> Refinement.Refined(
                 RelationRequest(
-                    selector,
+                    subject,
                     meaning,
                     budget,
                     RelationReadPosition.Resume(continuation),

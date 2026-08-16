@@ -61,14 +61,37 @@ class RelationContractTest {
     }
 
     @Test
+    fun `related endpoint rejects changed compiler identity during revalidation`() {
+        val selector = selector()
+        val subject = RelationEndpoint.subject(selector)
+        val endpoint = related(subject)
+        val changed = CompilerGroundedSymbolEvidence.fromBoundary(
+            endpoint.file,
+            endpoint.range.startInclusive,
+            endpoint.range.endExclusive,
+            endpoint.name.value,
+            "sample.Related.run",
+            endpoint.kind,
+            CompilerSymbolIdentity.parse("function|sample.Related.run|-|||1").refined(),
+        ).refined()
+
+        val result = RevalidatedRelationEndpoint.validate(endpoint, changed)
+
+        assertEquals(
+            RelationEndpointRevalidationFailure.DECLARATION_MOVED_OR_CHANGED,
+            (result as Refinement.Rejected).failure,
+        )
+    }
+
+    @Test
     fun `closed meaning fixes subject orientation`() {
         val request = request(RelationMeaning.Callees)
-        val subject = RelationEndpoint.subject(request.selector)
-        val occurrence = RelationOccurrence.fromBoundary(request.selector.file, 41, 44).refined()
+        val subject = request.subject
+        val occurrence = RelationOccurrence.fromBoundary(request.subject.file, 41, 44).refined()
 
         val rejected = RelationFact.create(
             request,
-            source = related(request.selector),
+            source = related(request.subject),
             target = subject,
             occurrence = occurrence,
             provenance = RelationProvenance.K2_AUTHORED_SOURCE,
@@ -100,7 +123,7 @@ class RelationContractTest {
             RelationResumeFailure.MEANING_MISMATCH,
             (
                 RelationRequest.resume(
-                    request.selector,
+                    (request.subject as RelationEndpoint.Subject).selector,
                     RelationMeaning.Callers,
                     request.budget,
                     qualified.coverage.continuation,
@@ -110,12 +133,12 @@ class RelationContractTest {
         assertInstanceOf(RelationCompilation.Qualified::class.java, qualified)
     }
 
-    private fun related(selector: SymbolSelector): RelationEndpoint.Resolved =
+    private fun related(subject: RelationEndpoint): RelationEndpoint.Resolved =
         RelationEndpoint.resolve(
-            selector.lease,
-            selector.scope,
+            subject.lease,
+            subject.scope,
             CompilerGroundedSymbolEvidence.fromBoundary(
-                selector.file,
+                subject.file,
                 71,
                 82,
                 "related",

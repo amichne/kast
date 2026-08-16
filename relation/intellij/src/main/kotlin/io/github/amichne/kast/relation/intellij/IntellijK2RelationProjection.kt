@@ -10,13 +10,12 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
-import io.github.amichne.kast.symbol.contract.RevalidatedSymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import io.github.amichne.kast.symbol.contract.SymbolDescription
-import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.allOverriddenSymbols
@@ -87,18 +86,18 @@ internal class IntellijK2RelationProjection(
     private val workspaceRoot: CanonicalWorkspaceRoot,
 ) {
     /**
-     * Proof transition: `(CompiledRelationScope, SymbolSelector) ->
+     * Proof transition: `(CompiledRelationScope, RelationEndpoint) ->
      * IntellijRelationSubjectLookup`.
      *
      * A found result establishes exact file/range/name PSI lookup plus identical K2 compiler
-     * evidence for the selector. [IntellijRelationSubjectFailure] is the closed expected failure.
+     * evidence for the endpoint. [IntellijRelationSubjectFailure] is the closed expected failure.
      * Live VFS, PSI, and K2 values remain inside this request-local adapter.
      */
     fun subject(
         scope: CompiledRelationScope,
-        selector: SymbolSelector,
+        subject: RelationEndpoint,
     ): IntellijRelationSubjectLookup {
-        val file = when (val identity = selector.file) {
+        val file = when (val identity = subject.file) {
             is SymbolDiscoveryFileIdentity.Workspace ->
                 LocalFileSystem.getInstance().findFileByNioFile(Path.of(identity.path.value))
             is SymbolDiscoveryFileIdentity.External ->
@@ -109,14 +108,14 @@ internal class IntellijK2RelationProjection(
         }
         val psiFile = PsiManager.getInstance(project).findFile(file)
                       ?: return rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
-        val candidates = generateSequence(psiFile.findElementAt(selector.range.startInclusive)) {
+        val candidates = generateSequence(psiFile.findElementAt(subject.range.startInclusive)) {
             it.parent
         }
             .filterIsInstance<KtNamedDeclaration>()
             .filter { declaration ->
-                declaration.textRange.startOffset == selector.range.startInclusive &&
-                    declaration.textRange.endOffset == selector.range.endExclusive &&
-                    declaration.name == selector.name.value
+                declaration.textRange.startOffset == subject.range.startInclusive &&
+                    declaration.textRange.endOffset == subject.range.endExclusive &&
+                    declaration.name == subject.name.value
             }
             .toList()
         val declaration = when (candidates.size) {
@@ -129,7 +128,7 @@ internal class IntellijK2RelationProjection(
             IntellijRelationDeclarationProjection.Unsupported ->
                 return rejected(IntellijRelationSubjectFailure.COMPILER_IDENTITY_UNAVAILABLE)
         }
-        return when (RevalidatedSymbolSelector.validate(selector, evidence)) {
+        return when (RevalidatedRelationEndpoint.validate(subject, evidence)) {
             is Refinement.Refined -> IntellijRelationSubjectLookup.Found(declaration, evidence)
             is Refinement.Rejected -> rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
         }
@@ -178,10 +177,10 @@ internal class IntellijK2RelationProjection(
         return IntellijRelationDeclarationProjection.Projected(declaration, evidence)
     }
 
-    /** Confirms through K2 that one Kotlin reference resolves to the exact request selector. */
+    /** Confirms through K2 that one Kotlin reference resolves to the exact request subject. */
     fun confirmTarget(
         reference: KtReference,
-        selector: SymbolSelector,
+        subject: RelationEndpoint,
     ): IntellijK2TargetConfirmation {
         val identity = when (val result = analyze(reference.element) {
             val symbol = reference.resolveToSymbol()
@@ -192,7 +191,7 @@ internal class IntellijK2RelationProjection(
             IntellijCompilerProjectionResult.Unsupported ->
                 return IntellijK2TargetConfirmation.UNRESOLVED
         }
-        return if (identity == SymbolDescription.from(selector).compilerIdentity.value) {
+        return if (identity == subject.compilerIdentity.value) {
             IntellijK2TargetConfirmation.EXACT_SUBJECT
         } else {
             IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
