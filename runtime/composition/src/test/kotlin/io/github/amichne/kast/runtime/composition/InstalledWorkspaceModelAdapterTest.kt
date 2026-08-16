@@ -2,12 +2,10 @@ package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelReadOperations
-import io.github.amichne.kast.runtime.composition.platform.InstalledGradleWorkspaceModel
+import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelBoundary
 import io.github.amichne.kast.runtime.composition.platform.InstalledWorkspaceModelAdapter
-import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
+import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
-import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
-import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
@@ -30,33 +28,29 @@ class InstalledWorkspaceModelAdapterTest {
         val fixture = InstalledChangeProtocolFixture.create(root)
         val published = fixture.published
         val sourceRoot = published.sourceRoots.single()
-        val scope = WorkspaceSearchScopeModel.compile(
-            published.root,
-            ImportedWorkspaceModelState.COMPLETE,
-            listOf(
-                WorkspaceSourceRootBoundary(
-                    sourceRoot.owner.module.value,
-                    root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
-                    sourceRoot.owner.project.projectPath.value,
-                    sourceRoot.owner.sourceSet.value,
-                    root.resolve(sourceRoot.location.value).normalize(),
-                    WorkspaceSourceRootKind.PRODUCTION,
-                    WorkspaceSourceRootProvenance.AUTHORED,
-                ),
-            ),
-        ) as WorkspaceSearchScopeModelCompilation.Compiled
-        val model = InstalledGradleWorkspaceModel.admit(
-            published.root,
-            published.sourceState,
-            published.sourceRoots,
-            scope,
-        ).requiredModel()
-        val adapter = InstalledWorkspaceModelAdapter(
-            InstalledGradleModelReadOperations { InstalledGradleModelRead.Captured(model) },
+        val boundary = WorkspaceSourceRootBoundary(
+            sourceRoot.owner.module.value,
+            root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
+            sourceRoot.owner.project.projectPath.value,
+            sourceRoot.owner.sourceSet.value,
+            root.resolve(sourceRoot.location.value).normalize(),
+            WorkspaceSourceRootKind.PRODUCTION,
+            WorkspaceSourceRootProvenance.AUTHORED,
         )
+        val read = projectInstalledGradleModel(
+            InstalledGradleModelBoundary(
+                published.root,
+                true,
+                listOf(boundary),
+                listOf("classpath:file:///fixture.jar", "source:fixture"),
+            ),
+        ) as InstalledGradleModelRead.Captured
+        val model = read.model
+        val scope = model.searchScope
+        val adapter = InstalledWorkspaceModelAdapter { read }
 
         assertEquals(
-            GradleWorkspaceModelCapture.Captured(published.sourceState),
+            GradleWorkspaceModelCapture.Captured(model.state),
             adapter.capture(published.root, setOf(WorkspaceSignal.InitialProjectModel)),
         )
         assertEquals(
@@ -64,14 +58,8 @@ class InstalledWorkspaceModelAdapterTest {
                 io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind.entries.toSet(),
                 published.sourceRoots,
             ),
-            adapter.reconcile(WorkspaceCandidate(published.root, published.sourceState)),
+            adapter.reconcile(WorkspaceCandidate(published.root, model.state)),
         )
         assertSame(scope, adapter.searchScope(published.readLease))
     }
 }
-
-private fun <Value, Failure> io.github.amichne.kast.kernel.Refinement<Value, Failure>.requiredModel():
-    Value = when (this) {
-        is io.github.amichne.kast.kernel.Refinement.Refined -> value
-        is io.github.amichne.kast.kernel.Refinement.Rejected -> error(failure.toString())
-    }
