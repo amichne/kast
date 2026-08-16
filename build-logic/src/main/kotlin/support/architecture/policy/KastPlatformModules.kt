@@ -157,6 +157,13 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_CONTRACT,
             ModuleRole.CONTRACT,
             ModuleId.KERNEL,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
+            ModuleId.CHANGE_PLAN,
+            ModuleRole.SERVICE,
+            ModuleId.CHANGE_CONTRACT,
         ),
         active(
             ModuleId.CHANGE_PLAN_SPI,
@@ -373,7 +380,6 @@ internal object KastPlatformModules {
     }
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.CHANGE_PLAN,
         ModuleId.CHANGE_APPLY,
         ModuleId.CHANGE_VERIFY,
         ModuleId.CHANGE_RECOVERY,
