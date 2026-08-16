@@ -13,6 +13,8 @@ import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.LoadAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.PersistedAddDeclarationPlan
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecovery
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecoveryResult
 import io.github.amichne.kast.change.journal.contract.StoreAddDeclarationPlanResult
 import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistenceService
 import io.github.amichne.kast.api.validation.FileHashing
@@ -113,6 +115,11 @@ internal class AddDeclarationPlanPersistenceBindingTest : ExactAdditionPlanningT
 
         override fun approve(command: ApproveAddDeclarationPlan): ApproveAddDeclarationPlanResult =
             error("Approval is outside the KIP-032 composition proof")
+
+        override fun prepareRecovery(
+            command: PrepareAddDeclarationRecovery,
+        ): PrepareAddDeclarationRecoveryResult =
+            error("Recovery is outside the KIP-033 composition proof")
     }
 
     private data object RejectingJournal : AddDeclarationPlanJournal {
@@ -126,5 +133,10 @@ internal class AddDeclarationPlanPersistenceBindingTest : ExactAdditionPlanningT
 
         override fun approve(command: ApproveAddDeclarationPlan): ApproveAddDeclarationPlanResult =
             error("Approval is outside the KIP-032 composition proof")
+
+        override fun prepareRecovery(
+            command: PrepareAddDeclarationRecovery,
+        ): PrepareAddDeclarationRecoveryResult =
+            error("Recovery is outside the KIP-033 composition proof")
     }
 }

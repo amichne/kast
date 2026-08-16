@@ -146,5 +146,19 @@ internal fun Connection.initializeAddDeclarationPlanJournal() {
                 )
             ) WITHOUT ROWID""",
         )
+        statement.execute(
+            """CREATE TABLE IF NOT EXISTS add_declaration_recovery (
+                plan_id TEXT PRIMARY KEY NOT NULL
+                    REFERENCES add_declaration_plan(plan_id),
+                state_version INTEGER NOT NULL CHECK(state_version = 2),
+                prior_stage TEXT NOT NULL CHECK(prior_stage = 'APPROVED'),
+                prior_version INTEGER NOT NULL CHECK(prior_version = 1),
+                target_path TEXT NOT NULL CHECK(length(target_path) > 0),
+                before_sha256 TEXT NOT NULL CHECK(length(before_sha256) = 64),
+                before_content_base64 TEXT NOT NULL,
+                mutation_progress TEXT NOT NULL CHECK(mutation_progress = 'NOT_BEGUN'),
+                CHECK(state_version = prior_version + 1)
+            ) WITHOUT ROWID""",
+        )
     }
 }

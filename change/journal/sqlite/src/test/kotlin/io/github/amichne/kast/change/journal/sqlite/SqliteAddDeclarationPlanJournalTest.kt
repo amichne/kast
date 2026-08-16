@@ -2,8 +2,11 @@ package io.github.amichne.kast.change.journal.sqlite
 
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidence
+import io.github.amichne.kast.change.contract.AddDeclarationRevalidationObservation
+import io.github.amichne.kast.change.contract.AddDeclarationSourceProvenance
 import io.github.amichne.kast.change.contract.AddDeclarationSourceOwner
 import io.github.amichne.kast.change.contract.AddDeclarationTargetCapability
+import io.github.amichne.kast.change.contract.AddDeclarationTargetWritability
 import io.github.amichne.kast.change.contract.AddDeclarationVerificationContract
 import io.github.amichne.kast.change.contract.DeclaredWriteSet
 import io.github.amichne.kast.change.contract.DetachedCompilerEvidence
@@ -12,11 +15,15 @@ import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.ExpectedFileProof
 import io.github.amichne.kast.change.contract.PlannedAddDeclaration
 import io.github.amichne.kast.change.contract.RawAddDeclarationPlanRequest
+import io.github.amichne.kast.change.contract.RevalidatedAddDeclaration
 import io.github.amichne.kast.change.journal.contract.AddDeclarationPlanJournalFailure
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.LoadAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.PersistedAddDeclarationPlan
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecovery
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecoveryResult
+import io.github.amichne.kast.change.journal.contract.RecoveryPreparedAddDeclaration
 import io.github.amichne.kast.change.journal.contract.RawAddDeclarationPlanApprovalEvidence
 import io.github.amichne.kast.change.journal.contract.StoreAddDeclarationPlanResult
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -133,6 +140,95 @@ class SqliteAddDeclarationPlanJournalTest {
         assertInstanceOf<AddDeclarationPlanJournalFailure.PriorStateMismatch>(replay.failure)
     }
 
+    @Test
+    fun `exact recovery survives reopen and every operation releases its connection`() {
+        val observer = CountingConnectionObserver()
+        val database = tempDir.resolve("recovery.db")
+        val journal = open(database, observer)
+        val plan = plan()
+        val awaiting = assertInstanceOf<StoreAddDeclarationPlanResult.Stored>(
+            journal.store(plan),
+        ).record
+        val approved = assertInstanceOf<ApproveAddDeclarationPlanResult.Approved>(
+            journal.approve(approval(awaiting)),
+        ).record
+
+        val prepared = assertInstanceOf<PrepareAddDeclarationRecoveryResult.Prepared>(
+            journal.prepareRecovery(recovery(approved)),
+        ).record
+        val reopened = assertInstanceOf<LoadAddDeclarationPlanResult.Found>(
+            open(database, observer).load(plan.planId),
+        ).record
+
+        assertEquals(prepared, reopened)
+        assertEquals(plan.expectedFile.preimage, prepared.recovery.beforeImage)
+        assertEquals(0, observer.active.get())
+        assertEquals(observer.opened.get(), observer.closed.get())
+    }
+
+    @Test
+    fun `two concurrent recovery preparations have exactly one CAS winner`() {
+        val journal = open(tempDir.resolve("concurrent-recovery.db"))
+        val awaiting = assertInstanceOf<StoreAddDeclarationPlanResult.Stored>(
+            journal.store(plan()),
+        ).record
+        val approved = assertInstanceOf<ApproveAddDeclarationPlanResult.Approved>(
+            journal.approve(approval(awaiting)),
+        ).record
+        val command = recovery(approved)
+        val ready = CountDownLatch(2)
+        val start = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(2)
+        val futures = List(2) {
+            executor.submit<PrepareAddDeclarationRecoveryResult> {
+                ready.countDown()
+                assertTrue(start.await(10, TimeUnit.SECONDS))
+                journal.prepareRecovery(command)
+            }
+        }
+        assertTrue(ready.await(10, TimeUnit.SECONDS))
+        start.countDown()
+        val results = futures.map { future -> future.get(20, TimeUnit.SECONDS) }
+        executor.shutdownNow()
+
+        assertEquals(1, results.count { it is PrepareAddDeclarationRecoveryResult.Prepared })
+        val loser = assertInstanceOf<PrepareAddDeclarationRecoveryResult.Rejected>(
+            results.single { it is PrepareAddDeclarationRecoveryResult.Rejected },
+        )
+        assertInstanceOf<AddDeclarationPlanJournalFailure.PriorStateMismatch>(loser.failure)
+    }
+
+    @Test
+    fun `tampered recovery before image fails closed on reopen`() {
+        val database = tempDir.resolve("tampered-recovery.db")
+        val journal = open(database)
+        val plan = plan()
+        val awaiting = assertInstanceOf<StoreAddDeclarationPlanResult.Stored>(
+            journal.store(plan),
+        ).record
+        val approved = assertInstanceOf<ApproveAddDeclarationPlanResult.Approved>(
+            journal.approve(approval(awaiting)),
+        ).record
+        assertInstanceOf<PrepareAddDeclarationRecoveryResult.Prepared>(
+            journal.prepareRecovery(recovery(approved)),
+        )
+        DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
+            connection.prepareStatement(
+                "UPDATE add_declaration_recovery SET before_content_base64 = ? WHERE plan_id = ?",
+            ).use { statement ->
+                statement.setString(1, Base64.getEncoder().encodeToString("tampered".toByteArray()))
+                statement.setString(2, plan.planId.value)
+                assertEquals(1, statement.executeUpdate())
+            }
+        }
+
+        val rejected = assertInstanceOf<LoadAddDeclarationPlanResult.Rejected>(
+            open(database).load(plan.planId),
+        )
+
+        assertEquals(AddDeclarationPlanJournalFailure.CorruptRecord, rejected.failure)
+    }
+
     private fun open(
         database: Path,
         observer: SqliteJournalConnectionObserver = SqliteJournalConnectionObserver.Disabled,
@@ -154,6 +250,25 @@ class SqliteAddDeclarationPlanJournalTest {
             expectedVersion = awaiting.version,
             evidence = evidence,
         ).refined()
+    }
+
+    private fun recovery(
+        approved: PersistedAddDeclarationPlan.Approved,
+    ): PrepareAddDeclarationRecovery =
+        PrepareAddDeclarationRecovery.admit(
+            revalidated = revalidated(approved.plan),
+            expectedVersion = approved.version,
+        ).refined()
+
+    private fun revalidated(plan: PlannedAddDeclaration): RevalidatedAddDeclaration {
+        val observation = AddDeclarationRevalidationObservation.observe(
+            generation = EvidenceGeneration.parse(plan.generation.value).refined(),
+            target = plan.target,
+            currentFile = plan.expectedFile.preimage,
+            provenance = AddDeclarationSourceProvenance.AUTHORED,
+            writability = AddDeclarationTargetWritability.WRITABLE,
+        ).refined()
+        return RevalidatedAddDeclaration.admit(plan, observation).refined()
     }
 
     private fun plan(): PlannedAddDeclaration {

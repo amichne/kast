@@ -17,6 +17,8 @@ import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.LoadAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.PersistedAddDeclarationPlan
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecovery
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecoveryResult
 import io.github.amichne.kast.change.journal.contract.StoreAddDeclarationPlanResult
 import io.github.amichne.kast.change.plan.spi.AddDeclarationPlanner
 import io.github.amichne.kast.change.plan.spi.AddDeclarationPlanningResult
@@ -93,6 +95,11 @@ class AddDeclarationPlanPersistenceServiceTest {
 
         override fun approve(command: ApproveAddDeclarationPlan): ApproveAddDeclarationPlanResult =
             error("Approval is outside this focused planning proof")
+
+        override fun prepareRecovery(
+            command: PrepareAddDeclarationRecovery,
+        ): PrepareAddDeclarationRecoveryResult =
+            error("Recovery is outside this focused planning proof")
     }
 
     private fun plan(): PlannedAddDeclaration {

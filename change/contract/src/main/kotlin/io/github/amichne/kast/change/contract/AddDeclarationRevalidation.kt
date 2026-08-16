@@ -122,7 +122,39 @@ data class AddDeclarationRecoveryMaterial private constructor(
                 targetPath = plan.target.targetPath,
                 beforeImage = beforeImage,
             )
+
+        /**
+         * Proof transition:
+         * stored PlanId, target path, and exact before image to
+         * `Refinement<AddDeclarationRecoveryMaterial, AddDeclarationRecoveryMaterialFailure>`.
+         *
+         * Establishes that durable recovery material belongs to the exact plan, target, and
+         * preimage proved during planning. The closed expected failure is
+         * `AddDeclarationRecoveryMaterialFailure`; raw stored fields may be extracted only by the
+         * durable recovery adapter.
+         */
+        fun restore(
+            plan: PlannedAddDeclaration,
+            planId: AddDeclarationPlanId,
+            targetPath: AddDeclarationTargetPath,
+            beforeImage: ExactFileContentProof,
+        ): Refinement<AddDeclarationRecoveryMaterial, AddDeclarationRecoveryMaterialFailure> =
+            when {
+                planId != plan.planId ->
+                    Refinement.Rejected(AddDeclarationRecoveryMaterialFailure.PLAN_ID_MISMATCH)
+                targetPath != plan.target.targetPath ->
+                    Refinement.Rejected(AddDeclarationRecoveryMaterialFailure.TARGET_PATH_MISMATCH)
+                beforeImage != plan.expectedFile.preimage ->
+                    Refinement.Rejected(AddDeclarationRecoveryMaterialFailure.BEFORE_IMAGE_MISMATCH)
+                else -> Refinement.Refined(exact(plan, beforeImage))
+            }
     }
+}
+
+enum class AddDeclarationRecoveryMaterialFailure {
+    PLAN_ID_MISMATCH,
+    TARGET_PATH_MISMATCH,
+    BEFORE_IMAGE_MISMATCH,
 }
 
 @ConsistentCopyVisibility

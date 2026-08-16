@@ -1,86 +1,52 @@
 # Repository Guidelines
 
-## Task contract protocol
+## Evidence-driven work packets
 
 For every implementation task:
 
-1. Before modifying source code, create or replace `.agent/TASK.md` using the required template below.
-2. Populate it solely from the user's request. Do not invent additional goals.
-3. Read `.agent/TASK.md` immediately before:
-   - making the first source change;
-   - starting any investigation not explicitly listed;
-   - running verification;
-   - declaring completion.
-4. Treat `.agent/TASK.md` as the authoritative and closed execution scope.
-5. Do not modify the Goal, Allowed Writes, Non-Goals, Red Proof, Green Proof, or Done When sections after implementation begins.
-6. Record progress only under Execution State.
-7. Any work not required by the Goal or Done When criteria is prohibited.
-8. If an action would exceed scope, do not perform it. Record it under Out-of-Scope Findings only when it blocks completion.
-9. Stop immediately when every Done When condition is satisfied.
-10. Do not perform cleanup, hardening, refactoring, documentation, or additional testing after completion unless explicitly required by the contract.
+1. Derive one work packet from the user's request: one observable outcome,
+   exact allowed writes, explicit non-goals, one focused RED, the smallest
+   sufficient GREEN, and objective completion conditions.
+2. Record that packet in ignored `.agent/TASK.md` before the first write. Keep
+   it short; it is a scope lock and evidence ledger, not a restatement of this
+   file or a running transcript.
+3. After the first implementation write, freeze the goal, writes, non-goals,
+   RED, GREEN, and completion conditions. Update only execution state and
+   blocking out-of-scope findings.
+4. Re-read the packet before the first write, after compaction or user steering,
+   before verification, and before completion. Re-reading it before every tool
+   call is unnecessary.
+5. Establish a focused failing proof before production changes. Verify with the
+   focused GREEN first, then widen only as required by the nearest guide.
+6. At completion, compare the changed-path set with the packet, preserve
+   pre-existing user work, and stop when every completion condition is met.
 
-If `.agent/TASK.md` cannot be completed from the request, make the narrowest reasonable assumption. Ask a question only when no implementation can proceed safely.
+For a dependency-ordered program, select exactly one ready node from its
+checked-in task graph. Record the node ID and dependencies in `.agent/TASK.md`;
+do not copy a parallel tree of per-node Markdown contracts. Current repository
+HEAD is authoritative over a pinned planning baseline. Land independently
+verifiable nodes independently before starting their dependents.
 
-### Required `.agent/TASK.md` template
+## IntelliJ-first execution
 
-````
+The current migration program is
+`.agents/arch/kast-architecture-firewall-and-mutation-workflow.md`. Its first
+terminal journey is:
 
-# Task Contract
-
-## Goal
-
-One observable outcome.
-
-## Allowed Writes
-
-- Exact file or directory paths.
-
-No other paths may be modified.
-
-## Allowed Reads
-
-- Relevant file or directory paths.
-
-## Non-Goals
-
-- Explicitly excluded adjacent work.
-- Refactoring unrelated code.
-- Generalizing the implementation.
-- Fixing unrelated failures.
-- Adding optional improvements.
-
-## Red Proof
-
-Command:
-
-```shell
-<command>
+```text
+native symbol discovery -> exact selector -> exact definition/description
 ```
 
-Expected failure:
+Use production IntelliJ file, class, symbol, scope, smart-read, cancellation,
+and liveness facilities where they already implement the operation. Preserve
+one canonical root and semantic generation across the journey. Results and
+continuations must be bounded and detached; never retain PSI or other live IDE
+objects across requests.
 
-<specific failure proving the missing behavior>
-
-## Green Proof
-
-Command:
-
-```shell
-<command>
-```
-
-## Done When
-
-- The requested observable behavior exists.
-- The Green Proof passes.
-- No files outside Allowed Writes changed.
-- No Non-Goal work was performed.
-
-
-## Out-of-Scope Findings
-
-- None
-````
+Ordinary reads must not import Gradle, build a graph, write SQLite, mutate
+source, recursively refresh the workspace, control processes, or reacquire
+aggregate `AnalysisBackend` authority. Performance measurements are regression
+diagnostics for this tranche, not a separate optimization program.
 
 ## Kotlin proof-carrying validation transitions
 
@@ -132,26 +98,30 @@ Example:
 fun requireRepositorySnapshotDatabase(path: Path): RepositorySnapshotDatabase
 ```
 
-## macOS indexer pathway
+## Native IntelliJ MCP
 
-On a macOS developer workstation, explicit semantic demand is the normal
-runtime bootstrap. Invoke the active public Kast CLI from the canonical
-workspace root:
+Kast agent tooling is disabled until an explicit re-evaluation makes it useful
+again. Do not invoke, start, repair, or silently fall back to the Kast CLI,
+plugin, runtime, diagnostics MCP, or duplicate semantic index.
 
-```shell
-kast up
-```
+Use the bundled IntelliJ IDEA MCP server named `idea`. Keep its complete
+available tool catalog exposed in both the IDE and Codex; do not add an
+`enabled_tools` allowlist. Always pass the canonical current worktree as
+`projectPath`. If that exact project is not open or indexed, make that state
+explicit and open/qualify it before Kotlin work rather than using another
+checkout.
 
-Kast reuses or starts one isolated indexer for the exact root. It
-starts Gradle import and semantic indexing without opening, closing, focusing,
-or routing through a foreground IDE project. `kast up` returns only when
-semantic evidence is ready, or it reports a typed blocker.
+For every Kotlin edit:
 
-Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio
-2026.1.2/build 261. A supported installation supplies matched IntelliJ runtime
-libraries to the isolated process. It is not a semantic backend and its open
-or closed foreground state is irrelevant. Do not control a foreground IDE to
-repair Kast. Resolve the typed indexer blocker instead.
+1. Use IDE-native project, symbol, text, call-hierarchy, and quick-documentation
+   tools to establish the target and its consumers before editing.
+2. Make the scoped file change, then use IntelliJ formatting and file or batch
+   inspections on every changed Kotlin file.
+3. Use the IntelliJ build tool for compile feedback, then run the focused
+   Gradle proof and any widening ring required below.
+
+Tool availability does not grant operation authority. Use only the tools
+needed by the active work packet and preserve all repository invariants.
 
 ## Gradle topology
 

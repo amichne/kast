@@ -11,6 +11,8 @@ import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlan
 import io.github.amichne.kast.change.journal.contract.ApproveAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.LoadAddDeclarationPlanResult
 import io.github.amichne.kast.change.journal.contract.PersistedAddDeclarationPlan
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecovery
+import io.github.amichne.kast.change.journal.contract.PrepareAddDeclarationRecoveryResult
 import io.github.amichne.kast.change.journal.contract.RawAddDeclarationPlanApprovalEvidence
 import io.github.amichne.kast.change.journal.contract.StoreAddDeclarationPlanResult
 import io.github.amichne.kast.kernel.Refinement
@@ -159,6 +161,10 @@ class SqliteAddDeclarationPlanJournal private constructor(
         }
     }
 
+    override fun prepareRecovery(
+        command: PrepareAddDeclarationRecovery,
+    ): PrepareAddDeclarationRecoveryResult = connections.prepareRecovery(command)
+
     private fun <T> storageResult(
         unavailable: () -> T,
         block: () -> T,
@@ -210,11 +216,22 @@ class SqliteAddDeclarationPlanJournal private constructor(
  * Establishes canonical plan bytes, exact PlanId and generation, and a replayed closed lifecycle
  * transition. Raw columns are extracted only inside [ResultSet.toRecordOrNull].
  */
-private fun Connection.loadRecord(planId: AddDeclarationPlanId): PersistedAddDeclarationPlan? =
+internal fun Connection.loadRecord(planId: AddDeclarationPlanId): PersistedAddDeclarationPlan? =
     prepareStatement(
-        """SELECT plan_id, plan_bytes, source_generation, stage, state_version,
-            prior_stage, prior_version, approval_plan_id, approval_by, approval_sha256
-        FROM add_declaration_plan WHERE plan_id = ?""",
+        """SELECT
+            p.plan_id AS plan_id, p.plan_bytes AS plan_bytes,
+            p.source_generation AS source_generation, p.stage AS stage,
+            p.state_version AS state_version, p.prior_stage AS prior_stage,
+            p.prior_version AS prior_version, p.approval_plan_id AS approval_plan_id,
+            p.approval_by AS approval_by, p.approval_sha256 AS approval_sha256,
+            r.plan_id AS recovery_plan_id, r.state_version AS recovery_state_version,
+            r.prior_stage AS recovery_prior_stage, r.prior_version AS recovery_prior_version,
+            r.target_path AS recovery_target_path, r.before_sha256 AS recovery_before_sha256,
+            r.before_content_base64 AS recovery_before_content_base64,
+            r.mutation_progress AS recovery_mutation_progress
+        FROM add_declaration_plan p
+        LEFT JOIN add_declaration_recovery r ON r.plan_id = p.plan_id
+        WHERE p.plan_id = ?""",
     ).use { statement ->
         statement.setString(1, planId.value)
         statement.executeQuery().use { rows ->
@@ -222,7 +239,7 @@ private fun Connection.loadRecord(planId: AddDeclarationPlanId): PersistedAddDec
         }
     }
 
-private fun Connection.recordExists(planId: AddDeclarationPlanId): Boolean =
+internal fun Connection.recordExists(planId: AddDeclarationPlanId): Boolean =
     prepareStatement("SELECT 1 FROM add_declaration_plan WHERE plan_id = ?").use { statement ->
         statement.setString(1, planId.value)
         statement.executeQuery().use(ResultSet::next)
@@ -232,7 +249,7 @@ private fun Connection.recordExists(planId: AddDeclarationPlanId): Boolean =
  * Proof transition: one SQLite result row plus expected PlanId to `PersistedAddDeclarationPlan` or
  * `null` for any malformed, mismatched, or unsupported stored state.
  *
- * Establishes canonical detached plan evidence and the exact KIP-032 lifecycle transition. Raw
+ * Establishes canonical detached plan evidence and the exact KIP-033 lifecycle transition. Raw
  * column extraction is permitted only in this record-decoder boundary.
  */
 private fun ResultSet.toRecordOrNull(expectedPlanId: AddDeclarationPlanId): PersistedAddDeclarationPlan? {
@@ -243,8 +260,10 @@ private fun ResultSet.toRecordOrNull(expectedPlanId: AddDeclarationPlanId): Pers
     val version = AddDeclarationPlanStateVersion.parse(getLong("state_version")).valueOrNull()
                   ?: return null
     return when (getString("stage")) {
-        AddDeclarationPlanStage.AWAITING_APPROVAL.name ->
+        AddDeclarationPlanStage.AWAITING_APPROVAL.name -> {
+            if (getString("recovery_plan_id") != null) return null
             PersistedAddDeclarationPlan.restoreAwaiting(plan, version).valueOrNull()
+        }
         AddDeclarationPlanStage.APPROVED.name -> {
             if (getString("prior_stage") != AddDeclarationPlanStage.AWAITING_APPROVAL.name) return null
             val priorVersionValue = getLong("prior_version")
@@ -256,12 +275,18 @@ private fun ResultSet.toRecordOrNull(expectedPlanId: AddDeclarationPlanId): Pers
                 approvedBy = getString("approval_by") ?: return null,
                 evidenceSha256 = getString("approval_sha256") ?: return null,
             ).refine().valueOrNull() ?: return null
-            PersistedAddDeclarationPlan.restoreApproved(
+            val approved = PersistedAddDeclarationPlan.restoreApproved(
                 plan = plan,
                 currentVersion = version,
                 priorVersion = priorVersion,
                 evidence = approval,
             ).valueOrNull()
+                           ?: return null
+            if (getString("recovery_plan_id") == null) {
+                approved
+            } else {
+                toRecoveryPreparedOrNull(expectedPlanId, approved)
+            }
         }
         else -> null
     }
