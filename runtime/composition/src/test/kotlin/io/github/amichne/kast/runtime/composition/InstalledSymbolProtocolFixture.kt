@@ -2,6 +2,19 @@ package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationBatch
+import io.github.amichne.kast.relation.contract.RelationByteCount
+import io.github.amichne.kast.relation.contract.RelationCompilation
+import io.github.amichne.kast.relation.contract.RelationCompilerPort
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationFact
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -24,6 +37,8 @@ import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.traversal.contract.TraversalOperations
+import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
@@ -38,6 +53,8 @@ internal class InstalledSymbolProtocolFixture private constructor(
     val workspace: WorkspaceInspectionOperations,
     val discovery: SymbolDiscoveryOperations,
     val exact: SymbolExactOperations,
+    val relation: RelationOperations,
+    val traversal: TraversalOperations,
 ) {
     var discoveryRequest: SymbolDiscoveryRequest? = null
         private set
@@ -67,10 +84,17 @@ internal class InstalledSymbolProtocolFixture private constructor(
                     return SymbolDescriptionResult.Described(SymbolDescription.from(request.selector))
                 }
             }
+            val workspace = WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(published) }
+            val relation = RelationService(
+                workspace,
+                RelationCompilerPort { request -> relationCompilation(request) },
+            )
             fixture = InstalledSymbolProtocolFixture(
-                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(published) },
+                workspace,
                 discovery,
                 exact,
+                relation,
+                traversalOperations(relation),
             )
             return fixture
         }
@@ -123,6 +147,61 @@ internal class InstalledSymbolProtocolFixture private constructor(
                 compilerIdentity,
             ).refinedFixture()
             return SymbolSelector.issue(selected, evidence).refinedFixture()
+        }
+
+        private fun relationCompilation(request: RelationRequest): RelationCompilation {
+            val related = relatedEndpoint(request)
+            val source: RelationEndpoint
+            val target: RelationEndpoint
+            if (request.meaning == RelationMeaning.Callees) {
+                source = request.subject
+                target = related
+            } else {
+                source = related
+                target = request.subject
+            }
+            val occurrence = RelationOccurrence.fromBoundary(
+                request.subject.file,
+                request.subject.range.startInclusive,
+                request.subject.range.endExclusive,
+            ).refinedFixture()
+            val fact = RelationFact.create(
+                request,
+                source,
+                target,
+                occurrence,
+                RelationProvenance.K2_AUTHORED_SOURCE,
+            ).refinedFixture()
+            val batch = RelationBatch.create(
+                request,
+                listOf(fact),
+                RelationByteCount.parse(
+                    fact.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong(),
+                ).refinedFixture(),
+                RelationWorkCount.parse(1).refinedFixture(),
+            ).refinedFixture()
+            return RelationCompilation.complete(batch)
+        }
+
+        private fun relatedEndpoint(request: RelationRequest): RelationEndpoint.Resolved {
+            val start = request.subject.range.endExclusive + 1
+            val compilerIdentity = CompilerSymbolIdentity.parse(
+                request.subject.compilerIdentity.value + ":related",
+            ).refinedFixture()
+            val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
+                request.subject.file,
+                start,
+                start + 7,
+                request.subject.name.value + "Related",
+                request.subject.name.value + ".Related",
+                CompilerSymbolKind.FUNCTION,
+                compilerIdentity,
+            ).refinedFixture()
+            return RelationEndpoint.resolve(
+                request.subject.lease,
+                request.subject.scope,
+                evidence,
+            ).refinedFixture()
         }
     }
 }

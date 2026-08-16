@@ -6,6 +6,10 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
@@ -17,6 +21,8 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuth
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDescribeHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalRelationReadHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRunHandler
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
@@ -162,6 +168,57 @@ class InstalledKastRuntimeTest {
             true,
             described.evidence.payload.declaration.value.contains("sample.Sample.sample"),
         )
+    }
+
+    @Test
+    fun `relation and traversal retain compiler grounded endpoint authority`(
+        @TempDir temporary: Path,
+    ) {
+        val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
+        val fixture = InstalledSymbolProtocolFixture.create(root)
+        val authority = CanonicalProtocolAuthority()
+        val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
+        val resolve = CanonicalSymbolResolveHandler(fixture.exact, authority)
+        val relation = CanonicalRelationReadHandler(fixture.relation, authority)
+        val traversal = CanonicalTraversalRunHandler(fixture.traversal, authority)
+        val candidate = (
+            runImmediate {
+                discover.execute(
+                    SymbolDiscoverRequest(
+                        ProtocolText.parse("sample").refined(),
+                        io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                    ),
+                )
+            } as OperationOutcome.Complete
+            ).evidence.payload.candidateSelectors.values.single()
+        val exact = (
+            runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
+                OperationOutcome.Complete
+            ).evidence.payload.exactSelector
+
+        val related = runImmediate {
+            relation.execute(
+                RelationReadRequest(
+                    exact,
+                    RelationKindDocument.REFERENCES,
+                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                ),
+            )
+        } as OperationOutcome.Complete
+        val traversed = runImmediate {
+            traversal.execute(
+                TraversalRunRequest(
+                    exact,
+                    RelationKindDocument.REFERENCES,
+                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(1).refined(),
+                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                ),
+            )
+        } as OperationOutcome.Qualified
+
+        assertEquals(1, related.evidence.payload.targetSelectors.values.size)
+        assertEquals(1, traversed.evidence.payload.reachedSelectors.values.size)
+        assertEquals(TraversalRunQualification.DEPTH_LIMIT, traversed.qualification)
     }
 }
 
