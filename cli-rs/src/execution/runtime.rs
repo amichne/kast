@@ -1,7 +1,7 @@
 use crate::SCHEMA_VERSION;
 use crate::cli::{
     AgentLeaseAccessArgs, AgentLeaseAcquireArgs, AgentWorkspaceLeaseId, BackendName,
-    DaemonStartArgs, RuntimeArgs,
+    DaemonStartArgs, RuntimeArgs, RuntimeRepairArgs, RuntimeServiceEntrypointArgs,
 };
 use crate::config::{self, KastConfig, PathResolutionReport};
 use crate::daemon;
@@ -19,6 +19,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 include!("runtime/types.rs");
 #[path = "runtime/backend/indexer_authority.rs"]
 mod indexer_authority;
+pub(crate) use indexer_authority::{service_entrypoint, workspace_repair};
 #[cfg(target_os = "macos")]
 include!("runtime/backend/sidecar_host.rs");
 include!("runtime/backend/workspace_admission.rs");

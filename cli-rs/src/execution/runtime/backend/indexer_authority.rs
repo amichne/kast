@@ -1,5 +1,18 @@
 use super::*;
 
+#[path = "indexer_authority/ownership.rs"]
+mod ownership;
+#[path = "indexer_authority/process.rs"]
+mod process;
+#[path = "indexer_authority/repair.rs"]
+mod repair;
+#[path = "indexer_authority/registration.rs"]
+mod registration;
+#[path = "indexer_authority/service_manager.rs"]
+mod service_manager;
+
+pub(crate) use repair::{service_entrypoint, workspace_repair};
+
 #[derive(Debug, Clone)]
 pub(crate) struct AdmittedIndexerRuntime {
     workspace_root: PathBuf,
