@@ -181,7 +181,10 @@ sealed interface RuntimeProcessStart {
 /** Sole process-effect adapter for an admitted indexer launch command. */
 object JdkRuntimeProcessStarter : RuntimeProcessStarter {
     override fun start(command: IndexerLaunchCommand): RuntimeProcessStart = try {
-        ProcessBuilder(command.arguments).inheritIO().start()
+        ProcessBuilder(command.arguments)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
         RuntimeProcessStart.Started
     } catch (_: IOException) {
         RuntimeProcessStart.Rejected
