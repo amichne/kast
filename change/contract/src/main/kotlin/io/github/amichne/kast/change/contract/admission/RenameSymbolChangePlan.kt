@@ -162,7 +162,7 @@ class RenameSymbolChangePlan private constructor(
                 PlannedMutationWrite(
                     input.target.file,
                     input.target.sourceRoot,
-                    input.target.content,
+                    PlannedSourcePrecondition.Existing(input.target.content),
                     mutations,
                 ),
             )

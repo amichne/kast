@@ -341,13 +341,20 @@ internal class VerifiedMutationFixture {
         resultingWorkspace,
     )
 
-    private fun completeDiagnostics(workspace: PublishedWorkspace): DiagnosticCheckResult {
-        val complete = DiagnosticCompilation.complete(DiagnosticBatch.empty(diagnosticScope(workspace)))
+    private fun completeDiagnostics(
+        workspace: PublishedWorkspace,
+        path: Path = targetPath,
+    ): DiagnosticCheckResult {
+        val complete = DiagnosticCompilation.complete(
+            DiagnosticBatch.empty(diagnosticScope(workspace, path)),
+        )
         return DiagnosticCheckResult.Complete(complete.batch, complete.coverage)
     }
 
-    private fun diagnosticScope(workspace: PublishedWorkspace): DiagnosticScope =
-        DiagnosticScope.fromCanonicalPaths(workspace.readLease, listOf(targetPath)).refined()
+    private fun diagnosticScope(
+        workspace: PublishedWorkspace,
+        path: Path = targetPath,
+    ): DiagnosticScope = DiagnosticScope.fromCanonicalPaths(workspace.readLease, listOf(path)).refined()
 
     private fun workspace(generation: Long, state: String): PublishedWorkspace =
         PublishedWorkspace.publish(
@@ -388,9 +395,4 @@ internal class VerifiedMutationFixture {
     private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
         .digest(bytes)
         .joinToString("") { byte -> "%02x".format(byte) }
-}
-
-internal fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error(failure.toString())
 }

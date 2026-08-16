@@ -20,6 +20,8 @@ Live IntelliJ values exist only during one observation, write, or rollback call.
   admitted target document. AddDeclaration insertion and RenameSymbol replacement do not expose a
   public raw-edit primitive.
 - Applied-write durability is recorded after the in-memory command and before physical save.
+- AddFile stages a syntax-valid whole-file postimage in memory, records applied-write durability,
+  then creates exactly one physical file. Its rollback deletes only the unchanged exact postimage.
 - A rejected durability barrier restores the in-memory preimage and performs no save.
 - Save or observation faults return recovery-required data; rollback overwrites only the exact
   admitted postimage or accepts an already-restored exact preimage.

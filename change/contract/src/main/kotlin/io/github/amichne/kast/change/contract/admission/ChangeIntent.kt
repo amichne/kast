@@ -10,6 +10,11 @@ import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 
 /** Closed semantic change family. No raw text-edit intent can implement this interface. */
 sealed interface ChangeIntent {
+    class AddFile internal constructor(
+        val target: CreatableKotlinFileTarget,
+        val content: KotlinFileSourceText,
+    ) : ChangeIntent
+
     class AddDeclaration internal constructor(
         val target: EditableMutationTarget,
         val declaration: AddDeclarationSourceText,
@@ -181,6 +186,11 @@ class RenameSymbolOccurrenceSet private constructor(
 /** Closed source transformations derived by semantic planning. */
 sealed interface SourceTextMutation {
     @ConsistentCopyVisibility
+    data class CreateFile internal constructor(
+        val content: KotlinFileSourceText,
+    ) : SourceTextMutation
+
+    @ConsistentCopyVisibility
     data class InsertAfterDeclaration internal constructor(
         val anchor: ExactDeclarationTextRange,
         val declaration: AddDeclarationSourceText,
@@ -194,10 +204,19 @@ sealed interface SourceTextMutation {
     ) : SourceTextMutation
 }
 
+/** Closed physical precondition established before a planned source mutation. */
+sealed interface PlannedSourcePrecondition {
+    data class Existing(
+        val content: WorkspaceSourceContentHash,
+    ) : PlannedSourcePrecondition
+
+    data object Absent : PlannedSourcePrecondition
+}
+
 class PlannedMutationWrite internal constructor(
     val source: SymbolDiscoveryFileIdentity.Workspace,
     val sourceRoot: SourceRoot,
-    val expectedContent: WorkspaceSourceContentHash,
+    val precondition: PlannedSourcePrecondition,
     mutations: List<SourceTextMutation>,
 ) {
     val mutations: List<SourceTextMutation> = mutations.toList()

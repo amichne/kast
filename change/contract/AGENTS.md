@@ -36,6 +36,9 @@ or source effect.
 - RenameSymbol planning admits one changed Kotlin identifier and a deterministic compiler-grounded
   occurrence set. Every replacement retains its exact expected old identifier, and the resulting
   plan implements the same sealed `ChangePlan` contract as AddDeclaration.
+- AddFile planning admits one canonical `.kt` path strictly inside a uniquely owned authored
+  source root and whole-file source text. Its plan retains an explicit absent precondition and one
+  typed file-creation mutation; physical absence is proved again during apply.
 
 ## Verification ladder
 

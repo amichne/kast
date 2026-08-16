@@ -2,6 +2,7 @@ package io.github.amichne.kast.change.verify
 
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.AddFileChangePlan
 import io.github.amichne.kast.change.contract.ChangePlanId
 import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
@@ -198,6 +199,18 @@ class VerifiedMutationService(
     ): Refinement<CompleteChangeVerification, Set<ChangeProofFailure>> = when (
         val plan = admitted.plan
     ) {
+        is AddFileChangePlan -> when (evidence) {
+            is AddFileVerificationEvidence -> when (val proof = CompleteAddFileVerification.admit(
+                plan,
+                admitted.applied,
+                resulting,
+                evidence,
+            )) {
+                is Refinement.Refined -> Refinement.Refined(proof.value)
+                is Refinement.Rejected -> Refinement.Rejected(proof.failure)
+            }
+            else -> evidenceMismatch()
+        }
         is AddDeclarationChangePlan -> when (evidence) {
             is AddDeclarationVerificationEvidence -> when (val proof =
                 CompleteAddDeclarationVerification.admit(
@@ -210,7 +223,7 @@ class VerifiedMutationService(
                 is Refinement.Refined -> Refinement.Refined(proof.value)
                 is Refinement.Rejected -> Refinement.Rejected(proof.failure)
             }
-            is RenameSymbolVerificationEvidence -> evidenceMismatch()
+            else -> evidenceMismatch()
         }
         is RenameSymbolChangePlan -> when (evidence) {
             is RenameSymbolVerificationEvidence -> when (val proof =
@@ -224,7 +237,7 @@ class VerifiedMutationService(
                 is Refinement.Refined -> Refinement.Refined(proof.value)
                 is Refinement.Rejected -> Refinement.Rejected(proof.failure)
             }
-            is AddDeclarationVerificationEvidence -> evidenceMismatch()
+            else -> evidenceMismatch()
         }
     }
 

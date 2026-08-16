@@ -9,7 +9,7 @@ import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.apply.MutationAuthority
 import io.github.amichne.kast.change.apply.MutationDurabilityBarrier
 import io.github.amichne.kast.change.apply.MutationDurabilityResult
-import io.github.amichne.kast.change.apply.ObservedMutationSource
+import io.github.amichne.kast.change.apply.ObservedMutationPrecondition
 import io.github.amichne.kast.change.apply.SourceObservationResult
 import io.github.amichne.kast.change.apply.SourceWriteFailure
 import io.github.amichne.kast.change.apply.SourceWriteResult
@@ -21,13 +21,14 @@ import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceStore
 import io.github.amichne.kast.evidence.contract.MutationRecoveryLoadResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryPersistResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 
 internal fun applyExactMutation(
     fixture: VerifiedMutationFixture,
     plan: io.github.amichne.kast.change.contract.ChangePlan = fixture.plan,
 ): AppliedUnverified {
-    val adapter = ExactWriteAdapter(fixture.observedSource(plan))
+    val adapter = ExactWriteAdapter(fixture.observedPrecondition(plan))
     val service = AddDeclarationApplyService(
         AddDeclarationRecoveryService(InMemoryVerificationRecoveryStore()),
         adapter,
@@ -38,7 +39,7 @@ internal fun applyExactMutation(
 }
 
 private class ExactWriteAdapter(
-    private val observation: ObservedMutationSource,
+    private val observation: ObservedMutationPrecondition,
 ) : AddDeclarationSourceObserver, AddDeclarationSourceWriter, AddDeclarationSourceRollback {
     override fun observe(
         source: SymbolDiscoveryFileIdentity.Workspace,
@@ -106,4 +107,9 @@ private class InMemoryVerificationRecoveryStore : MutationRecoveryEvidenceStore 
                 MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH,
             )
         }
+}
+
+internal fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
+    is Refinement.Refined -> value
+    is Refinement.Rejected -> error(failure.toString())
 }

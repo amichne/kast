@@ -107,6 +107,15 @@ internal class AddDeclarationPlanFixture {
         )
     }
 
+    fun workspace(): PublishedWorkspace = PublishedWorkspace.publish(
+        ReconciledWorkspace.admit(
+            WorkspaceCandidate(target.lease.workspaceRoot, target.workspaceState),
+            WorkspaceEvidenceKind.entries.toSet(),
+            listOf(target.sourceRoot),
+        ).refined(),
+        target.lease.generation,
+    )
+
     fun qualifiedRelation(): RelationReadResult {
         val batch = relationBatch(RelationMeaning.References)
         val qualified = RelationCompilation.qualified(

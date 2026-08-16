@@ -101,7 +101,7 @@ class AddDeclarationChangePlan private constructor(
         PlannedMutationWrite(
             target.file,
             target.sourceRoot,
-            sourceSnapshot.content,
+            PlannedSourcePrecondition.Existing(sourceSnapshot.content),
             listOf(
                 SourceTextMutation.InsertAfterDeclaration(
                     target.range,

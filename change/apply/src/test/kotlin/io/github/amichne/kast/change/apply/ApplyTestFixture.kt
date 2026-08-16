@@ -1,6 +1,10 @@
 package io.github.amichne.kast.change.apply
 
 import io.github.amichne.kast.change.contract.AddDeclarationKind
+import io.github.amichne.kast.change.contract.AddFileChangePlan
+import io.github.amichne.kast.change.contract.AddFilePlanRequest
+import io.github.amichne.kast.change.contract.AddFilePlanResult
+import io.github.amichne.kast.change.contract.AddFileTargetObservation
 import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidenceInput
@@ -11,6 +15,8 @@ import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.MutationTargetObservation
 import io.github.amichne.kast.change.contract.ObservedMutationTargetState
 import io.github.amichne.kast.change.contract.KotlinIdentifier
+import io.github.amichne.kast.change.contract.KotlinFileSourceText
+import io.github.amichne.kast.change.contract.CreatableKotlinFileTarget
 import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrence
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceRole
@@ -18,6 +24,7 @@ import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceSet
 import io.github.amichne.kast.change.contract.RenameSymbolPlanRequest
 import io.github.amichne.kast.change.contract.RenameSymbolPlanResult
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
+import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
@@ -124,6 +131,40 @@ internal class ApplyTestFixture {
         )
         return (result as RenameSymbolPlanResult.Planned).plan
     }
+
+    fun addFilePlan(): AddFileChangePlan {
+        val path = Path.of("/workspace/app/src/main/kotlin/sample/Added.kt")
+        val file = SymbolDiscoveryFileIdentity.fromBoundary(
+            workspace.root,
+            path,
+            "file://$path",
+        ).refined() as SymbolDiscoveryFileIdentity.Workspace
+        val target = CreatableKotlinFileTarget.admit(
+            AddFileTargetObservation(workspace, file, sourceRoot.owner),
+        ).refined()
+        val result = PureAddFilePlanningService().plan(
+            AddFilePlanRequest(
+                target,
+                KotlinFileSourceText.parse("package sample\n\nclass Added\n").refined(),
+            ),
+        )
+        return (result as AddFilePlanResult.Planned).plan
+    }
+
+    fun absent(plan: ChangePlan): ObservedAbsentMutationSource =
+        ObservedAbsentMutationSource.fromPhysicalBoundary(
+            plan.writes.entries.single().source,
+            SourceWriteAccess.Writable,
+        )
+
+    fun existing(
+        plan: ChangePlan,
+        text: String,
+    ): ObservedMutationSource = ObservedMutationSource.capture(
+        plan.writes.entries.single().source,
+        text.toByteArray(),
+        SourceWriteAccess.Writable,
+    ).refined()
 
     fun observed(
         text: String = sourceText,

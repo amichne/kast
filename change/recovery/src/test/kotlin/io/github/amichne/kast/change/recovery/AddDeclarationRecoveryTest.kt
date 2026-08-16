@@ -1,6 +1,7 @@
 package io.github.amichne.kast.change.recovery
 
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
+import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
 import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceFailure
 import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceStore
 import io.github.amichne.kast.evidence.contract.MutationRecoveryLoadResult
@@ -30,7 +31,7 @@ class AddDeclarationRecoveryTest {
         ).recovery
         assertInstanceOf(MutationRecoveryRecord.PreWriteDurable::class.java, store.current())
         assertEquals(request.planId, prepared.input.planId)
-        assertEquals(request.expectedContent, prepared.input.expectedContent)
+        assertEquals(request.precondition, prepared.input.precondition)
 
         val applied = assertInstanceOf(
             RecordAppliedAddDeclarationResult.Recorded::class.java,
@@ -47,7 +48,7 @@ class AddDeclarationRecoveryTest {
         val mismatched = AddDeclarationRecoveryPreparation.admit(
             exact.planId,
             exact.source,
-            exact.expectedContent,
+            exact.precondition,
             RecoveryPreimage.fromBoundary("changed".toByteArray(StandardCharsets.UTF_8)),
         )
         assertEquals(
@@ -55,6 +56,29 @@ class AddDeclarationRecoveryTest {
             (mismatched as Refinement.Rejected).failure,
         )
         assertTrue(store.records.isEmpty())
+    }
+
+    @Test
+    fun `absent file recovery accepts only the canonical absence marker`() {
+        val exact = request()
+        val accepted = AddDeclarationRecoveryPreparation.admit(
+            exact.planId,
+            exact.source,
+            PlannedSourcePrecondition.Absent,
+            RecoveryPreimage.fromBoundary(ByteArray(0)),
+        ).refined()
+        val rejected = AddDeclarationRecoveryPreparation.admit(
+            exact.planId,
+            exact.source,
+            PlannedSourcePrecondition.Absent,
+            RecoveryPreimage.fromBoundary("present".toByteArray()),
+        ) as Refinement.Rejected
+
+        assertEquals(PlannedSourcePrecondition.Absent, accepted.precondition)
+        assertEquals(
+            AddDeclarationRecoveryPreparationFailure.ABSENCE_MARKER_MISMATCH,
+            rejected.failure,
+        )
     }
 
     @Test
@@ -124,7 +148,9 @@ class AddDeclarationRecoveryTest {
             source = RecoverySourcePath.parse(
                 "/workspace/app/src/main/kotlin/sample/Service.kt",
             ).refined(),
-            expectedContent = WorkspaceSourceContentHash.parse(sha256(bytes)).refined(),
+            precondition = PlannedSourcePrecondition.Existing(
+                WorkspaceSourceContentHash.parse(sha256(bytes)).refined(),
+            ),
             preimage = RecoveryPreimage.fromBoundary(bytes),
         ).refined()
     }
