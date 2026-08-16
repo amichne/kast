@@ -244,18 +244,18 @@ class CompleteAddDeclarationVerification private constructor(
                     failures += AddDeclarationProofFailure.RELATION_EVIDENCE_INCOMPLETE
                 else -> {
                     if (completeRelations.any {
-                            it.batch.request.selector.lease != resulting.workspace.readLease
+                            it.batch.request.subject.lease != resulting.workspace.readLease
                         }
                     ) {
                         failures += AddDeclarationProofFailure.RELATION_LEASE_MISMATCH
                     }
                     if (completeRelations.any { result ->
-                            val selector = result.batch.request.selector
-                            selector.file != plan.target.selector.file ||
-                                selector.name != plan.target.selector.name ||
-                                selector.qualifiedIdentity != plan.target.selector.qualifiedIdentity ||
-                                selector.kind != plan.target.selector.kind ||
-                                selector.scope != plan.target.selector.scope
+                            val subject = result.batch.request.subject
+                            subject.file != plan.target.selector.file ||
+                                subject.name != plan.target.selector.name ||
+                                subject.qualifiedIdentity != plan.target.selector.qualifiedIdentity ||
+                                subject.kind != plan.target.selector.kind ||
+                                subject.scope != plan.target.selector.scope
                         }
                     ) {
                         failures += AddDeclarationProofFailure.RELATION_TARGET_MISMATCH
