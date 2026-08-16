@@ -113,6 +113,27 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_SPI,
         ),
         active(
+            ModuleId.RELATION_CONTRACT,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
+            ModuleId.RELATION_SERVICE,
+            ModuleRole.SERVICE,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
+            ModuleId.RELATION_INTELLIJ,
+            ModuleRole.INTELLIJ_READ_ADAPTER,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        active(
             ModuleId.PROTOCOL_CONTINUATION,
             ModuleRole.SERVICE,
             ModuleId.KERNEL,
@@ -319,6 +340,7 @@ internal object KastPlatformModules {
         ModuleId.EVIDENCE_SQLITE,
             -> setOf(ForbiddenEffect.JDBC)
         ModuleId.SYMBOL_INTELLIJ,
+        ModuleId.RELATION_INTELLIJ,
         ModuleId.CHANGE_PLAN_INTELLIJ,
         ModuleId.CHANGE_VERIFY_INTELLIJ,
             -> setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
@@ -337,9 +359,6 @@ internal object KastPlatformModules {
     }
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.RELATION_CONTRACT,
-        ModuleId.RELATION_SERVICE,
-        ModuleId.RELATION_INTELLIJ,
         ModuleId.TRAVERSAL_CONTRACT,
         ModuleId.TRAVERSAL_SERVICE,
         ModuleId.DIAGNOSTIC_CONTRACT,
