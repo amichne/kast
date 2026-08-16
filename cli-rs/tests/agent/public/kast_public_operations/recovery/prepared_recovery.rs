@@ -146,7 +146,7 @@ fn public_recover_rejects_pre_diagnostic_evidence_not_bound_to_exact_preimages()
         std::fs::create_dir_all(&source_root).expect("source root");
         std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
         let target = source_root.join("Existing.kt");
-        let preimage = b"class Existing\n";
+        let preimage = b"fun recoveredReplacement() = 1\n";
         std::fs::write(&target, preimage).expect("existing source");
         let workspace = workspace.canonicalize().expect("canonical workspace");
         let target = target.canonicalize().expect("canonical source");

@@ -23,6 +23,14 @@ fn run_legacy_apply(
     }
 
     let content = load_persisted_plan_content(&plan, &paths)?;
+    plan.operation
+        .validate_replacement_request_content(content.as_deref())
+        .map_err(|message| {
+            CliError::new(
+                "KAST_PLAN_INVALID",
+                format!("The stored replacement request content is invalid: {message}"),
+            )
+        })?;
     let lease = OwnedMutationLease::acquire(plan.plan_id, &workspace_root)?;
     let lease_id = lease.id();
     let prewrite: Result<_> = (|| {

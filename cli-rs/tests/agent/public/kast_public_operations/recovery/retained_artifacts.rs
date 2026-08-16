@@ -10,7 +10,7 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
     std::fs::create_dir_all(&source_root).expect("source root");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let target = source_root.join("Existing.kt");
-    let preimage = b"class Existing\n";
+    let preimage = b"fun recoveredReplacement() = 1\n";
     std::fs::write(&target, preimage).expect("existing source");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = target.canonicalize().expect("canonical source");

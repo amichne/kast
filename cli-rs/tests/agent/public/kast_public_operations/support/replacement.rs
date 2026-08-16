@@ -11,6 +11,20 @@ pub(crate) fn replacement_fixture(target: &Path, preimage: &[u8]) -> Replacement
     let source = std::str::from_utf8(preimage).expect("UTF-8 replacement preimage");
     assert!(!source.is_empty(), "replacement preimage must be present");
     let proposed = "fun recoveredReplacement() = 2\n".to_string();
+    let proposed_body = "2";
+    let source_body = if source == "fun recoveredReplacement() = 1\n" {
+        "1"
+    } else {
+        assert!(
+            source.chars().all(char::is_whitespace),
+            "replacement recovery preimage must be the exact declaration or whitespace-only recovery evidence"
+        );
+        "\n"
+    };
+    let body_byte_start = source.find(source_body).expect("replacement source body");
+    let body_byte_end = body_byte_start + source_body.len();
+    let body_start = source[..body_byte_start].encode_utf16().count();
+    let body_end = body_start + source_body.encode_utf16().count();
     let target_identity = json!({
         "fqName": "sample.recoveredReplacement",
         "kind": "FUNCTION",
@@ -39,36 +53,47 @@ pub(crate) fn replacement_fixture(target: &Path, preimage: &[u8]) -> Replacement
         "expect": false,
         "actual": false,
     });
-    let source_length = source.encode_utf16().count();
     let proposed_length = proposed.encode_utf16().count();
+    let proposed_body_start = proposed[..proposed.find(proposed_body).expect("proposed body")]
+        .encode_utf16()
+        .count();
     let preimage_sha256 = source_sha256(preimage);
-    let postimage = proposed.as_bytes().to_vec();
+    let mut postimage = source.as_bytes()[..body_byte_start].to_vec();
+    postimage.extend_from_slice(proposed_body.as_bytes());
+    postimage.extend_from_slice(&source.as_bytes()[body_byte_end..]);
     let preview = json!({
         "edit": {
             "filePath": target,
-            "startOffset": 0,
-            "endOffset": source_length,
-            "newText": proposed,
+            "startOffset": body_start,
+            "endOffset": body_end,
+            "newText": proposed_body,
         },
         "proof": {
             "target": target_identity,
             "requiredGeneration": 7,
             "sourceRange": {
                 "filePath": target,
-                "startOffset": 0,
-                "endOffset": source_length,
+                "startOffset": body_start,
+                "endOffset": body_end,
                 "startLine": 1,
                 "startColumn": 1,
-                "preview": source,
+                "preview": source_body,
             },
             "fileHashes": [{"filePath": target, "hash": preimage_sha256}],
+            "compilerContext": {"files": [], "modelGeneration": 1},
             "oldSignature": signature,
             "proposedSignature": signature,
             "proposedDeclarationHash": source_sha256(proposed.as_bytes()),
             "proposedDeclarationLength": proposed_length,
+            "proposedBodyHash": source_sha256(proposed_body.as_bytes()),
+            "proposedBodyLength": proposed_body.encode_utf16().count(),
             "declarationSlice": {
                 "startOffset": 0,
-                "endOffset": proposed.trim_end().encode_utf16().count(),
+                "endOffset": proposed.trim().encode_utf16().count(),
+            },
+            "proposedBodySlice": {
+                "startOffset": proposed_body_start,
+                "endOffset": proposed_body_start + proposed_body.encode_utf16().count(),
             },
             "evidence": {
                 "type": "complete",

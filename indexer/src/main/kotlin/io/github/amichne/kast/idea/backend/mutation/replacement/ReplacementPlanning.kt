@@ -1,138 +1,99 @@
-@file:OptIn(
-    org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class,
-    org.jetbrains.kotlin.analysis.api.KaIdeApi::class,
-)
-
 package io.github.amichne.kast.idea.backend.mutation
 
-import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiErrorElement
-import com.intellij.psi.PsiField
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.api.contract.ExactFileImagePath
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.Location
-import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.SymbolIdentity
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.result.ExactReplacementOutboundReference
-import io.github.amichne.kast.api.contract.result.ExactReplacementProof
-import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
-import io.github.amichne.kast.api.contract.result.ReplacementCompilerSymbolKind
-import io.github.amichne.kast.api.contract.result.ReplacementCompilerTargetSignature
-import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSha256
-import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSlice
+import io.github.amichne.kast.api.contract.result.ReplacementCompilerContext
+import io.github.amichne.kast.api.contract.result.ReplacementContractAdmission
 import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSignature
-import io.github.amichne.kast.api.contract.result.ReplacementFunctionSignature
-import io.github.amichne.kast.api.contract.result.ReplacementModality
-import io.github.amichne.kast.api.contract.result.ReplacementOccurrenceProvenance
-import io.github.amichne.kast.api.contract.result.ReplacementOutboundEvidence
-import io.github.amichne.kast.api.contract.result.ReplacementOutboundTarget
+import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSlice
 import io.github.amichne.kast.api.contract.result.ReplacementPlanResult
-import io.github.amichne.kast.api.contract.result.ReplacementPropertySignature
-import io.github.amichne.kast.api.contract.result.ReplacementTypeParameterSignature
-import io.github.amichne.kast.api.contract.result.ReplacementTypeVariance
-import io.github.amichne.kast.api.contract.result.ReplacementValueParameterSignature
-import io.github.amichne.kast.api.contract.result.ReplacementVisibility
-import io.github.amichne.kast.api.protocol.ReplacementProofFailureEvidence
-import io.github.amichne.kast.api.protocol.ReplacementProofIncompleteException
+import io.github.amichne.kast.api.contract.result.ReplacementSubmittedBodySlice
 import io.github.amichne.kast.api.protocol.ReplacementProofLimitation
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.ParsedReplacementPlanQuery
 import io.github.amichne.kast.idea.IdeaTelemetryScope
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
-import io.github.amichne.kast.idea.backend.relationships.relationshipIdentity
-import io.github.amichne.kast.idea.backend.workspace.isWorkspaceFile
+import io.github.amichne.kast.idea.backend.contract.toKastLocation
 import io.github.amichne.kast.idea.timedReadAction
-import io.github.amichne.kast.shared.analysis.compilerContainingDeclarationName
-import io.github.amichne.kast.shared.analysis.toKastLocation
-import io.github.amichne.kast.shared.analysis.toSymbolModel
-import java.util.concurrent.CancellationException
 import kotlinx.coroutines.withContext
-import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.resolution.KaErrorCallInfo
-import org.jetbrains.kotlin.analysis.api.resolution.KaImplicitInvokeCall
-import org.jetbrains.kotlin.analysis.api.resolution.singleFunctionCallOrNull
-import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaDeclarationSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaPackageSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
-import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolVisibility
-import org.jetbrains.kotlin.analysis.api.symbols.KaTypeParameterSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaVariableSymbol
-import org.jetbrains.kotlin.idea.references.KtReference
-import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtArrayAccessExpression
-import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtForExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPsiFactory
-import org.jetbrains.kotlin.psi.KtReferenceExpression
 
-private data class ReplacementPlanningSnapshot(
+internal data class ReplacementPlanningSnapshot(
     val target: SymbolIdentity,
     val generation: Long,
     val sourceRange: Location,
+    val proposedBodyText: String,
     val oldSignature: ReplacementDeclarationSignature,
     val proposedSignature: ReplacementDeclarationSignature,
     val declarationSlice: ReplacementDeclarationSlice,
+    val proposedBodySlice: ReplacementSubmittedBodySlice,
     val outboundReferences: List<ExactReplacementOutboundReference>,
+    val diagnostics: ReplacementBodyDiagnosticObservation.ErrorFree,
     val sourceContextHash: String,
+    val compilerContext: ReplacementCompilerContext,
 )
 
-
 internal sealed interface ReplacementSourceIdentityBasis {
-    val preimageDeclarationLength: PositiveInt
+    val preimageBodyLength: PositiveInt
 
     data class CompilerPreimage(
         val file: KtFile,
-        override val preimageDeclarationLength: PositiveInt,
+        override val preimageBodyLength: PositiveInt,
     ) : ReplacementSourceIdentityBasis
 
     data class PersistedPreimage(
-        override val preimageDeclarationLength: PositiveInt,
+        override val preimageBodyLength: PositiveInt,
     ) : ReplacementSourceIdentityBasis
 }
+
+/**
+ * Backend boundary projection from parsed replacement input to one admitted exact replacement plan.
+ *
+ * All semantic planning and contract construction below this boundary return closed admissions.
+ * Only this backend boundary projects [ReplacementProofRejection] into the public transport
+ * exception protocol.
+ */
 internal suspend fun KastIndexerBackend.planReplacementOperation(
     query: ParsedReplacementPlanQuery,
 ): ReplacementPlanResult = withContext(readDispatcher) {
     telemetry.inSpan(IdeaTelemetryScope.PLAN_REPLACEMENT, "kast.idea.planReplacement") {
-        val snapshot = timedReadAction(
-            telemetry,
-            IdeaTelemetryScope.PLAN_REPLACEMENT,
-            "kast.idea.planReplacement.collect",
+        val snapshot = when (
+            val admission = timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.PLAN_REPLACEMENT,
+                "kast.idea.planReplacement.collect",
+            ) {
+                collectReplacementPlanningSnapshot(query)
+            }
         ) {
-            collectReplacementPlanningSnapshot(query)
+            is ReplacementAdmission.Admitted -> admission.value
+            is ReplacementAdmission.Rejected -> projectReplacementProofFailure(admission.rejection)
         }
         val edit = TextEdit(
             filePath = snapshot.sourceRange.filePath,
             startOffset = snapshot.sourceRange.startOffset,
             endOffset = snapshot.sourceRange.endOffset,
-            newText = query.proposedDeclaration.value,
+            newText = snapshot.proposedBodyText,
         )
         val fileImages = try {
             planExactMutationFileImages(listOf(edit))
         } catch (failure: ExactMutationFileImagePlanningException) {
-            failReplacementProof(
-                limitation = ReplacementProofLimitation.SOURCE_IMAGE_UNPROVEN,
-                message = "Replacement exact source image proof failed: ${failure.failure.name}",
-                knownMinimumCount = snapshot.outboundReferences.size,
+            projectReplacementProofFailure(
+                ReplacementProofRejection(
+                    limitation = ReplacementProofLimitation.SOURCE_IMAGE_UNPROVEN,
+                    message = "Replacement exact source image proof failed: ${failure.failure.name}",
+                    knownMinimumCount = snapshot.outboundReferences.size,
+                ),
             )
         }
         val fileHashes = fileImages.map { image ->
@@ -141,83 +102,136 @@ internal suspend fun KastIndexerBackend.planReplacementOperation(
                 hash = image.preimage.sha256.value,
             )
         }
-        val proof = timedReadAction(
-            telemetry,
-            IdeaTelemetryScope.PLAN_REPLACEMENT,
-            "kast.idea.planReplacement.prove",
+        val proof = when (
+            val admission = timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.PLAN_REPLACEMENT,
+                "kast.idea.planReplacement.prove",
+            ) {
+                finalizeReplacementProof(
+                    query = query,
+                    snapshot = snapshot,
+                    fileHashes = fileHashes,
+                )
+            }
         ) {
-            finalizeReplacementProof(
-                query = query,
-                snapshot = snapshot,
-                fileHashes = fileHashes,
+            is ReplacementAdmission.Admitted -> admission.value
+            is ReplacementAdmission.Rejected -> projectReplacementProofFailure(admission.rejection)
+        }
+        when (
+            val admission = ReplacementPlanResult.admit(
+                edit = edit,
+                proof = proof,
+                fileImages = fileImages,
+            )
+        ) {
+            is ReplacementContractAdmission.Admitted -> admission.value
+            is ReplacementContractAdmission.Rejected -> projectReplacementProofFailure(
+                ReplacementProofRejection(
+                    limitation = ReplacementProofLimitation.SOURCE_IMAGE_UNPROVEN,
+                    message = "The exact replacement plan contract rejected ${admission.failure.name}",
+                    knownMinimumCount = snapshot.outboundReferences.size,
+                ),
             )
         }
-        ReplacementPlanResult.of(
-            edit = edit,
-            proof = proof,
-            fileImages = fileImages,
-        )
     }
 }
+
+/**
+ * Proof transition: [ParsedReplacementPlanQuery] -> [ReplacementAdmission] of
+ * [ReplacementPlanningSnapshot].
+ *
+ * Establishes exact function identity, copied-PSI signature equivalence, original body-only edit
+ * authority, body-postimage K2 bindings/diagnostics, and stable compiler context. Failure is a
+ * closed [ReplacementProofRejection]. Raw PSI and source text may be extracted only inside this
+ * indexer planning boundary.
+ */
 private fun KastIndexerBackend.collectReplacementPlanningSnapshot(
     query: ParsedReplacementPlanQuery,
-): ReplacementPlanningSnapshot {
-    if (query.target.kind != SymbolKind.FUNCTION && query.target.kind != SymbolKind.PROPERTY) {
-        failReplacementProof(
+): ReplacementAdmission<ReplacementPlanningSnapshot> {
+    if (query.target.kind != SymbolKind.FUNCTION) {
+        return replacementRejection(
             ReplacementProofLimitation.UNSUPPORTED_TARGET_KIND,
-            "Replacement planning supports only Kotlin function and property targets",
+            "Declaration-body replacement planning supports only Kotlin function targets",
         )
     }
     val file = findKtFile(query.target.declarationFile.value)
-    val target = PsiTreeUtil.findChildrenOfType(file, KtNamedDeclaration::class.java)
+    val targets = PsiTreeUtil.findChildrenOfType(file, KtNamedDeclaration::class.java)
         .filter { declaration ->
             declaration.nameIdentifier?.textRange?.startOffset == query.target.declarationStartOffset.value
         }
-        .singleOrNull()
-        ?: failReplacementProof(
+    if (targets.size != 1) {
+        return replacementRejection(
             ReplacementProofLimitation.TARGET_IDENTITY_UNPROVEN,
             "The exact replacement target could not be proven at its compiler declaration offset",
         )
-    if (target !is KtNamedFunction && target !is KtProperty) {
-        failReplacementProof(
-            ReplacementProofLimitation.UNSUPPORTED_TARGET_KIND,
-            "The exact replacement target is not a Kotlin function or property",
-        )
     }
-    requireNoReplacementAnnotations(target)
-    val targetIdentity = compilerSourceIdentity(target)
+    val target = targets.single() as? KtNamedFunction
+        ?: return replacementRejection(
+            ReplacementProofLimitation.UNSUPPORTED_TARGET_KIND,
+            "The exact declaration-body replacement target is not a Kotlin function",
+        )
+    val admittedTarget = when (val admission = admitAnnotationFreeReplacementFunction(target)) {
+        is ReplacementAdmission.Admitted -> admission.value
+        is ReplacementAdmission.Rejected -> return admission
+    }
+    val targetIdentity = compilerSourceIdentity(admittedTarget.declaration)
     if (targetIdentity != query.target) {
-        failReplacementProof(
+        return replacementRejection(
             ReplacementProofLimitation.TARGET_IDENTITY_UNPROVEN,
             "The supplied replacement identity does not match the compiler-resolved declaration",
         )
     }
 
     val proposedText = query.proposedDeclaration.value
-    val parsedProposal = parseProposedDeclaration(proposedText)
-    requireNoReplacementAnnotations(parsedProposal.declaration)
+    val parsedProposal = when (val admission = parseProposedDeclaration(proposedText)) {
+        is ReplacementAdmission.Admitted -> admission.value
+        is ReplacementAdmission.Rejected -> return admission
+    }
+    val admittedProposal = when (
+        val admission = admitAnnotationFreeReplacementFunction(parsedProposal.declaration)
+    ) {
+        is ReplacementAdmission.Admitted -> admission.value
+        is ReplacementAdmission.Rejected -> return admission
+    }
     val targetRange = target.textRange
-    val syntheticText = file.text.replaceRange(targetRange.startOffset, targetRange.endOffset, proposedText)
-    val syntheticFile = KtPsiFactory.contextual(target).createFile(file.name, syntheticText)
+    val signatureSyntheticText = file.text.replaceRange(
+        targetRange.startOffset,
+        targetRange.endOffset,
+        proposedText,
+    )
+    val signatureSyntheticFile = KtPsiFactory.contextual(target).createFile(
+        file.name,
+        signatureSyntheticText,
+    )
     val proposedNameOffset = targetRange.startOffset + parsedProposal.nameOffset
-    val proposed = PsiTreeUtil.findChildrenOfType(syntheticFile, KtNamedDeclaration::class.java)
-        .filter { declaration -> declaration.nameIdentifier?.textRange?.startOffset == proposedNameOffset }
-        .singleOrNull()
-        ?: failReplacementProof(
+    val proposedCandidates = PsiTreeUtil.findChildrenOfType(
+        signatureSyntheticFile,
+        KtNamedDeclaration::class.java,
+    ).filter { declaration ->
+        declaration.nameIdentifier?.textRange?.startOffset == proposedNameOffset
+    }
+    if (proposedCandidates.size != 1 || proposedCandidates.single() !is KtNamedFunction) {
+        return replacementRejection(
             ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
             "The proposed declaration could not be analyzed in the target source context",
         )
-    if (proposed::class != parsedProposal.declaration::class) {
-        failReplacementProof(
+    }
+    val proposed = proposedCandidates.single() as KtNamedFunction
+    if (proposed::class != admittedProposal.declaration::class) {
+        return replacementRejection(
             ReplacementProofLimitation.UNSUPPORTED_REPLACEMENT_KIND,
             "The context-backed proposed declaration kind changed during parsing",
         )
     }
     val proposedRange = proposed.textRange
-    if (proposedRange.startOffset != targetRange.startOffset + parsedProposal.declarationSlice.startOffset.value ||
-        proposedRange.endOffset != targetRange.startOffset + parsedProposal.declarationSlice.endOffset.value
+    if (
+        proposedRange.startOffset !=
+        targetRange.startOffset + parsedProposal.declarationSlice.startOffset.value ||
+        proposedRange.endOffset !=
+        targetRange.startOffset + parsedProposal.declarationSlice.endOffset.value
     ) {
-        failReplacementProof(
+        return replacementRejection(
             ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
             "The context-backed proposed declaration changed its exact full-edit slice",
         )
@@ -226,96 +240,139 @@ private fun KastIndexerBackend.collectReplacementPlanningSnapshot(
     val oldSignature = compilerReplacementSignature(target)
     val proposedSignature = compilerReplacementSignature(proposed)
     if (oldSignature != proposedSignature) {
-        failReplacementProof(
+        return replacementRejection(
             ReplacementProofLimitation.SIGNATURE_DRIFT,
             "The proposed declaration changes its compiler-observable signature",
         )
     }
-    val outboundReferences = collectExactOutboundReferences(
-        syntheticFile = syntheticFile,
-        proposed = proposed,
-        replacementStartOffset = targetRange.startOffset,
-        proposedDeclarationText = proposedText,
-        sourceIdentityBasis = ReplacementSourceIdentityBasis.CompilerPreimage(
-            file = file,
-            preimageDeclarationLength = PositiveInt(targetRange.length),
-        ),
+    val targetBody = target.bodyExpression ?: return replacementRejection(
+        ReplacementProofLimitation.UNSUPPORTED_REPLACEMENT_CONTENT,
+        "The exact function target has no replaceable declaration body",
     )
-    return ReplacementPlanningSnapshot(
-        target = targetIdentity,
-        generation = psiGeneration(),
-        sourceRange = target.toKastLocation(targetRange),
-        oldSignature = oldSignature,
-        proposedSignature = proposedSignature,
-        declarationSlice = parsedProposal.declarationSlice,
-        outboundReferences = outboundReferences,
-        sourceContextHash = FileHashing.sha256(file.text),
+    val proposedBody = proposed.bodyExpression ?: return replacementRejection(
+        ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
+        "The proposed function has no declaration body",
     )
-}
+    if (target.hasBlockBody() != proposed.hasBlockBody()) {
+        return replacementRejection(
+            ReplacementProofLimitation.UNSUPPORTED_REPLACEMENT_CONTENT,
+            "Declaration-body replacement cannot change between block and expression body forms",
+        )
+    }
+    val proposedBodyText = proposedBody.text
+    val submittedBodyStart = parsedProposal.proposedBodySlice.startOffset.value
+    val submittedBodyEnd = parsedProposal.proposedBodySlice.endOffset.value
+    if (proposedText.substring(submittedBodyStart, submittedBodyEnd) != proposedBodyText) {
+        return replacementRejection(
+            ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
+            "The copied-PSI body slice disagreed with the context-backed proposed body",
+        )
+    }
 
-private fun KastIndexerBackend.finalizeReplacementProof(
-    query: ParsedReplacementPlanQuery,
-    snapshot: ReplacementPlanningSnapshot,
-    fileHashes: List<FileHash>,
-): ExactReplacementProof {
-    val occurrenceCount = snapshot.outboundReferences.size
-    if (psiGeneration() != snapshot.generation) {
-        failReplacementProof(
-            ReplacementProofLimitation.GENERATION_CHANGED,
-            "The semantic generation changed before replacement proof finalization",
-            occurrenceCount,
+    val bodySyntheticText = file.text.replaceRange(
+        targetBody.textRange.startOffset,
+        targetBody.textRange.endOffset,
+        proposedBodyText,
+    )
+    val bodySyntheticFile = KtPsiFactory.contextual(target).createFile(file.name, bodySyntheticText)
+    val bodySyntheticCandidates = PsiTreeUtil.findChildrenOfType(
+        bodySyntheticFile,
+        KtNamedDeclaration::class.java,
+    ).filter { declaration ->
+        declaration.nameIdentifier?.textRange?.startOffset == query.target.declarationStartOffset.value
+    }
+    if (bodySyntheticCandidates.size != 1 || bodySyntheticCandidates.single() !is KtNamedFunction) {
+        return replacementRejection(
+            ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
+            "The exact-body semantic postimage no longer contains the target at its unchanged declaration offset",
         )
     }
-    val file = findKtFile(snapshot.target.declarationFile.value)
-    val currentContextHash = FileHashing.sha256(file.text)
-    if (currentContextHash != snapshot.sourceContextHash ||
-        fileHashes.singleOrNull()?.let { hash ->
-            hash.filePath == snapshot.target.declarationFile.value
-        } != true
+    val bodySyntheticTarget = bodySyntheticCandidates.single() as KtNamedFunction
+    val bodySyntheticBody = bodySyntheticTarget.bodyExpression ?: return replacementRejection(
+        ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
+        "The exact-body semantic postimage has no replacement body",
+    )
+    if (compilerReplacementSignature(bodySyntheticTarget) != oldSignature) {
+        return replacementRejection(
+            ReplacementProofLimitation.SIGNATURE_DRIFT,
+            "The exact-body semantic postimage did not retain the target signature",
+        )
+    }
+    if (
+        bodySyntheticBody.textRange.startOffset != targetBody.textRange.startOffset ||
+        bodySyntheticBody.textRange.endOffset != targetBody.textRange.startOffset + proposedBodyText.length
     ) {
-        failReplacementProof(
-            ReplacementProofLimitation.SOURCE_CONTEXT_CHANGED,
-            "The exact source context changed while the replacement proof was being built",
-            occurrenceCount,
+        return replacementRejection(
+            ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
+            "The exact-body semantic postimage did not retain the exact body-write authority",
         )
     }
-    val target = PsiTreeUtil.findChildrenOfType(file, KtNamedDeclaration::class.java)
-        .filter { declaration ->
-            declaration.nameIdentifier?.textRange?.startOffset == snapshot.target.declarationStartOffset.value
+    val admittedBodySyntheticTarget = when (
+        val annotationAdmission = admitAnnotationFreeReplacementFunction(bodySyntheticTarget)
+    ) {
+        is ReplacementAdmission.Rejected -> return annotationAdmission
+        is ReplacementAdmission.Admitted -> when (
+            val referenceAdmission = admitExplicitReferenceReplacementFunction(annotationAdmission.value)
+        ) {
+            is ReplacementAdmission.Admitted -> referenceAdmission.value
+            is ReplacementAdmission.Rejected -> return referenceAdmission
         }
-        .singleOrNull()
-        ?: failReplacementProof(
-            ReplacementProofLimitation.TARGET_IDENTITY_UNPROVEN,
-            "The exact replacement target disappeared before proof finalization",
-            occurrenceCount,
+    }
+    val outboundReferences = when (
+        val admission = collectExactOutboundReferences(
+            syntheticFile = bodySyntheticFile,
+            proposed = admittedBodySyntheticTarget,
+            replacement = bodySyntheticBody,
+            replacementStartOffset = bodySyntheticBody.textRange.startOffset,
+            proposedBodyText = proposedBodyText,
+            sourceIdentityBasis = ReplacementSourceIdentityBasis.CompilerPreimage(
+                file = file,
+                preimageBodyLength = PositiveInt(targetBody.textRange.length),
+            ),
         )
-    if (compilerSourceIdentity(target) != snapshot.target || target.toKastLocation(target.textRange) != snapshot.sourceRange) {
-        failReplacementProof(
-            ReplacementProofLimitation.TARGET_IDENTITY_UNPROVEN,
-            "The exact replacement target changed before proof finalization",
-            occurrenceCount,
+    ) {
+        is ReplacementAdmission.Admitted -> admission.value
+        is ReplacementAdmission.Rejected -> return admission
+    }
+    val diagnostics = when (observeReplacementBodyDiagnostics(bodySyntheticFile, bodySyntheticBody)) {
+        ReplacementBodyDiagnosticObservation.ErrorFree ->
+            ReplacementBodyDiagnosticObservation.ErrorFree
+        ReplacementBodyDiagnosticObservation.ContainsErrors -> return replacementRejection(
+            ReplacementProofLimitation.PROPOSED_DECLARATION_SYNTAX_INVALID,
+            "The proposed replacement body contains compiler error diagnostics",
+        )
+
+        ReplacementBodyDiagnosticObservation.Unavailable -> return replacementRejection(
+            ReplacementProofLimitation.PROPOSED_PSI_TRAVERSAL_INCOMPLETE,
+            "The proposed replacement body diagnostics could not be completed",
         )
     }
-    if (psiGeneration() != snapshot.generation) {
-        failReplacementProof(
-            ReplacementProofLimitation.GENERATION_CHANGED,
-            "The semantic generation changed during replacement proof finalization",
-            occurrenceCount,
+    val compilerContext = when (
+        val observation = observeReplacementCompilerContext(
+            ExactFileImagePath(targetIdentity.declarationFile.value),
+        )
+    ) {
+        is ReplacementCompilerContextObservation.Proven -> observation.context
+        is ReplacementCompilerContextObservation.Rejected -> return replacementRejection(
+            ReplacementProofLimitation.SOURCE_IMAGE_UNPROVEN,
+            "Replacement compiler-context observation failed: ${observation.failure.name}",
+            outboundReferences.size,
         )
     }
-    return ExactReplacementProof.of(
-        target = snapshot.target,
-        requiredGeneration = MutationSemanticGeneration(snapshot.generation),
-        sourceRange = snapshot.sourceRange,
-        fileHashes = fileHashes,
-        oldSignature = snapshot.oldSignature,
-        proposedSignature = snapshot.proposedSignature,
-        proposedDeclarationHash = ReplacementDeclarationSha256(
-            FileHashing.sha256(query.proposedDeclaration.value),
+    return ReplacementAdmission.Admitted(
+        ReplacementPlanningSnapshot(
+            target = targetIdentity,
+            generation = psiGeneration(),
+            sourceRange = target.toKastLocation(targetBody.textRange),
+            proposedBodyText = proposedBodyText,
+            oldSignature = oldSignature,
+            proposedSignature = proposedSignature,
+            declarationSlice = parsedProposal.declarationSlice,
+            proposedBodySlice = parsedProposal.proposedBodySlice,
+            outboundReferences = outboundReferences,
+            diagnostics = diagnostics,
+            sourceContextHash = FileHashing.sha256(file.text),
+            compilerContext = compilerContext,
         ),
-        proposedDeclarationLength = query.proposedDeclaration.value.length,
-        declarationSlice = snapshot.declarationSlice,
-        evidence = ReplacementOutboundEvidence.Complete.of(occurrenceCount),
-        outboundReferences = snapshot.outboundReferences,
     )
 }

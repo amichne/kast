@@ -11,7 +11,7 @@ fn validate_exact_replacement_edit(
             "replacement preview edit disagreed with the exact proven source range".to_string(),
         );
     }
-    proof.validate(&edit.new_text)
+    proof.validate_body_authority(&edit.new_text)
 }
 
 fn validate_replacement_file_images(

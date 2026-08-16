@@ -158,6 +158,8 @@ class DocFieldCoverageTest {
         "ReplacementPlanQuery" to ReplacementPlanQuery.serializer(),
         "ReplacementPlanResult" to ReplacementPlanResult.serializer(),
         "ExactReplacementProof" to ExactReplacementProof.serializer(),
+        "ReplacementCompilerContext" to ReplacementCompilerContext.serializer(),
+        "ReplacementCompilerContextFile" to ReplacementCompilerContextFile.serializer(),
         "ReplacementDeclarationSignature" to ReplacementDeclarationSignature.serializer(),
         "ReplacementDeclarationSignature.Function" to ReplacementFunctionSignature.serializer(),
         "ReplacementTypeParameterSignature" to ReplacementTypeParameterSignature.serializer(),

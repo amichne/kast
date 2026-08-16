@@ -117,18 +117,7 @@ pub(super) fn unified_postcondition(authority: &serde_json::Value) -> serde_json
             serde_json::json!({
                 "type": "REPLACEMENT",
                 "resultingTarget": authority["proof"]["target"],
-                "sourceRange": {
-                    "filePath": authority["edit"]["filePath"],
-                    "startOffset": authority["edit"]["startOffset"].as_u64().expect("replacement start")
-                        + authority["proof"]["declarationSlice"]["startOffset"].as_u64()
-                            .expect("replacement declaration start"),
-                    "endOffset": authority["edit"]["startOffset"].as_u64().expect("replacement start")
-                        + authority["proof"]["declarationSlice"]["endOffset"].as_u64()
-                            .expect("replacement declaration end"),
-                    "startLine": 1,
-                    "startColumn": 1,
-                    "preview": authority["edit"]["newText"],
-                },
+                "sourceRange": authority["proof"]["sourceRange"],
                 "signature": authority["proof"]["proposedSignature"],
                 "outboundEvidence": authority["proof"]["evidence"],
                 "outboundReferences": authority["proof"]["outboundReferences"],

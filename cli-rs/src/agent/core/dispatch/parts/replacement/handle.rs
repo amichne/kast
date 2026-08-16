@@ -132,7 +132,7 @@ fn execute_agent_replacement_handle_preview(
             Some(identity_request),
             agent_error(
                 "INVALID_SELECTOR_IDENTITY",
-                "Authenticated selector identity was not an exact function or property target.",
+                "Authenticated selector identity was not an exact function target.",
             ),
         );
     };

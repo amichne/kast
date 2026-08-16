@@ -54,12 +54,17 @@ import io.github.amichne.kast.api.contract.result.MutationPostconditionOperation
 import io.github.amichne.kast.api.contract.result.MutationPostconditionResult
 import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
 import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
+import io.github.amichne.kast.api.contract.result.ReplacementBodySha256
+import io.github.amichne.kast.api.contract.result.ReplacementCompilerContext
+import io.github.amichne.kast.api.contract.result.ReplacementCompilerModelGeneration
+import io.github.amichne.kast.api.contract.result.ReplacementContractAdmission
 import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSha256
 import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSlice
 import io.github.amichne.kast.api.contract.result.ReplacementFunctionSignature
 import io.github.amichne.kast.api.contract.result.ReplacementModality
 import io.github.amichne.kast.api.contract.result.ReplacementOutboundEvidence
 import io.github.amichne.kast.api.contract.result.ReplacementPlanResult
+import io.github.amichne.kast.api.contract.result.ReplacementSubmittedBodySlice
 import io.github.amichne.kast.api.contract.result.ReplacementVisibility
 import io.github.amichne.kast.api.contract.result.VerifiedMutationPostimage
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
@@ -93,7 +98,12 @@ internal fun buildDocExampleGeneratorMutationFixture(
     val postcondition = MutationPostconditionResult.verified(
         operation = MutationPostconditionOperation.ADD_FILE,
         currentGeneration = MutationSemanticGeneration(2),
-        postimages = listOf(VerifiedMutationPostimage(ExactFileImagePath(addFile.proof.targetPath.value), addFile.postimage.sha256)),
+        postimages = listOf(
+            VerifiedMutationPostimage(
+                ExactFileImagePath(addFile.proof.targetPath.value),
+                addFile.postimage.sha256
+            )
+        ),
         evidence = MutationPostconditionEvidence.AddFile(
             owner = addFile.proof.owner,
             packageIdentity = addFile.proof.packageIdentity,
@@ -117,7 +127,7 @@ internal fun buildDocExampleGeneratorMutationFixture(
             "raw/plan-replacement",
             json.encodeToJsonElement(
                 ReplacementPlanQuery.serializer(),
-                ReplacementPlanQuery(replacement.proof.target, replacement.edit.newText),
+                ReplacementPlanQuery(replacement.proof.target, PROPOSED_REPLACEMENT_DECLARATION),
             ),
         ),
         "planAddFile" to request(
@@ -192,38 +202,55 @@ internal fun insertDocMutationOperations(
     return base.dropLast(1) + mutation + base.last()
 }
 
-private fun replacementResult(sampleFile: String, sampleContent: String): ReplacementPlanResult {
-    val sourceStart = sampleContent.indexOf("fun greet")
-    val sourceEnd = sampleContent.indexOf('\n', sourceStart)
-    require(sourceStart >= 0 && sourceEnd > sourceStart)
-    val proposed = "fun greet() = \"hello\""
+private fun replacementResult(
+    sampleFile: String,
+    sampleContent: String
+): ReplacementPlanResult {
+    val declarationStart = sampleContent.indexOf("fun greet")
+    val sourceBody = "\"hi\""
+    val bodyStart = sampleContent.indexOf(sourceBody, declarationStart)
+    val bodyEnd = bodyStart + sourceBody.length
+    require(declarationStart >= 0 && bodyStart > declarationStart)
+    val proposed = PROPOSED_REPLACEMENT_DECLARATION
+    val proposedBody = "\"hello\""
     val target = SymbolIdentity(
         fqName = "sample.greet",
         kind = SymbolKind.FUNCTION,
         declarationFile = NormalizedPath.parse(sampleFile),
-        declarationStartOffset = NonNegativeInt(sampleContent.indexOf("greet", sourceStart)),
+        declarationStartOffset = NonNegativeInt(sampleContent.indexOf("greet", declarationStart)),
     )
     val signature = replacementSignature()
-    val proof = ExactReplacementProof.of(
+    val compilerModelGeneration = admitted(ReplacementCompilerModelGeneration.parse(1))
+    val proof = admitted(ExactReplacementProof.admit(
         target = target,
         requiredGeneration = MutationSemanticGeneration(1),
-        sourceRange = Location(sampleFile, sourceStart, sourceEnd, 3, 1, sampleContent.substring(sourceStart, sourceEnd)),
+        sourceRange = Location(sampleFile, bodyStart, bodyEnd, 3, 15, sourceBody),
         fileHashes = listOf(FileHash(sampleFile, FileHashing.sha256(sampleContent))),
+        compilerContext = ReplacementCompilerContext.of(emptyMap(), compilerModelGeneration),
         oldSignature = signature,
         proposedSignature = signature,
-        proposedDeclarationHash = ReplacementDeclarationSha256(FileHashing.sha256(proposed)),
+        proposedDeclarationHash = admitted(ReplacementDeclarationSha256.parse(FileHashing.sha256(proposed))),
         proposedDeclarationLength = proposed.length,
-        declarationSlice = ReplacementDeclarationSlice(NonNegativeInt(0), NonNegativeInt(proposed.length)),
+        proposedBodyHash = admitted(ReplacementBodySha256.parse(FileHashing.sha256(proposedBody))),
+        proposedBodyLength = proposedBody.length,
+        declarationSlice = admitted(ReplacementDeclarationSlice.of(
+            NonNegativeInt(0),
+            NonNegativeInt(proposed.length),
+        )),
+        proposedBodySlice = admitted(ReplacementSubmittedBodySlice.of(
+            NonNegativeInt(proposed.indexOf(proposedBody)),
+            NonNegativeInt(proposed.indexOf(proposedBody) + proposedBody.length),
+        )),
         evidence = ReplacementOutboundEvidence.Complete.of(0),
         outboundReferences = emptyList(),
-    )
-    val edit = TextEdit(sampleFile, sourceStart, sourceEnd, proposed)
+    ))
+    val edit = TextEdit(sampleFile, bodyStart, bodyEnd, proposedBody)
     val image = ExactFileImage.of(
         sampleFile,
         sampleContent.toByteArray(),
-        sampleContent.replaceRange(sourceStart, sourceEnd, proposed).toByteArray(),
+        sampleContent.replaceRange(bodyStart, bodyEnd, proposedBody).toByteArray(),
     )
-    return ReplacementPlanResult.of(edit, proof, listOf(image))
+    return admitted(ReplacementPlanResult.admit(edit, proof, listOf(image)))
 }
 
 private fun replacementSignature(): ReplacementFunctionSignature = ReplacementFunctionSignature.of(
@@ -298,7 +325,10 @@ private fun addDeclarationResult(
     return AddDeclarationPlanResult.of(proposed, image, proof)
 }
 
-private fun additionOwner(workspaceRoot: Path, sourceRoot: Path): AdditionSourceOwner = AdditionSourceOwner.of(
+private fun additionOwner(
+    workspaceRoot: Path,
+    sourceRoot: Path
+): AdditionSourceOwner = AdditionSourceOwner.of(
     sourceRoot = AdditionSourceRoot.parse(sourceRoot.toString()),
     ideaModuleName = AdditionIdeaModuleName.of("fake-module"),
     gradleBuildRoot = AdditionGradleBuildRoot.parse(workspaceRoot.toAbsolutePath().normalize().toString()),
@@ -328,7 +358,10 @@ private fun additionContext(vararg hashes: ExactAdditionContextFileHash): ExactA
         contextFileHashes = hashes.toList(),
     )
 
-private fun mutationScratchSet(target: Path, attemptId: String): MutationScratchSet {
+private fun mutationScratchSet(
+    target: Path,
+    attemptId: String
+): MutationScratchSet {
     val parent = requireNotNull(target.parent)
     return MutationScratchSet(
         targetFilePath = target.toString(),
@@ -339,5 +372,11 @@ private fun mutationScratchSet(target: Path, attemptId: String): MutationScratch
     )
 }
 
+private fun <T> admitted(admission: ReplacementContractAdmission<T>): T = when (admission) {
+    is ReplacementContractAdmission.Admitted -> admission.value
+    is ReplacementContractAdmission.Rejected -> error("unexpected fixture rejection: ${admission.failure}")
+}
+
 private const val SAMPLE_RELATIVE_PATH = "src/Sample.kt"
+private const val PROPOSED_REPLACEMENT_DECLARATION = "fun greet() = \"hello\""
 private const val MUTATION_ATTEMPT_ID = "00000000-0000-4000-8000-000000000004"

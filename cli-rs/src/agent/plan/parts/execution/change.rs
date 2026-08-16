@@ -49,6 +49,11 @@ pub(crate) fn run_change(args: KastChangePlanArgs, output_format: OutputFormat) 
     if let Err(message) = stored_operation.validate_content_sha256(content_sha256.as_deref()) {
         return Err(CliError::new("KAST_INVALID_AGENT_RESULT", message));
     }
+    if let Err(message) = stored_operation.validate_replacement_request_content(
+        content.as_ref().map(PreparedPlanContent::as_bytes),
+    ) {
+        return Err(CliError::new("KAST_INVALID_AGENT_RESULT", message));
+    }
 
     ensure_private_directory(&paths.directory)?;
     if let Some(content) = content.as_ref()

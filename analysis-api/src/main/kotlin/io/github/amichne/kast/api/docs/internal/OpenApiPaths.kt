@@ -153,7 +153,7 @@ internal fun openApiPaths(): Map<String, Any?> = linkedMapOf(
     ),
     "/rpc/raw/plan-replacement" to mutationMethod(
         operationId = "planReplacement",
-        summary = "Plan an identity-preserving function or property replacement",
+        summary = "Plan an identity-preserving function-body replacement",
         method = "raw/plan-replacement",
         requestSchema = "ReplacementPlanQuery",
         responseSchema = "ReplacementPlanResult",

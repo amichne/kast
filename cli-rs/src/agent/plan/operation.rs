@@ -227,6 +227,21 @@ impl StoredOperation {
         }
     }
 
+    fn validate_replacement_request_content(
+        &self,
+        content: Option<&[u8]>,
+    ) -> std::result::Result<(), String> {
+        let Self::Replace { authority } = self else {
+            return Ok(());
+        };
+        let content = content
+            .ok_or_else(|| "replacement authority omitted its submitted declaration".to_string())?;
+        let proposed_declaration = std::str::from_utf8(content).map_err(|_| {
+            "replacement authority submitted declaration was not exact UTF-8".to_string()
+        })?;
+        authority.validate_for_proposed_declaration(proposed_declaration)
+    }
+
     fn transitions(&self, workspace_root: &Path) -> Result<Vec<ExactMutationTransition>> {
         let mut transitions = match self {
             Self::Rename { authority } => authority

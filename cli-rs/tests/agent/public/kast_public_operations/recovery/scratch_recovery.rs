@@ -13,7 +13,7 @@ fn public_recover_restores_declared_quarantine_scratch_after_cas_is_sigkilled() 
     std::fs::create_dir_all(&source_root).expect("source root");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let target = source_root.join("Existing.kt");
-    let preimage = b"class Existing\n";
+    let preimage = b"fun recoveredReplacement() = 1\n";
     std::fs::write(&target, preimage).expect("existing source");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let target = target.canonicalize().expect("canonical source");
@@ -356,11 +356,11 @@ fn assert_reverse_quarantine_only_recovery(case: &str, preimage: &[u8]) {
 #[cfg(unix)]
 #[test]
 fn public_recover_materializes_a_nonempty_present_preimage_from_reverse_quarantine_only() {
-    assert_reverse_quarantine_only_recovery("reverse-present", b"class Existing\n");
+    assert_reverse_quarantine_only_recovery("reverse-present", b"fun recoveredReplacement() = 1\n");
 }
 
 #[cfg(unix)]
 #[test]
 fn public_recover_preserves_a_whitespace_only_present_preimage_from_reverse_quarantine_only() {
-    assert_reverse_quarantine_only_recovery("reverse-whitespace-present", b"\n");
+    assert_reverse_quarantine_only_recovery("reverse-whitespace-present", b" \n");
 }

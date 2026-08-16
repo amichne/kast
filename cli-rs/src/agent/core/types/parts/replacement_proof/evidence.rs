@@ -185,6 +185,61 @@ impl AgentReplacementDeclarationSha256 {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+struct AgentReplacementBodySha256(String);
+
+impl AgentReplacementBodySha256 {
+    fn matches(&self, proposed_body: &str) -> bool {
+        is_lowercase_sha256(&self.0)
+            && self.0 == replacement_sha256(proposed_body.as_bytes())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+struct AgentReplacementCompilerContextPath(String);
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+struct AgentReplacementCompilerContextSha256(String);
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentReplacementCompilerContextFile {
+    file_path: AgentReplacementCompilerContextPath,
+    sha256: AgentReplacementCompilerContextSha256,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentReplacementCompilerContext {
+    files: Vec<AgentReplacementCompilerContextFile>,
+    model_generation: u64,
+}
+
+impl AgentReplacementCompilerContext {
+    fn validate(&self, target_file: &str) -> std::result::Result<(), String> {
+        if self.model_generation > i64::MAX as u64
+            || self.files.iter().any(|file| {
+                !is_normalized_absolute_replacement_path(&file.file_path.0)
+                    || file.file_path.0 == target_file
+                    || !is_lowercase_sha256(&file.sha256.0)
+            })
+            || !self
+                .files
+                .windows(2)
+                .all(|files| files[0].file_path.0 < files[1].file_path.0)
+        {
+            return Err(
+                "exact replacement compiler context was not canonical or escaped the unchanged source set"
+                    .to_string(),
+            );
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AgentReplacementDeclarationSlice {
@@ -192,21 +247,49 @@ struct AgentReplacementDeclarationSlice {
     end_offset: u32,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentReplacementSubmittedBodySlice {
+    start_offset: u32,
+    end_offset: u32,
+}
+
+impl AgentReplacementSubmittedBodySlice {
+    fn extract_from<'a>(&self, submitted: &'a str) -> std::result::Result<&'a str, String> {
+        if self.start_offset >= self.end_offset || self.end_offset > i32::MAX as u32 {
+            return Err(
+                "exact replacement proof contained an invalid submitted body slice".to_string(),
+            );
+        }
+        let start = utf16_byte_offset(submitted, self.start_offset).ok_or_else(|| {
+            "exact replacement submitted body slice split a UTF-16 character".to_string()
+        })?;
+        let end = utf16_byte_offset(submitted, self.end_offset).ok_or_else(|| {
+            "exact replacement submitted body slice split a UTF-16 character".to_string()
+        })?;
+        Ok(&submitted[start..end])
+    }
+}
+
 impl AgentReplacementDeclarationSlice {
     fn validate_against<'a>(
         &self,
-        proposed_edit: &'a str,
+        proposed_declaration: &'a str,
     ) -> std::result::Result<&'a str, String> {
         if self.start_offset >= self.end_offset || self.end_offset > i32::MAX as u32 {
-            return Err("exact replacement proof contained an invalid declaration slice".to_string());
+            return Err(
+                "exact replacement proof contained an invalid declaration slice".to_string(),
+            );
         }
-        let start = utf16_byte_offset(proposed_edit, self.start_offset)
-            .ok_or_else(|| "exact replacement declaration slice split a UTF-16 character".to_string())?;
-        let end = utf16_byte_offset(proposed_edit, self.end_offset)
-            .ok_or_else(|| "exact replacement declaration slice split a UTF-16 character".to_string())?;
-        let declaration = &proposed_edit[start..end];
-        if !proposed_edit[..start].trim().is_empty()
-            || !proposed_edit[end..].trim().is_empty()
+        let start = utf16_byte_offset(proposed_declaration, self.start_offset).ok_or_else(|| {
+            "exact replacement declaration slice split a UTF-16 character".to_string()
+        })?;
+        let end = utf16_byte_offset(proposed_declaration, self.end_offset).ok_or_else(|| {
+            "exact replacement declaration slice split a UTF-16 character".to_string()
+        })?;
+        let declaration = &proposed_declaration[start..end];
+        if !proposed_declaration[..start].trim().is_empty()
+            || !proposed_declaration[end..].trim().is_empty()
             || declaration.trim().is_empty()
             || declaration.trim() != declaration
         {

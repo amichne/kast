@@ -142,15 +142,17 @@ class MutationPostconditionContractTest {
     @Test
     fun `replacement verifier authority rejects a postimage not derived from its UTF-16 edit`() {
         val path = "/workspace/src/main/kotlin/sample/Sample.kt"
-        val preimage = "fun greet(): Int = 1\n".toByteArray()
-        val proposed = "fun greet(): Int = 2"
-        val edit = TextEdit(path, 0, preimage.toString(Charsets.UTF_8).dropLast(1).length, proposed)
-        val unrelatedPostimage = "$proposed\n// unrelated\n".toByteArray()
+        val source = "fun greet(): Int = 1\n"
+        val preimage = source.toByteArray()
+        val proposedDeclaration = "fun greet(): Int = 2"
+        val bodyStart = source.indexOf('1')
+        val edit = TextEdit(path, bodyStart, bodyStart + 1, "2")
+        val unrelatedPostimage = "fun greet(): Int = 2\n// unrelated\n".toByteArray()
 
         assertThrows(ValidationException::class.java) {
             MutationPostconditionQuery(
                 MutationPostconditionAuthority.Replacement(
-                    proof = replacementProof(path, preimage, edit),
+                    proof = replacementProof(path, preimage, edit, proposedDeclaration),
                     edit = edit,
                     images = listOf(ExactFileImage.of(path, preimage, unrelatedPostimage)),
                 ),
@@ -256,6 +258,7 @@ class MutationPostconditionContractTest {
         path: String,
         preimage: ByteArray,
         edit: TextEdit,
+        proposedDeclaration: String,
     ): ExactReplacementProof {
         val signature = ReplacementFunctionSignature.of(
             name = "greet",
@@ -278,7 +281,7 @@ class MutationPostconditionContractTest {
             expect = false,
             actual = false,
         )
-        return ExactReplacementProof.of(
+        return admitted(ExactReplacementProof.admit(
             target = SymbolIdentity(
                 fqName = "sample.greet",
                 kind = SymbolKind.FUNCTION,
@@ -295,15 +298,37 @@ class MutationPostconditionContractTest {
                 preview = preimage.toString(Charsets.UTF_8).trimEnd(),
             ),
             fileHashes = listOf(FileHash(path, FileHashing.sha256(preimage))),
+            compilerContext = ReplacementCompilerContext.of(
+                emptyMap(),
+                admitted(ReplacementCompilerModelGeneration.parse(1)),
+            ),
             oldSignature = signature,
             proposedSignature = signature,
-            proposedDeclarationHash = ReplacementDeclarationSha256(FileHashing.sha256(edit.newText)),
-            proposedDeclarationLength = edit.newText.length,
-            declarationSlice = ReplacementDeclarationSlice(NonNegativeInt(0), NonNegativeInt(edit.newText.length)),
+            proposedDeclarationHash = admitted(
+                ReplacementDeclarationSha256.parse(FileHashing.sha256(proposedDeclaration)),
+            ),
+            proposedDeclarationLength = proposedDeclaration.length,
+            proposedBodyHash = admitted(ReplacementBodySha256.parse(FileHashing.sha256(edit.newText))),
+            proposedBodyLength = edit.newText.length,
+            declarationSlice = admitted(
+                ReplacementDeclarationSlice.of(
+                    NonNegativeInt(0),
+                    NonNegativeInt(proposedDeclaration.length),
+                ),
+            ),
+            proposedBodySlice = admitted(
+                ReplacementSubmittedBodySlice.of(
+                    NonNegativeInt(proposedDeclaration.indexOf(edit.newText)),
+                    NonNegativeInt(proposedDeclaration.indexOf(edit.newText) + edit.newText.length),
+                ),
+            ),
             evidence = ReplacementOutboundEvidence.Complete.of(0),
             outboundReferences = emptyList(),
-        )
+        ))
     }
+
+    private fun <Value> admitted(admission: ReplacementContractAdmission<Value>): Value =
+        (admission as ReplacementContractAdmission.Admitted).value
 
     private fun addFileProof(content: ByteArray): ExactAddFileProof = ExactAddFileProof.of(
         targetPath = AdditionTargetPath.parse("/workspace/src/main/kotlin/sample/Added.kt"),

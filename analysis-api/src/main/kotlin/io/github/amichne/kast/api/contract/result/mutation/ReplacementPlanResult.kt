@@ -4,19 +4,23 @@ import io.github.amichne.kast.api.contract.ExactFileImage
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
+import io.github.amichne.kast.api.validation.ExactTextEditReplayException
 import io.github.amichne.kast.api.validation.ExactTextEditReplayValidator
 import io.github.amichne.kast.api.validation.FileHashing
 import java.util.Collections
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
-@Serializable
+@Serializable(with = ReplacementPlanResult.Serializer::class)
 class ReplacementPlanResult private constructor(
-    @DocField(description = "Single non-mutating edit that replaces the exact source declaration.")
+    @DocField(description = "Single non-mutating edit that replaces the exact selected Kotlin function body.")
     val edit: TextEdit,
     @DocField(description = "Required compiler-backed proof for the replacement plan.")
     val proof: ExactReplacementProof,
-    @SerialName("fileImages")
     @DocField(description = "Exact immutable preimage and postimage bytes for the replacement file.")
     private val storedFileImages: List<ExactFileImage>,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
@@ -25,53 +29,8 @@ class ReplacementPlanResult private constructor(
     val fileImages: List<ExactFileImage>
         get() = Collections.unmodifiableList(storedFileImages)
 
-    init {
-        require(edit.filePath == proof.sourceRange.filePath &&
-            edit.startOffset == proof.sourceRange.startOffset &&
-            edit.endOffset == proof.sourceRange.endOffset) {
-            "Replacement edit must match the exact proven source range"
-        }
-        require(edit.newText.length == proof.proposedDeclarationLength) {
-            "Replacement edit must match the proven declaration length"
-        }
-        require(FileHashing.sha256(edit.newText) == proof.proposedDeclarationHash.value) {
-            "Replacement edit must match the proven declaration hash"
-        }
-        val declarationStart = proof.declarationSlice.startOffset.value
-        val declarationEnd = proof.declarationSlice.endOffset.value
-        val declarationText = edit.newText.substring(declarationStart, declarationEnd)
-        require(edit.newText.substring(0, declarationStart).isBlank() &&
-            edit.newText.substring(declarationEnd).isBlank()
-        ) {
-            "Replacement edit may contain only whitespace outside the proven declaration slice"
-        }
-        require(declarationText.isNotBlank() && declarationText == declarationText.trim()) {
-            "Replacement declaration slice must contain the exact non-blank declaration"
-        }
-        require(proof.outboundReferences.all { reference ->
-            edit.newText.substring(reference.relativeStartOffset, reference.relativeEndOffset) ==
-                reference.sourceText
-        }) {
-            "Replacement outbound references must match the exact full proposed edit"
-        }
-        require(storedFileImages.size == 1 && storedFileImages.single().filePath.value == edit.filePath) {
-            "Replacement result requires one exact file image for its edit path"
-        }
-        val image = storedFileImages.single()
-        val fileHash = proof.fileHashes.single()
-        require(fileHash.filePath == edit.filePath && fileHash.hash.matches(LOWERCASE_SHA256)) {
-            "Replacement file hash must be lowercase SHA-256 for the exact edit path"
-        }
-        require(fileHash.hash == image.preimage.sha256.value) {
-            "Replacement file hash must match the exact preimage"
-        }
-        require(image.preimage.sha256 != image.postimage.sha256) {
-            "A replacement edit must have a changed exact postimage"
-        }
-        ExactTextEditReplayValidator.requireExactPostimages(listOf(edit), storedFileImages)
-    }
-
-    override fun equals(other: Any?): Boolean = other is ReplacementPlanResult &&
+    override fun equals(other: Any?): Boolean =
+        other is ReplacementPlanResult &&
         edit == other.edit &&
         proof == other.proof &&
         storedFileImages == other.storedFileImages &&
@@ -83,16 +42,108 @@ class ReplacementPlanResult private constructor(
         "ReplacementPlanResult(edit=$edit, proof=$proof, fileImages=$storedFileImages, schemaVersion=$schemaVersion)"
 
     companion object {
-        fun of(
+        /**
+         * Proof transition: [TextEdit], [ExactReplacementProof], and exact file images ->
+         * [ReplacementContractAdmission] of [ReplacementPlanResult].
+         *
+         * Establishes that the only edit is the proven body write, its body text matches the
+         * admitted proof, its one preimage is hash-bound, and deterministic replay produces the
+         * distinct claimed postimage. Failure is the closed [ReplacementContractFailure] family.
+         * Raw edit text and image bytes may be extracted only at mutation planning, serialization,
+         * or exact-file CAS boundaries.
+         */
+        fun admit(
             edit: TextEdit,
             proof: ExactReplacementProof,
             fileImages: List<ExactFileImage>,
-        ): ReplacementPlanResult = ReplacementPlanResult(
-            edit = edit,
-            proof = proof,
-            storedFileImages = fileImages.toList(),
-        )
+            schemaVersion: Int = SCHEMA_VERSION,
+        ): ReplacementContractAdmission<ReplacementPlanResult> {
+            val structuralFailure = when {
+                edit.filePath != proof.sourceRange.filePath ||
+                edit.startOffset != proof.sourceRange.startOffset ||
+                edit.endOffset != proof.sourceRange.endOffset ->
+                    ReplacementContractFailure.EDIT_RANGE_MISMATCH
+
+                edit.newText.length != proof.proposedBodyLength ->
+                    ReplacementContractFailure.EDIT_BODY_LENGTH_MISMATCH
+
+                FileHashing.sha256(edit.newText) != proof.proposedBodyHash.value ->
+                    ReplacementContractFailure.EDIT_BODY_HASH_MISMATCH
+
+                proof.outboundReferences.any { reference ->
+                    edit.newText.substring(reference.relativeStartOffset, reference.relativeEndOffset) !=
+                        reference.sourceText
+                } -> ReplacementContractFailure.EDIT_OUTBOUND_TEXT_MISMATCH
+
+                fileImages.size != 1 || fileImages.single().filePath.value != edit.filePath ->
+                    ReplacementContractFailure.FILE_IMAGE_SET_MISMATCH
+
+                proof.fileHashes.single().filePath != edit.filePath ||
+                proof.fileHashes.single().hash != fileImages.single().preimage.sha256.value ->
+                    ReplacementContractFailure.FILE_HASH_PREIMAGE_MISMATCH
+
+                fileImages.single().preimage.sha256 == fileImages.single().postimage.sha256 ->
+                    ReplacementContractFailure.POSTIMAGE_UNCHANGED
+
+                else -> null
+            }
+            if (structuralFailure != null) {
+                return ReplacementContractAdmission.Rejected(structuralFailure)
+            }
+            try {
+                ExactTextEditReplayValidator.requireExactPostimages(listOf(edit), fileImages)
+            } catch (_: ExactTextEditReplayException) {
+                return ReplacementContractAdmission.Rejected(
+                    ReplacementContractFailure.POSTIMAGE_REPLAY_INVALID,
+                )
+            }
+            return ReplacementContractAdmission.Admitted(
+                ReplacementPlanResult(
+                    edit = edit,
+                    proof = proof,
+                    storedFileImages = fileImages.toList(),
+                    schemaVersion = schemaVersion,
+                ),
+            )
+        }
+    }
+
+    object Serializer : KSerializer<ReplacementPlanResult> {
+        override val descriptor: SerialDescriptor = ReplacementPlanResultWire.serializer().descriptor
+
+        override fun serialize(
+            encoder: Encoder,
+            value: ReplacementPlanResult
+        ) {
+            encoder.encodeSerializableValue(
+                ReplacementPlanResultWire.serializer(),
+                ReplacementPlanResultWire(
+                    edit = value.edit,
+                    proof = value.proof,
+                    fileImages = value.fileImages,
+                    schemaVersion = value.schemaVersion,
+                ),
+            )
+        }
+
+        override fun deserialize(decoder: Decoder): ReplacementPlanResult {
+            val wire = decoder.decodeSerializableValue(ReplacementPlanResultWire.serializer())
+            return admit(
+                edit = wire.edit,
+                proof = wire.proof,
+                fileImages = wire.fileImages,
+                schemaVersion = wire.schemaVersion,
+            ).wireValue()
+        }
     }
 }
 
-private val LOWERCASE_SHA256 = Regex("[0-9a-f]{64}")
+@Serializable
+@SerialName("ReplacementPlanResult")
+private data class ReplacementPlanResultWire(
+    val edit: TextEdit,
+    val proof: ExactReplacementProof,
+    @SerialName("fileImages")
+    val fileImages: List<ExactFileImage>,
+    val schemaVersion: Int = SCHEMA_VERSION,
+)

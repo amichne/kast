@@ -57,21 +57,30 @@ fn replacement_function_signature() -> Value {
 fn exact_replacement_preview(workspace: &Path, source: &str, proposed: &str) -> Value {
     let declaration_file = workspace.join("Keywords.kt").display().to_string();
     let helper_file = workspace.join("Helpers.kt").display().to_string();
-    let string_start = replacement_utf16_offset(
-        proposed,
-        proposed.find("String").expect("String occurrence"),
+    let source_body = "\"old\"";
+    let proposed_body = "\"😀\" + helper()";
+    let source_body_start = replacement_utf16_offset(
+        source,
+        source.find(source_body).expect("source body occurrence"),
     );
+    let source_body_end = source_body_start + replacement_utf16_len(source_body);
+    let postimage = source.replacen(source_body, proposed_body, 1);
     let helper_start = replacement_utf16_offset(
-        proposed,
-        proposed.find("helper").expect("helper occurrence"),
+        proposed_body,
+        proposed_body.find("helper").expect("helper occurrence"),
     );
+    let proposed_body_start = replacement_utf16_offset(
+        proposed,
+        proposed.find(proposed_body).expect("proposed body occurrence"),
+    );
+    let proposed_declaration_length = replacement_utf16_len(proposed.trim());
     let signature = replacement_function_signature();
     json!({
         "edit": {
             "filePath": declaration_file,
-            "startOffset": 0,
-            "endOffset": replacement_utf16_len(source),
-            "newText": proposed,
+            "startOffset": source_body_start,
+            "endOffset": source_body_end,
+            "newText": proposed_body,
         },
         "proof": {
             "target": {
@@ -84,42 +93,43 @@ fn exact_replacement_preview(workspace: &Path, source: &str, proposed: &str) -> 
             "requiredGeneration": 7,
             "sourceRange": {
                 "filePath": declaration_file,
-                "startOffset": 0,
-                "endOffset": replacement_utf16_len(source),
+                "startOffset": source_body_start,
+                "endOffset": source_body_end,
                 "startLine": 1,
                 "startColumn": 1,
-                "preview": source,
+                "preview": source_body,
             },
             "fileHashes": [{
                 "filePath": declaration_file,
                 "hash": replacement_sha256(source.as_bytes()),
             }],
+            "compilerContext": {
+                "modelGeneration": 1,
+                "files": [{
+                    "filePath": helper_file,
+                    "sha256": replacement_sha256(b"fun helper() = \"ok\"\n"),
+                }],
+            },
             "oldSignature": signature,
             "proposedSignature": signature,
             "proposedDeclarationHash": replacement_sha256(proposed.as_bytes()),
             "proposedDeclarationLength": replacement_utf16_len(proposed),
+            "proposedBodyHash": replacement_sha256(proposed_body.as_bytes()),
+            "proposedBodyLength": replacement_utf16_len(proposed_body),
             "declarationSlice": {
                 "startOffset": 0,
-                "endOffset": replacement_utf16_len(proposed.trim_end()),
+                "endOffset": proposed_declaration_length,
+            },
+            "proposedBodySlice": {
+                "startOffset": proposed_body_start,
+                "endOffset": proposed_body_start + replacement_utf16_len(proposed_body),
             },
             "evidence": {
                 "type": "complete",
-                "cardinality": {"type": "EXACT", "totalCount": 2},
+                "cardinality": {"type": "EXACT", "totalCount": 1},
                 "dimensions": replacement_dimensions(),
             },
             "outboundReferences": [
-                {
-                    "relativeStartOffset": string_start,
-                    "relativeEndOffset": string_start + replacement_utf16_len("String"),
-                    "sourceText": "String",
-                    "resolvedTarget": {
-                        "type": "external",
-                        "fqName": "kotlin.String",
-                        "kind": "CLASS",
-                        "signature": "kotlin.String",
-                    },
-                    "provenance": "COMPILER",
-                },
                 {
                     "relativeStartOffset": helper_start,
                     "relativeEndOffset": helper_start + replacement_utf16_len("helper"),
@@ -140,7 +150,7 @@ fn exact_replacement_preview(workspace: &Path, source: &str, proposed: &str) -> 
         "fileImages": [exact_file_image_value(
             &declaration_file,
             source.as_bytes(),
-            proposed.as_bytes(),
+            postimage.as_bytes(),
         )],
         "schemaVersion": api_schema_version(),
     })
@@ -233,11 +243,31 @@ fn agent_replacement_preview_projects_exact_compiler_proof_and_inline_request() 
         replacement_utf16_len(proposed),
     );
     assert_eq!(
+        preview["proof"]["proposedBodyHash"],
+        replacement_sha256("\"😀\" + helper()".as_bytes()),
+    );
+    assert_eq!(
+        preview["proof"]["proposedBodyLength"],
+        replacement_utf16_len("\"😀\" + helper()"),
+    );
+    assert_eq!(
         preview["proof"]["declarationSlice"],
         json!({
             "startOffset": 0,
-            "endOffset": replacement_utf16_len(proposed.trim_end()),
+            "endOffset": replacement_utf16_len(proposed.trim()),
         }),
+    );
+    assert_eq!(
+        preview["proof"]["proposedBodySlice"],
+        json!({
+            "startOffset": replacement_utf16_offset(proposed, proposed.find("\"😀\" + helper()").expect("body")),
+            "endOffset": replacement_utf16_offset(proposed, proposed.find("\"😀\" + helper()").expect("body"))
+                + replacement_utf16_len("\"😀\" + helper()"),
+        }),
+    );
+    assert_eq!(
+        preview["edit"]["newText"],
+        "\"😀\" + helper()",
     );
     assert_ne!(replacement_utf16_len(proposed), proposed.len());
     assert_eq!(
@@ -246,10 +276,6 @@ fn agent_replacement_preview_projects_exact_compiler_proof_and_inline_request() 
     );
     assert_eq!(
         preview["proof"]["outboundReferences"][0]["resolvedTarget"]["type"],
-        "external",
-    );
-    assert_eq!(
-        preview["proof"]["outboundReferences"][1]["resolvedTarget"]["type"],
         "source",
     );
 

@@ -3406,6 +3406,8 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/FileHash"
+        compilerContext:
+          "$ref": "#/components/schemas/ReplacementCompilerContext"
         oldSignature:
           "$ref": "#/components/schemas/ReplacementDeclarationSignature"
         proposedSignature:
@@ -3413,6 +3415,11 @@ components:
         proposedDeclarationHash:
           "$ref": "#/components/schemas/ReplacementDeclarationSha256"
         proposedDeclarationLength:
+          type: integer
+          format: int32
+        proposedBodyHash:
+          "$ref": "#/components/schemas/ReplacementBodySha256"
+        proposedBodyLength:
           type: integer
           format: int32
         declarationSlice:
@@ -3429,14 +3436,40 @@ components:
         - requiredGeneration
         - sourceRange
         - fileHashes
+        - compilerContext
         - oldSignature
         - proposedSignature
         - proposedDeclarationHash
         - proposedDeclarationLength
+        - proposedBodyHash
+        - proposedBodyLength
         - declarationSlice
         - evidence
         - outboundReferences
+    ReplacementCompilerContext:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReplacementCompilerContextFile"
+      additionalProperties: false
+      required:
+        - files
+    ReplacementCompilerContextFile:
+      type: object
+      properties:
+        filePath:
+          "$ref": "#/components/schemas/ExactFileImagePath"
+        sha256:
+          "$ref": "#/components/schemas/ExactFileImageSha256"
+      additionalProperties: false
+      required:
+        - filePath
+        - sha256
     ReplacementDeclarationSha256:
+      type: string
+    ReplacementBodySha256:
       type: string
     ReplacementDeclarationSlice:
       type: object

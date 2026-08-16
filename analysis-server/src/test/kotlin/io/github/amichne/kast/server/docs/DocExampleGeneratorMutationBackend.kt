@@ -28,6 +28,7 @@ import io.github.amichne.kast.api.validation.ParsedMutationScratchInspectQuery
 import io.github.amichne.kast.api.validation.ParsedMutationScratchRecoveryQuery
 import io.github.amichne.kast.api.validation.ParsedRawExactFileObservationQuery
 import io.github.amichne.kast.api.validation.ParsedReplacementPlanQuery
+import io.github.amichne.kast.api.validation.FileHashing
 
 internal data class DocExampleGeneratorMutationResponses(
     val replacement: ReplacementPlanResult,
@@ -49,7 +50,14 @@ internal class DocExampleGeneratorMutationBackend(
 
     override suspend fun planReplacement(query: ParsedReplacementPlanQuery): ReplacementPlanResult {
         require(query.target == responses.replacement.proof.target)
-        require(query.proposedDeclaration.value == responses.replacement.edit.newText)
+        require(
+            responses.replacement.proof.proposedDeclarationHash.value ==
+                FileHashing.sha256(query.proposedDeclaration.value),
+        )
+        require(
+            responses.replacement.proof.proposedDeclarationLength ==
+                query.proposedDeclaration.value.length,
+        )
         return responses.replacement
     }
 
@@ -111,18 +119,18 @@ internal class DocExampleGeneratorMutationBackend(
 
 private fun io.github.amichne.kast.api.validation.ParsedMutationScratchSet.absentObservations():
     List<MutationScratchObservation> = listOf(
-        quarantinePath.value to MutationScratchRole.QUARANTINE,
-        preparedPath.value to MutationScratchRole.PREPARED,
-        preparedCleanupPath.value to MutationScratchRole.PREPARED_CLEANUP,
-        quarantineCleanupPath.value to MutationScratchRole.QUARANTINE_CLEANUP,
-    ).map { (path, role) ->
-        MutationScratchObservation(
-            filePath = path,
-            ownership = MutationScratchOwnership.OWNED,
-            role = role,
-            state = MutationScratchState.ABSENT,
-        )
-    }
+    quarantinePath.value to MutationScratchRole.QUARANTINE,
+    preparedPath.value to MutationScratchRole.PREPARED,
+    preparedCleanupPath.value to MutationScratchRole.PREPARED_CLEANUP,
+    quarantineCleanupPath.value to MutationScratchRole.QUARANTINE_CLEANUP,
+).map { (path, role) ->
+    MutationScratchObservation(
+        filePath = path,
+        ownership = MutationScratchOwnership.OWNED,
+        role = role,
+        state = MutationScratchState.ABSENT,
+    )
+}
 
 private val DOCUMENTED_MUTATION_CAPABILITIES = setOf(
     MutationCapability.PLAN_REPLACEMENT,

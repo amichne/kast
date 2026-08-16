@@ -1762,7 +1762,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin edit: TextEdit` | Single non-mutating edit that replaces the exact source declaration. |
+            | `#!kotlin edit: TextEdit` | Single non-mutating edit that replaces the exact selected Kotlin function body. |
             | `#!kotlin proof: ExactReplacementProof` | Required compiler-backed proof for the replacement plan. |
             | `#!kotlin fileImages: List<ExactFileImage>` | Exact immutable preimage and postimage bytes for the replacement file. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
@@ -1797,9 +1797,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "result": {
                     "edit": {
                         "filePath": "/workspace/src/Sample.kt",
-                        "startOffset": 16,
+                        "startOffset": 30,
                         "endOffset": 34,
-                        "newText": "fun greet() = \"hello\""
+                        "newText": "\"hello\""
                     },
                     "proof": {
                         "target": {
@@ -1811,11 +1811,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "requiredGeneration": 1,
                         "sourceRange": {
                             "filePath": "/workspace/src/Sample.kt",
-                            "startOffset": 16,
+                            "startOffset": 30,
                             "endOffset": 34,
                             "startLine": 3,
-                            "startColumn": 1,
-                            "preview": "fun greet() = \"hi\""
+                            "startColumn": 15,
+                            "preview": "\"hi\""
                         },
                         "fileHashes": [
                             {
@@ -1823,6 +1823,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
                                 "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
                             }
                         ],
+                        "compilerContext": {
+                            "files": []
+                        },
                         "oldSignature": {
                             "type": "function",
                             "name": "greet",
@@ -1867,9 +1870,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         },
                         "proposedDeclarationHash": "51900255787d6207ba81f6bb21decc089f5201c89d9d4028e19a94b8a0a30ee7",
                         "proposedDeclarationLength": 21,
+                        "proposedBodyHash": "5aa762ae383fbb727af3c7a36d4940a5b8c40a989452d2304fc958ff3f354e7a",
+                        "proposedBodyLength": 7,
                         "declarationSlice": {
                             "startOffset": 0,
-                            "endOffset": 21
+                            "endOffset": 7
                         },
                         "evidence": {
                             "type": "complete",

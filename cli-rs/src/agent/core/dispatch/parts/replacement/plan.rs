@@ -100,7 +100,7 @@ fn normalize_exact_replacement_target(
     if !target.is_valid_replacement_target() {
         return Err(agent_error(
             "AGENT_REPLACEMENT_IDENTITY_ANCHOR_UNAVAILABLE",
-            "The compiler-resolved replacement target was not a normalized function or property identity.",
+            "The compiler-resolved replacement target was not a normalized function identity.",
         ));
     }
     Ok(target)

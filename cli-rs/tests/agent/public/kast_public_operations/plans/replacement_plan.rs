@@ -12,6 +12,15 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     let source = "fun process(): String = \"old\"\r\n";
     let source_document = source.replace("\r\n", "\n");
     let proposed = "fun process(): String = \"new 🚀\"\n";
+    let source_body = "\"old\"";
+    let proposed_body = "\"new 🚀\"";
+    let body_start = source_document[..source_document.find(source_body).expect("source body")]
+        .encode_utf16()
+        .count();
+    let body_end = body_start + source_body.encode_utf16().count();
+    let proposed_body_start = proposed[..proposed.find(proposed_body).expect("proposed body")]
+        .encode_utf16()
+        .count();
     let mut preimage = b"\xef\xbb\xbf".to_vec();
     preimage.extend_from_slice(source.as_bytes());
     let mut postimage = b"\xef\xbb\xbf".to_vec();
@@ -56,23 +65,30 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         "requiredGeneration": 7,
         "sourceRange": {
             "filePath": declaration_file,
-            "startOffset": 0,
-            "endOffset": source_document.encode_utf16().count(),
+            "startOffset": body_start,
+            "endOffset": body_end,
             "startLine": 1,
             "startColumn": 1,
-            "preview": source_document
+            "preview": source_body
         },
         "fileHashes": [{
             "filePath": declaration_file,
             "hash": source_sha256(&preimage)
         }],
+        "compilerContext": {"files": [], "modelGeneration": 1},
         "oldSignature": signature,
         "proposedSignature": signature,
         "proposedDeclarationHash": source_sha256(proposed.as_bytes()),
         "proposedDeclarationLength": proposed.encode_utf16().count(),
+        "proposedBodyHash": source_sha256(proposed_body.as_bytes()),
+        "proposedBodyLength": proposed_body.encode_utf16().count(),
         "declarationSlice": {
             "startOffset": 0,
-            "endOffset": proposed.trim_end().encode_utf16().count(),
+            "endOffset": proposed.trim().encode_utf16().count(),
+        },
+        "proposedBodySlice": {
+            "startOffset": proposed_body_start,
+            "endOffset": proposed_body_start + proposed_body.encode_utf16().count(),
         },
         "evidence": {
             "type": "complete",
@@ -96,9 +112,9 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     });
     let edit = json!({
         "filePath": declaration_file,
-        "startOffset": 0,
-        "endOffset": source_document.encode_utf16().count(),
-        "newText": proposed
+        "startOffset": body_start,
+        "endOffset": body_end,
+        "newText": proposed_body
     });
     let file_images = json!([{
         "filePath": declaration_file,
@@ -147,6 +163,18 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     );
     let planning_requests = backend.join().expect("replacement planning backend");
     assert_selector_forwarding(&planning_requests, selector, "REPLACE_DECLARATION");
+    let planning_request = planning_requests
+        .iter()
+        .find(|request| request["method"] == "raw/plan-replacement")
+        .expect("public replacement planning request");
+    assert_eq!(
+        planning_request["params"],
+        json!({
+            "target": target,
+            "proposedDeclaration": proposed,
+        }),
+        "the installed public route must send the exact selected function and submitted declaration to the planner"
+    );
 
     let public = decode(&change);
     assert_eq!(public["selector"], selector, "{public:#}");
@@ -205,12 +233,67 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         postimage
     );
     let apply_requests = apply_backend.join().expect("replacement apply backend");
+    let revalidation_request = apply_requests
+        .iter()
+        .find(|request| request["method"] == "raw/plan-replacement")
+        .expect("persisted replacement revalidation request");
+    assert_eq!(
+        revalidation_request["params"],
+        json!({
+            "target": target,
+            "proposedDeclaration": proposed,
+        }),
+        "apply must replan the persisted submitted declaration against the same exact function identity"
+    );
+    let cas_request = apply_requests
+        .iter()
+        .find(|request| request["method"] == "raw/exact-file-image-cas")
+        .expect("replacement exact-file CAS request");
+    assert_eq!(cas_request["params"]["filePath"], json!(declaration_file));
+    assert_eq!(
+        cas_request["params"]["expectedCurrentSha256"],
+        source_sha256(&preimage)
+    );
+    assert_eq!(
+        cas_request["params"]["expectedResultSha256"],
+        source_sha256(&postimage)
+    );
+    assert_eq!(
+        cas_request["params"]["contentBase64"],
+        STANDARD_BASE64.encode(&postimage)
+    );
+    let postcondition_request = apply_requests
+        .iter()
+        .find(|request| request["method"] == "raw/verify-mutation-postcondition")
+        .expect("replacement semantic postcondition request");
+    assert_eq!(
+        postcondition_request["params"]["authority"],
+        json!({
+            "type": "REPLACEMENT",
+            "proof": proof,
+            "edit": edit,
+            "images": file_images,
+        }),
+        "postcondition verification must consume the same typed body authority persisted by planning"
+    );
     assert_eq!(
         apply_requests
             .iter()
             .filter(|request| request["method"] == "raw/exact-file-image-cas")
             .count(),
         1
+    );
+    assert_eq!(
+        verified_receipt["compilerVerification"]["semanticPostcondition"]["evidence"],
+        json!({
+            "type": "REPLACEMENT",
+            "resultingTarget": target,
+            "sourceRange": proof["sourceRange"],
+            "signature": proof["proposedSignature"],
+            "outboundEvidence": proof["evidence"],
+            "outboundReferences": proof["outboundReferences"],
+        }),
+        "the VERIFIED public receipt must retain the exact compiler postcondition evidence"
     );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
         .args(["change", "apply", "--plan-id", &plan_id])
@@ -248,15 +331,20 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     )
     .expect("stored tamper replacement JSON");
 
-    let tampered_proposed = "fun process(): String = \"tampered\"\n";
+    let tampered_body = "\"tampered\"";
     let mut tampered_postimage = b"\xef\xbb\xbf".to_vec();
-    tampered_postimage.extend_from_slice(tampered_proposed.replace('\n', "\r\n").as_bytes());
+    tampered_postimage.extend_from_slice(
+        source_document
+            .replacen(source_body, tampered_body, 1)
+            .replace('\n', "\r\n")
+            .as_bytes(),
+    );
     let mut tampered = stored;
-    tampered["operation"]["authority"]["edits"][0]["newText"] = json!(tampered_proposed);
-    tampered["operation"]["authority"]["proof"]["proposedDeclarationHash"] =
-        json!(source_sha256(tampered_proposed.as_bytes()));
-    tampered["operation"]["authority"]["proof"]["proposedDeclarationLength"] =
-        json!(tampered_proposed.encode_utf16().count());
+    tampered["operation"]["authority"]["edits"][0]["newText"] = json!(tampered_body);
+    tampered["operation"]["authority"]["proof"]["proposedBodyHash"] =
+        json!(source_sha256(tampered_body.as_bytes()));
+    tampered["operation"]["authority"]["proof"]["proposedBodyLength"] =
+        json!(tampered_body.encode_utf16().count());
     tampered["operation"]["authority"]["fileImages"][0]["postimage"] = json!({
         "contentBase64": STANDARD_BASE64.encode(&tampered_postimage),
         "sha256": source_sha256(&tampered_postimage)
@@ -274,6 +362,6 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     assert_eq!(
         decode(&tampered_apply)["error"],
         "KAST_PLAN_INVALID",
-        "tampered authority must fail before private content or runtime use"
+        "body authority detached from the unchanged submitted declaration must fail before private content or runtime use"
     );
 }

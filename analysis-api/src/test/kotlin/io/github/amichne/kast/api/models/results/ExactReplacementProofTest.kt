@@ -11,8 +11,14 @@ import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.result.ExactReplacementOutboundReference
 import io.github.amichne.kast.api.contract.result.ExactReplacementProof
 import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
+import io.github.amichne.kast.api.contract.result.ReplacementBodySha256
+import io.github.amichne.kast.api.contract.result.ReplacementCompilerContext
+import io.github.amichne.kast.api.contract.result.ReplacementCompilerModelGeneration
+import io.github.amichne.kast.api.contract.result.ReplacementContractAdmission
+import io.github.amichne.kast.api.contract.result.ReplacementContractFailure
 import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSha256
 import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSlice
+import io.github.amichne.kast.api.contract.result.ReplacementSubmittedBodySlice
 import io.github.amichne.kast.api.contract.result.ReplacementCompilerTargetSignature
 import io.github.amichne.kast.api.contract.result.ReplacementFunctionSignature
 import io.github.amichne.kast.api.contract.result.ReplacementModality
@@ -26,18 +32,12 @@ import io.github.amichne.kast.api.contract.result.ReplacementVisibility
 import io.github.amichne.kast.api.protocol.ReplacementProofFailureEvidence
 import io.github.amichne.kast.api.protocol.ReplacementProofLimitation
 import io.github.amichne.kast.api.validation.FileHashing
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 class ExactReplacementProofTest {
-    private val json = Json { explicitNulls = false }
-
     @Test
     fun `proof snapshots outbound occurrences and proves every closed dimension`() {
         val mutableReferences = mutableListOf(outboundReference())
@@ -53,12 +53,14 @@ class ExactReplacementProofTest {
 
     @Test
     fun `proof rejects outbound cardinality drift`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            proof(
-                evidence = ReplacementOutboundEvidence.Complete.of(2),
-                outboundReferences = listOf(outboundReference()),
-            )
-        }
+        val admission = proofAdmission(
+            evidence = ReplacementOutboundEvidence.Complete.of(2),
+            outboundReferences = listOf(outboundReference()),
+        )
+        assertEquals(
+            ReplacementContractFailure.OUTBOUND_CARDINALITY_MISMATCH,
+            (admission as ReplacementContractAdmission.Rejected).failure,
+        )
     }
 
     @Test
@@ -70,25 +72,18 @@ class ExactReplacementProofTest {
 
     @Test
     fun `proof requires every outbound occurrence inside the declaration slice`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            proof(
+        assertEquals(
+            ReplacementContractFailure.BODY_SLICE_OUT_OF_BOUNDS,
+            rejected(
+                proofAdmission(
+                    evidence = ReplacementOutboundEvidence.Complete.of(1),
                 outboundReferences = listOf(outboundReference()),
-                declarationSlice = ReplacementDeclarationSlice(NonNegativeInt(2), NonNegativeInt(50)),
-            )
-        }
-    }
-
-    @Test
-    fun `deserialization requires the nominal declaration slice`() {
-        val encoded = json.encodeToJsonElement(
-            ExactReplacementProof.serializer(),
-            proof(outboundReferences = listOf(outboundReference())),
-        ).jsonObject
-        val missingSlice = JsonObject(encoded.filterKeys { key -> key != "declarationSlice" })
-
-        assertThrows(Exception::class.java) {
-            json.decodeFromJsonElement(ExactReplacementProof.serializer(), missingSlice)
-        }
+                declarationSlice = admitted(
+                    ReplacementDeclarationSlice.of(NonNegativeInt(2), NonNegativeInt(50)),
+                ),
+                ),
+            ),
+        )
     }
 
     @Test
@@ -110,11 +105,11 @@ class ExactReplacementProofTest {
         val proposed = "fun greet(value: String): String = value"
         val image = exactImage(proposed)
         val mutableImages = mutableListOf(image)
-        val result = ReplacementPlanResult.of(
+        val result = admitted(ReplacementPlanResult.admit(
             edit = replacementEdit(proposed),
             proof = resultProof(proposed, image.preimage.sha256.value),
             fileImages = mutableImages,
-        )
+        ))
 
         mutableImages.clear()
 
@@ -129,13 +124,13 @@ class ExactReplacementProofTest {
         val proof = resultProof(
             proposed = proposed,
             fileHash = image.preimage.sha256.value,
-            declarationSlice = ReplacementDeclarationSlice(
+            declarationSlice = admitted(ReplacementDeclarationSlice.of(
                 NonNegativeInt(1),
                 NonNegativeInt(proposed.length - 1),
-            ),
+            )),
         )
 
-        val result = ReplacementPlanResult.of(replacementEdit(proposed), proof, listOf(image))
+        val result = admitted(ReplacementPlanResult.admit(replacementEdit(proposed), proof, listOf(image)))
 
         assertEquals(proposed, result.edit.newText)
         assertEquals(proof.declarationSlice, result.proof.declarationSlice)
@@ -147,45 +142,44 @@ class ExactReplacementProofTest {
         val image = exactImage(proposed)
         val proof = resultProof(proposed, image.preimage.sha256.value)
 
-        assertThrows(IllegalArgumentException::class.java) {
-            ReplacementPlanResult.of(replacementEdit(proposed), proof, emptyList())
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            ReplacementPlanResult.of(
-                replacementEdit(proposed),
-                resultProof(proposed, "A".repeat(64)),
-                listOf(image),
-            )
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            val unchanged = ExactFileImage.of(
-                filePath = image.filePath.value,
-                preimageBytes = image.preimage.copyBytes(),
-                postimageBytes = image.preimage.copyBytes(),
-            )
-            ReplacementPlanResult.of(
-                replacementEdit(proposed),
-                resultProof(proposed, unchanged.preimage.sha256.value),
-                listOf(unchanged),
-            )
-        }
-    }
-
-    @Test
-    fun `deserialization rejects a replacement result without exact file images`() {
-        val proposed = "fun greet(value: String): String = value"
-        val image = exactImage(proposed)
-        val valid = ReplacementPlanResult.of(
-            edit = replacementEdit(proposed),
-            proof = resultProof(proposed, image.preimage.sha256.value),
-            fileImages = listOf(image),
+        assertEquals(
+            ReplacementContractFailure.FILE_IMAGE_SET_MISMATCH,
+            rejected(ReplacementPlanResult.admit(replacementEdit(proposed), proof, emptyList())),
         )
-        val encoded = json.encodeToJsonElement(ReplacementPlanResult.serializer(), valid).jsonObject
-        val missingImages = JsonObject(encoded.filterKeys { key -> key != "fileImages" })
-
-        assertThrows(Exception::class.java) {
-            json.decodeFromJsonElement(ReplacementPlanResult.serializer(), missingImages)
-        }
+        assertEquals(
+            ReplacementContractFailure.SOURCE_FILE_HASH_INVALID,
+            rejected(ExactReplacementProof.admit(
+                target = proof.target,
+                requiredGeneration = proof.requiredGeneration,
+                sourceRange = proof.sourceRange,
+                fileHashes = listOf(FileHash(proof.sourceRange.filePath, "A".repeat(64))),
+                compilerContext = proof.compilerContext,
+                oldSignature = proof.oldSignature,
+                proposedSignature = proof.proposedSignature,
+                proposedDeclarationHash = proof.proposedDeclarationHash,
+                proposedDeclarationLength = proof.proposedDeclarationLength,
+                proposedBodyHash = proof.proposedBodyHash,
+                proposedBodyLength = proof.proposedBodyLength,
+                declarationSlice = proof.declarationSlice,
+                proposedBodySlice = proof.proposedBodySlice,
+                evidence = proof.evidence,
+                outboundReferences = proof.outboundReferences,
+            )),
+        )
+        assertEquals(
+            ReplacementContractFailure.POSTIMAGE_UNCHANGED,
+            rejected(ReplacementPlanResult.admit(
+                replacementEdit(proposed),
+                resultProof(proposed, image.preimage.sha256.value),
+                listOf(
+                    ExactFileImage.of(
+                        filePath = image.filePath.value,
+                        preimageBytes = image.preimage.copyBytes(),
+                        postimageBytes = image.preimage.copyBytes(),
+                    ),
+                ),
+            )),
+        )
     }
 
     @Test
@@ -198,51 +192,33 @@ class ExactReplacementProofTest {
             postimageBytes = validImage.postimage.copyBytes() + "// unrelated".toByteArray(),
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
-            ReplacementPlanResult.of(
+        assertEquals(
+            ReplacementContractFailure.POSTIMAGE_REPLAY_INVALID,
+            rejected(ReplacementPlanResult.admit(
                 edit = replacementEdit(proposed),
                 proof = resultProof(proposed, validImage.preimage.sha256.value),
                 fileImages = listOf(unrelatedImage),
-            )
-        }
-    }
-
-    @Test
-    fun `replacement result deserialization rejects a postimage not derived from its UTF-16 edit`() {
-        val proposed = "fun greet(value: String): String = value"
-        val validImage = exactImage(proposed)
-        val valid = ReplacementPlanResult.of(
-            edit = replacementEdit(proposed),
-            proof = resultProof(proposed, validImage.preimage.sha256.value),
-            fileImages = listOf(validImage),
+            )),
         )
-        val unrelatedImage = ExactFileImage.of(
-            filePath = validImage.filePath.value,
-            preimageBytes = validImage.preimage.copyBytes(),
-            postimageBytes = validImage.postimage.copyBytes() + "// unrelated".toByteArray(),
-        )
-        val encoded = json.encodeToJsonElement(ReplacementPlanResult.serializer(), valid).jsonObject
-        val malformed = JsonObject(
-            encoded + (
-                "fileImages" to JsonArray(
-                    listOf(json.encodeToJsonElement(ExactFileImage.serializer(), unrelatedImage)),
-                )
-            ),
-        )
-
-        assertThrows(IllegalArgumentException::class.java) {
-            json.decodeFromJsonElement(ReplacementPlanResult.serializer(), malformed)
-        }
     }
 
     private fun proof(
         evidence: ReplacementOutboundEvidence.Complete = ReplacementOutboundEvidence.Complete.of(1),
         outboundReferences: List<ExactReplacementOutboundReference>,
         declarationSlice: ReplacementDeclarationSlice =
-            ReplacementDeclarationSlice(NonNegativeInt(0), NonNegativeInt(50)),
-    ): ExactReplacementProof {
+            admitted(ReplacementDeclarationSlice.of(NonNegativeInt(0), NonNegativeInt(50))),
+    ): ExactReplacementProof = admitted(
+        proofAdmission(evidence, outboundReferences, declarationSlice),
+    )
+
+    private fun proofAdmission(
+        evidence: ReplacementOutboundEvidence.Complete,
+        outboundReferences: List<ExactReplacementOutboundReference>,
+        declarationSlice: ReplacementDeclarationSlice =
+            admitted(ReplacementDeclarationSlice.of(NonNegativeInt(0), NonNegativeInt(50))),
+    ): ReplacementContractAdmission<ExactReplacementProof> {
         val signature = signature()
-        return ExactReplacementProof.of(
+        return ExactReplacementProof.admit(
             target = SymbolIdentity(
                 fqName = "sample.greet",
                 kind = SymbolKind.FUNCTION,
@@ -252,18 +228,27 @@ class ExactReplacementProofTest {
             requiredGeneration = MutationSemanticGeneration(7),
             sourceRange = Location(
                 filePath = "/workspace/src/Sample.kt",
-                startOffset = 4,
+                startOffset = 13,
                 endOffset = 40,
                 startLine = 1,
                 startColumn = 5,
                 preview = "fun greet(value: String): String = value",
             ),
-            fileHashes = listOf(FileHash("/workspace/src/Sample.kt", "source-hash")),
+            fileHashes = listOf(FileHash("/workspace/src/Sample.kt", "1".repeat(64))),
+            compilerContext = ReplacementCompilerContext.of(
+                emptyMap(),
+                admitted(ReplacementCompilerModelGeneration.parse(1)),
+            ),
             oldSignature = signature,
             proposedSignature = signature,
-            proposedDeclarationHash = ReplacementDeclarationSha256("0".repeat(64)),
+            proposedDeclarationHash = admitted(ReplacementDeclarationSha256.parse("0".repeat(64))),
             proposedDeclarationLength = 50,
+            proposedBodyHash = admitted(ReplacementBodySha256.parse("0".repeat(64))),
+            proposedBodyLength = 50,
             declarationSlice = declarationSlice,
+            proposedBodySlice = admitted(
+                ReplacementSubmittedBodySlice.of(NonNegativeInt(0), NonNegativeInt(50)),
+            ),
             evidence = evidence,
             outboundReferences = outboundReferences,
         )
@@ -320,15 +305,17 @@ class ExactReplacementProofTest {
         proposed: String,
         fileHash: String,
         declarationSlice: ReplacementDeclarationSlice =
-            ReplacementDeclarationSlice(NonNegativeInt(0), NonNegativeInt(proposed.length)),
+            admitted(
+                ReplacementDeclarationSlice.of(NonNegativeInt(0), NonNegativeInt(proposed.length)),
+            ),
     ): ExactReplacementProof {
         val signature = signature()
-        return ExactReplacementProof.of(
+        return admitted(ExactReplacementProof.admit(
             target = SymbolIdentity(
                 fqName = "sample.greet",
                 kind = SymbolKind.FUNCTION,
                 declarationFile = NormalizedPath.parse("/workspace/src/Sample.kt"),
-                declarationStartOffset = NonNegativeInt(12),
+                declarationStartOffset = NonNegativeInt(0),
             ),
             requiredGeneration = MutationSemanticGeneration(7),
             sourceRange = Location(
@@ -340,15 +327,35 @@ class ExactReplacementProofTest {
                 preview = "fun greet(value: String): String = value",
             ),
             fileHashes = listOf(FileHash("/workspace/src/Sample.kt", fileHash)),
+            compilerContext = ReplacementCompilerContext.of(
+                emptyMap(),
+                admitted(ReplacementCompilerModelGeneration.parse(1)),
+            ),
             oldSignature = signature,
             proposedSignature = signature,
-            proposedDeclarationHash = ReplacementDeclarationSha256(FileHashing.sha256(proposed)),
+            proposedDeclarationHash = admitted(
+                ReplacementDeclarationSha256.parse(FileHashing.sha256(proposed)),
+            ),
             proposedDeclarationLength = proposed.length,
+            proposedBodyHash = admitted(ReplacementBodySha256.parse(FileHashing.sha256(proposed))),
+            proposedBodyLength = proposed.length,
             declarationSlice = declarationSlice,
+            proposedBodySlice = admitted(
+                ReplacementSubmittedBodySlice.of(
+                    NonNegativeInt(declarationSlice.startOffset.value),
+                    NonNegativeInt(declarationSlice.endOffset.value),
+                ),
+            ),
             evidence = ReplacementOutboundEvidence.Complete.of(0),
             outboundReferences = emptyList(),
-        )
+        ))
     }
+
+    private fun <Value> admitted(admission: ReplacementContractAdmission<Value>): Value =
+        (admission as ReplacementContractAdmission.Admitted).value
+
+    private fun rejected(admission: ReplacementContractAdmission<*>): ReplacementContractFailure =
+        (admission as ReplacementContractAdmission.Rejected).failure
 
     private fun outboundReference(): ExactReplacementOutboundReference = ExactReplacementOutboundReference(
         relativeStartOffset = 1,

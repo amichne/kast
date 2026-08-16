@@ -11,6 +11,6 @@ import kotlinx.serialization.Serializable
 data class ReplacementPlanQuery(
     @DocField(description = "Exact compiler-resolved identity of the declaration to replace.")
     val target: SymbolIdentity,
-    @DocField(description = "One complete proposed Kotlin function or property declaration.")
+    @DocField(description = "One complete proposed Kotlin function declaration.")
     val proposedDeclaration: String,
 )

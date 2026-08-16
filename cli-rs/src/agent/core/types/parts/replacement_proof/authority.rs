@@ -5,11 +5,15 @@ struct AgentExactReplacementProof {
     required_generation: AgentReplacementSemanticGeneration,
     source_range: AgentExactReplacementLocation,
     file_hashes: Vec<AgentReplacementFileHash>,
+    compiler_context: AgentReplacementCompilerContext,
     old_signature: AgentReplacementDeclarationSignature,
     proposed_signature: AgentReplacementDeclarationSignature,
     proposed_declaration_hash: AgentReplacementDeclarationSha256,
     proposed_declaration_length: usize,
+    proposed_body_hash: AgentReplacementBodySha256,
+    proposed_body_length: usize,
     declaration_slice: AgentReplacementDeclarationSlice,
+    proposed_body_slice: AgentReplacementSubmittedBodySlice,
     evidence: AgentExactReplacementEvidence,
     outbound_references: Vec<AgentExactReplacementOutboundReference>,
 }
@@ -25,7 +29,7 @@ pub(crate) struct AgentReplacementPostconditionEvidence {
 }
 
 impl AgentExactReplacementProof {
-    fn validate(&self, proposed_declaration: &str) -> std::result::Result<(), String> {
+    fn validate_body_authority(&self, proposed_body: &str) -> std::result::Result<(), String> {
         if !self.target.is_valid_replacement_target() {
             return Err("exact replacement proof contained an invalid target identity".to_string());
         }
@@ -36,11 +40,11 @@ impl AgentExactReplacementProof {
         }
         if !self.source_range.is_valid()
             || self.source_range.file_path != self.target.declaration_file
-            || self.source_range.start_offset > self.target.declaration_start_offset
-            || self.target.declaration_start_offset >= self.source_range.end_offset
+            || self.target.declaration_start_offset >= self.source_range.start_offset
         {
             return Err(
-                "exact replacement source range did not contain the target declaration".to_string(),
+                "exact replacement body range did not follow the target declaration identity"
+                    .to_string(),
             );
         }
         if self.file_hashes.len() != 1
@@ -51,6 +55,8 @@ impl AgentExactReplacementProof {
                     .to_string(),
             );
         }
+        self.compiler_context
+            .validate(&self.target.declaration_file)?;
         if self.old_signature != self.proposed_signature
             || !self.old_signature.is_valid_for(self.target.kind)
             || !self.proposed_signature.is_valid_for(self.target.kind)
@@ -60,18 +66,17 @@ impl AgentExactReplacementProof {
                     .to_string(),
             );
         }
-        let logical_length = proposed_declaration.encode_utf16().count();
+        let logical_length = proposed_body.encode_utf16().count();
         if logical_length == 0
             || logical_length > i32::MAX as usize
-            || self.proposed_declaration_length != logical_length
-            || !self.proposed_declaration_hash.matches(proposed_declaration)
+            || self.proposed_body_length != logical_length
+            || !self.proposed_body_hash.matches(proposed_body)
         {
             return Err(
-                "exact replacement proof disagreed with the proposed declaration hash or logical length"
+                "exact replacement proof disagreed with the extracted body hash or logical length"
                     .to_string(),
             );
         }
-        self.declaration_slice.validate_against(proposed_declaration)?;
         if self.evidence.exact_count()? != self.outbound_references.len() {
             return Err(
                 "exact replacement cardinality disagreed with its outbound occurrences".to_string(),
@@ -79,21 +84,54 @@ impl AgentExactReplacementProof {
         }
         let mut ranges = BTreeSet::new();
         for reference in &self.outbound_references {
-            if !self
-                .declaration_slice
-                .contains(reference.relative_start_offset, reference.relative_end_offset)
+            if usize::try_from(reference.relative_end_offset)
+                .map_or(true, |end| end > logical_length)
             {
                 return Err(
-                    "exact replacement outbound reference escaped the declaration slice"
+                    "exact replacement outbound reference escaped the extracted body"
                         .to_string(),
                 );
             }
-            reference.validate_against(proposed_declaration)?;
+            reference.validate_against(proposed_body)?;
             if !ranges.insert(reference.range_key()) {
                 return Err(
                     "exact replacement proof repeated an outbound occurrence range".to_string(),
                 );
             }
+        }
+        Ok(())
+    }
+
+    fn validate_request_content(
+        &self,
+        proposed_declaration: &str,
+        proposed_body: &str,
+    ) -> std::result::Result<(), String> {
+        let logical_length = proposed_declaration.encode_utf16().count();
+        if logical_length == 0
+            || logical_length > i32::MAX as usize
+            || self.proposed_declaration_length != logical_length
+            || !self.proposed_declaration_hash.matches(proposed_declaration)
+        {
+            return Err(
+                "exact replacement proof disagreed with the submitted declaration hash or logical length"
+                    .to_string(),
+            );
+        }
+        self.declaration_slice
+            .validate_against(proposed_declaration)?;
+        if !self.declaration_slice.contains(
+            self.proposed_body_slice.start_offset,
+            self.proposed_body_slice.end_offset,
+        ) || self
+            .proposed_body_slice
+            .extract_from(proposed_declaration)?
+            != proposed_body
+        {
+            return Err(
+                "exact replacement body edit was not the copied-PSI body slice of the submitted declaration"
+                    .to_string(),
+            );
         }
         Ok(())
     }
@@ -164,6 +202,15 @@ impl AgentReplacementAuthority {
         Ok(())
     }
 
+    pub(crate) fn validate_for_proposed_declaration(
+        &self,
+        proposed_declaration: &str,
+    ) -> std::result::Result<(), String> {
+        self.validate()?;
+        self.proof
+            .validate_request_content(proposed_declaration, &self.edits[0].new_text)
+    }
+
     pub(crate) fn proposed_content_sha256(&self) -> &str {
         &self.proof.proposed_declaration_hash.0
     }
@@ -194,25 +241,16 @@ impl AgentReplacementAuthority {
     ) -> std::result::Result<(), String> {
         self.validate()?;
         let edit = &self.edits[0];
-        let expected_start = edit
-            .start_offset
-            .checked_add(self.proof.declaration_slice.start_offset)
-            .ok_or_else(|| "replacement postcondition range overflowed".to_string())?;
-        let expected_end = edit
-            .start_offset
-            .checked_add(self.proof.declaration_slice.end_offset)
-            .ok_or_else(|| "replacement postcondition range overflowed".to_string())?;
         if !result.resulting_target.is_valid_replacement_target()
             || result.resulting_target.fq_name != self.proof.target.fq_name
             || result.resulting_target.kind != self.proof.target.kind
             || result.resulting_target.declaration_file != self.proof.target.declaration_file
             || result.resulting_target.containing_type != self.proof.target.containing_type
-            || result.resulting_target.declaration_start_offset < expected_start
-            || result.resulting_target.declaration_start_offset >= expected_end
+            || result.resulting_target.declaration_start_offset
+                != self.proof.target.declaration_start_offset
             || !result.source_range.is_valid()
             || result.source_range.file_path != edit.file_path
-            || result.source_range.start_offset != expected_start
-            || result.source_range.end_offset != expected_end
+            || result.source_range != self.proof.source_range
             || result.signature != self.proof.proposed_signature
             || result.outbound_references != self.proof.outbound_references
             || result.outbound_evidence != self.proof.evidence
@@ -247,12 +285,8 @@ impl AgentReplacementPlanResult {
                     .to_string(),
             );
         }
-        if self.edit.new_text != proposed_declaration {
-            return Err(
-                "replacement preview edit disagreed with the exact proposed declaration"
-                    .to_string(),
-            );
-        }
+        self.proof
+            .validate_request_content(proposed_declaration, &self.edit.new_text)?;
         self.validate()
     }
 

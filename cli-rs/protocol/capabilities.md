@@ -423,7 +423,7 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin edit: TextEdit` | Single non-mutating edit that replaces the exact source declaration. |
+            | `#!kotlin edit: TextEdit` | Single non-mutating edit that replaces the exact selected Kotlin function body. |
             | `#!kotlin proof: ExactReplacementProof` | Required compiler-backed proof for the replacement plan. |
             | `#!kotlin fileImages: List<ExactFileImage>` | Exact immutable preimage and postimage bytes for the replacement file. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |

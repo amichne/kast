@@ -192,3 +192,71 @@ internal class SchemaRegistry {
         }
     }
 }
+
+/**
+ * Strong OpenAPI registry whose replacement-owned identities and signatures are function-only.
+ */
+internal class FunctionOnlyReplacementSchemaRegistry private constructor(
+    private val registry: SchemaRegistry,
+) {
+    val schemas: Map<String, Any?>
+        get() = registry.schemas
+
+    companion object {
+        /**
+         * Proof transition: fully registered [SchemaRegistry] ->
+         * [FunctionOnlyReplacementSchemaRegistry].
+         *
+         * Intersects only replacement-owned target properties with `kind = FUNCTION` and replaces
+         * only replacement-owned signature properties with the function-signature component.
+         * Shared identity and signature schemas remain available to unrelated operations. Raw
+         * schema maps may be extracted only by the OpenAPI serialization boundary.
+         */
+        @Suppress("UNCHECKED_CAST")
+        fun admit(registry: SchemaRegistry): FunctionOnlyReplacementSchemaRegistry {
+            listOf(
+                "ReplacementPlanQuery" to "target",
+                "ExactReplacementProof" to "target",
+                "MutationPostconditionEvidence.Replacement" to "resultingTarget",
+            ).forEach { (componentName, propertyName) ->
+                val component = registry.schemas.getValue(componentName) as Map<String, Any?>
+                val properties = component.getValue("properties") as Map<String, Any?>
+                val constrainedProperties = LinkedHashMap(properties).apply {
+                    this[propertyName] = linkedMapOf(
+                        "allOf" to listOf(
+                            properties.getValue(propertyName),
+                            linkedMapOf(
+                                "type" to "object",
+                                "properties" to linkedMapOf(
+                                    "kind" to linkedMapOf(
+                                        "type" to "string",
+                                        "const" to "FUNCTION",
+                                    ),
+                                ),
+                                "required" to listOf("kind"),
+                            ),
+                        ),
+                    )
+                }
+                registry.schemas[componentName] = LinkedHashMap(component).apply {
+                    this["properties"] = constrainedProperties
+                }
+            }
+            listOf(
+                "ExactReplacementProof" to "oldSignature",
+                "ExactReplacementProof" to "proposedSignature",
+                "MutationPostconditionEvidence.Replacement" to "signature",
+            ).forEach { (componentName, propertyName) ->
+                val component = registry.schemas.getValue(componentName) as Map<String, Any?>
+                val properties = component.getValue("properties") as Map<String, Any?>
+                registry.schemas[componentName] = LinkedHashMap(component).apply {
+                    this["properties"] = LinkedHashMap(properties).apply {
+                        this[propertyName] =
+                            registry.refSchema("ReplacementDeclarationSignature.Function")
+                    }
+                }
+            }
+            return FunctionOnlyReplacementSchemaRegistry(registry)
+        }
+    }
+}

@@ -123,10 +123,14 @@ class AnalysisDispatcherRawMutationPlanningTest : AnalysisDispatcherTestSupport(
             declarationStartOffset = NonNegativeInt(20),
         )
         val proposed = "fun greet(name: String): String = name"
+        val proposedBody = "name"
+        val sourceBody = "\"hi\""
+        val bodyStart = sourceBefore.indexOf(sourceBody)
+        val bodyEnd = bodyStart + sourceBody.length
         val fileImage = ExactFileImage.of(
             filePath = file.toString(),
             preimageBytes = Files.readAllBytes(file),
-            postimageBytes = proposed.toByteArray(),
+            postimageBytes = sourceBefore.replaceRange(bodyStart, bodyEnd, proposedBody).toByteArray(),
         )
         val signature = ReplacementFunctionSignature.of(
             name = "greet",
@@ -158,26 +162,37 @@ class AnalysisDispatcherRawMutationPlanningTest : AnalysisDispatcherTestSupport(
             expect = false,
             actual = false,
         )
-        val proof = ExactReplacementProof.of(
+        val compilerModelGeneration = admitted(ReplacementCompilerModelGeneration.parse(1))
+        val proof = admitted(ExactReplacementProof.admit(
             target = target,
             requiredGeneration = MutationSemanticGeneration(7),
             sourceRange = Location(
                 filePath = file.toString(),
-                startOffset = 0,
-                endOffset = sourceBefore.length,
-                startLine = 1,
-                startColumn = 1,
-                preview = sourceBefore.lineSequence().first(),
+                startOffset = bodyStart,
+                endOffset = bodyEnd,
+                startLine = 3,
+                startColumn = 15,
+                preview = sourceBefore.lineSequence().drop(2).first(),
             ),
             fileHashes = listOf(FileHash(file.toString(), FileHashing.sha256(sourceBefore))),
+            compilerContext = ReplacementCompilerContext.of(emptyMap(), compilerModelGeneration),
             oldSignature = signature,
             proposedSignature = signature,
-            proposedDeclarationHash = ReplacementDeclarationSha256(FileHashing.sha256(proposed)),
+            proposedDeclarationHash = admitted(ReplacementDeclarationSha256.parse(FileHashing.sha256(proposed))),
             proposedDeclarationLength = proposed.length,
-            declarationSlice = ReplacementDeclarationSlice(NonNegativeInt(0), NonNegativeInt(proposed.length)),
+            proposedBodyHash = admitted(ReplacementBodySha256.parse(FileHashing.sha256(proposedBody))),
+            proposedBodyLength = proposedBody.length,
+            declarationSlice = admitted(ReplacementDeclarationSlice.of(
+                NonNegativeInt(0),
+                NonNegativeInt(proposed.length),
+            )),
+            proposedBodySlice = admitted(ReplacementSubmittedBodySlice.of(
+                NonNegativeInt(proposed.indexOf(proposedBody)),
+                NonNegativeInt(proposed.indexOf(proposedBody) + proposedBody.length),
+            )),
             evidence = ReplacementOutboundEvidence.Complete.of(0),
             outboundReferences = emptyList(),
-        )
+        ))
         val backend = object : AnalysisBackend by delegate {
             override suspend fun capabilities(): BackendCapabilities = delegate.capabilities().copy(
                 mutationCapabilities = delegate.capabilities().mutationCapabilities +
@@ -187,16 +202,16 @@ class AnalysisDispatcherRawMutationPlanningTest : AnalysisDispatcherTestSupport(
             override suspend fun planReplacement(query: ParsedReplacementPlanQuery): ReplacementPlanResult {
                 assertEquals(target, query.target)
                 assertEquals(proposed, query.proposedDeclaration.value)
-                return ReplacementPlanResult.of(
+                return admitted(ReplacementPlanResult.admit(
                     edit = TextEdit(
                         filePath = file.toString(),
-                        startOffset = 0,
-                        endOffset = sourceBefore.length,
-                        newText = proposed,
+                        startOffset = bodyStart,
+                        endOffset = bodyEnd,
+                        newText = proposedBody,
                     ),
                     proof = proof,
                     fileImages = listOf(fileImage),
-                )
+                ))
             }
         }
 
@@ -241,4 +256,9 @@ class AnalysisDispatcherRawMutationPlanningTest : AnalysisDispatcherTestSupport(
             classpathFingerprint = AdditionClasspathFingerprint.of("3".repeat(64)),
             contextFileHashes = hashes.toList(),
         )
+
+    private fun <T> admitted(admission: ReplacementContractAdmission<T>): T = when (admission) {
+        is ReplacementContractAdmission.Admitted -> admission.value
+        is ReplacementContractAdmission.Rejected -> error("unexpected fixture rejection: ${admission.failure}")
+    }
 }

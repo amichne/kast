@@ -6,7 +6,15 @@ import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.api.protocol.*
 
-internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
+/**
+ * Proof transition: empty [SchemaRegistry] -> [FunctionOnlyReplacementSchemaRegistry].
+ *
+ * Registers every public schema and then consumes the operation-specific function-only
+ * replacement projection. Raw schema maps may be extracted only by the OpenAPI renderer.
+ */
+internal fun registerOpenApiSchemas(
+    registry: SchemaRegistry,
+): FunctionOnlyReplacementSchemaRegistry {
     // JSON-RPC error envelope
     registry.register("JsonRpcErrorObject", JsonRpcErrorObject.serializer())
     registry.register("ApiErrorResponse", ApiErrorResponse.serializer())
@@ -123,10 +131,16 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     )
     registry.register("WorkspaceFilesPublicContinuationIdentity", WorkspaceFilesPublicContinuationIdentity.serializer())
     registry.register("WorkspaceFilesPublicContinuationState", WorkspaceFilesPublicContinuationState.serializer())
-    registry.register("WorkspaceFilesPublicContinuationProjection", WorkspaceFilesPublicContinuationProjection.serializer())
+    registry.register(
+        "WorkspaceFilesPublicContinuationProjection",
+        WorkspaceFilesPublicContinuationProjection.serializer()
+    )
     registry.register("WorkspaceFilesContinuationResult", WorkspaceFilesContinuationResult.serializer())
     registry.register("WorkspaceFilesContinuationResult.Issued", WorkspaceFilesContinuationResult.Issued.serializer())
-    registry.register("WorkspaceFilesContinuationResult.Consumed", WorkspaceFilesContinuationResult.Consumed.serializer())
+    registry.register(
+        "WorkspaceFilesContinuationResult.Consumed",
+        WorkspaceFilesContinuationResult.Consumed.serializer()
+    )
     registry.register("ImplementationsQuery", ImplementationsQuery.serializer())
     registry.register("ImplementationsResult", ImplementationsResult.serializer())
     registry.register("CodeActionsQuery", CodeActionsQuery.serializer())
@@ -255,4 +269,6 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     registry.register("FileOperation", FileOperation.serializer())
     registry.register("FileOperation.CreateFile", FileOperation.CreateFile.serializer())
     registry.register("FileOperation.DeleteFile", FileOperation.DeleteFile.serializer())
+
+    return FunctionOnlyReplacementSchemaRegistry.admit(registry)
 }

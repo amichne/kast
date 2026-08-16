@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -37,6 +38,44 @@ class MutationProofOpenApiContractTest {
             "ReplacementOutboundEvidence.Complete",
         )
         assertPropertyRef(yaml, "ReplacementOutboundEvidence.Complete", "cardinality", "EXACT")
+        assertRequiredProperties(
+            yaml,
+            "ExactReplacementProof",
+            "compilerContext",
+            "proposedBodyHash",
+            "proposedBodyLength",
+            "proposedBodySlice",
+        )
+        assertRequiredProperties(yaml, "ReplacementCompilerContext", "files", "modelGeneration")
+        assertFunctionOnlyIdentity(yaml, "ReplacementPlanQuery", "target")
+        assertFunctionOnlyIdentity(yaml, "ExactReplacementProof", "target")
+        assertFunctionOnlyIdentity(
+            yaml,
+            "MutationPostconditionEvidence.Replacement",
+            "resultingTarget",
+        )
+        assertPropertyRef(
+            yaml,
+            "ExactReplacementProof",
+            "oldSignature",
+            "ReplacementDeclarationSignature.Function",
+        )
+        assertPropertyRef(
+            yaml,
+            "ExactReplacementProof",
+            "proposedSignature",
+            "ReplacementDeclarationSignature.Function",
+        )
+        assertPropertyRef(
+            yaml,
+            "MutationPostconditionEvidence.Replacement",
+            "signature",
+            "ReplacementDeclarationSignature.Function",
+        )
+        assertFalse(
+            yaml.contains("function or property replacement", ignoreCase = true),
+            "replacement operation docs must not advertise property authority",
+        )
 
         assertVariant(yaml, "RelationshipResultEvidence.Complete", "COMPLETE")
         assertVariant(yaml, "ReplacementOutboundEvidence.Complete", "complete")
@@ -86,11 +125,49 @@ class MutationProofOpenApiContractTest {
         )
     }
 
-    private fun assertVariant(yaml: String, component: String, type: String) {
+    private fun assertVariant(
+        yaml: String,
+        component: String,
+        type: String
+    ) {
         val schema = yaml.componentSchema(component)
         assertTrue(schema.contains("        type:"), "$component must define the type property")
         assertTrue(schema.contains("          const: $type"), "$component must fix type to $type")
         assertTrue(schema.contains("        - type"), "$component must require the type property")
+    }
+
+    private fun assertFunctionOnlyIdentity(
+        yaml: String,
+        component: String,
+        property: String
+    ) {
+        val schema = yaml.componentSchema(component)
+        val propertyTail = schema.substringAfter("        $property:", missingDelimiterValue = "")
+        val nextProperty = Regex("\n {8}[A-Za-z0-9_.]+:").find(propertyTail)?.range?.first
+        val propertySection = nextProperty?.let { propertyTail.substring(0, it) } ?: propertyTail
+        assertTrue(
+            propertySection.contains("const: FUNCTION"),
+            "$component.$property must constrain the shared identity to FUNCTION:\n$schema",
+        )
+        assertFalse(
+            propertySection.contains("const: PROPERTY"),
+            "$component.$property must not admit property authority:\n$schema",
+        )
+    }
+
+    private fun assertRequiredProperties(
+        yaml: String,
+        component: String,
+        vararg properties: String
+    ) {
+        val schema = yaml.componentSchema(component)
+        val required = schema.substringAfter("      required:", missingDelimiterValue = "")
+        properties.forEach { property ->
+            assertTrue(
+                required.contains("        - $property"),
+                "$component must require $property:\n$schema",
+            )
+        }
     }
 
     private fun String.componentSchema(name: String): String {

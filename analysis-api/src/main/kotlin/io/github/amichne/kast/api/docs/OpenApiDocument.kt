@@ -22,8 +22,7 @@ import java.nio.file.Path
 object OpenApiDocument {
 
     fun renderYaml(): String {
-        val registry = SchemaRegistry()
-        registerSchemas(registry)
+        val registry = registerSchemas(SchemaRegistry())
         return buildString {
             appendLine("openapi: 3.1.0")
             appendLine("info:")

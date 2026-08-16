@@ -120,20 +120,16 @@ internal class ExactReplacementPlanningTest : KastIndexerBackendContractTestFixt
     }
 
     @Test
-    fun `property replacement planning is compiler proven and does not mutate source`() = runBlocking {
+    fun `property replacement planning fails closed outside function body authority`() = runBlocking {
         val input = replacementInput("replacementValue", SymbolKind.PROPERTY)
 
-        val result = backend(workspaceRoot = input.workspaceRoot).planReplacement(
-            ReplacementPlanQuery(
-                target = input.target,
-                proposedDeclaration = "val replacementValue: String = \"new\"",
-            ),
+        val failure = replacementFailure(
+            input,
+            "val replacementValue: String = \"new\"",
         )
 
         assertEquals(input.sourceBefore, readAction { replacementFileFixture.get().text })
-        assertEquals(input.target, result.proof.target)
-        assertEquals(result.proof.oldSignature, result.proof.proposedSignature)
-        assertTrue(result.proof.outboundReferences.isNotEmpty())
+        assertLimitation(failure, ReplacementProofLimitation.UNSUPPORTED_TARGET_KIND)
     }
 
     @Test

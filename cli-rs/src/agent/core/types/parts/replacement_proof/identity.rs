@@ -25,7 +25,7 @@ impl AgentReplacementSymbolKind {
     }
 
     fn supports_replacement(self) -> bool {
-        matches!(self, Self::Function | Self::Property)
+        self == Self::Function
     }
 }
 

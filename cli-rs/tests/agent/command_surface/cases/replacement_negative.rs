@@ -36,11 +36,35 @@ fn agent_replacement_preview_rejects_non_exact_or_inconsistent_proof() {
     let mut proposed_hash_mismatch = valid.clone();
     proposed_hash_mismatch["proof"]["proposedDeclarationHash"] = json!("0".repeat(64));
 
+    let mut proposed_body_hash_mismatch = valid.clone();
+    proposed_body_hash_mismatch["proof"]["proposedBodyHash"] = json!("0".repeat(64));
+
+    let mut missing_compiler_context = valid.clone();
+    missing_compiler_context["proof"]
+        .as_object_mut()
+        .expect("proof")
+        .remove("compilerContext");
+
+    let mut target_in_compiler_context = valid.clone();
+    target_in_compiler_context["proof"]["compilerContext"]["files"][0]["filePath"] =
+        target_in_compiler_context["proof"]["target"]["declarationFile"].clone();
+
     let mut missing_declaration_slice = valid.clone();
     missing_declaration_slice["proof"]
         .as_object_mut()
         .expect("proof")
         .remove("declarationSlice");
+
+    let mut missing_proposed_body_slice = valid.clone();
+    missing_proposed_body_slice["proof"]
+        .as_object_mut()
+        .expect("proof")
+        .remove("proposedBodySlice");
+
+    let mut detached_proposed_body_slice = valid.clone();
+    detached_proposed_body_slice["proof"]["proposedBodySlice"]["startOffset"] = json!(0);
+    detached_proposed_body_slice["proof"]["proposedBodySlice"]["endOffset"] =
+        json!(replacement_utf16_len("\"😀\" + helper()"));
 
     let mut declaration_slice_includes_envelope = valid.clone();
     declaration_slice_includes_envelope["proof"]["declarationSlice"]["endOffset"] =
@@ -59,15 +83,15 @@ fn agent_replacement_preview_rejects_non_exact_or_inconsistent_proof() {
     target_mismatch["proof"]["target"]["fqName"] = json!("io.example.Other.process");
 
     let mut source_text_mismatch = valid.clone();
-    source_text_mismatch["proof"]["outboundReferences"][0]["sourceText"] = json!("helper");
+    source_text_mismatch["proof"]["outboundReferences"][0]["sourceText"] = json!("wrong");
 
     let mut duplicate_ranges = valid.clone();
     let first = duplicate_ranges["proof"]["outboundReferences"][0].clone();
-    duplicate_ranges["proof"]["outboundReferences"][1]["relativeStartOffset"] =
-        first["relativeStartOffset"].clone();
-    duplicate_ranges["proof"]["outboundReferences"][1]["relativeEndOffset"] =
-        first["relativeEndOffset"].clone();
-    duplicate_ranges["proof"]["outboundReferences"][1]["sourceText"] = first["sourceText"].clone();
+    duplicate_ranges["proof"]["outboundReferences"]
+        .as_array_mut()
+        .expect("outbound references")
+        .push(first);
+    duplicate_ranges["proof"]["evidence"]["cardinality"]["totalCount"] = json!(2);
 
     let mut missing_file_images = valid.clone();
     missing_file_images
@@ -104,7 +128,12 @@ fn agent_replacement_preview_rejects_non_exact_or_inconsistent_proof() {
         ("unknown-field", unknown_field),
         ("uppercase-file-hash", uppercase_file_hash),
         ("proposed-hash-mismatch", proposed_hash_mismatch),
+        ("proposed-body-hash-mismatch", proposed_body_hash_mismatch),
+        ("missing-compiler-context", missing_compiler_context),
+        ("target-in-compiler-context", target_in_compiler_context),
         ("missing-declaration-slice", missing_declaration_slice),
+        ("missing-proposed-body-slice", missing_proposed_body_slice),
+        ("detached-proposed-body-slice", detached_proposed_body_slice),
         (
             "declaration-slice-includes-envelope",
             declaration_slice_includes_envelope,
@@ -181,4 +210,73 @@ fn agent_replacement_preview_rejects_non_utf8_content_before_resolution() {
             .is_some_and(|message| message.contains("exact UTF-8")),
         "{stdout:#}",
     );
+}
+
+#[test]
+fn agent_replacement_preview_rejects_property_authority_from_malformed_backend() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    let source = "class OrderService { fun process(): String = \"old\" }\n";
+    let proposed = "fun process(): String = \"😀\" + helper()\n";
+    std::fs::write(workspace.join("Keywords.kt"), source).expect("source fixture");
+    std::fs::write(workspace.join("Helpers.kt"), "fun helper() = \"ok\"\n")
+        .expect("helper fixture");
+    let canonical_workspace = workspace.canonicalize().expect("canonical workspace");
+    let content_file = temp.path().join("replacement.kt");
+    std::fs::write(&content_file, proposed).expect("replacement fixture");
+
+    let mut property_identity = symbol_result(&workspace, "io.example.OrderService.process");
+    property_identity["symbol"]["kind"] = json!("PROPERTY");
+    let mut property_preview = exact_replacement_preview(&canonical_workspace, source, proposed);
+    property_preview["proof"]["target"]["kind"] = json!("PROPERTY");
+    let property_signature = json!({
+        "type": "property",
+        "name": "process",
+        "receiverType": null,
+        "contextReceiverTypes": [],
+        "typeParameters": [],
+        "returnType": "kotlin.String",
+        "visibility": "PUBLIC",
+        "modality": "FINAL",
+        "getterVisibility": "PUBLIC",
+        "setterVisibility": null,
+        "hasGetter": true,
+        "hasSetter": false,
+        "hasBackingField": false,
+        "isVal": true,
+        "const": false,
+        "lateinit": false,
+        "delegated": false,
+        "override": false,
+        "static": false,
+        "external": false,
+        "expect": false,
+        "actual": false,
+    });
+    property_preview["proof"]["oldSignature"] = property_signature.clone();
+    property_preview["proof"]["proposedSignature"] = property_signature;
+    let socket_path = temp.path().join("replacement-property.sock");
+    let backend = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![
+            ("symbol/resolve", property_identity),
+            ("raw/plan-replacement", property_preview),
+        ],
+    );
+
+    let output = run_symbol_replacement_preview(&home, &config_home, &workspace, &content_file);
+
+    assert!(!output.status.success(), "property replacement authority was accepted");
+    assert_eq!(
+        serde_json::from_slice::<Value>(&output.stdout).expect("property rejection JSON")["error"]
+            ["code"],
+        "AGENT_REPLACEMENT_IDENTITY_ANCHOR_UNAVAILABLE",
+    );
+    backend.join().expect("property replacement backend");
 }
