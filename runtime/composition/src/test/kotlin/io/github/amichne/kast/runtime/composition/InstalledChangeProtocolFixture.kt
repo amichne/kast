@@ -21,6 +21,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Path
 
 internal class InstalledChangeProtocolFixture private constructor(
+    val published: PublishedWorkspace,
     val workspace: WorkspaceInspectionOperations,
     val addFile: AddFilePlanRequest,
 ) {
@@ -56,6 +57,7 @@ internal class InstalledChangeProtocolFixture private constructor(
                 AddFileTargetObservation(published, file, sourceRoot.owner),
             ).fixtureRefined()
             return InstalledChangeProtocolFixture(
+                published,
                 WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(published) },
                 AddFilePlanRequest(
                     target,
