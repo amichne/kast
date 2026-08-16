@@ -594,7 +594,7 @@
       "role": "SERVICE",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
-      "allowedProjectDependencies": [":evidence:spi", ":workspace:contract", ":workspace:spi"],
+      "allowedProjectDependencies": [":evidence:contract", ":evidence:spi", ":workspace:contract", ":workspace:spi"],
       "allowedEffects": []
     },
     {

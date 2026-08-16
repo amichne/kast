@@ -82,6 +82,7 @@ internal object KastPlatformModules {
         active(
             ModuleId.WORKSPACE_SERVICE,
             ModuleRole.SERVICE,
+            ModuleId.EVIDENCE_CONTRACT,
             ModuleId.EVIDENCE_SPI,
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_SPI,
