@@ -159,6 +159,9 @@ internal object KastPlatformModules {
             ModuleId.KERNEL,
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.TRAVERSAL_CONTRACT,
+            ModuleId.DIAGNOSTIC_CONTRACT,
         ),
         active(
             ModuleId.CHANGE_PLAN,

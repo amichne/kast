@@ -368,13 +368,43 @@
       "allowedEffects": []
     },
     {
+      "id": "RELATION_CONTRACT",
+      "projectPath": ":relation:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "TRAVERSAL_CONTRACT",
+      "projectPath": ":traversal:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":relation:contract", ":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
+      "id": "DIAGNOSTIC_CONTRACT",
+      "projectPath": ":diagnostic:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
       "id": "CHANGE_CONTRACT",
       "projectPath": ":change:contract",
       "lifecycle": "ACTIVE",
       "role": "CONTRACT",
       "cost": "HOST_NEUTRAL",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel", ":symbol:contract", ":workspace:contract"],
+      "allowedProjectDependencies": [":diagnostic:contract", ":kernel", ":relation:contract", ":symbol:contract", ":traversal:contract", ":workspace:contract"],
       "allowedEffects": []
     },
     {
@@ -648,16 +678,6 @@
       "allowedEffects": []
     },
     {
-      "id": "RELATION_CONTRACT",
-      "projectPath": ":relation:contract",
-      "lifecycle": "ACTIVE",
-      "role": "CONTRACT",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel", ":symbol:contract", ":workspace:contract"],
-      "allowedEffects": []
-    },
-    {
       "id": "RELATION_SERVICE",
       "projectPath": ":relation:service",
       "lifecycle": "ACTIVE",
@@ -676,16 +696,6 @@
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.intellij-read"},
       "allowedProjectDependencies": [":relation:contract", ":symbol:contract", ":workspace:contract"],
       "allowedEffects": ["INTELLIJ_PLATFORM"]
-    },
-    {
-      "id": "TRAVERSAL_CONTRACT",
-      "projectPath": ":traversal:contract",
-      "lifecycle": "ACTIVE",
-      "role": "CONTRACT",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel", ":relation:contract", ":symbol:contract", ":workspace:contract"],
-      "allowedEffects": []
     },
     {
       "id": "TRAVERSAL_SERVICE",
@@ -776,16 +786,6 @@
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.cli"},
       "allowedProjectDependencies": [":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire"],
       "allowedEffects": ["PROCESS_CONTROL"]
-    },
-    {
-      "id": "DIAGNOSTIC_CONTRACT",
-      "projectPath": ":diagnostic:contract",
-      "lifecycle": "ACTIVE",
-      "role": "CONTRACT",
-      "cost": "HOST_NEUTRAL",
-      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
-      "allowedProjectDependencies": [":kernel", ":workspace:contract"],
-      "allowedEffects": []
     },
     {
       "id": "DIAGNOSTIC_SERVICE",
