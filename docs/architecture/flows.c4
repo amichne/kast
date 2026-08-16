@@ -161,5 +161,6 @@ views {
 
     kast.cli <- kast.indexer.refreshStatus "projects typed refresh evidence"
     developer <- kast.cli "receives readiness or limitation"
-  }
+	autoLayout RightLeft
+	}
 }
