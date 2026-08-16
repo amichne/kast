@@ -18,6 +18,9 @@ class MutationTargetModuleBoundaryTest {
                 ModuleId.KERNEL,
                 ModuleId.WORKSPACE_CONTRACT,
                 ModuleId.SYMBOL_CONTRACT,
+                ModuleId.RELATION_CONTRACT,
+                ModuleId.TRAVERSAL_CONTRACT,
+                ModuleId.DIAGNOSTIC_CONTRACT,
             ),
             changeContract.allowedProjectDependencies,
         )
