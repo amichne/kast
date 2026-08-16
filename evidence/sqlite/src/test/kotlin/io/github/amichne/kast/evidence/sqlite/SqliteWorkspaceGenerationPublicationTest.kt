@@ -3,6 +3,11 @@ package io.github.amichne.kast.evidence.sqlite
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationFailure
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationDiscard
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationOpening
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationPreparation
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.indexstore.snapshot.PublicationEpochMillis
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState as StoredPublicationState
@@ -13,6 +18,10 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
+import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
+import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Files
 import java.nio.file.Path
@@ -105,6 +114,57 @@ class SqliteWorkspaceGenerationPublicationTest {
         }
     }
 
+    @Test
+    fun `canonical transaction publishes complete state and preserves prior generation on failure`() {
+        val database = tempDir.resolve("canonical/cache/source-index.db")
+        SqliteSourceIndexStore(workspaceIdentity(database)).use { sourceStore ->
+            sourceStore.ensureSchema()
+            seedCompleteModule(database)
+            val store = WorkspaceGenerationStore(
+                sourceStore,
+                publicationClock = { PublicationEpochMillis.fromClock(42) },
+            )
+            val transaction = IndexStoreCanonicalWorkspacePublicationTransaction(store)
+            val candidate = reconciled(database.parent.parent.resolve("workspace"), "first")
+
+            val open = (transaction.begin() as WorkspacePublicationOpening.Opened).publication
+            val prepared = (
+                transaction.prepare(open, candidate) as WorkspacePublicationPreparation.Prepared
+            ).publication
+            val published = transaction.commit(prepared)
+            val workspace = (published as WorkspacePublicationResult.Published).workspace
+            val prior = store.current()
+
+            assertEquals(1, workspace.generation.value)
+            assertEquals(candidate.candidate.root, workspace.root)
+            assertEquals(candidate.candidate.sourceState, workspace.sourceState)
+            assertEquals(WorkspaceEvidenceKind.entries.toSet(), workspace.coverage.evidence)
+
+            markModuleIncomplete(database)
+            val rejectedOpen = (
+                transaction.begin() as WorkspacePublicationOpening.Opened
+            ).publication
+            sourceStore.writeHeadCommit("discarded-candidate")
+            assertEquals(
+                WorkspacePublicationResult.Rejected(WorkspacePublicationFailure.StorageUnavailable),
+                transaction.prepare(
+                    rejectedOpen,
+                    reconciled(database.parent.parent.resolve("workspace"), "next"),
+                ).let { preparation ->
+                    when (preparation) {
+                        is WorkspacePublicationPreparation.Prepared ->
+                            transaction.commit(preparation.publication)
+                        is WorkspacePublicationPreparation.Rejected ->
+                            WorkspacePublicationResult.Rejected(preparation.failure)
+                    }
+                },
+            )
+            assertEquals(WorkspacePublicationDiscard.Discarded, transaction.discard(rejectedOpen))
+            assertEquals(prior, store.current())
+            assertEquals(null, readHeadCommit(database))
+        }
+    }
+
     private fun workspaceIdentity(database: Path): WorkspaceIdentity {
         val root = database.parent.parent.resolve("workspace")
         Files.createDirectories(root)
@@ -125,6 +185,32 @@ class SqliteWorkspaceGenerationPublicationTest {
                        ) VALUES ('app', 'COMPLETE', 1, 1, 1)""",
                 )
             }
+        }
+    }
+
+    private fun markModuleIncomplete(database: Path) {
+        DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeUpdate(
+                    "UPDATE module_index_progress SET relationship_index_status = 'PENDING'",
+                )
+            }
+        }
+    }
+
+    private fun reconciled(root: Path, identity: String): ReconciledWorkspace {
+        val canonicalRoot = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(root)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error(admitted.failure)
+        }
+        return when (
+            val admitted = ReconciledWorkspace.admit(
+                WorkspaceCandidate(canonicalRoot, WorkspaceStateIdentity(identity)),
+                WorkspaceEvidenceKind.entries.toSet(),
+            )
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error(admitted.failure.missing)
         }
     }
 
