@@ -6,7 +6,8 @@ effect.
 
 ## Dependency boundary
 
-- Production depends only on `:kernel` and serialization support.
+- Production depends only on `:kernel`, `:workspace:contract`, `:symbol:contract`, and
+  serialization support.
 - Do not import IntelliJ, workspace implementation, JDBC, filesystem, transport, legacy
   `analysis-api`, backend, adapter, service, or callback types.
 - Compatibility evidence is detached canonical JSON with a verified digest; it is not generic edit
@@ -25,6 +26,9 @@ effect.
 - Plan identity is the SHA-256 of canonical serialized identity material. Decode rejects malformed,
   non-canonical, or tampered bytes.
 - No plan retains a path handle, file handle, PSI value, document, callback, or mutation capability.
+- Editable-target admission retains one published root/generation/state, exact symbol selector,
+  exact content identity, unique Gradle owner, and authored source-root provenance. The returned
+  value is planning eligibility only and grants no source effect.
 
 ## Verification ladder
 
