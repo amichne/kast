@@ -58,7 +58,7 @@ internal sealed interface IntellijRelationScopeCompilation {
     ) : IntellijRelationScopeCompilation
 }
 
-/** Request-local proof that selector scope and imported model compiled before native work. */
+/** Request-local proof that subject scope and imported model compiled before native work. */
 internal class CompiledRelationScope internal constructor(
     val request: RelationRequest,
     val sourceRoots: List<ModelOwnedSourceRoot>,
@@ -70,7 +70,7 @@ internal class IntellijRelationScopeCompiler {
      * Proof transition: `(Project, RelationRequest, WorkspaceSearchScopeModelCompilation) ->
      * IntellijRelationScopeCompilation`.
      *
-     * A compiled result establishes the selector's exact root, model-owned source roots, explicit
+     * A compiled result establishes the subject's exact root, model-owned source roots, explicit
      * source/generated/library policy, and one bounded request-local native scope.
      * [IntellijRelationScopeFailure] is the closed expected failure. Live project, VFS, index, and
      * scope objects remain inside the native adapter request.
@@ -87,31 +87,31 @@ internal class IntellijRelationScopeCompiler {
                     IntellijRelationScopeFailure.ProjectModelRejected(modelCompilation.failures),
                 )
         }
-        if (model.workspaceRoot != request.selector.lease.workspaceRoot) {
+        if (model.workspaceRoot != request.subject.lease.workspaceRoot) {
             return rejected(IntellijRelationScopeFailure.LeaseRootMismatch)
         }
-        val ownedRoots = rootsFor(request.selector.scope, model.sourceRoots)
+        val ownedRoots = rootsFor(request.subject.scope, model.sourceRoots)
         if (ownedRoots.isEmpty()) {
             return rejected(
-                if (request.selector.scope is SymbolSearchScope.ExactFile) {
+                if (request.subject.scope is SymbolSearchScope.ExactFile) {
                     IntellijRelationScopeFailure.TargetProvenanceUnknown
                 } else {
                     IntellijRelationScopeFailure.OwnerNotInModel
                 },
             )
         }
-        if (request.selector.scope is SymbolSearchScope.ExactFile && ownedRoots.size != 1) {
+        if (request.subject.scope is SymbolSearchScope.ExactFile && ownedRoots.size != 1) {
             return rejected(IntellijRelationScopeFailure.TargetOwnershipAmbiguous)
         }
         val readableRoots = ownedRoots.filter { root ->
-            request.selector.scope.sourceKinds.includes(root.sourceKind) &&
-                request.selector.scope.generatedSources.includes(root.provenance)
+            request.subject.scope.sourceKinds.includes(root.sourceKind) &&
+                request.subject.scope.generatedSources.includes(root.provenance)
         }
         if (readableRoots.isEmpty()) {
             return rejected(IntellijRelationScopeFailure.NoReadableSourceRoots)
         }
 
-        val pathPolicy = when (val scope = request.selector.scope) {
+        val pathPolicy = when (val scope = request.subject.scope) {
             is SymbolSearchScope.ExactFile ->
                 RelationPathPolicy.ExactFile(Path.of(scope.file.value))
             else -> RelationPathPolicy.SourceRoots(
@@ -121,7 +121,7 @@ internal class IntellijRelationScopeCompiler {
                     .sortedBy(Path::toString),
             )
         }
-        val libraryPolicy = request.selector.scope.libraryPolicy()
+        val libraryPolicy = request.subject.scope.libraryPolicy()
         val libraryScope = ProjectScope.getLibrariesScope(project)
         return IntellijRelationScopeCompilation.Compiled(
             CompiledRelationScope(

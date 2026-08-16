@@ -3,11 +3,13 @@ package io.github.amichne.kast.relation.contract
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -41,6 +43,7 @@ sealed interface RelationEndpoint {
     val name: SymbolDiscoveryCandidateName
     val qualifiedIdentity: ExactDeclarationQualifiedIdentity
     val kind: CompilerSymbolKind
+    val compilerIdentity: CompilerSymbolIdentity
     val fingerprint: RelationEndpointFingerprint
 
     @ConsistentCopyVisibility
@@ -54,6 +57,8 @@ sealed interface RelationEndpoint {
         override val name: SymbolDiscoveryCandidateName = selector.name
         override val qualifiedIdentity: ExactDeclarationQualifiedIdentity = selector.qualifiedIdentity
         override val kind: CompilerSymbolKind = selector.kind
+        override val compilerIdentity: CompilerSymbolIdentity =
+            SymbolDescription.from(selector).compilerIdentity
         override val fingerprint: RelationEndpointFingerprint =
             RelationEndpointFingerprint(selector.fingerprint.value)
     }
@@ -70,6 +75,7 @@ sealed interface RelationEndpoint {
         override val name: SymbolDiscoveryCandidateName = evidence.name
         override val qualifiedIdentity: ExactDeclarationQualifiedIdentity = evidence.qualifiedIdentity
         override val kind: CompilerSymbolKind = evidence.kind
+        override val compilerIdentity: CompilerSymbolIdentity = evidence.compilerIdentity
 
         companion object {
             internal fun create(
@@ -118,6 +124,45 @@ sealed interface RelationEndpoint {
             }
             return Refinement.Refined(Resolved.create(lease, scope, evidence))
         }
+    }
+}
+
+enum class RelationEndpointRevalidationFailure {
+    DECLARATION_MOVED_OR_CHANGED,
+}
+
+/** Proof that current compiler evidence is identical to one exact relation endpoint. */
+class RevalidatedRelationEndpoint private constructor(
+    val endpoint: RelationEndpoint,
+) {
+    companion object {
+        /**
+         * Proof transition: `(RelationEndpoint, CompilerGroundedSymbolEvidence) -> Refinement<
+         * RevalidatedRelationEndpoint, RelationEndpointRevalidationFailure>`.
+         *
+         * Establishes identical detached file, range, name, qualified identity, kind, and compiler
+         * identity under the endpoint's retained root, generation, and scope.
+         * [RelationEndpointRevalidationFailure] is the closed expected failure. Raw compiler
+         * evidence may enter only from the request-local native relation adapter.
+         */
+        fun validate(
+            endpoint: RelationEndpoint,
+            evidence: CompilerGroundedSymbolEvidence,
+        ): Refinement<RevalidatedRelationEndpoint, RelationEndpointRevalidationFailure> =
+            if (
+                endpoint.file == evidence.file &&
+                endpoint.range == evidence.range &&
+                endpoint.name == evidence.name &&
+                endpoint.qualifiedIdentity == evidence.qualifiedIdentity &&
+                endpoint.kind == evidence.kind &&
+                endpoint.compilerIdentity == evidence.compilerIdentity
+            ) {
+                Refinement.Refined(RevalidatedRelationEndpoint(endpoint))
+            } else {
+                Refinement.Rejected(
+                    RelationEndpointRevalidationFailure.DECLARATION_MOVED_OR_CHANGED,
+                )
+            }
     }
 }
 
@@ -172,7 +217,7 @@ enum class RelationFactFailure {
 
 @ConsistentCopyVisibility
 data class RelationFact private constructor(
-    val subject: SymbolSelector,
+    val subject: RelationEndpoint,
     val meaning: RelationMeaning,
     val source: RelationEndpoint,
     val target: RelationEndpoint,
@@ -213,33 +258,33 @@ data class RelationFact private constructor(
             occurrence: RelationOccurrence,
             provenance: RelationProvenance,
         ): Refinement<RelationFact, RelationFactFailure> {
-            if (source.lease != request.selector.lease || target.lease != request.selector.lease) {
+            if (source.lease != request.subject.lease || target.lease != request.subject.lease) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_LEASE_MISMATCH)
             }
-            if (source.scope != request.selector.scope || target.scope != request.selector.scope) {
+            if (source.scope != request.subject.scope || target.scope != request.subject.scope) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_SCOPE_MISMATCH)
             }
             val oriented = when (request.meaning) {
-                RelationMeaning.Callees -> source.isSubject(request.selector)
+                RelationMeaning.Callees -> source === request.subject
                 RelationMeaning.References,
                 RelationMeaning.Callers,
                 RelationMeaning.Implementations,
                 RelationMeaning.Inheritors,
                 RelationMeaning.Overrides,
                 RelationMeaning.TypeUses,
-                    -> target.isSubject(request.selector)
+                    -> target === request.subject
             }
             if (!oriented) {
                 return Refinement.Rejected(RelationFactFailure.SUBJECT_ORIENTATION_MISMATCH)
             }
             return Refinement.Refined(
                 RelationFact(
-                    subject = request.selector,
+                    subject = request.subject,
                     meaning = request.meaning,
                     source = source,
                     target = target,
                     occurrence = occurrence,
-                    generation = request.selector.lease.generation,
+                    generation = request.subject.lease.generation,
                     provenance = provenance,
                     coverage = RelationFactCoverage.EXACT_COMPILER_CONFIRMED,
                 ),
@@ -256,9 +301,6 @@ data class RelationFact private constructor(
         )
     }
 }
-
-private fun RelationEndpoint.isSubject(selector: SymbolSelector): Boolean =
-    this is RelationEndpoint.Subject && this.selector === selector
 
 private fun relationEndpointFingerprint(
     lease: SemanticReadLease,

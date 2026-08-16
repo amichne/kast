@@ -57,7 +57,7 @@ internal class IntellijRelationCompilerQuery(
         request: RelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): RelationCompilation {
-        when (val admission = admitRelationLease(currentLease, request.selector.lease)) {
+        when (val admission = admitRelationLease(currentLease, request.subject.lease)) {
             IntellijRelationLeaseAdmission.Admitted -> Unit
             is IntellijRelationLeaseAdmission.Rejected ->
                 return RelationCompilation.Rejected(admission.reason)
@@ -78,10 +78,10 @@ internal class IntellijRelationCompilerQuery(
             readAction {
                 val projection = IntellijK2RelationProjection(
                     project,
-                    request.selector.lease.workspaceRoot,
+                    request.subject.lease.workspaceRoot,
                 )
                 val subject = when (
-                    val lookup = projection.subject(scope, request.selector)
+                    val lookup = projection.subject(scope, request.subject)
                 ) {
                     is IntellijRelationSubjectLookup.Found -> lookup.declaration
                     is IntellijRelationSubjectLookup.Rejected ->

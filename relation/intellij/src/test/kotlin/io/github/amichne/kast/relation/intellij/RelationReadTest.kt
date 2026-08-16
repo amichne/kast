@@ -44,10 +44,31 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class RelationReadTest {
+    @Test
+    fun `resolved endpoint enters the next exact relation request without reconstruction`() {
+        val initial = request(RelationMeaning.Callees)
+        val related = assertInstanceOf(
+            RelationEndpoint.Resolved::class.java,
+            fact(initial).target,
+        )
+
+        val next = RelationRequest.start(
+            related,
+            RelationMeaning.References,
+            initial.budget,
+        )
+
+        assertSame(related, next.subject)
+        assertEquals(initial.subject.lease, next.subject.lease)
+        assertEquals(initial.subject.scope, next.subject.scope)
+        assertEquals(related.fingerprint, next.subject.fingerprint)
+    }
+
     @Test
     fun `all seven closed meanings retain exact oriented facts`() {
         assertEquals(7, RelationMeaning.all.size)
@@ -61,7 +82,7 @@ class RelationReadTest {
 
             val complete = assertInstanceOf(RelationCompilation.Complete::class.java, result)
             assertEquals(listOf(fact), complete.batch.facts)
-            assertEquals(request.selector.lease.generation, fact.generation)
+            assertEquals(request.subject.lease.generation, fact.generation)
             assertEquals(RelationProvenance.K2_AUTHORED_SOURCE, fact.provenance)
             if (meaning == RelationMeaning.Callees) {
                 assertInstanceOf(RelationEndpoint.Subject::class.java, fact.source)
@@ -83,20 +104,20 @@ class RelationReadTest {
         val qualified = assertInstanceOf(RelationCompilation.Qualified::class.java, result)
         assertEquals(emptyList<RelationFact>(), qualified.batch.facts)
         assertEquals(0, qualified.coverage.knownMinimum.value)
-        assertEquals(request.selector.fingerprint, qualified.coverage.continuation.selector)
+        assertEquals(request.subject.fingerprint, qualified.coverage.continuation.subject)
         assertEquals(request.meaning, qualified.coverage.continuation.meaning)
-        assertEquals(request.selector.lease.generation, qualified.coverage.continuation.generation)
+        assertEquals(request.subject.lease.generation, qualified.coverage.continuation.generation)
     }
 
     private fun fact(request: RelationRequest): RelationFact {
-        val subject = RelationEndpoint.subject(request.selector)
+        val subject = request.subject
         val related = RelationEndpoint.resolve(
-            request.selector.lease,
-            request.selector.scope,
-            evidence(request.selector, "sample.Related.run()"),
+            request.subject.lease,
+            request.subject.scope,
+            evidence(request.subject, "sample.Related.run()"),
         ).refined()
         val occurrence = RelationOccurrence.fromBoundary(
-            request.selector.file,
+            request.subject.file,
             71,
             74,
         ).refined()
@@ -186,10 +207,10 @@ class RelationReadTest {
     }
 
     private fun evidence(
-        selector: SymbolSelector,
+        subject: RelationEndpoint,
         identity: String,
     ): CompilerGroundedSymbolEvidence = CompilerGroundedSymbolEvidence.fromBoundary(
-        selector.file,
+        subject.file,
         71,
         82,
         "run",

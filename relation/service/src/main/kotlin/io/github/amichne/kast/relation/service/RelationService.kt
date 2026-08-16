@@ -3,11 +3,11 @@ package io.github.amichne.kast.relation.service
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
@@ -21,7 +21,7 @@ class RelationService(
      * Proof transition: `(WorkspaceRuntimeState, RelationRequest, RelationCompilation) ->
      * RelationReadResult`.
      *
-     * A complete or qualified result establishes that the exact selector remained current before
+     * A complete or qualified result establishes that the exact subject remained current before
      * and after compiler work and the detached output retained request ownership, meaning,
      * generation, exact fact coverage, and continuation binding. [RelationReadRejection] is the
      * closed expected failure. Workspace observation and compiler execution are the only effects.
@@ -29,7 +29,7 @@ class RelationService(
     override suspend fun read(request: RelationRequest): RelationReadResult {
         when (
             val admission = admitCurrentLease(
-                request.selector.lease,
+                request.subject.lease,
                 RelationAdmissionPhase.INITIAL,
             )
         ) {
@@ -40,7 +40,7 @@ class RelationService(
         val compilation = compiler.read(request)
         when (
             val admission = admitCurrentLease(
-                request.selector.lease,
+                request.subject.lease,
                 RelationAdmissionPhase.REVALIDATION,
             )
         ) {
@@ -137,7 +137,7 @@ private fun RelationCompilation.Complete.admitFor(
     if (batch.request !== request || coverage.exactCount.value != batch.facts.size) {
         return RelationCompilerOutputAdmission.Rejected
     }
-    return batch.facts.admitFor(request.selector, request)
+    return batch.facts.admitFor(request.subject, request)
 }
 
 /**
@@ -154,28 +154,28 @@ private fun RelationCompilation.Qualified.admitFor(
         batch.request !== request ||
         coverage.knownMinimum.value != batch.facts.size ||
         coverage.limitations.isEmpty() ||
-        coverage.continuation.selector != request.selector.fingerprint ||
+        coverage.continuation.subject != request.subject.fingerprint ||
         coverage.continuation.meaning != request.meaning ||
-        coverage.continuation.generation != request.selector.lease.generation ||
+        coverage.continuation.generation != request.subject.lease.generation ||
         coverage.continuation.nextWorkOffset.value < request.position.workOffset.value
     ) {
         return RelationCompilerOutputAdmission.Rejected
     }
-    return batch.facts.admitFor(request.selector, request)
+    return batch.facts.admitFor(request.subject, request)
 }
 
 private fun List<io.github.amichne.kast.relation.contract.RelationFact>.admitFor(
-    selector: SymbolSelector,
+    subject: RelationEndpoint,
     request: RelationRequest,
 ): RelationCompilerOutputAdmission = if (
     all { fact ->
-        fact.subject === selector &&
+        fact.subject === subject &&
             fact.meaning == request.meaning &&
-            fact.generation == selector.lease.generation &&
-            fact.source.lease == selector.lease &&
-            fact.target.lease == selector.lease &&
-            fact.source.scope == selector.scope &&
-            fact.target.scope == selector.scope
+            fact.generation == subject.lease.generation &&
+            fact.source.lease == subject.lease &&
+            fact.target.lease == subject.lease &&
+            fact.source.scope == subject.scope &&
+            fact.target.scope == subject.scope
     }
 ) {
     RelationCompilerOutputAdmission.Admitted

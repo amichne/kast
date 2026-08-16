@@ -5,8 +5,9 @@ not own IntelliJ, traversal, persistence, transport, workspace transitions, or m
 
 ## Invariants
 
-- A relation request starts only from `SymbolSelector`; names, paths, offsets, and FQNs are not
-  substitute authority.
+- An initial relation request starts from `SymbolSelector`; a following hop may start from the
+  exact `RelationEndpoint.Resolved` returned by the prior read. Names, paths, offsets, and FQNs
+  are not substitute authority.
 - `References`, `Callers`, `Callees`, `Implementations`, `Inheritors`, `Overrides`, and `TypeUses`
   are closed meanings, never an arbitrary kind/direction pair.
 - Every fact preserves exact compiler-grounded source and target endpoints, one exact occurrence,

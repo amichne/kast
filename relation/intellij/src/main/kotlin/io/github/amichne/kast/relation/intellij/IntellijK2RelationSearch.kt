@@ -80,7 +80,7 @@ internal class IntellijK2RelationSearch(
                     if (kotlinReference == null) {
                         return@Processor incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
                     }
-                    when (projection.confirmTarget(kotlinReference, request.selector)) {
+                    when (projection.confirmTarget(kotlinReference, request.subject)) {
                         IntellijK2TargetConfirmation.DIFFERENT_SYMBOL ->
                             return@Processor incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
                         IntellijK2TargetConfirmation.UNRESOLVED ->
@@ -174,8 +174,8 @@ internal class IntellijK2RelationSearch(
             val endpoint = when (val result = projection.project(related)) {
                 is IntellijRelationDeclarationProjection.Projected -> when (
                     val resolved = RelationEndpoint.resolve(
-                        request.selector.lease,
-                        request.selector.scope,
+                        request.subject.lease,
+                        request.subject.scope,
                         result.evidence,
                     )
                 ) {
@@ -210,7 +210,7 @@ internal class IntellijK2RelationSearch(
                 OccurrenceProvenance.Unsupported ->
                     return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
             }
-            val subjectEndpoint = RelationEndpoint.subject(request.selector)
+            val subjectEndpoint = request.subject
             val (source, target) = if (request.meaning == RelationMeaning.Callees) {
                 subjectEndpoint to endpoint
             } else {
