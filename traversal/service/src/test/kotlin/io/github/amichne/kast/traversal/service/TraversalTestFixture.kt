@@ -150,15 +150,15 @@ internal class TraversalTestFixture {
 
     fun completeRead(
         request: OneHopRelationRequest,
-        subject: SymbolSelector,
         targets: List<SymbolSelector>,
         elapsedMillis: Long = 1L,
     ): OneHopRelationRead {
-        val relationRequest = request.relationRequest(subject)
-        val facts = targets.map { target -> fact(relationRequest, target) }.sorted()
+        val relationRequest = request.relationRequest()
+        val facts = targets.map { target -> fact(relationRequest, endpoint(relationRequest.subject, target)) }
+            .sorted()
         val batch = batch(relationRequest, facts)
         val complete = RelationCompilation.complete(batch)
-        return OneHopRelationRead(
+        return OneHopRelationRead.Completed(
             RelationReadResult.Complete(batch, complete.coverage),
             OneHopElapsedMillis.parse(elapsedMillis).refined(),
         )
@@ -166,12 +166,12 @@ internal class TraversalTestFixture {
 
     fun qualifiedRead(
         request: OneHopRelationRequest,
-        subject: SymbolSelector,
         targets: List<SymbolSelector>,
         limitation: RelationLimitation = RelationLimitation.PROVIDER_INCOMPLETE,
     ): OneHopRelationRead {
-        val relationRequest = request.relationRequest(subject)
-        val facts = targets.map { target -> fact(relationRequest, target) }.sorted()
+        val relationRequest = request.relationRequest()
+        val facts = targets.map { target -> fact(relationRequest, endpoint(relationRequest.subject, target)) }
+            .sorted()
         val batch = batch(relationRequest, facts)
         val nextOffset = RelationWorkOffset.parse(
             relationRequest.position.workOffset.value + facts.size,
@@ -181,24 +181,16 @@ internal class TraversalTestFixture {
             setOf(limitation),
             nextOffset,
         ).refined()
-        return OneHopRelationRead(
+        return OneHopRelationRead.Completed(
             RelationReadResult.Qualified(batch, qualified.coverage),
             OneHopElapsedMillis.parse(1L).refined(),
         )
     }
 
-    private fun OneHopRelationRequest.relationRequest(subject: SymbolSelector): RelationRequest =
-        when (val oneHopPosition = position) {
-            OneHopRelationPosition.Start -> RelationRequest.start(subject, meaning, budget)
-            is OneHopRelationPosition.Resume -> RelationRequest.resume(
-                subject,
-                meaning,
-                budget,
-                oneHopPosition.continuation,
-            ).refined()
-        }
-
-    private fun fact(request: RelationRequest, target: SymbolSelector): RelationFact {
+    fun endpoint(
+        subject: RelationEndpoint,
+        target: SymbolSelector,
+    ): RelationEndpoint.Resolved {
         val description = SymbolDescription.from(target)
         val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
             target.file,
@@ -209,20 +201,68 @@ internal class TraversalTestFixture {
             target.kind,
             description.compilerIdentity,
         ).refined()
-        val endpoint = RelationEndpoint.resolve(
-            request.selector.lease,
-            request.selector.scope,
-            evidence,
+        return RelationEndpoint.resolve(subject.lease, subject.scope, evidence).refined()
+    }
+
+    fun completeRelationResult(
+        request: RelationRequest,
+        targets: List<RelationEndpoint.Resolved>,
+    ): RelationReadResult.Complete {
+        val facts = targets.map { target -> fact(request, target) }.sorted()
+        val batch = batch(request, facts)
+        val complete = RelationCompilation.complete(batch)
+        return RelationReadResult.Complete(batch, complete.coverage)
+    }
+
+    fun qualifiedRelationResult(
+        request: RelationRequest,
+    ): RelationReadResult.Qualified {
+        val batch = batch(request, emptyList())
+        val qualified = RelationCompilation.qualified(
+            batch,
+            setOf(RelationLimitation.PROVIDER_INCOMPLETE),
+            request.position.workOffset,
         ).refined()
+        return RelationReadResult.Qualified(batch, qualified.coverage)
+    }
+
+    private fun OneHopRelationRequest.relationRequest(): RelationRequest =
+        when (val oneHopPosition = position) {
+            OneHopRelationPosition.Start -> when (val subject = node.endpoint) {
+                is RelationEndpoint.Subject -> RelationRequest.start(subject.selector, meaning, budget)
+                is RelationEndpoint.Resolved -> RelationRequest.start(subject, meaning, budget)
+            }
+            is OneHopRelationPosition.Resume -> when (val subject = node.endpoint) {
+                is RelationEndpoint.Subject -> RelationRequest.resume(
+                    subject.selector,
+                    meaning,
+                    budget,
+                    oneHopPosition.continuation,
+                ).refined()
+                is RelationEndpoint.Resolved -> RelationRequest.resume(
+                    subject,
+                    meaning,
+                    budget,
+                    oneHopPosition.continuation,
+                ).refined()
+            }
+        }
+
+    private fun fact(request: RelationRequest, endpoint: RelationEndpoint.Resolved): RelationFact {
         val occurrence = RelationOccurrence.fromBoundary(
-            request.selector.file,
-            request.selector.range.startInclusive,
-            request.selector.range.startInclusive + 1,
+            request.subject.file,
+            request.subject.range.startInclusive,
+            request.subject.range.startInclusive + 1,
         ).refined()
+        val (source, target) = if (request.meaning == RelationMeaning.Callees) {
+            request.subject to endpoint
+        } else {
+            endpoint to request.subject
+        }
         return RelationFact.create(
             request,
-            RelationEndpoint.subject(request.selector),
-            endpoint,
+            source,
+            target,
             occurrence,
             RelationProvenance.K2_AUTHORED_SOURCE,
         ).refined()
@@ -253,11 +293,11 @@ internal class InMemoryRelationReader(
 
     override suspend fun read(request: OneHopRelationRequest): OneHopRelationRead {
         requests += request
-        val (subject, targets) = nodes.getValue(request.node.fingerprint.value)
-        return if (subject.fingerprint.value in qualified) {
-            fixture.qualifiedRead(request, subject, targets)
+        val (_, targets) = nodes.getValue(request.node.fingerprint.value)
+        return if (request.node.fingerprint.value in qualified) {
+            fixture.qualifiedRead(request, targets)
         } else {
-            fixture.completeRead(request, subject, targets)
+            fixture.completeRead(request, targets)
         }
     }
 }
