@@ -39,6 +39,9 @@ or source effect.
 - AddFile planning admits one canonical `.kt` path strictly inside a uniquely owned authored
   source root and whole-file source text. Its plan retains an explicit absent precondition and one
   typed file-creation mutation; physical absence is proved again during apply.
+- ReplaceDeclaration planning binds the compiler-grounded target range to its exact extracted
+  declaration preimage, admits a distinct canonical replacement declaration, and retains both in
+  one typed whole-declaration mutation.
 
 ## Verification ladder
 

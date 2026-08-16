@@ -23,9 +23,16 @@ import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceRole
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceSet
 import io.github.amichne.kast.change.contract.RenameSymbolPlanRequest
 import io.github.amichne.kast.change.contract.RenameSymbolPlanResult
+import io.github.amichne.kast.change.contract.ExistingDeclarationSourceText
+import io.github.amichne.kast.change.contract.ReplacementDeclarationSourceText
+import io.github.amichne.kast.change.contract.ReplaceDeclarationChangePlan
+import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanRequest
+import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanResult
+import io.github.amichne.kast.change.contract.ReplaceDeclarationTarget
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
+import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
@@ -149,6 +156,23 @@ internal class ApplyTestFixture {
             ),
         )
         return (result as AddFilePlanResult.Planned).plan
+    }
+
+    fun replaceDeclarationPlan(): ReplaceDeclarationChangePlan {
+        val request = planRequest()
+        val current = sourceText.substring(anchorStart, anchorEnd)
+        val target = ReplaceDeclarationTarget.admit(
+            request.target,
+            ExistingDeclarationSourceText.parse(current).refined(),
+        ).refined()
+        val result = PureReplaceDeclarationPlanningService().plan(
+            ReplaceDeclarationPlanRequest(
+                target,
+                ReplacementDeclarationSourceText.parse("fun service(): Int = 1").refined(),
+                request.evidence,
+            ),
+        )
+        return (result as ReplaceDeclarationPlanResult.Planned).plan
     }
 
     fun absent(plan: ChangePlan): ObservedAbsentMutationSource =

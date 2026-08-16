@@ -73,7 +73,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Path
 
-internal class AddDeclarationPlanFixture {
+internal class AddDeclarationPlanFixture(
+    private val declarationEndExclusive: Int = 17,
+) {
     private val workspaceRoot = CanonicalWorkspaceRoot
         .fromCanonicalPath(Path.of("/workspace"))
         .refined()
@@ -273,7 +275,7 @@ internal class AddDeclarationPlanFixture {
         val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
             location.file,
             location.offset.value,
-            location.offset.value + 7,
+            declarationEndExclusive,
             "service",
             "sample.Service.service",
             CompilerSymbolKind.FUNCTION,

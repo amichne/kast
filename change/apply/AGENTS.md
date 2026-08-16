@@ -22,6 +22,8 @@ durable, and only then issues `MutationAuthority` to an injected source writer.
   evidence is durable.
 - A source writer receives only the admitted source, typed transformations, exact preimage, and
   exact postimage carried by `MutationAuthority`.
+- ReplaceDeclaration authority is issued only when the exact planned declaration preimage still
+  occupies its compiler-grounded range; its derived postimage preserves all unrelated source.
 - Applied source state becomes `AppliedUnverified`; this module cannot construct verified success.
 - Any post-durability write fault resolves through exact rollback or `RecoveryRequired`.
 

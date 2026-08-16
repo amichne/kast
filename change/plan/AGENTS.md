@@ -19,6 +19,8 @@ AddDeclaration and KCS-019 extends the same `ChangePlan` surface one intent at a
   compiler-grounded occurrence set for the exact target.
 - AddFile plans require one authored source-root-owned Kotlin path and retain a whole-file
   postimage behind an explicit absent precondition.
+- ReplaceDeclaration plans require exact equality between the compiler-grounded target range and
+  its extracted declaration preimage, a changed typed replacement, and complete target evidence.
 
 ## Verification ladder
 
