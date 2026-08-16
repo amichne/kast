@@ -15,6 +15,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.file.Path
 
 internal data class IntellijExactDeclarationLookupKey(
@@ -217,6 +218,24 @@ internal fun ExactDeclarationSelector.lookupKey(): IntellijExactDeclarationLooku
     ) {
         is Refinement.Refined -> parsed.value
         is Refinement.Rejected -> error("exact selector contains an invalid source offset")
+    }
+    return IntellijExactDeclarationLookupKey(
+        file = file,
+        offset = offset,
+        name = name,
+    )
+}
+
+/**
+ * Proof transition: `SymbolSelector -> IntellijExactDeclarationLookupKey`.
+ *
+ * Establishes a request-local lookup key from the exact selector's retained file, invariant-safe
+ * range start, and name. Raw offset extraction is permitted only at this native lookup boundary.
+ */
+internal fun SymbolSelector.lookupKey(): IntellijExactDeclarationLookupKey {
+    val offset = when (val parsed = SymbolDiscoverySourceOffset.parse(range.startInclusive)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("symbol selector contains an invalid source offset")
     }
     return IntellijExactDeclarationLookupKey(
         file = file,

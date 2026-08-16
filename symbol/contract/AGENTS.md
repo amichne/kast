@@ -15,6 +15,10 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
   timings, closed qualified-completeness states, and the exact search scope retained by a batch.
 - `SymbolDiscoveryOperations.kt` owns the public operation result, compiler port, and closed
   workspace/compiler rejection protocol for `symbol.discover`.
+- `SymbolSelector.kt` owns compiler-grounded exact selector issuance, revalidation, opaque
+  fingerprints, and detached descriptions.
+- `SymbolExactOperations.kt` owns the public `symbol.resolve` and `symbol.describe` requests,
+  outcomes, compiler port, and closed rejection protocol.
 - `ExactDeclarationSelector.kt` owns batch-ordinal declaration selection, detached native
   declaration evidence, selector issuance, and proof of unchanged revalidation.
 - `ExactDeclarationFingerprint.kt` owns the length-prefixed canonical scope/evidence encoding and
@@ -41,6 +45,10 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 - Discovery candidates are suggestions, not exact selectors or mutation authority. Exact selection
   is possible only by ordinal from its owning batch; an IntelliJ adapter must then resolve that
   selection under the same root, generation, and scope before issuing an opaque selector.
+- Public exact reads consume `SymbolSelector`; qualified names, file/offset tuples, display values,
+  compiler identity text, and the legacy declaration selector are not substitute authority.
+- Compiler identity is detached finite data. No Analysis API symbol, pointer, session, PSI, VFS,
+  or native scope may enter this contract.
 - A native definition projector returns only `NativeDetachedDefinition`. It cannot return PSI,
   VFS, project, or search-scope objects.
 - Exact selectors retain file, range, name, qualified-identity state, runtime declaration type, and
@@ -57,7 +65,7 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 
 ## Verification ladder
 
-1. Run `./gradlew :symbol:contract:test --tests '*SourceRoot*PolicyTest' --tests '*SymbolDiscoveryContractTest' --tests '*ExactDeclarationSelectorContractTest' --tests '*NativeRelationContractTest'`.
+1. Run `./gradlew :symbol:contract:test --tests '*SourceRoot*PolicyTest' --tests '*SymbolDiscoveryContractTest' --tests '*SymbolSelectorContractTest' --tests '*ExactDeclarationSelectorContractTest' --tests '*NativeRelationContractTest'`.
 2. Run `./gradlew :symbol:contract:test`.
 3. Run direct IntelliJ adapter consumers after changing a public contract.
 4. Run `./gradlew verifyKastArchitecture --configuration-cache`.
