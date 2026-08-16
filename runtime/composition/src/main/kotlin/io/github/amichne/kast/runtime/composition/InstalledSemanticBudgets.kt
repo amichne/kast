@@ -30,7 +30,7 @@ internal data class InstalledSemanticBudgets(
  */
 internal fun installedSemanticBudgets(): InstalledSemanticBudgets? {
     val records = ResultLimit.parse(256).refinedOrNull() ?: return null
-    val work = WorkUnitLimit.parse(20_000L).refinedOrNull() ?: return null
+    val work = WorkUnitLimit.parse(100_000L).refinedOrNull() ?: return null
     val elapsed = ElapsedTimeLimitMillis.parse(30_000L).refinedOrNull() ?: return null
     val resources = ResourceBudget(records, work, elapsed)
     val discoveryBytes = SymbolDiscoveryByteLimit.parse(4_194_304L).refinedOrNull() ?: return null

@@ -61,7 +61,9 @@ class IntellijChangeSourceAdapter(
         if (DumbService.getInstance(project).isDumb) {
             rejectedObservation(SourceObservationFailure.DUMB_MODE)
         } else {
-            observeReady(source)
+            ReadAction.computeBlocking<SourceObservationResult, RuntimeException> {
+                observeReady(source)
+            }
         }
     } catch (cancellation: ProcessCanceledException) {
         throw cancellation
@@ -203,9 +205,8 @@ class IntellijChangeSourceAdapter(
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
                    ?: return rejectedObservation(SourceObservationFailure.TARGET_NOT_FOUND)
         if (!file.isValid) return rejectedObservation(SourceObservationFailure.TARGET_INVALIDATED)
-        val target = ReadAction.compute<KtFile?, RuntimeException> {
-            PsiManager.getInstance(project).findFile(file) as? KtFile
-        } ?: return rejectedObservation(SourceObservationFailure.TARGET_NOT_KOTLIN)
+        val target = PsiManager.getInstance(project).findFile(file) as? KtFile
+                     ?: return rejectedObservation(SourceObservationFailure.TARGET_NOT_KOTLIN)
         if (!target.isValid) return rejectedObservation(SourceObservationFailure.TARGET_INVALIDATED)
         if (FileDocumentManager.getInstance().getDocument(file) == null) {
             return rejectedObservation(SourceObservationFailure.DOCUMENT_UNAVAILABLE)
