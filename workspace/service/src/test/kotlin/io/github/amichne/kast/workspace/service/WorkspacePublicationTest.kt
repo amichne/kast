@@ -14,6 +14,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleSourceRootEvidence
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
@@ -32,6 +33,57 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class WorkspacePublicationTest {
+    @Test
+    fun `resulting publication starts only from the exact current lease and advances generation`() {
+        val first = candidate("/workspace", "first")
+        val next = candidate("/workspace", "next")
+        val inspection = ScriptedWorkspaceReconciliationPort(first, first)
+        val coordinator = WorkspacePublicationCoordinator(
+            inspection,
+            RecordingWorkspacePublicationTransaction(),
+        )
+        val initial = assertInstanceOf(
+            WorkspacePublicationRun.Published::class.java,
+            coordinator.reconcile(),
+        ).workspace
+        inspection.enqueue(next, next)
+
+        val published = assertInstanceOf(
+            ResultingWorkspacePublicationResult.Published::class.java,
+            coordinator.reconcileAfter(initial.readLease),
+        ).publication
+
+        assertEquals(initial.readLease, published.prior)
+        assertEquals(2L, published.workspace.generation.value)
+        assertEquals(initial.root, published.workspace.root)
+    }
+
+    @Test
+    fun `resulting publication rejects a lease other than the current publication`() {
+        val first = candidate("/workspace", "first")
+        val inspection = ScriptedWorkspaceReconciliationPort(first, first)
+        val coordinator = WorkspacePublicationCoordinator(
+            inspection,
+            RecordingWorkspacePublicationTransaction(),
+        )
+        val initial = assertInstanceOf(
+            WorkspacePublicationRun.Published::class.java,
+            coordinator.reconcile(),
+        ).workspace
+        val wrong = SemanticReadLease(initial.root, evidenceGeneration(0L))
+
+        val rejected = assertInstanceOf(
+            ResultingWorkspacePublicationResult.Rejected::class.java,
+            coordinator.reconcileAfter(wrong),
+        )
+
+        assertInstanceOf(
+            ResultingWorkspacePublicationFailure.PriorPublicationMismatch::class.java,
+            rejected.failure,
+        )
+        assertEquals(WorkspaceRuntimeState.Ready(initial), coordinator.inspect())
+    }
+
     @Test
     fun `workspace movement discards the in-flight candidate`() {
         val first = candidate("/workspace", "first")
