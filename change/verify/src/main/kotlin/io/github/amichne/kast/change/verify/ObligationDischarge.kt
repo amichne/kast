@@ -4,6 +4,7 @@ import io.github.amichne.kast.change.contract.AddDeclarationObligation
 import io.github.amichne.kast.change.contract.AddFileObligation
 import io.github.amichne.kast.change.contract.ChangeVerificationObligation
 import io.github.amichne.kast.change.contract.RenameSymbolObligation
+import io.github.amichne.kast.change.contract.ReplaceDeclarationObligation
 
 enum class ChangeObligationProofBasis {
     APPLIED_MUTATION,
@@ -63,12 +64,18 @@ private fun ChangeVerificationObligation.proofBasis(): ChangeObligationProofBasi
     RenameSymbolObligation.GENERATION_UNCHANGED,
     RenameSymbolObligation.OWNER_AND_PROVENANCE_UNCHANGED,
     RenameSymbolObligation.DECLARED_WRITE_SET_CLOSED,
+    ReplaceDeclarationObligation.TARGET_PREIMAGE_UNCHANGED,
+    ReplaceDeclarationObligation.GENERATION_UNCHANGED,
+    ReplaceDeclarationObligation.OWNER_AND_PROVENANCE_UNCHANGED,
+    ReplaceDeclarationObligation.DECLARED_WRITE_SET_CLOSED,
         -> ChangeObligationProofBasis.APPLIED_MUTATION
     AddDeclarationObligation.EXPECTED_POSTIMAGE_OBSERVED,
     AddFileObligation.EXPECTED_POSTIMAGE_OBSERVED,
     AddFileObligation.UNRELATED_CODE_PRESERVED,
     RenameSymbolObligation.EXPECTED_POSTIMAGE_OBSERVED,
     RenameSymbolObligation.UNRELATED_CODE_PRESERVED,
+    ReplaceDeclarationObligation.EXPECTED_POSTIMAGE_OBSERVED,
+    ReplaceDeclarationObligation.UNRELATED_CODE_PRESERVED,
         -> ChangeObligationProofBasis.RESULT_SOURCE
     AddDeclarationObligation.OUTBOUND_BINDINGS_PRESERVED,
     AddDeclarationObligation.EXISTING_BINDINGS_PRESERVED,
@@ -77,14 +84,17 @@ private fun ChangeVerificationObligation.proofBasis(): ChangeObligationProofBasi
     AddDeclarationObligation.COMPILER_DIAGNOSTICS_CLEAR,
     AddFileObligation.COMPILER_DIAGNOSTICS_CLEAR,
     RenameSymbolObligation.COMPILER_DIAGNOSTICS_CLEAR,
+    ReplaceDeclarationObligation.COMPILER_DIAGNOSTICS_CLEAR,
         -> ChangeObligationProofBasis.RESULT_DIAGNOSTICS
     AddDeclarationObligation.DECLARATION_IDENTITY_OBSERVED,
     AddFileObligation.FILE_IDENTITY_CREATED,
     AddDeclarationObligation.COMPILER_COLLISION_REMAINS_ABSENT,
     RenameSymbolObligation.TARGET_IDENTITY_RENAMED,
+    ReplaceDeclarationObligation.REPLACEMENT_DECLARATION_OBSERVED,
         -> ChangeObligationProofBasis.RESULT_DECLARATION
     AddDeclarationObligation.RESULT_GENERATION_PUBLISHED,
     AddFileObligation.RESULT_GENERATION_PUBLISHED,
     RenameSymbolObligation.RESULT_GENERATION_PUBLISHED,
+    ReplaceDeclarationObligation.RESULT_GENERATION_PUBLISHED,
         -> ChangeObligationProofBasis.RESULT_PUBLICATION
 }

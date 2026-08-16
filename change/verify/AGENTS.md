@@ -25,6 +25,8 @@ resulting workspace generation and complete intent-specific detached evidence.
   count.
 - AddFile requires one compiler-visible resulting file identity plus complete, error-free
   diagnostics scoped exactly to the created source and its authority-derived postimage.
+- ReplaceDeclaration requires one compiler-observed canonical declaration equal to the planned
+  replacement plus exact authority-derived content and source-scoped clean diagnostics.
 - Only the exhaustive obligation evaluator may issue `VerifiedReceipt`.
 
 ## Verification

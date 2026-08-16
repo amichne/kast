@@ -83,6 +83,7 @@ class IntellijChangeSourceAdapter(
         is ChangeIntent.AddFile -> addFile.write(authority, durability)
         is ChangeIntent.AddDeclaration,
         is ChangeIntent.RenameSymbol,
+        is ChangeIntent.ReplaceDeclaration,
             -> writeExisting(authority, durability)
     }
 
@@ -316,6 +317,27 @@ class IntellijChangeSourceAdapter(
                     return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
                 }
             }
+            is ChangeIntent.ReplaceDeclaration -> {
+                val selected = intent.target.target
+                val declarations = target.declarations.filter { declaration ->
+                    declaration.textRange.startOffset == selected.range.startInclusive &&
+                        declaration.textRange.endOffset == selected.range.endExclusive &&
+                        declaration.text == intent.target.expected.value
+                }
+                if (declarations.size != 1) {
+                    return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
+                }
+                try {
+                    KtPsiFactory(project, false)
+                        .createDeclaration<org.jetbrains.kotlin.psi.KtDeclaration>(
+                            intent.replacement.value,
+                        )
+                } catch (cancellation: ProcessCanceledException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    return IntellijSourcePreparation.Rejected(SourceWriteFailure.MUTATION_FAILED)
+                }
+            }
         }
         return IntellijSourcePreparation.Ready(file, target, document)
     }
@@ -349,6 +371,11 @@ class IntellijChangeSourceAdapter(
                     "\n\n${mutation.declaration.value}",
                 )
                 is SourceTextMutation.Replace -> IntellijTextMutation(
+                    mutation.range.startInclusive,
+                    mutation.range.endExclusive,
+                    mutation.replacement.value,
+                )
+                is SourceTextMutation.ReplaceDeclaration -> IntellijTextMutation(
                     mutation.range.startInclusive,
                     mutation.range.endExclusive,
                     mutation.replacement.value,

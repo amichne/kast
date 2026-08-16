@@ -13,6 +13,7 @@ import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.CreatableKotlinFileTarget
 import io.github.amichne.kast.change.contract.KotlinFileSourceText
 import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
+import io.github.amichne.kast.change.contract.ReplaceDeclarationChangePlan
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
@@ -32,6 +33,7 @@ internal fun VerifiedMutationFixture.observedPrecondition(
     )
     is AddDeclarationChangePlan,
     is RenameSymbolChangePlan,
+    is ReplaceDeclarationChangePlan,
         -> observedSource(plan)
 }
 
