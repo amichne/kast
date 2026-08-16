@@ -11,6 +11,7 @@ Repository paths refer to the implementation in this release line.
 | How does Kast avoid publishing during a streamed Git operation? | `GitWorktreeTransitionGuard` resolves exact-root common and per-worktree Git paths and checks transaction markers before and after slow phases and at commit admission. `GitWorktreeTransitionGuardTest` streams 1,000 files across multiple quiet periods and starts a checkout after preparation. | Treat an active Git transaction as a retry signal. Discard its candidate. Use transaction markers only as a publication guard, never as semantic identity. |
 | What must happen after a build change? | Gradle states that IDE import uses the Tooling API to query project hierarchy, dependencies, and source directories. Kast already has `IdeaGradleProjectLoadBridge.refreshExternalGradleProject` and `GradleProjectImportBridge.awaitGradleModelSettlement`. [Gradle Tooling API](https://docs.gradle.org/current/userguide/tooling_api.html) | A build-semantic signal must complete refresh and model settlement before reconciliation, or block. |
 | How does event classification stay aligned with build identity? | `BuildSemanticInputPolicy` is shared by `BuildSemanticInputIdentityResolver` and `WorkspaceVfsSignalClassifier`. Tests cover Gradle and Groovy build logic, dependency locks, `local.properties`, generated-output exclusion, and compiler-generated source inclusion. | Keep one precise path policy for hashed build inputs and their wake signals. Do not classify generated build output as a new build-semantic input. |
+| Can derived module output become its own semantic input? | IntelliJ's unfiltered project order enumerator includes module-source compiler output such as `build/classes/kotlin/main`. `BuildClasspathFingerprintResolverTest` proves the production resolver removes that output and retains a module-library artifact. | Exclude module-source order entries by provenance. Keep explicit libraries, SDKs, compiler plugins, and processor artifacts in classpath identity and event observation. |
 | What is the compiler and classpath lifecycle? | `BuildClasspathFingerprintResolver` hashes stable classpath roots. `IdeaSemanticEnvironmentIdentityResolver` adds module, SDK, source-root, order-entry, class-root, Kotlin facet and compiler-plugin evidence. `IdeaJavaCompilerIdentityResolver` adds effective Java language level, ordered javac options, bytecode target, annotation-processing configuration, processor paths and their content, processors, and options. | Include the resolved semantic environment in both pre-pass and post-pass WSID capture. Preserve order where compiler behavior preserves order, and canonicalize sets and maps. |
 | Can reads continue during a transition? | `WorkspaceSemanticGate` opens a read lease for the exact READY manifest and revision. `IdeaIndexSemanticAdmission` counts active readers. It withdraws READY before it waits for them to finish. `IdeaIndexSemanticAdmissionTest` covers manifest movement and reader draining. | Let an admitted read finish against one immutable generation. Reject its result if the revision or manifest moves. |
 | How are external mutations serialized? | `WorkspaceTransitionIngress` starts from READY, withdraws admission, waits for active readers, and grants one mutation permit. `WorkspaceTransitionIngressTest` proves that a mutation waits for a different stable published manifest before it returns. | Route every supported mutation through one permit. Publish new evidence before reporting mutation success. |
@@ -90,3 +91,30 @@ This reproduction was design input from the released runtime before this
 implementation. It is not proof of the new publication or read boundaries.
 It shows why process readiness and reference-index readiness cannot replace
 event invalidation, exact reconciliation, and verified generation publication.
+
+## Post-implementation dogfood evidence
+
+On 2026-08-04, development receipt
+`d50be84a535966861afa8b66e814d2d2c14b770bb462e500d11445b3d9ff69d4`
+ran the public `kast up` command against this exact worktree. Before the
+module-output fix, one continuous daemon run started 29 Gradle imports in 5
+minutes 13 seconds. IntelliJ logged a VFS push for
+`indexer/build/classes/.../GradleProjectImportBridge.class`, followed one
+millisecond later by another Gradle resolution. The derived output was present
+in the imported binary roots and the transition retained its original
+build-semantic signal for retry.
+
+After excluding module-source order entries, three consecutive cold starts
+each performed exactly two bounded imports and reached READY. No import count
+increased during reconciliation. The final live publication was generation 6
+with WSID `5c9ed4d2c4f4bd6087954ad366afc5264f319020c546a7b90a275f3ccaa82fbb`.
+Its regular, non-symbolic `current.json` named source-index generation 292 and
+schema 14. The immutable database reported the same values and
+`PRAGMA integrity_check` returned `ok`.
+
+A public `kast check` for `WorkspaceTransitionCoordinator.kt` completed with
+zero diagnostics and published the selected-file refresh. A concurrent graph
+read failed closed with `PUBLISHED_WORKSPACE_MOVED`. The same graph read after
+READY succeeded at generation 292 with 854 of 854 files current, 39,440 nodes,
+63,457 edge occurrences, and no failed or stale files. This is live evidence
+that a read does not cross a moving publication boundary.

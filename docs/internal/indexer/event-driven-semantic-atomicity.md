@@ -60,7 +60,10 @@ Kotlin or Java under an imported compiler source root remains a source signal.
 Only `.idea/compiler.xml`, `.idea/kotlinc.xml`, and `.idea/misc.xml` are
 semantic-environment signals; unrelated IDE-local state is ignored. Java
 annotation-processor artifacts and Kotlin compiler-plugin artifacts are watched
-as classpath roots.
+as classpath roots. Derived module compiler output is not a classpath authority.
+The classpath resolver excludes module-source order entries, while retaining
+library, SDK, compiler-plugin, and processor artifacts. This prevents a Gradle
+import from observing its own `build/classes` output as a new semantic input.
 
 VFS refresh occurs before each pass. A build-semantic signal refreshes the
 linked Gradle project and waits for module and source-set import settlement. A
@@ -79,8 +82,8 @@ WSID is a SHA-256 digest of all admitted semantic inputs:
   untracked files;
 - Gradle scripts, settings, properties, wrapper inputs, and version catalogs;
 - the effective indexing scope;
-- module names, source roots, SDK identity, order-entry validity, class roots,
-  and the classpath fingerprint;
+- module names, source roots, SDK identity, order-entry validity, non-derived
+  class roots, and the classpath fingerprint;
 - the effective Java language level, ordered compiler options, bytecode target,
   annotation-processing mode, processor paths and their content, processors,
   and processor options;
