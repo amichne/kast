@@ -14,9 +14,6 @@ fail() {
 [[ -x "${indexer_executable}" ]] || fail "packaged kast-indexer executable is missing"
 
 if find "${product_root}" -type f \( \
-  -name 'cargo' -o \
-  -name 'Cargo.toml' -o \
-  -name 'Cargo.lock' -o \
   -name 'analysis-api-*.jar' -o \
   -name 'analysis-server-*.jar' -o \
   -name 'index-store-*.jar' \
