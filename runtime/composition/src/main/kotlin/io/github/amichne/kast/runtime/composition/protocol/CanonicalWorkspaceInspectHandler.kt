@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition
+package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
+import io.github.amichne.kast.runtime.composition.InstalledWorkspaceRoot
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState

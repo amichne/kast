@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
