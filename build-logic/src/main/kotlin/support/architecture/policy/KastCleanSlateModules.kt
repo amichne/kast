@@ -212,7 +212,10 @@ internal object KastCleanSlateModules {
             ModuleId.INDEXER,
             ModuleRole.INDEXER_HOST,
             ModuleId.RUNTIME_COMPOSITION,
-            effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
+            effects = setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.FILESYSTEM_WRITE,
+            ),
         ),
     )
 
