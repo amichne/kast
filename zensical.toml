@@ -28,6 +28,7 @@ nav = [
     { "Repository intelligence" = "explanation/repository-intelligence.md" },
     { "Compiler-backed evidence" = "explanation/compiler-evidence.md" },
   ] },
+  { "More documentation" = "internal/system-flow.md" },
 ]
 
 [project.markdown_extensions.admonition]
