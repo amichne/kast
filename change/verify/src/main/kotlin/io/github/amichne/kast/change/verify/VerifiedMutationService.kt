@@ -2,13 +2,15 @@ package io.github.amichne.kast.change.verify
 
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
-import io.github.amichne.kast.change.contract.AddDeclarationPlanId
+import io.github.amichne.kast.change.contract.ChangePlanId
+import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 
 data class VerifiedMutationRequest(
-    val plan: AddDeclarationChangePlan,
+    val plan: ChangePlan,
     val applied: AppliedUnverified,
 )
 
@@ -20,7 +22,7 @@ enum class VerifiedMutationAdmissionFailure {
 
 /** Plan and applied state proven to describe the same exact physical mutation. */
 class AdmittedVerifiedMutationRequest private constructor(
-    val plan: AddDeclarationChangePlan,
+    val plan: ChangePlan,
     val applied: AppliedUnverified,
 ) {
     companion object {
@@ -37,9 +39,9 @@ class AdmittedVerifiedMutationRequest private constructor(
         ): Refinement<AdmittedVerifiedMutationRequest, VerifiedMutationAdmissionFailure> = when {
             request.plan.planId != request.applied.planId ->
                 Refinement.Rejected(VerifiedMutationAdmissionFailure.PLAN_ID_MISMATCH)
-            request.plan.sourceSnapshot.lease != request.applied.priorLease ->
+            request.plan.priorLease != request.applied.priorLease ->
                 Refinement.Rejected(VerifiedMutationAdmissionFailure.PRIOR_LEASE_MISMATCH)
-            request.plan.sourceSnapshot.file != request.applied.source ->
+            request.plan.writes.entries.singleOrNull()?.source != request.applied.source ->
                 Refinement.Rejected(VerifiedMutationAdmissionFailure.SOURCE_MISMATCH)
             else -> Refinement.Refined(
                 AdmittedVerifiedMutationRequest(request.plan, request.applied),
@@ -50,10 +52,10 @@ class AdmittedVerifiedMutationRequest private constructor(
 
 /** Final mutation-success capability; construction requires complete KCS-018 proof. */
 class VerifiedReceipt private constructor(
-    val verification: CompleteAddDeclarationVerification,
-    val obligations: DischargedAddDeclarationObligations,
+    val verification: CompleteChangeVerification,
+    val obligations: DischargedChangeObligations,
 ) {
-    val planId: AddDeclarationPlanId
+    val planId: ChangePlanId
         get() = verification.plan.planId
 
     val priorLease: SemanticReadLease
@@ -64,17 +66,17 @@ class VerifiedReceipt private constructor(
 
     companion object {
         /**
-         * Proof transition: `CompleteAddDeclarationVerification -> VerifiedReceipt`.
+         * Proof transition: `CompleteChangeVerification -> VerifiedReceipt`.
          *
          * Establishes final success with distinct generation, complete coverage, discharged
          * obligations, clear diagnostics, unchanged existing relations, and accepted semantic
          * delta. There is no expected failure because the input already carries exhaustive proof.
          * Raw extraction is prohibited; persistence or transport may project only typed fields.
          */
-        internal fun issue(verification: CompleteAddDeclarationVerification): VerifiedReceipt =
+        internal fun issue(verification: CompleteChangeVerification): VerifiedReceipt =
             VerifiedReceipt(
                 verification,
-                DischargedAddDeclarationObligations.issue(verification),
+                DischargedChangeObligations.issue(verification),
             )
     }
 }
@@ -108,14 +110,14 @@ sealed interface VerifiedMutationResult {
     data class RejectedAfterResultingWorkspace(
         val applied: AppliedUnverified,
         val resulting: DistinctResultingWorkspace,
-        val rejection: AddDeclarationVerificationObservationRejection,
+        val rejection: ChangeVerificationObservationRejection,
     ) : VerifiedMutationResult
 
     data class RejectedAfterObservation(
         val applied: AppliedUnverified,
         val resulting: DistinctResultingWorkspace,
-        val evidence: AddDeclarationVerificationEvidence,
-        val failures: Set<AddDeclarationProofFailure>,
+        val evidence: ChangeVerificationEvidence,
+        val failures: Set<ChangeProofFailure>,
     ) : VerifiedMutationResult
 }
 
@@ -134,7 +136,7 @@ fun interface VerifiedMutationOperations {
 
 class VerifiedMutationService(
     private val publisher: ResultingGenerationPublisher,
-    private val observer: AddDeclarationVerificationObserver,
+    private val observer: ChangeVerificationObserver,
 ) : VerifiedMutationOperations {
     override fun verify(request: VerifiedMutationRequest): VerifiedMutationResult {
         val admitted = when (val result = AdmittedVerifiedMutationRequest.admit(request)) {
@@ -164,26 +166,21 @@ class VerifiedMutationService(
             )
         }
         val evidence = when (val result = observer.observe(
-            AddDeclarationVerificationObservationRequest(
+            ChangeVerificationObservationRequest(
                 admitted.plan,
                 admitted.applied,
                 resulting,
             ),
         )) {
-            is AddDeclarationVerificationObservation.Observed -> result.evidence
-            is AddDeclarationVerificationObservation.Rejected ->
+            is ChangeVerificationObservation.Observed -> result.evidence
+            is ChangeVerificationObservation.Rejected ->
                 return VerifiedMutationResult.RejectedAfterResultingWorkspace(
                     admitted.applied,
                     resulting,
                     result.reason,
                 )
         }
-        return when (val proof = CompleteAddDeclarationVerification.admit(
-            admitted.plan,
-            admitted.applied,
-            resulting,
-            evidence,
-        )) {
+        return when (val proof = complete(admitted, resulting, evidence)) {
             is Refinement.Refined -> VerifiedMutationResult.Verified(VerifiedReceipt.issue(proof.value))
             is Refinement.Rejected -> VerifiedMutationResult.RejectedAfterObservation(
                 admitted.applied,
@@ -193,4 +190,48 @@ class VerifiedMutationService(
             )
         }
     }
+
+    private fun complete(
+        admitted: AdmittedVerifiedMutationRequest,
+        resulting: DistinctResultingWorkspace,
+        evidence: ChangeVerificationEvidence,
+    ): Refinement<CompleteChangeVerification, Set<ChangeProofFailure>> = when (
+        val plan = admitted.plan
+    ) {
+        is AddDeclarationChangePlan -> when (evidence) {
+            is AddDeclarationVerificationEvidence -> when (val proof =
+                CompleteAddDeclarationVerification.admit(
+                    plan,
+                    admitted.applied,
+                    resulting,
+                    evidence,
+                )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(proof.value)
+                is Refinement.Rejected -> Refinement.Rejected(proof.failure)
+            }
+            is RenameSymbolVerificationEvidence -> evidenceMismatch()
+        }
+        is RenameSymbolChangePlan -> when (evidence) {
+            is RenameSymbolVerificationEvidence -> when (val proof =
+                CompleteRenameSymbolVerification.admit(
+                    plan,
+                    admitted.applied,
+                    resulting,
+                    evidence,
+                )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(proof.value)
+                is Refinement.Rejected -> Refinement.Rejected(proof.failure)
+            }
+            is AddDeclarationVerificationEvidence -> evidenceMismatch()
+        }
+    }
+
+    private fun evidenceMismatch(): Refinement.Rejected<Set<ChangeProofFailure>> =
+        Refinement.Rejected(setOf(ChangeProofProtocolFailure.EVIDENCE_INTENT_MISMATCH))
+}
+
+enum class ChangeProofProtocolFailure : ChangeProofFailure {
+    EVIDENCE_INTENT_MISMATCH,
 }

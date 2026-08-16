@@ -5,11 +5,20 @@ import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidenceInput
 import io.github.amichne.kast.change.contract.AddDeclarationSourceText
+import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.EditableMutationTarget
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.MutationTargetObservation
 import io.github.amichne.kast.change.contract.ObservedMutationTargetState
+import io.github.amichne.kast.change.contract.KotlinIdentifier
+import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
+import io.github.amichne.kast.change.contract.RenameSymbolOccurrence
+import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceRole
+import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceSet
+import io.github.amichne.kast.change.contract.RenameSymbolPlanRequest
+import io.github.amichne.kast.change.contract.RenameSymbolPlanResult
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
+import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
@@ -32,6 +41,7 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
@@ -84,12 +94,36 @@ internal class ApplyTestFixture {
     val plan = (PureAddDeclarationPlanningService().plan(planRequest()) as AddDeclarationPlanResult.Planned).plan
 
     fun request(
+        plan: ChangePlan = this.plan,
         current: PublishedWorkspace = workspace,
-        scope: RequestedMutationWriteScope = exactScope(current),
+        scope: RequestedMutationWriteScope = exactScope(plan, current),
     ): AddDeclarationApplyRequest = AddDeclarationApplyRequest(plan, current, scope)
 
-    fun exactScope(current: PublishedWorkspace = workspace): RequestedMutationWriteScope =
-        RequestedMutationWriteScope(current.root, setOf(plan.target.file))
+    fun exactScope(
+        plan: ChangePlan = this.plan,
+        current: PublishedWorkspace = workspace,
+    ): RequestedMutationWriteScope =
+        RequestedMutationWriteScope(current.root, plan.writes.entries.mapTo(linkedSetOf()) { it.source })
+
+    fun renamePlan(): RenameSymbolChangePlan {
+        val request = planRequest()
+        val start = sourceText.indexOf("service")
+        val occurrence = RenameSymbolOccurrence.admit(
+            request.target.file,
+            ExactDeclarationTextRange.parse(start, start + "service".length).refined(),
+            KotlinIdentifier.parse("service").refined(),
+            RenameSymbolOccurrenceRole.DECLARATION,
+        ).refined()
+        val result = PureRenameSymbolPlanningService().plan(
+            RenameSymbolPlanRequest(
+                request.target,
+                KotlinIdentifier.parse("renamedService").refined(),
+                RenameSymbolOccurrenceSet.admit(request.target, listOf(occurrence)).refined(),
+                request.evidence,
+            ),
+        )
+        return (result as RenameSymbolPlanResult.Planned).plan
+    }
 
     fun observed(
         text: String = sourceText,

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.change.recovery
 
-import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
+import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage
 import io.github.amichne.kast.evidence.contract.RecoverySourcePath
@@ -12,9 +12,10 @@ enum class AddDeclarationRecoveryPreparationFailure {
     PLAN_BINDING_INVALID,
     SOURCE_PATH_INVALID,
     PREIMAGE_MISMATCH,
+    WRITE_SET_NOT_SINGLETON,
 }
 
-/** Exact AddDeclaration plan binding plus hash-proven source preimage. */
+/** Exact semantic change-plan binding plus hash-proven source preimage. */
 class AddDeclarationRecoveryPreparation private constructor(
     val planId: AddDeclarationPlanId,
     val binding: MutationPlanBinding,
@@ -62,7 +63,7 @@ class AddDeclarationRecoveryPreparation private constructor(
         }
 
         /**
-         * Proof transition: `(AddDeclarationChangePlan, RecoveryPreimage) -> Refinement<
+         * Proof transition: `(ChangePlan, RecoveryPreimage) -> Refinement<
          * AddDeclarationRecoveryPreparation, AddDeclarationRecoveryPreparationFailure>`.
          *
          * Establishes recovery material for the plan's exact target and source snapshot.
@@ -71,16 +72,22 @@ class AddDeclarationRecoveryPreparation private constructor(
          * contract; source bytes leave only at SQLite or physical recovery.
          */
         fun fromPlan(
-            plan: AddDeclarationChangePlan,
+            plan: ChangePlan,
             preimage: RecoveryPreimage,
         ): Refinement<AddDeclarationRecoveryPreparation, AddDeclarationRecoveryPreparationFailure> {
-            val source = when (val parsed = RecoverySourcePath.parse(plan.target.file.path.value)) {
+            if (plan.writes.entries.size != 1) {
+                return Refinement.Rejected(
+                    AddDeclarationRecoveryPreparationFailure.WRITE_SET_NOT_SINGLETON,
+                )
+            }
+            val write = plan.writes.entries.single()
+            val source = when (val parsed = RecoverySourcePath.parse(write.source.path.value)) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return Refinement.Rejected(
                     AddDeclarationRecoveryPreparationFailure.SOURCE_PATH_INVALID,
                 )
             }
-            return admit(plan.planId, source, plan.sourceSnapshot.content, preimage)
+            return admit(plan.planId, source, write.expectedContent, preimage)
         }
     }
 }

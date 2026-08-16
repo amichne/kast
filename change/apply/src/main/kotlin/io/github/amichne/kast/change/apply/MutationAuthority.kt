@@ -1,6 +1,8 @@
 package io.github.amichne.kast.change.apply
 
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
+import io.github.amichne.kast.change.contract.ChangeIntent
+import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
 import io.github.amichne.kast.change.recovery.PreparedAddDeclarationRecovery
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
@@ -9,7 +11,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
-import java.nio.charset.StandardCharsets
 
 /**
  * Permission for exactly one source insertion against one repository state.
@@ -28,35 +29,29 @@ class MutationAuthority private constructor(
         get() = preparedRecovery.record.binding
 
     val source: SymbolDiscoveryFileIdentity.Workspace
-        get() = admitted.observation.source
+        get() = admitted.write.source
+
+    val intent: ChangeIntent
+        get() = admitted.request.plan.intent
 
     val priorLease: SemanticReadLease
         get() = admitted.request.workspace.readLease
 
-    val insertionOffset: Int
-        get() = admitted.write.insertionOffset
-
-    val anchorStart: Int
-        get() = admitted.request.plan.target.range.startInclusive
-
-    val anchorEnd: Int
-        get() = admitted.request.plan.target.range.endExclusive
-
     val expectedPostimage: WorkspaceSourceContentHash
-        get() = admitted.write.postimageContent
+        get() = admitted.write.postimage.content
 
     /** Raw preimage text leaves only at the IntelliJ source-write boundary. */
-    fun preimageTextAtIntellijBoundary(): String = admitted.write.preimageText
+    fun preimageTextAtIntellijBoundary(): String = admitted.write.preimage.text
 
     /** Raw postimage text leaves only at the IntelliJ source-write boundary. */
-    fun postimageTextAtIntellijBoundary(): String = admitted.write.postimageText
+    fun postimageTextAtIntellijBoundary(): String = admitted.write.postimage.text
 
-    /** Raw insertion text leaves only at the IntelliJ source-write boundary. */
-    fun insertionTextAtIntellijBoundary(): String = admitted.write.insertionText
+    /** Planned typed transformations leave only at the IntelliJ source-write boundary. */
+    fun mutationsAtIntellijBoundary(): List<SourceTextMutation> = admitted.write.postimage.mutations
 
     /** Raw exact postimage bytes leave only for physical save observation. */
     fun postimageBytesAtIntellijBoundary(): ByteArray =
-        admitted.write.postimageText.toByteArray(StandardCharsets.UTF_8)
+        admitted.write.postimage.text.toByteArray(Charsets.UTF_8)
 
     companion object {
         /**

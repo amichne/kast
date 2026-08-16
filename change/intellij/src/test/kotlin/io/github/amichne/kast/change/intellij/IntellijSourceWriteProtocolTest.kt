@@ -14,8 +14,7 @@ class IntellijSourceWriteProtocolTest {
         sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
         preimageText = "fun service() = 0\n",
         postimageText = "fun service() = 0\n\nfun added() = 1\n",
-        insertionOffset = 17,
-        insertionText = "\nfun added() = 1",
+        mutations = listOf(IntellijTextMutation(17, 17, "\nfun added() = 1")),
     )
 
     @Test
@@ -75,6 +74,30 @@ class IntellijSourceWriteProtocolTest {
         assertEquals(listOf("insert", "durable", "save"), events)
         assertTrue(result !is IntellijWriteProtocolResult.Applied)
     }
+
+    @Test
+    fun `rename durability rejection restores unrelated code and exact preimage`() {
+        val rename = IntellijMutationInput(
+            sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
+            preimageText = "val unrelated = 1\nfun service() = unrelated\n",
+            postimageText = "val unrelated = 1\nfun renamedService() = unrelated\n",
+            mutations = listOf(IntellijTextMutation(22, 29, "renamedService")),
+        )
+        val session = FakeDocumentSession(rename.preimageText, mutableListOf())
+
+        val result = IntellijSourceWriteProtocol().execute(
+            rename,
+            MutationDurabilityBarrier {
+                MutationDurabilityResult.Rejected(
+                    MutationDurabilityFailure.RECOVERY_EVIDENCE_REJECTED,
+                )
+            },
+            session,
+        )
+
+        assertInstanceOf(IntellijWriteProtocolResult.RejectedAfterRollback::class.java, result)
+        assertEquals(rename.preimageText, session.text)
+    }
 }
 
 private class FakeDocumentSession(
@@ -86,7 +109,7 @@ private class FakeDocumentSession(
 
     override fun currentText(): String = text
 
-    override fun insert(input: IntellijMutationInput): IntellijSessionStepResult {
+    override fun mutate(input: IntellijMutationInput): IntellijSessionStepResult {
         events += "insert"
         text = input.postimageText
         return IntellijSessionStepResult.Completed

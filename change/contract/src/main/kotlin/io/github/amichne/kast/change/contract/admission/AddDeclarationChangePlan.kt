@@ -78,14 +78,39 @@ sealed interface AddDeclarationPlannedEdit {
  * current repository state before any physical adapter can act.
  */
 class AddDeclarationChangePlan private constructor(
-    val planId: AddDeclarationPlanId,
+    override val planId: AddDeclarationPlanId,
     val sourceSnapshot: AddDeclarationSourceSnapshot,
     val target: EditableMutationTarget,
     val evidence: CompleteAddDeclarationPlanningEvidence,
     val plannedEdits: List<AddDeclarationPlannedEdit>,
     val expectedSemanticDelta: ExpectedAddDeclarationDelta,
     val requiredVerification: AddDeclarationVerificationContract,
-) {
+) : ChangePlan {
+    override val intent: ChangeIntent = ChangeIntent.AddDeclaration(
+        target,
+        plannedEdits.single().let { edit ->
+            (edit as AddDeclarationPlannedEdit.InsertAfterDeclaration).declaration
+        },
+        expectedSemanticDelta,
+    )
+    override val priorLease: SemanticReadLease
+        get() = sourceSnapshot.lease
+    override val workspaceState: WorkspaceStateIdentity
+        get() = sourceSnapshot.workspaceState
+    override val writes: PlannedMutationWriteSet = PlannedMutationWriteSet.singleton(
+        PlannedMutationWrite(
+            target.file,
+            target.sourceRoot,
+            sourceSnapshot.content,
+            listOf(
+                SourceTextMutation.InsertAfterDeclaration(
+                    target.range,
+                    (plannedEdits.single() as AddDeclarationPlannedEdit.InsertAfterDeclaration).declaration,
+                ),
+            ),
+        ),
+    )
+
     companion object {
         /**
          * Proof transition: `AdmittedAddDeclarationPlanInput -> AddDeclarationChangePlan`.

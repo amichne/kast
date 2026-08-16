@@ -5,6 +5,8 @@ import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationObligation
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
+import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.change.contract.ChangeVerificationObligation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
 import io.github.amichne.kast.kernel.Refinement
@@ -15,6 +17,17 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
+
+sealed interface ChangeVerificationEvidence
+
+sealed interface ChangeProofFailure
+
+interface CompleteChangeVerification {
+    val plan: ChangePlan
+    val applied: AppliedUnverified
+    val resulting: DistinctResultingWorkspace
+    val obligations: List<ChangeVerificationObligation>
+}
 
 enum class ObservedAddDeclarationDeltaFailure {
     DECLARATION_COUNT_INVALID,
@@ -127,32 +140,32 @@ data class AddDeclarationVerificationEvidence(
     val relations: List<RelationReadResult>,
     val diagnostics: List<DiagnosticCheckResult>,
     val observedDelta: ObservedAddDeclarationDelta,
-)
+) : ChangeVerificationEvidence
 
-data class AddDeclarationVerificationObservationRequest(
-    val plan: AddDeclarationChangePlan,
+data class ChangeVerificationObservationRequest(
+    val plan: ChangePlan,
     val applied: AppliedUnverified,
     val resulting: DistinctResultingWorkspace,
 )
 
-enum class AddDeclarationVerificationObservationRejection {
+enum class ChangeVerificationObservationRejection {
     RESULTING_SEMANTIC_STATE_UNAVAILABLE,
     RESULTING_GENERATION_MOVED,
     COMPILER_OBSERVATION_REJECTED,
 }
 
-sealed interface AddDeclarationVerificationObservation {
+sealed interface ChangeVerificationObservation {
     data class Observed(
-        val evidence: AddDeclarationVerificationEvidence,
-    ) : AddDeclarationVerificationObservation
+        val evidence: ChangeVerificationEvidence,
+    ) : ChangeVerificationObservation
 
     data class Rejected(
-        val reason: AddDeclarationVerificationObservationRejection,
-    ) : AddDeclarationVerificationObservation
+        val reason: ChangeVerificationObservationRejection,
+    ) : ChangeVerificationObservation
 }
 
 /** Result-generation compiler observation boundary. */
-fun interface AddDeclarationVerificationObserver {
+fun interface ChangeVerificationObserver {
     /**
      * Proof transition: `AddDeclarationVerificationObservationRequest ->
      * AddDeclarationVerificationObservation`.
@@ -162,11 +175,16 @@ fun interface AddDeclarationVerificationObserver {
      * [AddDeclarationVerificationObservationRejection]. Live platform values never escape.
      */
     fun observe(
-        request: AddDeclarationVerificationObservationRequest,
-    ): AddDeclarationVerificationObservation
+        request: ChangeVerificationObservationRequest,
+    ): ChangeVerificationObservation
 }
 
-enum class AddDeclarationProofFailure {
+typealias AddDeclarationVerificationObservationRequest = ChangeVerificationObservationRequest
+typealias AddDeclarationVerificationObservationRejection = ChangeVerificationObservationRejection
+typealias AddDeclarationVerificationObservation = ChangeVerificationObservation
+typealias AddDeclarationVerificationObserver = ChangeVerificationObserver
+
+enum class AddDeclarationProofFailure : ChangeProofFailure {
     RESULT_SOURCE_MISMATCH,
     RESULT_SOURCE_CONTENT_MISMATCH,
     RELATION_EVIDENCE_REQUIRED,
@@ -185,12 +203,14 @@ enum class AddDeclarationProofFailure {
 
 /** Complete proof from one applied source state through one accepted resulting semantic state. */
 class CompleteAddDeclarationVerification private constructor(
-    val plan: AddDeclarationChangePlan,
-    val applied: AppliedUnverified,
-    val resulting: DistinctResultingWorkspace,
+    override val plan: AddDeclarationChangePlan,
+    override val applied: AppliedUnverified,
+    override val resulting: DistinctResultingWorkspace,
     val evidence: AddDeclarationVerificationEvidence,
     val semanticDelta: AcceptedAddDeclarationSemanticDelta,
-) {
+) : CompleteChangeVerification {
+    override val obligations: List<ChangeVerificationObligation>
+        get() = plan.requiredVerification.obligations
     companion object {
         /**
          * Proof transition: `(AddDeclarationChangePlan, AppliedUnverified,

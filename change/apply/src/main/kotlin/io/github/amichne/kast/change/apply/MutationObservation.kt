@@ -1,6 +1,6 @@
 package io.github.amichne.kast.change.apply
 
-import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
@@ -12,11 +12,13 @@ import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
 /** Boundary request whose write scope is still weaker than mutation authority. */
-data class AddDeclarationApplyRequest(
-    val plan: AddDeclarationChangePlan,
+data class ChangeApplyRequest(
+    val plan: ChangePlan,
     val workspace: PublishedWorkspace,
     val writeScope: RequestedMutationWriteScope,
 )
+
+typealias AddDeclarationApplyRequest = ChangeApplyRequest
 
 /** Exact root and source identities the caller permits this one operation to change. */
 data class RequestedMutationWriteScope(
