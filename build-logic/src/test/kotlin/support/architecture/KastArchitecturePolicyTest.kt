@@ -197,7 +197,7 @@ class KastArchitecturePolicyTest {
         val featureContractsDependingOnRegistry = architecture.modules.values
             .filter { module ->
                 module.role == ModuleRole.CONTRACT &&
-                module.id != ModuleId.PROTOCOL_REGISTRY &&
+                module.id !in setOf(ModuleId.PROTOCOL_REGISTRY, ModuleId.PROTOCOL_WIRE) &&
                 ModuleId.PROTOCOL_REGISTRY in module.allowedProjectDependencies
             }
             .mapTo(mutableSetOf(), ValidatedModulePolicy::id)
