@@ -10,6 +10,7 @@ base {
 }
 
 dependencies {
+    implementation(project(":evidence:contract"))
     implementation(project(":evidence:spi"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:spi"))
