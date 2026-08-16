@@ -65,7 +65,16 @@ class KastRuntimeComposition private constructor(
             semanticPorts: SemanticRuntimePorts,
             changePorts: ChangeRuntimePorts,
             handlers: KastOperationHandlerFactory,
-        ): KastRuntimeCompositionConstruction {
+        ): KastRuntimeCompositionConstruction = bind(
+            constructGraph(workspacePorts, semanticPorts, changePorts).operations,
+            handlers,
+        )
+
+        internal fun constructGraph(
+            workspacePorts: WorkspaceRuntimePorts,
+            semanticPorts: SemanticRuntimePorts,
+            changePorts: ChangeRuntimePorts,
+        ): DirectKastRuntimeGraph {
             val workspace = WorkspacePublicationCoordinator(
                 workspacePorts.reconciliation,
                 workspacePorts.publication,
@@ -98,6 +107,13 @@ class KastRuntimeComposition private constructor(
                 recovery,
                 changePorts.recoveryRollback,
             )
+            return DirectKastRuntimeGraph(workspace, operations)
+        }
+
+        internal fun bind(
+            operations: DirectKastOperations,
+            handlers: KastOperationHandlerFactory,
+        ): KastRuntimeCompositionConstruction {
             val bindings: List<TypedOperationBinding<*, *, *, *>> = listOf(
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.workspaceInspect,
@@ -157,6 +173,12 @@ class KastRuntimeComposition private constructor(
         }
     }
 }
+
+/** Composition-owned target service graph retained only until canonical handler binding. */
+internal data class DirectKastRuntimeGraph(
+    val workspace: WorkspacePublicationCoordinator,
+    val operations: DirectKastOperations,
+)
 
 /**
  * Proof transition: `WorkspacePublicationCoordinator -> ResultingGenerationPublisher`.
