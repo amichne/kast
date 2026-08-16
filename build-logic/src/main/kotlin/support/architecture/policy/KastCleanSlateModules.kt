@@ -153,11 +153,11 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CHANGE_VERIFY,
             ModuleRole.SERVICE,
+            ModuleId.CHANGE_APPLY,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.RELATION_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
-            ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
         ),
         target(
             ModuleId.CHANGE_RECOVERY,
