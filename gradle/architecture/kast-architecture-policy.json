@@ -638,6 +638,16 @@
       "allowedEffects": []
     },
     {
+      "id": "SYMBOL_SERVICE",
+      "projectPath": ":symbol:service",
+      "lifecycle": "ACTIVE",
+      "role": "SERVICE",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.service"},
+      "allowedProjectDependencies": [":symbol:contract", ":workspace:contract"],
+      "allowedEffects": []
+    },
+    {
       "id": "PROTOCOL_CONTINUATION",
       "projectPath": ":protocol:continuation",
       "lifecycle": "ACTIVE",
@@ -714,7 +724,7 @@
       "role": "COMPOSITION",
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.composition"},
-      "allowedProjectDependencies": [":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:contract", ":evidence:spi", ":evidence:sqlite", ":kernel", ":protocol:continuation", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":runtime:bindings", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service", ":workspace:spi"],
+      "allowedProjectDependencies": [":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:journal:contract", ":change:journal:sqlite", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":evidence:contract", ":evidence:spi", ":evidence:sqlite", ":kernel", ":protocol:continuation", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":runtime:bindings", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":symbol:service", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service", ":workspace:spi"],
       "allowedEffects": []
     }
   ],
