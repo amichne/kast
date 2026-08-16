@@ -40,20 +40,6 @@ fun interface ChangeRecoveryOperations {
     fun recover(binding: MutationPlanBinding): AddDeclarationRecoveryOutcome
 }
 
-/** Already-constructed target service boundaries admitted for composition. */
-data class KastRuntimeServices(
-    val workspace: WorkspaceInspectionOperations,
-    val symbolDiscovery: SymbolDiscoveryOperations,
-    val symbolExact: SymbolExactOperations,
-    val relation: RelationOperations,
-    val traversal: TraversalOperations,
-    val diagnostic: DiagnosticOperations,
-    val changeApply: AddDeclarationApplyOperations,
-    val changeVerify: VerifiedMutationOperations,
-    val changeRecovery: AddDeclarationRecoveryService,
-    val changeRollback: AddDeclarationRollbackPort,
-)
-
 /** Exact nominal target service association for the eleven public operations. */
 @ConsistentCopyVisibility
 data class DirectKastOperations internal constructor(
@@ -71,30 +57,44 @@ data class DirectKastOperations internal constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `KastRuntimeServices -> DirectKastOperations`.
+         * Proof transition: `(WorkspaceInspectionOperations, SymbolDiscoveryOperations,
+         * SymbolExactOperations, RelationOperations, TraversalOperations, DiagnosticOperations,
+         * AddDeclarationApplyOperations, VerifiedMutationOperations,
+         * AddDeclarationRecoveryService, AddDeclarationRollbackPort) -> DirectKastOperations`.
          *
          * Establishes exactly one nominal target service association for every canonical
          * operation. The four closed change intents share one pure planning boundary, and resolve
          * and describe share one exact-symbol authority without an aggregate backend.
          */
-        fun from(services: KastRuntimeServices): DirectKastOperations = DirectKastOperations(
-            workspaceInspect = services.workspace,
-            symbolDiscover = services.symbolDiscovery,
-            symbolResolve = services.symbolExact,
-            symbolDescribe = services.symbolExact,
-            relationRead = services.relation,
-            traversalRun = services.traversal,
-            diagnosticCheck = services.diagnostic,
+        fun assemble(
+            workspace: WorkspaceInspectionOperations,
+            symbolDiscovery: SymbolDiscoveryOperations,
+            symbolExact: SymbolExactOperations,
+            relation: RelationOperations,
+            traversal: TraversalOperations,
+            diagnostic: DiagnosticOperations,
+            changeApply: AddDeclarationApplyOperations,
+            changeVerify: VerifiedMutationOperations,
+            changeRecovery: AddDeclarationRecoveryService,
+            changeRollback: AddDeclarationRollbackPort,
+        ): DirectKastOperations = DirectKastOperations(
+            workspaceInspect = workspace,
+            symbolDiscover = symbolDiscovery,
+            symbolResolve = symbolExact,
+            symbolDescribe = symbolExact,
+            relationRead = relation,
+            traversalRun = traversal,
+            diagnosticCheck = diagnostic,
             changePlan = ChangePlanningOperations(
                 addFile = PureAddFilePlanningService(),
                 addDeclaration = PureAddDeclarationPlanningService(),
                 replaceDeclaration = PureReplaceDeclarationPlanningService(),
                 renameSymbol = PureRenameSymbolPlanningService(),
             ),
-            changeApply = services.changeApply,
-            changeVerify = services.changeVerify,
+            changeApply = changeApply,
+            changeVerify = changeVerify,
             changeRecover = { binding ->
-                services.changeRecovery.recover(binding, services.changeRollback)
+                changeRecovery.recover(binding, changeRollback)
             },
         )
     }
