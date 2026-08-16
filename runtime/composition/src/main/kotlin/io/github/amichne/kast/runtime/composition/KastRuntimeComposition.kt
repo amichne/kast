@@ -1,13 +1,27 @@
 package io.github.amichne.kast.runtime.composition
 
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.change.apply.AddDeclarationApplyService
+import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryService
+import io.github.amichne.kast.change.verify.ResultingGenerationPublication
+import io.github.amichne.kast.change.verify.ResultingGenerationPublicationRejection
+import io.github.amichne.kast.change.verify.ResultingGenerationPublisher
+import io.github.amichne.kast.change.verify.VerifiedMutationService
+import io.github.amichne.kast.diagnostic.service.DiagnosticService
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.runtime.server.RuntimeServer
 import io.github.amichne.kast.runtime.server.RuntimeServerConstruction
 import io.github.amichne.kast.runtime.server.RuntimeServerConstructionFailure
 import io.github.amichne.kast.runtime.server.ServerDispatch
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
+import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
+import io.github.amichne.kast.symbol.service.SymbolExactService
+import io.github.amichne.kast.traversal.service.traversalOperations
+import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationFailure
+import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationResult
+import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 
-/** Runnable target-only runtime containing the direct operation graph and its typed server. */
+/** Runnable target-only runtime containing the directly constructed operation graph and server. */
 class KastRuntimeComposition private constructor(
     val operations: DirectKastOperations,
     private val server: RuntimeServer,
@@ -37,77 +51,100 @@ class KastRuntimeComposition private constructor(
 
     companion object {
         /**
-         * Proof transition: `(KastRuntimeServices, KastOperationBindingFactory) ->
-         * KastRuntimeCompositionConstruction`.
+         * Proof transition: `(WorkspaceRuntimePorts, SemanticRuntimePorts, ChangeRuntimePorts,
+         * KastOperationHandlerFactory) -> KastRuntimeCompositionConstruction`.
          *
-         * Establishes the direct target service graph, exact nominal operation-to-binding
-         * association, and one complete runtime dispatch table. [KastRuntimeCompositionFailure]
-         * is the closed expected failure. Generated serialization is permitted only through the
-         * binding factory boundary.
+         * Constructs the sole complete target implementation graph from narrow effects, then
+         * pairs operation-specific protocol handlers with the canonical production definitions
+         * and generated serializers. [KastRuntimeCompositionFailure] is the closed expected
+         * construction failure. Platform values and raw payload extraction remain inside the
+         * injected ports and operation handlers.
          */
         fun create(
-            services: KastRuntimeServices,
-            bindings: KastOperationBindingFactory,
+            workspacePorts: WorkspaceRuntimePorts,
+            semanticPorts: SemanticRuntimePorts,
+            changePorts: ChangeRuntimePorts,
+            handlers: KastOperationHandlerFactory,
         ): KastRuntimeCompositionConstruction {
-            val operations = DirectKastOperations.from(services)
-            val named = listOf(
-                NamedOperationBinding(
-                    CanonicalOperation.WORKSPACE_INSPECT,
-                    bindings.workspaceInspect(operations.workspaceInspect),
+            val workspace = WorkspacePublicationCoordinator(
+                workspacePorts.reconciliation,
+                workspacePorts.publication,
+            )
+            val symbolDiscovery = SymbolDiscoveryService(workspace, semanticPorts.symbolDiscovery)
+            val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
+            val relation = RelationService(workspace, semanticPorts.relation)
+            val traversal = traversalOperations(relation)
+            val diagnostic = DiagnosticService(workspace, semanticPorts.diagnostic)
+            val recovery = AddDeclarationRecoveryService(changePorts.recoveryEvidence)
+            val changeApply = AddDeclarationApplyService(
+                recovery,
+                changePorts.sourceObserver,
+                changePorts.sourceWriter,
+                changePorts.sourceRollback,
+            )
+            val changeVerify = VerifiedMutationService(
+                workspace.resultingGenerationPublisher(),
+                changePorts.verificationObserver,
+            )
+            val operations = DirectKastOperations.assemble(
+                workspace,
+                symbolDiscovery,
+                symbolExact,
+                relation,
+                traversal,
+                diagnostic,
+                changeApply,
+                changeVerify,
+                recovery,
+                changePorts.recoveryRollback,
+            )
+            val bindings: List<TypedOperationBinding<*, *, *, *>> = listOf(
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.workspaceInspect,
+                    handlers.workspaceInspect(operations.workspaceInspect),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.SYMBOL_DISCOVER,
-                    bindings.symbolDiscover(operations.symbolDiscover),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.symbolDiscover,
+                    handlers.symbolDiscover(operations.symbolDiscover),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.SYMBOL_RESOLVE,
-                    bindings.symbolResolve(operations.symbolResolve),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.symbolResolve,
+                    handlers.symbolResolve(operations.symbolResolve),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.SYMBOL_DESCRIBE,
-                    bindings.symbolDescribe(operations.symbolDescribe),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.symbolDescribe,
+                    handlers.symbolDescribe(operations.symbolDescribe),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.RELATION_READ,
-                    bindings.relationRead(operations.relationRead),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.relationRead,
+                    handlers.relationRead(operations.relationRead),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.TRAVERSAL_RUN,
-                    bindings.traversalRun(operations.traversalRun),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.traversalRun,
+                    handlers.traversalRun(operations.traversalRun),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.DIAGNOSTIC_CHECK,
-                    bindings.diagnosticCheck(operations.diagnosticCheck),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.diagnosticCheck,
+                    handlers.diagnosticCheck(operations.diagnosticCheck),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.CHANGE_PLAN,
-                    bindings.changePlan(operations.changePlan),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.changePlan,
+                    handlers.changePlan(operations.changePlan),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.CHANGE_APPLY,
-                    bindings.changeApply(operations.changeApply),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.changeApply,
+                    handlers.changeApply(operations.changeApply),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.CHANGE_VERIFY,
-                    bindings.changeVerify(operations.changeVerify),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.changeVerify,
+                    handlers.changeVerify(operations.changeVerify),
                 ),
-                NamedOperationBinding(
-                    CanonicalOperation.CHANGE_RECOVER,
-                    bindings.changeRecover(operations.changeRecover),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.changeRecover,
+                    handlers.changeRecover(operations.changeRecover),
                 ),
             )
-            val mismatches = named
-                .filter { it.expected != it.binding.operation }
-                .mapTo(linkedSetOf()) {
-                    KastRuntimeCompositionFailure.BindingOperationMismatch(
-                        expected = it.expected,
-                        observed = it.binding.operation,
-                    )
-                }
-            if (mismatches.isNotEmpty()) {
-                return KastRuntimeCompositionConstruction.Rejected(mismatches)
-            }
-            return when (val construction = RuntimeServer.create(named.map { it.binding })) {
+            return when (val construction = RuntimeServer.create(bindings)) {
                 is RuntimeServerConstruction.Created -> KastRuntimeCompositionConstruction.Created(
                     KastRuntimeComposition(operations, construction.server),
                 )
@@ -120,6 +157,35 @@ class KastRuntimeComposition private constructor(
         }
     }
 }
+
+/**
+ * Proof transition: `WorkspacePublicationCoordinator -> ResultingGenerationPublisher`.
+ *
+ * Preserves exact-prior publication admission and projects every workspace transition failure to
+ * the closed verification publication protocol. Raw workspace effects remain in the coordinator.
+ */
+private fun WorkspacePublicationCoordinator.resultingGenerationPublisher(): ResultingGenerationPublisher =
+    ResultingGenerationPublisher { prior ->
+        when (val result = reconcileAfter(prior)) {
+            is ResultingWorkspacePublicationResult.Published ->
+                ResultingGenerationPublication.Published(result.publication.workspace)
+            is ResultingWorkspacePublicationResult.Rejected ->
+                ResultingGenerationPublication.Rejected(
+                    when (result.failure) {
+                        ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable,
+                        is ResultingWorkspacePublicationFailure.PriorPublicationMismatch,
+                        ResultingWorkspacePublicationFailure.NoPublication,
+                            -> ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE
+                        ResultingWorkspacePublicationFailure.Invalidated ->
+                            ResultingGenerationPublicationRejection.RECONCILIATION_INVALIDATED
+                        is ResultingWorkspacePublicationFailure.Blocked ->
+                            ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED
+                        is ResultingWorkspacePublicationFailure.InvalidResult ->
+                            ResultingGenerationPublicationRejection.PUBLICATION_PROTOCOL_REJECTED
+                    },
+                )
+        }
+    }
 
 /** Narrow composition-owned dispatch capability supplied to the isolated indexer host. */
 fun interface KastRuntimeDispatchOperations {
@@ -150,11 +216,6 @@ enum class KastRuntimeDispatchFailure {
     RESPONSE_ENCODING_FAILED,
 }
 
-private data class NamedOperationBinding(
-    val expected: CanonicalOperation,
-    val binding: TypedOperationBinding<*, *, *, *>,
-)
-
 /** Closed construction result for the target-only runtime graph. */
 sealed interface KastRuntimeCompositionConstruction {
     data class Created(
@@ -168,11 +229,6 @@ sealed interface KastRuntimeCompositionConstruction {
 
 /** Finite failures that prevent target runtime authority from being issued. */
 sealed interface KastRuntimeCompositionFailure {
-    data class BindingOperationMismatch(
-        val expected: CanonicalOperation,
-        val observed: CanonicalOperation,
-    ) : KastRuntimeCompositionFailure
-
     data class ServerConstruction(
         val failure: RuntimeServerConstructionFailure,
     ) : KastRuntimeCompositionFailure
