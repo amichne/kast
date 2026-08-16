@@ -3,6 +3,7 @@ package io.github.amichne.kast.workspace.intellij
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
+import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateReconciliation
@@ -44,6 +45,7 @@ fun interface GradleWorkspaceModelPort {
 sealed interface IntellijWorkspaceReconciliationResult {
     data class Reconciled(
         val evidence: Set<WorkspaceEvidenceKind>,
+        val sourceRoots: List<SourceRoot> = emptyList(),
     ) : IntellijWorkspaceReconciliationResult
 
     data object Unavailable : IntellijWorkspaceReconciliationResult
@@ -54,8 +56,9 @@ fun interface IntellijWorkspaceReconciliation {
     /**
      * Proof transition: `WorkspaceCandidate -> IntellijWorkspaceReconciliationResult`.
      *
-     * Establishes the evidence families reconciled for the exact candidate, or the finite
-     * unavailable state. Live project, compiler, and index objects remain inside the adapter.
+     * Establishes the evidence families and typed source roots reconciled for the exact candidate,
+     * or the finite unavailable state. Live project, compiler, and index objects remain inside
+     * the adapter.
      */
     fun reconcile(candidate: WorkspaceCandidate): IntellijWorkspaceReconciliationResult
 }
@@ -109,7 +112,11 @@ class IntellijWorkspaceReconciliationPort(
                     WorkspacePublicationBlocker.ReconciliationUnavailable,
                 )
             is IntellijWorkspaceReconciliationResult.Reconciled -> when (
-                val admitted = ReconciledWorkspace.admit(candidate, result.evidence)
+                val admitted = ReconciledWorkspace.admit(
+                    candidate,
+                    result.evidence,
+                    result.sourceRoots,
+                )
             ) {
                 is Refinement.Refined -> WorkspaceCandidateReconciliation.Reconciled(admitted.value)
                 is Refinement.Rejected -> WorkspaceCandidateReconciliation.Rejected(
