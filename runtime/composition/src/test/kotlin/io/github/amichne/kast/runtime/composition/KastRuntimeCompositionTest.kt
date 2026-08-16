@@ -1,223 +1,238 @@
 package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.change.apply.AddDeclarationApplyOperations
-import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryService
+import io.github.amichne.kast.change.apply.AddDeclarationApplyService
+import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
+import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
+import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
+import io.github.amichne.kast.change.verify.ChangeVerificationObserver
 import io.github.amichne.kast.change.verify.VerifiedMutationOperations
+import io.github.amichne.kast.change.verify.VerifiedMutationService
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
-import io.github.amichne.kast.evidence.contract.MutationPlanBinding
-import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceStore
-import io.github.amichne.kast.evidence.contract.MutationRecoveryLoadResult
-import io.github.amichne.kast.evidence.contract.MutationRecoveryPersistResult
-import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
-import io.github.amichne.kast.kernel.CapabilityId
-import io.github.amichne.kast.kernel.CapabilityMarker
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.evidence.contract.*
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResourceBudget
-import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.WorkUnitLimit
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.OperationQualification
-import io.github.amichne.kast.protocol.contract.OperationRejection
-import io.github.amichne.kast.protocol.contract.OperationRequest
-import io.github.amichne.kast.protocol.contract.OperationResult
-import io.github.amichne.kast.protocol.contract.OperationTypeBinding
-import io.github.amichne.kast.protocol.contract.SchemaIdentity
-import io.github.amichne.kast.protocol.registry.CompletenessPolicy
-import io.github.amichne.kast.protocol.registry.OperationCost
-import io.github.amichne.kast.protocol.registry.OperationDefinition
-import io.github.amichne.kast.protocol.registry.OperationEffect
-import io.github.amichne.kast.protocol.registry.OperationLane
-import io.github.amichne.kast.protocol.registry.OperationScope
-import io.github.amichne.kast.protocol.wire.GeneratedOperationSerializers
-import io.github.amichne.kast.protocol.wire.OperationWireBinding
+import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationOperations
-import io.github.amichne.kast.runtime.server.TypedOperationBinding
-import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
-import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
-import io.github.amichne.kast.symbol.contract.SymbolExactOperations
-import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
-import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
+import io.github.amichne.kast.relation.service.RelationService
+import io.github.amichne.kast.runtime.server.OperationHandler
+import io.github.amichne.kast.symbol.contract.*
+import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
+import io.github.amichne.kast.symbol.service.SymbolExactService
 import io.github.amichne.kast.traversal.contract.TraversalOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
-import kotlinx.serialization.Serializable
+import io.github.amichne.kast.workspace.contract.*
+import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class KastRuntimeCompositionTest {
     @Test
-    fun `all eleven nominal bindings receive their direct target operation boundary`() {
-        val services = services()
-        val factory = RecordingBindingFactory()
-
-        val composition = (KastRuntimeComposition.create(services, factory) as
-            KastRuntimeCompositionConstruction.Created).composition
-
-        assertSame(services.workspace, factory.observed.getValue(CanonicalOperation.WORKSPACE_INSPECT))
-        assertSame(services.symbolDiscovery, factory.observed.getValue(CanonicalOperation.SYMBOL_DISCOVER))
-        assertSame(services.symbolExact, factory.observed.getValue(CanonicalOperation.SYMBOL_RESOLVE))
-        assertSame(services.symbolExact, factory.observed.getValue(CanonicalOperation.SYMBOL_DESCRIBE))
-        assertSame(services.relation, factory.observed.getValue(CanonicalOperation.RELATION_READ))
-        assertSame(services.traversal, factory.observed.getValue(CanonicalOperation.TRAVERSAL_RUN))
-        assertSame(services.diagnostic, factory.observed.getValue(CanonicalOperation.DIAGNOSTIC_CHECK))
-        assertSame(services.changeApply, factory.observed.getValue(CanonicalOperation.CHANGE_APPLY))
-        assertSame(services.changeVerify, factory.observed.getValue(CanonicalOperation.CHANGE_VERIFY))
-        assertEquals(CanonicalOperation.entries.toSet(), factory.observed.keys)
-        assertSame(composition.operations.symbolResolve, composition.operations.symbolDescribe)
-    }
-
-    @Test
-    fun `a binding returned for the wrong nominal operation fails closed`() {
-        val factory = RecordingBindingFactory { expected ->
-            when (expected) {
-                CanonicalOperation.WORKSPACE_INSPECT -> CanonicalOperation.SYMBOL_DISCOVER
-                CanonicalOperation.SYMBOL_DISCOVER -> CanonicalOperation.WORKSPACE_INSPECT
-                else -> expected
-            }
+    fun `composition api owns service construction instead of accepting a service aggregate`() {
+        val create = KastRuntimeComposition.Companion::class.java.declaredMethods.single {
+            it.name == "create"
         }
 
         assertEquals(
-            KastRuntimeCompositionConstruction.Rejected(
-                setOf(
-                    KastRuntimeCompositionFailure.BindingOperationMismatch(
-                        CanonicalOperation.WORKSPACE_INSPECT,
-                        CanonicalOperation.SYMBOL_DISCOVER,
-                    ),
-                    KastRuntimeCompositionFailure.BindingOperationMismatch(
-                        CanonicalOperation.SYMBOL_DISCOVER,
-                        CanonicalOperation.WORKSPACE_INSPECT,
-                    ),
-                ),
+            listOf(
+                "WorkspaceRuntimePorts",
+                "SemanticRuntimePorts",
+                "ChangeRuntimePorts",
+                "KastOperationHandlerFactory",
             ),
-            KastRuntimeComposition.create(services(), factory),
+            create.parameterTypes.map(Class<*>::getSimpleName),
         )
     }
 
-    private fun services(): KastRuntimeServices = KastRuntimeServices(
-        workspace = WorkspaceInspectionOperations { WorkspaceRuntimeState.Absent },
-        symbolDiscovery = SymbolDiscoveryOperations { error("not executed") },
-        symbolExact = object : SymbolExactOperations {
-            override suspend fun resolve(request: SymbolResolutionRequest): SymbolResolutionResult =
-                error("not executed")
+    @Test
+    fun `composition constructs every target service and exact nominal association`() {
+        val handlers = RecordingHandlerFactory()
+        val composition = KastRuntimeComposition.create(
+            workspacePorts(),
+            semanticPorts(),
+            changePorts(),
+            handlers,
+        ).created()
+        val operations = composition.operations
 
-            override suspend fun describe(request: ExactSymbolRequest): SymbolDescriptionResult =
-                error("not executed")
-        },
-        relation = RelationOperations { error("not executed") },
-        traversal = TraversalOperations { error("not executed") },
-        diagnostic = DiagnosticOperations { error("not executed") },
-        changeApply = AddDeclarationApplyOperations { error("not executed") },
-        changeVerify = VerifiedMutationOperations { error("not executed") },
-        changeRecovery = AddDeclarationRecoveryService(UnusedRecoveryEvidenceStore),
-        changeRollback = AddDeclarationRollbackPort { error("not executed") },
-    )
+        assertSame(operations.workspaceInspect, handlers.observed.getValue(CanonicalOperation.WORKSPACE_INSPECT))
+        assertSame(operations.symbolDiscover, handlers.observed.getValue(CanonicalOperation.SYMBOL_DISCOVER))
+        assertSame(operations.symbolResolve, handlers.observed.getValue(CanonicalOperation.SYMBOL_RESOLVE))
+        assertSame(operations.symbolDescribe, handlers.observed.getValue(CanonicalOperation.SYMBOL_DESCRIBE))
+        assertSame(operations.relationRead, handlers.observed.getValue(CanonicalOperation.RELATION_READ))
+        assertSame(operations.traversalRun, handlers.observed.getValue(CanonicalOperation.TRAVERSAL_RUN))
+        assertSame(operations.diagnosticCheck, handlers.observed.getValue(CanonicalOperation.DIAGNOSTIC_CHECK))
+        assertSame(operations.changePlan, handlers.observed.getValue(CanonicalOperation.CHANGE_PLAN))
+        assertSame(operations.changeApply, handlers.observed.getValue(CanonicalOperation.CHANGE_APPLY))
+        assertSame(operations.changeVerify, handlers.observed.getValue(CanonicalOperation.CHANGE_VERIFY))
+        assertSame(operations.changeRecover, handlers.observed.getValue(CanonicalOperation.CHANGE_RECOVER))
+        assertEquals(CanonicalOperation.entries.toSet(), handlers.observed.keys)
+        assertSame(operations.symbolResolve, operations.symbolDescribe)
 
-    private class RecordingBindingFactory(
-        private val operationFor: (CanonicalOperation) -> CanonicalOperation = { it },
-    ) : KastOperationBindingFactory {
+        assertSame(WorkspacePublicationCoordinator::class.java, operations.workspaceInspect.javaClass)
+        assertSame(SymbolDiscoveryService::class.java, operations.symbolDiscover.javaClass)
+        assertSame(SymbolExactService::class.java, operations.symbolResolve.javaClass)
+        assertSame(RelationService::class.java, operations.relationRead.javaClass)
+        assertSame(AddDeclarationApplyService::class.java, operations.changeApply.javaClass)
+        assertSame(VerifiedMutationService::class.java, operations.changeVerify.javaClass)
+    }
+
+    private fun KastRuntimeCompositionConstruction.created(): KastRuntimeComposition = when (this) {
+        is KastRuntimeCompositionConstruction.Created -> composition
+        is KastRuntimeCompositionConstruction.Rejected -> error("unexpected rejection: $failures")
+    }
+
+    private class RecordingHandlerFactory : KastOperationHandlerFactory {
         val observed = linkedMapOf<CanonicalOperation, Any>()
 
         override fun workspaceInspect(operations: WorkspaceInspectionOperations) =
-            record(CanonicalOperation.WORKSPACE_INSPECT, operations)
+            record<WorkspaceInspectRequest, WorkspaceInspectResult, WorkspaceInspectQualification, WorkspaceInspectRejection>(
+                CanonicalOperation.WORKSPACE_INSPECT,
+                operations,
+                WorkspaceInspectRejection.RUNTIME_BLOCKED,
+            )
 
         override fun symbolDiscover(operations: SymbolDiscoveryOperations) =
-            record(CanonicalOperation.SYMBOL_DISCOVER, operations)
+            record<SymbolDiscoverRequest, SymbolDiscoverResult, SymbolDiscoverQualification, SymbolDiscoverRejection>(
+                CanonicalOperation.SYMBOL_DISCOVER,
+                operations,
+                SymbolDiscoverRejection.WORKSPACE_NOT_READY,
+            )
 
         override fun symbolResolve(operations: SymbolExactOperations) =
-            record(CanonicalOperation.SYMBOL_RESOLVE, operations)
+            record<SymbolResolveRequest, SymbolResolveResult, SymbolResolveQualification, SymbolResolveRejection>(
+                CanonicalOperation.SYMBOL_RESOLVE,
+                operations,
+                SymbolResolveRejection.WORKSPACE_NOT_READY,
+            )
 
         override fun symbolDescribe(operations: SymbolExactOperations) =
-            record(CanonicalOperation.SYMBOL_DESCRIBE, operations)
+            record<SymbolDescribeRequest, SymbolDescribeResult, SymbolDescribeQualification, SymbolDescribeRejection>(
+                CanonicalOperation.SYMBOL_DESCRIBE,
+                operations,
+                SymbolDescribeRejection.WORKSPACE_NOT_READY,
+            )
 
         override fun relationRead(operations: RelationOperations) =
-            record(CanonicalOperation.RELATION_READ, operations)
+            record<RelationReadRequest, RelationReadResult, RelationReadQualification, RelationReadRejection>(
+                CanonicalOperation.RELATION_READ,
+                operations,
+                RelationReadRejection.WORKSPACE_NOT_READY,
+            )
 
         override fun traversalRun(operations: TraversalOperations) =
-            record(CanonicalOperation.TRAVERSAL_RUN, operations)
+            record<TraversalRunRequest, TraversalRunResult, TraversalRunQualification, TraversalRunRejection>(
+                CanonicalOperation.TRAVERSAL_RUN,
+                operations,
+                TraversalRunRejection.WORKSPACE_NOT_READY,
+            )
 
         override fun diagnosticCheck(operations: DiagnosticOperations) =
-            record(CanonicalOperation.DIAGNOSTIC_CHECK, operations)
+            record<DiagnosticCheckRequest, DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection>(
+                CanonicalOperation.DIAGNOSTIC_CHECK,
+                operations,
+                DiagnosticCheckRejection.WORKSPACE_NOT_READY,
+            )
 
         override fun changePlan(operations: ChangePlanningOperations) =
-            record(CanonicalOperation.CHANGE_PLAN, operations)
+            record<ChangePlanRequest, ChangePlanResult, ChangePlanQualification, ChangePlanRejection>(
+                CanonicalOperation.CHANGE_PLAN,
+                operations,
+                ChangePlanRejection.WORKSPACE_NOT_READY,
+            )
 
         override fun changeApply(operations: AddDeclarationApplyOperations) =
-            record(CanonicalOperation.CHANGE_APPLY, operations)
+            record<ChangeApplyRequest, ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection>(
+                CanonicalOperation.CHANGE_APPLY,
+                operations,
+                ChangeApplyRejection.PLAN_NOT_FOUND,
+            )
 
         override fun changeVerify(operations: VerifiedMutationOperations) =
-            record(CanonicalOperation.CHANGE_VERIFY, operations)
+            record<ChangeVerifyRequest, ChangeVerifyResult, ChangeVerifyQualification, ChangeVerifyRejection>(
+                CanonicalOperation.CHANGE_VERIFY,
+                operations,
+                ChangeVerifyRejection.APPLICATION_NOT_FOUND,
+            )
 
         override fun changeRecover(operations: ChangeRecoveryOperations) =
-            record(CanonicalOperation.CHANGE_RECOVER, operations)
+            record<ChangeRecoverRequest, ChangeRecoverResult, ChangeRecoverQualification, ChangeRecoverRejection>(
+                CanonicalOperation.CHANGE_RECOVER,
+                operations,
+                ChangeRecoverRejection.PLAN_NOT_FOUND,
+            )
 
-        private fun record(
-            expected: CanonicalOperation,
+        private fun <
+            Request : OperationRequest,
+            Result : OperationResult,
+            Qualification : OperationQualification,
+            Rejection : OperationRejection,
+            > record(
+            operation: CanonicalOperation,
             operations: Any,
-        ): TypedOperationBinding<TestRequest, TestResult, TestQualification, TestRejection> {
-            observed[expected] = operations
-            return binding(operationFor(expected))
+            rejection: Rejection,
+        ): OperationHandler<Request, Result, Qualification, Rejection> {
+            observed[operation] = operations
+            return OperationHandler { OperationOutcome.Rejected(rejection) }
         }
     }
 
     private companion object {
-        fun binding(
-            operation: CanonicalOperation,
-        ): TypedOperationBinding<TestRequest, TestResult, TestQualification, TestRejection> =
-            TypedOperationBinding(
-                wireBinding = OperationWireBinding(
-                    definition = definition(operation),
-                    serializers = GeneratedOperationSerializers(
-                        TestRequest.serializer(),
-                        TestResult.serializer(),
-                        TestQualification.serializer(),
-                        TestRejection.serializer(),
-                    ),
-                ),
-                handler = {
-                    OperationOutcome.Rejected(TestRejection.BLOCKED)
-                },
-            )
+        fun workspacePorts(): WorkspaceRuntimePorts = WorkspaceRuntimePorts(
+            reconciliation = object : WorkspaceReconciliationPort {
+                override fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture =
+                    error("not executed")
 
-        fun definition(
-            operation: CanonicalOperation,
-        ): OperationDefinition<
-            TestRequest,
-            TestResult,
-            TestCapability,
-            TestQualification,
-            TestRejection,
-            > = OperationDefinition(
-            operation = operation,
-            types = OperationTypeBinding(
-                TestRequest::class,
-                TestResult::class,
-                TestQualification::class,
-                TestRejection::class,
-                SchemaIdentity.parse("kast.${operation.id.value}.v1").refined(),
-            ),
-            requiredCapability = CapabilityId.parse("semantic.read").refined(),
-            capabilityType = TestCapability::class,
-            lane = OperationLane.INDEX_LOOKUP,
-            effect = OperationEffect.INTELLIJ_READ,
-            cost = OperationCost.BOUNDED_READ,
-            scope = OperationScope.WORKSPACE,
-            budget = ResourceBudget(
-                ResultLimit.parse(10).refined(),
-                WorkUnitLimit.parse(10).refined(),
-                ElapsedTimeLimitMillis.parse(10).refined(),
-            ),
-            completeness = CompletenessPolicy.QUALIFIED_ALLOWED,
+                override fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation =
+                    error("not executed")
+            },
+            publication = object : WorkspacePublicationTransaction {
+                override fun begin(): WorkspacePublicationOpening = error("not executed")
+
+                override fun prepare(
+                    open: OpenCanonicalWorkspacePublication,
+                    candidate: ReconciledWorkspace,
+                ): WorkspacePublicationPreparation = error("not executed")
+
+                override fun commit(
+                    prepared: PreparedCanonicalWorkspacePublication,
+                ): WorkspacePublicationResult = error("not executed")
+
+                override fun discard(
+                    open: OpenCanonicalWorkspacePublication,
+                ): WorkspacePublicationDiscard = error("not executed")
+
+                override fun discard(
+                    prepared: PreparedCanonicalWorkspacePublication,
+                ): WorkspacePublicationDiscard = error("not executed")
+            },
         )
 
-        fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-            is Refinement.Refined -> value
-            is Refinement.Rejected -> error("invalid test fixture: $failure")
-        }
+        fun semanticPorts(): SemanticRuntimePorts = SemanticRuntimePorts(
+            symbolDiscovery = SymbolCompilerPort { error("not executed") },
+            symbolExact = object : SymbolExactCompilerPort {
+                override suspend fun resolve(
+                    request: SymbolResolutionRequest,
+                ): SymbolResolutionCompilation = error("not executed")
+
+                override suspend fun describe(
+                    request: ExactSymbolRequest,
+                ): SymbolDescriptionCompilation = error("not executed")
+            },
+            relation = RelationCompilerPort { error("not executed") },
+            diagnostic = DiagnosticCompilerPort { error("not executed") },
+        )
+
+        fun changePorts(): ChangeRuntimePorts = ChangeRuntimePorts(
+            recoveryEvidence = UnusedRecoveryEvidenceStore,
+            sourceObserver = AddDeclarationSourceObserver { error("not executed") },
+            sourceWriter = AddDeclarationSourceWriter { _, _ -> error("not executed") },
+            sourceRollback = AddDeclarationSourceRollback { _, _ -> error("not executed") },
+            recoveryRollback = AddDeclarationRollbackPort { error("not executed") },
+            verificationObserver = ChangeVerificationObserver { error("not executed") },
+        )
     }
 }
 
@@ -238,22 +253,3 @@ private object UnusedRecoveryEvidenceStore : MutationRecoveryEvidenceStore {
 
     override fun load(binding: MutationPlanBinding): MutationRecoveryLoadResult = error("not executed")
 }
-
-private data object TestCapability : CapabilityMarker {
-    override val id: CapabilityId = when (val refined = CapabilityId.parse("semantic.read")) {
-        is Refinement.Refined -> refined.value
-        is Refinement.Rejected -> error("invalid test capability: ${refined.failure}")
-    }
-}
-
-@Serializable
-private data class TestRequest(val value: String = "request") : OperationRequest
-
-@Serializable
-private data class TestResult(val value: String = "result") : OperationResult
-
-@Serializable
-private enum class TestQualification : OperationQualification { LIMITED }
-
-@Serializable
-private enum class TestRejection : OperationRejection { BLOCKED }
