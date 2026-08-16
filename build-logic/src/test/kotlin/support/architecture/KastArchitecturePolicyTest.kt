@@ -217,7 +217,8 @@ class KastArchitecturePolicyTest {
 
         assertEquals(ModuleId.RUNTIME_COMPOSITION, composition.id)
         assertEquals(
-            architecture.modules.keys - legacyHosts - ModuleId.RUNTIME_COMPOSITION,
+            architecture.modules.keys - legacyHosts -
+                setOf(ModuleId.CLI, ModuleId.RUNTIME_COMPOSITION),
             composition.allowedProjectDependencies,
         )
     }
