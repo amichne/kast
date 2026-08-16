@@ -46,6 +46,23 @@ class AddDeclarationApplyServiceTest {
     }
 
     @Test
+    fun `AddFile post durability fault rolls back and records terminal evidence`() {
+        val plan = fixture.addFilePlan()
+        val store = InMemoryApplyRecoveryStore()
+        val adapter = FakeSourceAdapter(
+            fixture.absent(plan),
+            WriteMode.FAULT_AFTER_DURABILITY,
+        )
+        val service = service(store, adapter)
+
+        val result = service.apply(fixture.request(plan = plan))
+
+        assertInstanceOf(AddDeclarationApplyResult.RolledBack::class.java, result)
+        assertInstanceOf(MutationRecoveryRecord.RolledBack::class.java, store.current())
+        assertEquals(1, adapter.rollbackCalls)
+    }
+
+    @Test
     fun `rollback rejection remains recovery required`() {
         val store = InMemoryApplyRecoveryStore()
         val adapter = FakeSourceAdapter(
@@ -91,7 +108,7 @@ private enum class WriteMode {
 }
 
 private class FakeSourceAdapter(
-    private val observation: ObservedMutationSource,
+    private val observation: ObservedMutationPrecondition,
     private val mode: WriteMode = WriteMode.APPLIED,
     private val rollbackResult: AddDeclarationRollbackResult = AddDeclarationRollbackResult.RolledBack,
 ) : AddDeclarationSourceObserver, AddDeclarationSourceWriter, AddDeclarationSourceRollback {

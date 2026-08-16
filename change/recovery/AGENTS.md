@@ -13,8 +13,9 @@ port. It performs no physical mutation or persistence.
 
 ## Invariants
 
-- Pre-write evidence contains the exact plan binding, source identity, and hash-verified before
-  image before an applied write can be recorded.
+- Pre-write evidence contains the exact plan binding and source identity plus either a
+  hash-verified existing before image or AddFile's intent-bound canonical absence marker before an
+  applied write can be recorded.
 - Recovery from an applied write persists exactly `RolledBack` or `RecoveryRequired` before
   returning that outcome.
 - Absent or pre-write-only evidence means prior state, never mutation success.

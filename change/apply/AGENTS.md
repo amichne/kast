@@ -16,6 +16,8 @@ durable, and only then issues `MutationAuthority` to an injected source writer.
 
 - Admission revalidates exact root, generation, source state, content, source-root ownership,
   authored provenance, writability, exact planned transformations, and requested write scope.
+- Source preconditions are closed: existing-file plans require the exact content identity, while
+  AddFile requires exact physical absence and parent-derived creation access.
 - `MutationAuthority` has no public constructor and exists only after exact pre-write recovery
   evidence is durable.
 - A source writer receives only the admitted source, typed transformations, exact preimage, and
