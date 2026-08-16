@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
@@ -23,6 +24,7 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscov
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRunHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
@@ -219,6 +221,28 @@ class InstalledKastRuntimeTest {
         assertEquals(1, related.evidence.payload.targetSelectors.values.size)
         assertEquals(1, traversed.evidence.payload.reachedSelectors.values.size)
         assertEquals(TraversalRunQualification.DEPTH_LIMIT, traversed.qualification)
+    }
+
+    @Test
+    fun `diagnostic handler binds exact file scope to current generation`(@TempDir temporary: Path) {
+        val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
+        val fixture = InstalledSymbolProtocolFixture.create(root)
+        val handler = CanonicalDiagnosticCheckHandler(fixture.workspace, fixture.diagnostic)
+
+        val outcome = runImmediate {
+            handler.execute(
+                DiagnosticCheckRequest(
+                    ProtocolText.parse("src/main/kotlin/Sample.kt").refined(),
+                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                ),
+            )
+        } as OperationOutcome.Complete
+
+        assertEquals(11, outcome.evidence.generation.value)
+        assertEquals(
+            true,
+            outcome.evidence.payload.diagnostics.values.single().value.contains("KAST001"),
+        )
     }
 }
 

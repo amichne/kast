@@ -2,6 +2,14 @@ package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
+import io.github.amichne.kast.diagnostic.contract.DiagnosticFact
+import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
+import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
+import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
+import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationCompilation
@@ -55,6 +63,7 @@ internal class InstalledSymbolProtocolFixture private constructor(
     val exact: SymbolExactOperations,
     val relation: RelationOperations,
     val traversal: TraversalOperations,
+    val diagnostic: DiagnosticOperations,
 ) {
     var discoveryRequest: SymbolDiscoveryRequest? = null
         private set
@@ -89,12 +98,17 @@ internal class InstalledSymbolProtocolFixture private constructor(
                 workspace,
                 RelationCompilerPort { request -> relationCompilation(request) },
             )
+            val diagnostic = DiagnosticService(
+                workspace,
+                DiagnosticCompilerPort { scope -> diagnosticCompilation(scope) },
+            )
             fixture = InstalledSymbolProtocolFixture(
                 workspace,
                 discovery,
                 exact,
                 relation,
                 traversalOperations(relation),
+                diagnostic,
             )
             return fixture
         }
@@ -202,6 +216,20 @@ internal class InstalledSymbolProtocolFixture private constructor(
                 request.subject.scope,
                 evidence,
             ).refinedFixture()
+        }
+
+        private fun diagnosticCompilation(scope: DiagnosticScope): DiagnosticCompilation {
+            val fact = DiagnosticFact.fromBoundary(
+                scope,
+                scope.files.single(),
+                0,
+                6,
+                DiagnosticSeverity.ERROR,
+                "KAST001",
+                "fixture diagnostic",
+            ).refinedFixture()
+            val batch = DiagnosticBatch.create(scope, listOf(fact)).refinedFixture()
+            return DiagnosticCompilation.complete(batch)
         }
     }
 }
