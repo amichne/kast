@@ -70,3 +70,38 @@ tasks.register<Exec>("installedProductTest") {
     )
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
+
+tasks.register<Exec>("enterpriseAcceptance") {
+    group = "verification"
+    description = "Proves the installed product against enterprise-scale and failure bounds."
+    dependsOn(
+        stageInstalledProduct,
+        ":change:recovery:test",
+        ":relation:contract:test",
+        ":relation:intellij:test",
+        ":relation:service:test",
+        ":symbol:intellij:test",
+        ":symbol:service:test",
+        ":traversal:contract:test",
+        ":traversal:service:test",
+        ":workspace:service:test",
+        "verifyForbiddenEffects",
+        "verifyKastModuleGraph",
+        "verifyNoLegacyArchitecture",
+    )
+    inputs.dir(installedProductDirectory)
+    inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
+    inputs.file(layout.projectDirectory.file("benchmarks/enterprise-acceptance.json"))
+    inputs.dir(layout.projectDirectory.dir("fixtures/enterprise-workspace"))
+    outputs.upToDateWhen { false }
+    commandLine(
+        "python3",
+        layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"),
+        "--product-root",
+        installedProductDirectory.get().asFile.absolutePath,
+        "--fixture",
+        layout.projectDirectory.dir("fixtures/enterprise-workspace").asFile.absolutePath,
+        "--thresholds",
+        layout.projectDirectory.file("benchmarks/enterprise-acceptance.json").asFile.absolutePath,
+    )
+}
