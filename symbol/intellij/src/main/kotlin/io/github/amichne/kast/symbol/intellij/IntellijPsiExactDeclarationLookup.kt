@@ -124,11 +124,11 @@ internal class IntellijPsiExactDeclarationLookup(
             if (
                 named != null &&
                 named.name == key.name.value &&
-                element.textOffset == key.offset.value
+                element.textRange.startOffset == key.offset.value
             ) {
                 val evidence = ExactDeclarationEvidence.fromBoundary(
                     file = key.file,
-                    rawStartInclusive = element.textOffset,
+                    rawStartInclusive = element.textRange.startOffset,
                     rawEndExclusive = element.textRange.endOffset,
                     rawName = named.name.orEmpty(),
                     rawQualifiedIdentity = (named as? PsiQualifiedNamedElement)?.qualifiedName,
