@@ -39,7 +39,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.nio.file.Path
 
-class IntellijNativeDiscoveryTest {
+class SymbolDiscoveryTest {
     @Test
     fun `native file class and symbol discovery uses matching scope projection and stable order`() {
         SymbolDiscoveryKind.entries.forEach { kind ->
@@ -83,6 +83,21 @@ class IntellijNativeDiscoveryTest {
         ).execute().outcome()
         assertEquals(listOf(SymbolDiscoveryQualification.TIME_LIMIT_REACHED), timeOutcome.qualifications())
         assertTrue(timeOutcome.batch().candidates.isEmpty())
+    }
+
+    @Test
+    fun `same-name collisions remain distinct detached candidates`() {
+        val outcome = fixture(collidingNames = true).execute().outcome()
+
+        assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+        assertEquals(
+            listOf("CollisionItem", "CollisionItem"),
+            outcome.batch().candidates.map { it.name.value },
+        )
+        assertEquals(
+            2,
+            outcome.batch().candidates.map { it.location.file.stableValue }.distinct().size,
+        )
     }
 
     @Test
@@ -148,6 +163,7 @@ class IntellijNativeDiscoveryTest {
         cancellationCheck: () -> Unit = {},
         clock: IntellijDiscoveryNanoClock = StepClock(),
         providerFails: Boolean = false,
+        collidingNames: Boolean = false,
     ): Fixture {
         val request = request(
             kind = kind,
@@ -160,9 +176,17 @@ class IntellijNativeDiscoveryTest {
         val noMatch = FakeItem("NoMatch")
         val alpha = FakeItem("AItem")
         val outside = FakeItem("OutsideItem")
-        val items = listOf(zed, noMatch, alpha, outside)
-        val files = items.associateWith { LightVirtualFile("${it.candidateName}.kt") }
-        val inScopeFiles = setOf(files.getValue(zed), files.getValue(noMatch), files.getValue(alpha))
+        val items = if (collidingNames) {
+            listOf(
+                FakeItem("CollisionItem", "first"),
+                FakeItem("CollisionItem", "second"),
+            )
+        } else {
+            listOf(zed, noMatch, alpha, outside)
+        }
+        val files = items.associateWith { LightVirtualFile("${it.identity}.kt") }
+        val inScopeItems = if (collidingNames) items.toSet() else setOf(zed, noMatch, alpha)
+        val inScopeFiles = inScopeItems.mapTo(linkedSetOf(), files::getValue)
         val scope = object : GlobalSearchScope() {
             override fun contains(file: VirtualFile): Boolean = file in inScopeFiles
 
@@ -178,7 +202,7 @@ class IntellijNativeDiscoveryTest {
         )
         val contributor = FakeContributor(
             names = items.map(FakeItem::candidateName),
-            items = items.associateBy(FakeItem::candidateName),
+            items = items.groupBy(FakeItem::candidateName),
             fail = providerFails,
         )
         val projectedNames = mutableListOf<String>()
@@ -271,7 +295,7 @@ class IntellijNativeDiscoveryTest {
 
     private class FakeContributor(
         private val names: List<String>,
-        private val items: Map<String, FakeItem>,
+        private val items: Map<String, List<FakeItem>>,
         private val fail: Boolean,
     ) : ChooseByNameContributorEx {
         var nameScope: GlobalSearchScope? = null
@@ -301,7 +325,9 @@ class IntellijNativeDiscoveryTest {
         ) {
             requestedNames += name
             elementScopes += parameters.searchScope
-            items[name]?.let(processor::process)
+            items[name].orEmpty().forEach { item ->
+                if (!processor.process(item)) return
+            }
         }
     }
 
@@ -321,6 +347,7 @@ class IntellijNativeDiscoveryTest {
 
     private data class FakeItem(
         val candidateName: String,
+        val identity: String = candidateName,
     ) : NavigationItem {
         override fun getName(): String = candidateName
 

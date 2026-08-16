@@ -13,6 +13,8 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
   declaration locations, deterministic ordering, and canonical projection size.
 - `SymbolDiscoveryOutcome.kt` owns bounded generation-bound batches, separate native/projection
   timings, closed qualified-completeness states, and the exact search scope retained by a batch.
+- `SymbolDiscoveryOperations.kt` owns the public operation result, compiler port, and closed
+  workspace/compiler rejection protocol for `symbol.discover`.
 - `ExactDeclarationSelector.kt` owns batch-ordinal declaration selection, detached native
   declaration evidence, selector issuance, and proof of unchanged revalidation.
 - `ExactDeclarationFingerprint.kt` owns the length-prefixed canonical scope/evidence encoding and
