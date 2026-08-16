@@ -6,9 +6,17 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalWorkspaceInspectHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDescribeHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
@@ -114,6 +122,45 @@ class InstalledKastRuntimeTest {
                 ),
             ),
             outcome,
+        )
+    }
+
+    @Test
+    fun `symbol handlers preserve discovery selection and exact selector authority`(
+        @TempDir temporary: Path,
+    ) {
+        val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
+        val fixture = InstalledSymbolProtocolFixture.create(root)
+        val authority = CanonicalProtocolAuthority()
+        val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
+        val resolve = CanonicalSymbolResolveHandler(fixture.exact, authority)
+        val describe = CanonicalSymbolDescribeHandler(fixture.exact, authority)
+
+        val discovered = runImmediate {
+            discover.execute(
+                SymbolDiscoverRequest(
+                    ProtocolText.parse("sample").refined(),
+                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
+                ),
+            )
+        } as OperationOutcome.Complete
+        val candidate = discovered.evidence.payload.candidateSelectors.values.single()
+        val resolved = runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
+            OperationOutcome.Complete
+        val described = runImmediate {
+            describe.execute(SymbolDescribeRequest(resolved.evidence.payload.exactSelector))
+        } as OperationOutcome.Complete
+
+        assertEquals("sample", fixture.discoveryRequest?.pattern?.value)
+        assertEquals(
+            fixture.resolutionRequest?.selection?.candidate?.name,
+            fixture.descriptionRequest?.selector?.name,
+        )
+        assertEquals(11, resolved.evidence.generation.value)
+        assertEquals(11, described.evidence.generation.value)
+        assertEquals(
+            true,
+            described.evidence.payload.declaration.value.contains("sample.Sample.sample"),
         )
     }
 }
