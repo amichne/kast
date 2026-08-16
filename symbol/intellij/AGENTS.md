@@ -12,6 +12,8 @@ transport, or composition.
   Kotlin contributor discovery, exact selection, revalidation, and detached projection in one read.
 - `IntellijNativeDiscoveryQuery.kt` performs platform matching, scoped native name/element
   processing, bounded collection, deterministic ordering, qualification, and timing.
+- `IntellijSymbolCompilerAdapter.kt` exposes the detached compiler result while retaining all live
+  IntelliJ values inside the request call.
 - `IntellijDiscoveryProjection.kt` converts only already-in-scope live items into detached
   generation-bound candidates.
 - `IntellijExactSelectorResolver.kt` admits the current root/generation, recompiles the discovery
