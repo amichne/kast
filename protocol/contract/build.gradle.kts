@@ -5,5 +5,4 @@ plugins {
 
 dependencies {
     api(project(":kernel"))
-    api(project(":protocol:contract"))
 }
