@@ -16,7 +16,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceResourceCount
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceInitiationResult
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservation
 import io.github.amichne.kast.workspace.contract.WorkspaceResourcePolicy
-import io.github.amichne.kast.workspace.spi.WorkspaceResourceObservationAuthority
+import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservationAuthority
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue

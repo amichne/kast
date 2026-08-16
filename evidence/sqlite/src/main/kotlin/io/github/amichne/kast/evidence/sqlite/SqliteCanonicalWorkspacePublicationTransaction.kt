@@ -11,27 +11,29 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationOpening
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationPreparation
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import java.util.concurrent.CancellationException
 
-/**
- * Canonical publication transaction over the existing atomic source-index generation store.
- *
- * This adapter adds no schema or parallel authority. Reconciliation runs while its open store
- * transaction is active; prepare and commit retain that same owner-specific capability.
- */
-class IndexStoreCanonicalWorkspacePublicationTransaction(
-    store: WorkspaceGenerationStore,
+/** Canonical publication transaction backed directly by one SQLite publication database. */
+class SqliteCanonicalWorkspacePublicationTransaction private constructor(
+    private val delegate: SqliteWorkspaceGenerationPublication,
 ) : WorkspacePublicationTransaction {
-    private val delegate = IndexStoreWorkspaceGenerationPublication(store)
+    constructor(database: SqliteWorkspacePublicationDatabase) : this(
+        SqliteWorkspaceGenerationPublication(database),
+    )
+
+    internal constructor(
+        database: SqliteWorkspacePublicationDatabase,
+        faultInjector: SqliteWorkspacePublicationFaultInjector,
+    ) : this(SqliteWorkspaceGenerationPublication.faultInjecting(database, faultInjector))
+
     private val owner = Owner()
 
     override fun begin(): WorkspacePublicationOpening = try {
         WorkspacePublicationOpening.Opened(OwnedOpen(delegate.begin(), owner))
     } catch (failure: Exception) {
-        rejectedOpening(failure)
+        failure.rejectedOpening()
     }
 
     override fun prepare(
@@ -44,17 +46,17 @@ class IndexStoreCanonicalWorkspacePublicationTransaction(
         is OpenAdmission.Owned -> try {
             WorkspacePublicationPreparation.Prepared(
                 OwnedPrepared(
-                    delegate = delegate.prepare(
-                        open = admission.publication,
-                        identity = candidate.candidate.sourceState,
-                        graphPublication = WorkspaceGraphPublication.Ready,
+                    publication = delegate.prepare(
+                        admission.publication,
+                        candidate.candidate.sourceState,
+                        WorkspaceGraphPublication.Ready,
                     ),
                     candidate = candidate,
                     owner = owner,
                 ),
             )
         } catch (failure: Exception) {
-            rejectedPreparation(failure)
+            failure.rejectedPreparation()
         }
     }
 
@@ -68,12 +70,12 @@ class IndexStoreCanonicalWorkspacePublicationTransaction(
             val committed = delegate.commit(admission.publication)
             WorkspacePublicationResult.Published(
                 PublishedWorkspace.publish(
-                    reconciled = admission.candidate,
-                    generation = committed.commit.publication.generation,
+                    admission.candidate,
+                    committed.commit.publication.generation,
                 ),
             )
         } catch (failure: Exception) {
-            rejectedResult(failure)
+            failure.rejectedResult()
         }
     }
 
@@ -87,7 +89,7 @@ class IndexStoreCanonicalWorkspacePublicationTransaction(
             delegate.discard(admission.publication)
             WorkspacePublicationDiscard.Discarded
         } catch (failure: Exception) {
-            rejectedDiscard(failure)
+            failure.rejectedDiscard()
         }
     }
 
@@ -101,20 +103,20 @@ class IndexStoreCanonicalWorkspacePublicationTransaction(
             delegate.discard(admission.publication)
             WorkspacePublicationDiscard.Discarded
         } catch (failure: Exception) {
-            rejectedDiscard(failure)
+            failure.rejectedDiscard()
         }
     }
 
     /**
      * Proof transition: `OpenCanonicalWorkspacePublication -> OpenAdmission`.
      *
-     * Establishes that an open capability belongs to this exact adapter instance. The closed
-     * rejection is retained without exposing the store capability outside this adapter.
+     * Establishes that the open capability belongs to this exact transaction. The finite rejected
+     * state exposes no underlying SQLite capability.
      */
     private fun admit(open: OpenCanonicalWorkspacePublication): OpenAdmission {
         val candidate = open as? OwnedOpen ?: return OpenAdmission.Rejected
         return if (candidate.owner === owner) {
-            OpenAdmission.Owned(candidate.delegate)
+            OpenAdmission.Owned(candidate.publication)
         } else {
             OpenAdmission.Rejected
         }
@@ -123,51 +125,51 @@ class IndexStoreCanonicalWorkspacePublicationTransaction(
     /**
      * Proof transition: `PreparedCanonicalWorkspacePublication -> PreparedAdmission`.
      *
-     * Establishes that a prepared capability and reconciled candidate belong to this exact
-     * adapter instance. The closed rejection exposes neither value.
+     * Establishes that the prepared capability and reconciled candidate belong to this exact
+     * transaction. The finite rejected state exposes neither value.
      */
     private fun admit(prepared: PreparedCanonicalWorkspacePublication): PreparedAdmission {
         val candidate = prepared as? OwnedPrepared ?: return PreparedAdmission.Rejected
         return if (candidate.owner === owner) {
-            PreparedAdmission.Owned(candidate.delegate, candidate.candidate)
+            PreparedAdmission.Owned(candidate.publication, candidate.candidate)
         } else {
             PreparedAdmission.Rejected
         }
     }
 
-    private fun rejectedOpening(failure: Exception): WorkspacePublicationOpening.Rejected {
-        rethrowCancellation(failure)
+    private fun Exception.rejectedOpening(): WorkspacePublicationOpening.Rejected {
+        rethrowCancellation()
         return WorkspacePublicationOpening.Rejected(WorkspacePublicationFailure.StorageUnavailable)
     }
 
-    private fun rejectedPreparation(failure: Exception): WorkspacePublicationPreparation.Rejected {
-        rethrowCancellation(failure)
+    private fun Exception.rejectedPreparation(): WorkspacePublicationPreparation.Rejected {
+        rethrowCancellation()
         return WorkspacePublicationPreparation.Rejected(WorkspacePublicationFailure.StorageUnavailable)
     }
 
-    private fun rejectedResult(failure: Exception): WorkspacePublicationResult.Rejected {
-        rethrowCancellation(failure)
+    private fun Exception.rejectedResult(): WorkspacePublicationResult.Rejected {
+        rethrowCancellation()
         return WorkspacePublicationResult.Rejected(WorkspacePublicationFailure.StorageUnavailable)
     }
 
-    private fun rejectedDiscard(failure: Exception): WorkspacePublicationDiscard.Rejected {
-        rethrowCancellation(failure)
+    private fun Exception.rejectedDiscard(): WorkspacePublicationDiscard.Rejected {
+        rethrowCancellation()
         return WorkspacePublicationDiscard.Rejected(WorkspacePublicationFailure.StorageUnavailable)
     }
 
-    private fun rethrowCancellation(failure: Exception) {
-        if (failure is CancellationException) throw failure
+    private fun Exception.rethrowCancellation() {
+        if (this is CancellationException) throw this
     }
 
     private class Owner
 
     private data class OwnedOpen(
-        val delegate: OpenWorkspacePublication,
+        val publication: OpenWorkspacePublication,
         val owner: Owner,
     ) : OpenCanonicalWorkspacePublication
 
     private data class OwnedPrepared(
-        val delegate: PreparedWorkspacePublication,
+        val publication: PreparedWorkspacePublication,
         val candidate: ReconciledWorkspace,
         val owner: Owner,
     ) : PreparedCanonicalWorkspacePublication

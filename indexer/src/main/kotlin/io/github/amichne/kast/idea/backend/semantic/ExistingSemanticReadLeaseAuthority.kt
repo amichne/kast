@@ -1,7 +1,6 @@
 package io.github.amichne.kast.idea.backend.semantic
 
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -74,30 +73,19 @@ internal class ExistingSemanticReadLeaseAuthority(
                 ),
             )
         }
-        return when (val generation = token.generation.evidenceGeneration()) {
-            is Refinement.Rejected -> {
-                token.close()
-                SemanticReadLeaseAdmission.Rejected(
-                    SemanticReadLeaseFailure.PublishedGenerationUnrepresentable(
-                        token.generation.generation.value,
-                    ),
-                )
-            }
-            is Refinement.Refined ->
-                SemanticReadLeaseAdmission.Admitted(
-                    ExistingOpenSemanticReadLease(
-                        delegate = delegate,
-                        workspaceRootPath = workspaceRootPath,
-                        freshness = freshness,
-                        freshnessRequirement = requirement,
-                        token = token,
-                        evidence = SemanticReadLease(
-                            workspaceRoot = rootAfterAdmission,
-                            generation = generation.value,
-                        ),
-                    ),
-                )
-        }
+        return SemanticReadLeaseAdmission.Admitted(
+            ExistingOpenSemanticReadLease(
+                delegate = delegate,
+                workspaceRootPath = workspaceRootPath,
+                freshness = freshness,
+                freshnessRequirement = requirement,
+                token = token,
+                evidence = SemanticReadLease(
+                    workspaceRoot = rootAfterAdmission,
+                    generation = token.generation.generation,
+                ),
+            ),
+        )
     }
 }
 
@@ -142,21 +130,12 @@ private class ExistingOpenSemanticReadLease(
         }
         return when (val status = delegate.status()) {
             is IdeaIndexSemanticAdmission.Status.Ready ->
-                when (val observed = status.generation.evidenceGeneration()) {
-                    is Refinement.Refined ->
-                        SemanticReadLeaseValidation.Rejected(
-                            SemanticReadLeaseFailure.PublishedGenerationMoved(
-                                expected = evidence.generation,
-                                observed = observed.value,
-                            ),
-                        )
-                    is Refinement.Rejected ->
-                        SemanticReadLeaseValidation.Rejected(
-                            SemanticReadLeaseFailure.PublishedGenerationUnrepresentable(
-                                status.generation.generation.value,
-                            ),
-                        )
-                }
+                SemanticReadLeaseValidation.Rejected(
+                    SemanticReadLeaseFailure.PublishedGenerationMoved(
+                        expected = evidence.generation,
+                        observed = status.generation.generation,
+                    ),
+                )
             is IdeaIndexSemanticAdmission.Status.Pending ->
                 SemanticReadLeaseValidation.Rejected(
                     SemanticReadLeaseFailure.TransitionInProgress,
@@ -184,14 +163,3 @@ private fun SemanticReadFreshnessAuthority.failureOrNull(
     SemanticReadFreshness.TransitionInProgress -> SemanticReadLeaseFailure.TransitionInProgress
     SemanticReadFreshness.WorkspaceBlocked -> SemanticReadLeaseFailure.WorkspaceBlocked
 }
-
-/**
- * Proof transition:
- * `PublishedWorkspaceGenerationManifest -> Refinement<EvidenceGeneration, EvidenceGenerationFailure>`.
- *
- * Preserves the already positive published semantic generation as kernel evidence generation.
- * The kernel failure is closed. Raw generation extraction is permitted only in this legacy
- * adapter.
- */
-private fun io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest.evidenceGeneration() =
-    EvidenceGeneration.parse(generation.value)

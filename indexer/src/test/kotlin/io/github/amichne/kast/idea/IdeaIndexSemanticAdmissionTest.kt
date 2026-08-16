@@ -4,9 +4,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.junit5.TestApplication
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -361,7 +361,7 @@ class IdeaIndexSemanticAdmissionTest {
         } as Project
 
     private fun readyAdmission(
-        generation: PublishedWorkspaceGenerationManifest = publishedGeneration(),
+        generation: PublishedWorkspaceGeneration = publishedGeneration(),
     ): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(
         project = projectStub(),
         inspectProject = { IdeaIndexSemanticAdmission.Inspection.Ready },
@@ -374,12 +374,12 @@ class IdeaIndexSemanticAdmissionTest {
         )
     }
 
-    private fun publishedGeneration(): PublishedWorkspaceGenerationManifest = testPublishedWorkspaceGeneration(
+    private fun publishedGeneration(): PublishedWorkspaceGeneration = testPublishedWorkspaceGeneration(
         generation = WorkspaceSemanticGeneration(1),
         identity = WorkspaceStateIdentity("test-workspace-state"),
     )
 
     private fun durableCommit(
-        generation: PublishedWorkspaceGenerationManifest,
-    ): WorkspaceGenerationCommit = WorkspaceGenerationCommit(generation)
+        generation: PublishedWorkspaceGeneration,
+    ): WorkspacePublicationCommit = testWorkspacePublicationCommit(generation)
 }

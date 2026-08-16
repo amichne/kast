@@ -50,7 +50,6 @@ private val gradlePluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
 
 dependencies {
     implementation(project(":workspace:contract"))
-    implementation(project(":workspace:spi"))
 
     workspaceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false

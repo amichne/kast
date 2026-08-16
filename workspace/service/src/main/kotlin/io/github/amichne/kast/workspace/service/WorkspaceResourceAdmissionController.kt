@@ -11,7 +11,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceResourceDurationNanos
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceInitiationResult
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservation
 import io.github.amichne.kast.workspace.contract.WorkspaceResourcePolicy
-import io.github.amichne.kast.workspace.spi.WorkspaceResourceObservationAuthority
+import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservationAuthority
 import java.lang.System as JavaSystem
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit

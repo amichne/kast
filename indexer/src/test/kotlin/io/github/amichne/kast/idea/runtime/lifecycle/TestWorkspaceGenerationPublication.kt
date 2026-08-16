@@ -4,22 +4,15 @@ import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthori
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
+import io.github.amichne.kast.evidence.contract.GenerationPublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
-import io.github.amichne.kast.evidence.sqlite.IndexStoreWorkspacePublicationCurrency
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
-import io.github.amichne.kast.indexstore.snapshot.PublicationEpochMillis
-import io.github.amichne.kast.indexstore.snapshot.RepositoryOverlayPublication
-import io.github.amichne.kast.indexstore.snapshot.SourceIndexSchemaVersion
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
-import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionOutcome
@@ -31,35 +24,20 @@ import io.github.amichne.kast.change.plan.service.AddDeclarationPlanPersistence
 import io.github.amichne.kast.change.plan.service.PersistAddDeclarationPlanResult
 
 internal class TestWorkspaceGenerationPublication(
-    initial: PublishedWorkspaceGenerationManifest? = null,
+    initial: PublishedWorkspaceGeneration? = null,
     private val onCommit: (WorkspaceStateIdentity) -> Unit = {},
 ) : WorkspaceGenerationPublication {
-    private var published: PublishedWorkspaceGenerationManifest? = initial
+    private var published: PublishedWorkspaceGeneration? = initial
 
     @Synchronized
     override fun current(): PublishedWorkspaceGenerationState = published
-                                                                    ?.detachedPublication()
-                                                                    ?.let(PublishedWorkspaceGenerationState::Published)
-                                                                ?: PublishedWorkspaceGenerationState.Unpublished
-
-    @Synchronized
-    override fun currency(
-        manifest: PublishedWorkspaceGenerationManifest,
-    ): IndexStoreWorkspacePublicationCurrency = if (published == manifest) {
-        IndexStoreWorkspacePublicationCurrency.Current(manifest)
-    } else {
-        IndexStoreWorkspacePublicationCurrency.Moved(
-            manifest,
-            published?.let(
-                io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState::Published,
-            ) ?: io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationState.Unpublished,
-        )
-    }
+        ?.let(PublishedWorkspaceGenerationState::Published)
+        ?: PublishedWorkspaceGenerationState.Unpublished
 
     @Synchronized
     override fun begin(): OpenWorkspacePublication =
         TestOpenWorkspacePublication(
-            generation = published?.generation?.next() ?: WorkspaceSemanticGeneration(1),
+            generation = evidenceGeneration((published?.generation?.value ?: 0L) + 1L),
         )
 
     @Synchronized
@@ -73,18 +51,14 @@ internal class TestWorkspaceGenerationPublication(
     )
 
     @Synchronized
-    override fun commit(prepared: PreparedWorkspacePublication): WorkspacePublicationCommit {
+    override fun commit(prepared: PreparedWorkspacePublication): GenerationPublication.Published {
         val candidate = prepared.testPublication()
         val identity = candidate.identity
         onCommit(identity)
         val generation = testPublishedWorkspaceGeneration(candidate.generation, identity)
         published = generation
-        return TestWorkspacePublicationCommit(WorkspaceGenerationCommit(generation))
+        return GenerationPublication.Published(TestWorkspacePublicationCommit(generation))
     }
-
-    override fun storedCommit(commit: WorkspacePublicationCommit): WorkspaceGenerationCommit =
-        (commit as? TestWorkspacePublicationCommit)?.commit
-        ?: error("Workspace publication commit belongs to another test authority")
 
     override fun discard(open: OpenWorkspacePublication) = Unit
 
@@ -122,16 +96,16 @@ internal class TestWorkspaceSemanticReadAuthority(
 }
 
 internal class TestWorkspaceTransitionRequester(
-    private val published: PublishedWorkspaceGenerationManifest = testPublishedWorkspaceGeneration(),
+    private val published: PublishedWorkspaceGeneration = testPublishedWorkspaceGeneration(),
     private val onReconcile:
     suspend (io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest) ->
-    PublishedWorkspaceGenerationManifest =
+    PublishedWorkspaceGeneration =
         { published },
 ) : WorkspaceTransitionPort {
     override suspend fun reconcile(
         request: io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest,
     ): WorkspaceTransitionOutcome =
-        WorkspaceTransitionOutcome.Published(onReconcile(request).detachedPublication())
+        WorkspaceTransitionOutcome.Published(onReconcile(request))
 
     override suspend fun <T> mutate(
         signal: io.github.amichne.kast.workspace.contract.WorkspaceSignal,
@@ -139,7 +113,7 @@ internal class TestWorkspaceTransitionRequester(
         operation: suspend () -> T,
     ): WorkspaceMutationTransitionOutcome<T> {
         val value = operation()
-        return WorkspaceMutationTransitionOutcome.Completed(value, published.detachedPublication())
+        return WorkspaceMutationTransitionOutcome.Completed(value, published)
     }
 }
 
@@ -153,19 +127,21 @@ internal suspend fun KastIndexerBackend.reconcileSemanticGraphForTest(
 private const val TEST_RECONCILIATION_REVISION = 1L
 
 private class TestOpenWorkspacePublication(
-    val generation: WorkspaceSemanticGeneration,
+    val generation: EvidenceGeneration,
 ) : OpenWorkspacePublication
 
 private class TestPreparedWorkspacePublication(
-    val generation: WorkspaceSemanticGeneration,
+    val generation: EvidenceGeneration,
     val identity: WorkspaceStateIdentity,
 ) : PreparedWorkspacePublication
 
-private data class TestWorkspacePublicationCommit(
-    val commit: WorkspaceGenerationCommit,
-) : WorkspacePublicationCommit {
-    override val publication: PublishedWorkspaceGeneration = commit.manifest.detachedPublication()
-}
+internal data class TestWorkspacePublicationCommit(
+    override val publication: PublishedWorkspaceGeneration,
+) : WorkspacePublicationCommit
+
+internal fun testWorkspacePublicationCommit(
+    publication: PublishedWorkspaceGeneration,
+): WorkspacePublicationCommit = TestWorkspacePublicationCommit(publication)
 
 private fun OpenWorkspacePublication.testPublication(): TestOpenWorkspacePublication =
     this as? TestOpenWorkspacePublication
@@ -178,14 +154,22 @@ private fun PreparedWorkspacePublication.testPublication(): TestPreparedWorkspac
 internal fun testPublishedWorkspaceGeneration(
     generation: WorkspaceSemanticGeneration = WorkspaceSemanticGeneration(1),
     identity: WorkspaceStateIdentity = WorkspaceStateIdentity("test-workspace-state"),
-): PublishedWorkspaceGenerationManifest = PublishedWorkspaceGenerationManifest(
-    generation = generation,
-    identity = PublishedWorkspaceIdentity(identity.value),
-    sourceIndexGeneration = SourceIndexGeneration(generation.value),
-    sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
-    publishedAt = PublicationEpochMillis.fromClock(1),
-    repositoryOverlay = RepositoryOverlayPublication.ABSENT,
+): PublishedWorkspaceGeneration = PublishedWorkspaceGeneration(
+    generation = evidenceGeneration(generation.value),
+    identity = identity,
 )
+
+private fun testPublishedWorkspaceGeneration(
+    generation: EvidenceGeneration,
+    identity: WorkspaceStateIdentity,
+): PublishedWorkspaceGeneration = PublishedWorkspaceGeneration(generation, identity)
+
+private fun evidenceGeneration(raw: Long): EvidenceGeneration = when (
+    val parsed = EvidenceGeneration.parse(raw)
+) {
+    is Refinement.Refined -> parsed.value
+    is Refinement.Rejected -> error(parsed.failure)
+}
 
 internal data object TestAddDeclarationPlanPersistence : AddDeclarationPlanPersistence {
     override fun persist(plan: PlannedAddDeclaration): PersistAddDeclarationPlanResult =

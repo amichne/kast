@@ -5,7 +5,7 @@ import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
-import io.github.amichne.kast.evidence.spi.WorkspacePublicationAuthority
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationAuthority
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
@@ -22,9 +22,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshnessClaims
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailureClassifier
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailureDisposition
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureClassifier
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureDisposition
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionOperations
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
