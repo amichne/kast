@@ -12,7 +12,6 @@ import io.github.amichne.kast.idea.testPublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -28,7 +27,7 @@ class KastIndexerBackendRuntimeStatusTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `runtime status exposes exact admitted generation only while ready`() {
+    fun `displaced runtime status does not manufacture target publication evidence`() {
         val published = testPublishedWorkspaceGeneration(
             generation = WorkspaceSemanticGeneration(7),
             identity = WorkspaceStateIdentity("verified-workspace"),
@@ -49,9 +48,7 @@ class KastIndexerBackendRuntimeStatusTest {
                 val readyStatus = runBlocking { ready.runtimeStatus() }
                 val pendingStatus = runBlocking { pending.runtimeStatus() }
 
-                assertEquals(7, readyStatus.publishedWorkspaceGeneration?.generation)
-                assertEquals("verified-workspace", readyStatus.publishedWorkspaceGeneration?.identity)
-                assertEquals("source-index.db", readyStatus.publishedWorkspaceGeneration?.databaseFile)
+                assertNull(readyStatus.publishedWorkspaceGeneration)
                 assertNull(pendingStatus.publishedWorkspaceGeneration)
             }
         }

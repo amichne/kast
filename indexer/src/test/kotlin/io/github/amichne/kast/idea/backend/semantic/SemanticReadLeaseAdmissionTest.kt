@@ -3,7 +3,7 @@ package io.github.amichne.kast.idea.backend.semantic
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
 import io.github.amichne.kast.idea.testPublishedWorkspaceGeneration
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -179,7 +179,7 @@ class SemanticReadLeaseAdmissionTest {
     }
 
     private class MutableLegacyAuthority(
-        var published: PublishedWorkspaceGenerationManifest,
+        var published: PublishedWorkspaceGeneration,
     ) : WorkspaceSemanticReadAuthority {
         var released: Boolean = false
         var openAttempts: Int = 0
@@ -219,7 +219,7 @@ class SemanticReadLeaseAdmissionTest {
         ),
     )
 
-    private fun generation(value: Long): PublishedWorkspaceGenerationManifest =
+    private fun generation(value: Long): PublishedWorkspaceGeneration =
         testPublishedWorkspaceGeneration(WorkspaceSemanticGeneration(value))
 
     private fun canonicalRoot(value: String): CanonicalWorkspaceRoot =

@@ -82,8 +82,8 @@ not a foreground IDE plugin.
   VFS refresh, Gradle import, or indexing loops for the same transition.
 - Transition publication is typed and owner-bound: begin, reconcile, prepare,
   commit, or discard. A generation becomes visible only after workspace
-  identity, model, source stages, references, graph/blocker, and store
-  publication agree.
+  identity and reconciled coverage are bound into the direct SQLite
+  publication transaction.
 - Observe build inputs before and after refresh/import. If settings, build
   scripts, version catalogs, source roots, compiler SDK/classpath, or linked
   Gradle identity move during the transition, invalidate or retry through the

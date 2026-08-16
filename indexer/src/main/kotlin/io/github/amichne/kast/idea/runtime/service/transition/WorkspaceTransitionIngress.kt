@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.api.contract.RuntimeProgressStage
 import io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiter
 import io.github.amichne.kast.indexer.gradle.settlement.RuntimeProgressAwaitOutcome
@@ -138,7 +137,7 @@ internal class WorkspaceTransitionIngress(
         } catch (failure: IdeaIndexSemanticAdmission.WorkspaceMutationAdmissionException) {
             return WorkspaceMutationTransitionOutcome.Rejected(failure.toTransitionFailure())
         }
-        val waiter = registerAfter(permit.generation.detachedPublication())
+        val waiter = registerAfter(permit.generation)
         waiter.resolutionOrNull()?.let { resolution ->
             permit.close()
             return WorkspaceMutationTransitionOutcome.Rejected(
@@ -242,7 +241,7 @@ internal class WorkspaceTransitionIngress(
     private fun reconcileReadyAdmission(waiter: TransitionWaiter) {
         when (val current = admissionObservation.status()) {
             is IdeaIndexSemanticAdmission.Status.Ready -> {
-                val publication = current.generation.detachedPublication()
+                val publication = current.generation
                 if (
                     PublishedWorkspaceGenerationState.Published(publication) != waiter.baseline &&
                     remove(waiter) == WaiterRemoval.Removed
@@ -290,7 +289,7 @@ internal class WorkspaceTransitionIngress(
 
                 is WaiterResolution.Published -> when (val current = admissionObservation.status()) {
                     is IdeaIndexSemanticAdmission.Status.Ready -> {
-                        val admitted = current.generation.detachedPublication()
+                        val admitted = current.generation
                         if (admitted == resolution.publication) {
                             return WorkspaceTransitionOutcome.Published(resolution.publication)
                         }

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
@@ -163,10 +162,6 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val publication = object : WorkspaceGenerationPublication {
             override fun current() = delegate.current()
 
-            override fun currency(
-                manifest: io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest,
-            ) = delegate.currency(manifest)
-
             override fun begin() = delegate.begin()
 
             override fun prepare(
@@ -179,9 +174,6 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
 
             override fun commit(prepared: io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication) =
                 delegate.commit(prepared)
-
-            override fun storedCommit(commit: io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit) =
-                delegate.storedCommit(commit)
 
             override fun discard(open: io.github.amichne.kast.evidence.contract.OpenWorkspacePublication) {
                 discards.incrementAndGet()

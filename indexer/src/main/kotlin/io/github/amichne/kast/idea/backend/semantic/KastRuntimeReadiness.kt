@@ -12,8 +12,6 @@ import io.github.amichne.kast.api.contract.RuntimeReadinessProgress
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
-import io.github.amichne.kast.idea.backend.semantic.toRuntimeStatus
-import io.github.amichne.kast.indexstore.snapshot.GraphEvidencePublication
 import io.github.amichne.kast.workspace.spi.RuntimeLivenessAdmission
 
 internal sealed interface IdeaModelReadinessObservation {
@@ -122,12 +120,6 @@ internal suspend fun KastIndexerBackend.runtimeStatusEvidence(): RuntimeStatusRe
             model = modelObservation,
         ),
     )
-    val readiness = when (
-        (admission as? IdeaIndexSemanticAdmission.Status.Ready)?.generation?.graphPublication
-    ) {
-        is GraphEvidencePublication.Blocked -> baseReadiness.copy(semanticGraph = RuntimeReadinessLane.Blocked)
-        else -> baseReadiness
-    }
     return RuntimeStatusResponse(
         state = state,
         backendName = caps.backendName,
@@ -144,8 +136,7 @@ internal suspend fun KastIndexerBackend.runtimeStatusEvidence(): RuntimeStatusRe
             else -> "Kast compiler-backed indexer is ready"
         },
         sourceModuleNames = moduleNames,
-        publishedWorkspaceGeneration =
-            (admission as? IdeaIndexSemanticAdmission.Status.Ready)?.generation?.toRuntimeStatus(),
-        readiness = readiness,
+        publishedWorkspaceGeneration = null,
+        readiness = baseReadiness,
     )
 }

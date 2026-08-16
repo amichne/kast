@@ -4,7 +4,7 @@ import io.github.amichne.kast.evidence.contract.GenerationPublication
 import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
-import io.github.amichne.kast.evidence.spi.WorkspacePublicationAuthority
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationAuthority
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
 import io.github.amichne.kast.workspace.contract.TransitionBlocker
 import io.github.amichne.kast.workspace.contract.TransitionBlockerKind
@@ -16,9 +16,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailureClassifier
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionFailureDisposition
-import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureClassifier
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureDisposition
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionOperations
 
 /** Owns the single workspace freshness and READY-publication transition. */
 class WorkspaceTransitionCoordinator(

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import io.github.amichne.kast.workspace.contract.TransitionBlocker
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
@@ -220,7 +219,7 @@ private sealed interface TransitionRequestAdmission {
             observation: TransitionObservation,
         ): TransitionRequestAdmission = when (status) {
             is IdeaIndexSemanticAdmission.Status.Ready -> Permitted.Ready(
-                publication = status.generation.detachedPublication(),
+                publication = status.generation,
                 observedBaseline = TransitionPublicationBaseline.derive(observation),
             )
 

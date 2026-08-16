@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.evidence.sqlite.detachedPublication
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
@@ -24,7 +23,6 @@ import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.workspace.spi.WorkspaceMutationTransitionOutcome
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionOutcome
 import io.github.amichne.kast.workspace.spi.WorkspaceTransitionPort
-import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Base64
@@ -386,7 +384,7 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
             val value = operation().also { operationCompleted = true }
             return WorkspaceMutationTransitionOutcome.Completed(
                 value,
-                testPublishedWorkspaceGeneration().detachedPublication(),
+                testPublishedWorkspaceGeneration(),
             )
         }
     }

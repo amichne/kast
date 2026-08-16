@@ -27,9 +27,11 @@ import io.github.amichne.kast.idea.backend.mutation.liveAddDeclarationIntellijRu
 import io.github.amichne.kast.idea.backend.mutation.verifiedAddDeclarationOperations
 import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexer.gradle.bootstrap.InitialProjectModelAuthority
+import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabase
+import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabaseFailure
+import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabaseOpening
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
-import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.change.VerifiedAddDeclarationBinding
 import java.nio.file.Path
@@ -160,9 +162,19 @@ object IndexerServerRuntime {
         }
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
         sourceIndexStore.ensureSchema()
-        val workspaceGenerationStore = WorkspaceGenerationStore(sourceIndexStore)
+        val publicationDatabase = when (
+            val opened = SqliteWorkspacePublicationDatabase.open(
+                workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
+            )
+        ) {
+            is SqliteWorkspacePublicationDatabaseOpening.Opened -> opened.database
+            is SqliteWorkspacePublicationDatabaseOpening.Rejected -> {
+                sourceIndexStore.close()
+                throw WorkspacePublicationDatabaseUnavailableException(opened.failure)
+            }
+        }
         val workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(
-            workspaceGenerationStore,
+            publicationDatabase,
         )
         when (val overlay = snapshotPreparation.overlaySeed) {
             is WorktreeOverlaySeed.None -> Unit
@@ -380,3 +392,7 @@ object IndexerServerRuntime {
 
 private fun Throwable.indexAdmissionFailureDetail(): String =
     message?.takeIf(String::isNotBlank) ?: this::class.qualifiedName.orEmpty()
+
+private class WorkspacePublicationDatabaseUnavailableException(
+    failure: SqliteWorkspacePublicationDatabaseFailure,
+) : IllegalStateException("Workspace publication database is unavailable: $failure")
