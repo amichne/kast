@@ -14,6 +14,12 @@ transport, or composition.
   processing, bounded collection, deterministic ordering, qualification, and timing.
 - `IntellijSymbolCompilerAdapter.kt` exposes the detached compiler result while retaining all live
   IntelliJ values inside the request call.
+- `IntellijKotlinCompilerSymbolLookup.kt` resolves one exact Kotlin declaration through K2 and
+  detaches its overload-aware compiler identity before the analysis session ends.
+- `IntellijSymbolSelectorResolver.kt` recompiles the retained scope and issues or revalidates the
+  canonical `SymbolSelector` inside one restartable read.
+- `IntellijSymbolExactCompilerAdapter.kt` exposes host-neutral resolve/describe compiler results
+  while retaining every live IntelliJ and K2 value inside the request call.
 - `IntellijDiscoveryProjection.kt` converts only already-in-scope live items into detached
   generation-bound candidates.
 - `IntellijExactSelectorResolver.kt` admits the current root/generation, recompiles the discovery
@@ -59,6 +65,10 @@ transport, or composition.
 - Exact resolution must consume a batch-owned selection. Missing files/elements, scope rejection,
   multiple matching PSI ancestors, unsupported declarations, root/generation drift, and changed
   native evidence are distinct closed failures; never guess among collisions.
+- Canonical exact selectors require K2 identity. PSI names, qualified names, offsets, runtime
+  implementation classes, and navigation items cannot issue `SymbolSelector` authority.
+- Overload identity includes compiler callable ownership, receiver, context receivers, parameter
+  types, and type-parameter arity; failure to detach that identity is a closed rejection.
 - Relation search receives only the selector's compiled scope. Use `ReferencesSearch` for exact
   resolved references, `DefinitionsScopedSearch` with deep traversal disabled for native
   definitions, and bounded PSI reference walking for outgoing targets; never widen scope or accept
