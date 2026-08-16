@@ -3,7 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.net.URISyntaxException
-import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 private const val RUNTIME_DIRECTORY_ENVIRONMENT = "KAST_RUNTIME_DIRECTORY"
@@ -22,7 +22,12 @@ class InstalledKastCliComposition : KastCliComposition {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> error("installed indexer is unavailable: ${admitted.failure}")
         }
-        val runtimeDirectory = InstalledRuntimeDirectory.prepare()
+        val runtimeDirectory = when (val admitted = InstalledRuntimeDirectory.admit()) {
+            is InstalledRuntimeDirectoryAdmission.Admitted -> admitted.directory
+            is InstalledRuntimeDirectoryAdmission.Rejected -> error(
+                "installed runtime directory is unavailable: ${admitted.failure}",
+            )
+        }
         return KastCli(
             projections,
             FilesystemCanonicalRootDiscovery,
@@ -68,32 +73,48 @@ private class InstalledKastProduct private constructor(
     }
 }
 
-/** An absolute runtime directory created before exact-root socket derivation. */
+private enum class InstalledRuntimeDirectoryFailure {
+    INVALID_PATH,
+}
+
+private sealed interface InstalledRuntimeDirectoryAdmission {
+    data class Admitted(
+        val directory: InstalledRuntimeDirectory,
+    ) : InstalledRuntimeDirectoryAdmission
+
+    data class Rejected(
+        val failure: InstalledRuntimeDirectoryFailure,
+    ) : InstalledRuntimeDirectoryAdmission
+}
+
+/** An absolute normalized runtime path admitted before exact-root socket derivation. */
 private class InstalledRuntimeDirectory private constructor(
     val path: Path,
 ) {
     companion object {
         /**
-         * Proof transition: `KAST_RUNTIME_DIRECTORY | java.io.tmpdir -> InstalledRuntimeDirectory`.
+         * Proof transition: `KAST_RUNTIME_DIRECTORY | java.io.tmpdir ->
+         * InstalledRuntimeDirectoryAdmission`.
          *
-         * Establishes an absolute, normalized, physically available directory owned by the CLI
-         * runtime boundary. Filesystem or malformed-path failures reject provider construction.
-         * Raw environment and system-property text are extracted only here.
+         * Admitted establishes an absolute normalized path for exact-root socket derivation without
+         * granting or performing a filesystem write. [InstalledRuntimeDirectoryFailure] closes a
+         * malformed path. Raw environment and system-property text are extracted only here; the
+         * indexer host owns physical directory admission and creation.
          */
-        fun prepare(): InstalledRuntimeDirectory {
-            val configured = System.getenv(RUNTIME_DIRECTORY_ENVIRONMENT)
-                ?.takeIf(String::isNotBlank)
-                ?.let(Path::of)
-                ?: Path.of(System.getProperty("java.io.tmpdir")).resolve("kast-runtime")
-            val normalized = configured.toAbsolutePath().normalize()
-            val physical = try {
-                Files.createDirectories(normalized).toRealPath()
-            } catch (failure: IOException) {
-                throw IllegalStateException("installed runtime directory is unavailable", failure)
-            } catch (failure: SecurityException) {
-                throw IllegalStateException("installed runtime directory is unavailable", failure)
+        fun admit(): InstalledRuntimeDirectoryAdmission {
+            val configured = try {
+                System.getenv(RUNTIME_DIRECTORY_ENVIRONMENT)
+                    ?.takeIf(String::isNotBlank)
+                    ?.let(Path::of)
+                    ?: Path.of(System.getProperty("java.io.tmpdir")).resolve("kast-runtime")
+            } catch (_: InvalidPathException) {
+                return InstalledRuntimeDirectoryAdmission.Rejected(
+                    InstalledRuntimeDirectoryFailure.INVALID_PATH,
+                )
             }
-            return InstalledRuntimeDirectory(physical)
+            return InstalledRuntimeDirectoryAdmission.Admitted(
+                InstalledRuntimeDirectory(configured.toAbsolutePath().normalize()),
+            )
         }
     }
 }

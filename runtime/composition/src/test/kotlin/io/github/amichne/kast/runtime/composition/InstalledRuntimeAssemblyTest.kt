@@ -4,7 +4,6 @@ import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
-import io.github.amichne.kast.change.verify.ChangeVerificationObserver
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
@@ -19,8 +18,6 @@ import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelBoundary
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
-import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionFailure
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
@@ -68,9 +65,6 @@ class InstalledRuntimeAssemblyTest {
                 workspaceModel = { read },
                 semantic = unusedSemanticPorts(),
                 change = unusedChangePhysicalPorts(),
-                changeAdmission = {
-                    ChangePlanAdmission.Rejected(ChangePlanAdmissionFailure.INTENT_REJECTED)
-                },
             ),
         )
 
@@ -123,7 +117,7 @@ class InstalledRuntimeAssemblyTest {
             sourceWriter = AddDeclarationSourceWriter { _, _ -> error("not executed") },
             sourceRollback = AddDeclarationSourceRollback { _, _ -> error("not executed") },
             recoveryRollback = AddDeclarationRollbackPort { error("not executed") },
-            verificationObserver = ChangeVerificationObserver { error("not executed") },
+            intentCompiler = { _, _ -> error("not executed") },
         )
 }
 

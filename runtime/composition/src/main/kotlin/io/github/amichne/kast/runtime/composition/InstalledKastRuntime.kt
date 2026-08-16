@@ -177,6 +177,7 @@ enum class InstalledRuntimePersistenceFailure {
 
 /** Finite initial exact-root publication failures. */
 enum class InstalledRuntimeWorkspaceFailure {
+    INTELLIJ_BOOTSTRAP_FAILED,
     NO_PUBLICATION,
     INVALIDATED,
     BLOCKED,
@@ -210,6 +211,23 @@ internal fun interface InstalledRuntimeAssembler {
 
 /** Exact-root admission boundary used before composition-owned production assembly. */
 object InstalledKastRuntime {
+    /**
+     * Proof transition: `(Path, Path) -> InstalledKastRuntimeConstruction`.
+     *
+     * Establishes exact physical workspace/state admission followed by the sole production
+     * IntelliJ/K2 assembly. [InstalledKastRuntimeFailure] closes every admission, bootstrap,
+     * persistence, publication, handler, and composition failure. Raw paths leave only for those
+     * named outer boundaries; callers receive only dispatch authority.
+     */
+    fun create(
+        workspaceRoot: Path,
+        stateDirectory: Path,
+    ): InstalledKastRuntimeConstruction = create(
+        workspaceRoot,
+        stateDirectory,
+        productionInstalledRuntimeAssembler(),
+    )
+
     /**
      * Proof transition: `(Path, Path, InstalledRuntimeAssembler) ->
      * InstalledKastRuntimeConstruction`.
