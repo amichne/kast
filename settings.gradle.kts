@@ -18,41 +18,6 @@ dependencyResolutionManagement {
     }
 }
 
-val migrationProjects = listOf(
-    ":analysis-api",
-    ":analysis-server",
-    ":change:contract",
-    ":change:apply:intellij",
-    ":change:apply:service",
-    ":change:apply:spi",
-    ":change:journal:contract",
-    ":change:journal:sqlite",
-    ":change:plan:intellij",
-    ":change:plan:service",
-    ":change:plan:spi",
-    ":change:recovery:contract",
-    ":change:recovery:filesystem",
-    ":change:recovery:service",
-    ":change:recovery:spi",
-    ":change:verify:intellij",
-    ":change:verify:service",
-    ":change:verify:spi",
-    ":evidence:contract",
-    ":evidence:spi",
-    ":evidence:sqlite",
-    ":index-store",
-    ":indexer",
-    ":kernel",
-    ":protocol:continuation",
-    ":protocol:registry",
-    ":symbol:contract",
-    ":symbol:intellij",
-    ":workspace:contract",
-    ":workspace:intellij",
-    ":workspace:service",
-    ":workspace:spi",
-)
-
 val cleanSlateProjects = listOf(
     ":kernel",
     ":protocol:contract",
@@ -86,8 +51,4 @@ val cleanSlateProjects = listOf(
     ":indexer",
 )
 
-val materializedCleanSlateProjects = cleanSlateProjects.filter { projectPath ->
-    file(projectPath.removePrefix(":").replace(':', '/')).isDirectory
-}
-
-include(*(migrationProjects + materializedCleanSlateProjects).distinct().toTypedArray())
+include(*cleanSlateProjects.toTypedArray())

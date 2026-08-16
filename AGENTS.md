@@ -156,42 +156,41 @@ repair Kast. Resolve the typed indexer blocker instead.
 ## Gradle topology
 
 `settings.gradle.kts` is the project-membership authority. The main build has
-32 subprojects across eight typed families and one included build:
+exactly 30 target subprojects and one included build:
 
 | Project or family | Broad owner | Dependency direction | Local guide |
 | --- | --- | --- | --- |
 | `:kernel` | Host-neutral refinement and generation primitives | Leaf project | `kernel/AGENTS.md` |
-| `:analysis-api`, `:index-store`, `:analysis-server` | Legacy public contracts, stored index evidence, and JSON-RPC orchestration | API then store then server | Each project root |
-| `:protocol:{registry,continuation}` | Operation registry and held continuation protocol | Inward to kernel and workspace contract | Each project root |
-| `:workspace:{contract,spi,intellij,service}` | Workspace identity, effect ports, host adapters, and transition coordination | Contract then SPI then adapters/services | Each project root |
-| `:symbol:{contract,intellij}` | Native symbol contracts and IntelliJ/K2 execution | Contract then adapter | Each project root |
-| `:evidence:{contract,spi,sqlite}` | Publication contracts, effect ports, and SQLite/index-store implementation | Contract then SPI then implementation | Each project root |
-| `:change:contract` and 15 `:change:{plan,apply,recovery,verify}:*` projects | Typed add-declaration planning, application, recovery, verification, and journal stages | Contract/SPI inward; host and storage adapters outward | Each project root |
-| `:indexer` | Isolated IntelliJ/K2 runtime and backend composition | Consumes the runtime-facing module families above | `indexer/AGENTS.md` |
+| `:protocol:{contract,registry,wire}` | Eleven canonical operations, typed metadata, and generated wire bindings | Contract then registry/wire | Each project root |
+| `:workspace:{contract,service,intellij}` | Published-workspace identity, transition coordination, and IntelliJ/Gradle effects | Contract then service/adapter | Each project root |
+| `:symbol:{contract,service,intellij}` | Discovery/exact-symbol contracts, admission, and IntelliJ/K2 execution | Contract then service/adapter | Each project root |
+| `:relation:{contract,service,intellij}` | One-hop semantic relation evidence and bounded K2 execution | Contract then service/adapter | Each project root |
+| `:traversal:{contract,service}` | Deterministic bounded traversal contracts and pure workflow | Contract then service | Each project root |
+| `:diagnostic:{contract,service,intellij}` | Generation-bound diagnostic evidence and compiler projection | Contract then service/adapter | Each project root |
+| `:change:{contract,plan,apply,verify,recovery,intellij}` | Closed change intents and proof-preserving mutation stages | Contract inward; services and sole write adapter outward | Each project root |
+| `:evidence:{contract,sqlite}` | Publication/recovery contracts and sole physical persistence | Contract then SQLite adapter | Each project root |
+| `:runtime:{server,composition}` | Contract-only dispatch and the sole complete implementation graph | Server inward; composition depends on all target implementations | Each project root |
+| `:cli` | Command parsing, indexer admission, wire transport, and result projection | Inward to kernel/protocol only | `cli/AGENTS.md` |
+| `:indexer` | Isolated host for one already-constructed runtime composition | Depends only on `:runtime:composition` | `indexer/AGENTS.md` |
 | included `build-logic` | `kast.*` conventions and reusable Gradle task types | Version catalog; no product project | `build-logic/AGENTS.md` |
-
-`analysis-api/src/testFixtures` is an independently consumed Gradle source-set
-variant with its own nearer `AGENTS.md`.
 
 ## Dependency direction
 
 Keep dependencies pointed toward host-neutral evidence:
 
 ```text
-indexer
-  +-> analysis-server -> index-store -> analysis-api
-  +-> change adapters/services -> change SPIs/contracts
-  +-> symbol:intellij -> symbol:contract
-  +-> workspace intellij/service -> workspace SPI/contract
-  +-> evidence:sqlite -> evidence:spi -> evidence:contract
-
-protocol continuation/registry -> workspace:contract and/or kernel
-workspace, symbol, evidence, and change contracts -> kernel
+indexer -> runtime:composition
+runtime:composition -> runtime:server + target services + target adapters
+runtime:server -> protocol:{contract,registry,wire}
+services -> their contracts and narrower contracts
+IntelliJ/SQLite adapters -> their contracts
+cli -> kernel + protocol:{contract,registry,wire}
+workspace, symbol, relation, traversal, diagnostic, change, and evidence contracts -> kernel
 ```
 
 `build-logic` configures the graph but does not become a product dependency.
-The repository root orchestrates Gradle verification and portable indexer
-packaging; it must not become a shared domain-code module.
+The repository root orchestrates Gradle verification; it must not become a
+shared domain-code module.
 
 ## Progressive instruction disclosure
 
