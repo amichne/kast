@@ -22,6 +22,7 @@ private const val STARTUP_POLL_MILLIS = 100L
 enum class InstalledIntellijWorkspaceFailure {
     PROJECT_OPEN_FAILED,
     STARTUP_FAILED,
+    GRADLE_JVM_UNAVAILABLE,
     GRADLE_IMPORT_FAILED,
     GRADLE_IMPORT_TIMED_OUT,
     INDEXING_INTERRUPTED,
@@ -55,6 +56,15 @@ object InstalledIntellijWorkspace {
      */
     fun open(workspaceRoot: Path): InstalledIntellijWorkspaceOpening {
         GradleSystemSettings.getInstance().isDownloadSources = false
+        val gradleJvm = when (val admission = InstalledGradleJvm.admit(
+            System.getProperty("java.home")
+                ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE),
+        )) {
+            is InstalledGradleJvmAdmission.Admitted -> admission.jvm
+            is InstalledGradleJvmAdmission.Rejected -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
+            )
+        }
         val project = try {
             ProjectManagerEx.getInstanceEx().openProject(workspaceRoot, openProjectTask())
         } catch (_: RuntimeException) {
@@ -75,11 +85,17 @@ object InstalledIntellijWorkspace {
         val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
             .withCallback(imported)
         try {
-            if (isLinked(project, workspaceRoot)) {
-                ExternalSystemUtil.refreshProject(workspaceRoot.toString(), specification)
-            } else {
-                val settings = GradleProjectSettings(workspaceRoot.toString())
-                ExternalSystemUtil.linkExternalProject(settings, specification)
+            when (val link = linkedProjectSettings(project, workspaceRoot)) {
+                is GradleLinkState.Linked -> {
+                    link.settings.gradleJvm = gradleJvm.projectSettingsSelector()
+                    ExternalSystemUtil.refreshProject(workspaceRoot.toString(), specification)
+                }
+                GradleLinkState.Unlinked -> {
+                    val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
+                        this.gradleJvm = gradleJvm.projectSettingsSelector()
+                    }
+                    ExternalSystemUtil.linkExternalProject(settings, specification)
+                }
             }
         } catch (_: RuntimeException) {
             return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
@@ -133,11 +149,26 @@ object InstalledIntellijWorkspace {
         return FutureCompletion.COMPLETED
     }
 
-    private fun isLinked(
+    /**
+     * Proof transition: `Project + Path -> GradleLinkState`.
+     *
+     * Establishes whether the exact normalized root already has one linked Gradle settings
+     * authority. [GradleLinkState.Unlinked] is the closed absent state. Raw platform settings
+     * remain inside the Gradle import boundary.
+     */
+    private fun linkedProjectSettings(
         project: com.intellij.openapi.project.Project,
         workspaceRoot: Path,
-    ): Boolean = GradleSettings.getInstance(project).linkedProjectsSettings.any { settings ->
-        settings.externalProjectPath?.let(Path::of)?.toAbsolutePath()?.normalize() == workspaceRoot
+    ): GradleLinkState {
+        GradleSettings.getInstance(project).linkedProjectsSettings.forEach { settings ->
+            if (
+                settings.externalProjectPath?.let(Path::of)?.toAbsolutePath()?.normalize() ==
+                workspaceRoot
+            ) {
+                return GradleLinkState.Linked(settings)
+            }
+        }
+        return GradleLinkState.Unlinked
     }
 
     private fun await(future: CompletableFuture<Void>): FutureCompletion = try {
@@ -151,6 +182,14 @@ object InstalledIntellijWorkspace {
     } catch (_: ExecutionException) {
         FutureCompletion.FAILED
     }
+}
+
+private sealed interface GradleLinkState {
+    data class Linked(
+        val settings: GradleProjectSettings,
+    ) : GradleLinkState
+
+    data object Unlinked : GradleLinkState
 }
 
 private enum class FutureCompletion {
