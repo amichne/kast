@@ -134,8 +134,27 @@ fn find_indexer_descriptors(
     descriptor_directory: &Path,
     workspace_root: &Path,
 ) -> Result<Vec<RegisteredDescriptor>> {
-    let descriptors = read_descriptors(descriptor_directory)?;
     let normalized = config::normalize(workspace_root.to_path_buf());
+    let path = descriptor_directory.join("daemons.json");
+    let descriptors = read_descriptor_elements(&path)?
+        .into_iter()
+        .filter(|element| {
+            element.get("backendName").and_then(Value::as_str)
+                == Some(BackendName::Indexer.canonical())
+                || element
+                    .get("workspaceRoot")
+                    .and_then(Value::as_str)
+                    .is_some_and(|root| config::normalize(PathBuf::from(root)) == normalized)
+        })
+        .map(|element| {
+            serde_json::from_value::<ServerInstanceDescriptor>(element).map_err(|error| {
+                CliError::new(
+                    "RUNTIME_DESCRIPTOR_REGISTRY_INVALID",
+                    format!("A Kast indexer descriptor is invalid: {error}"),
+                )
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
     Ok(descriptors
         .into_iter()
         .filter(|descriptor| descriptor.backend_name == BackendName::Indexer.canonical())

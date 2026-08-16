@@ -94,8 +94,12 @@ fn fallback_socket_path(workspace_root: &Path) -> PathBuf {
     env::temp_dir().join(format!("kast-indexer-{}.sock", workspace_hash(workspace_root)))
 }
 
-fn default_socket_path_for_config(config: &KastConfig, workspace_root: &Path) -> PathBuf {
+pub(crate) fn default_socket_path(config: &KastConfig, workspace_root: &Path) -> PathBuf {
     default_socket_path_for_directory(&config.paths.socket_dir, workspace_root)
+}
+
+fn default_socket_path_for_config(config: &KastConfig, workspace_root: &Path) -> PathBuf {
+    default_socket_path(config, workspace_root)
 }
 
 fn default_socket_path_for_directory(socket_dir: &Path, workspace_root: &Path) -> PathBuf {
