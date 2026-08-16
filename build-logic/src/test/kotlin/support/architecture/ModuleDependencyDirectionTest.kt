@@ -7,6 +7,24 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class ModuleDependencyDirectionTest {
     @Test
+    fun `workspace publication service admits only inward publication contracts and transition ports`() {
+        val module = canonical().modules.getValue(ModuleId.WORKSPACE_SERVICE)
+
+        assertEquals(ModuleLifecycle.ACTIVE, module.lifecycle)
+        assertEquals(ModuleRole.SERVICE, module.role)
+        assertEquals(
+            setOf(
+                ModuleId.EVIDENCE_CONTRACT,
+                ModuleId.EVIDENCE_SPI,
+                ModuleId.WORKSPACE_CONTRACT,
+                ModuleId.WORKSPACE_SPI,
+            ),
+            module.allowedProjectDependencies,
+        )
+        assertEquals(emptySet<ForbiddenEffect>(), module.allowedEffects)
+    }
+
+    @Test
     fun `materialized CLI is active inward only process boundary`() {
         val architecture = canonical()
         val module = architecture.modules.getValue(ModuleId.CLI)

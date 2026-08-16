@@ -136,7 +136,12 @@ class KastArchitecturePolicyTest {
                                   ),
             ":workspace:service" to (
                 ModuleRole.SERVICE to
-                    setOf(":evidence:spi", ":workspace:contract", ":workspace:spi")
+                    setOf(
+                        ":evidence:contract",
+                        ":evidence:spi",
+                        ":workspace:contract",
+                        ":workspace:spi",
+                    )
                                     ),
             ":workspace:intellij" to (
                 ModuleRole.WORKSPACE_ADAPTER to setOf(":workspace:contract", ":workspace:spi")
