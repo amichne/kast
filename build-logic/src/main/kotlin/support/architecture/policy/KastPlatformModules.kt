@@ -169,6 +169,12 @@ internal object KastPlatformModules {
             ModuleId.CHANGE_CONTRACT,
         ),
         active(
+            ModuleId.CHANGE_RECOVERY,
+            ModuleRole.SERVICE,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.EVIDENCE_CONTRACT,
+        ),
+        active(
             ModuleId.CHANGE_PLAN_SPI,
             ModuleRole.SPI,
             ModuleId.CHANGE_CONTRACT,
@@ -385,7 +391,6 @@ internal object KastPlatformModules {
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
         ModuleId.CHANGE_APPLY,
         ModuleId.CHANGE_VERIFY,
-        ModuleId.CHANGE_RECOVERY,
         ModuleId.CHANGE_INTELLIJ,
     )
 }

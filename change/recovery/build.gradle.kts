@@ -10,6 +10,6 @@ base {
 }
 
 dependencies {
-    api(project(":change:contract"))
-    api(project(":evidence:contract"))
+    implementation(project(":change:contract"))
+    implementation(project(":evidence:contract"))
 }
