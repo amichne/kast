@@ -1,3 +1,0 @@
-# normalized-toplevel	normalized-common-dir	normalized-git-dir	workspace-relative-path
-/workspace/repo	/workspace/repo/.git	/workspace/repo/.git	b996db19eb104a1e0ba213eaabd58708e7accb972b949a08c6a27f0e279aa00f
-/workspace/feature	/workspace/main/.git	/workspace/main/.git/worktrees/feature	dcae69b3de7927ba35db86b89f32b3f0d5408319cf78b93c4517afcb6c5294ed
