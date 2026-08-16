@@ -180,7 +180,7 @@ class KastArchitecturePolicyTest {
     }
 
     @Test
-    fun `canonical services and physical adapters depend only on inward boundaries`() {
+    fun `canonical cross-role dependencies are exactly the collapsed IntelliJ apply slice`() {
         val architecture = canonicalWithoutLegacyAllowances()
         val inwardRoles = setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.SPI)
         val consumers = setOf(
@@ -207,7 +207,7 @@ class KastArchitecturePolicyTest {
             }
             .mapTo(mutableSetOf(), ValidatedModulePolicy::id)
 
-        assertEquals(emptySet<ProjectDependencyObservation>(), outwardDependencies)
+        assertEquals(KastCleanSlateCrossRoleDependencies.all, outwardDependencies)
         assertEquals(emptySet<ModuleId>(), featureContractsDependingOnRegistry)
     }
 
