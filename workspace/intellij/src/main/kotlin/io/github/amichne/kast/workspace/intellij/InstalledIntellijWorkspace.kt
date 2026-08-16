@@ -27,6 +27,12 @@ enum class InstalledIntellijWorkspaceFailure {
     GRADLE_IMPORT_TIMED_OUT,
     INDEXING_INTERRUPTED,
     MODEL_UNAVAILABLE,
+    MODEL_ROOT_UNAVAILABLE,
+    MODEL_EXTERNAL_PROJECT_UNAVAILABLE,
+    MODEL_EXTERNAL_PROJECT_INCOMPLETE,
+    MODEL_SOURCE_ROOTS_UNAVAILABLE,
+    MODEL_SOURCE_STATE_UNAVAILABLE,
+    MODEL_IDENTITIES_UNAVAILABLE,
 }
 
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
@@ -59,6 +65,7 @@ object InstalledIntellijWorkspace {
         val gradleJvm = when (val admission = InstalledGradleJvm.admit(
             System.getProperty("java.home")
                 ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE),
+            System.getenv("JAVA_HOME"),
         )) {
             is InstalledGradleJvmAdmission.Admitted -> admission.jvm
             is InstalledGradleJvmAdmission.Rejected -> return rejected(
@@ -117,8 +124,12 @@ object InstalledIntellijWorkspace {
         } catch (_: RuntimeException) {
             return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
         }
-        val capture = captureInstalledGradleModel(project, workspaceRoot)
-            ?: return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
+        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
+                captured.failure.workspaceFailure(),
+            )
+        }
         return InstalledIntellijWorkspaceOpening.Opened(
             InstalledIntellijWorkspaceModel(capture),
         )
@@ -183,6 +194,22 @@ object InstalledIntellijWorkspace {
         FutureCompletion.FAILED
     }
 }
+
+private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
+    when (this) {
+        InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.MODEL_ROOT_UNAVAILABLE
+        InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.MODEL_EXTERNAL_PROJECT_UNAVAILABLE
+        InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_INCOMPLETE ->
+            InstalledIntellijWorkspaceFailure.MODEL_EXTERNAL_PROJECT_INCOMPLETE
+        InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.MODEL_SOURCE_ROOTS_UNAVAILABLE
+        InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.MODEL_SOURCE_STATE_UNAVAILABLE
+        InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.MODEL_IDENTITIES_UNAVAILABLE
+    }
 
 private sealed interface GradleLinkState {
     data class Linked(
