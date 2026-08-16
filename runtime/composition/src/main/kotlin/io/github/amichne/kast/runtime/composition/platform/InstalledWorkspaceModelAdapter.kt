@@ -83,7 +83,9 @@ internal class InstalledGradleWorkspaceModel private constructor(
 
 internal sealed interface InstalledGradleModelRead {
     data class Captured(val model: InstalledGradleWorkspaceModel) : InstalledGradleModelRead
-    data object Unavailable : InstalledGradleModelRead
+    data class Unavailable(
+        val failure: InstalledGradleModelFailure,
+    ) : InstalledGradleModelRead
 }
 
 internal fun interface InstalledGradleModelReadOperations {
@@ -103,7 +105,7 @@ internal class InstalledWorkspaceModelAdapter(
         } else {
             GradleWorkspaceModelCapture.Unavailable
         }
-        InstalledGradleModelRead.Unavailable -> GradleWorkspaceModelCapture.Unavailable
+        is InstalledGradleModelRead.Unavailable -> GradleWorkspaceModelCapture.Unavailable
     }
 
     override fun reconcile(candidate: WorkspaceCandidate): IntellijWorkspaceReconciliationResult =
@@ -118,7 +120,7 @@ internal class InstalledWorkspaceModelAdapter(
             } else {
                 IntellijWorkspaceReconciliationResult.Unavailable
             }
-            InstalledGradleModelRead.Unavailable ->
+            is InstalledGradleModelRead.Unavailable ->
                 IntellijWorkspaceReconciliationResult.Unavailable
         }
 
@@ -129,7 +131,7 @@ internal class InstalledWorkspaceModelAdapter(
             } else {
                 unavailableScope(lease.workspaceRoot)
             }
-            InstalledGradleModelRead.Unavailable -> unavailableScope(lease.workspaceRoot)
+            is InstalledGradleModelRead.Unavailable -> unavailableScope(lease.workspaceRoot)
         }
 }
 

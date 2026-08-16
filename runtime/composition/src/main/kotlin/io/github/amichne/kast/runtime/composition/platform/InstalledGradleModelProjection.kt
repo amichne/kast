@@ -8,6 +8,7 @@ import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
@@ -22,6 +23,22 @@ internal data class InstalledGradleModelBoundary(
     val sourceRoots: List<WorkspaceSourceRootBoundary>,
     val identityFields: List<String>,
 )
+
+sealed interface InstalledGradleModelFailure {
+    data object IncompleteBoundary : InstalledGradleModelFailure
+
+    data class ScopeRejected(
+        val failures: Set<WorkspaceSearchScopeModelFailure>,
+    ) : InstalledGradleModelFailure
+
+    data object SourceRootOutsideWorkspace : InstalledGradleModelFailure
+
+    data object SourceRootRejected : InstalledGradleModelFailure
+
+    data object StateIdentityRejected : InstalledGradleModelFailure
+
+    data object ModelRejected : InstalledGradleModelFailure
+}
 
 /**
  * Proof transition: `InstalledGradleModelBoundary -> InstalledGradleModelRead`.
@@ -39,7 +56,9 @@ internal fun projectInstalledGradleModel(
         boundary.identityFields.isEmpty() ||
         boundary.identityFields.any(String::isBlank)
     ) {
-        return InstalledGradleModelRead.Unavailable
+        return InstalledGradleModelRead.Unavailable(
+            InstalledGradleModelFailure.IncompleteBoundary,
+        )
     }
     val scope = when (val compiled = WorkspaceSearchScopeModel.compile(
         boundary.root,
@@ -48,21 +67,29 @@ internal fun projectInstalledGradleModel(
     )) {
         is WorkspaceSearchScopeModelCompilation.Compiled -> compiled
         is WorkspaceSearchScopeModelCompilation.Rejected ->
-            return InstalledGradleModelRead.Unavailable
+            return InstalledGradleModelRead.Unavailable(
+                InstalledGradleModelFailure.ScopeRejected(compiled.failures),
+            )
     }
     val roots = boundary.sourceRoots.map { sourceRoot ->
         val evidence = sourceRoot.publicationEvidence(boundary.root)
-            ?: return InstalledGradleModelRead.Unavailable
+            ?: return InstalledGradleModelRead.Unavailable(
+                InstalledGradleModelFailure.SourceRootOutsideWorkspace,
+            )
         when (val admitted = SourceRoot.admit(evidence)) {
             is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return InstalledGradleModelRead.Unavailable
+            is Refinement.Rejected -> return InstalledGradleModelRead.Unavailable(
+                InstalledGradleModelFailure.SourceRootRejected,
+            )
         }
     }.distinct()
     val state = when (val parsed = WorkspaceStateIdentity.parse(
         modelIdentity(boundary),
     )) {
         is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return InstalledGradleModelRead.Unavailable
+        is Refinement.Rejected -> return InstalledGradleModelRead.Unavailable(
+            InstalledGradleModelFailure.StateIdentityRejected,
+        )
     }
     return when (val model = InstalledGradleWorkspaceModel.admit(
         boundary.root,
@@ -71,7 +98,9 @@ internal fun projectInstalledGradleModel(
         scope,
     )) {
         is Refinement.Refined -> InstalledGradleModelRead.Captured(model.value)
-        is Refinement.Rejected -> InstalledGradleModelRead.Unavailable
+        is Refinement.Rejected -> InstalledGradleModelRead.Unavailable(
+            InstalledGradleModelFailure.ModelRejected,
+        )
     }
 }
 

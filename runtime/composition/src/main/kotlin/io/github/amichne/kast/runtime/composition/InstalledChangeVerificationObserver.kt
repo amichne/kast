@@ -29,17 +29,17 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
-import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -77,11 +77,15 @@ internal class InstalledChangeVerificationObserver(
             published,
             plan.target.file.path.value,
             plan.target.selector.name.value,
+            plan.target.selector.scope,
             budgets,
         ) ?: return rejected()
-        if (!original.sameDeclarationAcrossGeneration(plan.target.selector)) return rejected()
+        when (original.matchDeclarationAcrossGeneration(plan.target.selector)) {
+            InstalledPriorDeclarationMatch.Matched -> Unit
+            InstalledPriorDeclarationMatch.MovedOrChanged -> return rejected()
+        }
         val relations = plan.evidence.relations.map { planned ->
-            val compilation = runImmediate {
+            val compilation = when (val read = awaitCompilerRead {
                 semantic.relation.read(
                     RelationRequest.start(
                         original,
@@ -89,7 +93,11 @@ internal class InstalledChangeVerificationObserver(
                         budgets.relation,
                     ),
                 )
-            } as? RelationCompilation.Complete ?: return rejected()
+            }) {
+                is InstalledCompilerRead.Completed ->
+                    read.value as? RelationCompilation.Complete ?: return rejected()
+                is InstalledCompilerRead.Rejected -> return rejected()
+            }
             RelationReadResult.Complete(compilation.batch, compilation.coverage)
         }
         val scope = when (val admitted = DiagnosticScope.fromCanonicalPaths(
@@ -99,8 +107,13 @@ internal class InstalledChangeVerificationObserver(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejected()
         }
-        val diagnosticCompilation = runImmediate { semantic.diagnostic.check(scope) }
-            as? DiagnosticCompilation.Complete ?: return rejected()
+        val diagnosticCompilation = when (val read = awaitCompilerRead {
+            semantic.diagnostic.check(scope)
+        }) {
+            is InstalledCompilerRead.Completed ->
+                read.value as? DiagnosticCompilation.Complete ?: return rejected()
+            is InstalledCompilerRead.Rejected -> return rejected()
+        }
         val diagnostic = DiagnosticCheckResult.Complete(
             diagnosticCompilation.batch,
             diagnosticCompilation.coverage,
@@ -109,6 +122,7 @@ internal class InstalledChangeVerificationObserver(
             published,
             plan.target.file.path.value,
             plan.expectedSemanticDelta.declarationName,
+            plan.target.selector.scope,
             budgets,
         ) ?: return rejected()
         val identity = added.observedIdentity() ?: return rejected()
@@ -136,6 +150,7 @@ internal class InstalledChangeVerificationObserver(
         published: PublishedWorkspace,
         source: String,
         name: String,
+        scope: SymbolSearchScope,
         budgets: InstalledSemanticBudgets,
     ): SymbolSelector? {
         val file = when (val admitted = CanonicalWorkspaceFilePath.fromCanonicalPath(
@@ -152,25 +167,27 @@ internal class InstalledChangeVerificationObserver(
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(
                 published.readLease,
-                SymbolSearchScope.ExactFile(
-                    file,
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.EXCLUDE,
-                ),
+                scope,
             ),
             SymbolDiscoveryKind.SYMBOL,
             pattern,
             budgets.discovery,
             SymbolDiscoveryMatch.EXACT_NAME,
         )
-        val compilation = runImmediate { semantic.symbolDiscovery.compile(request) }
-            as? SymbolCompilation.Compiled ?: return null
-        val batch = (compilation.outcome as? SymbolDiscoveryOutcome.Complete)?.batch ?: return null
+        val compilation = when (val read = awaitCompilerRead {
+            semantic.symbolDiscovery.compile(request)
+        }) {
+            is InstalledCompilerRead.Completed ->
+                read.value as? SymbolCompilation.Compiled ?: return null
+            is InstalledCompilerRead.Rejected -> return null
+        }
+        val outcome = compilation.outcome
+        val batch = (outcome as? SymbolDiscoveryOutcome.Complete)?.batch ?: return null
         val candidates = batch.candidates.withIndex().filter { indexed ->
             val candidate = indexed.value
             candidate.name.value == name &&
                 candidate.location is SymbolDiscoveryCandidateLocation.Declaration &&
-                candidate.location.file.stableValue == source
+                candidate.location.file.stableValue == file.value
         }
         val candidate = candidates.singleOrNull() ?: return null
         val selection = when (val selected = SymbolDiscoverySelection.select(
@@ -180,11 +197,14 @@ internal class InstalledChangeVerificationObserver(
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return null
         }
-        return when (val resolved = runImmediate {
+        return when (val read = awaitCompilerRead {
             semantic.symbolExact.resolve(SymbolResolutionRequest(selection))
         }) {
-            is SymbolResolutionCompilation.Resolved -> resolved.selector
-            is SymbolResolutionCompilation.Rejected, null -> null
+            is InstalledCompilerRead.Completed -> when (val resolved = read.value) {
+                is SymbolResolutionCompilation.Resolved -> resolved.selector
+                is SymbolResolutionCompilation.Rejected -> null
+            }
+            is InstalledCompilerRead.Rejected -> null
         }
     }
 }
@@ -214,29 +234,88 @@ private fun SymbolSelector.observedIdentity(): InstalledObservedDeclarationIdent
     return InstalledObservedDeclarationIdentity(packageName, declarationKind)
 }
 
-private fun SymbolSelector.sameDeclarationAcrossGeneration(prior: SymbolSelector): Boolean =
+private sealed interface InstalledPriorDeclarationMatch {
+    data object Matched : InstalledPriorDeclarationMatch
+
+    data object MovedOrChanged : InstalledPriorDeclarationMatch
+}
+
+/**
+ * Proof transition: `(G1 SymbolSelector, G0 SymbolSelector) -> InstalledPriorDeclarationMatch`.
+ *
+ * Matched establishes the same file, declaration start, name, qualified identity, and kind across
+ * generations while permitting the planned AddDeclaration to extend the target's end range.
+ * Discovery scope is request provenance rather than declaration identity and remains subject to
+ * the verification service's relation-target proof.
+ * [InstalledPriorDeclarationMatch.MovedOrChanged] closes every identity mismatch. Raw selector
+ * fields remain inside the resulting-generation observation boundary.
+ */
+private fun SymbolSelector.matchDeclarationAcrossGeneration(
+    prior: SymbolSelector,
+): InstalledPriorDeclarationMatch = if (
     file == prior.file &&
-        range == prior.range &&
-        name == prior.name &&
-        qualifiedIdentity == prior.qualifiedIdentity &&
-        kind == prior.kind &&
-        scope == prior.scope
+    range.startInclusive == prior.range.startInclusive &&
+    name == prior.name &&
+    qualifiedIdentity == prior.qualifiedIdentity &&
+    kind == prior.kind
+) {
+    InstalledPriorDeclarationMatch.Matched
+} else {
+    InstalledPriorDeclarationMatch.MovedOrChanged
+}
 
 private fun PublishedWorkspace.samePublication(other: PublishedWorkspace): Boolean =
     readLease == other.readLease && sourceState == other.sourceState && sourceRoots == other.sourceRoots
 
-private fun <Value> runImmediate(block: suspend () -> Value): Value? {
-    var completed: Result<Value>? = null
-    block.startCoroutine(
-        object : Continuation<Value> {
-            override val context = EmptyCoroutineContext
+private enum class InstalledCompilerReadFailure {
+    INTERRUPTED,
+    FAILED,
+}
 
-            override fun resumeWith(result: Result<Value>) {
-                completed = result
-            }
-        },
-    )
-    return completed?.getOrNull()
+private sealed interface InstalledCompilerRead<out Value> {
+    data class Completed<Value>(
+        val value: Value,
+    ) : InstalledCompilerRead<Value>
+
+    data class Rejected(
+        val failure: InstalledCompilerReadFailure,
+    ) : InstalledCompilerRead<Nothing>
+}
+
+/**
+ * Proof transition: `suspend () -> Value -> InstalledCompilerRead<Value>`.
+ *
+ * Completed establishes that the compiler read reached its terminal result even when IntelliJ
+ * suspended it behind write priority. [InstalledCompilerRead.Rejected] closes interruption and
+ * unexpected coroutine failure. Live compiler values remain inside the calling observation.
+ */
+private fun <Value> awaitCompilerRead(
+    block: suspend () -> Value,
+): InstalledCompilerRead<Value> {
+    val completion = CountDownLatch(1)
+    val resultReference = AtomicReference<Result<Value>?>()
+    try {
+        block.startCoroutine(
+            object : Continuation<Value> {
+                override val context = EmptyCoroutineContext
+
+                override fun resumeWith(result: Result<Value>) {
+                    resultReference.set(result)
+                    completion.countDown()
+                }
+            },
+        )
+        completion.await()
+    } catch (_: InterruptedException) {
+        Thread.currentThread().interrupt()
+        return InstalledCompilerRead.Rejected(InstalledCompilerReadFailure.INTERRUPTED)
+    } catch (_: Exception) {
+        return InstalledCompilerRead.Rejected(InstalledCompilerReadFailure.FAILED)
+    }
+    return resultReference.get()?.fold(
+        onSuccess = { value -> InstalledCompilerRead.Completed(value) },
+        onFailure = { InstalledCompilerRead.Rejected(InstalledCompilerReadFailure.FAILED) },
+    ) ?: InstalledCompilerRead.Rejected(InstalledCompilerReadFailure.FAILED)
 }
 
 private fun rejected(

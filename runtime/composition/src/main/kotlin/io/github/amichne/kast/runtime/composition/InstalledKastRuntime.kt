@@ -2,7 +2,9 @@ package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
+import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelFailure
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceFailure
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -176,12 +178,22 @@ enum class InstalledRuntimePersistenceFailure {
 }
 
 /** Finite initial exact-root publication failures. */
-enum class InstalledRuntimeWorkspaceFailure {
-    INTELLIJ_BOOTSTRAP_FAILED,
-    NO_PUBLICATION,
-    INVALIDATED,
-    BLOCKED,
-    ROOT_MISMATCH,
+sealed interface InstalledRuntimeWorkspaceFailure {
+    data class IntellijBootstrap(
+        val failure: InstalledIntellijWorkspaceFailure,
+    ) : InstalledRuntimeWorkspaceFailure
+
+    data class ModelRefinementUnavailable(
+        val failure: InstalledGradleModelFailure,
+    ) : InstalledRuntimeWorkspaceFailure
+
+    data object NoPublication : InstalledRuntimeWorkspaceFailure
+
+    data object Invalidated : InstalledRuntimeWorkspaceFailure
+
+    data object Blocked : InstalledRuntimeWorkspaceFailure
+
+    data object RootMismatch : InstalledRuntimeWorkspaceFailure
 }
 
 /** Installed construction exports only the composition-owned dispatch capability. */

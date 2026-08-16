@@ -13,6 +13,8 @@ enum class InstalledGradleJvmFailure {
     UNAVAILABLE,
     NOT_DIRECTORY,
     JAVA_EXECUTABLE_UNAVAILABLE,
+    ENVIRONMENT_HOME_UNAVAILABLE,
+    ENVIRONMENT_HOME_MISMATCH,
 }
 
 sealed interface InstalledGradleJvmAdmission {
@@ -27,21 +29,26 @@ sealed interface InstalledGradleJvmAdmission {
 
 /** Physical Java home authority for one isolated Gradle import. */
 class InstalledGradleJvm private constructor(
-    private val home: Path,
+    private val selector: String,
 ) {
     /** Raw selector extraction is confined to the Gradle project-settings boundary. */
-    internal fun projectSettingsSelector(): String = home.toString()
+    internal fun projectSettingsSelector(): String = selector
 
     companion object {
         /**
-         * Proof transition: `String -> InstalledGradleJvmAdmission`.
+         * Proof transition: `(String, String?) -> InstalledGradleJvmAdmission`.
          *
          * Establishes an absolute, normalized, physically canonical, non-symlinked Java home
-         * containing one regular executable `bin/java`. [InstalledGradleJvmFailure] is the closed
-         * expected failure. Raw path text may leave only for filesystem admission and the Gradle
-         * project-settings boundary.
+         * containing one regular executable `bin/java`, plus a process `JAVA_HOME` resolving to
+         * that exact home. The returned `#JAVA_HOME` capability is therefore resolvable by IDEA's
+         * Gradle JVM resolver. [InstalledGradleJvmFailure] is the closed expected failure. Raw path
+         * text may leave only for filesystem admission; the selector leaves only at Gradle project
+         * settings.
          */
-        fun admit(raw: String): InstalledGradleJvmAdmission {
+        fun admit(
+            raw: String,
+            environmentHome: String?,
+        ): InstalledGradleJvmAdmission {
             val candidate = try {
                 Path.of(raw)
             } catch (_: InvalidPathException) {
@@ -95,7 +102,32 @@ class InstalledGradleJvm private constructor(
                     InstalledGradleJvmFailure.JAVA_EXECUTABLE_UNAVAILABLE,
                 )
             }
-            return InstalledGradleJvmAdmission.Admitted(InstalledGradleJvm(canonical))
+            val environmentCandidate = environmentHome?.let { value ->
+                try {
+                    Path.of(value)
+                } catch (_: InvalidPathException) {
+                    null
+                }
+            } ?: return InstalledGradleJvmAdmission.Rejected(
+                InstalledGradleJvmFailure.ENVIRONMENT_HOME_UNAVAILABLE,
+            )
+            val environmentCanonical = try {
+                environmentCandidate.toRealPath()
+            } catch (_: IOException) {
+                return InstalledGradleJvmAdmission.Rejected(
+                    InstalledGradleJvmFailure.ENVIRONMENT_HOME_UNAVAILABLE,
+                )
+            } catch (_: SecurityException) {
+                return InstalledGradleJvmAdmission.Rejected(
+                    InstalledGradleJvmFailure.ENVIRONMENT_HOME_UNAVAILABLE,
+                )
+            }
+            if (environmentCanonical != canonical) {
+                return InstalledGradleJvmAdmission.Rejected(
+                    InstalledGradleJvmFailure.ENVIRONMENT_HOME_MISMATCH,
+                )
+            }
+            return InstalledGradleJvmAdmission.Admitted(InstalledGradleJvm("#JAVA_HOME"))
         }
     }
 }

@@ -57,7 +57,7 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
         )) {
             is InstalledIntellijWorkspaceOpening.Opened -> opened.model.capture
             is InstalledIntellijWorkspaceOpening.Rejected -> return@InstalledRuntimeAssembler rejected(
-                InstalledRuntimeWorkspaceFailure.INTELLIJ_BOOTSTRAP_FAILED,
+                InstalledRuntimeWorkspaceFailure.IntellijBootstrap(opened.failure),
             )
         }
         val read = projectInstalledGradleModel(
@@ -70,7 +70,7 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
         )
         if (read is InstalledGradleModelRead.Unavailable) {
             return@InstalledRuntimeAssembler rejected(
-                InstalledRuntimeWorkspaceFailure.INTELLIJ_BOOTSTRAP_FAILED,
+                InstalledRuntimeWorkspaceFailure.ModelRefinementUnavailable(read.failure),
             )
         }
         assembleInstalledRuntime(
@@ -134,14 +134,14 @@ private fun assembleInstalledRuntime(
         is WorkspacePublicationRun.Published -> if (
             publicationRun.workspace.root != request.workspaceRoot.canonicalRoot
         ) {
-            return rejected(InstalledRuntimeWorkspaceFailure.ROOT_MISMATCH)
+            return rejected(InstalledRuntimeWorkspaceFailure.RootMismatch)
         }
         WorkspacePublicationRun.NoWork ->
-            return rejected(InstalledRuntimeWorkspaceFailure.NO_PUBLICATION)
+            return rejected(InstalledRuntimeWorkspaceFailure.NoPublication)
         WorkspacePublicationRun.Invalidated ->
-            return rejected(InstalledRuntimeWorkspaceFailure.INVALIDATED)
+            return rejected(InstalledRuntimeWorkspaceFailure.Invalidated)
         is WorkspacePublicationRun.Blocked ->
-            return rejected(InstalledRuntimeWorkspaceFailure.BLOCKED)
+            return rejected(InstalledRuntimeWorkspaceFailure.Blocked)
     }
     val platform = ports.create(workspace, workspaceModel)
     val graph = KastRuntimeComposition.constructGraph(
