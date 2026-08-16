@@ -1,5 +1,13 @@
 package io.github.amichne.kast.runtime.composition
 
+import io.github.amichne.kast.change.apply.AddDeclarationApplyFailure
+import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
+import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
+import io.github.amichne.kast.change.apply.MutationAdmissionFailure
+import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
+import io.github.amichne.kast.change.plan.PureAddFilePlanningService
+import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
+import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -7,6 +15,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
@@ -33,8 +43,11 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRun
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeApplyHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeAuthority
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangePlanHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeRecoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeVerifyHandler
+import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
+import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
@@ -285,6 +298,54 @@ class InstalledKastRuntimeTest {
             OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND),
             runImmediate { recover.execute(ChangeRecoverRequest(missing)) },
         )
+    }
+
+    @Test
+    fun `change plan identity retains the exact typed plan for apply`(@TempDir temporary: Path) {
+        val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
+        val fixture = InstalledChangeProtocolFixture.create(root)
+        val authority = CanonicalChangeAuthority()
+        val planning = ChangePlanningOperations(
+            PureAddFilePlanningService(),
+            PureAddDeclarationPlanningService(),
+            PureReplaceDeclarationPlanningService(),
+            PureRenameSymbolPlanningService(),
+        )
+        val plan = CanonicalChangePlanHandler(
+            planning,
+            ChangePlanAdmissionOperations { ChangePlanAdmission.AddFile(fixture.addFile) },
+            authority,
+        )
+        var observed: DomainChangeApplyRequest? = null
+        val apply = CanonicalChangeApplyHandler(
+            fixture.workspace,
+            { request ->
+                observed = request
+                AddDeclarationApplyResult.Rejected(
+                    AddDeclarationApplyFailure.Admission(MutationAdmissionFailure.WRONG_ROOT),
+                )
+            },
+            authority,
+        )
+        val planned = runImmediate {
+            plan.execute(
+                ChangePlanRequest(
+                    ChangeIntentDocument.AddFile(
+                        ProtocolText.parse("src/main/kotlin/sample/Added.kt").refined(),
+                        ProtocolText.parse("package sample\n\nclass Added\n").refined(),
+                    ),
+                ),
+            )
+        } as OperationOutcome.Complete
+
+        assertEquals(
+            OperationOutcome.Rejected(ChangeApplyRejection.ROOT_MISMATCH),
+            runImmediate {
+                apply.execute(ChangeApplyRequest(planned.evidence.payload.planIdentity))
+            },
+        )
+        assertEquals(fixture.addFile.target.lease, observed?.plan?.priorLease)
+        assertEquals(fixture.addFile.target.file, observed?.plan?.writes?.entries?.single()?.source)
     }
 }
 
