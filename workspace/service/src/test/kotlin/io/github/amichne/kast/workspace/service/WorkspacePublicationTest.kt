@@ -11,8 +11,11 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.GradleSourceRootEvidence
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
+import io.github.amichne.kast.workspace.contract.SourceRoot
+import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateReconciliation
@@ -58,6 +61,8 @@ class WorkspacePublicationTest {
         coordinator.reconcile()
         coordinator.observe(WorkspaceSignal.GitWorktree)
         inspection.enqueue(next, next)
+        val sourceRoot = sourceRoot(next.root)
+        inspection.sourceRoots = listOf(sourceRoot)
         publication.beforeCommit = {
             assertEquals(WorkspaceRuntimeState.Reconciling, coordinator.inspect())
         }
@@ -75,6 +80,7 @@ class WorkspacePublicationTest {
         assertEquals(ready.workspace.root, ready.workspace.readLease.workspaceRoot)
         assertEquals(ready.workspace.generation, ready.workspace.readLease.generation)
         assertEquals(WorkspaceEvidenceKind.entries.toSet(), ready.workspace.coverage.evidence)
+        assertEquals(listOf(sourceRoot), ready.workspace.sourceRoots)
     }
 
     @Test
@@ -129,6 +135,7 @@ private class ScriptedWorkspaceReconciliationPort(
 ) : WorkspaceReconciliationPort {
     private val captures = ArrayDeque(candidates.toList())
     var evidence: Set<WorkspaceEvidenceKind> = WorkspaceEvidenceKind.entries.toSet()
+    var sourceRoots: List<SourceRoot> = emptyList()
 
     fun enqueue(vararg candidates: WorkspaceCandidate) {
         captures.addAll(candidates)
@@ -138,7 +145,7 @@ private class ScriptedWorkspaceReconciliationPort(
         WorkspaceCandidateCapture.Captured(captures.removeFirst())
 
     override fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation =
-        when (val admitted = ReconciledWorkspace.admit(candidate, evidence)) {
+        when (val admitted = ReconciledWorkspace.admit(candidate, evidence, sourceRoots)) {
             is Refinement.Refined -> WorkspaceCandidateReconciliation.Reconciled(admitted.value)
             is Refinement.Rejected -> WorkspaceCandidateReconciliation.Rejected(
                 WorkspacePublicationBlocker.IncompleteEvidence(admitted.failure),
@@ -212,6 +219,22 @@ private fun canonicalRoot(value: String): CanonicalWorkspaceRoot = when (
 
 private fun evidenceGeneration(value: Long): EvidenceGeneration = when (
     val admitted = EvidenceGeneration.parse(value)
+) {
+    is Refinement.Refined -> admitted.value
+    is Refinement.Rejected -> error(admitted.failure)
+}
+
+private fun sourceRoot(workspaceRoot: CanonicalWorkspaceRoot): SourceRoot = when (
+    val admitted = SourceRoot.admit(
+        GradleSourceRootEvidence(
+            ideaModuleName = "app.main",
+            workspaceRelativeBuildRoot = ".",
+            gradleProjectPath = ":app",
+            sourceSetName = "main",
+            workspaceRelativeSourceRoot = "app/src/main/kotlin",
+            provenance = SourceRootProvenance.Authored,
+        ),
+    )
 ) {
     is Refinement.Refined -> admitted.value
     is Refinement.Rejected -> error(admitted.failure)
