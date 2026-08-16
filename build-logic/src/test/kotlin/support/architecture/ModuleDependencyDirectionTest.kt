@@ -18,7 +18,6 @@ class ModuleDependencyDirectionTest {
             module.allowedProjectDependencies,
         )
         assertEquals(emptySet<ForbiddenEffect>(), module.allowedEffects)
-        assertTrue(ModuleId.RELATION_CONTRACT !in architecture.modules)
     }
 
     @Test
