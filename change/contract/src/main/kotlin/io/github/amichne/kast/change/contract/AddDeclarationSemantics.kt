@@ -65,7 +65,7 @@ data class ExpectedAddDeclarationDelta private constructor(
 }
 
 @Serializable
-enum class AddDeclarationObligation {
+enum class AddDeclarationObligation : ChangeVerificationObligation {
     TARGET_PREIMAGE_UNCHANGED,
     GENERATION_UNCHANGED,
     OWNER_AND_PROVENANCE_UNCHANGED,

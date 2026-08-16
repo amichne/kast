@@ -1,7 +1,7 @@
 # Change verification service guide
 
-`:change:verify` owns KCS-018 reconciliation of one `AppliedUnverified` AddDeclaration against a
-distinct resulting workspace generation and complete detached semantic evidence.
+`:change:verify` owns reconciliation of one `AppliedUnverified` semantic change against a distinct
+resulting workspace generation and complete intent-specific detached evidence.
 
 ## Dependency boundary
 
@@ -17,10 +17,12 @@ distinct resulting workspace generation and complete detached semantic evidence.
 - A plan and applied state must match before any resulting publication is requested.
 - The resulting publication must preserve the exact canonical root and be strictly newer than G0.
 - Workspace, relation, and diagnostic coverage remain attached as stronger proof types.
-- Relation evidence is complete, result-generation-bound, target-bound, and semantically unchanged
-  outside the accepted declaration addition.
+- AddDeclaration relation evidence is complete, result-generation-bound, target-bound, and
+  semantically unchanged outside the accepted declaration addition.
 - Diagnostic evidence is complete, exact-scope, result-generation-bound, and error-free.
-- The observed declaration identity must exactly equal the plan's expected semantic delta.
+- The observed semantic delta must exactly match the plan. RenameSymbol requires disappearance of
+  the old declaration and references, one new declaration, and the exact retargeted-reference
+  count.
 - Only the exhaustive obligation evaluator may issue `VerifiedReceipt`.
 
 ## Verification

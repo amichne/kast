@@ -35,10 +35,16 @@ internal class LiveIntellijDocumentSession(
 ) : IntellijDocumentMutationSession {
     override fun currentText(): String = prepared.document.text
 
-    override fun insert(input: IntellijMutationInput): IntellijSessionStepResult = writeCommand {
+    override fun mutate(input: IntellijMutationInput): IntellijSessionStepResult = writeCommand {
         when (val precondition = finalPrecondition(input.preimageText)) {
             IntellijFinalPrecondition.Ready -> {
-                prepared.document.insertString(input.insertionOffset, input.insertionText)
+                input.mutations.sortedByDescending { it.startInclusive }.forEach { mutation ->
+                    prepared.document.replaceString(
+                        mutation.startInclusive,
+                        mutation.endExclusive,
+                        mutation.replacement,
+                    )
+                }
                 PsiDocumentManager.getInstance(project).commitDocument(prepared.document)
                 IntellijSessionStepResult.Completed
             }
@@ -98,8 +104,8 @@ internal class LiveIntellijDocumentSession(
         try {
             onEdt {
                 WriteCommandAction.writeCommandAction(project, prepared.target)
-                    .withName("Kast AddDeclaration")
-                    .withGroupId("kast.change.add-declaration")
+                    .withName("Kast semantic change")
+                    .withGroupId("kast.change.semantic")
                     .compute<IntellijSessionStepResult, RuntimeException>(action)
                     ?: IntellijSessionStepResult.Rejected(SourceWriteFailure.MUTATION_FAILED)
             }

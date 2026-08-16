@@ -17,7 +17,7 @@ class VerifiedMutationTest {
             ResultingGenerationPublication.Published(fixture.resultingWorkspace),
         )
         val observer = FixedVerificationObserver(
-            AddDeclarationVerificationObservation.Observed(fixture.completeEvidence()),
+            ChangeVerificationObservation.Observed(fixture.completeEvidence()),
         )
 
         val result = service(publisher, observer).verify(fixture.request())
@@ -41,7 +41,7 @@ class VerifiedMutationTest {
             ResultingGenerationPublication.Published(fixture.workspace),
         )
         val observer = FixedVerificationObserver(
-            AddDeclarationVerificationObservation.Observed(fixture.completeEvidence()),
+            ChangeVerificationObservation.Observed(fixture.completeEvidence()),
         )
 
         val result = service(publisher, observer).verify(fixture.request())
@@ -143,7 +143,7 @@ class VerifiedMutationTest {
         FixedResultingGenerationPublisher(
             ResultingGenerationPublication.Published(fixture.resultingWorkspace),
         ),
-        FixedVerificationObserver(AddDeclarationVerificationObservation.Observed(evidence)),
+        FixedVerificationObserver(ChangeVerificationObservation.Observed(evidence)),
     )
 
     private fun service(
@@ -177,13 +177,13 @@ private class FixedResultingGenerationPublisher(
 }
 
 private class FixedVerificationObserver(
-    private val result: AddDeclarationVerificationObservation,
-) : AddDeclarationVerificationObserver {
+    private val result: ChangeVerificationObservation,
+) : ChangeVerificationObserver {
     var calls: Int = 0
 
     override fun observe(
-        request: AddDeclarationVerificationObservationRequest,
-    ): AddDeclarationVerificationObservation {
+        request: ChangeVerificationObservationRequest,
+    ): ChangeVerificationObservation {
         calls += 1
         return result
     }
