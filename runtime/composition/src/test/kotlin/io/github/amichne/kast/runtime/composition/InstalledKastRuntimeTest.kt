@@ -5,6 +5,12 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
+import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
@@ -25,6 +31,10 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolv
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRunHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeApplyHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeAuthority
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeRecoverHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeVerifyHandler
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
@@ -242,6 +252,38 @@ class InstalledKastRuntimeTest {
         assertEquals(
             true,
             outcome.evidence.payload.diagnostics.values.single().value.contains("KAST001"),
+        )
+    }
+
+    @Test
+    fun `change execution rejects identities that were never issued`() {
+        val authority = CanonicalChangeAuthority()
+        val missing = ProtocolText.parse("missing").refined()
+        val apply = CanonicalChangeApplyHandler(
+            WorkspaceInspectionOperations { error("missing plans must not inspect workspace") },
+            { error("missing plans must not reach apply") },
+            authority,
+        )
+        val verify = CanonicalChangeVerifyHandler(
+            { error("missing applications must not reach verify") },
+            authority,
+        )
+        val recover = CanonicalChangeRecoverHandler(
+            { error("missing plans must not reach recovery") },
+            authority,
+        )
+
+        assertEquals(
+            OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND),
+            runImmediate { apply.execute(ChangeApplyRequest(missing)) },
+        )
+        assertEquals(
+            OperationOutcome.Rejected(ChangeVerifyRejection.APPLICATION_NOT_FOUND),
+            runImmediate { verify.execute(ChangeVerifyRequest(missing)) },
+        )
+        assertEquals(
+            OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND),
+            runImmediate { recover.execute(ChangeRecoverRequest(missing)) },
         )
     }
 }
