@@ -43,7 +43,8 @@ sealed interface RelationEndpoint {
     val kind: CompilerSymbolKind
     val fingerprint: RelationEndpointFingerprint
 
-    class Subject internal constructor(
+    @ConsistentCopyVisibility
+    data class Subject internal constructor(
         val selector: SymbolSelector,
     ) : RelationEndpoint {
         override val lease: SemanticReadLease = selector.lease
@@ -57,7 +58,8 @@ sealed interface RelationEndpoint {
             RelationEndpointFingerprint(selector.fingerprint.value)
     }
 
-    class Resolved private constructor(
+    @ConsistentCopyVisibility
+    data class Resolved private constructor(
         override val lease: SemanticReadLease,
         override val scope: SymbolSearchScope,
         val evidence: CompilerGroundedSymbolEvidence,
