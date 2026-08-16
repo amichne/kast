@@ -1,5 +1,9 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.projection
 
+import io.github.amichne.kast.cli.CliArgument
+import io.github.amichne.kast.cli.CliArguments
+import io.github.amichne.kast.cli.CliRequestParser
+import io.github.amichne.kast.cli.CliRequestParsing
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument

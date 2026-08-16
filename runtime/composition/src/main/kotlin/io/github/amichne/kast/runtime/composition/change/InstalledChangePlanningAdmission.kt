@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition
+package io.github.amichne.kast.runtime.composition.change
 
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.ObservedMutationSource
@@ -24,6 +24,7 @@ import io.github.amichne.kast.runtime.composition.protocol.AuthorizedChangeInten
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionFailure
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
+import io.github.amichne.kast.runtime.composition.installedSemanticBudgets
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
