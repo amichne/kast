@@ -1,0 +1,2798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kast IntelliJ Substrate Program — 2026-08-13 execution update</title>
+<style>
+:root {
+  --bg: #f7f8fa;
+  --paper: #ffffff;
+  --text: #17202a;
+  --muted: #59636e;
+  --line: #d9dee5;
+  --soft: #eef2f6;
+  --accent: #244d73;
+  --code: #f3f5f7;
+  --max: 1120px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.layout { display: grid; grid-template-columns: 248px minmax(0, var(--max)); gap: 28px; max-width: 1440px; margin: 0 auto; padding: 28px; align-items: start; }
+.toc { position: sticky; top: 18px; max-height: calc(100vh - 36px); overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 14px 12px; }
+.toc-title { font-weight: 700; margin: 0 4px 8px; }
+.toc a { display: block; text-decoration: none; border-radius: 4px; padding: 4px 6px; color: var(--muted); font-size: 13px; }
+.toc a:hover { background: var(--soft); color: var(--text); }
+.toc-l2 { margin-top: 2px; font-weight: 600; }
+.toc-l3 { padding-left: 18px !important; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+main { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 46px 56px 64px; min-width: 0; }
+h1 { font-size: 2.3rem; line-height: 1.15; margin: 0 0 0.45em; letter-spacing: -0.025em; }
+h2 { border-top: 1px solid var(--line); padding-top: 1.25em; margin-top: 2.2em; font-size: 1.55rem; line-height: 1.25; }
+h3 { margin-top: 2em; font-size: 1.2rem; line-height: 1.3; }
+h3[id^="kip-"] { background: var(--soft); border-left: 4px solid var(--accent); padding: 10px 12px; border-radius: 4px; }
+p { margin: 0.75em 0; }
+blockquote { margin: 1.2em 0; padding: 0.7em 1em; border-left: 4px solid var(--accent); background: var(--soft); }
+code { background: var(--code); border: 1px solid #e5e8eb; border-radius: 3px; padding: 0.08em 0.28em; font-size: 0.92em; }
+pre { background: var(--code); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; overflow: auto; line-height: 1.45; }
+pre code { border: 0; padding: 0; background: transparent; }
+table { width: 100%; border-collapse: collapse; margin: 1em 0 1.5em; font-size: 0.92rem; }
+th, td { border: 1px solid var(--line); padding: 8px 10px; vertical-align: top; text-align: left; }
+th { background: var(--soft); font-weight: 700; }
+tr:nth-child(even) td { background: #fbfcfd; }
+ul, ol { padding-left: 1.45em; }
+li { margin: 0.25em 0; }
+strong { font-weight: 700; }
+hr { border: 0; border-top: 1px solid var(--line); }
+@media (max-width: 980px) {
+  .layout { display: block; padding: 12px; }
+  .toc { position: static; max-height: none; margin-bottom: 12px; }
+  .toc-l3 { display: none !important; }
+  main { padding: 28px 22px 48px; }
+  h1 { font-size: 1.85rem; }
+  table { display: block; overflow-x: auto; white-space: normal; }
+}
+@media print {
+  body { background: white; }
+  .layout { display: block; max-width: none; padding: 0; }
+  .toc { display: none; }
+  main { border: 0; padding: 0; }
+  a { color: black; text-decoration: none; }
+  h2, h3 { break-after: avoid; }
+  table, pre, blockquote { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc"><div class="toc-title">Contents</div><a class="toc-l2" href="#principles-reference-architecture-atomic-delivery-tickets-and-dependency-map">Principles, reference architecture, atomic delivery tickets, and dependency map</a><a class="toc-l2" href="#1-executive-conclusion">1. Executive conclusion</a><a class="toc-l2" href="#2-what-this-program-is-trying-to-achieve">2. What this program is trying to achieve</a><a class="toc-l2" href="#3-source-hierarchy-and-claim-discipline">3. Source hierarchy and claim discipline</a><a class="toc-l2" href="#4-overarching-principles">4. Overarching principles</a><a class="toc-l2" href="#5-what-to-adopt-adapt-and-reject-from-the-reference-project">5. What to adopt, adapt, and reject from the reference project</a><a class="toc-l2" href="#6-preferred-intellij-substrate-by-operation">6. Preferred IntelliJ substrate by operation</a><a class="toc-l2" href="#7-execution-model">7. Execution model</a><a class="toc-l2" href="#8-architecture-corrections-before-extraction">8. Architecture corrections before extraction</a><a class="toc-l2" href="#9-milestones">9. Milestones</a><a class="toc-l2" href="#10-ticket-contract">10. Ticket contract</a><a class="toc-l2" href="#11-ticket-summary-and-dependency-table">11. Ticket summary and dependency table</a><a class="toc-l2" href="#12-atomic-pseudo-ticket-documents">12. Atomic pseudo-ticket documents</a><a class="toc-l3" href="#kip-001-freeze-the-source-and-performance-ledger">KIP-001</a><a class="toc-l3" href="#kip-002-correct-branch-join-and-recovery-semantics">KIP-002</a><a class="toc-l3" href="#kip-003-correct-module-dependency-direction">KIP-003</a><a class="toc-l3" href="#kip-004-introduce-retirement-bound-migration-edges">KIP-004</a><a class="toc-l3" href="#kip-005-enforce-role-effect-and-cost-boundaries">KIP-005</a><a class="toc-l3" href="#kip-010-define-operation-lane-contracts">KIP-010</a><a class="toc-l3" href="#kip-011-extract-a-generation-bound-semantic-read-lease">KIP-011</a><a class="toc-l3" href="#kip-012-compile-typed-intellij-search-scopes">KIP-012</a><a class="toc-l3" href="#kip-013-implement-native-file-class-and-symbol-discovery">KIP-013</a><a class="toc-l3" href="#kip-014-resolve-discovery-candidates-into-exact-selectors">KIP-014</a><a class="toc-l3" href="#kip-015-implement-bounded-native-relation-reads">KIP-015</a><a class="toc-l3" href="#kip-016-implement-detached-generation-bound-continuations">KIP-016</a><a class="toc-l3" href="#kip-017-add-liveness-and-freshness-admission">KIP-017</a><a class="toc-l3" href="#kip-018-cut-over-and-benchmark-the-first-fast-read">KIP-018</a><a class="toc-l3" href="#kip-020-extract-the-workspace-transition-port">KIP-020</a><a class="toc-l3" href="#kip-021-add-the-registered-long-operation-protocol">KIP-021</a><a class="toc-l3" href="#kip-022-add-resource-admission-and-staggered-expensive-work">KIP-022</a><a class="toc-l3" href="#kip-030-characterize-the-add-declaration-intellij-protocol">KIP-030</a><a class="toc-l3" href="#kip-031-define-and-route-plan-only-add-declaration">KIP-031</a><a class="toc-l3" href="#kip-032-persist-the-plan-and-establish-the-approval-boundary">KIP-032</a><a class="toc-l3" href="#kip-033-revalidate-and-prepare-recovery">KIP-033</a><a class="toc-l3" href="#kip-034-apply-one-short-intellij-mutation-and-prove-write-set-closure">KIP-034</a><a class="toc-l3" href="#kip-035-publish-the-resulting-generation-and-verify-add-declaration">KIP-035</a><a class="toc-l3" href="#kip-036-cut-over-public-add-declaration-and-close-bypasses">KIP-036</a><a class="toc-l3" href="#kip-040-characterize-the-native-rename-protocol">KIP-040</a><a class="toc-l3" href="#kip-041-extract-a-detached-rename-plan-and-native-apply-adapter">KIP-041</a><a class="toc-l3" href="#kip-042-route-verified-rename-and-prove-multi-file-behavior">KIP-042</a><a class="toc-l3" href="#kip-050-route-verified-add-file-as-its-own-slice">KIP-050</a><a class="toc-l3" href="#kip-051-route-exact-replacement-as-its-own-slice">KIP-051</a><a class="toc-l3" href="#kip-052-route-optimize-imports-as-its-own-slice">KIP-052</a><a class="toc-l3" href="#kip-053-implement-the-typed-external-file-lane">KIP-053</a><a class="toc-l3" href="#kip-054-reduce-mutation-methods-on-analysisbackend-to-compatibility-bindings">KIP-054</a><a class="toc-l3" href="#kip-055-decompose-remaining-read-capabilities-and-retire-analysisbackend">KIP-055</a><a class="toc-l3" href="#kip-056-prove-the-enterprise-multi-module-acceptance-journey">KIP-056</a><a class="toc-l2" href="#13-connectedness-map">13. Connectedness map</a><a class="toc-l2" href="#14-first-three-usable-releases">14. First three usable releases</a><a class="toc-l2" href="#15-program-completion-condition">15. Program completion condition</a></nav>
+<main><h1 id="kast-intellij-substrate-program">Kast IntelliJ Substrate Program</h1>
+<h2 id="principles-reference-architecture-atomic-delivery-tickets-and-dependency-map">Principles, reference architecture, atomic delivery tickets, and dependency map</h2>
+<p><strong>Status:</strong> execution underway; KIP-034 pushed, KIP-035 local and incomplete<br/>
+<strong>Kast baseline:</strong> <a href="https://github.com/amichne/kast/commit/60ca538fd00d6c75c4c40140ec719bc531c9651e"><code>amichne/kast@60ca538f</code></a><br/>
+<strong>Reference baseline:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/commit/7670d7202f43ab6d54433832d087316b69637f1b"><code>hechtcarmel/jetbrains-index-mcp-plugin@7670d720</code></a><br/>
+<strong>Process baseline:</strong> <a href="https://github.com/amichne/slopsentral/commit/672f169842174ee807cd28a12c8f4718e7272dff"><code>amichne/slopsentral@672f1698</code></a><br/>
+<strong>Prepared:</strong> 2026-08-12<br/>
+<strong>Execution update:</strong> 2026-08-13</p>
+<blockquote>
+<p><strong>Decision:</strong> Use IntelliJ’s productized indexes, search scopes, semantic resolution, diagnostics, and refactoring engines as Kast’s live execution substrate. Keep Kast’s differentiated guarantees—exact identity, published generations, detached evidence, composable operations, durable plans, recovery, and verified receipts—as a separate typed layer. Deliver one vertical operation at a time; do not wait for the complete target graph before the tooling becomes useful.</p>
+</blockquote>
+<h2 id="0-execution-update-2026-08-13">0. Execution update — 2026-08-13</h2>
+<blockquote>
+<p><strong>Next-agent decision:</strong> Preserve the current working tree and finish KIP-035. Do not replay the attached S00–S12 task pack, do not cut over the public add-declaration route before KIP-036, and do not publish an internal-only KIP-035 snapshot as proof of user reachability.</p>
+</blockquote>
+<p>This section is a dated execution snapshot, not a second architecture authority. Current source, repository <code>AGENTS.md</code> files, <code>.agent/TASK.md</code>, the typed Kotlin architecture policy, and exact remote state supersede it whenever they differ. The detailed handoff is in <a href="kast-intellij-substrate-handoff-2026-08-13.md"><code>kast-intellij-substrate-handoff-2026-08-13.md</code></a>.</p>
+<h3 id="0-1-delivery-state">0.1 Delivery state</h3>
+<table>
+<thead><tr><th>Unit</th><th>State</th><th>Evidence and meaning</th></tr></thead>
+<tbody>
+<tr><td><code>origin/main</code></td><td><strong>Baseline only</strong></td><td><code>60ca538fd00d6c75c4c40140ec719bc531c9651e</code>. All PR work described below remains unmerged.</td></tr>
+<tr><td>PR #609</td><td><strong>Pushed and green through KIP-034</strong></td><td>PR branch <code>codex/intellij-native-kip001</code> and local <code>HEAD</code> were both <code>c7467075a0db542373f93964f3ec851496002229</code>. All 14 current checks succeeded at the 2026-08-13 readback. Re-check before acting.</td></tr>
+<tr><td>KIP-001 through KIP-018</td><td><strong>Pushed</strong></td><td>The native-read foundation and first public native read are on the PR branch. The ZIP’s S00–S12 tranche maps to this historical work and is not the current execution queue.</td></tr>
+<tr><td>KIP-020 through KIP-022</td><td><strong>Pushed</strong></td><td>Workspace transition, registered long work, and resource admission are present on the branch.</td></tr>
+<tr><td>KIP-030 through KIP-034</td><td><strong>Pushed</strong></td><td>Add-declaration characterization, detached planning, durable approval, recovery preparation, and one recovery-prepared IntelliJ apply are present. KIP-034 commit: <code>c7467075a</code>.</td></tr>
+<tr><td>Repository-shape script</td><td><strong>Pushed repair</strong></td><td><code>a502cd0ba</code> avoids the prior pipe deadlock and retains a bounded regression.</td></tr>
+<tr><td>KIP-035</td><td><strong>Local work in progress</strong></td><td>Generation publication, IntelliJ verification, service composition, and durable v5 receipt lanes exist across 40 tracked modifications and 26 untracked files. They are uncommitted and unpushed. Focused lane checks passed, but the combined acceptance proof is incomplete.</td></tr>
+<tr><td>KIP-036</td><td><strong>Not started</strong></td><td>Owns public verified add-declaration cutover, public receipt projection, and bypass closure.</td></tr>
+<tr><td>Program snapshots</td><td><strong>No PR-branch snapshot</strong></td><td>The latest program baseline snapshot is <code>snapshot-60ca538fd00d</code>. No snapshot currently proves the PR branch’s later milestones.</td></tr>
+</tbody>
+</table>
+<p><strong>Status vocabulary:</strong> <em>specified</em> means the scope exists only in program authority; <em>local work in progress</em> means no commit or remote evidence; <em>pushed</em> binds source to a remote SHA; <em>PR green</em> binds terminal checks to that exact SHA; <em>merged</em> requires main readback; <em>snapshot proven</em> requires immutable artifacts and installation evidence; <em>user-reachable</em> additionally requires the declared public journey to execute from the installed product.</p>
+<h3 id="0-1-1-artifact-precedence">0.1.1 Artifact precedence</h3>
+<table>
+<thead><tr><th>Question</th><th>Authority</th></tr></thead>
+<tbody>
+<tr><td>What may the current agent do?</td><td>Active <code>.agent/TASK.md</code> plus root and nearest <code>AGENTS.md</code>.</td></tr>
+<tr><td>What dependency/effect graph is executable?</td><td>Kotlin under <code>build-logic/src/main/kotlin/support/architecture/</code>.</td></tr>
+<tr><td>What is the serialized architecture view?</td><td><code>gradle/architecture/kast-architecture-policy.json</code>, generated from Kotlin and never edited as independent authority.</td></tr>
+<tr><td>What may be scheduled next?</td><td>The live KIP guide in <code>.agents/arch/kast-architecture-firewall-and-mutation-workflow.md</code>.</td></tr>
+<tr><td>What is published or green?</td><td>Exact Git remote SHA, PR head/checks, merged-main readback, workflow source SHA, and immutable release metadata.</td></tr>
+<tr><td>What role do this HTML and the ZIP play?</td><td>Program reference and historical/generated views only. They cannot mark a task complete.</td></tr>
+</tbody>
+</table>
+<h3 id="0-2-local-kip-035-design">0.2 Local KIP-035 design</h3>
+<ul>
+<li><code>:evidence:sqlite</code> owns the existing atomic source-index publication adapter and retains typed <code>Current | Moved</code> publication currency. It does not introduce a second SQL or generation authority.</li>
+<li><code>:change:verify:spi</code>, <code>:change:verify:intellij</code>, and <code>:change:verify:service</code> implement one G1-bound verification flow.</li>
+<li>The IntelliJ verifier uses one scoped smart read, exact physical/document postimage admission, bounded diagnostics, typed PSI target/range identity, and K2 semantic type equality for collisions.</li>
+<li>Nonzero outbound-binding preservation fails closed. Equal counts alone cannot prove that compiler targets remained the same.</li>
+<li>Terminal v5 completion consumes the exact compiler-issued observation. Its durable receipt retains the complete published generation and typed observed identity.</li>
+<li>Expected failures are closed typed states; the new semantic path must not use rendered signatures, JSON/string comparison, exception messages, nullable sentinels, or Boolean validation as proof.</li>
+</ul>
+<h3 id="0-3-kip-035-residual-gates">0.3 KIP-035 residual gates</h3>
+<ol>
+<li>Add a real IntelliJ fixture test that executes <code>IntellijAddDeclarationVerificationExecutor</code> against PSI/K2. Existing IntelliJ tests cover the protocol but do not execute the production verifier.</li>
+<li>Reconcile runtime admission: the verifier currently admits only <code>IC</code> build <code>261.25134.95</code>, while repository policy advertises IntelliJ IDEA build 262 and Android Studio build 261 as supported hosts. Prove whether the isolated runtime is intentionally pinned independently of the supplying host, then test the actual supported matrix.</li>
+<li>Prove the narrow indexer composition boundary without cutting over the public route or restoring aggregate backend authority.</li>
+<li>Resolve the architecture-policy status of <code>EVIDENCE_SQLITE -&gt; INDEX_STORE</code>. The local validator currently treats it as a bare exact legacy bridge, while KIP-004 and the S02 contract require temporary legacy edges to be retirement-bound and projected. Either model a named retirement task or establish this as the intended permanent dependency direction and update the owning policy/documentation consistently.</li>
+<li>Freeze the combined diff and audit every changed Kotlin production file for forgeable authority, discarded refinements, primitive domain state, nullable/Boolean protocols, and string-shaped semantic decisions.</li>
+<li>Audit broad <code>Exception</code> catches around suspend effects so coroutine cancellation is not converted into an ordinary typed storage/verification rejection.</li>
+<li>Reconcile acceptance language: the original KIP-035 Green Proof names <code>RolledBack</code>, while the active task excludes rollback/recovery execution. Do not broaden into rollback implicitly; every post-apply failure must retain the strongest recovery authority the selected scope can prove.</li>
+<li>Run the exact Green Proof from <code>.agent/TASK.md</code>, write the Kotlin correctness scorecard, commit atomically, push without force, and verify terminal checks for the exact new PR head.</li>
+</ol>
+<h3 id="0-4-release-snapshot-policy">0.4 Release snapshot policy</h3>
+<p>The snapshot workflow publishes one full product and has no per-feature scope input. A successful workflow is therefore not proof that an internal slice is publicly reachable.</p>
+<ul>
+<li>A backfill snapshot at <code>c7467075a</code> may claim only the already reachable native-read and plan-only add-declaration scopes. It must not claim KIP-034 apply or KIP-035 verification as public behavior.</li>
+<li>Do not publish KIP-035 alone as the verified-add-declaration release. KIP-036 is the reachability boundary.</li>
+<li>After KIP-036, require exact PR-head CI, immutable <code>snapshot-&lt;sha12&gt;</code> target readback, four platform setup archives, four SHA-256 sidecars, isolated installation, <code>kast up</code> readiness, and the public add-declaration journey.</li>
+</ul>
+<h3 id="0-5-historical-s-task-pack">0.5 Historical S00–S12 task pack</h3>
+<p>All entries below are implemented and pushed on the open PR branch, not merged to <code>main</code>. The live architecture guide says S identifiers are historical mappings and are no longer selectable work items.</p>
+<table>
+<thead><tr><th>ZIP unit</th><th>Live mapping</th><th>Pushed evidence</th></tr></thead>
+<tbody>
+<tr><td>S00</td><td>KIP-002; completed and later strengthened</td><td><code>d232474d6</code>, <code>aaf1459c1</code></td></tr>
+<tr><td>S01</td><td>KIP-003; completed and later strengthened</td><td><code>fcd9440df</code>, <code>183a2510e</code></td></tr>
+<tr><td>S02</td><td>KIP-004; completed and later ratcheted</td><td><code>6c1a8929b</code>, <code>6186065ab</code></td></tr>
+<tr><td>S03</td><td>KIP-005; completed</td><td><code>6e99ac0cd</code></td></tr>
+<tr><td>S04</td><td>Supporting kernel materialization; not a KIP node</td><td><code>287b7e4dd</code></td></tr>
+<tr><td>S05</td><td>KIP-010; completed and reconciled</td><td><code>d65558a56</code>, <code>7968a52ed</code></td></tr>
+<tr><td>S06</td><td>KIP-011; completed and reconciled</td><td><code>de406f0e7</code>, <code>3fb40a2c4</code></td></tr>
+<tr><td>S07</td><td>KIP-012; completed and reconciled</td><td><code>16081db3e</code>, <code>575741b86</code></td></tr>
+<tr><td>S08</td><td>KIP-013; completed</td><td><code>a56c45396</code></td></tr>
+<tr><td>S09</td><td>KIP-014; completed</td><td><code>3e1f6e331</code></td></tr>
+<tr><td>S10</td><td>KIP-016; completed</td><td><code>07380194b</code></td></tr>
+<tr><td>S11</td><td>KIP-017; completed</td><td><code>b180003f3</code></td></tr>
+<tr><td>S12</td><td>KIP-018; public native read completed</td><td><code>62705c595</code></td></tr>
+</tbody>
+</table>
+<p>KIP-001, omitted by the old ZIP, was delivered by <code>d90cae9ab</code>. The actual S12 route is <code>symbol/discover</code> plus <code>symbol/resolve</code> through <code>PublicSymbolReadBinding.Native</code>, <code>NativeSymbolLookup</code>, and <code>IdeaNativePublicSymbolReader</code>. The planned <code>:runtime:bindings</code> and <code>:runtime:composition</code> modules were not materialized by that cutover.</p>
+<h2 id="1-executive-conclusion">1. Executive conclusion</h2>
+<p><code>jetbrains-index-mcp-plugin</code> is a valid and useful functional reference. Its interface is responsive because the common path stays inside an already-running IntelliJ process and calls the same indexed navigation and semantic APIs that power the IDE. It scopes work early, runs PSI work in cancellable read actions, limits projection, paginates large results, fails on dumb mode instead of guessing, and keeps native refactoring execution on the EDT. Those are concrete approaches Kast should reuse.</p>
+<p>It is not an architecture to copy wholesale. The reference project is a single IntelliJ plugin with an MCP transport, accepts several discovery-oriented input shapes, holds short-lived in-process state, and often performs a complete operation in one request. Kast needs stronger boundaries because its purpose is not only IDE automation. Kast must support exact, generation-bound, composable evidence and durable mutation workflows for agents.</p>
+<p>The program therefore adopts a <strong>dual substrate</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Substrate</th>
+<th>Authority</th>
+<th>Lifetime</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IntelliJ live substrate</strong></td>
+<td>Current platform state</td>
+<td>one read, command, or runtime epoch</td>
+<td>VFS, Project Model, indexes, PSI, Kotlin Analysis API, reference searches, diagnostics providers, refactoring processors</td>
+</tr>
+<tr>
+<td><strong>Kast durable evidence substrate</strong></td>
+<td>Proof about one admitted repository state</td>
+<td>generation, continuation, plan, attempt, receipt</td>
+<td>exact selectors, coverage, occurrences, graph facts, plans, obligations, before-images, terminal failures, verified receipts</td>
+</tr>
+</tbody>
+</table>
+<p>The live substrate is used directly whenever it already answers the operation. The durable substrate exists only when facts must survive the request, compose across operations, prove completeness, or mediate authority. This prevents Kast from rebuilding IntelliJ while preserving the properties that make Kast distinct.</p>
+<h2 id="2-what-this-program-is-trying-to-achieve">2. What this program is trying to achieve</h2>
+<p>The intended user experience is iterative:</p>
+<ol>
+<li><strong>Fast reads become useful first.</strong> Warm file, symbol, definition, and one-hop relation requests run against native IntelliJ indexes under one published generation. They do not import Gradle, refresh the repository, build a graph, or write SQLite.</li>
+<li><strong>Planning becomes useful before mutation.</strong> Add-declaration returns a stable, inspectable plan with an exact target, expected write set, obligations, and expected semantic delta.</li>
+<li><strong>The first mutation becomes fully trustworthy.</strong> A later apply request revalidates the plan, prepares recovery, performs one short IntelliJ mutation, publishes a new generation, verifies the result, and returns a verified receipt.</li>
+<li><strong>Rename proves the architecture at multi-file scope.</strong> Native <code>RenameProcessor</code> is used only after Kast has established the exact plan and authority.</li>
+<li><strong>Other operations migrate one at a time.</strong> Each operation earns its contract, adapter, proof, and performance evidence. Aggregate compatibility is retired last.</li>
+</ol>
+<p>“Usable” does not mean all target modules are active. It means each delivered operation is complete within its declared scope, fast on the ordinary path, and structurally unable to report unsupported certainty.</p>
+<h2 id="3-source-hierarchy-and-claim-discipline">3. Source hierarchy and claim discipline</h2>
+<p>The current Kast head is the tooling and policy authority. The supplied mutation plan remains the requirements basis, but any names or paths that differ from current head must be updated before implementation. The reference project is evidence for working IntelliJ integration patterns. Slopsentral is the process authority for proof-preserving types and parse-at-the-boundary design.</p>
+<p>No source in this document proves an apples-to-apples latency comparison between the two products. The reference project and Kast have different runtime modalities. The reference usually executes inside an already-open foreground IDE. Kast executes through an isolated exact-root runtime, IPC, its own generation publication, and additional evidence contracts. The correct comparison is not “which single call feels faster”; it is which unnecessary work can be removed while preserving Kast’s stronger claims.</p>
+<h3 id="source-ledger">Source ledger</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Kind</th>
+<th>Source</th>
+<th>What it supports</th>
+<th>What it does not support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a></td>
+<td>Authority</td>
+<td>amichne/kast @ 60ca538f — architecture firewall and mutation workflow</td>
+<td>Current executable policy direction, target module graph, effect ownership, mutation invariants, and migration baseline.</td>
+<td>Completion of the planned target modules. At this head, only the four legacy Gradle projects are materialized.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/amichne/kast/commit/c6792be7cc747e0f575dd39aae23337f74940321">KAST-PERF</a></td>
+<td>Evidence</td>
+<td>Kast performance increment #604 — reuse IntelliJ startup authorities</td>
+<td>Removal of duplicate Gradle import and process-wide refresh, plus measured warm semantic searches of 0.64 s, 0.73 s, and 1.03 s.</td>
+<td>A claim that current cold start is acceptable or that every warm operation has the same latency.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a></td>
+<td>Evidence</td>
+<td>Kast workspace transition program #555 and refresh coalescing #566</td>
+<td>Event-driven, generation-bound workspace transition, atomic publication, moving-workspace invalidation, and safe coalescing of covered refresh requests.</td>
+<td>Per-request full VFS refresh as a normal read-path prerequisite.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt">KAST-BACKEND</a></td>
+<td>Current state</td>
+<td>AnalysisBackend and KastIndexerBackend @ 60ca538f</td>
+<td>The aggregate internal capability problem: reads, graph work, refresh, planning, mutation, and verification are reachable through one interface.</td>
+<td>Using AnalysisBackend as a target internal abstraction.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/README.md">JB-README</a></td>
+<td>Functional reference</td>
+<td>hechtcarmel/jetbrains-index-mcp-plugin @ 7670d720</td>
+<td>A working IntelliJ-hosted interface over native indexes, PSI navigation, diagnostics, and refactoring APIs.</td>
+<td>A measured latency comparison with Kast. The repository is functional evidence, not a benchmark.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/handlers/PopupFaithfulSymbolSearch.kt">JB-INDEX</a></td>
+<td>Pattern</td>
+<td>Native Go to File, Go to Class, and Go to Symbol paths</td>
+<td>Use of FILE_EP_NAME, CLASS_EP_NAME, GotoSymbolModel2, ChooseByName contributors, platform matchers, scope filtering, and bounded result collection.</td>
+<td>Treating discovery coordinates or display names as exact semantic identity.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/AbstractMcpTool.kt">JB-READ</a></td>
+<td>Pattern</td>
+<td>Cancellable read and two-phase write protocol</td>
+<td>Coroutine read actions that yield to writes, cancellation propagation, smart-mode admission, and short EDT write commands.</td>
+<td>A generic runtime object or generic read/write gateway crossing Kast module boundaries.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/handlers/GeneratedSourcesExcludingScope.kt">JB-SCOPE</a></td>
+<td>Pattern</td>
+<td>Model-backed GlobalSearchScope and generated-source exclusion</td>
+<td>Filtering at the scope boundary with ProjectFileIndex.isInGeneratedSources so excluded PSI is never resolved or serialized.</td>
+<td>Inferring generated provenance from directory names.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/navigation/FindUsagesTool.kt">JB-RELATION</a></td>
+<td>Pattern</td>
+<td>ReferencesSearch, ClassInheritorsSearch, and OverridingMethodsSearch</td>
+<td>Streaming native relationship search, cancellation checks, explicit result caps, and separate exact-versus-lower-bound counts.</td>
+<td>Claiming complete repository evidence when a search is truncated, unsupported, or invalidated.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/server/PaginationService.kt">JB-PAGE</a></td>
+<td>Pattern</td>
+<td>Bounded cursor cache and lazy search extension</td>
+<td>TTL, cursor count, result count, lazy extension, per-cursor locking, project binding, and PSI modification observation.</td>
+<td>Using SmartPsiElementPointer or PSI modification count as Kast durable continuation identity.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/project/LongPollRegistry.kt">JB-LONG</a></td>
+<td>Pattern</td>
+<td>Registered long-operation protocol</td>
+<td>A request-budget-independent operation deadline, bounded polling, retention, exactly-once cleanup, and no requirement that a client keep a request open.</td>
+<td>Making ordinary index reads asynchronous or storing live IntelliJ state across approval boundaries.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/server/ProjectResolver.kt">JB-LIVENESS</a></td>
+<td>Pattern</td>
+<td>EDT heartbeat, resource admission, and staggered project open</td>
+<td>Fail-fast behavior for a frozen EDT, heap-pressure admission, and serialization of expensive project-open starts without serializing the entire indexing wait.</td>
+<td>Foreground IDE focus state as Kast semantic authority.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/refactoring/RenameSymbolTool.kt">JB-REFACTOR</a></td>
+<td>Pattern</td>
+<td>RenameProcessor and two-phase refactoring</td>
+<td>Native language-aware refactoring, background validation, and short EDT execution.</td>
+<td>One-call mutation success without Kast plan persistence, approval, revalidation, recovery, resulting generation, and verification.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/intelligence/ProjectDiagnosticsTool.kt">JB-COVERAGE</a></td>
+<td>Pattern</td>
+<td>Project diagnostics with fail-closed coverage</td>
+<td>Per-file terminal coverage states, complete only when every considered file was analyzed, and explicit long-running operation state.</td>
+<td>Diagnostics as a substitute for operation-specific semantic verification.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/semantic-ratchet/SKILL.md">SLOP-RATCHET</a></td>
+<td>Design rule</td>
+<td>amichne/slopsentral @ 672f1698 — semantic ratchet</td>
+<td>Successful parsing, validation, lookup, authorization, and state admission return stronger proof-carrying values that survive boundaries.</td>
+<td>Generic type machinery without a named misuse or invariant.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/kotlin-design-practices/references/parse-dont-validate-examples.md">SLOP-PARSE</a></td>
+<td>Design rule</td>
+<td>amichne/slopsentral @ 672f1698 — parse, do not validate</td>
+<td>Raw CLI, JSON, path, database, and network values are converted once at the boundary and do not flow through core logic.</td>
+<td>Repeated downstream validation of the same primitive.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-overarching-principles">4. Overarching principles</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Principle</th>
+<th>Operating rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>P01</code></td>
+<td><strong>Use the productized IntelliJ path first</strong></td>
+<td>Before creating an index, scanner, cache, or traversal, identify the IntelliJ action or query that already serves the equivalent IDE feature. File, class, symbol, definition, reference, implementation, hierarchy, diagnostics, and rename operations should begin from those APIs. A Kast-owned implementation is justified only by a named semantic requirement that the platform path cannot satisfy.</td>
+</tr>
+<tr>
+<td><code>P02</code></td>
+<td><strong>Treat IntelliJ as the live substrate and Kast as the durable evidence substrate</strong></td>
+<td>IntelliJ owns current PSI, indexes, project model, VFS, refactoring engines, and compiler sessions. Kast owns detached identity, generation, coverage, plans, obligations, continuations, persisted evidence, and receipts. Persist only facts that must survive a request, compose across operations, or support repository-wide proof. Do not duplicate a platform index merely because Kast can.</td>
+</tr>
+<tr>
+<td><code>P03</code></td>
+<td><strong>Separate discovery from exact identity</strong></td>
+<td>Native Go to File, Class, and Symbol queries are excellent discovery mechanisms. Their display names, coordinates, and navigation items are not exact selectors. A second compiler-backed transition must issue the exact generation-bound selector consumed by downstream operations.</td>
+</tr>
+<tr>
+<td><code>P04</code></td>
+<td><strong>Compile scope before starting work</strong></td>
+<td>Module, source-set, production, test, library, generated, and exact-file scope must become a typed platform search scope before a query runs. Filtering after PSI resolution wastes work and can produce incorrect completeness claims. Gradle and IntelliJ project-model evidence outrank path inference.</td>
+</tr>
+<tr>
+<td><code>P05</code></td>
+<td><strong>Bind every semantic read to one published generation</strong></td>
+<td>A ready generation is an admitted read capability, not a Boolean. A read either completes against one generation or is rejected because the workspace moved. Ordinary reads do not refresh, import Gradle, or build evidence to make themselves ready.</td>
+</tr>
+<tr>
+<td><code>P06</code></td>
+<td><strong>Use cancellable, write-allowing read actions</strong></td>
+<td>Long PSI and index reads use IntelliJ coroutine read actions, check cancellation within processors, and never swallow dumb-mode or cancellation exceptions as empty or complete results. Short reads remain small enough to restart when a write arrives.</td>
+</tr>
+<tr>
+<td><code>P07</code></td>
+<td><strong>Do not hide cost escalation</strong></td>
+<td>A metadata or index lookup cannot obtain Gradle import, graph build, SQLite write, or source write authority. Missing prerequisites return a typed blocker or explicit next operation. Physical module classpaths and operation-specific capabilities enforce this rule.</td>
+</tr>
+<tr>
+<td><code>P08</code></td>
+<td><strong>Do not refresh the repository on the normal read path</strong></td>
+<td>The reference plugin makes external-change synchronization optional because a recursive root refresh is expensive. Kast already has a stronger event-driven transition and coverage model. A read consumes the current generation; a source event requests a targeted transition. Recovery audit is not a per-call tax.</td>
+</tr>
+<tr>
+<td><code>P09</code></td>
+<td><strong>Bound the projection without lying about completeness</strong></td>
+<td>Limit result records, bytes, previews, and continuation state. Report exact counts only when enumeration is proven terminal. A cap, cancellation, dumb-mode transition, stale cursor, unsupported element, or provider failure produces qualified or rejected output, never complete output.</td>
+</tr>
+<tr>
+<td><code>P10</code></td>
+<td><strong>Reserve registered operations for work that inherently outlives a request</strong></td>
+<td>Normal file, symbol, definition, and one-hop relation reads remain synchronous within a bounded request. Workspace import, graph build, project diagnostics, large planning, and mutation transition may use a registered operation with a durable identifier, operation deadline, bounded polling, and exactly-once cleanup.</td>
+</tr>
+<tr>
+<td><code>P11</code></td>
+<td><strong>Use native refactoring as the physical executor, not as the workflow owner</strong></td>
+<td>Kast plans and proves; IntelliJ mutates. Planning and search finish before the EDT command. The write action contains only the operation-specific PSI or refactoring call. Kast still requires approval, revalidation, recovery evidence, write-set closure, a resulting generation, and operation-specific verification.</td>
+</tr>
+<tr>
+<td><code>P12</code></td>
+<td><strong>Make misuse mechanically unavailable</strong></td>
+<td>Contracts, services, IntelliJ adapters, SQLite adapters, filesystem adapters, transport, and composition are distinct Gradle modules. A caller receives only its operation capability. It never receives Project, AnalysisBackend, a database, a runtime, or a service container from which stronger authority can be recovered.</td>
+</tr>
+<tr>
+<td><code>P13</code></td>
+<td><strong>Admit expensive work according to resource state</strong></td>
+<td>Stagger startup and import initiation, separate initiation from readiness wait, cap concurrency, expose heap and queue pressure, and fail closed before GC thrash or EDT starvation. Resource admission is explicit evidence, not an incidental exception.</td>
+</tr>
+<tr>
+<td><code>P14</code></td>
+<td><strong>Preserve proof through every boundary</strong></td>
+<td>A successful parse, lookup, scope admission, selector resolution, generation admission, writability check, or recovery preparation returns a stronger type. Callers consume that value; they do not unpack it to primitives and reconstruct its proof later.</td>
+</tr>
+<tr>
+<td><code>P15</code></td>
+<td><strong>Benchmark work, not impression</strong></td>
+<td>The reference project is a valid functional example, but it does not publish an apples-to-apples latency comparison with Kast. Every performance decision must record operation latency, queue time, smart-mode wait, index work, PSI work, result count, bytes, page count, refresh/import activity, and whether a new generation was built.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5-what-to-adopt-adapt-and-reject-from-the-reference-project">5. What to adopt, adapt, and reject from the reference project</h2>
+<table>
+<thead>
+<tr>
+<th>Reference approach</th>
+<th>Decision</th>
+<th>Kast interpretation</th>
+<th>Tickets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Native FILE_EP_NAME / CLASS_EP_NAME / GotoSymbol infrastructure</td>
+<td><strong>Adopt</strong></td>
+<td>Use for cheap discovery; detach candidates and issue exact selectors in a separate compiler-backed transition.</td>
+<td><code>KIP-013, KIP-014</code></td>
+</tr>
+<tr>
+<td>Coroutine readAction, cancellation, dumb-mode propagation</td>
+<td><strong>Adopt</strong></td>
+<td>Use inside IntelliJ read adapters; do not expose a generic read gateway across modules.</td>
+<td><code>KIP-011, KIP-013, KIP-015, KIP-017</code></td>
+</tr>
+<tr>
+<td>GlobalSearchScope and ProjectFileIndex generated filtering</td>
+<td><strong>Adopt and strengthen</strong></td>
+<td>Compile from typed Gradle/IntelliJ ownership and explicit evidence policy before the query.</td>
+<td><code>KIP-012</code></td>
+</tr>
+<tr>
+<td>Bounded pages, TTL, lazy extension, cursor eviction</td>
+<td><strong>Adapt</strong></td>
+<td>Retain the bounds; replace PSI pointers and mod-count identity with detached selectors and published generation identity.</td>
+<td><code>KIP-016</code></td>
+</tr>
+<tr>
+<td>ReferencesSearch and hierarchy search processors</td>
+<td><strong>Adopt and strengthen</strong></td>
+<td>Preserve native speed; add exact endpoint identity, occurrence provenance, and complete/qualified/rejected coverage.</td>
+<td><code>KIP-015</code></td>
+</tr>
+<tr>
+<td>Optional recursive VFS sync before every PSI tool</td>
+<td><strong>Reject for normal reads</strong></td>
+<td>Kast uses event-driven targeted transition and generation coverage. Full refresh remains explicit recovery only.</td>
+<td><code>KIP-017, KIP-020</code></td>
+</tr>
+<tr>
+<td>Long-poll registered operation</td>
+<td><strong>Adopt for long work only</strong></td>
+<td>Use for import, graph build, project diagnostics, large planning, and transition-backed mutation—not ordinary reads.</td>
+<td><code>KIP-021</code></td>
+</tr>
+<tr>
+<td>EDT heartbeat and heap/startup gates</td>
+<td><strong>Adapt</strong></td>
+<td>Use typed liveness and resource blockers in the isolated exact-root runtime; do not copy foreground focus lifecycle.</td>
+<td><code>KIP-017, KIP-022</code></td>
+</tr>
+<tr>
+<td>RenameProcessor and two-phase refactoring</td>
+<td><strong>Adapt</strong></td>
+<td>Use as physical executor after durable Kast planning, approval, revalidation, recovery, and before resulting-generation verification.</td>
+<td><code>KIP-030 through KIP-042</code></td>
+</tr>
+<tr>
+<td>Single plugin module and aggregate AbstractMcpTool access</td>
+<td><strong>Reject as Kast architecture</strong></td>
+<td>Keep transport and convenience wrappers outside operation modules. Physical classpaths must prevent authority escalation.</td>
+<td><code>KIP-003, KIP-005, KIP-055</code></td>
+</tr>
+<tr>
+<td>Raw symbol strings or file/line/column as exact authority</td>
+<td><strong>Reject</strong></td>
+<td>Parse as discovery or source position, then return an exact generation-bound selector.</td>
+<td><code>KIP-014</code></td>
+</tr>
+<tr>
+<td>Tool-level text errors and nullable lifecycle state</td>
+<td><strong>Reject internally</strong></td>
+<td>Project canonical closed failures and states; transport may render them as text only at the edge.</td>
+<td><code>KIP-010</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="6-preferred-intellij-substrate-by-operation">6. Preferred IntelliJ substrate by operation</h2>
+<table>
+<thead>
+<tr>
+<th>Kast operation</th>
+<th>Preferred live IntelliJ substrate</th>
+<th>Kast-owned value added</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>File discovery</td>
+<td><code>ChooseByNameContributor.FILE_EP_NAME</code> / Go to File provider</td>
+<td>typed scope, deterministic projection, generation, bounded continuation</td>
+</tr>
+<tr>
+<td>Class discovery</td>
+<td><code>ChooseByNameContributor.CLASS_EP_NAME</code> / Go to Class provider</td>
+<td>candidate identity, exact resolution step, complete/qualified/rejected outcome</td>
+</tr>
+<tr>
+<td>Symbol discovery</td>
+<td><code>GotoSymbolModel2</code>, <code>ChooseByNameModelEx</code>, registered symbol contributors</td>
+<td>candidate selector, exact compiler selector, producer-to-consumer round trip</td>
+</tr>
+<tr>
+<td>Definition</td>
+<td>PSI reference resolution and navigation element</td>
+<td>exact selected declaration, generation, bounded preview, library/source provenance</td>
+</tr>
+<tr>
+<td>References</td>
+<td><code>ReferencesSearch</code> under <code>GlobalSearchScope</code></td>
+<td>exact endpoints, occurrence ranges, coverage, exact count versus lower bound</td>
+</tr>
+<tr>
+<td>Implementations</td>
+<td><code>OverridingMethodsSearch</code>, <code>ClassInheritorsSearch</code>, Kotlin-supported equivalents</td>
+<td>exact family meaning, source occurrence, scope and completeness</td>
+</tr>
+<tr>
+<td>Type hierarchy</td>
+<td>PSI supertypes plus inheritor search</td>
+<td>cycle/depth bounds, exact family identity, limitations</td>
+</tr>
+<tr>
+<td>Generated-source filtering</td>
+<td><code>ProjectFileIndex.isInGeneratedSources</code> plus Gradle source-root provenance</td>
+<td>operation-specific evidence policy and separate edit authority</td>
+</tr>
+<tr>
+<td>Diagnostics</td>
+<td>open-editor daemon evidence or public batch analysis</td>
+<td>per-file coverage, analysis mode, generation, operation-specific acceptance</td>
+</tr>
+<tr>
+<td>Rename</td>
+<td><code>RenameProcessor</code> and language-specific rename processors</td>
+<td>durable plan, strategy obligations, recovery, write-set closure, G1 verification</td>
+</tr>
+<tr>
+<td>Add declaration/file</td>
+<td>supported PSI creation/insertion and document APIs</td>
+<td>owner/provenance proof, expected postimage, recovery, resulting-generation proof</td>
+</tr>
+<tr>
+<td>Workspace freshness</td>
+<td>Kast event-driven transition over IntelliJ VFS/Gradle model</td>
+<td>exact candidate identity, coalescing, atomic publication, recovery audit</td>
+</tr>
+<tr>
+<td>Graph build</td>
+<td>Kotlin/IntelliJ extraction plus Kast pure derivation and persistence</td>
+<td>repository-wide composability, durable generation evidence, explicit blockers</td>
+</tr>
+</tbody>
+</table>
+<h2 id="7-execution-model">7. Execution model</h2>
+<pre><code class="language-text">Ordinary read
+RawRequest
+  → TypedRequest
+  → RuntimeLiveness
+  → SemanticReadLease(Gn)
+  → CompiledSearchScope
+  → Native IntelliJ Index / PSI Query
+  → Detached Candidate or Fact
+  → Exact Selector / Complete | Qualified | Rejected
+
+Registered long work
+TypedRequest
+  → ResourceAdmission
+  → RegisteredOperation(operationId, deadline)
+  → bounded execution independent of request lifetime
+  → poll(operationId)
+  → TerminalResult | Expired | Rejected
+
+Semantic mutation
+RawRequest
+  → MutationIntent
+  → MutationPlan(G0)
+  → durable approval boundary
+  → LogicalMutationLease
+  → RevalidatedPlan
+  → RecoveryPrepared
+  → PreparedIntelliJMutation
+  → short EDT command
+  → AppliedUnverified
+  → targeted workspace transition
+  → PublishedWorkspace(G1)
+  → operation-specific verification
+  → VerifiedReceipt | RolledBack | Rejected | RecoveryRequired
+
+External mutation
+RecoveryPrepared
+  → PreparedExternalMutation
+  → descriptor-relative atomic write
+  → AppliedUnverified
+  → same transition and verification suffix
+
+The semantic and external apply lanes are alternatives. Recovery is available from every
+post-RecoveryPrepared failure; it is not a final sequential node.
+</code></pre>
+<h3 id="7-1-the-ordinary-read-performance-contract">7.1 The ordinary read performance contract</h3>
+<p>A stable-generation read must satisfy all of these mechanical conditions:</p>
+<ul>
+<li>zero Gradle import;</li>
+<li>zero workspace publication;</li>
+<li>zero graph build;</li>
+<li>zero SQLite write;</li>
+<li>zero recursive content-root refresh;</li>
+<li>one typed search scope compiled before the query;</li>
+<li>one or a small bounded sequence of cancellable read actions;</li>
+<li>streaming native processors with cancellation checks;</li>
+<li>bounded result records and bytes;</li>
+<li>exact generation and completeness in the result;</li>
+<li>separate timing for admission, native query, semantic resolution, projection, serialization, and IPC.</li>
+</ul>
+<p>If any prerequisite is missing, the handler returns a typed blocker. It does not perform the stronger operation itself.</p>
+<h3 id="7-2-when-persistence-is-justified">7.2 When persistence is justified</h3>
+<p>Persist a fact only when at least one condition is true:</p>
+<ol>
+<li>The fact must survive the producing request or process.</li>
+<li>The fact is required by a later compatible operation without reconstructing identity.</li>
+<li>The fact participates in repository-wide completeness or negative proof.</li>
+<li>The fact is expensive enough that reuse is measured and invalidation is sound.</li>
+<li>The fact is part of a durable plan, attempt, recovery record, or receipt.</li>
+</ol>
+<p>File names, class names, symbol candidates, a single definition, and many one-hop reads usually do not meet this bar. Exact selectors, relationship coverage, repository graph facts, source generations, plans, and receipts do.</p>
+<h3 id="7-3-performance-evidence-contract">7.3 Performance evidence contract</h3>
+<p>Every performance increment records:</p>
+<pre><code class="language-text">source revision
+runtime and IDE build
+canonical root and corpus identity
+cold / warm state
+operation ID and normalized request
+published generation
+admission and queue time
+smart-mode or transition wait
+scope compilation time
+native index/search time
+semantic resolution time
+persistence or publication work, if any
+projection and serialization time
+IPC time
+records, bytes, pages, and exactness
+VFS refresh count and scope
+Gradle import count
+graph-build and SQLite-write count
+CPU, heap, cancellation, and EDT observations
+</code></pre>
+<p>Current evidence from Kast #604 establishes a historical warm-search median of 0.73 seconds over three samples. It is a baseline, not a universal target. KIP-001 must create reproducible same-corpus evidence before a stricter service objective is frozen.</p>
+<h2 id="8-architecture-corrections-before-extraction">8. Architecture corrections before extraction</h2>
+<p>The current architecture firewall is valuable and should remain. Four corrections are required before it becomes the implementation program:</p>
+<ol>
+<li><strong>Alternative lanes must be executable semantics.</strong> Semantic and external apply are one-of branches, not two mandatory predecessors.</li>
+<li><strong>Dependency direction must follow ports.</strong> Services consume contracts and SPIs; adapters implement SPIs; persistence implements an evidence contract; the registry imports feature contracts.</li>
+<li><strong>Migration needs a transition topology.</strong> Exact legacy-to-target edges are temporary, retirement-bound, and shrink-only. Target-to-legacy edges remain impossible.</li>
+<li><strong>Backend retirement must be split.</strong> Mutation methods can become transport compatibility bindings after mutation slices migrate. The full <code>AnalysisBackend</code> type disappears only after read, relation, graph, diagnostic, workspace, and evidence families migrate.</li>
+</ol>
+<p>These corrections preserve the firewall’s intent while avoiding a horizontal waterfall in which no operation becomes usable until the entire platform exists.</p>
+<h2 id="9-milestones">9. Milestones</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Milestone</th>
+<th>Exit condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M0</code></td>
+<td><strong>Correct foundation</strong></td>
+<td>The policy can express the intended architecture and migration without a big-bang move.</td>
+</tr>
+<tr>
+<td><code>M1</code></td>
+<td><strong>Fast read path</strong></td>
+<td>At least one public read uses a narrow native IntelliJ capability and produces exact, bounded, generation-bound output.</td>
+</tr>
+<tr>
+<td><code>M2</code></td>
+<td><strong>Workspace execution</strong></td>
+<td>Transitions, long work, and resource admission are explicit and independent from ordinary read execution.</td>
+</tr>
+<tr>
+<td><code>M3</code></td>
+<td><strong>Plan-only mutation</strong></td>
+<td>Add-declaration produces a detached durable plan with no source authority.</td>
+</tr>
+<tr>
+<td><code>M4</code></td>
+<td><strong>First verified mutation</strong></td>
+<td>Add-declaration reaches a verified receipt or a truthful rejected, rolled-back, or recovery-required state.</td>
+</tr>
+<tr>
+<td><code>M5</code></td>
+<td><strong>Verified rename</strong></td>
+<td>Native multi-file rename is mediated by the same plan, recovery, transition, and proof protocol.</td>
+</tr>
+<tr>
+<td><code>M6</code></td>
+<td><strong>Expansion and retirement</strong></td>
+<td>Operations migrate one at a time; raw semantic apply and the aggregate backend are retired only after their consumers move.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="10-ticket-contract">10. Ticket contract</h2>
+<p>Each ticket below is intended to become one <code>.agent/TASK.md</code>-style work packet. Before implementation, the agent must replace broad owner names with exact allowed read and write paths and name the focused current test that supplies the red proof. A ticket may add the target test task when the target module does not yet exist, but it may not broaden the ticket goal.</p>
+<p>The ticket is complete only when:</p>
+<ul>
+<li>its one observable outcome exists;</li>
+<li>the red proof fails before the change and the green proof passes after it;</li>
+<li>every established fact is carried by a stronger value or capability;</li>
+<li>no new bypass, fallback, effect allowance, or incidental cleanup entered the change;</li>
+<li>the architecture projection and exact baseline are updated together;</li>
+<li>direct consumers pass the narrowest widening proof;</li>
+<li>the evidence ledger points from the ticket to its executable proof.</li>
+</ul>
+<h2 id="11-ticket-summary-and-dependency-table">11. Ticket summary and dependency table</h2>
+<table>
+<thead>
+<tr>
+<th>Ticket</th>
+<th>Title</th>
+<th>Milestone</th>
+<th>Depends on</th>
+<th>Unlocks</th>
+<th style="text-align:right">Wave</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KIP-001</code></td>
+<td>Freeze the source and performance ledger</td>
+<td><code>M0</code></td>
+<td>None</td>
+<td><code>KIP-002</code>, <code>KIP-003</code>, <code>KIP-018</code>, <code>KIP-022</code>, <code>KIP-030</code>, <code>KIP-040</code></td>
+<td style="text-align:right">0</td>
+</tr>
+<tr>
+<td><code>KIP-002</code></td>
+<td>Correct branch, join, and recovery semantics</td>
+<td><code>M0</code></td>
+<td><code>KIP-001</code></td>
+<td><code>KIP-005</code>, <code>KIP-053</code></td>
+<td style="text-align:right">1</td>
+</tr>
+<tr>
+<td><code>KIP-003</code></td>
+<td>Correct module dependency direction</td>
+<td><code>M0</code></td>
+<td><code>KIP-001</code></td>
+<td><code>KIP-004</code>, <code>KIP-005</code>, <code>KIP-010</code>, <code>KIP-020</code></td>
+<td style="text-align:right">1</td>
+</tr>
+<tr>
+<td><code>KIP-004</code></td>
+<td>Introduce retirement-bound migration edges</td>
+<td><code>M0</code></td>
+<td><code>KIP-003</code></td>
+<td><code>KIP-020</code>, <code>KIP-032</code></td>
+<td style="text-align:right">2</td>
+</tr>
+<tr>
+<td><code>KIP-005</code></td>
+<td>Enforce role, effect, and cost boundaries</td>
+<td><code>M0</code></td>
+<td><code>KIP-002</code>, <code>KIP-003</code></td>
+<td><code>KIP-011</code>, <code>KIP-020</code>, <code>KIP-034</code>, <code>KIP-036</code></td>
+<td style="text-align:right">2</td>
+</tr>
+<tr>
+<td><code>KIP-010</code></td>
+<td>Define operation lane contracts</td>
+<td><code>M1</code></td>
+<td><code>KIP-003</code></td>
+<td><code>KIP-011</code>, <code>KIP-016</code>, <code>KIP-021</code>, <code>KIP-031</code></td>
+<td style="text-align:right">2</td>
+</tr>
+<tr>
+<td><code>KIP-011</code></td>
+<td>Extract a generation-bound semantic read lease</td>
+<td><code>M1</code></td>
+<td><code>KIP-005</code>, <code>KIP-010</code></td>
+<td><code>KIP-012</code>, <code>KIP-015</code>, <code>KIP-016</code>, <code>KIP-017</code>, <code>KIP-030</code>, <code>KIP-031</code>, <code>KIP-040</code></td>
+<td style="text-align:right">3</td>
+</tr>
+<tr>
+<td><code>KIP-012</code></td>
+<td>Compile typed IntelliJ search scopes</td>
+<td><code>M1</code></td>
+<td><code>KIP-011</code></td>
+<td><code>KIP-013</code>, <code>KIP-015</code>, <code>KIP-030</code>, <code>KIP-031</code>, <code>KIP-040</code></td>
+<td style="text-align:right">4</td>
+</tr>
+<tr>
+<td><code>KIP-013</code></td>
+<td>Implement native file, class, and symbol discovery</td>
+<td><code>M1</code></td>
+<td><code>KIP-012</code></td>
+<td><code>KIP-014</code>, <code>KIP-018</code></td>
+<td style="text-align:right">5</td>
+</tr>
+<tr>
+<td><code>KIP-014</code></td>
+<td>Resolve discovery candidates into exact selectors</td>
+<td><code>M1</code></td>
+<td><code>KIP-013</code></td>
+<td><code>KIP-015</code>, <code>KIP-018</code></td>
+<td style="text-align:right">6</td>
+</tr>
+<tr>
+<td><code>KIP-015</code></td>
+<td>Implement bounded native relation reads</td>
+<td><code>M1</code></td>
+<td><code>KIP-011</code>, <code>KIP-012</code>, <code>KIP-014</code></td>
+<td><code>KIP-035</code>, <code>KIP-041</code>, <code>KIP-051</code></td>
+<td style="text-align:right">7</td>
+</tr>
+<tr>
+<td><code>KIP-016</code></td>
+<td>Implement detached generation-bound continuations</td>
+<td><code>M1</code></td>
+<td><code>KIP-010</code>, <code>KIP-011</code></td>
+<td><code>KIP-018</code>, <code>KIP-042</code></td>
+<td style="text-align:right">4</td>
+</tr>
+<tr>
+<td><code>KIP-017</code></td>
+<td>Add liveness and freshness admission</td>
+<td><code>M1</code></td>
+<td><code>KIP-011</code></td>
+<td><code>KIP-018</code>, <code>KIP-021</code></td>
+<td style="text-align:right">4</td>
+</tr>
+<tr>
+<td><code>KIP-018</code></td>
+<td>Cut over and benchmark the first fast read</td>
+<td><code>M1</code></td>
+<td><code>KIP-001</code>, <code>KIP-013</code>, <code>KIP-014</code>, <code>KIP-016</code>, <code>KIP-017</code></td>
+<td><code>KIP-055</code></td>
+<td style="text-align:right">7</td>
+</tr>
+<tr>
+<td><code>KIP-020</code></td>
+<td>Extract the workspace transition port</td>
+<td><code>M2</code></td>
+<td><code>KIP-003</code>, <code>KIP-004</code>, <code>KIP-005</code></td>
+<td><code>KIP-022</code>, <code>KIP-031</code>, <code>KIP-033</code>, <code>KIP-035</code>, <code>KIP-053</code></td>
+<td style="text-align:right">3</td>
+</tr>
+<tr>
+<td><code>KIP-021</code></td>
+<td>Add the registered long-operation protocol</td>
+<td><code>M2</code></td>
+<td><code>KIP-010</code>, <code>KIP-017</code></td>
+<td><code>KIP-022</code></td>
+<td style="text-align:right">5</td>
+</tr>
+<tr>
+<td><code>KIP-022</code></td>
+<td>Add resource admission and staggered expensive work</td>
+<td><code>M2</code></td>
+<td><code>KIP-001</code>, <code>KIP-020</code>, <code>KIP-021</code></td>
+<td><code>KIP-056</code></td>
+<td style="text-align:right">6</td>
+</tr>
+<tr>
+<td><code>KIP-030</code></td>
+<td>Characterize the add-declaration IntelliJ protocol</td>
+<td><code>M3</code></td>
+<td><code>KIP-001</code>, <code>KIP-011</code>, <code>KIP-012</code></td>
+<td><code>KIP-031</code>, <code>KIP-034</code></td>
+<td style="text-align:right">5</td>
+</tr>
+<tr>
+<td><code>KIP-031</code></td>
+<td>Define and route plan-only add-declaration</td>
+<td><code>M3</code></td>
+<td><code>KIP-010</code>, <code>KIP-011</code>, <code>KIP-012</code>, <code>KIP-020</code>, <code>KIP-030</code></td>
+<td><code>KIP-032</code></td>
+<td style="text-align:right">6</td>
+</tr>
+<tr>
+<td><code>KIP-032</code></td>
+<td>Persist the plan and establish the approval boundary</td>
+<td><code>M3</code></td>
+<td><code>KIP-004</code>, <code>KIP-031</code></td>
+<td><code>KIP-033</code></td>
+<td style="text-align:right">7</td>
+</tr>
+<tr>
+<td><code>KIP-033</code></td>
+<td>Revalidate and prepare recovery</td>
+<td><code>M4</code></td>
+<td><code>KIP-020</code>, <code>KIP-032</code></td>
+<td><code>KIP-034</code>, <code>KIP-041</code>, <code>KIP-053</code></td>
+<td style="text-align:right">8</td>
+</tr>
+<tr>
+<td><code>KIP-034</code></td>
+<td>Apply one short IntelliJ mutation and prove write-set closure</td>
+<td><code>M4</code></td>
+<td><code>KIP-005</code>, <code>KIP-030</code>, <code>KIP-033</code></td>
+<td><code>KIP-035</code></td>
+<td style="text-align:right">9</td>
+</tr>
+<tr>
+<td><code>KIP-035</code></td>
+<td>Publish the resulting generation and verify add-declaration</td>
+<td><code>M4</code></td>
+<td><code>KIP-015</code>, <code>KIP-020</code>, <code>KIP-034</code></td>
+<td><code>KIP-036</code>, <code>KIP-042</code></td>
+<td style="text-align:right">10</td>
+</tr>
+<tr>
+<td><code>KIP-036</code></td>
+<td>Cut over public add-declaration and close bypasses</td>
+<td><code>M4</code></td>
+<td><code>KIP-005</code>, <code>KIP-035</code></td>
+<td><code>KIP-050</code>, <code>KIP-051</code>, <code>KIP-052</code>, <code>KIP-054</code></td>
+<td style="text-align:right">11</td>
+</tr>
+<tr>
+<td><code>KIP-040</code></td>
+<td>Characterize the native rename protocol</td>
+<td><code>M5</code></td>
+<td><code>KIP-001</code>, <code>KIP-011</code>, <code>KIP-012</code></td>
+<td><code>KIP-041</code></td>
+<td style="text-align:right">5</td>
+</tr>
+<tr>
+<td><code>KIP-041</code></td>
+<td>Extract a detached rename plan and native apply adapter</td>
+<td><code>M5</code></td>
+<td><code>KIP-015</code>, <code>KIP-033</code>, <code>KIP-040</code></td>
+<td><code>KIP-042</code></td>
+<td style="text-align:right">9</td>
+</tr>
+<tr>
+<td><code>KIP-042</code></td>
+<td>Route verified rename and prove multi-file behavior</td>
+<td><code>M5</code></td>
+<td><code>KIP-016</code>, <code>KIP-035</code>, <code>KIP-041</code></td>
+<td><code>KIP-054</code>, <code>KIP-056</code></td>
+<td style="text-align:right">11</td>
+</tr>
+<tr>
+<td><code>KIP-050</code></td>
+<td>Route verified add-file as its own slice</td>
+<td><code>M6</code></td>
+<td><code>KIP-036</code></td>
+<td><code>KIP-054</code>, <code>KIP-056</code></td>
+<td style="text-align:right">12</td>
+</tr>
+<tr>
+<td><code>KIP-051</code></td>
+<td>Route exact replacement as its own slice</td>
+<td><code>M6</code></td>
+<td><code>KIP-015</code>, <code>KIP-036</code></td>
+<td><code>KIP-054</code>, <code>KIP-056</code></td>
+<td style="text-align:right">12</td>
+</tr>
+<tr>
+<td><code>KIP-052</code></td>
+<td>Route optimize-imports as its own slice</td>
+<td><code>M6</code></td>
+<td><code>KIP-036</code></td>
+<td><code>KIP-054</code>, <code>KIP-056</code></td>
+<td style="text-align:right">12</td>
+</tr>
+<tr>
+<td><code>KIP-053</code></td>
+<td>Implement the typed external-file lane</td>
+<td><code>M6</code></td>
+<td><code>KIP-002</code>, <code>KIP-020</code>, <code>KIP-033</code></td>
+<td><code>KIP-054</code>, <code>KIP-056</code></td>
+<td style="text-align:right">9</td>
+</tr>
+<tr>
+<td><code>KIP-054</code></td>
+<td>Reduce mutation methods on AnalysisBackend to compatibility bindings</td>
+<td><code>M6</code></td>
+<td><code>KIP-036</code>, <code>KIP-042</code>, <code>KIP-050</code>, <code>KIP-051</code>, <code>KIP-052</code>, <code>KIP-053</code></td>
+<td><code>KIP-055</code></td>
+<td style="text-align:right">13</td>
+</tr>
+<tr>
+<td><code>KIP-055</code></td>
+<td>Decompose remaining read capabilities and retire AnalysisBackend</td>
+<td><code>M6</code></td>
+<td><code>KIP-018</code>, <code>KIP-054</code></td>
+<td><code>KIP-056</code></td>
+<td style="text-align:right">14</td>
+</tr>
+<tr>
+<td><code>KIP-056</code></td>
+<td>Prove the enterprise multi-module acceptance journey</td>
+<td><code>M6</code></td>
+<td><code>KIP-022</code>, <code>KIP-042</code>, <code>KIP-050</code>, <code>KIP-051</code>, <code>KIP-052</code>, <code>KIP-053</code>, <code>KIP-055</code></td>
+<td>None</td>
+<td style="text-align:right">15</td>
+</tr>
+</tbody>
+</table>
+<h2 id="12-atomic-pseudo-ticket-documents">12. Atomic pseudo-ticket documents</h2>
+<h3 id="kip-001-freeze-the-source-and-performance-ledger">KIP-001 — Freeze the source and performance ledger</h3>
+<p><strong>Milestone:</strong> <code>M0</code><br/>
+<strong>Depends on:</strong> None<br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/commit/c6792be7cc747e0f575dd39aae23337f74940321">KAST-PERF</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/README.md">JB-README</a>, <code>P15</code></p>
+<p><strong>Goal</strong></p>
+<p>Create one checked-in ledger that binds this program to exact Kast, reference-project, IntelliJ build, corpus, machine, operation, and benchmark identities.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project is useful as functional evidence, but “snappy” is not a reproducible acceptance condition. Kast already has a 0.73 s warm-search median from #604; that evidence must become the baseline rather than disappear into narrative.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Record exact revisions and supported IDE builds.</li>
+<li>Define representative corpora: Kast, a medium multi-module Kotlin repository, and an enterprise-shaped corpus.</li>
+<li>Capture warm and cold traces for file discovery, symbol discovery, definition, references, workspace admission, and add-declaration planning.</li>
+<li>Record stage timing and work counters, not only wall time.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Changing production behavior.</li>
+<li>Choosing an optimization before evidence identifies the cost.</li>
+<li>Claiming the reference project has a specific latency without measuring it.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A performance change can be proposed without an exact prior sample, operation identity, corpus identity, or work breakdown.</p>
+<p><strong>Green proof</strong></p>
+<p>A deterministic ledger validator rejects missing provenance, incomparable runs, and unsupported claims; the baseline commands reproduce the recorded samples.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The ledger names every source revision and environment input.</li>
+<li>Every later performance ticket references one baseline operation.</li>
+<li>Warm search evidence from #604 is retained as historical evidence, not rewritten as a new claim.</li>
+</ul>
+<h3 id="kip-002-correct-branch-join-and-recovery-semantics">KIP-002 — Correct branch, join, and recovery semantics</h3>
+<p><strong>Milestone:</strong> <code>M0</code><br/>
+<strong>Depends on:</strong> <code>KIP-001</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P11</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Replace the flat mutation process DAG with a model that represents one-of semantic or external apply lanes and recovery as an interrupt edge available after recovery preparation.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The current executable graph makes the post-apply step depend on both apply lanes even though the prose declares them alternatives. Recovery is also modeled as a final dependency instead of a failure transition.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Add explicit branch and selected-lane join semantics to build-logic policy.</li>
+<li>Model recovery from every post-recovery-preparation state.</li>
+<li>Generate the same semantics into the review projection.</li>
+<li>Add negative tests for an AND-join across mutually exclusive lanes.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Implementing either source writer.</li>
+<li>Changing the public mutation protocol.</li>
+<li>Adding operation-specific plan types.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>The policy accepts a process graph in which RP12 requires both RP11S and RP11E, or in which a failure after recovery preparation has no recovery edge.</p>
+<p><strong>Green proof</strong></p>
+<p>Policy tests prove exactly one selected apply lane reaches the common suffix and every admitted failure reaches RolledBack or RecoveryRequired.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The Kotlin policy is the sole authority.</li>
+<li>The JSON projection is deterministic.</li>
+<li>No target module must execute both source-write lanes.</li>
+</ul>
+<h3 id="kip-003-correct-module-dependency-direction">KIP-003 — Correct module dependency direction</h3>
+<p><strong>Milestone:</strong> <code>M0</code><br/>
+<strong>Depends on:</strong> <code>KIP-001</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/semantic-ratchet/SKILL.md">SLOP-RATCHET</a>, <code>P12</code></p>
+<p><strong>Goal</strong></p>
+<p>Make contracts and SPIs the dependency center: services depend on ports, physical adapters implement ports, the registry imports operation contracts, and persistence implements an evidence contract.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Several planned edges currently invert control: services depend on SQLite or filesystem implementations, an IntelliJ adapter depends on its service, and change contracts depend on the registry. Those edges make physical effects reachable from orchestration code.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Introduce <code>:workspace:spi</code>, <code>:evidence:contract</code>, and <code>:change:recovery:spi</code> or equivalent exact ports.</li>
+<li>Reverse adapter-to-service and contract-to-registry edges.</li>
+<li>Keep composition as the only complete implementation owner.</li>
+<li>Add graph fixtures for each forbidden inverse edge.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Moving product implementations.</li>
+<li>Activating all target modules.</li>
+<li>Creating a generic repository or service locator.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A service can depend directly on <code>:evidence:sqlite</code> or <code>:change:recovery:filesystem</code>, or a feature contract can depend on <code>:protocol:registry</code>.</p>
+<p><strong>Green proof</strong></p>
+<p><code>verifyKastArchitecture</code> rejects each inverted edge and accepts the corrected acyclic graph.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Every physical adapter depends inward on a contract and SPI.</li>
+<li>No contract imports a registry, service, adapter, JDBC, IntelliJ, Gradle, or filesystem writer.</li>
+<li>The correction is in executable policy, not documentation only.</li>
+</ul>
+<h3 id="kip-004-introduce-retirement-bound-migration-edges">KIP-004 — Introduce retirement-bound migration edges</h3>
+<p><strong>Milestone:</strong> <code>M0</code><br/>
+<strong>Depends on:</strong> <code>KIP-003</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P12</code></p>
+<p><strong>Goal</strong></p>
+<p>Permit an exact legacy host to consume an exact target contract, SPI, or service temporarily, with one mandatory retirement ticket and no target-to-legacy edge.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Without a transition topology, each extraction must move contracts, implementations, composition, and all consumers in one change. That recreates a big-bang migration.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define temporary migration edges separately from permanent allowed edges.</li>
+<li>Require an exact consumer, dependency, retirement ticket, and lifecycle state.</li>
+<li>Make the edge invalid after its retirement ticket completes.</li>
+<li>Require the temporary set to shrink.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Allowing target modules to depend on legacy hosts.</li>
+<li>Wildcard migration permissions.</li>
+<li>Using a baseline allowance as a permanent architecture edge.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A legacy host cannot delegate to a new target service without either an unlisted edge or a one-change full cutover.</p>
+<p><strong>Green proof</strong></p>
+<p>A fixture admits one exact temporary legacy-to-target edge, rejects every reverse or wildcard edge, and rejects an edge whose retirement task is absent or complete.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Each migration edge has one owner and one retirement ticket.</li>
+<li>The final graph remains unchanged.</li>
+<li>No compatibility implementation is created without a named removal point.</li>
+</ul>
+<h3 id="kip-005-enforce-role-effect-and-cost-boundaries">KIP-005 — Enforce role, effect, and cost boundaries</h3>
+<p><strong>Milestone:</strong> <code>M0</code><br/>
+<strong>Depends on:</strong> <code>KIP-002</code>, <code>KIP-003</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/AbstractMcpTool.kt">JB-READ</a>, <code>P07</code>, <code>P12</code></p>
+<p><strong>Goal</strong></p>
+<p>Make a cheap read module unable to compile Gradle import, graph build, JDBC write, source write, or aggregate backend access.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Cost labels and documentation do not prevent incidental escalation. The reference project shows a productive single-plugin implementation, but Kast needs stricter mechanical separation because its capabilities are composable and agent-facing.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Create role convention plugins for contract, SPI, service, IntelliJ read, IntelliJ write, filesystem write, SQLite, transport, and composition.</li>
+<li>Verify direct project edges and exported API dependencies.</li>
+<li>Extend bytecode or source fixtures for Document, VFS, PSI, Files, JDBC, Gradle import, process execution, and AnalysisBackend references.</li>
+<li>Keep the legacy effect scanner as a migration ratchet, not a complete authority proof.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Assuming package names prove effect ownership.</li>
+<li>Adding a new allowance to make a failing move pass.</li>
+<li>Treating a cost string as enforcement.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>An intentionally invalid symbol-read fixture compiles while importing an expensive or mutating implementation.</p>
+<p><strong>Green proof</strong></p>
+<p>The fixture fails with a structured architecture violation, while the same implementation compiles only in its admitted adapter.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The complete implementation graph exists only in composition.</li>
+<li>Read modules have no source-write implementation on their compile classpath.</li>
+<li>The exact legacy baseline can only shrink.</li>
+</ul>
+<h3 id="kip-010-define-operation-lane-contracts">KIP-010 — Define operation lane contracts</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-003</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/kotlin-design-practices/references/parse-dont-validate-examples.md">SLOP-PARSE</a>, <a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/semantic-ratchet/SKILL.md">SLOP-RATCHET</a>, <code>P07</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Introduce typed operation definitions for metadata, index lookup, scoped semantic read, bounded relation read, registered long work, derived write, and source write.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The public name of an operation must state its input, output, capability, effect, cost, scope, and completeness contract. This gives admission a closed decision surface before any handler runs.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define <code>OperationDefinition&lt;I,O,C&gt;</code>, closed effect and cost types, resource budget, and Complete/Qualified/Rejected outcomes.</li>
+<li>Make the registry import feature contracts rather than the reverse.</li>
+<li>Define typed blockers that name the explicit prerequisite operation.</li>
+<li>Keep handler implementations out of the registry.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Creating a generic <code>Any</code> handler map.</li>
+<li>Giving a handler the runtime or composition root.</li>
+<li>Automatically executing a stronger prerequisite from a cheaper handler.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>An operation can be registered without declaring a capability, cost, scope, or canonical outcome.</p>
+<p><strong>Green proof</strong></p>
+<p>Registry contract tests reject incomplete definitions and prove that handlers receive only the declared capability type.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Every public operation has one permanent ID.</li>
+<li>Transport success cannot represent semantic success.</li>
+<li>Unknown or missing prerequisites are closed blockers.</li>
+</ul>
+<h3 id="kip-011-extract-a-generation-bound-semantic-read-lease">KIP-011 — Extract a generation-bound semantic read lease</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-005</code>, <code>KIP-010</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt">KAST-BACKEND</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/AbstractMcpTool.kt">JB-READ</a>, <code>P05</code>, <code>P06</code></p>
+<p><strong>Goal</strong></p>
+<p>Expose the existing semantic admission as a narrow read capability that binds one canonical root and published generation and revalidates before return.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Kast already has <code>IdeaIndexSemanticAdmission</code> and <code>WorkspaceSemanticGate</code>. The ticket extracts their useful contract instead of rebuilding readiness or exposing the full backend.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define host-neutral lease and closed admission failures.</li>
+<li>Adapt existing admission and gate behind the workspace SPI.</li>
+<li>Detach all returned values before the lease closes.</li>
+<li>Reject a result when generation or root changes during execution.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Retaining Project, PsiElement, VirtualFile, Document, KaSession, or search scope after the adapter call.</li>
+<li>Starting a transition from <code>openRead</code>.</li>
+<li>Treating READY as proof of graph or relation completeness.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A test can move the workspace during a read and still receive a successful mixed-generation result.</p>
+<p><strong>Green proof</strong></p>
+<p>The same test receives a typed moved-generation rejection; a stable read returns detached values bound to the admitted generation.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The consumer cannot mint a lease.</li>
+<li>The lease exposes no refresh, import, graph-build, persistence, or mutation method.</li>
+<li>Read admission and capability readiness remain distinct.</li>
+</ul>
+<h3 id="kip-012-compile-typed-intellij-search-scopes">KIP-012 — Compile typed IntelliJ search scopes</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-011</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/handlers/GeneratedSourcesExcludingScope.kt">JB-SCOPE</a>, <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/semantic-ratchet/SKILL.md">SLOP-RATCHET</a>, <code>P04</code></p>
+<p><strong>Goal</strong></p>
+<p>Convert admitted exact, file, module, source-set, production, test, project, library, and generated-source policies into typed platform search scopes before any query runs.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project gains both speed and correctness by filtering generated and out-of-scope files in <code>GlobalSearchScope.contains</code>. Kast must combine this with exact Gradle ownership and provenance rather than path rules.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define request scope types and a compiler into GlobalSearchScope.</li>
+<li>Use ProjectFileIndex and imported Gradle ownership for source/test/generated classification.</li>
+<li>Preserve generated input as evidence when the operation requires it; exclude it only by declared policy.</li>
+<li>Return a closed scope-admission failure for ambiguous or incoherent ownership.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Inferring authored or generated provenance from <code>build/</code> or <code>generated/</code>.</li>
+<li>Scanning the repository to reconstruct project-model data.</li>
+<li>Granting mutation authority because a file is in a readable scope.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A generated source outside a conventional output directory is admitted as authored, or filtering happens only after PSI resolution.</p>
+<p><strong>Green proof</strong></p>
+<p>Scope tests prove model-backed inclusion and exclusion before the native query and retain typed provenance independently from edit authority.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Every query receives a compiled scope.</li>
+<li>Unknown target provenance fails closed.</li>
+<li>Unrelated read-only proof roots do not block an operation unless its obligation requires them.</li>
+</ul>
+<h3 id="kip-013-implement-native-file-class-and-symbol-discovery">KIP-013 — Implement native file, class, and symbol discovery</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-012</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/handlers/PopupFaithfulSymbolSearch.kt">JB-INDEX</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/AbstractMcpTool.kt">JB-READ</a>, <code>P01</code>, <code>P03</code>, <code>P09</code></p>
+<p><strong>Goal</strong></p>
+<p>Provide narrow discovery adapters over IntelliJ Go to File, Go to Class, and Go to Symbol infrastructure with bounded projection and no Kast database build.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>This is the clearest transferable source of the reference interface’s perceived speed: it uses the same productized index paths as the IDE instead of repository scanning.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Use FILE_EP_NAME, CLASS_EP_NAME, and the GotoSymbol model/provider or equivalent supported APIs.</li>
+<li>Apply the typed search scope before element conversion.</li>
+<li>Use platform matching and stable deterministic result ordering.</li>
+<li>Bound returned records and bytes; propagate cancellation and dumb mode.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Returning exact selectors directly from discovery.</li>
+<li>Falling back to grep or full PSI traversal.</li>
+<li>Persisting discovery results merely to paginate them.</li>
+<li>Silently capping scope-blind name enumeration in a way that drops in-scope matches.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>Discovery scans candidate files or silently reports a truncated complete result when indexing begins mid-query.</p>
+<p><strong>Green proof</strong></p>
+<p>Focused integration tests prove native index usage, scope containment, cancellation propagation, deterministic ordering, and bounded output.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The adapter returns detached candidates only.</li>
+<li>No Gradle import, graph build, SQLite write, or source write occurs.</li>
+<li>The operation records native query time and projection time separately.</li>
+</ul>
+<h3 id="kip-014-resolve-discovery-candidates-into-exact-selectors">KIP-014 — Resolve discovery candidates into exact selectors</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-013</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt">KAST-BACKEND</a>, <a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/semantic-ratchet/SKILL.md">SLOP-RATCHET</a>, <code>P03</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Add a compiler-backed transition from a discovery candidate to an exact selector bound to the current root and generation.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project often exposes symbol strings or coordinates directly. Kast’s stronger contract requires one exact downstream identity and producer-to-consumer round trip without caller reconstruction.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Resolve the selected declaration under a semantic read lease.</li>
+<li>Issue an opaque or proof-carrying selector with exact declaration identity.</li>
+<li>Return explicit ambiguity, stale candidate, unsupported declaration, and moved-generation failures.</li>
+<li>Make every compatible exact operation consume the selector type.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Accepting a raw string, FQN, file/offset tuple, or navigation item as an exact-operation parameter.</li>
+<li>Guessing among overloads.</li>
+<li>Reconstructing identity from display output.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>Two same-named declarations can be silently interchanged, or a caller must copy fields into a different selector shape.</p>
+<p><strong>Green proof</strong></p>
+<p>Round-trip tests prove every discovery candidate either yields one exact selector or one closed failure, and the selector selects the same declaration across downstream reads.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Zero semantic misselection in collision fixtures.</li>
+<li>Exact operations accept no raw symbol string.</li>
+<li>Stale selectors fail after invalidating semantic movement.</li>
+</ul>
+<h3 id="kip-015-implement-bounded-native-relation-reads">KIP-015 — Implement bounded native relation reads</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-011</code>, <code>KIP-012</code>, <code>KIP-014</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/navigation/FindUsagesTool.kt">JB-RELATION</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/intelligence/ProjectDiagnosticsTool.kt">JB-COVERAGE</a>, <code>P01</code>, <code>P06</code>, <code>P09</code></p>
+<p><strong>Goal</strong></p>
+<p>Expose one-hop references, implementations, inheritance, and call relations through native IntelliJ searches under exact scope, budget, and completeness rules.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project demonstrates the appropriate native primitives and processor pattern. Kast adds exact identity, generation, occurrence provenance, and fail-closed coverage.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Use ReferencesSearch, ClassInheritorsSearch, OverridingMethodsSearch, MethodReferencesSearch, or Kotlin-specific supported equivalents.</li>
+<li>Check cancellation inside every processor.</li>
+<li>Separate exact terminal count from known minimum count.</li>
+<li>Detach exact source occurrences and resolved targets.</li>
+<li>Return one-hop facts only; traversal remains a separate capability.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Recursive traversal inside the relation adapter.</li>
+<li>Swallowing provider failure, cancellation, or dumb mode.</li>
+<li>Writing relation evidence from the read handler.</li>
+<li>Treating a cap as completeness.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A capped or cancelled relation search returns complete, or a same-named target is accepted without compiler resolution.</p>
+<p><strong>Green proof</strong></p>
+<p>Fixtures prove exact endpoints, occurrence ranges, generation binding, complete-versus-lower-bound counts, and typed limitations.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>One-hop relation reads cannot widen scope.</li>
+<li>Generated-source policy is operation-specific and visible.</li>
+<li>A missing relationship under incomplete coverage is not absence.</li>
+</ul>
+<h3 id="kip-016-implement-detached-generation-bound-continuations">KIP-016 — Implement detached generation-bound continuations</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-010</code>, <code>KIP-011</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/server/PaginationService.kt">JB-PAGE</a>, <code>P09</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Create a bounded continuation service whose token binds root, generation, normalized request, scope, order, resume position, TTL, and resource ownership without retaining live PSI.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference cursor cache proves the value of bounded state and lazy extension. Its in-process SmartPsiElementPointer is unsuitable for Kast’s process, approval, and generation boundaries.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define <code>:protocol:continuation</code> contract and service or equivalent host-neutral ownership.</li>
+<li>Cap token count, cached records, bytes, and TTL.</li>
+<li>Invalidate on wrong root, changed generation, changed normalized request, changed order, or expired state.</li>
+<li>Use detached exact selectors or resumable native query descriptors only.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Serializing PSI, SmartPsiElementPointer, GlobalSearchScope, Project, or handler closures.</li>
+<li>Returning <code>stale=true</code> while continuing an exact claim.</li>
+<li>Unlimited result caching.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A cursor from another root or generation can resume, or cursor state retains a live IntelliJ object.</p>
+<p><strong>Green proof</strong></p>
+<p>Adversarial tests reject every mismatched binding, enforce all limits, and reproduce deterministic pages on the same generation.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Continuation invalidation is a closed failure.</li>
+<li>Cancellation releases continuation resources.</li>
+<li>The token is safe to copy verbatim between compatible operations.</li>
+</ul>
+<h3 id="kip-017-add-liveness-and-freshness-admission">KIP-017 — Add liveness and freshness admission</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-011</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/server/ProjectResolver.kt">JB-LIVENESS</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/AbstractMcpTool.kt">JB-READ</a>, <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <a href="https://github.com/amichne/kast/commit/c6792be7cc747e0f575dd39aae23337f74940321">KAST-PERF</a>, <code>P05</code>, <code>P08</code></p>
+<p><strong>Goal</strong></p>
+<p>Fail fast when the EDT or semantic runtime is unavailable, and prohibit recursive content-root refresh from the ordinary read path.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project added an EDT heartbeat because otherwise calls hung until client timeout. It also makes external-change synchronization optional because recursive refresh is expensive. Kast already has event-driven generation publication and should use it as the sole normal freshness path.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Add a runtime liveness capability distinct from semantic readiness.</li>
+<li>Expose typed blockers for frozen EDT, dumb mode, transition in progress, blocked workspace, and moved generation.</li>
+<li>Assert ordinary read handlers do not call VfsUtil.markDirtyAndRefresh, Gradle import, or transition methods.</li>
+<li>Route explicit source changes through existing targeted transition requests.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Automatically restarting the runtime from a cheap read handler.</li>
+<li>Treating liveness as semantic completeness.</li>
+<li>Removing the periodic recovery audit.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A frozen EDT or dirty workspace causes an unbounded request hang, or every read pays a full recursive refresh.</p>
+<p><strong>Green proof</strong></p>
+<p>A fault fixture returns an immediate typed blocker, and trace assertions show zero full refreshes or Gradle imports on stable-generation reads.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Liveness, source readiness, relation readiness, and graph readiness remain separate.</li>
+<li>A source event withdraws readiness through the transition owner, not through the read handler.</li>
+<li>Recovery remains explicit and observable.</li>
+</ul>
+<h3 id="kip-018-cut-over-and-benchmark-the-first-fast-read">KIP-018 — Cut over and benchmark the first fast read</h3>
+<p><strong>Milestone:</strong> <code>M1</code><br/>
+<strong>Depends on:</strong> <code>KIP-001</code>, <code>KIP-013</code>, <code>KIP-014</code>, <code>KIP-016</code>, <code>KIP-017</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/commit/c6792be7cc747e0f575dd39aae23337f74940321">KAST-PERF</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/handlers/PopupFaithfulSymbolSearch.kt">JB-INDEX</a>, <code>KIP-001</code>, <code>P15</code></p>
+<p><strong>Goal</strong></p>
+<p>Route one public discovery-to-exact-read journey through the new native adapters and publish a comparable performance increment.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The program must deliver user value before the full mutation platform exists. A warm symbol discovery and exact definition or description journey is the smallest demonstrable slice.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Choose one public journey, preferably symbol search → exact selector → definition/description.</li>
+<li>Retain the compatibility surface while the implementation delegates inward.</li>
+<li>Record stage timing, work counters, bytes, and generation.</li>
+<li>Compare against the KIP-001 baseline and current #604 evidence.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Migrating every read operation.</li>
+<li>Claiming cold-start improvement when only the warm path changed.</li>
+<li>Changing output semantics without a contract migration.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>The public journey still reaches KastIndexerBackend directly, scans repository files, triggers refresh/import, or lacks comparable timing evidence.</p>
+<p><strong>Green proof</strong></p>
+<p>The journey returns the same or stronger exact result, performs only admitted native read work, and passes a published non-regression gate with the complete trace.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>This milestone is independently usable.</li>
+<li>The result identifies exact generation and completeness.</li>
+<li>Any remaining cold or graph cost stays visible rather than being hidden in the claim.</li>
+</ul>
+<h3 id="kip-020-extract-the-workspace-transition-port">KIP-020 — Extract the workspace transition port</h3>
+<p><strong>Milestone:</strong> <code>M2</code><br/>
+<strong>Depends on:</strong> <code>KIP-003</code>, <code>KIP-004</code>, <code>KIP-005</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P02</code>, <code>P05</code>, <code>P12</code></p>
+<p><strong>Goal</strong></p>
+<p>Move existing event-driven settlement, candidate capture, reconciliation, and atomic publication behind narrow workspace contracts and SPIs without changing behavior.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Kast already has a capable workspace substrate. Reimplementation would add risk and duplicate the most complex state machine. The goal is to make the existing authority reusable without exposing the worker or project.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define inspection, read admission, transition request, and publication contracts.</li>
+<li>Adapt WorkspaceTransitionIngress, WorkspaceTransitionWorker, and IdeaIndexSemanticAdmission.</li>
+<li>Keep Gradle import and VFS operations in <code>:workspace:intellij</code>.</li>
+<li>Keep publication behind <code>:evidence:contract</code>.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Changing transition semantics.</li>
+<li>Introducing a second readiness owner.</li>
+<li>Moving live IntelliJ objects into contracts.</li>
+<li>Making the server depend on the workspace implementation.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A target service must receive WorkspaceTransitionWorker, Project, or the aggregate backend to request or observe a transition.</p>
+<p><strong>Green proof</strong></p>
+<p>The same transition tests pass through the new ports, and forbidden-edge fixtures prove only the workspace adapter can import Gradle or touch live platform state.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Current atomicity and coalescing proofs remain green.</li>
+<li>The old owner no longer owns the extracted API.</li>
+<li>No second implementation or fallback path remains.</li>
+</ul>
+<h3 id="kip-021-add-the-registered-long-operation-protocol">KIP-021 — Add the registered long-operation protocol</h3>
+<p><strong>Milestone:</strong> <code>M2</code><br/>
+<strong>Depends on:</strong> <code>KIP-010</code>, <code>KIP-017</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/project/LongPollRegistry.kt">JB-LONG</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/intelligence/ProjectDiagnosticsTool.kt">JB-COVERAGE</a>, <code>P10</code></p>
+<p><strong>Goal</strong></p>
+<p>Provide a bounded operation ID, deadline, poll, terminal result, retention, and exactly-once cleanup protocol for work that cannot fit a request budget.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project’s long-poll registry correctly separates client wait budget from operation deadline. Kast needs the same distinction for import, graph build, project diagnostics, large planning, and transition-backed mutation—not for ordinary reads.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define start, observe, cancel where supported, terminal result, and expiration states.</li>
+<li>Bind every operation to root, requester, runtime epoch, declared capability, and input identity.</li>
+<li>Arm the operation deadline before publication.</li>
+<li>Retain terminal results for a bounded period and clean up exactly once.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Keeping a network request open indefinitely.</li>
+<li>Using long-operation state as approval state.</li>
+<li>Storing live PSI or database transactions between polls.</li>
+<li>Converting all reads to jobs.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A long operation dies when the client request times out, or a zombie continues without a server-owned deadline.</p>
+<p><strong>Green proof</strong></p>
+<p>Tests prove operation completion after caller disconnect, deadline enforcement without polling, exact-root binding, bounded retention, and exactly-once cleanup.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Ordinary index reads remain direct.</li>
+<li>A poll cannot extend the operation deadline.</li>
+<li>Terminal failure remains typed and replayable.</li>
+</ul>
+<h3 id="kip-022-add-resource-admission-and-staggered-expensive-work">KIP-022 — Add resource admission and staggered expensive work</h3>
+<p><strong>Milestone:</strong> <code>M2</code><br/>
+<strong>Depends on:</strong> <code>KIP-001</code>, <code>KIP-020</code>, <code>KIP-021</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/server/ProjectResolver.kt">JB-LIVENESS</a>, <a href="https://github.com/amichne/kast/commit/c6792be7cc747e0f575dd39aae23337f74940321">KAST-PERF</a>, <code>P13</code></p>
+<p><strong>Goal</strong></p>
+<p>Bound startup, project import, indexing, and long-operation concurrency using typed resource state and stagger only the expensive initiation step.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project serializes concurrent project-open initiation to avoid starving HTTP workers, then releases the mutex before smart-mode wait. It also rejects auto-open under critical heap pressure. Kast already bounds heap and reuses startup authority; the remaining policy should be explicit.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define resource observations for heap, active imports, active transitions, EDT liveness, and operation slots.</li>
+<li>Serialize or reject conflicting expensive starts without serializing unrelated waits.</li>
+<li>Reuse an already-starting exact-root runtime rather than spawning another.</li>
+<li>Expose the admission decision and recovery action.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Global single-threading of all semantic work.</li>
+<li>Foreground IDE focus lifecycle.</li>
+<li>Using a magic sleep as readiness.</li>
+<li>Silently reducing correctness scope under pressure.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>Concurrent demand can start duplicate imports or runtimes, starve request execution, or enter known heap-critical work.</p>
+<p><strong>Green proof</strong></p>
+<p>Load tests prove one exact expensive initiation, concurrent bounded waits, typed rejection under pressure, and no duplicate Gradle resolution.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Resource blockers are distinct from semantic blockers.</li>
+<li>The policy is configurable through validated values.</li>
+<li>Performance evidence records queue and admission time separately.</li>
+</ul>
+<h3 id="kip-030-characterize-the-add-declaration-intellij-protocol">KIP-030 — Characterize the add-declaration IntelliJ protocol</h3>
+<p><strong>Milestone:</strong> <code>M3</code><br/>
+<strong>Depends on:</strong> <code>KIP-001</code>, <code>KIP-011</code>, <code>KIP-012</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/refactoring/RenameSymbolTool.kt">JB-REFACTOR</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/AbstractMcpTool.kt">JB-READ</a>, <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P11</code>, <code>P15</code></p>
+<p><strong>Goal</strong></p>
+<p>Produce executable evidence for the supported IntelliJ add-declaration preparation, write-command, document-save, affected-file, cancellation, and dumb-mode behavior.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The physical API behavior determines the correct plan and recovery contract. It must be known before the general mutation types are frozen. Add-declaration is the smallest strong slice because current head already proves owner, provenance, preimage, syntax, collision, rebinding, and expected postimage.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Run on each supported IntelliJ/Android Studio build.</li>
+<li>Prove all search and semantic analysis occur outside the write command.</li>
+<li>Measure command duration and changed document set.</li>
+<li>Characterize undo, formatting, reference shortening, save, cancellation, and read-only failure.</li>
+<li>Record whether native PSI insertion or a specific refactoring API is the supported executor.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Creating the durable plan journal.</li>
+<li>Generalizing to every mutation.</li>
+<li>Implementing add-file or rename.</li>
+<li>Approving private/internal APIs without verifier evidence.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>The architecture assumes an apply protocol without a deterministic supported-build reproduction, or the write command performs search, index wait, refresh, persistence, or verification.</p>
+<p><strong>Green proof</strong></p>
+<p>Integration tests produce a stable protocol ledger and fail if non-write work enters the command or undeclared documents change.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The selected public API is named and verified.</li>
+<li>The plan inputs required by the executor are explicit.</li>
+<li>Unsupported behavior remains a closed limitation.</li>
+</ul>
+<h3 id="kip-031-define-and-route-plan-only-add-declaration">KIP-031 — Define and route plan-only add-declaration</h3>
+<p><strong>Milestone:</strong> <code>M3</code><br/>
+<strong>Depends on:</strong> <code>KIP-010</code>, <code>KIP-011</code>, <code>KIP-012</code>, <code>KIP-020</code>, <code>KIP-030</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/semantic-ratchet/SKILL.md">SLOP-RATCHET</a>, <code>P02</code>, <code>P11</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Return a detached <code>PlannedAddDeclaration</code> bound to generation G0 through a narrow operation binding, with no mutation authority.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>This is the first independently useful mutation increment: an agent can request an exact compiler-grounded plan, inspect it, store its ID, and decide whether to apply later.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define raw request parsing, typed intent, target capability, expected-file proof, obligations, expected semantic delta, and verification contract.</li>
+<li>Reuse current addition planning evidence and source-root provenance.</li>
+<li>Persist no live IntelliJ values.</li>
+<li>Route the legacy public method through the new binding while behavior remains plan-only.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Applying source.</li>
+<li>Waiting in memory for approval.</li>
+<li>Creating a generic PlannedEdit list as the authority.</li>
+<li>Bundling add-file or rename.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>The planner returns raw edits without an operation-specific proof, retains PSI, or cannot survive process/request boundaries.</p>
+<p><strong>Green proof</strong></p>
+<p>Round-trip tests serialize and reload the plan, preserve every established fact, and prove the same G0 inputs produce the same canonical plan identity.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The plan has a non-empty declared write set.</li>
+<li>Target ownership and provenance are exact.</li>
+<li>No source-write implementation is on the planner classpath.</li>
+</ul>
+<h3 id="kip-032-persist-the-plan-and-establish-the-approval-boundary">KIP-032 — Persist the plan and establish the approval boundary</h3>
+<p><strong>Milestone:</strong> <code>M3</code><br/>
+<strong>Depends on:</strong> <code>KIP-004</code>, <code>KIP-031</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P10</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Store the detached add-declaration plan with compare-and-set lifecycle state so a later apply request consumes only a PlanId plus explicit approval evidence.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Approval is a boundary between requests, not a server process holding resources. The journal must make state durable without turning SQLite into semantic authority.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define plan lifecycle and finite failures.</li>
+<li>Persist stable plan bytes, source generation, tamper identity, prior state, and approval evidence.</li>
+<li>Use compare-and-set transitions.</li>
+<li>Release every read lease, PSI object, file handle, and transaction before returning the plan.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Holding a mutation lease while awaiting approval.</li>
+<li>Letting the caller submit reconstructed plan fields.</li>
+<li>Using transport success as plan approval.</li>
+<li>Implementing source write.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A stale actor can approve or apply an already advanced plan, or the server retains a live resource between plan and apply requests.</p>
+<p><strong>Green proof</strong></p>
+<p>Crash and concurrency tests prove durable state, tamper rejection, exact prior-state compare-and-set, and zero live resource retention after planning.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>PlanId is copyable and opaque.</li>
+<li>SQLite stores evidence but does not decide semantic truth.</li>
+<li>Expected failures are closed data.</li>
+</ul>
+<h3 id="kip-033-revalidate-and-prepare-recovery">KIP-033 — Revalidate and prepare recovery</h3>
+<p><strong>Execution status (2026-08-13): pushed.</strong> Commit <code>1c0319049</code> prepares durable recovery after exact revalidation.</p>
+<p><strong>Milestone:</strong> <code>M4</code><br/>
+<strong>Depends on:</strong> <code>KIP-020</code>, <code>KIP-032</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <a href="https://github.com/amichne/slopsentral/blob/672f169842174ee807cd28a12c8f4718e7272dff/source/skills/semantic-ratchet/SKILL.md">SLOP-RATCHET</a>, <code>P11</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Turn an approved plan into an admitted add-declaration attempt only after current identity, generation, content, owner, provenance, scope, and writability are re-proven and durable recovery evidence exists.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Time passes between planning and application. Every fact capable of becoming stale must be re-established before physical write authority exists.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Acquire one logical mutation lease.</li>
+<li>Re-resolve target and compare every planning proof.</li>
+<li>Create operation-specific writable target and recovery capabilities.</li>
+<li>Persist exact before-image recovery evidence before apply context construction.</li>
+<li>Return typed rejection and release the lease when revalidation fails.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Opening an IntelliJ write action.</li>
+<li>Repairing a stale plan automatically.</li>
+<li>Using a raw Path or Boolean writability flag downstream.</li>
+<li>Implementing rollback policy after the first write.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A changed target, moved generation, changed Gradle owner, generated target, or read-only file reaches the write adapter, or recovery is created after the write.</p>
+<p><strong>Green proof</strong></p>
+<p>Fault fixtures reject each stale predicate before write and prove a successful transition returns only proof-carrying <code>RecoveryPreparedAddDeclaration</code> and writable-target capabilities.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The logical lease is distinct from the IntelliJ write permit.</li>
+<li>Recovery evidence is durable and exact.</li>
+<li>Every failure records whether mutation began.</li>
+</ul>
+<h3 id="kip-034-apply-one-short-intellij-mutation-and-prove-write-set-closure">KIP-034 — Apply one short IntelliJ mutation and prove write-set closure</h3>
+<p><strong>Execution status (2026-08-13): pushed and exact-head CI green.</strong> Commit <code>c7467075a</code> is the current PR head. This is an internal apply unit; it is not yet the public verified add-declaration route.</p>
+<p><strong>Milestone:</strong> <code>M4</code><br/>
+<strong>Depends on:</strong> <code>KIP-005</code>, <code>KIP-030</code>, <code>KIP-033</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/refactoring/RenameSymbolTool.kt">JB-REFACTOR</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/AbstractMcpTool.kt">JB-READ</a>, <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P11</code></p>
+<p><strong>Goal</strong></p>
+<p>Execute the characterized add-declaration operation in one short EDT command, save only affected documents, capture after-images, and reject any undeclared change.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>This is the narrow physical effect boundary. It must use the healthy IntelliJ behavior without allowing planning, search, refresh, diagnostics, or persistence inside the command.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Prepare ephemeral PSI context immediately before the command.</li>
+<li>Run only the admitted insertion/refactoring and operation-owned formatting inside the command.</li>
+<li>Capture actual affected document identities.</li>
+<li>Save outside the command where required.</li>
+<li>Compare actual changes with the declared write set and retain recovery on mismatch.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Publishing a resulting generation.</li>
+<li>Declaring semantic success.</li>
+<li>Calling generic raw apply-edits.</li>
+<li>Writing modeled Kotlin through raw filesystem replacement.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>The write command searches, waits, refreshes, persists, changes an undeclared file, or returns verified success.</p>
+<p><strong>Green proof</strong></p>
+<p>Threading and effect tests prove the command’s exact contents; after-image and diff tests prove write-set closure or a RecoveryRequired state.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Result is <code>AppliedAddDeclarationUnverified</code> only.</li>
+<li>No planner dependency can see the write adapter.</li>
+<li>Recovery remains available from every failure after preparation.</li>
+</ul>
+<h3 id="kip-035-publish-the-resulting-generation-and-verify-add-declaration">KIP-035 — Publish the resulting generation and verify add-declaration</h3>
+<p><strong>Execution status (2026-08-13): local, uncommitted, incomplete.</strong> The core lanes exist and focused checks passed. Completion still requires a real IntelliJ executor fixture, narrow indexer composition proof, architecture-edge resolution, the combined Green Proof, atomic push, and exact-head CI.</p>
+<blockquote>
+<p><strong>Current local supported scope:</strong> one exact appended top-level declaration; exact physical/document postimage; typed target path and PSI range; bounded diagnostics; K2 semantic collision comparison; and outbound preservation only when planned and observed outbound-reference cardinality are both zero. Nonzero outbound preservation is a typed limitation, not inferred from equal counts. Runtime admission, cancellation propagation, and the original <code>RolledBack</code> acceptance language remain open gates.</p>
+</blockquote>
+<p><strong>Milestone:</strong> <code>M4</code><br/>
+<strong>Depends on:</strong> <code>KIP-015</code>, <code>KIP-020</code>, <code>KIP-034</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/intelligence/ProjectDiagnosticsTool.kt">JB-COVERAGE</a>, <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P05</code>, <code>P11</code></p>
+<p><strong>Goal</strong></p>
+<p>Request a targeted workspace transition, publish G1, re-resolve the declaration, evaluate diagnostics and obligations, and issue a terminal verified receipt or truthful failure state.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Application changes source, not semantic truth. Only re-evaluation against a new generation can establish that the intended declaration exists and no prohibited difference occurred.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Request transition for the exact changed file set.</li>
+<li>Require a G1 distinct from G0 and bound to current source/compiler state.</li>
+<li>Evaluate operation-specific identity, content, owner, diagnostics, and expected semantic delta.</li>
+<li>Discharge every obligation.</li>
+<li>Release recovery and logical lease only with durable terminal state.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Using compilation or tests alone as proof.</li>
+<li>Repairing verification failure by silently applying another change.</li>
+<li>Reusing G0 evidence as G1 proof.</li>
+<li>Generalizing to rename.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A successful write emits success before G1, or an empty diagnostic result without complete coverage is accepted.</p>
+<p><strong>Green proof</strong></p>
+<p>End-to-end and fault tests prove Verified, RolledBack, Rejected, and RecoveryRequired terminal states and bind the receipt to G1.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Every obligation is terminal.</li>
+<li>Expected and observed semantic deltas reconcile.</li>
+<li>Unexpected differences fail closed.</li>
+</ul>
+<h3 id="kip-036-cut-over-public-add-declaration-and-close-bypasses">KIP-036 — Cut over public add-declaration and close bypasses</h3>
+<p><strong>Execution status (2026-08-13): not started.</strong> This remains the first release boundary at which the KIP-033–KIP-035 mutation and verification chain is publicly reachable as verified add-declaration.</p>
+<p><strong>Milestone:</strong> <code>M4</code><br/>
+<strong>Depends on:</strong> <code>KIP-005</code>, <code>KIP-035</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P07</code>, <code>P11</code>, <code>P15</code></p>
+<p><strong>Goal</strong></p>
+<p>Make the public add-declaration journey use plan, approval, revalidation, recovery, apply, transition, and verify, while architecture tests prevent direct semantic bypass.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>A vertical slice is complete only when the public consumer uses it and the old owner can no longer perform the same authority incidentally.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Route transport through operation bindings.</li>
+<li>Remove or retire the old direct implementation and exact legacy allowances.</li>
+<li>Reject raw semantic apply for add-declaration callers.</li>
+<li>Publish latency, work, fault, and correctness evidence.</li>
+<li>Update the requirement-to-evidence ledger.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Migrating add-file, rename, replacement, or imports.</li>
+<li>Retiring all AnalysisBackend reads.</li>
+<li>Removing raw external-file authority needed by later typed lanes.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A public add-declaration can still call KastIndexerBackend planning plus generic apply directly, or the legacy source-write allowance remains.</p>
+<p><strong>Green proof</strong></p>
+<p>Public contract tests return only a verified receipt or truthful terminal failure, architecture verification rejects the bypass, and the old allowance is deleted.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>This is the first complete mutation milestone.</li>
+<li>The compatibility adapter is transport-only.</li>
+<li>No unrelated operation moved.</li>
+</ul>
+<h3 id="kip-040-characterize-the-native-rename-protocol">KIP-040 — Characterize the native rename protocol</h3>
+<p><strong>Milestone:</strong> <code>M5</code><br/>
+<strong>Depends on:</strong> <code>KIP-001</code>, <code>KIP-011</code>, <code>KIP-012</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/refactoring/RenameSymbolTool.kt">JB-REFACTOR</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/navigation/FindUsagesTool.kt">JB-RELATION</a>, <code>P11</code>, <code>P15</code></p>
+<p><strong>Goal</strong></p>
+<p>Establish supported-build evidence for RenameProcessor target selection, related renames, override behavior, conflicts, affected files, cancellation, command duration, and silent-abort detection.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The reference project demonstrates that native RenameProcessor provides language-aware behavior, but its strategies and direct one-call execution are not automatically compatible with Kast’s exact plan and write-set contract.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Test private/file-local, public multi-file, overload, override family, property/accessor, and same-named unrelated declarations.</li>
+<li>Prove which search work occurs before or during RenameProcessor.run.</li>
+<li>Capture actual affected files and command behavior.</li>
+<li>Define supported strategy subset and explicit unsupported cases.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Implementing the final public route.</li>
+<li>Assuming every automatic related rename is acceptable.</li>
+<li>Replacing current compiler completeness proof with RenameProcessor trust alone.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A rename plan is frozen without knowing whether the native processor searches or changes undeclared elements during the command.</p>
+<p><strong>Green proof</strong></p>
+<p>Supported-build tests produce deterministic behavior evidence and reject silent aborts, undeclared related renames, and same-name collisions.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The admitted rename modes are finite.</li>
+<li>Every automatic related rename is represented in planning obligations.</li>
+<li>Unsupported platform behavior fails before source write.</li>
+</ul>
+<h3 id="kip-041-extract-a-detached-rename-plan-and-native-apply-adapter">KIP-041 — Extract a detached rename plan and native apply adapter</h3>
+<p><strong>Milestone:</strong> <code>M5</code><br/>
+<strong>Depends on:</strong> <code>KIP-015</code>, <code>KIP-033</code>, <code>KIP-040</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt">KAST-BACKEND</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/refactoring/RenameSymbolTool.kt">JB-REFACTOR</a>, <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P02</code>, <code>P11</code></p>
+<p><strong>Goal</strong></p>
+<p>Convert current exact rename evidence into <code>PlannedRename</code>, then apply it through the characterized native executor under the shared attempt and recovery protocol.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Current Kast already proves exact target, references, generation, source images, and relationship coverage. The ticket preserves that strength while replacing text-edit authority with an operation-specific native apply capability where supported.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Detach target, family, occurrences, expected write set, before-images, strategy, obligations, and expected delta.</li>
+<li>Reuse native relation reads and current completeness proof.</li>
+<li>Revalidate before apply.</li>
+<li>Execute only the admitted RenameProcessor mode.</li>
+<li>Capture and compare actual write set.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Fallback to search-and-replace.</li>
+<li>Treating native processor output as verified success.</li>
+<li>Migrating other mutation operations.</li>
+<li>Allowing unrelated automatic renames outside the plan.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>The apply adapter consumes raw TextEdit lists or can change a file absent from the detached plan without terminal failure.</p>
+<p><strong>Green proof</strong></p>
+<p>Plan replay, stale-plan, write-set, and collision tests prove exact target retention and native apply confinement.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Planning retains no live IntelliJ state.</li>
+<li>The adapter accepts only <code>PreparedRename</code>.</li>
+<li>Any platform expansion of the write set becomes RecoveryRequired.</li>
+</ul>
+<h3 id="kip-042-route-verified-rename-and-prove-multi-file-behavior">KIP-042 — Route verified rename and prove multi-file behavior</h3>
+<p><strong>Milestone:</strong> <code>M5</code><br/>
+<strong>Depends on:</strong> <code>KIP-016</code>, <code>KIP-035</code>, <code>KIP-041</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/refactoring/RenameSymbolTool.kt">JB-REFACTOR</a>, <code>P09</code>, <code>P11</code>, <code>P15</code></p>
+<p><strong>Goal</strong></p>
+<p>Deliver the public rename journey through durable plan, approval, revalidation, recovery, native apply, targeted transition, and operation-specific verification.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Rename is the second vertical slice because it stresses multi-file scope, relationship completeness, family semantics, and rollback without reopening the architecture.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Publish G1 and re-resolve target/family/occurrences.</li>
+<li>Verify old identity removal, new identity existence, exact reference retargeting, diagnostics, and unchanged unrelated declarations.</li>
+<li>Run crash and concurrency faults at every durable boundary.</li>
+<li>Publish multi-file latency, command duration, transition time, and bytes.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Generalizing a universal mutation engine.</li>
+<li>Removing AnalysisBackend before other consumers migrate.</li>
+<li>Claiming repository-wide support for unsupported language constructs.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A rename can return success with stale, truncated, or incomplete relationship evidence, or after changing a same-named unrelated declaration.</p>
+<p><strong>Green proof</strong></p>
+<p>Enterprise-shaped fixtures produce one verified receipt or truthful terminal failure and reproduce equivalent plans and proofs on the same state.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Multi-file rollback is proven.</li>
+<li>Completeness and performance evidence are both attached.</li>
+<li>The public path cannot reach generic raw apply.</li>
+</ul>
+<h3 id="kip-050-route-verified-add-file-as-its-own-slice">KIP-050 — Route verified add-file as its own slice</h3>
+<p><strong>Milestone:</strong> <code>M6</code><br/>
+<strong>Depends on:</strong> <code>KIP-036</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/handlers/GeneratedSourcesExcludingScope.kt">JB-SCOPE</a>, <a href="https://github.com/amichne/kast/commit/9398e885096736d384f0bc6f96d4d7d5edec8352">KAST-STATE</a>, <code>P04</code>, <code>P11</code></p>
+<p><strong>Goal</strong></p>
+<p>Apply the established protocol to one authored Gradle source-root file creation with exact target absence, package/declaration proof, recovery, transition, and verification.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Current source-root provenance and addition planning make add-file the next smallest operation, but it has distinct target-existence and VFS behavior and must remain its own ticket.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Reuse <code>EditableAdditionTarget</code> and exact owner evidence.</li>
+<li>Characterize native file creation and VFS admission.</li>
+<li>Plan, recover, apply, publish, and verify one new Kotlin file.</li>
+<li>Reject generated and unknown target provenance.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Generated-source regeneration.</li>
+<li>Java mutation support.</li>
+<li>General filesystem writer exposure.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>An add-file target can be inferred from path or a newly created file can return success before IntelliJ admits it to G1.</p>
+<p><strong>Green proof</strong></p>
+<p>Tests prove exact authored ownership, contained creation, no VCS prompt side effect, resulting PSI admission, and a verified receipt.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Only the target root receives write authority.</li>
+<li>Other roots remain proof context.</li>
+<li>The new file is present in the resulting generation.</li>
+</ul>
+<h3 id="kip-051-route-exact-replacement-as-its-own-slice">KIP-051 — Route exact replacement as its own slice</h3>
+<p><strong>Milestone:</strong> <code>M6</code><br/>
+<strong>Depends on:</strong> <code>KIP-015</code>, <code>KIP-036</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P03</code>, <code>P11</code>, <code>P14</code></p>
+<p><strong>Goal</strong></p>
+<p>Deliver one exact expression or declaration-body replacement with operation-specific syntax, binding, expected delta, write set, and verification.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Replacement is not add-declaration and must not become a generic text-edit authority. It requires exact target identity and postimage semantic proof.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Choose one supported replacement kind.</li>
+<li>Define dedicated intent, plan, prepared apply, and verification types.</li>
+<li>Use copied PSI or supported platform APIs for preflight.</li>
+<li>Verify target identity and outbound/inbound semantic effects.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Arbitrary regex replacement.</li>
+<li>Multiple replacement kinds in one ticket.</li>
+<li>Repository-wide formatting cleanup.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A raw range plus replacement string can authorize semantic source write.</p>
+<p><strong>Green proof</strong></p>
+<p>The operation accepts only an exact selector and dedicated replacement value, and its proof detects binding or diagnostic changes outside the expected delta.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>One replacement kind is fully vertical.</li>
+<li>No generic edit API becomes semantic authority.</li>
+<li>Unexpected rebindings fail closed.</li>
+</ul>
+<h3 id="kip-052-route-optimize-imports-as-its-own-slice">KIP-052 — Route optimize-imports as its own slice</h3>
+<p><strong>Milestone:</strong> <code>M6</code><br/>
+<strong>Depends on:</strong> <code>KIP-036</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/refactoring/RenameSymbolTool.kt">JB-REFACTOR</a>, <code>P04</code>, <code>P11</code></p>
+<p><strong>Goal</strong></p>
+<p>Use IntelliJ import analysis and optimizer APIs under a declared file scope, then verify resulting imports and diagnostics against a new generation.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>Import optimization has a different authority and expected delta from declaration mutation. It should reuse the workflow without sharing a generic write contract.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Characterize supported optimizer behavior.</li>
+<li>Plan exact files and expected import delta.</li>
+<li>Apply in a short command.</li>
+<li>Verify no non-import semantic change and reconcile diagnostics.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Formatting unrelated code.</li>
+<li>Applying to every file by default.</li>
+<li>Combining with replacement or rename.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>Optimize imports can widen to the repository or return success without proving the actual affected file set.</p>
+<p><strong>Green proof</strong></p>
+<p>Scoped fixtures prove only planned import sections change and the resulting generation satisfies the operation contract.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The operation remains independently optional.</li>
+<li>Its scope and cost are explicit.</li>
+<li>The planner cannot see source-write implementation.</li>
+</ul>
+<h3 id="kip-053-implement-the-typed-external-file-lane">KIP-053 — Implement the typed external-file lane</h3>
+<p><strong>Milestone:</strong> <code>M6</code><br/>
+<strong>Depends on:</strong> <code>KIP-002</code>, <code>KIP-020</code>, <code>KIP-033</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>KIP-002</code>, <code>P04</code>, <code>P07</code>, <code>P11</code></p>
+<p><strong>Goal</strong></p>
+<p>Add a separate descriptor-relative filesystem lane for explicitly unmodeled files or explicit regeneration authority, with no access to modeled Kotlin/Java source.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The current process graph already declares an external lane. It must not be an escape hatch around IntelliJ semantics. Keeping it separate also prevents semantic operations from inheriting raw filesystem authority.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Define <code>UnmodeledFileTarget</code> and explicit regeneration authority.</li>
+<li>Prove canonical containment, no symlink escape, operation authority, and exclusion of modeled source.</li>
+<li>Use atomic replacement and exact before/after identities.</li>
+<li>Join the common recovery, transition, and verification suffix only for the selected lane.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Editing modeled Kotlin or Java.</li>
+<li>Inferring generated authority from path.</li>
+<li>Running generators without an explicit future operation contract.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A semantic plan can obtain a raw filesystem writer, or an external target can resolve to modeled source.</p>
+<p><strong>Green proof</strong></p>
+<p>Adversarial containment and classification tests prove only admitted external targets can be written and only the external lane executes.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Semantic and external lanes remain mutually exclusive.</li>
+<li>Recovery precedes every write.</li>
+<li>The common suffix consumes a lane-neutral closed applied result.</li>
+</ul>
+<h3 id="kip-054-reduce-mutation-methods-on-analysisbackend-to-compatibility-bindings">KIP-054 — Reduce mutation methods on AnalysisBackend to compatibility bindings</h3>
+<p><strong>Milestone:</strong> <code>M6</code><br/>
+<strong>Depends on:</strong> <code>KIP-036</code>, <code>KIP-042</code>, <code>KIP-050</code>, <code>KIP-051</code>, <code>KIP-052</code>, <code>KIP-053</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt">KAST-BACKEND</a>, <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <code>P07</code>, <code>P12</code></p>
+<p><strong>Goal</strong></p>
+<p>Make all migrated mutation methods delegate through narrow operation bindings, then remove mutation authority and source-write implementations from the aggregate backend.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The aggregate backend can remain temporarily as a transport compatibility façade, but nothing below transport may consume it and it must not own mutation semantics.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Delegate each migrated mutation operation to its binding.</li>
+<li>Remove direct implementation, service-locator access, and exact legacy allowances.</li>
+<li>Make architecture verification reject internal AnalysisBackend consumption.</li>
+<li>Keep unmigrated read methods temporarily intact.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Retiring all read methods.</li>
+<li>Changing transport protocol unnecessarily.</li>
+<li>Leaving a second mutation implementation.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>A mutation handler or IntelliJ adapter still implements or consumes AnalysisBackend directly.</p>
+<p><strong>Green proof</strong></p>
+<p>Only the server compatibility adapter references AnalysisBackend mutation methods, and every method delegates to one typed binding.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>The old mutation owner has no source-write authority.</li>
+<li>No compatibility fallback exists below transport.</li>
+<li>The legacy baseline shrinks in the same change.</li>
+</ul>
+<h3 id="kip-055-decompose-remaining-read-capabilities-and-retire-analysisbackend">KIP-055 — Decompose remaining read capabilities and retire AnalysisBackend</h3>
+<p><strong>Milestone:</strong> <code>M6</code><br/>
+<strong>Depends on:</strong> <code>KIP-018</code>, <code>KIP-054</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt">KAST-BACKEND</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/handlers/PopupFaithfulSymbolSearch.kt">JB-INDEX</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/navigation/FindUsagesTool.kt">JB-RELATION</a>, <code>P01</code>, <code>P07</code>, <code>P12</code></p>
+<p><strong>Goal</strong></p>
+<p>Migrate symbol, relation, traversal, graph read, graph build, diagnostic, workspace, and evidence capabilities into their vertical modules, then remove the aggregate backend.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The current mutation graph cannot retire AnalysisBackend by itself because the interface also owns unrelated reads and graph work. Final retirement is a repository-wide capability program, not a foundation prerequisite.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Create one ticket per remaining operation family using the read pattern proven by M1.</li>
+<li>Separate graph read from graph build.</li>
+<li>Keep traversal as bounded composition over one-hop relations.</li>
+<li>Move server to contracts and operation bindings only.</li>
+<li>Delete AnalysisBackend after the final consumer moves.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Bundling all read migrations into one code change.</li>
+<li>Making graph read trigger graph build.</li>
+<li>Giving traversal an IntelliJ adapter.</li>
+<li>Changing operation semantics without dedicated contract evidence.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>Any internal implementation still consumes AnalysisBackend, or a cheap read module can reach a stronger implementation through a shared container.</p>
+<p><strong>Green proof</strong></p>
+<p>The server compiles without IntelliJ, Gradle, JDBC, graph-build, or source-write implementations, and the AnalysisBackend type no longer exists.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Every operation family owns its contract and adapter.</li>
+<li>Only composition sees the complete graph.</li>
+<li>Every migration was independently usable before final retirement.</li>
+</ul>
+<h3 id="kip-056-prove-the-enterprise-multi-module-acceptance-journey">KIP-056 — Prove the enterprise multi-module acceptance journey</h3>
+<p><strong>Milestone:</strong> <code>M6</code><br/>
+<strong>Depends on:</strong> <code>KIP-022</code>, <code>KIP-042</code>, <code>KIP-050</code>, <code>KIP-051</code>, <code>KIP-052</code>, <code>KIP-053</code>, <code>KIP-055</code><br/>
+<strong>Reference basis:</strong> <a href="https://github.com/amichne/kast/blob/60ca538fd00d6c75c4c40140ec719bc531c9651e/.agents/arch/kast-architecture-firewall-and-mutation-workflow.md">KAST-ARCH</a>, <a href="https://github.com/hechtcarmel/jetbrains-index-mcp-plugin/blob/7670d7202f43ab6d54433832d087316b69637f1b/src/main/kotlin/com/github/hechtcarmel/jetbrainsindexmcpplugin/tools/intelligence/ProjectDiagnosticsTool.kt">JB-COVERAGE</a>, <code>KIP-001</code>, <code>P09</code>, <code>P13</code>, <code>P15</code></p>
+<p><strong>Goal</strong></p>
+<p>Run one enterprise-shaped discovery, plan, mutation, transition, verification, recovery, scale, and tamper suite across multiple Gradle owners and source sets.</p>
+<p><strong>Why this ticket exists</strong></p>
+<p>The program is complete only when the architectural restrictions and performance strategy survive the workload Kast intends to serve, not merely isolated fixtures.</p>
+<p><strong>Allowed scope</strong></p>
+<ul>
+<li>Use overloads, implementations, direct and non-trivial calls, generated/read-only evidence, same-named unrelated declarations, and at least one declared boundary.</li>
+<li>Record warm and cold operation traces.</li>
+<li>Inject movement, cancellation, crash, stale selector, stale plan, undeclared write, publication failure, verification failure, and rollback failure.</li>
+<li>Verify deterministic plan and proof replay.</li>
+</ul>
+<p><strong>Non-goals</strong></p>
+<ul>
+<li>Claiming arbitrary runtime behavior.</li>
+<li>Accepting unsupported boundaries automatically.</li>
+<li>Replacing semantic proof with compilation or tests alone.</li>
+</ul>
+<p><strong>Red proof</strong></p>
+<p>The suite can report complete after removing one required evidence record, exceeding a bound, moving the workspace, or failing a recovery transition.</p>
+<p><strong>Green proof</strong></p>
+<p>All positive, negative, fault, adversarial, and benchmark gates pass together; every non-success remains structurally distinct from complete.</p>
+<p><strong>Done when</strong></p>
+<ul>
+<li>Every requirement has executable evidence.</li>
+<li>No partial state can project as success.</li>
+<li>The final report identifies remaining unsupported scope explicitly.</li>
+</ul>
+<h2 id="13-connectedness-map">13. Connectedness map</h2>
+<h3 id="13-1-critical-paths">13.1 Critical paths</h3>
+<pre><code class="language-text">Fast read path
+KIP-001 → KIP-003 → KIP-005 → KIP-010 → KIP-011 → KIP-012
+        → KIP-013 → KIP-014 → KIP-016/KIP-017 → KIP-018
+
+First verified mutation
+KIP-001 → KIP-002/KIP-003 → KIP-004/KIP-005 → KIP-010/KIP-011/KIP-020
+        → KIP-030 → KIP-031 → KIP-032 → KIP-033 → KIP-034 → KIP-035 → KIP-036
+
+Verified rename
+KIP-015 + KIP-033 + KIP-040 → KIP-041 → KIP-042
+
+Final retirement
+KIP-036/KIP-042/KIP-050/KIP-051/KIP-052/KIP-053 → KIP-054
+KIP-018 + KIP-054 → KIP-055 → KIP-056
+</code></pre>
+<h3 id="13-2-parallel-delivery-waves">13.2 Parallel delivery waves</h3>
+<p>The wave number is a mechanical topological depth, not a mandate that every ticket in a lower wave must finish before any higher-wave ticket begins. A ticket may start as soon as all of its own dependencies are proven.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">Wave</th>
+<th>Tickets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">0</td>
+<td><code>KIP-001</code></td>
+</tr>
+<tr>
+<td style="text-align:right">1</td>
+<td><code>KIP-002</code>, <code>KIP-003</code></td>
+</tr>
+<tr>
+<td style="text-align:right">2</td>
+<td><code>KIP-004</code>, <code>KIP-005</code>, <code>KIP-010</code></td>
+</tr>
+<tr>
+<td style="text-align:right">3</td>
+<td><code>KIP-011</code>, <code>KIP-020</code></td>
+</tr>
+<tr>
+<td style="text-align:right">4</td>
+<td><code>KIP-012</code>, <code>KIP-016</code>, <code>KIP-017</code></td>
+</tr>
+<tr>
+<td style="text-align:right">5</td>
+<td><code>KIP-013</code>, <code>KIP-021</code>, <code>KIP-030</code>, <code>KIP-040</code></td>
+</tr>
+<tr>
+<td style="text-align:right">6</td>
+<td><code>KIP-014</code>, <code>KIP-022</code>, <code>KIP-031</code></td>
+</tr>
+<tr>
+<td style="text-align:right">7</td>
+<td><code>KIP-015</code>, <code>KIP-018</code>, <code>KIP-032</code></td>
+</tr>
+<tr>
+<td style="text-align:right">8</td>
+<td><code>KIP-033</code></td>
+</tr>
+<tr>
+<td style="text-align:right">9</td>
+<td><code>KIP-034</code>, <code>KIP-041</code>, <code>KIP-053</code></td>
+</tr>
+<tr>
+<td style="text-align:right">10</td>
+<td><code>KIP-035</code></td>
+</tr>
+<tr>
+<td style="text-align:right">11</td>
+<td><code>KIP-036</code>, <code>KIP-042</code></td>
+</tr>
+<tr>
+<td style="text-align:right">12</td>
+<td><code>KIP-050</code>, <code>KIP-051</code>, <code>KIP-052</code></td>
+</tr>
+<tr>
+<td style="text-align:right">13</td>
+<td><code>KIP-054</code></td>
+</tr>
+<tr>
+<td style="text-align:right">14</td>
+<td><code>KIP-055</code></td>
+</tr>
+<tr>
+<td style="text-align:right">15</td>
+<td><code>KIP-056</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-3-principle-to-ticket-traceability">13.3 Principle-to-ticket traceability</h3>
+<table>
+<thead>
+<tr>
+<th>Principle</th>
+<th>Name</th>
+<th>Enforcing tickets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>P01</code></td>
+<td>Use the productized IntelliJ path first</td>
+<td><code>KIP-013</code>, <code>KIP-015</code>, <code>KIP-055</code></td>
+</tr>
+<tr>
+<td><code>P02</code></td>
+<td>Treat IntelliJ as the live substrate and Kast as the durable evidence substrate</td>
+<td><code>KIP-011</code>, <code>KIP-020</code>, <code>KIP-031</code>, <code>KIP-055</code></td>
+</tr>
+<tr>
+<td><code>P03</code></td>
+<td>Separate discovery from exact identity</td>
+<td><code>KIP-013</code>, <code>KIP-014</code>, <code>KIP-051</code></td>
+</tr>
+<tr>
+<td><code>P04</code></td>
+<td>Compile scope before starting work</td>
+<td><code>KIP-012</code>, <code>KIP-015</code>, <code>KIP-050</code>, <code>KIP-052</code>, <code>KIP-053</code></td>
+</tr>
+<tr>
+<td><code>P05</code></td>
+<td>Bind every semantic read to one published generation</td>
+<td><code>KIP-011</code>, <code>KIP-017</code>, <code>KIP-020</code>, <code>KIP-035</code></td>
+</tr>
+<tr>
+<td><code>P06</code></td>
+<td>Use cancellable, write-allowing read actions</td>
+<td><code>KIP-013</code>, <code>KIP-015</code>, <code>KIP-017</code>, <code>KIP-030</code>, <code>KIP-040</code></td>
+</tr>
+<tr>
+<td><code>P07</code></td>
+<td>Do not hide cost escalation</td>
+<td><code>KIP-005</code>, <code>KIP-010</code>, <code>KIP-017</code>, <code>KIP-036</code>, <code>KIP-053</code>, <code>KIP-054</code>, <code>KIP-055</code></td>
+</tr>
+<tr>
+<td><code>P08</code></td>
+<td>Do not refresh the repository on the normal read path</td>
+<td><code>KIP-017</code>, <code>KIP-020</code>, <code>KIP-035</code></td>
+</tr>
+<tr>
+<td><code>P09</code></td>
+<td>Bound the projection without lying about completeness</td>
+<td><code>KIP-013</code>, <code>KIP-015</code>, <code>KIP-016</code>, <code>KIP-018</code>, <code>KIP-042</code>, <code>KIP-056</code></td>
+</tr>
+<tr>
+<td><code>P10</code></td>
+<td>Reserve registered operations for work that inherently outlives a request</td>
+<td><code>KIP-021</code>, <code>KIP-022</code>, <code>KIP-032</code></td>
+</tr>
+<tr>
+<td><code>P11</code></td>
+<td>Use native refactoring as the physical executor, not as the workflow owner</td>
+<td><code>KIP-002</code>, <code>KIP-030</code>, <code>KIP-031</code>, <code>KIP-033</code>, <code>KIP-034</code>, <code>KIP-035</code>, <code>KIP-040</code>, <code>KIP-041</code>, <code>KIP-042</code>, <code>KIP-050</code>, <code>KIP-051</code>, <code>KIP-052</code>, <code>KIP-053</code></td>
+</tr>
+<tr>
+<td><code>P12</code></td>
+<td>Make misuse mechanically unavailable</td>
+<td><code>KIP-003</code>, <code>KIP-004</code>, <code>KIP-005</code>, <code>KIP-020</code>, <code>KIP-054</code>, <code>KIP-055</code></td>
+</tr>
+<tr>
+<td><code>P13</code></td>
+<td>Admit expensive work according to resource state</td>
+<td><code>KIP-022</code>, <code>KIP-056</code></td>
+</tr>
+<tr>
+<td><code>P14</code></td>
+<td>Preserve proof through every boundary</td>
+<td><code>KIP-010</code>, <code>KIP-011</code>, <code>KIP-012</code>, <code>KIP-014</code>, <code>KIP-016</code>, <code>KIP-031</code>, <code>KIP-032</code>, <code>KIP-033</code>, <code>KIP-051</code></td>
+</tr>
+<tr>
+<td><code>P15</code></td>
+<td>Benchmark work, not impression</td>
+<td><code>KIP-001</code>, <code>KIP-018</code>, <code>KIP-030</code>, <code>KIP-040</code>, <code>KIP-042</code>, <code>KIP-056</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-4-machine-readable-task-graph">13.4 Machine-readable task graph</h3>
+<p>The following YAML is a projection for local planning. It is not the executable Gradle policy. Ticket completion must be established by evidence; setting a field in this projection cannot mark work complete.</p>
+<pre><code class="language-yaml">schemaVersion: 1
+program: kast-intellij-substrate
+baselines:
+  kast: 60ca538fd00d6c75c4c40140ec719bc531c9651e
+  jetbrainsIndexMcpPlugin: 7670d7202f43ab6d54433832d087316b69637f1b
+  slopsentral: 672f169842174ee807cd28a12c8f4718e7272dff
+milestones:
+  M0:
+    title: Correct foundation
+    exit: The policy can express the intended architecture and migration without a big-bang move.
+  M1:
+    title: Fast read path
+    exit: At least one public read uses a narrow native IntelliJ capability and produces exact, bounded, generation-bound
+      output.
+  M2:
+    title: Workspace execution
+    exit: Transitions, long work, and resource admission are explicit and independent from ordinary read execution.
+  M3:
+    title: Plan-only mutation
+    exit: Add-declaration produces a detached durable plan with no source authority.
+  M4:
+    title: First verified mutation
+    exit: Add-declaration reaches a verified receipt or a truthful rejected, rolled-back, or recovery-required state.
+  M5:
+    title: Verified rename
+    exit: Native multi-file rename is mediated by the same plan, recovery, transition, and proof protocol.
+  M6:
+    title: Expansion and retirement
+    exit: Operations migrate one at a time; raw semantic apply and the aggregate backend are retired only after
+      their consumers move.
+tickets:
+  KIP-001:
+    title: Freeze the source and performance ledger
+    milestone: M0
+    dependsOnAll: []
+    unlocks:
+    - KIP-002
+    - KIP-003
+    - KIP-018
+    - KIP-022
+    - KIP-030
+    - KIP-040
+    wave: 0
+    output: Create one checked-in ledger that binds this program to exact Kast, reference-project, IntelliJ build,
+      corpus, machine, operation, and benchmark identities.
+  KIP-002:
+    title: Correct branch, join, and recovery semantics
+    milestone: M0
+    dependsOnAll:
+    - KIP-001
+    unlocks:
+    - KIP-005
+    - KIP-053
+    wave: 1
+    output: Replace the flat mutation process DAG with a model that represents one-of semantic or external apply
+      lanes and recovery as an interrupt edge available after recovery preparation.
+  KIP-003:
+    title: Correct module dependency direction
+    milestone: M0
+    dependsOnAll:
+    - KIP-001
+    unlocks:
+    - KIP-004
+    - KIP-005
+    - KIP-010
+    - KIP-020
+    wave: 1
+    output: 'Make contracts and SPIs the dependency center: services depend on ports, physical adapters implement
+      ports, the registry imports operation contracts, and persistence implements an evidence contract.'
+  KIP-004:
+    title: Introduce retirement-bound migration edges
+    milestone: M0
+    dependsOnAll:
+    - KIP-003
+    unlocks:
+    - KIP-020
+    - KIP-032
+    wave: 2
+    output: Permit an exact legacy host to consume an exact target contract, SPI, or service temporarily, with one
+      mandatory retirement ticket and no target-to-legacy edge.
+  KIP-005:
+    title: Enforce role, effect, and cost boundaries
+    milestone: M0
+    dependsOnAll:
+    - KIP-002
+    - KIP-003
+    unlocks:
+    - KIP-011
+    - KIP-020
+    - KIP-034
+    - KIP-036
+    wave: 2
+    output: Make a cheap read module unable to compile Gradle import, graph build, JDBC write, source write, or
+      aggregate backend access.
+  KIP-010:
+    title: Define operation lane contracts
+    milestone: M1
+    dependsOnAll:
+    - KIP-003
+    unlocks:
+    - KIP-011
+    - KIP-016
+    - KIP-021
+    - KIP-031
+    wave: 2
+    output: Introduce typed operation definitions for metadata, index lookup, scoped semantic read, bounded relation
+      read, registered long work, derived write, and source write.
+  KIP-011:
+    title: Extract a generation-bound semantic read lease
+    milestone: M1
+    dependsOnAll:
+    - KIP-005
+    - KIP-010
+    unlocks:
+    - KIP-012
+    - KIP-015
+    - KIP-016
+    - KIP-017
+    - KIP-030
+    - KIP-031
+    - KIP-040
+    wave: 3
+    output: Expose the existing semantic admission as a narrow read capability that binds one canonical root and
+      published generation and revalidates before return.
+  KIP-012:
+    title: Compile typed IntelliJ search scopes
+    milestone: M1
+    dependsOnAll:
+    - KIP-011
+    unlocks:
+    - KIP-013
+    - KIP-015
+    - KIP-030
+    - KIP-031
+    - KIP-040
+    wave: 4
+    output: Convert admitted exact, file, module, source-set, production, test, project, library, and generated-source
+      policies into typed platform search scopes before any query runs.
+  KIP-013:
+    title: Implement native file, class, and symbol discovery
+    milestone: M1
+    dependsOnAll:
+    - KIP-012
+    unlocks:
+    - KIP-014
+    - KIP-018
+    wave: 5
+    output: Provide narrow discovery adapters over IntelliJ Go to File, Go to Class, and Go to Symbol infrastructure
+      with bounded projection and no Kast database build.
+  KIP-014:
+    title: Resolve discovery candidates into exact selectors
+    milestone: M1
+    dependsOnAll:
+    - KIP-013
+    unlocks:
+    - KIP-015
+    - KIP-018
+    wave: 6
+    output: Add a compiler-backed transition from a discovery candidate to an exact selector bound to the current
+      root and generation.
+  KIP-015:
+    title: Implement bounded native relation reads
+    milestone: M1
+    dependsOnAll:
+    - KIP-011
+    - KIP-012
+    - KIP-014
+    unlocks:
+    - KIP-035
+    - KIP-041
+    - KIP-051
+    wave: 7
+    output: Expose one-hop references, implementations, inheritance, and call relations through native IntelliJ
+      searches under exact scope, budget, and completeness rules.
+  KIP-016:
+    title: Implement detached generation-bound continuations
+    milestone: M1
+    dependsOnAll:
+    - KIP-010
+    - KIP-011
+    unlocks:
+    - KIP-018
+    - KIP-042
+    wave: 4
+    output: Create a bounded continuation service whose token binds root, generation, normalized request, scope,
+      order, resume position, TTL, and resource ownership without retaining live PSI.
+  KIP-017:
+    title: Add liveness and freshness admission
+    milestone: M1
+    dependsOnAll:
+    - KIP-011
+    unlocks:
+    - KIP-018
+    - KIP-021
+    wave: 4
+    output: Fail fast when the EDT or semantic runtime is unavailable, and prohibit recursive content-root refresh
+      from the ordinary read path.
+  KIP-018:
+    title: Cut over and benchmark the first fast read
+    milestone: M1
+    dependsOnAll:
+    - KIP-001
+    - KIP-013
+    - KIP-014
+    - KIP-016
+    - KIP-017
+    unlocks:
+    - KIP-055
+    wave: 7
+    output: Route one public discovery-to-exact-read journey through the new native adapters and publish a comparable
+      performance increment.
+  KIP-020:
+    title: Extract the workspace transition port
+    milestone: M2
+    dependsOnAll:
+    - KIP-003
+    - KIP-004
+    - KIP-005
+    unlocks:
+    - KIP-022
+    - KIP-031
+    - KIP-033
+    - KIP-035
+    - KIP-053
+    wave: 3
+    output: Move existing event-driven settlement, candidate capture, reconciliation, and atomic publication behind
+      narrow workspace contracts and SPIs without changing behavior.
+  KIP-021:
+    title: Add the registered long-operation protocol
+    milestone: M2
+    dependsOnAll:
+    - KIP-010
+    - KIP-017
+    unlocks:
+    - KIP-022
+    wave: 5
+    output: Provide a bounded operation ID, deadline, poll, terminal result, retention, and exactly-once cleanup
+      protocol for work that cannot fit a request budget.
+  KIP-022:
+    title: Add resource admission and staggered expensive work
+    milestone: M2
+    dependsOnAll:
+    - KIP-001
+    - KIP-020
+    - KIP-021
+    unlocks:
+    - KIP-056
+    wave: 6
+    output: Bound startup, project import, indexing, and long-operation concurrency using typed resource state and
+      stagger only the expensive initiation step.
+  KIP-030:
+    title: Characterize the add-declaration IntelliJ protocol
+    milestone: M3
+    dependsOnAll:
+    - KIP-001
+    - KIP-011
+    - KIP-012
+    unlocks:
+    - KIP-031
+    - KIP-034
+    wave: 5
+    output: Produce executable evidence for the supported IntelliJ add-declaration preparation, write-command, document-save,
+      affected-file, cancellation, and dumb-mode behavior.
+  KIP-031:
+    title: Define and route plan-only add-declaration
+    milestone: M3
+    dependsOnAll:
+    - KIP-010
+    - KIP-011
+    - KIP-012
+    - KIP-020
+    - KIP-030
+    unlocks:
+    - KIP-032
+    wave: 6
+    output: Return a detached `PlannedAddDeclaration` bound to generation G0 through a narrow operation binding,
+      with no mutation authority.
+  KIP-032:
+    title: Persist the plan and establish the approval boundary
+    milestone: M3
+    dependsOnAll:
+    - KIP-004
+    - KIP-031
+    unlocks:
+    - KIP-033
+    wave: 7
+    output: Store the detached add-declaration plan with compare-and-set lifecycle state so a later apply request
+      consumes only a PlanId plus explicit approval evidence.
+  KIP-033:
+    title: Revalidate and prepare recovery
+    milestone: M4
+    dependsOnAll:
+    - KIP-020
+    - KIP-032
+    unlocks:
+    - KIP-034
+    - KIP-041
+    - KIP-053
+    wave: 8
+    output: Turn an approved plan into an admitted add-declaration attempt only after current identity, generation,
+      content, owner, provenance, scope, and writability are re-proven and durable recovery evidence exists.
+  KIP-034:
+    title: Apply one short IntelliJ mutation and prove write-set closure
+    milestone: M4
+    dependsOnAll:
+    - KIP-005
+    - KIP-030
+    - KIP-033
+    unlocks:
+    - KIP-035
+    wave: 9
+    output: Execute the characterized add-declaration operation in one short EDT command, save only affected documents,
+      capture after-images, and reject any undeclared change.
+  KIP-035:
+    title: Publish the resulting generation and verify add-declaration
+    milestone: M4
+    dependsOnAll:
+    - KIP-015
+    - KIP-020
+    - KIP-034
+    unlocks:
+    - KIP-036
+    - KIP-042
+    wave: 10
+    output: Request a targeted workspace transition, publish G1, re-resolve the declaration, evaluate diagnostics
+      and obligations, and issue a terminal verified receipt or truthful failure state.
+  KIP-036:
+    title: Cut over public add-declaration and close bypasses
+    milestone: M4
+    dependsOnAll:
+    - KIP-005
+    - KIP-035
+    unlocks:
+    - KIP-050
+    - KIP-051
+    - KIP-052
+    - KIP-054
+    wave: 11
+    output: Make the public add-declaration journey use plan, approval, revalidation, recovery, apply, transition,
+      and verify, while architecture tests prevent direct semantic bypass.
+  KIP-040:
+    title: Characterize the native rename protocol
+    milestone: M5
+    dependsOnAll:
+    - KIP-001
+    - KIP-011
+    - KIP-012
+    unlocks:
+    - KIP-041
+    wave: 5
+    output: Establish supported-build evidence for RenameProcessor target selection, related renames, override behavior,
+      conflicts, affected files, cancellation, command duration, and silent-abort detection.
+  KIP-041:
+    title: Extract a detached rename plan and native apply adapter
+    milestone: M5
+    dependsOnAll:
+    - KIP-015
+    - KIP-033
+    - KIP-040
+    unlocks:
+    - KIP-042
+    wave: 9
+    output: Convert current exact rename evidence into `PlannedRename`, then apply it through the characterized
+      native executor under the shared attempt and recovery protocol.
+  KIP-042:
+    title: Route verified rename and prove multi-file behavior
+    milestone: M5
+    dependsOnAll:
+    - KIP-016
+    - KIP-035
+    - KIP-041
+    unlocks:
+    - KIP-054
+    - KIP-056
+    wave: 11
+    output: Deliver the public rename journey through durable plan, approval, revalidation, recovery, native apply,
+      targeted transition, and operation-specific verification.
+  KIP-050:
+    title: Route verified add-file as its own slice
+    milestone: M6
+    dependsOnAll:
+    - KIP-036
+    unlocks:
+    - KIP-054
+    - KIP-056
+    wave: 12
+    output: Apply the established protocol to one authored Gradle source-root file creation with exact target absence,
+      package/declaration proof, recovery, transition, and verification.
+  KIP-051:
+    title: Route exact replacement as its own slice
+    milestone: M6
+    dependsOnAll:
+    - KIP-015
+    - KIP-036
+    unlocks:
+    - KIP-054
+    - KIP-056
+    wave: 12
+    output: Deliver one exact expression or declaration-body replacement with operation-specific syntax, binding,
+      expected delta, write set, and verification.
+  KIP-052:
+    title: Route optimize-imports as its own slice
+    milestone: M6
+    dependsOnAll:
+    - KIP-036
+    unlocks:
+    - KIP-054
+    - KIP-056
+    wave: 12
+    output: Use IntelliJ import analysis and optimizer APIs under a declared file scope, then verify resulting imports
+      and diagnostics against a new generation.
+  KIP-053:
+    title: Implement the typed external-file lane
+    milestone: M6
+    dependsOnAll:
+    - KIP-002
+    - KIP-020
+    - KIP-033
+    unlocks:
+    - KIP-054
+    - KIP-056
+    wave: 9
+    output: Add a separate descriptor-relative filesystem lane for explicitly unmodeled files or explicit regeneration
+      authority, with no access to modeled Kotlin/Java source.
+  KIP-054:
+    title: Reduce mutation methods on AnalysisBackend to compatibility bindings
+    milestone: M6
+    dependsOnAll:
+    - KIP-036
+    - KIP-042
+    - KIP-050
+    - KIP-051
+    - KIP-052
+    - KIP-053
+    unlocks:
+    - KIP-055
+    wave: 13
+    output: Make all migrated mutation methods delegate through narrow operation bindings, then remove mutation
+      authority and source-write implementations from the aggregate backend.
+  KIP-055:
+    title: Decompose remaining read capabilities and retire AnalysisBackend
+    milestone: M6
+    dependsOnAll:
+    - KIP-018
+    - KIP-054
+    unlocks:
+    - KIP-056
+    wave: 14
+    output: Migrate symbol, relation, traversal, graph read, graph build, diagnostic, workspace, and evidence capabilities
+      into their vertical modules, then remove the aggregate backend.
+  KIP-056:
+    title: Prove the enterprise multi-module acceptance journey
+    milestone: M6
+    dependsOnAll:
+    - KIP-022
+    - KIP-042
+    - KIP-050
+    - KIP-051
+    - KIP-052
+    - KIP-053
+    - KIP-055
+    unlocks: []
+    wave: 15
+    output: Run one enterprise-shaped discovery, plan, mutation, transition, verification, recovery, scale, and
+      tamper suite across multiple Gradle owners and source sets.
+</code></pre>
+<h2 id="14-first-three-usable-releases">14. First three usable releases</h2>
+<blockquote>
+<p><strong>Publication status (2026-08-13):</strong> These remain functional release scopes, not claims that matching PR-branch snapshots were published. The only listed program-baseline snapshot is <code>snapshot-60ca538fd00d</code>. A later snapshot must state exactly which public journey is reachable and prove it through an isolated installation.</p>
+</blockquote>
+<h3 id="release-a-fast-exact-read">Release A — Fast exact read</h3>
+<p><strong>Branch status:</strong> implementation is pushed on PR #609; no matching PR-branch snapshot has been published.</p>
+<p>Contains KIP-001 through KIP-018 as required by the fast-read critical path. The user can perform native index-backed discovery, turn a candidate into an exact selector, and read one exact definition or description without triggering import, refresh, graph build, or persistence. This is the first direct response to the reference project’s performance example.</p>
+<h3 id="release-b-plan-only-add-declaration">Release B — Plan-only add-declaration</h3>
+<p><strong>Branch status:</strong> implementation is pushed on PR #609; no matching PR-branch snapshot has been published.</p>
+<p>Contains KIP-020, KIP-030, KIP-031, and KIP-032 after their dependencies. The user can create and inspect a durable compiler-grounded plan, then stop. No mutation authority is present in the planning process.</p>
+<h3 id="release-c-verified-add-declaration">Release C — Verified add-declaration</h3>
+<p><strong>Branch status:</strong> incomplete. KIP-033 and KIP-034 are pushed, KIP-035 is local work in progress, and KIP-036 has not started.</p>
+<p>Contains KIP-033 through KIP-036. A later explicit apply request produces a verified receipt only after revalidation, recovery preparation, one short IntelliJ command, write-set closure, targeted transition, G1 publication, and operation-specific proof.</p>
+<p>Rename and every subsequent operation reuse these substrates but remain independently releasable.</p>
+<h2 id="15-program-completion-condition">15. Program completion condition</h2>
+<p>This program is complete when:</p>
+<ul>
+<li>ordinary reads use native IntelliJ indexes and scoped semantic APIs without hidden expensive work;</li>
+<li>exact selectors, coverage, continuations, plans, attempts, and receipts remain generation-bound and proof-carrying;</li>
+<li>only registered long work outlives a request;</li>
+<li>only workspace adapters can refresh/import and only source-write adapters can mutate;</li>
+<li>add-declaration and rename reach verified receipts or truthful terminal failures;</li>
+<li>external files use a separate typed lane;</li>
+<li>raw semantic apply is unavailable;</li>
+<li>the server depends on contracts and bindings only;</li>
+<li>no internal implementation consumes <code>AnalysisBackend</code>;</li>
+<li>each performance claim has comparable evidence;</li>
+<li>the enterprise acceptance journey cannot represent partial, stale, truncated, ambiguous, unsupported, or unverified evidence as complete.</li>
+</ul>
+<p>The target is not “more modules.” The target is a usable sequence of narrow operations where IntelliJ does the platform work it already performs well and Kast adds only the durable semantic control surface that IntelliJ does not provide.</p>
+</main>
+</div>
+</body>
+</html>
