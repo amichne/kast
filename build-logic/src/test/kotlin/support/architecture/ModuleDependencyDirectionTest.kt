@@ -7,6 +7,28 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class ModuleDependencyDirectionTest {
     @Test
+    fun `materialized protocol substrate has active host neutral migration authority`() {
+        val architecture = canonical()
+        val expected = mapOf(
+            ModuleId.PROTOCOL_CONTRACT to setOf(ModuleId.KERNEL),
+            ModuleId.PROTOCOL_WIRE to setOf(
+                ModuleId.KERNEL,
+                ModuleId.PROTOCOL_CONTRACT,
+                ModuleId.PROTOCOL_REGISTRY,
+            ),
+        )
+
+        assertEquals(expected.keys, expected.keys.intersect(architecture.modules.keys))
+        expected.forEach { (id, dependencies) ->
+            val module = architecture.modules.getValue(id)
+            assertEquals(ModuleLifecycle.ACTIVE, module.lifecycle, id.projectPath)
+            assertEquals(ModuleRole.CONTRACT, module.role, id.projectPath)
+            assertEquals(dependencies, module.allowedProjectDependencies, id.projectPath)
+            assertEquals(emptySet<ForbiddenEffect>(), module.allowedEffects, id.projectPath)
+        }
+    }
+
+    @Test
     fun `canonical graph centers ports and gives composition the complete implementation graph`() {
         val architecture = canonical()
 
@@ -28,6 +50,7 @@ class ModuleDependencyDirectionTest {
         assertEquals(
             setOf(
                 ModuleId.KERNEL,
+                ModuleId.PROTOCOL_CONTRACT,
                 ModuleId.CHANGE_CONTRACT,
                 ModuleId.SYMBOL_CONTRACT,
                 ModuleId.WORKSPACE_CONTRACT,

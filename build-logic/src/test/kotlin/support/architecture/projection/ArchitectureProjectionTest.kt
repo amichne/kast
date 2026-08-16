@@ -28,7 +28,7 @@ class ArchitectureProjectionTest {
         assertEquals("REPOSITORY_WIDE", root.getValue("enforcementScope").jsonPrimitive.content)
         assertEquals("CLEAN_SLATE_DELIVERY", root.getValue("workflowScope").jsonPrimitive.content)
         assertEquals(30, root.getValue("targetModules").jsonArray.size)
-        assertEquals(38, root.getValue("modules").jsonArray.size)
+        assertEquals(40, root.getValue("modules").jsonArray.size)
         assertEquals(20, root.getValue("mutationRuntimeProcesses").jsonArray.size)
         assertEquals(34, root.getValue("mutationDeliveryTasks").jsonArray.size)
         assertEquals(1, root.getValue("legacyMigrationEdges").jsonArray.size)
