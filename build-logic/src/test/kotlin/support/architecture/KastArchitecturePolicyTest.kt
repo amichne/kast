@@ -180,7 +180,7 @@ class KastArchitecturePolicyTest {
     }
 
     @Test
-    fun `canonical cross-role dependencies are exactly the collapsed IntelliJ apply slice`() {
+    fun `canonical cross-role dependencies are exactly the collapsed mutation slices`() {
         val architecture = canonicalWithoutLegacyAllowances()
         val inwardRoles = setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.SPI)
         val consumers = setOf(
