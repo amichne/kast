@@ -17,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
+import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
@@ -301,6 +302,39 @@ class InstalledKastRuntimeTest {
     }
 
     @Test
+    fun `change plan rejects a manufactured exact target before semantic admission`() {
+        var admissionInvoked = false
+        val handler = CanonicalChangePlanHandler(
+            ChangePlanningOperations(
+                PureAddFilePlanningService(),
+                PureAddDeclarationPlanningService(),
+                PureReplaceDeclarationPlanningService(),
+                PureRenameSymbolPlanningService(),
+            ),
+            ChangePlanAdmissionOperations {
+                admissionInvoked = true
+                error("manufactured targets must not reach semantic admission")
+            },
+            CanonicalProtocolAuthority(),
+            CanonicalChangeAuthority(),
+        )
+
+        val outcome = runImmediate {
+            handler.execute(
+                ChangePlanRequest(
+                    ChangeIntentDocument.AddDeclaration(
+                        ProtocolText.parse("manufactured-target").refined(),
+                        ProtocolText.parse("fun added() = Unit").refined(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(OperationOutcome.Rejected(ChangePlanRejection.TARGET_REJECTED), outcome)
+        assertFalse(admissionInvoked)
+    }
+
+    @Test
     fun `change plan identity retains the exact typed plan for apply`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         val fixture = InstalledChangeProtocolFixture.create(root)
@@ -314,6 +348,7 @@ class InstalledKastRuntimeTest {
         val plan = CanonicalChangePlanHandler(
             planning,
             ChangePlanAdmissionOperations { ChangePlanAdmission.AddFile(fixture.addFile) },
+            CanonicalProtocolAuthority(),
             authority,
         )
         var observed: DomainChangeApplyRequest? = null

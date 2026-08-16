@@ -52,7 +52,12 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
 
     override fun changePlan(
         operations: ChangePlanningOperations,
-    ) = CanonicalChangePlanHandler(operations, changeAdmission, changeAuthority)
+    ) = CanonicalChangePlanHandler(
+        operations,
+        changeAdmission,
+        protocolAuthority,
+        changeAuthority,
+    )
 
     override fun changeApply(
         operations: AddDeclarationApplyOperations,

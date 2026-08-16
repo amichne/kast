@@ -74,11 +74,20 @@ class KastRuntimeComposition private constructor(
             workspacePorts: WorkspaceRuntimePorts,
             semanticPorts: SemanticRuntimePorts,
             changePorts: ChangeRuntimePorts,
-        ): DirectKastRuntimeGraph {
-            val workspace = WorkspacePublicationCoordinator(
+        ): DirectKastRuntimeGraph = constructGraph(
+            WorkspacePublicationCoordinator(
                 workspacePorts.reconciliation,
                 workspacePorts.publication,
-            )
+            ),
+            semanticPorts,
+            changePorts,
+        )
+
+        internal fun constructGraph(
+            workspace: WorkspacePublicationCoordinator,
+            semanticPorts: SemanticRuntimePorts,
+            changePorts: ChangeRuntimePorts,
+        ): DirectKastRuntimeGraph {
             val symbolDiscovery = SymbolDiscoveryService(workspace, semanticPorts.symbolDiscovery)
             val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
             val relation = RelationService(workspace, semanticPorts.relation)
