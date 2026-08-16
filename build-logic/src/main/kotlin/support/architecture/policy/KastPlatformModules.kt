@@ -141,18 +141,8 @@ internal object KastPlatformModules {
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        active(
-            ModuleId.TRAVERSAL_SERVICE,
-            ModuleRole.SERVICE,
-            ModuleId.RELATION_CONTRACT,
-            ModuleId.TRAVERSAL_CONTRACT,
-        ),
-        active(
-            ModuleId.PROTOCOL_CONTINUATION,
-            ModuleRole.SERVICE,
-            ModuleId.KERNEL,
-            ModuleId.WORKSPACE_CONTRACT,
-        ),
+        active(ModuleId.TRAVERSAL_SERVICE, ModuleRole.SERVICE, ModuleId.RELATION_CONTRACT, ModuleId.TRAVERSAL_CONTRACT),
+        active(ModuleId.PROTOCOL_CONTINUATION, ModuleRole.SERVICE, ModuleId.KERNEL, ModuleId.WORKSPACE_CONTRACT),
         active(
             ModuleId.CHANGE_CONTRACT,
             ModuleRole.CONTRACT,
@@ -163,15 +153,26 @@ internal object KastPlatformModules {
             ModuleId.TRAVERSAL_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
         ),
-        active(
-            ModuleId.CHANGE_PLAN,
-            ModuleRole.SERVICE,
-            ModuleId.CHANGE_CONTRACT,
-        ),
+        active(ModuleId.CHANGE_PLAN, ModuleRole.SERVICE, ModuleId.CHANGE_CONTRACT),
         active(
             ModuleId.CHANGE_RECOVERY,
             ModuleRole.SERVICE,
             ModuleId.CHANGE_CONTRACT,
+            ModuleId.EVIDENCE_CONTRACT,
+        ),
+        active(
+            ModuleId.CHANGE_APPLY,
+            ModuleRole.SERVICE,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.EVIDENCE_CONTRACT,
+        ),
+        active(
+            ModuleId.CHANGE_INTELLIJ,
+            ModuleRole.INTELLIJ_WRITE_ADAPTER,
+            ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_RECOVERY,
             ModuleId.EVIDENCE_CONTRACT,
         ),
         active(
@@ -374,7 +375,9 @@ internal object KastPlatformModules {
         ModuleId.CHANGE_PLAN_INTELLIJ,
         ModuleId.CHANGE_VERIFY_INTELLIJ,
             -> setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
-        ModuleId.CHANGE_APPLY_INTELLIJ -> setOf(
+        ModuleId.CHANGE_APPLY_INTELLIJ,
+        ModuleId.CHANGE_INTELLIJ,
+            -> setOf(
             ForbiddenEffect.INTELLIJ_PLATFORM,
             ForbiddenEffect.INTELLIJ_WRITE,
         )
@@ -389,8 +392,6 @@ internal object KastPlatformModules {
     }
 
     private fun cleanSlateOnlyModuleIds(): Set<ModuleId> = setOf(
-        ModuleId.CHANGE_APPLY,
         ModuleId.CHANGE_VERIFY,
-        ModuleId.CHANGE_INTELLIJ,
     )
 }

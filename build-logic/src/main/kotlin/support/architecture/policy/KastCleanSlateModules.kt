@@ -143,7 +143,13 @@ internal object KastCleanSlateModules {
             ModuleId.TRAVERSAL_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
         ),
-        target(ModuleId.CHANGE_APPLY, ModuleRole.SERVICE, ModuleId.CHANGE_CONTRACT),
+        target(
+            ModuleId.CHANGE_APPLY,
+            ModuleRole.SERVICE,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.EVIDENCE_CONTRACT,
+        ),
         target(
             ModuleId.CHANGE_VERIFY,
             ModuleRole.SERVICE,
@@ -162,13 +168,13 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CHANGE_INTELLIJ,
             ModuleRole.INTELLIJ_WRITE_ADAPTER,
+            ModuleId.CHANGE_APPLY,
             ModuleId.CHANGE_CONTRACT,
-            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.EVIDENCE_CONTRACT,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.INTELLIJ_WRITE,
-                ForbiddenEffect.FILESYSTEM_WRITE,
-                ForbiddenEffect.SOURCE_FILESYSTEM_WRITE,
             ),
         ),
         target(
