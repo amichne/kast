@@ -1,23 +1,19 @@
 package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.kernel.CapabilityId
+import io.github.amichne.kast.kernel.CapabilityMarker
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationId
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.OperationQualification
+import io.github.amichne.kast.protocol.contract.OperationRejection
+import io.github.amichne.kast.protocol.contract.OperationRequest
+import io.github.amichne.kast.protocol.contract.OperationResult
+import io.github.amichne.kast.protocol.contract.OperationTypeBinding
+import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import kotlin.reflect.KClass
-
-/** Marker for a typed public operation request. */
-interface OperationRequest
-
-/** Marker for a typed successful operation payload. */
-interface OperationPayload
-
-/** Marker for a typed qualification attached to incomplete successful evidence. */
-interface OperationQualification
-
-/** Marker for an operation-owned closed rejection reason. */
-interface OperationRejection
 
 /**
  * Complete host-neutral metadata for one permanent public operation.
@@ -28,16 +24,13 @@ interface OperationRejection
  */
 data class OperationDefinition<
     Request : OperationRequest,
-    Payload : OperationPayload,
-    Capability : Any,
+    Result : OperationResult,
+    Capability : CapabilityMarker,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
     >(
-    val id: OperationId,
-    val requestType: KClass<Request>,
-    val resultType: KClass<Payload>,
-    val qualificationType: KClass<Qualification>,
-    val rejectionType: KClass<Rejection>,
+    val operation: CanonicalOperation,
+    val types: OperationTypeBinding<Request, Result, Qualification, Rejection>,
     val requiredCapability: CapabilityId,
     val capabilityType: KClass<Capability>,
     val lane: OperationLane,
@@ -46,18 +39,36 @@ data class OperationDefinition<
     val scope: OperationScope,
     val budget: ResourceBudget,
     val completeness: CompletenessPolicy,
-) {
+) : OperationMetadata {
+    override val id: OperationId
+        get() = operation.id
+
+    val requestType: KClass<Request>
+        get() = types.requestType
+
+    val resultType: KClass<Result>
+        get() = types.resultType
+
+    val qualificationType: KClass<Qualification>
+        get() = types.qualificationType
+
+    val rejectionType: KClass<Rejection>
+        get() = types.rejectionType
+
+    val schema: SchemaIdentity
+        get() = types.schema
+
     /**
-     * Proof transition: `EvidenceEnvelope<Payload> ->
-     * OperationOutcomeBinding<Payload, Qualification, Rejection>`.
+     * Proof transition: `EvidenceEnvelope<Result> ->
+     * OperationOutcomeBinding<Result, Qualification, Rejection>`.
      *
      * Establishes that complete evidence names this definition's exact permanent [id].
      * [OperationOutcomeBindingFailure] is the closed expected failure. The raw payload may be
      * extracted only at an operation-specific external result boundary.
      */
     fun bindComplete(
-        evidence: EvidenceEnvelope<Payload>,
-    ): OperationOutcomeBinding<Payload, Qualification, Rejection> =
+        evidence: EvidenceEnvelope<Result>,
+    ): OperationOutcomeBinding<Result, Qualification, Rejection> =
         if (evidence.operation == id) {
             OperationOutcomeBinding.Bound(OperationOutcome.Complete(evidence))
         } else {
@@ -70,8 +81,8 @@ data class OperationDefinition<
         }
 
     /**
-     * Proof transition: `EvidenceEnvelope<Payload> + Qualification ->
-     * OperationOutcomeBinding<Payload, Qualification, Rejection>`.
+     * Proof transition: `EvidenceEnvelope<Result> + Qualification ->
+     * OperationOutcomeBinding<Result, Qualification, Rejection>`.
      *
      * Establishes that qualified evidence names this definition's exact permanent [id] while
      * preserving its typed qualification when [completeness] permits qualified success.
@@ -79,9 +90,9 @@ data class OperationDefinition<
      * extracted only at an operation-specific external result boundary.
      */
     fun bindQualified(
-        evidence: EvidenceEnvelope<Payload>,
+        evidence: EvidenceEnvelope<Result>,
         qualification: Qualification,
-    ): OperationOutcomeBinding<Payload, Qualification, Rejection> =
+    ): OperationOutcomeBinding<Result, Qualification, Rejection> =
         if (evidence.operation != id) {
             OperationOutcomeBinding.Rejected(
                 OperationOutcomeBindingFailure.EvidenceOperationMismatch(
@@ -102,7 +113,7 @@ data class OperationDefinition<
             }
         }
 
-    fun reject(reason: Rejection): OperationOutcome<Payload, Qualification, Rejection> =
+    fun reject(reason: Rejection): OperationOutcome<Result, Qualification, Rejection> =
         OperationOutcome.Rejected(reason)
 }
 

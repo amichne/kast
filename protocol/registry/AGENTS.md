@@ -13,7 +13,8 @@ cost, scope, finite resource budget, and completeness policy.
 
 ## Dependency boundary
 
-- Production may depend only on `:kernel`; expose that dependency with `api(project(":kernel"))`.
+- Production may depend only on `:kernel` and `:protocol:contract`; expose both dependencies as
+  API.
 - Do not import IntelliJ, Gradle, JDBC, filesystem, process, transport, JSON-RPC, serialization,
   legacy `analysis-api`, server, backend, adapter, or service-locator types.
 - Definitions are data only. Handlers, functions, runtime capabilities, and implementation
@@ -27,10 +28,11 @@ cost, scope, finite resource budget, and completeness policy.
   that type and does not gain registry-owned execution authority.
 - Successful outcomes retain an evidence envelope whose operation ID exactly matches the
   definition. A mismatch is finite typed failure.
-- Registry construction rejects every duplicate permanent ID. Lookup returns `Found` or
-  `Missing`, never null.
+- Registry construction admits exactly one typed definition for each canonical operation and
+  rejects missing, duplicate, unknown, untyped, or duplicate-schema metadata. Lookup returns
+  `Found` or `Unknown`, never null.
 - A stronger prerequisite is only blocker data; the registry never executes it.
-- Request, payload, qualification, and rejection values use marker contracts rather than `Any`
+- Request, result, qualification, and rejection values use marker contracts rather than `Any`
   maps or primitive protocols.
 
 ## Verification ladder
