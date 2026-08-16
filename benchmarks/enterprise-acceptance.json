@@ -1,0 +1,12 @@
+{
+  "maximumAcceptanceSeconds": 360,
+  "maximumOperationSeconds": 60,
+  "maximumOutputBytes": 65536,
+  "maximumReconciliationSeconds": 60,
+  "maximumStartupSeconds": 240,
+  "minimumFixtureModules": 12,
+  "relationResultLimit": 1,
+  "symbolDiscoveryLimit": 1000,
+  "traversalMaximumDepth": 2,
+  "traversalResultLimit": 2
+}
