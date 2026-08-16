@@ -134,12 +134,14 @@ internal class IntellijK2RelationSearch(
                 .sortedBy { it.textRange.startOffset }
             for (call in calls) {
                 cancellationCheck()
-                val references = call.references.filterIsInstance<KtReference>()
-                if (references.isEmpty()) {
-                    if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
-                        return termination(ProviderTermination.HALTED)
+                val references = when (val resolved = call.calleeReferences()) {
+                    is KotlinCallReferences.Found -> resolved.references
+                    KotlinCallReferences.Unresolved -> {
+                        if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
+                            return termination(ProviderTermination.HALTED)
+                        }
+                        continue
                     }
-                    continue
                 }
                 for (reference in references) {
                     if (skip()) continue
@@ -290,9 +292,16 @@ private enum class ReferenceMeaning {
 
     fun admits(element: PsiElement): ReferenceAdmission = when (this) {
         ALL -> ReferenceAdmission.ADMITTED
-        CALL_ONLY -> if (
-            PsiTreeUtil.getParentOfType(element, KtCallElement::class.java, false) != null
-        ) ReferenceAdmission.ADMITTED else ReferenceAdmission.SKIPPED
+        CALL_ONLY -> when (
+            val call = PsiTreeUtil.getParentOfType(element, KtCallElement::class.java, false)
+        ) {
+            null -> ReferenceAdmission.SKIPPED
+            else -> if (call.calleeExpression?.textRange?.contains(element.textRange) == true) {
+                ReferenceAdmission.ADMITTED
+            } else {
+                ReferenceAdmission.SKIPPED
+            }
+        }
         TYPE_ONLY -> if (
             PsiTreeUtil.getParentOfType(element, KtTypeReference::class.java, false) != null
         ) ReferenceAdmission.ADMITTED else ReferenceAdmission.SKIPPED
@@ -314,6 +323,11 @@ private sealed interface OccurrenceProvenance {
     data object Unsupported : OccurrenceProvenance
 }
 
+private sealed interface KotlinCallReferences {
+    data class Found(val references: List<KtReference>) : KotlinCallReferences
+    data object Unresolved : KotlinCallReferences
+}
+
 private enum class ProviderTermination {
     TERMINAL,
     HALTED,
@@ -331,6 +345,15 @@ private fun PsiElement.nearestDeclaration(): ContainingDeclaration =
         .firstOrNull()
         ?.let(ContainingDeclaration::Found)
     ?: ContainingDeclaration.Unsupported
+
+private fun KtCallElement.calleeReferences(): KotlinCallReferences {
+    val references = calleeExpression?.references?.filterIsInstance<KtReference>().orEmpty()
+    return if (references.isEmpty()) {
+        KotlinCallReferences.Unresolved
+    } else {
+        KotlinCallReferences.Found(references)
+    }
+}
 
 private fun incomplete(limitation: RelationLimitation) =
     IntellijRelationTermination.Incomplete(setOf(limitation))
