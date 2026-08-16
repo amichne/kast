@@ -263,7 +263,10 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.INDEXER_HOST,
             setOf(ModuleRole.COMPOSITION),
             setOf(ModuleCost.RUNTIME_ORCHESTRATION),
-            allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
+            allowedEffects = setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.FILESYSTEM_WRITE,
+            ),
         )
     }
 

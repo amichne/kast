@@ -303,7 +303,7 @@
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.indexer-host"},
       "allowedProjectDependencies": [":runtime:composition"],
-      "allowedEffects": ["INTELLIJ_PLATFORM"]
+      "allowedEffects": ["FILESYSTEM_WRITE", "INTELLIJ_PLATFORM"]
     }
   ],
   "modules": [

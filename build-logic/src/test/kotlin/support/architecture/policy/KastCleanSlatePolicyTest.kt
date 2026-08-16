@@ -67,7 +67,7 @@ class KastCleanSlatePolicyTest {
                     ModuleId.INDEXER,
                 ),
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
-                ForbiddenEffect.FILESYSTEM_WRITE to emptySet(),
+                ForbiddenEffect.FILESYSTEM_WRITE to setOf(ModuleId.INDEXER),
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE to emptySet(),
                 ForbiddenEffect.JDBC to setOf(ModuleId.EVIDENCE_SQLITE),
                 ForbiddenEffect.GRADLE_PLATFORM to setOf(ModuleId.WORKSPACE_INTELLIJ),
