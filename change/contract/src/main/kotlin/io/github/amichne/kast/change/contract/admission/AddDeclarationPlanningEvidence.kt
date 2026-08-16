@@ -10,9 +10,11 @@ import io.github.amichne.kast.traversal.contract.TraversalPosition
 import io.github.amichne.kast.traversal.contract.TraversalResult
 
 @JvmInline
-value class AddDeclarationEvidenceFingerprint internal constructor(
+value class ChangePlanningEvidenceFingerprint internal constructor(
     val value: String,
 )
+
+typealias AddDeclarationEvidenceFingerprint = ChangePlanningEvidenceFingerprint
 
 /**
  * Complete, normalized detached evidence for one exact editable target.
@@ -20,64 +22,64 @@ value class AddDeclarationEvidenceFingerprint internal constructor(
  * The retained variants carry their exact coverage proofs. No Boolean completion flag or
  * reconstructed absence can enter a plan.
  */
-class CompleteAddDeclarationPlanningEvidence private constructor(
+class CompleteChangePlanningEvidence private constructor(
     val relations: List<RelationReadResult.Complete>,
     val traversals: List<TraversalResult.Complete>,
     val diagnostics: List<DiagnosticCheckResult.Complete>,
-    val fingerprint: AddDeclarationEvidenceFingerprint,
+    val fingerprint: ChangePlanningEvidenceFingerprint,
 ) {
     companion object {
         /**
-         * Proof transition: `AddDeclarationPlanRequest -> Refinement<
-         * CompleteAddDeclarationPlanningEvidence, AddDeclarationPlanningFailure>`.
+         * Proof transition: `(EditableMutationTarget, AddDeclarationPlanningEvidenceInput) ->
+         * Refinement<CompleteChangePlanningEvidence, ChangePlanningFailure>`.
          *
          * Establishes non-empty, complete relation, traversal, and diagnostic evidence for the
-         * request's exact target selector, file, root, and generation, normalized independently of
-         * input enumeration order. [AddDeclarationPlanningFailure] is the closed expected failure.
+         * exact target selector, file, root, and generation, normalized independently of input
+         * enumeration order. [ChangePlanningFailure] is the closed expected failure.
          * Raw compiler/platform evidence may enter only through the detached read-operation
          * boundaries; no raw extraction is permitted by planning.
          */
         internal fun admit(
-            request: AddDeclarationPlanRequest,
-        ): Refinement<CompleteAddDeclarationPlanningEvidence, AddDeclarationPlanningFailure> {
-            if (request.evidence.relations.isEmpty()) {
+            target: EditableMutationTarget,
+            evidence: AddDeclarationPlanningEvidenceInput,
+        ): Refinement<CompleteChangePlanningEvidence, ChangePlanningFailure> {
+            if (evidence.relations.isEmpty()) {
                 return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.RELATION_EVIDENCE_REQUIRED,
+                    ChangePlanningFailure.RELATION_EVIDENCE_REQUIRED,
                 )
             }
-            val relations = request.evidence.relations.map { result ->
+            val relations = evidence.relations.map { result ->
                 result as? RelationReadResult.Complete ?: return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.RELATION_EVIDENCE_INCOMPLETE,
+                    ChangePlanningFailure.RELATION_EVIDENCE_INCOMPLETE,
                 )
             }
-            if (request.evidence.traversals.isEmpty()) {
+            if (evidence.traversals.isEmpty()) {
                 return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.TRAVERSAL_EVIDENCE_REQUIRED,
+                    ChangePlanningFailure.TRAVERSAL_EVIDENCE_REQUIRED,
                 )
             }
-            val traversals = request.evidence.traversals.map { result ->
+            val traversals = evidence.traversals.map { result ->
                 result as? TraversalResult.Complete ?: return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.TRAVERSAL_EVIDENCE_INCOMPLETE,
+                    ChangePlanningFailure.TRAVERSAL_EVIDENCE_INCOMPLETE,
                 )
             }
-            if (request.evidence.diagnostics.isEmpty()) {
+            if (evidence.diagnostics.isEmpty()) {
                 return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.DIAGNOSTIC_EVIDENCE_REQUIRED,
+                    ChangePlanningFailure.DIAGNOSTIC_EVIDENCE_REQUIRED,
                 )
             }
-            val diagnostics = request.evidence.diagnostics.map { result ->
+            val diagnostics = evidence.diagnostics.map { result ->
                 result as? DiagnosticCheckResult.Complete ?: return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE,
+                    ChangePlanningFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE,
                 )
             }
-            val target = request.target
             if (
                 relations.any { it.batch.request.selector.lease != target.lease } ||
                 traversals.any { it.page.plan.start.lease != target.lease } ||
                 diagnostics.any { it.batch.scope.lease != target.lease }
             ) {
                 return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.EVIDENCE_LEASE_MISMATCH,
+                    ChangePlanningFailure.EVIDENCE_LEASE_MISMATCH,
                 )
             }
             if (
@@ -92,7 +94,7 @@ class CompleteAddDeclarationPlanningEvidence private constructor(
                 }
             ) {
                 return Refinement.Rejected(
-                    AddDeclarationPlanningFailure.EVIDENCE_TARGET_MISMATCH,
+                    ChangePlanningFailure.EVIDENCE_TARGET_MISMATCH,
                 )
             }
             val normalizedRelations = relations.sortedBy(::relationProjection)
@@ -104,16 +106,23 @@ class CompleteAddDeclarationPlanningEvidence private constructor(
                 normalizedDiagnostics.forEach { appendPlanningField(diagnosticProjection(it)) }
             }
             return Refinement.Refined(
-                CompleteAddDeclarationPlanningEvidence(
+                CompleteChangePlanningEvidence(
                     normalizedRelations,
                     normalizedTraversals,
                     normalizedDiagnostics,
-                    AddDeclarationEvidenceFingerprint(sha256Hex(canonical.toByteArray())),
+                    ChangePlanningEvidenceFingerprint(sha256Hex(canonical.toByteArray())),
                 ),
             )
         }
+
+        internal fun admit(
+            request: AddDeclarationPlanRequest,
+        ): Refinement<CompleteChangePlanningEvidence, ChangePlanningFailure> =
+            admit(request.target, request.evidence)
     }
 }
+
+typealias CompleteAddDeclarationPlanningEvidence = CompleteChangePlanningEvidence
 
 private fun relationProjection(result: RelationReadResult.Complete): String = buildString {
     val request = result.batch.request

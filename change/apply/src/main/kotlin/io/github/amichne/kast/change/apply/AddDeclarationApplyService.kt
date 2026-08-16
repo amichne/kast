@@ -120,7 +120,13 @@ class AddDeclarationApplyService private constructor(
     ) : this(recovery, observer, writer, rollback, MutationAdmissionService())
 
     override fun apply(request: AddDeclarationApplyRequest): AddDeclarationApplyResult {
-        val observed = when (val result = observer.observe(request.plan.target.file)) {
+        val source = request.plan.writes.entries.singleOrNull()?.source
+            ?: return AddDeclarationApplyResult.Rejected(
+                AddDeclarationApplyFailure.Admission(
+                    MutationAdmissionFailure.UNPLANNED_WRITE_SET,
+                ),
+            )
+        val observed = when (val result = observer.observe(source)) {
             is SourceObservationResult.Observed -> result.source
             is SourceObservationResult.Rejected -> return AddDeclarationApplyResult.Rejected(
                 AddDeclarationApplyFailure.Observation(result.failure),

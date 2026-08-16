@@ -102,32 +102,35 @@ data class AddDeclarationPlanningEvidence private constructor(
 
 @Serializable
 @JvmInline
-value class AddDeclarationPlanId private constructor(val value: String) {
+value class ChangePlanId private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<AddDeclarationPlanId, AddDeclarationPlanIdFailure>`.
+         * Proof transition: `String -> Refinement<ChangePlanId, ChangePlanIdFailure>`.
          *
          * Establishes an opaque canonical lowercase SHA-256 plan identity. The closed expected
-         * failure is `AddDeclarationPlanIdFailure.INVALID`; raw extraction is permitted only at
+         * failure is `ChangePlanIdFailure.INVALID`; raw extraction is permitted only at
          * transport and durable-journal boundaries.
          */
         fun parse(
             raw: String,
-        ): Refinement<AddDeclarationPlanId, AddDeclarationPlanIdFailure> =
+        ): Refinement<ChangePlanId, ChangePlanIdFailure> =
             if (Regex("[0-9a-f]{64}").matches(raw)) {
-                Refinement.Refined(AddDeclarationPlanId(raw))
+                Refinement.Refined(ChangePlanId(raw))
             } else {
-                Refinement.Rejected(AddDeclarationPlanIdFailure.INVALID)
+                Refinement.Rejected(ChangePlanIdFailure.INVALID)
             }
 
-        internal fun fromCanonicalIdentity(value: String): AddDeclarationPlanId =
-            AddDeclarationPlanId(sha256Hex(value.toByteArray()))
+        internal fun fromCanonicalIdentity(value: String): ChangePlanId =
+            ChangePlanId(sha256Hex(value.toByteArray()))
     }
 }
 
-enum class AddDeclarationPlanIdFailure {
+enum class ChangePlanIdFailure {
     INVALID,
 }
+
+typealias AddDeclarationPlanId = ChangePlanId
+typealias AddDeclarationPlanIdFailure = ChangePlanIdFailure
 
 @Serializable
 @ConsistentCopyVisibility

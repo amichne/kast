@@ -9,8 +9,13 @@ internal data class IntellijMutationInput(
     val sourcePath: String,
     val preimageText: String,
     val postimageText: String,
-    val insertionOffset: Int,
-    val insertionText: String,
+    val mutations: List<IntellijTextMutation>,
+)
+
+internal data class IntellijTextMutation(
+    val startInclusive: Int,
+    val endExclusive: Int,
+    val replacement: String,
 )
 
 internal sealed interface IntellijSessionStepResult {
@@ -36,7 +41,7 @@ internal sealed interface IntellijPhysicalSourceObservation {
 internal interface IntellijDocumentMutationSession {
     fun currentText(): String
 
-    fun insert(input: IntellijMutationInput): IntellijSessionStepResult
+    fun mutate(input: IntellijMutationInput): IntellijSessionStepResult
 
     fun restore(preimageText: String): IntellijSessionStepResult
 
@@ -85,10 +90,10 @@ internal class IntellijSourceWriteProtocol {
                 SourceWriteFailure.PREIMAGE_CHANGED,
             )
         }
-        when (val inserted = session.insert(input)) {
+        when (val mutated = session.mutate(input)) {
             IntellijSessionStepResult.Completed -> Unit
             is IntellijSessionStepResult.Rejected ->
-                return rollback(session, input, inserted.failure)
+                return rollback(session, input, mutated.failure)
         }
         if (session.currentText() != input.postimageText) {
             return rollback(session, input, SourceWriteFailure.MUTATION_FAILED)

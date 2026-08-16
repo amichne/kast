@@ -23,15 +23,18 @@ import io.github.amichne.kast.evidence.contract.MutationRecoveryPersistResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 
-internal fun applyExactMutation(fixture: VerifiedMutationFixture): AppliedUnverified {
-    val adapter = ExactWriteAdapter(fixture.observedSource())
+internal fun applyExactMutation(
+    fixture: VerifiedMutationFixture,
+    plan: io.github.amichne.kast.change.contract.ChangePlan = fixture.plan,
+): AppliedUnverified {
+    val adapter = ExactWriteAdapter(fixture.observedSource(plan))
     val service = AddDeclarationApplyService(
         AddDeclarationRecoveryService(InMemoryVerificationRecoveryStore()),
         adapter,
         adapter,
         adapter,
     )
-    return service.apply(fixture.applyRequest()) as AppliedUnverified
+    return service.apply(fixture.applyRequest(plan)) as AppliedUnverified
 }
 
 private class ExactWriteAdapter(

@@ -1,7 +1,7 @@
 # IntelliJ change writer guide
 
-`:change:intellij` owns KCS-017's sole clean-slate source-write and source-rollback effects. Live
-IntelliJ values exist only during one observation, write, or rollback call.
+`:change:intellij` owns the sole clean-slate semantic source-write and source-rollback effects.
+Live IntelliJ values exist only during one observation, write, or rollback call.
 
 ## Dependency boundary
 
@@ -16,7 +16,9 @@ IntelliJ values exist only during one observation, write, or rollback call.
 
 - Read preparation proves a valid writable Kotlin target, exact document preimage, and exact
   compiler-grounded declaration range before command entry.
-- The command performs only the authority's one insertion and commits only the target document.
+- The command performs only the authority's exact typed transformations and commits only the
+  admitted target document. AddDeclaration insertion and RenameSymbol replacement do not expose a
+  public raw-edit primitive.
 - Applied-write durability is recorded after the in-memory command and before physical save.
 - A rejected durability barrier restores the in-memory preimage and performs no save.
 - Save or observation faults return recovery-required data; rollback overwrites only the exact

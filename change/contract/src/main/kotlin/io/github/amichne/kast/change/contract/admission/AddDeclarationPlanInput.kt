@@ -55,7 +55,7 @@ data class AddDeclarationPlanRequest(
     val evidence: AddDeclarationPlanningEvidenceInput,
 )
 
-enum class AddDeclarationPlanningFailure {
+enum class ChangePlanningFailure {
     RELATION_EVIDENCE_REQUIRED,
     RELATION_EVIDENCE_INCOMPLETE,
     TRAVERSAL_EVIDENCE_REQUIRED,
@@ -65,3 +65,5 @@ enum class AddDeclarationPlanningFailure {
     EVIDENCE_LEASE_MISMATCH,
     EVIDENCE_TARGET_MISMATCH,
 }
+
+typealias AddDeclarationPlanningFailure = ChangePlanningFailure

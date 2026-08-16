@@ -1,8 +1,8 @@
 # Change plan service guide
 
-`:change:plan` owns pure admission and construction services for mutation plans. KCS-014 proves
-that an exact semantic target is eligible to enter planning; KCS-015 constructs only a
-deterministic AddDeclaration plan from complete detached evidence.
+`:change:plan` owns pure admission and construction services for the closed change-intent family.
+KCS-014 proves that an exact semantic target is eligible to enter planning; KCS-015 establishes
+AddDeclaration and KCS-019 extends the same `ChangePlan` surface one intent at a time.
 
 ## Dependency boundary
 
@@ -15,6 +15,8 @@ deterministic AddDeclaration plan from complete detached evidence.
   diagnostic evidence fails closed before plan construction.
 - Plan identity is independent of evidence enumeration order, and this module owns no apply,
   journal, persistence, verification, or recovery effect.
+- RenameSymbol plans require one changed admitted identifier and a deterministic complete
+  compiler-grounded occurrence set for the exact target.
 
 ## Verification ladder
 

@@ -1,8 +1,8 @@
 # Change contract module guide
 
-`:change:contract` owns detached, operation-specific mutation intent, evidence, plan identity,
-obligation, and verification contracts. It performs no host observation, persistence, or source
-effect.
+`:change:contract` owns the closed semantic change-intent family plus detached evidence, plan
+identity, obligation, and verification contracts. It performs no host observation, persistence,
+or source effect.
 
 ## Dependency boundary
 
@@ -33,6 +33,9 @@ effect.
 - Add-declaration planning consumes only complete detached relation, traversal, and diagnostic
   variants for that exact target lease. The plan normalizes evidence order before identity,
   retains one exact insertion and every closed obligation, and grants no apply capability.
+- RenameSymbol planning admits one changed Kotlin identifier and a deterministic compiler-grounded
+  occurrence set. Every replacement retains its exact expected old identifier, and the resulting
+  plan implements the same sealed `ChangePlan` contract as AddDeclaration.
 
 ## Verification ladder
 

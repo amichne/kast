@@ -27,6 +27,8 @@ import io.github.amichne.kast.change.apply.SourceObservationResult
 import io.github.amichne.kast.change.apply.SourceWriteAccess
 import io.github.amichne.kast.change.apply.SourceWriteFailure
 import io.github.amichne.kast.change.apply.SourceWriteResult
+import io.github.amichne.kast.change.contract.ChangeIntent
+import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
@@ -40,7 +42,7 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 /** Sole clean-slate IntelliJ observer, normal writer, and authority-bound recovery adapter. */
-class IntellijAddDeclarationSourceAdapter(
+class IntellijChangeSourceAdapter(
     private val project: Project,
 ) : AddDeclarationSourceObserver, AddDeclarationSourceWriter, AddDeclarationSourceRollback {
     private val protocol = IntellijSourceWriteProtocol()
@@ -84,7 +86,7 @@ class IntellijAddDeclarationSourceAdapter(
                 return SourceWriteResult.RejectedBeforeMutation(result.failure)
         }
         val changedPaths = ConcurrentHashMap.newKeySet<String>()
-        val lifetime = Disposer.newDisposable("kast-clean-slate-add-declaration")
+        val lifetime = Disposer.newDisposable("kast-clean-slate-semantic-change")
         val files = FileDocumentManager.getInstance()
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(
             object : DocumentListener {
@@ -254,21 +256,41 @@ class IntellijAddDeclarationSourceAdapter(
         if (document.text != authority.preimageTextAtIntellijBoundary()) {
             return IntellijSourcePreparation.Rejected(SourceWriteFailure.PREIMAGE_CHANGED)
         }
-        val anchor = target.declarations.filter { declaration ->
-            declaration.textRange.startOffset == authority.anchorStart &&
-                declaration.textRange.endOffset == authority.anchorEnd
-        }
-        if (anchor.size != 1) {
-            return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
-        }
-        try {
-            KtPsiFactory(project, false).createDeclaration<org.jetbrains.kotlin.psi.KtDeclaration>(
-                authority.insertionTextAtIntellijBoundary().removePrefix("\n\n"),
-            )
-        } catch (cancellation: ProcessCanceledException) {
-            throw cancellation
-        } catch (_: Exception) {
-            return IntellijSourcePreparation.Rejected(SourceWriteFailure.MUTATION_FAILED)
+        when (val intent = authority.intent) {
+            is ChangeIntent.AddDeclaration -> {
+                val anchor = target.declarations.filter { declaration ->
+                    declaration.textRange.startOffset == intent.target.range.startInclusive &&
+                        declaration.textRange.endOffset == intent.target.range.endExclusive
+                }
+                if (anchor.size != 1) {
+                    return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
+                }
+                try {
+                    KtPsiFactory(project, false)
+                        .createDeclaration<org.jetbrains.kotlin.psi.KtDeclaration>(
+                            intent.declaration.value,
+                        )
+                } catch (cancellation: ProcessCanceledException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    return IntellijSourcePreparation.Rejected(SourceWriteFailure.MUTATION_FAILED)
+                }
+            }
+            is ChangeIntent.RenameSymbol -> {
+                if (authority.mutationsAtIntellijBoundary().any { mutation ->
+                        mutation !is SourceTextMutation.Replace ||
+                            mutation.range.endExclusive > document.textLength ||
+                            document.getText(
+                                com.intellij.openapi.util.TextRange(
+                                    mutation.range.startInclusive,
+                                    mutation.range.endExclusive,
+                                ),
+                            ) != mutation.expected.value
+                    }
+                ) {
+                    return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
+                }
+            }
         }
         return IntellijSourcePreparation.Ready(file, target, document)
     }
@@ -318,8 +340,20 @@ class IntellijAddDeclarationSourceAdapter(
         source.path.value,
         preimageTextAtIntellijBoundary(),
         postimageTextAtIntellijBoundary(),
-        insertionOffset,
-        insertionTextAtIntellijBoundary(),
+        mutationsAtIntellijBoundary().map { mutation ->
+            when (mutation) {
+                is SourceTextMutation.InsertAfterDeclaration -> IntellijTextMutation(
+                    mutation.anchor.endExclusive,
+                    mutation.anchor.endExclusive,
+                    "\n\n${mutation.declaration.value}",
+                )
+                is SourceTextMutation.Replace -> IntellijTextMutation(
+                    mutation.range.startInclusive,
+                    mutation.range.endExclusive,
+                    mutation.replacement.value,
+                )
+            }
+        },
     )
 
     private fun rejectedObservation(failure: SourceObservationFailure) =
