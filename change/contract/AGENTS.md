@@ -6,8 +6,9 @@ effect.
 
 ## Dependency boundary
 
-- Production depends only on `:kernel`, `:workspace:contract`, `:symbol:contract`, and
-  serialization support.
+- Production depends only on `:kernel`, `:workspace:contract`, `:symbol:contract`,
+  `:relation:contract`, `:traversal:contract`, `:diagnostic:contract`, and serialization
+  support.
 - Do not import IntelliJ, workspace implementation, JDBC, filesystem, transport, legacy
   `analysis-api`, backend, adapter, service, or callback types.
 - Compatibility evidence is detached canonical JSON with a verified digest; it is not generic edit
@@ -29,6 +30,9 @@ effect.
 - Editable-target admission retains one published root/generation/state, exact symbol selector,
   exact content identity, unique Gradle owner, and authored source-root provenance. The returned
   value is planning eligibility only and grants no source effect.
+- Add-declaration planning consumes only complete detached relation, traversal, and diagnostic
+  variants for that exact target lease. The plan normalizes evidence order before identity,
+  retains one exact insertion and every closed obligation, and grants no apply capability.
 
 ## Verification ladder
 
