@@ -43,7 +43,8 @@ internal class IntellijNativeDiscoveryAdapter(
      *
      * Establishes a write-priority cancellable IntelliJ read whose Choose-by-Name provider work can
      * begin only after KIP-012 compiles exact model ownership into a generation-bound native scope.
-     * [IntellijSearchScopeFailure], [IntellijNativeDiscoveryRejection], and
+     * Only Kotlin declaration contributors that can refine into the product's K2 exact selector
+     * are admitted. [IntellijSearchScopeFailure], [IntellijNativeDiscoveryRejection], and
      * [io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification] are the closed expected
      * failure and partial-coverage states. Cancellation propagates through [readAction]. The live
      * project, providers, PSI, files, and scope remain inside the restarted request-local read.
@@ -65,7 +66,8 @@ internal class IntellijNativeDiscoveryAdapter(
                 ).discover(
                     compiledScope = compiledScope,
                     request = request,
-                    contributors = request.kind.nativeContributors(),
+                    contributors = request.kind.nativeContributors()
+                        .filter(request.kind::isKotlinDeclarationContributor),
                 )
             }
         ) {

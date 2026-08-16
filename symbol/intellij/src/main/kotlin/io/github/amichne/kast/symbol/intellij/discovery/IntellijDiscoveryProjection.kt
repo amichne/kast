@@ -84,7 +84,7 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
      * Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure>.
      *
      * Establishes a bounded detached name, exact workspace path or external virtual-file URL, and
-     * a non-negative declaration offset for class and symbol candidates.
+     * a non-negative declaration-range start for class and symbol candidates.
      * [SymbolDiscoveryCandidateFailure] is the closed expected failure. Live IntelliJ values and
      * raw paths, URLs, names, and offsets are extracted only inside this request-local projection.
      */
@@ -111,7 +111,7 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
                         SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET,
                     )
                 }
-                element.textOffset
+                element.textRange.startOffset
             }
         }
         val classifiedPath = nativePath(file)
