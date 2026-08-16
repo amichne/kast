@@ -43,3 +43,30 @@ tasks.register("buildIndexerPortableZip") {
     description = "Builds the versioned portable indexer zip under indexer/build/distributions."
     dependsOn(":indexer:portableDistZip")
 }
+
+val installedProductDirectory = layout.buildDirectory.dir("installed-product")
+
+val stageInstalledProduct by tasks.registering(Sync::class) {
+    group = "distribution"
+    description = "Stages the one installed Kotlin product without development classpaths."
+    dependsOn(":cli:installDist", ":indexer:syncPortableDist")
+    into(installedProductDirectory)
+    from(project(":cli").layout.buildDirectory.dir("install/kast"))
+    from(project(":indexer").layout.buildDirectory.dir("portable-dist/indexer")) {
+        into("libexec/kast-indexer")
+    }
+}
+
+tasks.register<Exec>("installedProductTest") {
+    group = "verification"
+    description = "Executes the public target surface through only the staged installed product."
+    dependsOn(stageInstalledProduct)
+    inputs.dir(installedProductDirectory)
+    inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
+    outputs.upToDateWhen { false }
+    environment(
+        "KAST_INSTALLED_PRODUCT",
+        installedProductDirectory.get().asFile.absolutePath,
+    )
+    commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
+}
