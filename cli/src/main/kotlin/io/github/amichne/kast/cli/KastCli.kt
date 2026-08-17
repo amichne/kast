@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.nio.file.Path
@@ -11,6 +12,7 @@ class KastCli(
     private val endpointLocator: RuntimeEndpointLocator,
     private val runtimeDemander: RuntimeDemander,
     private val wireClient: WireClient,
+    private val localMetadata: CliLocalMetadata,
 ) {
     /**
      * Proof transition: `List<String> + Path -> CliExit`.
@@ -21,6 +23,9 @@ class KastCli(
      */
     fun execute(argv: List<String>, start: Path): CliExit {
         val invocation = when (val parsed = CliCommandParser.parse(argv)) {
+            is CliCommandParsing.Local -> return CliExit.Complete(
+                localMetadata.output(parsed.command),
+            )
             is CliCommandParsing.Parsed -> parsed.invocation
             is CliCommandParsing.Rejected -> return boundaryExit(
                 CliBoundaryExitStatus.USAGE,
@@ -42,7 +47,7 @@ class KastCli(
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> return boundaryExit(
                 CliBoundaryExitStatus.RUNTIME,
-                resolution.failure.name.lowercase(),
+                resolution.failure.name.lowercase().replace('_', '-'),
             )
         }
         if (endpoint.root != root) {
@@ -52,7 +57,7 @@ class KastCli(
             is RuntimeAdmission.Ready -> admission.endpoint
             is RuntimeAdmission.Rejected -> return boundaryExit(
                 CliBoundaryExitStatus.RUNTIME,
-                admission.failure.name.lowercase(),
+                admission.failure.name.lowercase().replace('_', '-'),
             )
         }
         if (readyEndpoint != endpoint) {
@@ -106,10 +111,10 @@ enum class CliBoundaryExitStatus(
 /** Complete and exhaustive process result; every variant carries canonical JSON. */
 sealed interface CliExit {
     val code: Int
-    val document: CliJsonDocument
+    val document: CliProcessOutput
 
     data class Complete(
-        override val document: CliJsonDocument,
+        override val document: CliProcessOutput,
     ) : CliExit {
         override val code: Int = 0
     }

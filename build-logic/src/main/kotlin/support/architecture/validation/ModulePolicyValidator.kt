@@ -253,8 +253,8 @@ private object ModuleRoleBoundaries {
             role,
             ModuleCost.RUNTIME_ORCHESTRATION,
             ModuleRoleConvention.CLI,
-            setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT),
-            setOf(ModuleCost.HOST_NEUTRAL),
+            setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
+            setOf(ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
             allowedEffects = setOf(ForbiddenEffect.PROCESS_CONTROL),
         )
         ModuleRole.INDEXER_HOST -> boundary(

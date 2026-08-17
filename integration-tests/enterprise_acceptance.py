@@ -25,6 +25,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--product-root", type=Path, required=True)
     parser.add_argument("--fixture", type=Path, required=True)
     parser.add_argument("--thresholds", type=Path, required=True)
+    parser.add_argument("--runtime-archive", type=Path, required=True)
     return parser.parse_args()
 
 
@@ -36,10 +37,18 @@ def positive_integer(document: dict[str, Any], name: str, minimum: int = 1) -> i
 
 
 class Acceptance:
-    def __init__(self, executable: Path, workspace: Path, runtime: Path, bounds: dict[str, Any]):
+    def __init__(
+        self,
+        executable: Path,
+        workspace: Path,
+        runtime: Path,
+        runtime_archive: Path,
+        bounds: dict[str, Any],
+    ):
         self.executable = executable
         self.workspace = workspace
         self.runtime = runtime
+        self.runtime_archive = runtime_archive
         self.maximum_output_bytes = positive_integer(bounds, "maximumOutputBytes")
         self.maximum_operation_seconds = positive_integer(bounds, "maximumOperationSeconds")
         self.maximum_startup_seconds = positive_integer(bounds, "maximumStartupSeconds")
@@ -58,7 +67,12 @@ class Acceptance:
         result = subprocess.run(
             [str(self.executable), *argv],
             cwd=self.workspace,
-            env={**os.environ, "KAST_RUNTIME_DIRECTORY": str(self.runtime)},
+            env={
+                **os.environ,
+                "KAST_RUNTIME_DIRECTORY": str(self.runtime / "endpoints"),
+                "KAST_RUNTIME_STORE": str(self.runtime / "store"),
+                "KAST_RUNTIME_ARCHIVE": str(self.runtime_archive),
+            },
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -339,7 +353,13 @@ def main() -> None:
                 ignore=shutil.ignore_patterns(".gradle", ".idea", "build"),
             )
             prepare_workspace_fixture(workspace)
-            acceptance = Acceptance(executable, workspace, runtime, bounds)
+            acceptance = Acceptance(
+                executable,
+                workspace,
+                runtime,
+                args.runtime_archive,
+                bounds,
+            )
             try:
                 acceptance.prove_installed_surface(bounds)
                 elapsed = time.monotonic() - acceptance.started_at

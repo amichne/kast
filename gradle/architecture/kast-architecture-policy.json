@@ -16,6 +16,26 @@
       "allowedEffects": []
     },
     {
+      "id": "DISTRIBUTION_CONTRACT",
+      "projectPath": ":distribution:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
+      "id": "DISTRIBUTION_MANAGED",
+      "projectPath": ":distribution:managed",
+      "lifecycle": "ACTIVE",
+      "role": "FILESYSTEM_WRITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.filesystem-write"},
+      "allowedProjectDependencies": [":distribution:contract"],
+      "allowedEffects": ["FILESYSTEM_WRITE"]
+    },
+    {
       "id": "PROTOCOL_CONTRACT",
       "projectPath": ":protocol:contract",
       "lifecycle": "ACTIVE",
@@ -282,7 +302,7 @@
       "role": "CLI",
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.cli"},
-      "allowedProjectDependencies": [":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire"],
+      "allowedProjectDependencies": [":distribution:contract", ":distribution:managed", ":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire"],
       "allowedEffects": ["PROCESS_CONTROL"]
     },
     {
@@ -292,7 +312,7 @@
       "role": "COMPOSITION",
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.composition"},
-      "allowedProjectDependencies": [":change:apply", ":change:contract", ":change:intellij", ":change:plan", ":change:recovery", ":change:verify", ":diagnostic:contract", ":diagnostic:intellij", ":diagnostic:service", ":evidence:contract", ":evidence:sqlite", ":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":relation:contract", ":relation:intellij", ":relation:service", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":symbol:service", ":traversal:contract", ":traversal:service", ":workspace:contract", ":workspace:intellij", ":workspace:service"],
+      "allowedProjectDependencies": [":change:apply", ":change:contract", ":change:intellij", ":change:plan", ":change:recovery", ":change:verify", ":diagnostic:contract", ":diagnostic:intellij", ":diagnostic:service", ":distribution:contract", ":distribution:managed", ":evidence:contract", ":evidence:sqlite", ":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":relation:contract", ":relation:intellij", ":relation:service", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":symbol:service", ":traversal:contract", ":traversal:service", ":workspace:contract", ":workspace:intellij", ":workspace:service"],
       "allowedEffects": []
     },
     {
@@ -638,6 +658,26 @@
       "allowedEffects": ["FILESYSTEM_WRITE"]
     },
     {
+      "id": "DISTRIBUTION_CONTRACT",
+      "projectPath": ":distribution:contract",
+      "lifecycle": "ACTIVE",
+      "role": "CONTRACT",
+      "cost": "HOST_NEUTRAL",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.contract"},
+      "allowedProjectDependencies": [":kernel"],
+      "allowedEffects": []
+    },
+    {
+      "id": "DISTRIBUTION_MANAGED",
+      "projectPath": ":distribution:managed",
+      "lifecycle": "ACTIVE",
+      "role": "FILESYSTEM_WRITE_ADAPTER",
+      "cost": "PHYSICAL_EFFECT",
+      "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.filesystem-write"},
+      "allowedProjectDependencies": [":distribution:contract"],
+      "allowedEffects": ["FILESYSTEM_WRITE"]
+    },
+    {
       "id": "PROTOCOL_CONTRACT",
       "projectPath": ":protocol:contract",
       "lifecycle": "ACTIVE",
@@ -824,7 +864,7 @@
       "role": "CLI",
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.cli"},
-      "allowedProjectDependencies": [":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire"],
+      "allowedProjectDependencies": [":distribution:contract", ":distribution:managed", ":kernel", ":protocol:contract", ":protocol:registry", ":protocol:wire"],
       "allowedEffects": ["PROCESS_CONTROL"]
     },
     {
@@ -854,7 +894,7 @@
       "role": "COMPOSITION",
       "cost": "RUNTIME_ORCHESTRATION",
       "roleConvention": {"kind": "REQUIRED", "pluginId": "kast.role.composition"},
-      "allowedProjectDependencies": [":change:apply", ":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:intellij", ":change:journal:contract", ":change:journal:sqlite", ":change:plan", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":diagnostic:contract", ":diagnostic:intellij", ":diagnostic:service", ":evidence:contract", ":evidence:spi", ":evidence:sqlite", ":kernel", ":protocol:continuation", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":relation:contract", ":relation:intellij", ":relation:service", ":runtime:bindings", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":symbol:service", ":traversal:contract", ":traversal:service", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service", ":workspace:spi"],
+      "allowedProjectDependencies": [":change:apply", ":change:apply:filesystem", ":change:apply:intellij", ":change:apply:service", ":change:apply:spi", ":change:contract", ":change:intellij", ":change:journal:contract", ":change:journal:sqlite", ":change:plan", ":change:plan:intellij", ":change:plan:service", ":change:plan:spi", ":change:recovery", ":change:recovery:contract", ":change:recovery:filesystem", ":change:recovery:service", ":change:recovery:spi", ":change:verify", ":change:verify:intellij", ":change:verify:service", ":change:verify:spi", ":diagnostic:contract", ":diagnostic:intellij", ":diagnostic:service", ":distribution:contract", ":distribution:managed", ":evidence:contract", ":evidence:spi", ":evidence:sqlite", ":kernel", ":protocol:continuation", ":protocol:contract", ":protocol:registry", ":protocol:wire", ":relation:contract", ":relation:intellij", ":relation:service", ":runtime:bindings", ":runtime:server", ":symbol:contract", ":symbol:intellij", ":symbol:service", ":traversal:contract", ":traversal:service", ":workspace:contract", ":workspace:intellij", ":workspace:mutation:contract", ":workspace:mutation:service", ":workspace:service", ":workspace:spi"],
       "allowedEffects": []
     }
   ],

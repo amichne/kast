@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.projection.CliLocalMetadata
+import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.CapabilityId
 import io.github.amichne.kast.kernel.CapabilityMarker
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
@@ -53,7 +56,8 @@ class CliNativeTransportTest {
         val nested = Files.createDirectories(root.resolve("module"))
         val canonicalRoot = FilesystemCanonicalRootDiscovery.discover(root).discoveredRoot()
         val socket = Path.of("/tmp/kast-cli-${System.nanoTime()}.sock")
-        val endpoint = RuntimeEndpoint.at(canonicalRoot, socket).resolvedEndpoint()
+        val runtimeId = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}").refinedValue()
+        val endpoint = RuntimeEndpoint.at(canonicalRoot, runtimeId, socket).resolvedEndpoint()
         val projections = CliProjectionTable.create(canonicalProjections()).createdTable()
         val server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
         val executor = Executors.newSingleThreadExecutor()
@@ -103,6 +107,7 @@ class CliNativeTransportTest {
                     }
                 },
                 wireClient = UnixDomainWireClient(),
+                localMetadata = testLocalMetadata(),
             )
 
             val exit = cli.execute(listOf("workspace", "inspect"), nested)
@@ -221,6 +226,17 @@ class CliNativeTransportTest {
     private fun RuntimeEndpointResolution.resolvedEndpoint(): RuntimeEndpoint = when (this) {
         is RuntimeEndpointResolution.Resolved -> endpoint
         is RuntimeEndpointResolution.Rejected -> error("Expected endpoint, got $failure")
+    }
+
+    private fun testLocalMetadata(): CliLocalMetadata = when (
+        val admitted = CliLocalMetadata.admit(
+            "test",
+            "sha256:${"a".repeat(64)}",
+            "{\"schemaVersion\":1}",
+        )
+    ) {
+        is CliLocalMetadataAdmission.Admitted -> admitted.metadata
+        is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
     }
 
     private fun CliProjectionTableConstruction.createdTable(): CliProjectionTable = when (this) {

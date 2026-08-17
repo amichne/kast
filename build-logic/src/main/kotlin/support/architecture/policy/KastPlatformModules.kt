@@ -41,6 +41,8 @@ internal object KastPlatformModules {
             ModuleId.WORKSPACE_SPI,
         ),
         active(ModuleId.KERNEL, ModuleRole.KERNEL),
+        active(ModuleId.DISTRIBUTION_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        active(ModuleId.DISTRIBUTION_MANAGED, ModuleRole.FILESYSTEM_WRITE_ADAPTER, ModuleId.DISTRIBUTION_CONTRACT),
         active(ModuleId.PROTOCOL_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         active(
             ModuleId.PROTOCOL_REGISTRY,
@@ -315,9 +317,8 @@ internal object KastPlatformModules {
             ModuleId.PROTOCOL_WIRE,
         ),
         active(
-            ModuleId.CLI,
-            ModuleRole.CLI,
-            ModuleId.KERNEL,
+            ModuleId.CLI, ModuleRole.CLI, ModuleId.DISTRIBUTION_CONTRACT,
+            ModuleId.DISTRIBUTION_MANAGED, ModuleId.KERNEL,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_REGISTRY,
             ModuleId.PROTOCOL_WIRE,
@@ -343,13 +344,11 @@ internal object KastPlatformModules {
         role: ModuleRole,
         vararg allowedDependencies: ModuleId,
     ): ModulePolicy = module(id, ModuleLifecycle.ACTIVE, role, *allowedDependencies)
-
     private fun planned(
         id: ModuleId,
         role: ModuleRole,
         vararg allowedDependencies: ModuleId,
     ): ModulePolicy = module(id, ModuleLifecycle.PLANNED, role, *allowedDependencies)
-
     private fun module(
         id: ModuleId,
         lifecycle: ModuleLifecycle,
@@ -391,6 +390,7 @@ internal object KastPlatformModules {
         ModuleId.CHANGE_APPLY_FILESYSTEM,
         ModuleId.CHANGE_RECOVERY_FILESYSTEM,
             -> setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
+        ModuleId.DISTRIBUTION_MANAGED -> setOf(ForbiddenEffect.FILESYSTEM_WRITE)
         ModuleId.RUNTIME_COMPOSITION,
         ModuleId.RUNTIME_SERVER,
             -> emptySet()

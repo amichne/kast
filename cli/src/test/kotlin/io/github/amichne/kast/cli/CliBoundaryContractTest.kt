@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -84,7 +85,10 @@ class CliBoundaryContractTest {
         assertTrue(executablePath.toFile().setExecutable(true))
         val root = FilesystemCanonicalRootDiscovery.discover(rootPath).discoveredRoot()
         val executable = IndexerExecutable.admit(executablePath).refinedValue()
-        val endpoint = when (val resolution = RuntimeEndpoint.at(root, temporary.resolve("runtime.sock"))) {
+        val runtimeId = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}").refinedValue()
+        val endpoint = when (
+            val resolution = RuntimeEndpoint.at(root, runtimeId, temporary.resolve("runtime.sock"))
+        ) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> error("Expected endpoint, got ${resolution.failure}")
         }
@@ -100,6 +104,7 @@ class CliBoundaryContractTest {
                 executablePath.toRealPath().toString(),
                 "--workspace-root=${root.path}",
                 "--socket-path=${temporary.resolve("runtime.sock")}",
+                "--runtime-id=${runtimeId.value}",
             ),
             command.arguments,
         )
@@ -107,6 +112,7 @@ class CliBoundaryContractTest {
 
     private fun CliCommandParsing.parsedInvocation(): CliInvocation = when (this) {
         is CliCommandParsing.Parsed -> invocation
+        is CliCommandParsing.Local -> error("Expected semantic invocation, got $command")
         is CliCommandParsing.Rejected -> error("Expected parsed invocation, got $failure")
     }
 

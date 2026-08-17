@@ -15,6 +15,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class InstalledIndexerLaunchTest {
+    private val runtimeId = "sha256:${"a".repeat(64)}"
     @TempDir
     lateinit var temporaryDirectory: Path
 
@@ -28,12 +29,14 @@ class InstalledIndexerLaunchTest {
                 KAST_INDEXER_COMMAND_NAME,
                 "--workspace-root=$workspace",
                 "--socket-path=$socket",
+                "--runtime-id=$runtimeId",
             ),
         )
 
         val admitted = assertInstanceOf(IndexerLaunchAdmission.Admitted::class.java, admission)
         assertEquals(workspace, admitted.options.workspaceRoot)
         assertEquals(socket, admitted.options.socketPath)
+        assertEquals(runtimeId, admitted.options.runtimeId.value)
     }
 
     @Test
@@ -47,6 +50,7 @@ class InstalledIndexerLaunchTest {
                 "--workspace-root=$workspace",
                 "--workspace-root=$workspace",
                 "--socket-path=$socket",
+                "--runtime-id=$runtimeId",
                 "--compatibility-mode=true",
             ),
         )
@@ -70,6 +74,7 @@ class InstalledIndexerLaunchTest {
                 KAST_INDEXER_COMMAND_NAME,
                 "--workspace-root=$workspace",
                 "--socket-path=$socket",
+                "--runtime-id=$runtimeId",
             ),
         ) as IndexerLaunchAdmission.Admitted).options
         val prepared = assertInstanceOf(

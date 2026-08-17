@@ -25,3 +25,32 @@ jobs:
 
       - name: Enforce retired-product boundary
         run: python3 .github/scripts/check-no-rust-product.py --root .
+
+      - name: Enforce repository shape
+        run: python3 .github/scripts/check-repository-shape.py --root .
+
+  kotlin:
+    name: Kotlin and runtime delivery
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify Kotlin product and runtime delivery
+        run: >-
+          ./gradlew
+          -Dorg.gradle.jvmargs=-Xmx5g
+          test
+          verifyKastModuleGraph
+          verifyForbiddenEffects
+          verifyNoLegacyArchitecture
+          runtimeDeliveryMvpAcceptance

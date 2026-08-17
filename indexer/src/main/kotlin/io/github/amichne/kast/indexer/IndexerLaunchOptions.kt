@@ -16,22 +16,52 @@ enum class IndexerLaunchFailure {
     MISSING_SOCKET_PATH,
     DUPLICATE_SOCKET_PATH,
     INVALID_SOCKET_PATH,
+    MISSING_RUNTIME_ID,
+    DUPLICATE_RUNTIME_ID,
+    INVALID_RUNTIME_ID,
     UNKNOWN_ARGUMENT,
+}
+
+/** Exact content identity supplied by the admitted control runtime. */
+@JvmInline
+value class IndexerRuntimeId private constructor(val value: String) {
+    companion object {
+        /**
+         * Proof transition: `String -> IndexerRuntimeIdRefinement`.
+         *
+         * Establishes one canonical lowercase SHA-256 identity. The closed expected failure is
+         * [IndexerRuntimeIdRefinement.Rejected]. Raw text may leave only for transport identity
+         * admission and process diagnostics.
+         */
+        fun parse(raw: String): IndexerRuntimeIdRefinement =
+            if (Regex("sha256:[0-9a-f]{64}").matches(raw)) {
+                IndexerRuntimeIdRefinement.Refined(IndexerRuntimeId(raw))
+            } else {
+                IndexerRuntimeIdRefinement.Rejected
+            }
+    }
+}
+
+sealed interface IndexerRuntimeIdRefinement {
+    data class Refined(val runtimeId: IndexerRuntimeId) : IndexerRuntimeIdRefinement
+    data object Rejected : IndexerRuntimeIdRefinement
+    data object NotRequested : IndexerRuntimeIdRefinement
 }
 
 /** Exact installed-process launch authority. */
 class IndexerLaunchOptions private constructor(
     val workspaceRoot: Path,
     val socketPath: Path,
+    val runtimeId: IndexerRuntimeId,
 ) {
     companion object {
         /**
          * Proof transition: `List<String> -> IndexerLaunchAdmission`.
          *
-         * Establishes one canonical physical workspace root and one absolute normalized Unix
-         * socket path from the complete installed command line. [IndexerLaunchFailure] is the
-         * closed expected failure. Raw paths may leave only for runtime construction and the
-         * Unix-domain transport boundary.
+         * Establishes one canonical physical workspace root, one absolute normalized Unix socket
+         * path, and one canonical semantic-runtime identity from the complete installed command
+         * line. [IndexerLaunchFailure] is the closed expected failure. Raw paths and identity text
+         * may leave only for runtime construction and the Unix-domain transport boundary.
          */
         fun admit(arguments: List<String>): IndexerLaunchAdmission {
             val failures = linkedSetOf<IndexerLaunchFailure>()
@@ -40,6 +70,7 @@ class IndexerLaunchOptions private constructor(
             }
             val rawWorkspaceRoots = arguments.argumentValues(WORKSPACE_ROOT_PREFIX)
             val rawSocketPaths = arguments.argumentValues(SOCKET_PATH_PREFIX)
+            val rawRuntimeIds = arguments.argumentValues(RUNTIME_ID_PREFIX)
             when (rawWorkspaceRoots.size) {
                 0 -> failures += IndexerLaunchFailure.MISSING_WORKSPACE_ROOT
                 1 -> Unit
@@ -50,9 +81,15 @@ class IndexerLaunchOptions private constructor(
                 1 -> Unit
                 else -> failures += IndexerLaunchFailure.DUPLICATE_SOCKET_PATH
             }
+            when (rawRuntimeIds.size) {
+                0 -> failures += IndexerLaunchFailure.MISSING_RUNTIME_ID
+                1 -> Unit
+                else -> failures += IndexerLaunchFailure.DUPLICATE_RUNTIME_ID
+            }
             if (arguments.drop(1).any { argument ->
                     !argument.startsWith(WORKSPACE_ROOT_PREFIX) &&
                         !argument.startsWith(SOCKET_PATH_PREFIX)
+                        && !argument.startsWith(RUNTIME_ID_PREFIX)
                 }
             ) {
                 failures += IndexerLaunchFailure.UNKNOWN_ARGUMENT
@@ -72,11 +109,19 @@ class IndexerLaunchOptions private constructor(
             if (socketPath is SocketPathRefinement.Rejected) {
                 failures += IndexerLaunchFailure.INVALID_SOCKET_PATH
             }
+            val runtimeId = when (rawRuntimeIds.size) {
+                1 -> IndexerRuntimeId.parse(rawRuntimeIds.single())
+                else -> IndexerRuntimeIdRefinement.NotRequested
+            }
+            if (runtimeId is IndexerRuntimeIdRefinement.Rejected) {
+                failures += IndexerLaunchFailure.INVALID_RUNTIME_ID
+            }
             if (failures.isNotEmpty()) return IndexerLaunchAdmission.Rejected(failures)
             return IndexerLaunchAdmission.Admitted(
                 IndexerLaunchOptions(
                     workspaceRoot = (workspaceRoot as WorkspaceRootRefinement.Refined).path,
                     socketPath = (socketPath as SocketPathRefinement.Refined).path,
+                    runtimeId = (runtimeId as IndexerRuntimeIdRefinement.Refined).runtimeId,
                 ),
             )
         }
@@ -95,6 +140,7 @@ sealed interface IndexerLaunchAdmission {
 
 private const val WORKSPACE_ROOT_PREFIX = "--workspace-root="
 private const val SOCKET_PATH_PREFIX = "--socket-path="
+private const val RUNTIME_ID_PREFIX = "--runtime-id="
 
 /**
  * Boundary extraction: `List<String> + String -> List<String>`.

@@ -3,6 +3,13 @@ package support.architecture
 internal object KastCleanSlateModules {
     val all: List<ModulePolicy> = listOf(
         target(ModuleId.KERNEL, ModuleRole.KERNEL),
+        target(ModuleId.DISTRIBUTION_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        target(
+            ModuleId.DISTRIBUTION_MANAGED,
+            ModuleRole.FILESYSTEM_WRITE_ADAPTER,
+            ModuleId.DISTRIBUTION_CONTRACT,
+            effects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
+        ),
         target(ModuleId.PROTOCOL_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         target(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         target(
@@ -201,6 +208,8 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CLI,
             ModuleRole.CLI,
+            ModuleId.DISTRIBUTION_CONTRACT,
+            ModuleId.DISTRIBUTION_MANAGED,
             ModuleId.KERNEL,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_REGISTRY,
@@ -243,6 +252,8 @@ internal object KastCleanSlateModules {
 
     private fun targetIds(): Set<ModuleId> = setOf(
         ModuleId.KERNEL,
+        ModuleId.DISTRIBUTION_CONTRACT,
+        ModuleId.DISTRIBUTION_MANAGED,
         ModuleId.PROTOCOL_CONTRACT,
         ModuleId.PROTOCOL_REGISTRY,
         ModuleId.PROTOCOL_WIRE,

@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable semantic version without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, publish, and smoke-test
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify release workflow contract
+        run: python3 .github/scripts/release/verify-release-contract.py --root .
+
+      - name: Build and verify release assets
+        run: bash .github/scripts/release/build-assets.sh --version "$RELEASE_VERSION"
+
+      - name: Publish immutable GitHub release
+        run: >-
+          bash .github/scripts/release/publish-release.sh
+          --release "v${RELEASE_VERSION}"
+          --commit "$GITHUB_SHA"
+          --assets-directory "build/release/v${RELEASE_VERSION}"
+
+      - name: Verify fresh published installation
+        run: >-
+          bash packaging/verify-published-runtime-delivery.sh
+          --release "v${RELEASE_VERSION}"
+          --repository "$GITHUB_REPOSITORY"

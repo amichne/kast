@@ -11,12 +11,14 @@ class KastIndexerBootstrapTest {
                 KAST_INDEXER_COMMAND_NAME,
                 "--workspace-root=/workspace",
                 "--socket-path=/runtime/kast.sock",
+                "--runtime-id=sha256:${"a".repeat(64)}",
             ),
             KastIndexerBootstrap.ideaMainArgs(
                 arrayOf(
                     "--idea-home=/installed/idea-home",
                     "--workspace-root=/workspace",
                     "--socket-path=/runtime/kast.sock",
+                    "--runtime-id=sha256:${"a".repeat(64)}",
                 ),
             ),
         )

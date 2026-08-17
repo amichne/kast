@@ -1,5 +1,9 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
+import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
+import io.github.amichne.kast.distribution.managed.SemanticRuntimeResolution
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.net.StandardProtocolFamily
@@ -15,28 +19,38 @@ import java.util.HexFormat
 /** An exact-root UDS endpoint. */
 class RuntimeEndpoint private constructor(
     val root: CanonicalRoot,
+    val runtimeId: SemanticRuntimeId,
     internal val socketPath: Path,
 ) {
     override fun equals(other: Any?): Boolean =
-        other is RuntimeEndpoint && root == other.root && socketPath == other.socketPath
+        other is RuntimeEndpoint &&
+            root == other.root && runtimeId == other.runtimeId && socketPath == other.socketPath
 
-    override fun hashCode(): Int = 31 * root.hashCode() + socketPath.hashCode()
+    override fun hashCode(): Int =
+        31 * (31 * root.hashCode() + runtimeId.hashCode()) + socketPath.hashCode()
 
     companion object {
         /**
-         * Proof transition: `CanonicalRoot + Path -> RuntimeEndpointResolution`.
+         * Proof transition: `CanonicalRoot + SemanticRuntimeId + Path ->
+         * RuntimeEndpointResolution`.
          *
          * Establishes an absolute normalized socket endpoint bound to the exact canonical root.
          * [RuntimeEndpointFailure] is the closed expected failure. The raw socket path may be
          * extracted only by the process and UDS adapters.
          */
-        fun at(root: CanonicalRoot, socket: Path): RuntimeEndpointResolution {
+        fun at(
+            root: CanonicalRoot,
+            runtimeId: SemanticRuntimeId,
+            socket: Path,
+        ): RuntimeEndpointResolution {
             if (!socket.isAbsolute) {
                 return RuntimeEndpointResolution.Rejected(
                     RuntimeEndpointFailure.INVALID_SOCKET_PATH,
                 )
             }
-            return RuntimeEndpointResolution.Resolved(RuntimeEndpoint(root, socket.normalize()))
+            return RuntimeEndpointResolution.Resolved(
+                RuntimeEndpoint(root, runtimeId, socket.normalize()),
+            )
         }
     }
 }
@@ -69,15 +83,22 @@ fun interface RuntimeEndpointLocator {
 /** Deterministically derives a bounded UDS name from the canonical root. */
 class Sha256RuntimeEndpointLocator(
     private val socketDirectory: Path,
+    private val runtimeId: SemanticRuntimeId,
 ) : RuntimeEndpointLocator {
     override fun locate(root: CanonicalRoot): RuntimeEndpointResolution {
         val digest = HexFormat.of().formatHex(
             MessageDigest.getInstance("SHA-256")
-                .digest(root.path.toString().toByteArray(StandardCharsets.UTF_8)),
+                .digest(
+                    "${root.path}\n${runtimeId.value}".toByteArray(StandardCharsets.UTF_8),
+                ),
             0,
             12,
         )
-        return RuntimeEndpoint.at(root, socketDirectory.resolve("kast-$digest.sock"))
+        return RuntimeEndpoint.at(
+            root,
+            runtimeId,
+            socketDirectory.resolve("kast-$digest.sock"),
+        )
     }
 }
 
@@ -148,6 +169,7 @@ class IndexerLaunchCommand private constructor(
                         executable.path.toString(),
                         "--workspace-root=${root.path}",
                         "--socket-path=${endpoint.socketPath}",
+                        "--runtime-id=${endpoint.runtimeId.value}",
                     ),
                 ),
             )
@@ -238,8 +260,16 @@ sealed interface RuntimeAdmission {
 }
 
 enum class RuntimeAdmissionFailure {
+    MANIFEST_INVALID,
+    SOURCE_INVALID,
+    ARTIFACT_UNAVAILABLE,
+    DIGEST_MISMATCH,
+    ARCHIVE_REJECTED,
+    LAYOUT_INVALID,
+    RUNTIME_INCOMPATIBLE,
     PROCESS_START_FAILED,
     ENDPOINT_UNAVAILABLE,
+    RUNTIME_IDENTITY_MISMATCH,
     INTERRUPTED,
 }
 
@@ -291,4 +321,52 @@ class ExactRootProcessRuntimeDemander(
         }
         return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE)
     }
+}
+
+/** Realizes the exact manifest runtime before delegating exact-root process admission. */
+fun interface InstalledSemanticRuntimeResolver {
+    /**
+     * Proof transition: `SemanticRuntimeManifest -> SemanticRuntimeResolution`.
+     *
+     * Establishes one verified installed runtime carrying the manifest identity, or returns the
+     * closed [RuntimeStoreFailure] represented by [SemanticRuntimeResolution.Rejected]. Raw paths
+     * may leave the installed capability only at process launch.
+     */
+    fun resolve(manifest: SemanticRuntimeManifest): SemanticRuntimeResolution
+}
+
+class ManagedExactRootRuntimeDemander(
+    private val manifest: SemanticRuntimeManifest,
+    private val resolver: InstalledSemanticRuntimeResolver,
+) : RuntimeDemander {
+    override fun demand(root: CanonicalRoot, endpoint: RuntimeEndpoint): RuntimeAdmission {
+        if (endpoint.runtimeId != manifest.runtimeId) {
+            return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.RUNTIME_IDENTITY_MISMATCH,
+            )
+        }
+        val installed = when (val resolution = resolver.resolve(manifest)) {
+            is SemanticRuntimeResolution.Installed -> resolution.runtime
+            is SemanticRuntimeResolution.Rejected -> return RuntimeAdmission.Rejected(
+                resolution.failure.toAdmissionFailure(),
+            )
+        }
+        val executable = when (val admitted = IndexerExecutable.admit(installed.executable)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.LAYOUT_INVALID,
+            )
+        }
+        return ExactRootProcessRuntimeDemander(executable).demand(root, endpoint)
+    }
+}
+
+private fun RuntimeStoreFailure.toAdmissionFailure(): RuntimeAdmissionFailure = when (this) {
+    RuntimeStoreFailure.STORE_INVALID -> RuntimeAdmissionFailure.SOURCE_INVALID
+    RuntimeStoreFailure.ARTIFACT_UNAVAILABLE -> RuntimeAdmissionFailure.ARTIFACT_UNAVAILABLE
+    RuntimeStoreFailure.DIGEST_MISMATCH -> RuntimeAdmissionFailure.DIGEST_MISMATCH
+    RuntimeStoreFailure.ARCHIVE_REJECTED -> RuntimeAdmissionFailure.ARCHIVE_REJECTED
+    RuntimeStoreFailure.LAYOUT_INVALID -> RuntimeAdmissionFailure.LAYOUT_INVALID
+    RuntimeStoreFailure.RUNTIME_INCOMPATIBLE -> RuntimeAdmissionFailure.RUNTIME_INCOMPATIBLE
+    RuntimeStoreFailure.INTERRUPTED -> RuntimeAdmissionFailure.INTERRUPTED
 }

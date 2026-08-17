@@ -20,6 +20,8 @@ dependencyResolutionManagement {
 
 val cleanSlateProjects = listOf(
     ":kernel",
+    ":distribution:contract",
+    ":distribution:managed",
     ":protocol:contract",
     ":protocol:registry",
     ":protocol:wire",

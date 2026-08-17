@@ -72,6 +72,8 @@ class ModuleDependencyDirectionTest {
         assertEquals(ModuleRole.CLI, module.role)
         assertEquals(
             setOf(
+                ModuleId.DISTRIBUTION_CONTRACT,
+                ModuleId.DISTRIBUTION_MANAGED,
                 ModuleId.KERNEL,
                 ModuleId.PROTOCOL_CONTRACT,
                 ModuleId.PROTOCOL_REGISTRY,

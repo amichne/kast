@@ -11,6 +11,8 @@ application {
 }
 
 dependencies {
+    implementation(project(":distribution:contract"))
+    implementation(project(":distribution:managed"))
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))

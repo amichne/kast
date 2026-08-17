@@ -156,11 +156,12 @@ repair Kast. Resolve the typed indexer blocker instead.
 ## Gradle topology
 
 `settings.gradle.kts` is the project-membership authority. The main build has
-exactly 30 target subprojects and one included build:
+exactly 32 target subprojects and one included build:
 
 | Project or family | Broad owner | Dependency direction | Local guide |
 | --- | --- | --- | --- |
 | `:kernel` | Host-neutral refinement and generation primitives | Leaf project | `kernel/AGENTS.md` |
+| `:distribution:{contract,managed}` | Runtime identity and the sole acquisition/store adapter | Contract then managed adapter | Each project root |
 | `:protocol:{contract,registry,wire}` | Eleven canonical operations, typed metadata, and generated wire bindings | Contract then registry/wire | Each project root |
 | `:workspace:{contract,service,intellij}` | Published-workspace identity, transition coordination, and IntelliJ/Gradle effects | Contract then service/adapter | Each project root |
 | `:symbol:{contract,service,intellij}` | Discovery/exact-symbol contracts, admission, and IntelliJ/K2 execution | Contract then service/adapter | Each project root |
@@ -184,7 +185,7 @@ runtime:composition -> runtime:server + target services + target adapters
 runtime:server -> protocol:{contract,registry,wire}
 services -> their contracts and narrower contracts
 IntelliJ/SQLite adapters -> their contracts
-cli -> kernel + protocol:{contract,registry,wire}
+cli -> distribution:{contract,managed} + kernel + protocol:{contract,registry,wire}
 workspace, symbol, relation, traversal, diagnostic, change, and evidence contracts -> kernel
 ```
 

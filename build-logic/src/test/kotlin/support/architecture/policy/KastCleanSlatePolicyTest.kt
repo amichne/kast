@@ -13,6 +13,8 @@ class KastCleanSlatePolicyTest {
         assertEquals(
             setOf(
                 ":kernel",
+                ":distribution:contract",
+                ":distribution:managed",
                 ":protocol:contract",
                 ":protocol:registry",
                 ":protocol:wire",
@@ -67,7 +69,10 @@ class KastCleanSlatePolicyTest {
                     ModuleId.INDEXER,
                 ),
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
-                ForbiddenEffect.FILESYSTEM_WRITE to setOf(ModuleId.INDEXER),
+                ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                    ModuleId.DISTRIBUTION_MANAGED,
+                    ModuleId.INDEXER,
+                ),
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE to emptySet(),
                 ForbiddenEffect.JDBC to setOf(ModuleId.EVIDENCE_SQLITE),
                 ForbiddenEffect.GRADLE_PLATFORM to setOf(ModuleId.WORKSPACE_INTELLIJ),

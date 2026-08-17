@@ -4,7 +4,8 @@
 
 ## Dependency boundary
 
-- Production depends only on kernel and protocol contract/registry/wire modules plus serialization.
+- Production depends only on distribution contract/managed, kernel, and protocol
+  contract/registry/wire modules plus serialization.
 - Do not import semantic services, runtime server implementation, IntelliJ, Gradle, JDBC, SQLite,
   evidence implementations, source writers, aggregate backends, or legacy protocol types.
 - Process launch and UDS access are narrow outer adapters. They cannot interpret semantic payloads.

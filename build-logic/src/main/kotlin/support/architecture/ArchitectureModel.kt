@@ -49,6 +49,8 @@ enum class ModuleId(val projectPath: String) {
     INDEX_STORE(":index-store"),
     INDEXER(":indexer"),
     KERNEL(":kernel"),
+    DISTRIBUTION_CONTRACT(":distribution:contract"),
+    DISTRIBUTION_MANAGED(":distribution:managed"),
     PROTOCOL_CONTRACT(":protocol:contract"),
     PROTOCOL_REGISTRY(":protocol:registry"),
     PROTOCOL_WIRE(":protocol:wire"),
