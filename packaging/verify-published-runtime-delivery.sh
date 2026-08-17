@@ -39,6 +39,7 @@ download_root="${temporary_root}/download"
 control_root="${temporary_root}/control"
 runtime_root="${temporary_root}/runtime"
 fixture="${temporary_root}/workspace"
+endpoint_root="$(mktemp -d /tmp/kast-uds.XXXXXX)"
 mkdir -p "${download_root}" "${control_root}" "${runtime_root}" \
   "${fixture}/src/main/kotlin/example"
 canonical_fixture="$(cd "${fixture}" && pwd -P)"
@@ -52,7 +53,7 @@ cleanup() {
       kill "${indexer_pid}" >/dev/null 2>&1 || true
     fi
   done < <(pgrep -f 'io\.github\.amichne\.kast\.indexer\.KastIndexerMainKt' || true)
-  rm -rf -- "${temporary_root}"
+  rm -rf -- "${temporary_root}" "${endpoint_root}"
 }
 trap cleanup EXIT
 
@@ -99,7 +100,7 @@ class Greeter {
 }
 EOF
 
-export KAST_RUNTIME_DIRECTORY="${runtime_root}/endpoints"
+export KAST_RUNTIME_DIRECTORY="${endpoint_root}"
 export KAST_RUNTIME_STORE="${runtime_root}/store"
 unset KAST_RUNTIME_ARCHIVE
 
