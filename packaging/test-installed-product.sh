@@ -40,6 +40,7 @@ runtime_store="${runtime_directory}/store"
 server_root="${runtime_directory}/server"
 server_port_file="${runtime_directory}/server.port"
 server_request_log="${runtime_directory}/server.requests"
+server_error_log="${runtime_directory}/server.stderr"
 server_pid=""
 mkdir -p "${control_root}" "${server_root}"
 tar -xzf "${control_archive}" -C "${control_root}"
@@ -116,7 +117,8 @@ PY
 [[ ! -e "${runtime_directory}/must-not-exist" ]] ||
   fail "local metadata touched the semantic runtime store"
 
-python3 - "${server_root}" "${server_port_file}" "${server_request_log}" <<'PY' &
+python3 - "${server_root}" "${server_port_file}" "${server_request_log}" \
+  2>"${server_error_log}" <<'PY' &
 import functools
 import http.server
 from pathlib import Path
@@ -140,12 +142,18 @@ port_file.write_text(str(server.server_port))
 server.serve_forever()
 PY
 server_pid="$!"
-for _ in {1..100}; do
-  [[ -s "${server_port_file}" ]] && break
-  kill -0 "${server_pid}" >/dev/null 2>&1 || fail "managed runtime HTTP server exited"
-  sleep 0.05
+server_start_deadline=$((SECONDS + 60))
+while [[ ! -s "${server_port_file}" && ${SECONDS} -lt ${server_start_deadline} ]]; do
+  if ! kill -0 "${server_pid}" >/dev/null 2>&1; then
+    server_error="$(<"${server_error_log}")"
+    fail "managed runtime HTTP server exited: ${server_error:-no stderr}"
+  fi
+  sleep 0.1
 done
-[[ -s "${server_port_file}" ]] || fail "managed runtime HTTP server did not become ready"
+if [[ ! -s "${server_port_file}" ]]; then
+  server_error="$(<"${server_error_log}")"
+  fail "managed runtime HTTP server did not become ready: ${server_error:-no stderr}"
+fi
 runtime_url="http://127.0.0.1:$(<"${server_port_file}")/$(basename "${runtime_archive}")"
 python3 - "${control_root}/share/kast/semantic-runtime.json" "${runtime_url}" <<'PY'
 import json
