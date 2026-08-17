@@ -11,6 +11,10 @@ mod launchd;
 #[cfg(not(target_os = "macos"))]
 #[path = "service_manager/systemd.rs"]
 mod systemd;
+#[cfg(all(target_os = "macos", test))]
+#[path = "service_manager/systemd.rs"]
+#[allow(dead_code)]
+mod systemd;
 
 #[path = "service_manager/discovery.rs"]
 mod discovery;
@@ -120,7 +124,8 @@ pub(super) fn inspect(manager: &ServiceManagerRegistration) -> Result<ServiceMan
     }
 }
 
-pub(super) fn unregister(manager: &ServiceManagerRegistration) -> Result<()> {
+pub(super) fn unregister_dead(runtime: &super::ownership::DeadServiceRuntime) -> Result<()> {
+    let manager = &runtime.registration.receipt.manager;
     match manager {
         ServiceManagerRegistration::Test { state_path, .. } => {
             require_test_manager_enabled(Path::new(state_path))?;
@@ -134,6 +139,9 @@ pub(super) fn unregister(manager: &ServiceManagerRegistration) -> Result<()> {
         ServiceManagerRegistration::Launchd { .. } => launchd::unregister(manager),
         #[cfg(not(target_os = "macos"))]
         ServiceManagerRegistration::SystemdUser { .. } => systemd::unregister(manager),
+        #[cfg(all(target_os = "macos", test))]
+        ServiceManagerRegistration::SystemdUser { .. } => systemd::unregister(manager),
+        #[cfg(not(all(target_os = "macos", test)))]
         _ => Err(manager_platform_mismatch()),
     }
 }

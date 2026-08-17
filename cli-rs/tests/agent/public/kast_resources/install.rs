@@ -15,6 +15,61 @@ fn direct_public_cli_does_not_require_agent_resources() {
 }
 
 #[test]
+fn force_agent_resource_cleanup_failure_is_not_ignored() {
+    let fixture = tempfile::tempdir().expect("temporary cleanup failure fixture");
+    let bin = fixture.path().join("bin");
+    fs::create_dir(&bin).expect("create provider bin directory");
+    write_provider(&bin.join("claude"));
+
+    let provider_log = fixture.path().join("providers.log");
+    let mut path_entries = vec![bin];
+    path_entries.extend(std::env::split_paths(
+        &std::env::var_os("PATH").unwrap_or_else(|| OsString::from("/usr/bin:/bin")),
+    ));
+    let path = std::env::join_paths(path_entries).expect("provider PATH");
+
+    let output = kast()
+        .args([
+            "__internal",
+            "resources",
+            "install",
+            "--force",
+            "--harness",
+            "claude",
+        ])
+        .env("PATH", path)
+        .env("HOME", fixture.path().join("home"))
+        .env("KAST_HOME", fixture.path().join("kast"))
+        .env("KAST_PROVIDER_LOG", &provider_log)
+        .env("KAST_TEST_FAIL_CLAUDE_COMMAND", "plugin uninstall")
+        .output()
+        .expect("run forced provider replacement with cleanup failure");
+
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "cleanup failure must fail forced provider replacement: {output:?}"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("installation command exited with status 71"),
+        "cleanup failure detail must be preserved: {stdout}"
+    );
+
+    let log = fs::read_to_string(&provider_log).expect("provider invocation log");
+    assert!(
+        log.lines()
+            .any(|line| line.contains("claude plugin uninstall kast@kast --scope user")),
+        "cleanup command was not attempted:\n{log}"
+    );
+    assert!(
+        !log.lines().any(|line| line.contains("plugin marketplace"))
+            && !log.lines().any(|line| line.contains("plugin install")),
+        "replacement continued after cleanup failure:\n{log}"
+    );
+}
+
+#[test]
 fn force_replaces_existing_provider_installations() {
     let fixture = tempfile::tempdir().expect("temporary provider fixture");
     let bin = fixture.path().join("bin");
@@ -46,7 +101,7 @@ fn force_replaces_existing_provider_installations() {
         .env("HOME", fixture.path().join("home"))
         .env("KAST_HOME", fixture.path().join("kast"))
         .env("KAST_PROVIDER_LOG", &provider_log)
-        .env("KAST_TEST_FAIL_CLAUDE_INSTALL", "1")
+        .env("KAST_TEST_FAIL_CLAUDE_COMMAND", "plugin install")
         .output()
         .expect("run embedded provider installer");
 

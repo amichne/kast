@@ -14,7 +14,7 @@ pub(super) fn cleanup_dead_registration(
         .ok_or_else(runtime_identity_mismatch)?
         .join("active.json");
     verify_cleanup_metadata_snapshots(&registration, dead)?;
-    let process_temporary = unregister_dead_service_manager(&registration)?;
+    let process_temporary = unregister_dead_service_manager(dead)?;
     let registration = revalidate_registration(&registration)?;
     ensure_registered_process_is_dead(&registration, dead.descriptor.as_ref())?;
     verify_socket_snapshot(&dead.socket, registration.launch.owner_uid)?;
@@ -39,8 +39,9 @@ pub(super) fn cleanup_dead_registration(
 }
 
 fn unregister_dead_service_manager(
-    registration: &ValidatedServiceRegistration,
+    dead: &DeadServiceRuntime,
 ) -> Result<ProvenDeadProcessClaimPublication> {
+    let registration = &dead.registration;
     let process_temporary = prove_dead_process_claim_publication_temporary(registration)?;
     match super::service_manager::inspect(&registration.receipt.manager)? {
         super::service_manager::ServiceManagerObservation::Running(_) => {
@@ -50,7 +51,7 @@ fn unregister_dead_service_manager(
         }
         super::service_manager::ServiceManagerObservation::Registered
         | super::service_manager::ServiceManagerObservation::Absent => {
-            super::service_manager::unregister(&registration.receipt.manager)?;
+            super::service_manager::unregister_dead(dead)?;
         }
     }
     if super::service_manager::inspect(&registration.receipt.manager)?

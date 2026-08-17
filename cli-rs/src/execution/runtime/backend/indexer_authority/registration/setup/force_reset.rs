@@ -1,36 +1,66 @@
-struct ProvenDeadSetupCleanup {
-    candidates: Vec<(KastConfig, super::super::ownership::ProvenDeadRuntimeOwnership)>,
+const EXACT_OWNED_SHUTDOWN_TIMEOUT: std::time::Duration =
+    std::time::Duration::from_secs(5 * 60 + 10);
+const EXACT_OWNED_SHUTDOWN_POLL_INTERVAL: std::time::Duration =
+    std::time::Duration::from_millis(250);
+
+struct ExactOwnedSetupShutdown {
+    config: KastConfig,
+    root: RegisteredWorkspaceRoot,
+    runtime_instance_id: Uuid,
 }
 
-impl ProvenDeadSetupCleanup {
+struct ForceResetCleanup {
+    shutdowns: Vec<ExactOwnedSetupShutdown>,
+    proven_dead: Vec<(KastConfig, super::super::ownership::ProvenDeadRuntimeOwnership)>,
+}
+
+impl ForceResetCleanup {
     fn admit(
-        observations: Vec<(KastConfig, RuntimeOwnershipSnapshot)>,
+        observations: Vec<RuntimeSetupObservation>,
         has_unclassified_descriptors: bool,
     ) -> Result<Self> {
         if has_unclassified_descriptors {
             return Err(force_runtime_not_quiescent());
         }
-        let mut candidates = Vec::new();
-        for (config, ownership) in observations {
+        let mut shutdowns = Vec::new();
+        let mut proven_dead = Vec::new();
+        for observation in observations {
+            let RuntimeSetupObservation {
+                config,
+                root,
+                ownership,
+            } = observation;
             match ownership {
                 RuntimeOwnershipSnapshot::Absent(_) => {}
-                RuntimeOwnershipSnapshot::ProvenDead(dead) => candidates.push((config, dead)),
-                RuntimeOwnershipSnapshot::ServiceOwned(_)
-                | RuntimeOwnershipSnapshot::LegacyOwned(_)
+                RuntimeOwnershipSnapshot::ServiceOwned(owned) => {
+                    shutdowns.push(ExactOwnedSetupShutdown {
+                        config,
+                        root,
+                        runtime_instance_id: owned.registration.receipt.runtime_instance_id,
+                    });
+                }
+                RuntimeOwnershipSnapshot::ProvenDead(dead) => proven_dead.push((config, dead)),
+                RuntimeOwnershipSnapshot::LegacyOwned(_)
                 | RuntimeOwnershipSnapshot::Conflict(_)
                 | RuntimeOwnershipSnapshot::Ambiguous(_) => {
                     return Err(force_runtime_not_quiescent());
                 }
             }
         }
-        Ok(Self { candidates })
+        Ok(Self {
+            shutdowns,
+            proven_dead,
+        })
     }
 
     fn execute(
         self,
         paths: &crate::manifest::ResolvedKastPaths,
     ) -> Result<RuntimeSetupAuthorization> {
-        for (config, dead) in self.candidates {
+        for shutdown in self.shutdowns {
+            shutdown.execute()?;
+        }
+        for (config, dead) in self.proven_dead {
             super::super::repair::cleanup_proven_dead(&config, &dead)?;
         }
         let service_roots = registered_service_roots(paths)?;
@@ -44,10 +74,54 @@ impl ProvenDeadSetupCleanup {
     }
 }
 
+impl ExactOwnedSetupShutdown {
+    fn execute(self) -> Result<()> {
+        let deadline = std::time::Instant::now() + EXACT_OWNED_SHUTDOWN_TIMEOUT;
+        loop {
+            let current = reconcile_registered_runtime_ownership(&self.config, &self.root)
+                .map_err(force_runtime_reconciliation_blocked)?;
+            match current {
+                RuntimeOwnershipSnapshot::Absent(_) => return Ok(()),
+                RuntimeOwnershipSnapshot::ProvenDead(dead) => {
+                    return super::super::repair::cleanup_proven_dead(&self.config, &dead);
+                }
+                RuntimeOwnershipSnapshot::ServiceOwned(owned)
+                    if owned.registration.receipt.runtime_instance_id
+                        == self.runtime_instance_id
+                        && std::time::Instant::now() < deadline =>
+                {
+                    std::thread::sleep(EXACT_OWNED_SHUTDOWN_POLL_INTERVAL);
+                }
+                RuntimeOwnershipSnapshot::ServiceOwned(owned)
+                    if owned.registration.receipt.runtime_instance_id
+                        == self.runtime_instance_id =>
+                {
+                    return Err(force_runtime_teardown_timeout(self.runtime_instance_id));
+                }
+                _ => return Err(force_runtime_not_quiescent()),
+            }
+        }
+    }
+}
+
+fn force_runtime_teardown_timeout(runtime_instance_id: Uuid) -> CliError {
+    let mut failure = CliError::new(
+        "SETUP_RUNTIME_IDLE_SHUTDOWN_TIMEOUT",
+        format!(
+            "Exact-owned runtime {runtime_instance_id} remained live without completing its server-permitted idle shutdown."
+        ),
+    );
+    failure.details.insert(
+        "runtimeInstanceId".to_string(),
+        runtime_instance_id.to_string(),
+    );
+    failure
+}
+
 fn force_runtime_not_quiescent() -> CliError {
     CliError::new(
         "SETUP_RUNTIME_NOT_QUIESCENT",
-        "Forced setup cannot delete Kast state while a live, ambiguous, or unclassified runtime registration or descriptor exists. An exact owned epoch must complete automatic idle shutdown before setup can continue.",
+        "Forced setup cannot delete Kast state while an ambiguous, unclassified, or insufficiently proven runtime registration or descriptor exists.",
     )
 }
 
