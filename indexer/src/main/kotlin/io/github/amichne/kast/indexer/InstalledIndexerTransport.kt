@@ -114,11 +114,12 @@ class InstalledIndexerTransport private constructor(
          * failure. Raw paths may leave only for JDK socket and filesystem effects.
          */
         fun prepare(options: IndexerLaunchOptions): IndexerTransportPreparation {
-            val socketParent = options.socketPath.parent
+            val socketPath = options.socketPath
+            val socketParent = socketPath.parent
                 ?: return IndexerTransportPreparation.Rejected(
                     IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
                 )
-            val canonicalParent = try {
+            val canonicalStateParent = try {
                 Files.createDirectories(socketParent)
                 socketParent.toRealPath()
             } catch (_: IOException) {
@@ -130,8 +131,9 @@ class InstalledIndexerTransport private constructor(
                     IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
                 )
             }
-            val socketPath = canonicalParent.resolve(options.socketPath.fileName)
-            val statePath = canonicalParent.resolve("${options.socketPath.fileName}.state")
+            // Keep the AF_UNIX address exactly as admitted. Only runtime-owned state uses the
+            // physical parent; macOS aliases can lengthen a canonical socket address past its limit.
+            val statePath = canonicalStateParent.resolve("${socketPath.fileName}.state")
             val stateDirectory = when (val preparation = prepareStateDirectory(statePath)) {
                 is StateDirectoryPreparation.Prepared -> preparation.path
                 StateDirectoryPreparation.Rejected -> return IndexerTransportPreparation.Rejected(
