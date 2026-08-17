@@ -283,6 +283,14 @@ fun interface RuntimeDemander {
     fun demand(root: CanonicalRoot, endpoint: RuntimeEndpoint): RuntimeAdmission
 }
 
+private enum class RuntimeStartupBound(
+    val probeAttempts: Int,
+) {
+    ENTERPRISE_ACCEPTED(probeAttempts = 2_400),
+}
+
+private const val RUNTIME_PROBE_INTERVAL_MILLIS = 100L
+
 /** Starts only the admitted indexer artifact with explicit exact-root and socket arguments. */
 class ExactRootProcessRuntimeDemander(
     private val executable: IndexerExecutable,
@@ -308,12 +316,12 @@ class ExactRootProcessRuntimeDemander(
         if (processStarter.start(command) is RuntimeProcessStart.Rejected) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.PROCESS_START_FAILED)
         }
-        repeat(600) {
+        repeat(RuntimeStartupBound.ENTERPRISE_ACCEPTED.probeAttempts) {
             if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
                 return RuntimeAdmission.Ready(endpoint)
             }
             try {
-                Thread.sleep(100)
+                Thread.sleep(RUNTIME_PROBE_INTERVAL_MILLIS)
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.INTERRUPTED)
