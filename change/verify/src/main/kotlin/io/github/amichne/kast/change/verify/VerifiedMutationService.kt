@@ -3,8 +3,8 @@ package io.github.amichne.kast.change.verify
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.AddFileChangePlan
-import io.github.amichne.kast.change.contract.ChangePlanId
 import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.change.contract.ChangePlanId
 import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
 import io.github.amichne.kast.change.contract.ReplaceDeclarationChangePlan
 import io.github.amichne.kast.kernel.Refinement

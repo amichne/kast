@@ -89,5 +89,5 @@ private sealed interface CanonicalParent {
 }
 
 private fun parentOf(path: Path): CanonicalParent = path.parent
-    ?.let(CanonicalParent::Parent)
-    ?: CanonicalParent.FilesystemRoot
+                                                        ?.let(CanonicalParent::Parent)
+                                                    ?: CanonicalParent.FilesystemRoot

@@ -113,7 +113,7 @@ class KastCleanSlatePolicyTest {
                 when (module.id) {
                     ModuleId.TRAVERSAL_SERVICE -> module.copy(
                         allowedProjectDependencies = module.allowedProjectDependencies +
-                            ModuleId.DIAGNOSTIC_INTELLIJ,
+                                                     ModuleId.DIAGNOSTIC_INTELLIJ,
                     )
                     ModuleId.CLI -> module.copy(
                         allowedEffects = cli.allowedEffects + ForbiddenEffect.JDBC,

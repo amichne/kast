@@ -1,7 +1,5 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
-import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest as DomainDiagnosticRequest
-import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult as DomainDiagnosticResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticFact
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticReadRejection
@@ -22,6 +20,8 @@ import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest as DomainDiagnosticRequest
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult as DomainDiagnosticResult
 
 internal class CanonicalDiagnosticCheckHandler(
     private val workspace: WorkspaceInspectionOperations,

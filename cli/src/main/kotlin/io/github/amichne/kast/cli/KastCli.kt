@@ -21,7 +21,10 @@ class KastCli(
      * canonical JSON document, and exhaustive process status. [CliBoundaryExitStatus] is the
      * finite boundary-failure classification. Raw argv and start path are permitted only here.
      */
-    fun execute(argv: List<String>, start: Path): CliExit {
+    fun execute(
+        argv: List<String>,
+        start: Path,
+    ): CliExit {
         val invocation = when (val parsed = CliCommandParser.parse(argv)) {
             is CliCommandParsing.Local -> return CliExit.Complete(
                 localMetadata.output(parsed.command),
@@ -139,7 +142,10 @@ sealed interface CliExit {
     }
 }
 
-internal fun boundaryExit(status: CliBoundaryExitStatus, reason: String): CliExit.BoundaryRejected =
+internal fun boundaryExit(
+    status: CliBoundaryExitStatus,
+    reason: String,
+): CliExit.BoundaryRejected =
     CliExit.BoundaryRejected(
         status,
         CliJsonDocument.from(

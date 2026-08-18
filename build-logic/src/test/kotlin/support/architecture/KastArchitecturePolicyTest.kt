@@ -1,11 +1,10 @@
 package support.architecture
 
-import support.architecture.process.MutationRuntimeProcessId
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
-import kotlin.collections.filter
+import support.architecture.process.MutationRuntimeProcessId
 
 class KastArchitecturePolicyTest {
     @Test
@@ -223,7 +222,7 @@ class KastArchitecturePolicyTest {
         assertEquals(ModuleId.RUNTIME_COMPOSITION, composition.id)
         assertEquals(
             architecture.modules.keys - legacyHosts -
-                setOf(ModuleId.CLI, ModuleId.RUNTIME_COMPOSITION),
+            setOf(ModuleId.CLI, ModuleId.RUNTIME_COMPOSITION),
             composition.allowedProjectDependencies,
         )
     }

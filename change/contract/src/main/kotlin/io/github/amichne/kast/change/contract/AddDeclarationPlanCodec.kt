@@ -1,8 +1,7 @@
 package io.github.amichne.kast.change.contract
 
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.EvidenceGeneration
-import kotlinx.serialization.encodeToString
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.json.Json
 
 enum class AddDeclarationPlanDecodeFailure {
@@ -91,7 +90,7 @@ private fun PlannedAddDeclaration.revalidatedOrNull(): PlannedAddDeclaration? {
     if (expectedVerification != verification) return null
     val contextFiles = compilerContext.contextFiles.map { file ->
         AddDeclarationCompilerContextFile.admit(file.path, file.sha256.value).valueOrNull()
-            ?: return null
+        ?: return null
     }
     val modelFingerprint = AddDeclarationProjectModelFingerprint.parse(
         compilerContext.projectModelFingerprint.value,

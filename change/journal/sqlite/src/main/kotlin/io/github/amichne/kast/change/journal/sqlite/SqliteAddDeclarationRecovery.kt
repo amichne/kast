@@ -129,7 +129,7 @@ internal fun ResultSet.decodeRecoveryPrepared(
     approved: PersistedAddDeclarationPlan.Approved,
 ): Refinement<RecoveryPreparedAddDeclaration, RecoveryPreparedRecordDecodeFailure> {
     val rawPlanId = getString("recovery_plan_id")
-                       ?: return rejected(RecoveryPreparedRecordDecodeFailure.PLAN_ID_INVALID)
+                    ?: return rejected(RecoveryPreparedRecordDecodeFailure.PLAN_ID_INVALID)
     val recoveryPlanId = when (val parsed = AddDeclarationPlanId.parse(rawPlanId)) {
         is Refinement.Refined -> parsed.value
         is Refinement.Rejected ->
@@ -139,16 +139,16 @@ internal fun ResultSet.decodeRecoveryPrepared(
         return rejected(RecoveryPreparedRecordDecodeFailure.PLAN_ID_MISMATCH)
     }
     val targetPath = getString("recovery_target_path")
-                         ?: return rejected(RecoveryPreparedRecordDecodeFailure.TARGET_PATH_MISMATCH)
+                     ?: return rejected(RecoveryPreparedRecordDecodeFailure.TARGET_PATH_MISMATCH)
     if (targetPath != approved.plan.target.targetPath.value) {
         return rejected(RecoveryPreparedRecordDecodeFailure.TARGET_PATH_MISMATCH)
     }
     val beforeSha256 = getString("recovery_before_sha256")
-                           ?: return rejected(RecoveryPreparedRecordDecodeFailure.BEFORE_IMAGE_INVALID)
+                       ?: return rejected(RecoveryPreparedRecordDecodeFailure.BEFORE_IMAGE_INVALID)
     val beforeContentBase64 = getString("recovery_before_content_base64")
-                                  ?: return rejected(
-                                      RecoveryPreparedRecordDecodeFailure.BEFORE_IMAGE_INVALID,
-                                  )
+                              ?: return rejected(
+                                  RecoveryPreparedRecordDecodeFailure.BEFORE_IMAGE_INVALID,
+                              )
     val beforeImage = when (
         val admitted = ExactFileContentProof.admit(
             sha256 = beforeSha256,
@@ -187,13 +187,13 @@ internal fun ResultSet.decodeRecoveryPrepared(
             return rejected(RecoveryPreparedRecordDecodeFailure.PRIOR_VERSION_INVALID)
     }
     val rawProgress = getString("recovery_mutation_progress")
-                          ?: return rejected(
-                              RecoveryPreparedRecordDecodeFailure.MUTATION_PROGRESS_INVALID,
-                          )
+                      ?: return rejected(
+                          RecoveryPreparedRecordDecodeFailure.MUTATION_PROGRESS_INVALID,
+                      )
     val progress = AddDeclarationMutationProgress.entries.singleOrNull { it.name == rawProgress }
-                       ?: return rejected(
-                           RecoveryPreparedRecordDecodeFailure.MUTATION_PROGRESS_INVALID,
-                       )
+                   ?: return rejected(
+                       RecoveryPreparedRecordDecodeFailure.MUTATION_PROGRESS_INVALID,
+                   )
     return when (val restored = RecoveryPreparedAddDeclaration.restore(
         prior = approved,
         currentVersion = currentVersion,

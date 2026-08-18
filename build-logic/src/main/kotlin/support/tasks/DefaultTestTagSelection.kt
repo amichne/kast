@@ -6,7 +6,10 @@ internal data class TestTagSelection(
 internal object DefaultTestTagSelection {
     private val defaultExcludedTags = linkedSetOf("concurrency", "performance", "parity")
 
-    fun from(includeTags: String?, excludeTags: String?): TestTagSelection {
+    fun from(
+        includeTags: String?,
+        excludeTags: String?,
+    ): TestTagSelection {
         val included = parseTags(includeTags)
         val excluded = linkedSetOf<String>().apply {
             if (included.isEmpty()) {
@@ -27,5 +30,5 @@ internal object DefaultTestTagSelection {
             ?.map(String::trim)
             ?.filter(String::isNotEmpty)
             ?.toCollection(linkedSetOf())
-            ?: linkedSetOf()
+        ?: linkedSetOf()
 }

@@ -4,9 +4,9 @@ import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationObligation
-import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.ChangeVerificationObligation
+import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
 import io.github.amichne.kast.kernel.Refinement
@@ -211,6 +211,7 @@ class CompleteAddDeclarationVerification private constructor(
 ) : CompleteChangeVerification {
     override val obligations: List<ChangeVerificationObligation>
         get() = plan.requiredVerification.obligations
+
     companion object {
         /**
          * Proof transition: `(AddDeclarationChangePlan, AppliedUnverified,
@@ -252,10 +253,10 @@ class CompleteAddDeclarationVerification private constructor(
                     if (completeRelations.any { result ->
                             val subject = result.batch.request.subject
                             subject.file != plan.target.selector.file ||
-                                subject.name != plan.target.selector.name ||
-                                subject.qualifiedIdentity != plan.target.selector.qualifiedIdentity ||
-                                subject.kind != plan.target.selector.kind ||
-                                subject.scope != plan.target.selector.scope
+                            subject.name != plan.target.selector.name ||
+                            subject.qualifiedIdentity != plan.target.selector.qualifiedIdentity ||
+                            subject.kind != plan.target.selector.kind ||
+                            subject.scope != plan.target.selector.scope
                         }
                     ) {
                         failures += AddDeclarationProofFailure.RELATION_TARGET_MISMATCH

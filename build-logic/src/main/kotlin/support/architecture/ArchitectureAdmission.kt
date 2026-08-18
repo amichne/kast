@@ -293,7 +293,7 @@ sealed interface ArchitectureAdmission {
             }
             val violations = (
                 lifecycleViolations + unbaselined + obsolete + obsoleteMigrations +
-                    obsoleteImplementationBridges +
+                obsoleteImplementationBridges +
                 forbiddenExports + roleConventionViolations
                              ).toSet()
             return if (violations.isEmpty()) {

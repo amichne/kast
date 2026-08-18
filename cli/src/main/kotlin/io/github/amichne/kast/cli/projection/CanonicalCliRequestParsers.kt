@@ -46,7 +46,7 @@ internal val symbolDescribeCliParser = CliRequestParser { arguments ->
 
 internal val relationReadCliParser = CliRequestParser { arguments ->
     val options = arguments.options("--selector", "--relation", "--limit")
-        ?: return@CliRequestParser rejected()
+                  ?: return@CliRequestParser rejected()
     val selector = options.text("--selector") ?: return@CliRequestParser rejected()
     val relation = options.relation("--relation") ?: return@CliRequestParser rejected()
     val limit = options.count("--limit") ?: return@CliRequestParser rejected()
@@ -77,12 +77,12 @@ internal val diagnosticCheckCliParser = CliRequestParser { arguments ->
 internal val changePlanCliParser = CliRequestParser { arguments ->
     val options = CliOptionSet.parse(arguments) ?: return@CliRequestParser rejected()
     val intent = when (options.raw("--intent")) {
-        "add-file" -> options.addFileIntent()
-        "add-declaration" -> options.addDeclarationIntent()
-        "replace-declaration" -> options.replaceDeclarationIntent()
-        "rename-symbol" -> options.renameSymbolIntent()
-        else -> null
-    } ?: return@CliRequestParser rejected()
+                     "add-file" -> options.addFileIntent()
+                     "add-declaration" -> options.addDeclarationIntent()
+                     "replace-declaration" -> options.replaceDeclarationIntent()
+                     "rename-symbol" -> options.renameSymbolIntent()
+                     else -> null
+                 } ?: return@CliRequestParser rejected()
     parsed(ChangePlanRequest(intent))
 }
 

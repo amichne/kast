@@ -53,6 +53,10 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationVerificationJournalTestSupport.ROOT
+import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationVerificationJournalTestSupport.TARGET
+import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationVerificationJournalTestSupport.ThrowAfterCommit
+import io.github.amichne.kast.change.journal.sqlite.SqliteAddDeclarationVerificationJournalTestSupport.ThrowBeforeRollback
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.sql.DriverManager
@@ -93,8 +97,14 @@ class SqliteAddDeclarationVerificationJournalTest {
         assertEquals(completed.receipt.publication, restored.receipt.publication)
         assertEquals(command.verification.publication, completed.receipt.publication)
         assertEquals(command.verification.identity.targetPath, restored.receipt.identity.targetPath)
-        assertEquals(command.verification.identity.sourceRange.startOffset, restored.receipt.identity.sourceRange.startOffset)
-        assertEquals(command.verification.identity.sourceRange.endOffset, restored.receipt.identity.sourceRange.endOffset)
+        assertEquals(
+            command.verification.identity.sourceRange.startOffset,
+            restored.receipt.identity.sourceRange.startOffset
+        )
+        assertEquals(
+            command.verification.identity.sourceRange.endOffset,
+            restored.receipt.identity.sourceRange.endOffset
+        )
         assertEquals(command.verification.identity.packageName, restored.receipt.identity.packageName)
         assertEquals(command.verification.identity.declarationName, restored.receipt.identity.declarationName)
         assertEquals(command.verification.identity.declarationKind, restored.receipt.identity.declarationKind)
@@ -368,32 +378,4 @@ class SqliteAddDeclarationVerificationJournalTest {
         ).verification
     }
 
-    private class ThrowAfterCommit(
-        private val operation: SqliteJournalCommitOperation,
-    ) : SqliteJournalConnectionObserver {
-        override fun opened() = Unit
-
-        override fun closed() = Unit
-
-        override fun committed(operation: SqliteJournalCommitOperation) {
-            if (operation == this.operation) error("simulated lost commit acknowledgement")
-        }
-    }
-
-    private class ThrowBeforeRollback(
-        private val operation: SqliteJournalCommitOperation,
-    ) : SqliteJournalConnectionObserver {
-        override fun opened() = Unit
-
-        override fun closed() = Unit
-
-        override fun rollingBack(operation: SqliteJournalCommitOperation) {
-            if (operation == this.operation) error("simulated rollback failure")
-        }
-    }
-
-    private companion object {
-        const val ROOT = "/workspace/kast"
-        const val TARGET = "$ROOT/indexer/src/main/kotlin/sample/Target.kt"
-    }
 }

@@ -224,10 +224,10 @@ class TraversalQualification private constructor(
             limitations.isEmpty() ->
                 Refinement.Rejected(TraversalQualificationFailure.EMPTY_LIMITATIONS)
             TraversalLimitation.ONE_HOP_INCOMPLETE in limitations &&
-                relationLimitations.isEmpty() ->
+            relationLimitations.isEmpty() ->
                 Refinement.Rejected(TraversalQualificationFailure.MISSING_RELATION_LIMITATION)
             TraversalLimitation.ONE_HOP_INCOMPLETE !in limitations &&
-                relationLimitations.isNotEmpty() ->
+            relationLimitations.isNotEmpty() ->
                 Refinement.Rejected(TraversalQualificationFailure.UNEXPECTED_RELATION_LIMITATION)
             continuation.identity != page.plan.identity ->
                 Refinement.Rejected(TraversalQualificationFailure.CONTINUATION_MISMATCH)

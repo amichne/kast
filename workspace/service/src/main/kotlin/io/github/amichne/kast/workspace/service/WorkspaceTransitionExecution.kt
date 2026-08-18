@@ -1,10 +1,10 @@
 package io.github.amichne.kast.workspace.service
 
-import io.github.amichne.kast.workspace.contract.WorkspaceSignal
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
 import io.github.amichne.kast.workspace.contract.TransitionBlocker
 import io.github.amichne.kast.workspace.contract.TransitionBlockerKind
 import io.github.amichne.kast.workspace.contract.TransitionPhase
+import io.github.amichne.kast.workspace.contract.WorkspaceSignal
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureDisposition
 
 internal data class TransitionCycle(

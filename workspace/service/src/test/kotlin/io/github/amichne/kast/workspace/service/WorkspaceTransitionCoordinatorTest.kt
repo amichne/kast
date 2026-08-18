@@ -4,14 +4,14 @@ import io.github.amichne.kast.evidence.contract.GenerationPublication
 import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
-import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationAuthority
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationCommit
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGeneration
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
-import io.github.amichne.kast.workspace.contract.TransitionRun
 import io.github.amichne.kast.workspace.contract.TransitionBlockerKind
+import io.github.amichne.kast.workspace.contract.TransitionRun
 import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
@@ -21,20 +21,20 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshnessClaim
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshnessClaims
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureClassifier
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureDisposition
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.properties.Delegates
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 
 class WorkspaceTransitionCoordinatorTest {
     @Test

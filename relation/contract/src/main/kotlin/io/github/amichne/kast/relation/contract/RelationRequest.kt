@@ -98,7 +98,7 @@ value class RelationContinuationFingerprint internal constructor(
     init {
         require(
             value.length == RELATION_CONTINUATION_FINGERPRINT_LENGTH &&
-                value.all { character -> character in '0'..'9' || character in 'a'..'f' },
+            value.all { character -> character in '0'..'9' || character in 'a'..'f' },
         )
     }
 }

@@ -51,12 +51,12 @@ class SqliteWorkspacePublicationDatabase private constructor(
                 !raw.isAbsolute || raw.normalize() != raw ->
                     SqliteWorkspacePublicationDatabaseFailure.NOT_CANONICAL_ABSOLUTE
                 raw.parent == null ||
-                    !Files.isDirectory(raw.parent, LinkOption.NOFOLLOW_LINKS) ->
+                !Files.isDirectory(raw.parent, LinkOption.NOFOLLOW_LINKS) ->
                     SqliteWorkspacePublicationDatabaseFailure.PARENT_NOT_DIRECTORY
                 Files.isSymbolicLink(raw) ->
                     SqliteWorkspacePublicationDatabaseFailure.SYMLINK_NOT_ALLOWED
                 Files.exists(raw, LinkOption.NOFOLLOW_LINKS) &&
-                    !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) ->
+                !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) ->
                     SqliteWorkspacePublicationDatabaseFailure.EXISTING_PATH_NOT_REGULAR_FILE
                 else -> null
             }
@@ -79,7 +79,7 @@ class SqliteWorkspacePublicationDatabase private constructor(
     internal fun current(): SqliteWorkspacePublicationRecord? = connect().use { connection ->
         connection.prepareStatement(
             "SELECT generation, identity, graph_publication " +
-                "FROM workspace_publication WHERE singleton = 1",
+            "FROM workspace_publication WHERE singleton = 1",
         ).use { statement ->
             statement.executeQuery().use { rows ->
                 if (!rows.next()) return@use null
@@ -183,7 +183,7 @@ internal class SqliteWorkspacePublicationSession(
 
     fun commit(): SqliteWorkspacePublicationRecord {
         val prepared = state as? State.Prepared
-            ?: error("SQLite workspace publication is not prepared")
+                       ?: error("SQLite workspace publication is not prepared")
         val record = SqliteWorkspacePublicationRecord(
             PublishedWorkspaceGeneration(nextGeneration, prepared.identity),
             prepared.graphPublication,

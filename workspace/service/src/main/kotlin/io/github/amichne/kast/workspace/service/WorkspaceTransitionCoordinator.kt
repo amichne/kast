@@ -2,7 +2,6 @@ package io.github.amichne.kast.workspace.service
 
 import io.github.amichne.kast.evidence.contract.GenerationPublication
 import io.github.amichne.kast.evidence.contract.OpenWorkspacePublication
-import io.github.amichne.kast.evidence.contract.PreparedWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationAuthority
 import io.github.amichne.kast.workspace.contract.PublishedWorkspaceGenerationState
@@ -14,11 +13,11 @@ import io.github.amichne.kast.workspace.contract.WorkspaceLifecycle
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceFreshness
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
-import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureClassifier
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionFailureDisposition
 import io.github.amichne.kast.workspace.contract.WorkspaceTransitionOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionRequest
+import io.github.amichne.kast.workspace.contract.WorkspaceTransitionSnapshot
 
 /** Owns the single workspace freshness and READY-publication transition. */
 class WorkspaceTransitionCoordinator(

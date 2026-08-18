@@ -4,7 +4,6 @@ import io.github.amichne.kast.change.apply.AddDeclarationApplyFailure
 import io.github.amichne.kast.change.apply.AddDeclarationApplyOperations
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
 import io.github.amichne.kast.change.apply.AppliedUnverified
-import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 import io.github.amichne.kast.change.apply.MutationAdmissionFailure
 import io.github.amichne.kast.change.apply.RequestedMutationWriteScope
 import io.github.amichne.kast.change.apply.SourceObservationFailure
@@ -41,6 +40,7 @@ import io.github.amichne.kast.runtime.composition.ChangeRecoveryOperations
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 
 internal class CanonicalChangeApplyHandler(
     private val workspace: WorkspaceInspectionOperations,
@@ -117,10 +117,12 @@ internal class CanonicalChangeVerifyHandler(
             ChangeApplicationLookup.Missing ->
                 return OperationOutcome.Rejected(ChangeVerifyRejection.APPLICATION_NOT_FOUND)
         }
-        return when (val result = operations.verify(VerifiedMutationRequest(
-            pending.plan,
-            pending.applied,
-        ))) {
+        return when (val result = operations.verify(
+            VerifiedMutationRequest(
+                pending.plan,
+                pending.applied,
+            )
+        )) {
             is VerifiedMutationResult.Verified -> when (
                 val issued = authority.issueReceipt(result.receipt)
             ) {
@@ -145,8 +147,8 @@ internal class CanonicalChangeVerifyHandler(
             is VerifiedMutationResult.RejectedAfterPublication,
             is VerifiedMutationResult.RejectedAfterResultingWorkspace,
                 -> OperationOutcome.Rejected(
-                    ChangeVerifyRejection.RESULTING_GENERATION_UNAVAILABLE,
-                )
+                ChangeVerifyRejection.RESULTING_GENERATION_UNAVAILABLE,
+            )
             is VerifiedMutationResult.RejectedAfterObservation ->
                 OperationOutcome.Rejected(result.failures.protocolRejection())
         }

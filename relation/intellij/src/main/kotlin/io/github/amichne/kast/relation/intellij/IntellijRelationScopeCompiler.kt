@@ -105,7 +105,7 @@ internal class IntellijRelationScopeCompiler {
         }
         val readableRoots = ownedRoots.filter { root ->
             request.subject.scope.sourceKinds.includes(root.sourceKind) &&
-                request.subject.scope.generatedSources.includes(root.provenance)
+            request.subject.scope.generatedSources.includes(root.provenance)
         }
         if (readableRoots.isEmpty()) {
             return rejected(IntellijRelationScopeFailure.NoReadableSourceRoots)

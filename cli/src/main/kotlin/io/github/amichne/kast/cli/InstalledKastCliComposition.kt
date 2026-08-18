@@ -12,7 +12,6 @@ import io.github.amichne.kast.distribution.managed.RuntimeStore
 import io.github.amichne.kast.distribution.managed.RuntimeStoreAdmission
 import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
 import io.github.amichne.kast.distribution.managed.SemanticRuntimeResolution
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -122,10 +121,10 @@ private class InstalledKastControlProduct private constructor(
                 throw IllegalStateException("installed CLI code source is invalid", failure)
             }
             val libraryDirectory = codeSource.parent
-                ?.takeIf { it.fileName.toString() == "lib" }
-                ?: error("installed CLI must be loaded from its lib directory")
+                                       ?.takeIf { it.fileName.toString() == "lib" }
+                                   ?: error("installed CLI must be loaded from its lib directory")
             val root = libraryDirectory.parent
-                ?: error("installed CLI lib directory has no product root")
+                       ?: error("installed CLI lib directory has no product root")
             check(Files.isDirectory(root.resolve("share/kast"))) {
                 "installed CLI has no share/kast resources"
             }
@@ -142,7 +141,8 @@ private fun installedSchema(
     val json = Json { explicitNulls = false }
     fun objectResource(raw: String): JsonObject =
         json.parseToJsonElement(raw) as? JsonObject
-            ?: error("control schema resource is not an object")
+        ?: error("control schema resource is not an object")
+
     val projection = buildJsonObject {
         put("localFlags", JsonArray(listOf("--help", "--version", "--schema").map(::JsonPrimitive)))
         put("commands", buildJsonArray {
@@ -219,7 +219,7 @@ private class InstalledRuntimeDirectory private constructor(val path: Path) {
                 System.getenv(RUNTIME_DIRECTORY_ENVIRONMENT)
                     ?.takeIf(String::isNotBlank)
                     ?.let(Path::of)
-                    ?: Path.of(System.getProperty("java.io.tmpdir")).resolve("kast-runtime")
+                ?: Path.of(System.getProperty("java.io.tmpdir")).resolve("kast-runtime")
             } catch (_: InvalidPathException) {
                 return InstalledRuntimeDirectoryAdmission.Rejected(
                     InstalledRuntimeDirectoryFailure.INVALID_PATH,

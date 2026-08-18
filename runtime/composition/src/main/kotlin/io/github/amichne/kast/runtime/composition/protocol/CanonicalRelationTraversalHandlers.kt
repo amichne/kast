@@ -25,9 +25,6 @@ import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
-import io.github.amichne.kast.relation.contract.RelationReadRejection as DomainRelationRejection
-import io.github.amichne.kast.relation.contract.RelationReadResult as DomainRelationResult
-import io.github.amichne.kast.relation.contract.RelationRequest as DomainRelationRequest
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
@@ -37,6 +34,9 @@ import io.github.amichne.kast.traversal.contract.TraversalLimitation
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalRejection
+import io.github.amichne.kast.relation.contract.RelationReadRejection as DomainRelationRejection
+import io.github.amichne.kast.relation.contract.RelationReadResult as DomainRelationResult
+import io.github.amichne.kast.relation.contract.RelationRequest as DomainRelationRequest
 import io.github.amichne.kast.traversal.contract.TraversalResult as DomainTraversalResult
 
 private const val SEMANTIC_WORK_MULTIPLIER = 100L
@@ -275,7 +275,10 @@ private fun relationBudget(rawLimit: Int): RelationBudgetAdmission {
  * Admitted establishes aggregate and one-hop bounds where no one-hop authority exceeds its
  * traversal bound. Rejected closes every numeric refinement failure. Raw counts remain here.
  */
-private fun traversalBudget(rawDepth: Int, rawResults: Int): TraversalBudgetAdmission {
+private fun traversalBudget(
+    rawDepth: Int,
+    rawResults: Int,
+): TraversalBudgetAdmission {
     val relation = when (val admitted = relationBudget(rawResults)) {
         is RelationBudgetAdmission.Admitted -> admitted.budget
         RelationBudgetAdmission.Rejected -> return TraversalBudgetAdmission.Rejected

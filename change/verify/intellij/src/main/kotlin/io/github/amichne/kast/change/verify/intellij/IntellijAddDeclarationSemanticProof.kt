@@ -188,7 +188,7 @@ private fun KaSession.hasCompilerCollision(
     val collision = when (declaration.declarationKind()) {
         AddDeclarationKind.FUNCTION,
         AddDeclarationKind.PROPERTY,
-        -> findTopLevelCallables(packageName, Name.identifier(name))
+            -> findTopLevelCallables(packageName, Name.identifier(name))
             .filter { candidate -> !candidate.isDeclarationSymbol(declaration) }
             .any { candidate -> callablesCollide(symbol, candidate) }
 
@@ -216,7 +216,7 @@ private fun KaSession.outboundReferenceCount(
         if (references.isEmpty()) continue
         val targets = references.map { reference ->
             with(this) { reference.resolveToSymbol() }
-                ?: return OutboundReferenceRead.Incomplete
+            ?: return OutboundReferenceRead.Incomplete
         }.distinct()
         if (targets.size != 1) return OutboundReferenceRead.Incomplete
         val target = targets.single()
@@ -232,9 +232,9 @@ private fun KaSession.outboundReferenceCount(
 
 private fun KtNamedDeclaration.hasImplicitResolutionSyntax(): Boolean =
     PsiTreeUtil.findChildOfType(this, KtForExpression::class.java) != null ||
-        PsiTreeUtil.findChildOfType(this, KtArrayAccessExpression::class.java) != null ||
-        PsiTreeUtil.findChildOfType(this, KtDestructuringDeclaration::class.java) != null ||
-        (this is KtProperty && delegateExpression != null)
+    PsiTreeUtil.findChildOfType(this, KtArrayAccessExpression::class.java) != null ||
+    PsiTreeUtil.findChildOfType(this, KtDestructuringDeclaration::class.java) != null ||
+    (this is KtProperty && delegateExpression != null)
 
 private fun KtNamedDeclaration.declarationKind(): AddDeclarationKind = when (this) {
     is KtClass -> when {
@@ -250,19 +250,25 @@ private fun KtNamedDeclaration.declarationKind(): AddDeclarationKind = when (thi
     else -> AddDeclarationKind.CLASS
 }
 
-private fun KaSession.callablesCollide(first: KaSymbol, second: KaCallableSymbol): Boolean = when {
+private fun KaSession.callablesCollide(
+    first: KaSymbol,
+    second: KaCallableSymbol,
+): Boolean = when {
     first is KaFunctionSymbol && second is KaFunctionSymbol ->
         sameReceiver(first, second) && sameContextReceivers(first, second) &&
-            first.valueParameters.size == second.valueParameters.size &&
-            first.valueParameters.zip(second.valueParameters).all { (left, right) ->
-                sameType(left.returnType, right.returnType)
-            }
+        first.valueParameters.size == second.valueParameters.size &&
+        first.valueParameters.zip(second.valueParameters).all { (left, right) ->
+            sameType(left.returnType, right.returnType)
+        }
     first is KaVariableSymbol && second is KaVariableSymbol ->
         sameReceiver(first, second) && sameContextReceivers(first, second)
     else -> false
 }
 
-private fun KaSession.sameReceiver(first: KaCallableSymbol, second: KaCallableSymbol): Boolean {
+private fun KaSession.sameReceiver(
+    first: KaCallableSymbol,
+    second: KaCallableSymbol,
+): Boolean {
     val left = first.receiverParameter?.returnType
     val right = second.receiverParameter?.returnType
     return when {
@@ -277,9 +283,9 @@ private fun KaSession.sameContextReceivers(
     second: KaCallableSymbol,
 ): Boolean =
     first.contextReceivers.size == second.contextReceivers.size &&
-        first.contextReceivers.zip(second.contextReceivers).all { (left, right) ->
-            sameType(left.type, right.type)
-        }
+    first.contextReceivers.zip(second.contextReceivers).all { (left, right) ->
+        sameType(left.type, right.type)
+    }
 
 private fun KaSession.sameType(
     first: org.jetbrains.kotlin.analysis.api.types.KaType,

@@ -11,7 +11,6 @@ sealed interface CompleteAddDeclarationVerificationFailure {
     data object VerificationPlanMismatch : CompleteAddDeclarationVerificationFailure
 
     data object VersionExhausted : CompleteAddDeclarationVerificationFailure
-
 }
 
 /**

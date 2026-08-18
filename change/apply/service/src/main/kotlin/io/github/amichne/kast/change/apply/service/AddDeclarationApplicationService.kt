@@ -227,7 +227,7 @@ class AddDeclarationApplicationService(
                 ApplyRecoveryPreparedAddDeclarationResult.ApplyAdmissionReconciliationRequired.from(
                     recovery,
                 )
-            )
+                                                                                      )
         }
         val command = when (val result = AddDeclarationApplyCommand.fromPreparedRecovery(
             recovery.prepared,

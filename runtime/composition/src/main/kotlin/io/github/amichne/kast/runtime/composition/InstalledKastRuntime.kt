@@ -1,8 +1,8 @@
 package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelFailure
+import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceFailure
 import java.io.IOException

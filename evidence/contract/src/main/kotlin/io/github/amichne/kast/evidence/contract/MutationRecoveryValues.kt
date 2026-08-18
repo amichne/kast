@@ -103,8 +103,8 @@ class RecoveryPreimage private constructor(
 
     override fun equals(other: Any?): Boolean =
         other is RecoveryPreimage &&
-            digest == other.digest &&
-            encodedContent == other.encodedContent
+        digest == other.digest &&
+        encodedContent == other.encodedContent
 
     override fun hashCode(): Int = 31 * digest.hashCode() + encodedContent.hashCode()
 

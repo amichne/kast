@@ -38,7 +38,7 @@ class VerifiedMutationModuleBoundaryTest {
         val injected = definitionWith(ModuleId.CHANGE_VERIFY) { module ->
             module.copy(
                 allowedProjectDependencies = module.allowedProjectDependencies +
-                    ModuleId.WORKSPACE_SERVICE,
+                                             ModuleId.WORKSPACE_SERVICE,
             )
         }
 

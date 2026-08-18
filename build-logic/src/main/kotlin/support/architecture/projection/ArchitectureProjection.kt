@@ -3,8 +3,8 @@ package support.architecture.projection
 import support.architecture.EffectObservation
 import support.architecture.LegacyAllowance
 import support.architecture.LegacyViolationKey
-import support.architecture.MutationDeliveryOwner
 import support.architecture.ModuleRoleConventionRequirement
+import support.architecture.MutationDeliveryOwner
 import support.architecture.ValidatedArchitecturePolicy
 import support.architecture.ValidatedLegacyImplementationBridge
 import support.architecture.ValidatedLegacyMigrationEdge

@@ -12,10 +12,10 @@ import io.github.amichne.kast.change.apply.MutationAuthority
 import io.github.amichne.kast.change.apply.MutationPreconditionAtIntellijBoundary
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
+import org.jetbrains.kotlin.psi.KtFile
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import org.jetbrains.kotlin.psi.KtFile
 
 /** Exact recovery primitive for a source that existed before mutation. */
 internal class IntellijExistingSourceRollback(
@@ -48,12 +48,12 @@ internal class IntellijExistingSourceRollback(
             return rejected(AddDeclarationRollbackFailure.CONTENT_DIVERGED)
         }
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
-            ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
+                   ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
         val target = ReadAction.compute<KtFile?, RuntimeException> {
             PsiManager.getInstance(project).findFile(file) as? KtFile
         } ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
         val document = FileDocumentManager.getInstance().getDocument(file)
-            ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
+                       ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
         return try {
             onEdt {
                 WriteCommandAction.writeCommandAction(project, target)

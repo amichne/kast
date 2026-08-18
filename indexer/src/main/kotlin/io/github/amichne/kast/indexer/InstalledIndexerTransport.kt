@@ -116,9 +116,9 @@ class InstalledIndexerTransport private constructor(
         fun prepare(options: IndexerLaunchOptions): IndexerTransportPreparation {
             val socketPath = options.socketPath
             val socketParent = socketPath.parent
-                ?: return IndexerTransportPreparation.Rejected(
-                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
-                )
+                               ?: return IndexerTransportPreparation.Rejected(
+                                   IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
+                               )
             val canonicalStateParent = try {
                 Files.createDirectories(socketParent)
                 socketParent.toRealPath()
@@ -214,7 +214,10 @@ internal object IndexerWireFrameCodec {
      * Establishes that one response of at most eight MiB was completely written. Rejection is
      * closed by [IndexerFrameWrite.Rejected]. Raw bytes remain inside this transport adapter.
      */
-    fun write(channel: SocketChannel, document: String): IndexerFrameWrite {
+    fun write(
+        channel: SocketChannel,
+        document: String,
+    ): IndexerFrameWrite {
         val payload = document.toByteArray(StandardCharsets.UTF_8)
         if (payload.size > MAX_INDEXER_FRAME_BYTES) return IndexerFrameWrite.Rejected
         val frame = ByteBuffer.allocate(Int.SIZE_BYTES + payload.size)
@@ -235,7 +238,10 @@ internal object IndexerWireFrameCodec {
      * Establishes that the supplied buffer was filled completely. [BufferRead.Rejected] is the
      * closed expected failure. Raw bytes remain inside [IndexerWireFrameCodec].
      */
-    private fun readCompletely(channel: SocketChannel, buffer: ByteBuffer): BufferRead = try {
+    private fun readCompletely(
+        channel: SocketChannel,
+        buffer: ByteBuffer,
+    ): BufferRead = try {
         while (buffer.hasRemaining()) {
             if (channel.read(buffer) < 0) return BufferRead.Rejected
         }

@@ -94,7 +94,7 @@ value class TraversalIdentityFingerprint internal constructor(val value: String)
     init {
         require(
             value.length == TRAVERSAL_IDENTITY_FINGERPRINT_LENGTH &&
-                value.all { character -> character in '0'..'9' || character in 'a'..'f' },
+            value.all { character -> character in '0'..'9' || character in 'a'..'f' },
         )
     }
 }

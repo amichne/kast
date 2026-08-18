@@ -73,9 +73,9 @@ internal fun projectInstalledGradleModel(
     }
     val roots = boundary.sourceRoots.map { sourceRoot ->
         val evidence = sourceRoot.publicationEvidence(boundary.root)
-            ?: return InstalledGradleModelRead.Unavailable(
-                InstalledGradleModelFailure.SourceRootOutsideWorkspace,
-            )
+                       ?: return InstalledGradleModelRead.Unavailable(
+                           InstalledGradleModelFailure.SourceRootOutsideWorkspace,
+                       )
         when (val admitted = SourceRoot.admit(evidence)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return InstalledGradleModelRead.Unavailable(

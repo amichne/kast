@@ -88,13 +88,13 @@ class RelationService(
             is WorkspaceRuntimeState.Blocked,
             WorkspaceRuntimeState.Stopping,
                 -> return RelationLeaseAdmission.Rejected(
-                    when (phase) {
-                        RelationAdmissionPhase.INITIAL ->
-                            RelationReadRejection.WORKSPACE_NOT_READY
-                        RelationAdmissionPhase.REVALIDATION ->
-                            RelationReadRejection.STALE_GENERATION
-                    },
-                )
+                when (phase) {
+                    RelationAdmissionPhase.INITIAL ->
+                        RelationReadRejection.WORKSPACE_NOT_READY
+                    RelationAdmissionPhase.REVALIDATION ->
+                        RelationReadRejection.STALE_GENERATION
+                },
+            )
         }
         return when {
             expected.workspaceRoot != current.workspaceRoot ->
@@ -170,12 +170,12 @@ private fun List<io.github.amichne.kast.relation.contract.RelationFact>.admitFor
 ): RelationCompilerOutputAdmission = if (
     all { fact ->
         fact.subject === subject &&
-            fact.meaning == request.meaning &&
-            fact.generation == subject.lease.generation &&
-            fact.source.lease == subject.lease &&
-            fact.target.lease == subject.lease &&
-            fact.source.scope == subject.scope &&
-            fact.target.scope == subject.scope
+        fact.meaning == request.meaning &&
+        fact.generation == subject.lease.generation &&
+        fact.source.lease == subject.lease &&
+        fact.target.lease == subject.lease &&
+        fact.source.scope == subject.scope &&
+        fact.target.scope == subject.scope
     }
 ) {
     RelationCompilerOutputAdmission.Admitted

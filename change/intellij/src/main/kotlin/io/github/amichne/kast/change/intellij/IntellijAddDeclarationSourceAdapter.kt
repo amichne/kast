@@ -287,7 +287,7 @@ class IntellijChangeSourceAdapter(
             is ChangeIntent.AddDeclaration -> {
                 val anchor = target.declarations.filter { declaration ->
                     declaration.textRange.startOffset == intent.target.range.startInclusive &&
-                        declaration.textRange.endOffset == intent.target.range.endExclusive
+                    declaration.textRange.endOffset == intent.target.range.endExclusive
                 }
                 if (anchor.size != 1) {
                     return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
@@ -306,13 +306,13 @@ class IntellijChangeSourceAdapter(
             is ChangeIntent.RenameSymbol -> {
                 if (authority.mutationsAtIntellijBoundary().any { mutation ->
                         mutation !is SourceTextMutation.Replace ||
-                            mutation.range.endExclusive > document.textLength ||
-                            document.getText(
-                                com.intellij.openapi.util.TextRange(
-                                    mutation.range.startInclusive,
-                                    mutation.range.endExclusive,
-                                ),
-                            ) != mutation.expected.value
+                        mutation.range.endExclusive > document.textLength ||
+                        document.getText(
+                            com.intellij.openapi.util.TextRange(
+                                mutation.range.startInclusive,
+                                mutation.range.endExclusive,
+                            ),
+                        ) != mutation.expected.value
                     }
                 ) {
                     return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
@@ -322,8 +322,8 @@ class IntellijChangeSourceAdapter(
                 val selected = intent.target.target
                 val declarations = target.declarations.filter { declaration ->
                     declaration.textRange.startOffset == selected.range.startInclusive &&
-                        declaration.textRange.endOffset == selected.range.endExclusive &&
-                        declaration.text == intent.target.expected.value
+                    declaration.textRange.endOffset == selected.range.endExclusive &&
+                    declaration.text == intent.target.expected.value
                 }
                 if (declarations.size != 1) {
                     return IntellijSourcePreparation.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
@@ -343,58 +343,9 @@ class IntellijChangeSourceAdapter(
         return IntellijSourcePreparation.Ready(file, target, document)
     }
 
-    /**
-     * Proof transition: `MutationAuthority -> Refinement<IntellijMutationInput,
-     * SourceWriteFailure>`.
-     *
-     * Establishes an existing-source preimage plus only exact in-file transformations for the
-     * document protocol. [SourceWriteFailure] closes absent or whole-file creation authority.
-     * Raw text extraction remains inside this adapter boundary.
-     */
-    private fun MutationAuthority.toIntellijInput(): Refinement<
-        IntellijMutationInput,
-        SourceWriteFailure,
-    > {
-        val preimage = when (val expected = preconditionAtIntellijBoundary()) {
-            MutationPreconditionAtIntellijBoundary.Absent -> return Refinement.Rejected(
-                SourceWriteFailure.PREIMAGE_CHANGED,
-            )
-            is MutationPreconditionAtIntellijBoundary.Existing -> expected.text
-        }
-        val mutations = mutationsAtIntellijBoundary().map { mutation ->
-            when (mutation) {
-                is SourceTextMutation.CreateFile -> return Refinement.Rejected(
-                    SourceWriteFailure.MUTATION_FAILED,
-                )
-                is SourceTextMutation.InsertAfterDeclaration -> IntellijTextMutation(
-                    mutation.anchor.endExclusive,
-                    mutation.anchor.endExclusive,
-                    "\n\n${mutation.declaration.value}",
-                )
-                is SourceTextMutation.Replace -> IntellijTextMutation(
-                    mutation.range.startInclusive,
-                    mutation.range.endExclusive,
-                    mutation.replacement.value,
-                )
-                is SourceTextMutation.ReplaceDeclaration -> IntellijTextMutation(
-                    mutation.range.startInclusive,
-                    mutation.range.endExclusive,
-                    mutation.replacement.value,
-                )
-            }
-        }
-        return Refinement.Refined(
-            IntellijMutationInput(
-                source.path.value,
-                preimage,
-                postimageTextAtIntellijBoundary(),
-                mutations,
-            ),
-        )
-    }
-
     private fun rejectedObservation(failure: SourceObservationFailure) =
         SourceObservationResult.Rejected(failure)
+
     private fun rejectedRollback(failure: AddDeclarationRollbackFailure) =
         AddDeclarationRollbackResult.Rejected(failure)
 }

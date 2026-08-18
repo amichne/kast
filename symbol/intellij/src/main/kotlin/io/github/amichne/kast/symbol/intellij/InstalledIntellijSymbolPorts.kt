@@ -55,9 +55,9 @@ class InstalledIntellijSymbolPorts private constructor(
                         SymbolCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
                     )
                     val current = workspaces.currentLease()
-                        ?: return@SymbolCompilerPort SymbolCompilation.Rejected(
-                            SymbolCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
-                        )
+                                  ?: return@SymbolCompilerPort SymbolCompilation.Rejected(
+                                      SymbolCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
+                                  )
                     if (current != request.scope.lease) {
                         return@SymbolCompilerPort SymbolCompilation.Rejected(
                             SymbolCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,

@@ -7,12 +7,10 @@ import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.traversal.contract.TraversalCheckpoint
 import io.github.amichne.kast.traversal.contract.TraversalContinuation
-import io.github.amichne.kast.traversal.contract.TraversalDepth
 import io.github.amichne.kast.traversal.contract.TraversalFrontierEntry
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
 import io.github.amichne.kast.traversal.contract.TraversalNode
 import io.github.amichne.kast.traversal.contract.TraversalOperations
-import io.github.amichne.kast.traversal.contract.TraversalPage
 import io.github.amichne.kast.traversal.contract.TraversalPendingRead
 import io.github.amichne.kast.traversal.contract.TraversalPendingState
 import io.github.amichne.kast.traversal.contract.TraversalPlan
@@ -184,24 +182,24 @@ class TraversalService internal constructor(
         next: TraversalFrontierEntry,
         accounting: TraversalAccounting,
     ): TraversalReadAdmission = when {
-            next.depth.value >= plan.budget.depth.value ->
-                TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
-            accounting.expandedFrontier >= plan.budget.frontier.value ->
-                TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)
-            plan.budget.records.value - accounting.records.size <
-                plan.budget.oneHop.resources.resultLimit.value ->
-                TraversalReadAdmission.Limited(TraversalLimitation.RECORD_LIMIT_REACHED)
-            plan.budget.returnedBytes.value - accounting.encodedBytes <
-                plan.budget.oneHop.returnedBytes.value ->
-                TraversalReadAdmission.Limited(TraversalLimitation.BYTE_LIMIT_REACHED)
-            plan.budget.workUnits.value - accounting.examinedWorkUnits <
-                plan.budget.oneHop.resources.workUnitLimit.value ->
-                TraversalReadAdmission.Limited(TraversalLimitation.WORK_LIMIT_REACHED)
-            plan.budget.elapsedTime.value - accounting.elapsedMillis <
-                plan.budget.oneHop.resources.elapsedTimeLimit.value ->
-                TraversalReadAdmission.Limited(TraversalLimitation.TIME_LIMIT_REACHED)
-            else -> TraversalReadAdmission.Admitted
-        }
+        next.depth.value >= plan.budget.depth.value ->
+            TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
+        accounting.expandedFrontier >= plan.budget.frontier.value ->
+            TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)
+        plan.budget.records.value - accounting.records.size <
+        plan.budget.oneHop.resources.resultLimit.value ->
+            TraversalReadAdmission.Limited(TraversalLimitation.RECORD_LIMIT_REACHED)
+        plan.budget.returnedBytes.value - accounting.encodedBytes <
+        plan.budget.oneHop.returnedBytes.value ->
+            TraversalReadAdmission.Limited(TraversalLimitation.BYTE_LIMIT_REACHED)
+        plan.budget.workUnits.value - accounting.examinedWorkUnits <
+        plan.budget.oneHop.resources.workUnitLimit.value ->
+            TraversalReadAdmission.Limited(TraversalLimitation.WORK_LIMIT_REACHED)
+        plan.budget.elapsedTime.value - accounting.elapsedMillis <
+        plan.budget.oneHop.resources.elapsedTimeLimit.value ->
+            TraversalReadAdmission.Limited(TraversalLimitation.TIME_LIMIT_REACHED)
+        else -> TraversalReadAdmission.Admitted
+    }
 
     /**
      * Proof transition: `(OneHopRelationRequest, RelationBatch) -> ReaderBatchAdmission`.
@@ -220,15 +218,15 @@ class TraversalService internal constructor(
             OneHopRelationPosition.Start -> responsePosition is RelationReadPosition.Start
             is OneHopRelationPosition.Resume ->
                 responsePosition is RelationReadPosition.Resume &&
-                    responsePosition.continuation.fingerprint ==
-                    position.continuation.fingerprint
+                responsePosition.continuation.fingerprint ==
+                position.continuation.fingerprint
         }
         val matches = relationRequest.subject.fingerprint == request.node.fingerprint &&
-            relationRequest.subject.lease == request.node.endpoint.lease &&
-            relationRequest.subject.scope == request.scope &&
-            relationRequest.meaning == request.meaning &&
-            relationRequest.budget == request.budget &&
-            positionMatches
+                      relationRequest.subject.lease == request.node.endpoint.lease &&
+                      relationRequest.subject.scope == request.scope &&
+                      relationRequest.meaning == request.meaning &&
+                      relationRequest.budget == request.budget &&
+                      positionMatches
         return if (matches) ReaderBatchAdmission.Accepted else ReaderBatchAdmission.Rejected
     }
 

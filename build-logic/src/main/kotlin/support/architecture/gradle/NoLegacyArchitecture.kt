@@ -69,11 +69,11 @@ internal object NoLegacyArchitectureInspection {
     )
     private val fallbackAuthority = Regex(
         "(?:Fallback\\w*(?:Backend|Authority|Route|Store|Server|Implementation)|" +
-            "(?:Backend|Authority|Route|Store|Server|Implementation)Fallback)",
+        "(?:Backend|Authority|Route|Store|Server|Implementation)Fallback)",
     )
     private val compatibilityRoute = Regex(
         "(?:\\bCompatibilityRoute\\b|\\bLegacy\\w*(?:Route|Binding|Adapter)\\b|" +
-            "io\\.github\\.amichne\\.kast\\.[A-Za-z0-9_.]*compatibility\\.)",
+        "io\\.github\\.amichne\\.kast\\.[A-Za-z0-9_.]*compatibility\\.)",
     )
 
     /**
@@ -109,7 +109,7 @@ internal object NoLegacyArchitectureInspection {
                 .forEach { source ->
                     add(LegacyArchitectureFinding.FallbackAuthority(source.path))
                 }
-            }
+        }
 }
 
 @CacheableTask

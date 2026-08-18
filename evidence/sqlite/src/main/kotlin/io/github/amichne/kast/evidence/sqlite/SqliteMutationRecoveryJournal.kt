@@ -270,7 +270,10 @@ private fun <T> rejected(
 ): MutationRecoveryPersistResult<T> where T : MutationRecoveryRecord =
     MutationRecoveryPersistResult.Rejected(failure)
 
-private fun rollbackBeforeRethrow(connection: Connection, failure: Throwable): Nothing {
+private fun rollbackBeforeRethrow(
+    connection: Connection,
+    failure: Throwable,
+): Nothing {
     runCatching { connection.rollback() }
     throw failure
 }

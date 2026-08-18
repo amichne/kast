@@ -1,8 +1,8 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import java.util.Base64
 import kotlinx.serialization.Serializable
+import java.util.Base64
 
 enum class ExactFileContentProofFailure {
     SHA256_INVALID,

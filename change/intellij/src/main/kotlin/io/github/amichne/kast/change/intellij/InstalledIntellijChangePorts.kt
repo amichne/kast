@@ -112,7 +112,7 @@ class InstalledIntellijChangePorts private constructor(
                 },
                 recoveryRollback = recovery@{ record ->
                     val authority = authorities[record.binding.value]
-                        ?: return@recovery unavailableRollback()
+                                    ?: return@recovery unavailableRollback()
                     adapter()?.rollback(authority, record) ?: unavailableRollback()
                 },
                 intentCompiler = { selector, raw ->
@@ -162,15 +162,15 @@ private fun compileIntentRead(
     declaration: AddDeclarationSourceText,
 ): InstalledAddDeclarationIntentCompilation {
     val source = selector.file as? SymbolDiscoveryFileIdentity.Workspace
-        ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
+                 ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
     val file = LocalFileSystem.getInstance().findFileByNioFile(Path.of(source.path.value))
-        ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
+               ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
     if (!file.isValid) return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
     val target = PsiManager.getInstance(project).findFile(file) as? KtFile
-        ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_NOT_KOTLIN)
+                 ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_NOT_KOTLIN)
     val anchors = target.declarations.filter { candidate ->
         candidate.textRange.startOffset == selector.range.startInclusive &&
-            candidate.textRange.endOffset == selector.range.endExclusive
+        candidate.textRange.endOffset == selector.range.endExclusive
     }
     if (anchors.size != 1) return rejected(InstalledAddDeclarationIntentFailure.TARGET_MOVED)
     val parsed = try {
@@ -182,9 +182,9 @@ private fun compileIntentRead(
         return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
     }
     val name = parsed.name
-        ?: return rejected(InstalledAddDeclarationIntentFailure.COMPILER_IDENTITY_UNAVAILABLE)
+               ?: return rejected(InstalledAddDeclarationIntentFailure.COMPILER_IDENTITY_UNAVAILABLE)
     val kind = parsed.addDeclarationKind()
-        ?: return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
+               ?: return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
     val delta = when (val admitted = ExpectedAddDeclarationDelta.admit(
         target.packageFqName.asString(),
         name,

@@ -108,7 +108,7 @@ class AddDeclarationApplyServiceTest {
 
         val rejected = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RejectedBeforeAdmission,
-        >(service.apply(fixture.recovery))
+            >(service.apply(fixture.recovery))
 
         assertInstanceOf<AddDeclarationPreApplyFailure.BeginPersistence>(rejected.failure)
         assertFalse(executorCalled.get())
@@ -127,7 +127,7 @@ class AddDeclarationApplyServiceTest {
 
         val recovery = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RecoveryRequiredAfterMutation,
-        >(
+            >(
             service.apply(fixture.recovery),
         )
         val closure = assertInstanceOf<AddDeclarationRecoveryRequiredFailure.Closure>(recovery.failure)
@@ -149,7 +149,7 @@ class AddDeclarationApplyServiceTest {
 
         val recovery = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RecoveryRequiredBeforeMutation,
-        >(
+            >(
             service.apply(fixture.recovery),
         )
 
@@ -168,7 +168,7 @@ class AddDeclarationApplyServiceTest {
 
         val recovery = assertInstanceOf<
             ApplyRecoveryPreparedAddDeclarationResult.RecoveryRequiredAfterMutation,
-        >(
+            >(
             service.apply(fixture.recovery),
         )
 

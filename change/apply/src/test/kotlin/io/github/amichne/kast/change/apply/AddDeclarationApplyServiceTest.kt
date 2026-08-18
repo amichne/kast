@@ -173,7 +173,7 @@ private class InMemoryApplyRecoveryStore : MutationRecoveryEvidenceStore {
 
     override fun load(binding: MutationPlanBinding): MutationRecoveryLoadResult =
         records[binding.value]?.let(MutationRecoveryLoadResult::Found)
-            ?: MutationRecoveryLoadResult.Absent(binding)
+        ?: MutationRecoveryLoadResult.Absent(binding)
 
     fun current(): MutationRecoveryRecord = records.values.single()
 

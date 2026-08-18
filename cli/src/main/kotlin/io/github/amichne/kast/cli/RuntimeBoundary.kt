@@ -8,8 +8,8 @@ import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
-import java.nio.charset.StandardCharsets
 import java.nio.channels.SocketChannel
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -24,7 +24,7 @@ class RuntimeEndpoint private constructor(
 ) {
     override fun equals(other: Any?): Boolean =
         other is RuntimeEndpoint &&
-            root == other.root && runtimeId == other.runtimeId && socketPath == other.socketPath
+        root == other.root && runtimeId == other.runtimeId && socketPath == other.socketPath
 
     override fun hashCode(): Int =
         31 * (31 * root.hashCode() + runtimeId.hashCode()) + socketPath.hashCode()
@@ -280,7 +280,10 @@ fun interface RuntimeDemander {
      * Establishes that the runtime for the exact root is reachable at the requested endpoint.
      * [RuntimeAdmissionFailure] is the closed expected failure.
      */
-    fun demand(root: CanonicalRoot, endpoint: RuntimeEndpoint): RuntimeAdmission
+    fun demand(
+        root: CanonicalRoot,
+        endpoint: RuntimeEndpoint,
+    ): RuntimeAdmission
 }
 
 private enum class RuntimeStartupBound(
@@ -297,7 +300,10 @@ class ExactRootProcessRuntimeDemander(
     private val processStarter: RuntimeProcessStarter = JdkRuntimeProcessStarter,
     private val endpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
 ) : RuntimeDemander {
-    override fun demand(root: CanonicalRoot, endpoint: RuntimeEndpoint): RuntimeAdmission {
+    override fun demand(
+        root: CanonicalRoot,
+        endpoint: RuntimeEndpoint,
+    ): RuntimeAdmission {
         if (endpoint.root != root) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE)
         }
@@ -347,7 +353,10 @@ class ManagedExactRootRuntimeDemander(
     private val manifest: SemanticRuntimeManifest,
     private val resolver: InstalledSemanticRuntimeResolver,
 ) : RuntimeDemander {
-    override fun demand(root: CanonicalRoot, endpoint: RuntimeEndpoint): RuntimeAdmission {
+    override fun demand(
+        root: CanonicalRoot,
+        endpoint: RuntimeEndpoint,
+    ): RuntimeAdmission {
         if (endpoint.runtimeId != manifest.runtimeId) {
             return RuntimeAdmission.Rejected(
                 RuntimeAdmissionFailure.RUNTIME_IDENTITY_MISMATCH,

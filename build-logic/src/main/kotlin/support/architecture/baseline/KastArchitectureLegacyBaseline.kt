@@ -1,6 +1,5 @@
 package support.architecture.baseline
 
-import support.architecture.MutationDeliveryTaskId
 import support.architecture.EffectObservation
 import support.architecture.ForbiddenEffect
 import support.architecture.JvmMember
@@ -11,6 +10,7 @@ import support.architecture.LegacyMigrationEdgePolicy
 import support.architecture.LegacyMigrationLifecycle
 import support.architecture.LegacyViolationKey
 import support.architecture.ModuleId
+import support.architecture.MutationDeliveryTaskId
 import support.architecture.ProjectDependencyObservation
 
 // @formatter:off

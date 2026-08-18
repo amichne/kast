@@ -2,7 +2,6 @@ package io.github.amichne.kast.distribution.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.net.URI
 import java.nio.file.InvalidPathException
@@ -133,6 +132,7 @@ sealed interface SemanticRuntimeSourceSelection {
     data class Preseeded(
         val source: SemanticRuntimeSource.PreseededArchive,
     ) : SemanticRuntimeSourceSelection
+
     data class Rejected(val failure: SemanticRuntimeFailure) : SemanticRuntimeSourceSelection
 }
 

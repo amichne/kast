@@ -160,7 +160,10 @@ class RuntimeClasspathAssertionsTest {
         assertEquals(listOf("libs/indexer-1.0-all.jar"), entries)
     }
 
-    private fun writeJar(path: Path, vararg entryNames: String) {
+    private fun writeJar(
+        path: Path,
+        vararg entryNames: String,
+    ) {
         Files.createDirectories(path.parent)
         ZipOutputStream(Files.newOutputStream(path)).use { output ->
             entryNames.forEach { entryName ->

@@ -7,7 +7,6 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationOpening
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationPreparation
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
-import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateReconciliation
@@ -167,8 +166,8 @@ class WorkspacePublicationCoordinator(
             is WorkspaceRuntimeState.Blocked,
             WorkspaceRuntimeState.Stopping,
                 -> ResultingCycleBeginning.Rejected(
-                    ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable,
-                )
+                ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable,
+            )
         }
     }
 
@@ -182,14 +181,14 @@ class WorkspacePublicationCoordinator(
             WorkspaceRuntimeState.Reconciling,
             is WorkspaceRuntimeState.Blocked,
                 -> {
-                    val cycle = PublicationCycle(
-                        revision = observedRevision,
-                        signals = pendingSignals.toSet(),
-                    )
-                    pendingSignals.clear()
-                    runtimeState = WorkspaceRuntimeState.Reconciling
-                    CycleBeginning.Started(cycle)
-                }
+                val cycle = PublicationCycle(
+                    revision = observedRevision,
+                    signals = pendingSignals.toSet(),
+                )
+                pendingSignals.clear()
+                runtimeState = WorkspaceRuntimeState.Reconciling
+                CycleBeginning.Started(cycle)
+            }
         }
     }
 

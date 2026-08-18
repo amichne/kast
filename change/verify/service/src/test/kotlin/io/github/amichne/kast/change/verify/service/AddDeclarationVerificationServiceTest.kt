@@ -171,7 +171,7 @@ class AddDeclarationVerificationServiceTest {
 
         val result = assertInstanceOf<
             VerifyAppliedAddDeclarationResult.CompletionReconciliationRequired,
-        >(service.verify(applied))
+            >(service.verify(applied))
 
         assertEquals(applied, result.applied)
         assertEquals(publication, result.observation.publication)

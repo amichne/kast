@@ -157,7 +157,7 @@ data class TraversalPendingRead private constructor(
             continuation: RelationContinuation,
         ): Refinement<TraversalPendingRead, TraversalPendingReadFailure> = when {
             entry.node.endpoint.lease != plan.start.lease ||
-                entry.node.endpoint.scope != plan.scope ->
+            entry.node.endpoint.scope != plan.scope ->
                 Refinement.Rejected(TraversalPendingReadFailure.FRONTIER_MISMATCH)
             continuation.subject != entry.node.fingerprint ->
                 Refinement.Rejected(TraversalPendingReadFailure.SELECTOR_MISMATCH)
@@ -274,7 +274,7 @@ value class TraversalContinuationFingerprint internal constructor(val value: Str
     init {
         require(
             value.length == TRAVERSAL_CONTINUATION_FINGERPRINT_LENGTH &&
-                value.all { character -> character in '0'..'9' || character in 'a'..'f' },
+            value.all { character -> character in '0'..'9' || character in 'a'..'f' },
         )
     }
 }

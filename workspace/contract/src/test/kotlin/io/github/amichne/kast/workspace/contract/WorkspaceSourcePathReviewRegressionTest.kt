@@ -1,11 +1,11 @@
 package io.github.amichne.kast.workspace.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
+import java.nio.file.Path
 
 class WorkspaceSourcePathReviewRegressionTest {
     @Test

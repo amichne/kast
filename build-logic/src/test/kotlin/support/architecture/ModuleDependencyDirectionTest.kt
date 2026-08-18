@@ -237,7 +237,7 @@ class ModuleDependencyDirectionTest {
         assertEquals(ModuleRole.COMPOSITION, composition.role)
         assertEquals(
             architecture.modules.keys - legacyHosts -
-                setOf(ModuleId.CLI, ModuleId.RUNTIME_COMPOSITION),
+            setOf(ModuleId.CLI, ModuleId.RUNTIME_COMPOSITION),
             composition.allowedProjectDependencies,
         )
         assertEquals(

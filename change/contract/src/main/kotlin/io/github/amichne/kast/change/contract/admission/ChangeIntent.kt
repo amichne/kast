@@ -145,12 +145,18 @@ class RenameSymbolOccurrenceSet private constructor(
             if (keys.distinct().size != keys.size) {
                 return Refinement.Rejected(RenameSymbolOccurrenceSetFailure.DUPLICATE)
             }
-            if (keys != keys.sortedWith(compareBy<Triple<String, Int, Int>>({ it.first }, { it.second }, { it.third }))) {
+            if (keys != keys.sortedWith(
+                    compareBy<Triple<String, Int, Int>>(
+                        { it.first },
+                        { it.second },
+                        { it.third })
+                )
+            ) {
                 return Refinement.Rejected(RenameSymbolOccurrenceSetFailure.NON_DETERMINISTIC_ORDER)
             }
             if (occurrences.zipWithNext().any { (left, right) ->
                     left.source == right.source &&
-                        left.range.endExclusive > right.range.startInclusive
+                    left.range.endExclusive > right.range.startInclusive
                 }
             ) {
                 return Refinement.Rejected(RenameSymbolOccurrenceSetFailure.OVERLAPPING)

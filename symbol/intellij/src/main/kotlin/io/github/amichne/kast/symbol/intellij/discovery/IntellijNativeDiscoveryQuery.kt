@@ -3,6 +3,7 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.navigation.ChooseByNameContributorEx
 import com.intellij.navigation.NavigationItem
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.psi.codeStyle.NameUtil
@@ -192,11 +193,19 @@ internal class IntellijNativeDiscoveryQuery(
                 throw cancelled
             } catch (_: IndexNotReadyException) {
                 collector.qualifyAndHalt(SymbolDiscoveryQualification.DUMB_MODE_TRANSITION)
-            } catch (_: RuntimeException) {
+            } catch (failure: RuntimeException) {
+                LOG.warn(
+                    "Native symbol discovery provider failed: ${contributor.javaClass.name}",
+                    failure,
+                )
                 collector.qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
             }
         }
         return collector.finish()
+    }
+
+    private companion object {
+        val LOG: Logger = Logger.getInstance(IntellijNativeDiscoveryQuery::class.java)
     }
 }
 

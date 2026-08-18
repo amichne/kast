@@ -64,7 +64,7 @@ class SqliteWorkspaceGenerationPublication private constructor(
      */
     private fun OpenWorkspacePublication.requireOwned(): SqliteWorkspacePublicationSession =
         (this as? OwnedOpen)?.takeIf { it.owner === owner }?.session
-            ?: error("Open workspace publication belongs to another SQLite authority")
+        ?: error("Open workspace publication belongs to another SQLite authority")
 
     /**
      * Proof transition: `PreparedWorkspacePublication -> SqliteWorkspacePublicationSession`.
@@ -74,7 +74,7 @@ class SqliteWorkspaceGenerationPublication private constructor(
      */
     private fun PreparedWorkspacePublication.requireOwned(): SqliteWorkspacePublicationSession =
         (this as? OwnedPrepared)?.takeIf { it.owner === owner }?.session
-            ?: error("Prepared workspace publication belongs to another SQLite authority")
+        ?: error("Prepared workspace publication belongs to another SQLite authority")
 
     internal companion object {
         fun faultInjecting(

@@ -55,68 +55,68 @@ internal fun captureInstalledGradleModel(
     workspaceRoot: Path,
 ): Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure> =
     ReadAction.nonBlocking<Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure>> model@{
-    val root = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRoot)) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> return@model Refinement.Rejected(
-            InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE,
-        )
-    }
-    val projectData = ProjectDataManager.getInstance()
-    val projects = projectData.getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
-        .filter { info -> Path.of(info.externalProjectPath).toAbsolutePath().normalize() == workspaceRoot }
-    projects.forEach { info -> projectData.ensureTheDataIsReadyToUse(info.externalProjectStructure) }
-    if (projects.isEmpty()) {
-        return@model Refinement.Rejected(
-            InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_UNAVAILABLE,
-        )
-    }
-    if (projects.any { !it.isComplete() }) {
-        return@model Refinement.Rejected(
-            InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_INCOMPLETE,
-        )
-    }
-    val boundaries = projects.flatMap { info -> info.sourceRootBoundaries() }
-        .distinct()
-        .sortedWith(compareBy({ it.sourceRoot.toString() }, { it.ideaModuleName }))
-    if (boundaries.isEmpty()) {
-        return@model Refinement.Rejected(
-            InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE,
-        )
-    }
-    val sourceIdentities = when (val captured = captureSourceContentIdentities(
-        workspaceRoot,
-        boundaries,
-    )) {
-        is InstalledSourceContentIdentityCapture.Captured -> captured.identities
-        is InstalledSourceContentIdentityCapture.Rejected -> return@model Refinement.Rejected(
-            InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE,
-        )
-    }
-    val identities = buildList {
-        addAll(sourceIdentities)
-        projects.sortedBy(ExternalProjectInfo::getExternalProjectPath).forEach { info ->
-            add("project:${info.externalProjectPath}")
-            add("import:${info.lastSuccessfulImportTimestamp}")
+        val root = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(workspaceRoot)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return@model Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.ROOT_UNAVAILABLE,
+            )
         }
-        ModuleManager.getInstance(project).modules
-            .filterNot { it.isDisposed }
-            .sortedBy { it.name }
-            .forEach { module ->
-                val roots = ModuleRootManager.getInstance(module)
-                add("module:${module.name}")
-                roots.sdk?.let { sdk -> add("sdk:${module.name}:${sdk.name}:${sdk.versionString}") }
-                roots.orderEntries.sortedBy { it.presentableName }.forEach { entry ->
-                    add("order:${module.name}:${entry.presentableName}:${entry.isValid}")
-                }
+        val projectData = ProjectDataManager.getInstance()
+        val projects = projectData.getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
+            .filter { info -> Path.of(info.externalProjectPath).toAbsolutePath().normalize() == workspaceRoot }
+        projects.forEach { info -> projectData.ensureTheDataIsReadyToUse(info.externalProjectStructure) }
+        if (projects.isEmpty()) {
+            return@model Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_UNAVAILABLE,
+            )
+        }
+        if (projects.any { !it.isComplete() }) {
+            return@model Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_INCOMPLETE,
+            )
+        }
+        val boundaries = projects.flatMap { info -> info.sourceRootBoundaries() }
+            .distinct()
+            .sortedWith(compareBy({ it.sourceRoot.toString() }, { it.ideaModuleName }))
+        if (boundaries.isEmpty()) {
+            return@model Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE,
+            )
+        }
+        val sourceIdentities = when (val captured = captureSourceContentIdentities(
+            workspaceRoot,
+            boundaries,
+        )) {
+            is InstalledSourceContentIdentityCapture.Captured -> captured.identities
+            is InstalledSourceContentIdentityCapture.Rejected -> return@model Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE,
+            )
+        }
+        val identities = buildList {
+            addAll(sourceIdentities)
+            projects.sortedBy(ExternalProjectInfo::getExternalProjectPath).forEach { info ->
+                add("project:${info.externalProjectPath}")
+                add("import:${info.lastSuccessfulImportTimestamp}")
             }
-    }.distinct().sorted()
-    if (identities.isEmpty() || identities.any(String::isBlank)) {
-        return@model Refinement.Rejected(
-            InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE,
-        )
-    }
-    Refinement.Refined(InstalledGradleModelCapture(root, boundaries, identities))
-}.inSmartMode(project).executeSynchronously()
+            ModuleManager.getInstance(project).modules
+                .filterNot { it.isDisposed }
+                .sortedBy { it.name }
+                .forEach { module ->
+                    val roots = ModuleRootManager.getInstance(module)
+                    add("module:${module.name}")
+                    roots.sdk?.let { sdk -> add("sdk:${module.name}:${sdk.name}:${sdk.versionString}") }
+                    roots.orderEntries.sortedBy { it.presentableName }.forEach { entry ->
+                        add("order:${module.name}:${entry.presentableName}:${entry.isValid}")
+                    }
+                }
+        }.distinct().sorted()
+        if (identities.isEmpty() || identities.any(String::isBlank)) {
+            return@model Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE,
+            )
+        }
+        Refinement.Refined(InstalledGradleModelCapture(root, boundaries, identities))
+    }.inSmartMode(project).executeSynchronously()
 
 private enum class InstalledSourceContentIdentityFailure {
     OUTSIDE_WORKSPACE,
@@ -224,8 +224,8 @@ private fun Path.portablePath(): String = joinToString("/") { segment -> segment
 private fun ExternalProjectInfo.isComplete(): Boolean =
     externalProjectStructure?.let { structure ->
         structure.isReady &&
-            lastSuccessfulImportTimestamp > 0 &&
-            lastSuccessfulImportTimestamp >= lastImportTimestamp
+        lastSuccessfulImportTimestamp > 0 &&
+        lastSuccessfulImportTimestamp >= lastImportTimestamp
     } == true
 
 private fun ExternalProjectInfo.sourceRootBoundaries(): List<WorkspaceSourceRootBoundary> {
@@ -242,7 +242,7 @@ private fun GradleSourceSetData.sourceRootBoundaries(
     node: DataNode<*>,
 ): List<WorkspaceSourceRootBoundary> {
     val projectPath = (node.parent?.data as? ModuleData)?.gradlePathOrNull
-        ?: return emptyList()
+                      ?: return emptyList()
     val sourceSetName = externalName.substringAfterLast(':')
     val buildRoot = Path.of(linkedExternalProjectPath).toAbsolutePath().normalize()
     val boundaries = mutableListOf<WorkspaceSourceRootBoundary>()

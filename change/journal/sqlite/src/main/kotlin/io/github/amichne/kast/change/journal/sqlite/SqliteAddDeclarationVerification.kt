@@ -103,7 +103,7 @@ internal fun SqliteJournalConnections.completeVerification(
                     }
                     SqliteAddDeclarationPlanRecordLoad.Absent,
                     SqliteAddDeclarationPlanRecordLoad.Corrupt,
-                    -> CompleteAddDeclarationVerificationResult.Rejected(
+                        -> CompleteAddDeclarationVerificationResult.Rejected(
                         AddDeclarationPlanJournalFailure.CorruptRecord,
                     )
                 }
@@ -136,7 +136,7 @@ internal fun SqliteJournalConnections.completeVerification(
                         VerificationTransactionDisposition.UNPROVEN
                     is CompleteAddDeclarationVerificationResult.Completed,
                     is CompleteAddDeclarationVerificationResult.Rejected,
-                    -> VerificationTransactionDisposition.ROLLBACK_PROVEN
+                        -> VerificationTransactionDisposition.ROLLBACK_PROVEN
                 }
                 return@use rollback
             }
@@ -157,7 +157,7 @@ internal fun SqliteJournalConnections.completeVerification(
                 )
             VerificationTransactionDisposition.NOT_STARTED,
             VerificationTransactionDisposition.ROLLBACK_PROVEN,
-            -> CompleteAddDeclarationVerificationResult.Rejected(
+                -> CompleteAddDeclarationVerificationResult.Rejected(
                 AddDeclarationPlanJournalFailure.StorageUnavailable,
             )
         }

@@ -10,15 +10,16 @@ import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
+import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.channels.SocketChannel
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class InstalledIndexerLaunchTest {
     private val runtimeId = "sha256:${"a".repeat(64)}"
+
     @TempDir
     lateinit var temporaryDirectory: Path
 
@@ -76,9 +77,9 @@ class InstalledIndexerLaunchTest {
         try {
             val socketFileName = "kast.sock"
             val paddingBytes = MACOS_JDK_UNIX_SOCKET_PATH_MAX_BYTES -
-                socketRoot.utf8ByteCount() -
-                socketFileName.toByteArray(StandardCharsets.UTF_8).size -
-                2
+                               socketRoot.utf8ByteCount() -
+                               socketFileName.toByteArray(StandardCharsets.UTF_8).size -
+                               2
             assertTrue(paddingBytes > 0, "temporary socket root is too long")
 
             val lexicalParent = Files.createDirectory(

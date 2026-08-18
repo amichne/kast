@@ -1,8 +1,7 @@
 package io.github.amichne.kast.runtime.composition
 
-import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
-import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelReadOperations
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelBoundary
+import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelRead
 import io.github.amichne.kast.runtime.composition.platform.InstalledWorkspaceModelAdapter
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate

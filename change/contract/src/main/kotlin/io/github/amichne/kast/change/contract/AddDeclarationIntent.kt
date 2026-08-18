@@ -1,8 +1,8 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.file.Path
 import kotlinx.serialization.Serializable
+import java.nio.file.Path
 
 private val SHA256_FORMAT = Regex("[0-9a-f]{64}")
 

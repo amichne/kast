@@ -13,13 +13,13 @@ import io.github.amichne.kast.workspace.contract.WorkspaceResourceActivity
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceInitiationResult
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservation
 import io.github.amichne.kast.workspace.contract.WorkspaceResourcePolicy
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 
 class WorkspaceResourceAdmissionControllerReviewRegressionTest {
     @Test

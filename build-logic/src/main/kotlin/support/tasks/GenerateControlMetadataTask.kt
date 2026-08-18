@@ -30,10 +30,14 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val licenseFile: RegularFileProperty
 
-    @get:Input abstract val productVersion: Property<String>
-    @get:Input abstract val ideaBuild: Property<String>
-    @get:Input abstract val kotlinPluginBuild: Property<String>
-    @get:Input abstract val runtimeBaseUrl: Property<String>
+    @get:Input
+    abstract val productVersion: Property<String>
+    @get:Input
+    abstract val ideaBuild: Property<String>
+    @get:Input
+    abstract val kotlinPluginBuild: Property<String>
+    @get:Input
+    abstract val runtimeBaseUrl: Property<String>
 
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
@@ -46,10 +50,10 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         val archive = runtimeArchive.get().asFile
         val archiveDigest = sha256(archive.readBytes())
         val pluginJar = runtimeDirectory.get().asFile
-            .resolve("idea-home/plugins/kast-indexer/lib")
-            .listFiles()
-            ?.singleOrNull { it.name.startsWith("indexer-") && it.name.endsWith("-plugin.jar") }
-            ?: error("semantic runtime has no exact private Kast plugin jar")
+                            .resolve("idea-home/plugins/kast-indexer/lib")
+                            .listFiles()
+                            ?.singleOrNull { it.name.startsWith("indexer-") && it.name.endsWith("-plugin.jar") }
+                        ?: error("semantic runtime has no exact private Kast plugin jar")
         val pluginDigest = sha256(pluginJar.readBytes())
         val wireSchemaId = "kast-wire-v1"
         val identityMaterial = listOf(

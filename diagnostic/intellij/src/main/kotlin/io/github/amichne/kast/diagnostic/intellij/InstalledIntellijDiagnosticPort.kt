@@ -26,9 +26,9 @@ fun installedIntellijDiagnosticCompiler(
     return DiagnosticCompilerPort { scope ->
         val project = exactProject(root) ?: return@DiagnosticCompilerPort unavailable()
         val current = (workspaces.inspect() as? WorkspaceRuntimeState.Ready)
-            ?.workspace
-            ?.readLease
-            ?: return@DiagnosticCompilerPort unavailable()
+                          ?.workspace
+                          ?.readLease
+                      ?: return@DiagnosticCompilerPort unavailable()
         adapter.read(project, current, scope)
     }
 }

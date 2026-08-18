@@ -2,8 +2,8 @@ package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.file.Path
 import kotlinx.serialization.Serializable
+import java.nio.file.Path
 
 enum class AddDeclarationCompilerContextFileFailure {
     PATH_NOT_CANONICAL_SOURCE,
