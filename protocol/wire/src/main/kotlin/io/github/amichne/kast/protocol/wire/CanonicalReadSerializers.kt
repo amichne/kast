@@ -1,5 +1,6 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
@@ -16,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -33,8 +35,12 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.put
 
 internal object CanonicalReadSerializers {
@@ -83,8 +89,31 @@ internal object CanonicalReadSerializers {
         SymbolDiscoverResult::candidateSelectors,
         ::SymbolDiscoverResult,
     )
-    val symbolDiscoverQualification =
-        canonicalEnumSerializer<SymbolDiscoverQualification>("kast.symbol.discover.qualification.v1")
+    val symbolDiscoverQualification = jsonContractSerializer<SymbolDiscoverQualification>(
+        "kast.symbol.discover.qualification.v1",
+        encode = { qualification ->
+            buildJsonObject {
+                put(
+                    "limitations",
+                    JsonArray(qualification.limitations.map { JsonPrimitive(it.wireName()) }),
+                )
+            }
+        },
+        decode = { element ->
+            val value = element.objectWithFields("limitations")
+            val limitations = try {
+                value.getValue("limitations").jsonArray
+                    .map { symbolDiscoverLimitation(it.stringValue()) }
+                    .toSet()
+            } catch (_: IllegalArgumentException) {
+                throw SerializationException("Invalid limitations")
+            }
+            when (val refined = SymbolDiscoverQualification.from(limitations)) {
+                is Refinement.Refined -> refined.value
+                is Refinement.Rejected -> throw SerializationException("Invalid limitations")
+            }
+        },
+    )
     val symbolDiscoverRejection =
         canonicalEnumSerializer<SymbolDiscoverRejection>("kast.symbol.discover.rejection.v1")
 
@@ -252,4 +281,13 @@ private inline fun <reified Value : Enum<Value>> enumValue(
     enumValueOf(values.getValue(field).stringValue().uppercase())
 } catch (_: IllegalArgumentException) {
     throw kotlinx.serialization.SerializationException("Invalid $field")
+}
+
+private fun SymbolDiscoverLimitation.wireName(): String =
+    name.lowercase().replace('_', '-')
+
+private fun symbolDiscoverLimitation(wireName: String): SymbolDiscoverLimitation = try {
+    enumValueOf(wireName.replace('-', '_').uppercase())
+} catch (_: IllegalArgumentException) {
+    throw SerializationException("Invalid limitations")
 }

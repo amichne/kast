@@ -14,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -111,20 +112,44 @@ internal class CanonicalSymbolDiscoverHandler(
         )
         return when (outcome) {
             is SymbolDiscoveryOutcome.Complete -> OperationOutcome.Complete(envelope)
-            is SymbolDiscoveryOutcome.Qualified -> OperationOutcome.Qualified(
-                envelope,
-                if (
-                    SymbolDiscoveryQualification.RESULT_LIMIT_REACHED in
-                    outcome.qualifications.values
+            is SymbolDiscoveryOutcome.Qualified -> {
+                val qualification = when (
+                    val refined = SymbolDiscoverQualification.from(
+                        outcome.qualifications.values
+                            .map(SymbolDiscoveryQualification::protocolLimitation)
+                            .toSet(),
+                    )
                 ) {
-                    SymbolDiscoverQualification.RESULT_LIMIT
-                } else {
-                    SymbolDiscoverQualification.EVIDENCE_INCOMPLETE
-                },
-            )
+                    is Refinement.Refined -> refined.value
+                    is Refinement.Rejected ->
+                        return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+                }
+                OperationOutcome.Qualified(envelope, qualification)
+            }
         }
     }
 }
+
+/**
+ * Proof transition: `SymbolDiscoveryQualification -> SymbolDiscoverLimitation`.
+ *
+ * Establishes the exhaustive one-to-one public limitation for every domain discovery qualification,
+ * so no limitation is collapsed into a generic incomplete state. The mapping is exhaustive over the
+ * closed domain enum.
+ */
+private fun SymbolDiscoveryQualification.protocolLimitation(): SymbolDiscoverLimitation =
+    when (this) {
+        SymbolDiscoveryQualification.RESULT_LIMIT_REACHED -> SymbolDiscoverLimitation.RESULT_LIMIT
+        SymbolDiscoveryQualification.BYTE_LIMIT_REACHED -> SymbolDiscoverLimitation.BYTE_LIMIT
+        SymbolDiscoveryQualification.WORK_LIMIT_REACHED -> SymbolDiscoverLimitation.WORK_LIMIT
+        SymbolDiscoveryQualification.TIME_LIMIT_REACHED -> SymbolDiscoverLimitation.TIME_LIMIT
+        SymbolDiscoveryQualification.DUMB_MODE_TRANSITION -> SymbolDiscoverLimitation.DUMB_MODE_TRANSITION
+        SymbolDiscoveryQualification.PROVIDER_FAILURE -> SymbolDiscoverLimitation.PROVIDER_FAILURE
+        SymbolDiscoveryQualification.UNSCOPED_PROVIDER -> SymbolDiscoverLimitation.UNSCOPED_PROVIDER
+        SymbolDiscoveryQualification.UNSUPPORTED_ITEM -> SymbolDiscoverLimitation.UNSUPPORTED_ITEM
+        SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE ->
+            SymbolDiscoverLimitation.EXACT_DEFINITION_UNAVAILABLE
+    }
 
 internal class CanonicalSymbolResolveHandler(
     private val operations: SymbolExactOperations,

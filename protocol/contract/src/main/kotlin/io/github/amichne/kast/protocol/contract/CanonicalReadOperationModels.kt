@@ -128,9 +128,55 @@ data class SymbolDiscoverResult(
     val candidateSelectors: BoundedProtocolList<ProtocolText>,
 ) : OperationResult
 
-enum class SymbolDiscoverQualification : OperationQualification {
+enum class SymbolDiscoverLimitation {
     RESULT_LIMIT,
-    EVIDENCE_INCOMPLETE,
+    BYTE_LIMIT,
+    WORK_LIMIT,
+    TIME_LIMIT,
+    DUMB_MODE_TRANSITION,
+    PROVIDER_FAILURE,
+    UNSCOPED_PROVIDER,
+    UNSUPPORTED_ITEM,
+    EXACT_DEFINITION_UNAVAILABLE,
+}
+
+enum class SymbolDiscoverQualificationFailure {
+    EMPTY,
+}
+
+/** A non-empty, deterministically ordered set of limitations attached to a qualified discovery. */
+class SymbolDiscoverQualification private constructor(
+    val limitations: List<SymbolDiscoverLimitation>,
+) : OperationQualification {
+    companion object {
+        /**
+         * Proof transition:
+         * `Set<SymbolDiscoverLimitation> -> Refinement<SymbolDiscoverQualification,
+         * SymbolDiscoverQualificationFailure>`.
+         *
+         * Establishes a non-empty, deterministically ordered public limitation list, so a qualified
+         * discovery outcome cannot be represented without its limitations.
+         * [SymbolDiscoverQualificationFailure] is the closed expected failure. Raw limitation sets
+         * may be extracted only at the domain-to-protocol composition and wire boundaries.
+         */
+        fun from(
+            raw: Set<SymbolDiscoverLimitation>,
+        ): Refinement<SymbolDiscoverQualification, SymbolDiscoverQualificationFailure> {
+            val canonical = raw.distinct().sorted()
+            return if (canonical.isEmpty()) {
+                Refinement.Rejected(SymbolDiscoverQualificationFailure.EMPTY)
+            } else {
+                Refinement.Refined(SymbolDiscoverQualification(canonical))
+            }
+        }
+    }
+
+    override fun equals(other: Any?): Boolean =
+        other is SymbolDiscoverQualification && limitations == other.limitations
+
+    override fun hashCode(): Int = limitations.hashCode()
+
+    override fun toString(): String = limitations.toString()
 }
 
 enum class SymbolDiscoverRejection : OperationRejection {

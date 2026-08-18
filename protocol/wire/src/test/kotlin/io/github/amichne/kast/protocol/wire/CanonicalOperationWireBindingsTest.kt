@@ -45,6 +45,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -87,7 +88,7 @@ class CanonicalOperationWireBindingsTest {
             CanonicalOperationWireBindings.symbolDiscover,
             SymbolDiscoverRequest(text("Target"), count(20)),
             SymbolDiscoverResult(texts("candidate:Target")),
-            SymbolDiscoverQualification.RESULT_LIMIT,
+            SymbolDiscoverQualification.from(setOf(SymbolDiscoverLimitation.RESULT_LIMIT)).refinedValue(),
             SymbolDiscoverRejection.QUERY_REJECTED,
         )
         assertRoundTrips(
