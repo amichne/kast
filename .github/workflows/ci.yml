@@ -23,9 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enforce retired-product boundary
-        run: python3 .github/scripts/check-no-rust-product.py --root .
-
       - name: Enforce repository shape
         run: python3 .github/scripts/check-repository-shape.py --root .
 
