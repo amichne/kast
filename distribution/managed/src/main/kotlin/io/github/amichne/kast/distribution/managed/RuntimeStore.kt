@@ -290,6 +290,7 @@ private sealed interface InstalledRuntimeAdmission {
     data class Admitted(
         val resolution: SemanticRuntimeResolution.Installed,
     ) : InstalledRuntimeAdmission
+
     data object Rejected : InstalledRuntimeAdmission
 }
 
@@ -319,7 +320,10 @@ private fun admitHost(
     HostAdmission.Incompatible
 }
 
-private fun copyPreseeded(source: Path, target: Path): RuntimeArtifactAcquisition = try {
+private fun copyPreseeded(
+    source: Path,
+    target: Path,
+): RuntimeArtifactAcquisition = try {
     if (
         Files.isSymbolicLink(source) ||
         !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)

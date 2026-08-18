@@ -14,11 +14,11 @@ import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import java.nio.file.Files
-import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 
 class SqliteWorkspaceGenerationPublicationTest {
     @TempDir
@@ -90,7 +90,7 @@ class SqliteWorkspaceGenerationPublicationTest {
                 open,
                 reconciled(tempDir.resolve("workspace"), "next"),
             ) as WorkspacePublicationPreparation.Prepared
-        ).publication
+                       ).publication
 
         assertEquals(
             WorkspacePublicationResult.Rejected(WorkspacePublicationFailure.StorageUnavailable),
@@ -135,7 +135,10 @@ class SqliteWorkspaceGenerationPublicationTest {
         ).publication,
     ) as WorkspacePublicationResult.Published).workspace
 
-    private fun reconciled(root: Path, identity: String): ReconciledWorkspace {
+    private fun reconciled(
+        root: Path,
+        identity: String,
+    ): ReconciledWorkspace {
         val canonicalRoot = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(root)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> error(admitted.failure)

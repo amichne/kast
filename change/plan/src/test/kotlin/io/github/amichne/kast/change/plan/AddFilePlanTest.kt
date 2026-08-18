@@ -2,18 +2,18 @@ package io.github.amichne.kast.change.plan
 
 import io.github.amichne.kast.change.contract.AddFileChangePlan
 import io.github.amichne.kast.change.contract.AddFilePlanRequest
-import io.github.amichne.kast.change.contract.AddFileTargetObservation
 import io.github.amichne.kast.change.contract.AddFileTargetAdmissionFailure
+import io.github.amichne.kast.change.contract.AddFileTargetObservation
 import io.github.amichne.kast.change.contract.CreatableKotlinFileTarget
 import io.github.amichne.kast.change.contract.KotlinFileSourceText
-import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
+import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import java.nio.file.Path
 
 class AddFilePlanTest {
     private val fixture = AddDeclarationPlanFixture()

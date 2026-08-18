@@ -132,7 +132,7 @@ internal class CanonicalProtocolAuthority {
     fun candidate(selector: ProtocolText): CandidateSelectorLookup =
         candidates[selector]
             ?.let(CandidateSelectorLookup::Found)
-            ?: CandidateSelectorLookup.Missing
+        ?: CandidateSelectorLookup.Missing
 
     /**
      * Proof transition: `SymbolSelector -> ExactSelectorIssuance`.
@@ -196,8 +196,8 @@ internal class CanonicalProtocolAuthority {
     fun relationSubject(selector: ProtocolText): RelationSubjectLookup =
         exact[selector]
             ?.let(RelationSubjectLookup::Selector)
-            ?: endpoints[selector]?.let(RelationSubjectLookup::Endpoint)
-            ?: RelationSubjectLookup.Missing
+        ?: endpoints[selector]?.let(RelationSubjectLookup::Endpoint)
+        ?: RelationSubjectLookup.Missing
 }
 
 private fun candidateHandle(selection: SymbolDiscoverySelection): ProtocolText {
@@ -224,7 +224,10 @@ private fun exactHandle(selector: SymbolSelector): ProtocolText =
  * length-framed detached fields. Inputs are extracted only from already strong selector authority
  * at this protocol boundary; the fixed canonical representation cannot reach protocol rejection.
  */
-private fun protocolHandle(prefix: String, fields: List<String>): ProtocolText {
+private fun protocolHandle(
+    prefix: String,
+    fields: List<String>,
+): ProtocolText {
     val canonical = buildString {
         fields.forEach { field ->
             append(field.toByteArray(StandardCharsets.UTF_8).size)
@@ -248,20 +251,20 @@ private fun SymbolDiscoverySelection.sameSelection(other: SymbolDiscoverySelecti
 
 private fun SymbolSelector.sameSelector(other: SymbolSelector): Boolean =
     lease == other.lease &&
-        scope == other.scope &&
-        file == other.file &&
-        range == other.range &&
-        name == other.name &&
-        qualifiedIdentity == other.qualifiedIdentity &&
-        kind == other.kind &&
-        fingerprint == other.fingerprint
+    scope == other.scope &&
+    file == other.file &&
+    range == other.range &&
+    name == other.name &&
+    qualifiedIdentity == other.qualifiedIdentity &&
+    kind == other.kind &&
+    fingerprint == other.fingerprint
 
 private fun RelationEndpoint.Resolved.sameEndpoint(other: RelationEndpoint.Resolved): Boolean =
     lease == other.lease &&
-        scope == other.scope &&
-        file == other.file &&
-        range == other.range &&
-        name == other.name &&
-        qualifiedIdentity == other.qualifiedIdentity &&
-        kind == other.kind &&
-        fingerprint == other.fingerprint
+    scope == other.scope &&
+    file == other.file &&
+    range == other.range &&
+    name == other.name &&
+    qualifiedIdentity == other.qualifiedIdentity &&
+    kind == other.kind &&
+    fingerprint == other.fingerprint

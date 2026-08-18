@@ -121,11 +121,11 @@ class AddDeclarationApplyService private constructor(
 
     override fun apply(request: AddDeclarationApplyRequest): AddDeclarationApplyResult {
         val source = request.plan.writes.entries.singleOrNull()?.source
-            ?: return AddDeclarationApplyResult.Rejected(
-                AddDeclarationApplyFailure.Admission(
-                    MutationAdmissionFailure.UNPLANNED_WRITE_SET,
-                ),
-            )
+                     ?: return AddDeclarationApplyResult.Rejected(
+                         AddDeclarationApplyFailure.Admission(
+                             MutationAdmissionFailure.UNPLANNED_WRITE_SET,
+                         ),
+                     )
         val observed = when (val result = observer.observe(source)) {
             is SourceObservationResult.Observed -> result.source
             is SourceObservationResult.Rejected -> return AddDeclarationApplyResult.Rejected(

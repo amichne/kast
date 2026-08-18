@@ -150,7 +150,10 @@ class ManagedSemanticRuntimeProviderTest {
     private fun SemanticRuntimeResolution.installed(): InstalledSemanticRuntime =
         assertInstanceOf(SemanticRuntimeResolution.Installed::class.java, this).runtime
 
-    private fun runtimeArchive(path: Path, vararg extras: Pair<String, String>): Path {
+    private fun runtimeArchive(
+        path: Path,
+        vararg extras: Pair<String, String>,
+    ): Path {
         ZipOutputStream(Files.newOutputStream(path)).use { zip ->
             val entries = listOf(
                 "kast-indexer" to "#!/bin/sh\nexit 0\n",
@@ -183,7 +186,15 @@ class ManagedSemanticRuntimeProviderTest {
             ).joinToString("\n"),
         )
         val raw =
-            "{\"schemaVersion\":1,\"runtimeId\":\"$runtimeId\",\"productVersion\":\"0.24.2\",\"platform\":\"macos\",\"architecture\":\"aarch64\",\"ideaBuild\":\"261.25134.95\",\"kotlinPluginBuild\":\"2.4.10\",\"kastPluginSha256\":\"sha256:${"1".repeat(64)}\",\"wireSchemaId\":\"kast-wire-v1\",\"archive\":{\"fileName\":\"runtime.zip\",\"url\":\"https://example.invalid/runtime.zip\",\"sha256\":\"$archiveDigest\",\"bytes\":${Files.size(archive)}},\"layout\":{\"executable\":\"kast-indexer\",\"requiredEntries\":[\"kast-indexer\",\"runtime-libs/\",\"idea-home/product-info.json\",\"idea-home/plugins/kast-indexer/\"],\"executableEntries\":[\"kast-indexer\"]}}"
+            "{\"schemaVersion\":1,\"runtimeId\":\"$runtimeId\",\"productVersion\":\"0.24.2\",\"platform\":\"macos\",\"architecture\":\"aarch64\",\"ideaBuild\":\"261.25134.95\",\"kotlinPluginBuild\":\"2.4.10\",\"kastPluginSha256\":\"sha256:${
+                "1".repeat(
+                    64
+                )
+            }\",\"wireSchemaId\":\"kast-wire-v1\",\"archive\":{\"fileName\":\"runtime.zip\",\"url\":\"https://example.invalid/runtime.zip\",\"sha256\":\"$archiveDigest\",\"bytes\":${
+                Files.size(
+                    archive
+                )
+            }},\"layout\":{\"executable\":\"kast-indexer\",\"requiredEntries\":[\"kast-indexer\",\"runtime-libs/\",\"idea-home/product-info.json\",\"idea-home/plugins/kast-indexer/\"],\"executableEntries\":[\"kast-indexer\"]}}"
         return when (val admitted = SemanticRuntimeManifest.admit(raw)) {
             is SemanticRuntimeManifestAdmission.Admitted -> admitted.manifest
             is SemanticRuntimeManifestAdmission.Rejected -> error("manifest rejected: ${admitted.failure}")

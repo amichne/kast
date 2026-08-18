@@ -3,7 +3,6 @@ package io.github.amichne.kast.change.verify
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationObligation
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test

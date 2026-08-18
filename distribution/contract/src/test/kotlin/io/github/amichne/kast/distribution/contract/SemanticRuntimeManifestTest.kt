@@ -73,6 +73,14 @@ class SemanticRuntimeManifestTest {
         const val RUNTIME_ID =
             "sha256:6cfad2c4d851942791feb6272b8d5149e9630d9275b8a317e0d3a84bf2ef2986"
         val VALID_MANIFEST =
-            "{\"schemaVersion\":1,\"runtimeId\":\"$RUNTIME_ID\",\"productVersion\":\"0.24.2\",\"platform\":\"macos\",\"architecture\":\"aarch64\",\"ideaBuild\":\"261.25134.95\",\"kotlinPluginBuild\":\"2.4.10\",\"kastPluginSha256\":\"sha256:${"1".repeat(64)}\",\"wireSchemaId\":\"kast-wire-v1\",\"archive\":{\"fileName\":\"kast-semantic-runtime.zip\",\"url\":\"https://example.invalid/kast-semantic-runtime.zip\",\"sha256\":\"sha256:${"2".repeat(64)}\",\"bytes\":123},\"layout\":{\"executable\":\"kast-indexer\",\"requiredEntries\":[\"kast-indexer\",\"runtime-libs/\",\"idea-home/product-info.json\",\"idea-home/plugins/kast-indexer/\"],\"executableEntries\":[\"kast-indexer\"]}}"
+            "{\"schemaVersion\":1,\"runtimeId\":\"$RUNTIME_ID\",\"productVersion\":\"0.24.2\",\"platform\":\"macos\",\"architecture\":\"aarch64\",\"ideaBuild\":\"261.25134.95\",\"kotlinPluginBuild\":\"2.4.10\",\"kastPluginSha256\":\"sha256:${
+                "1".repeat(
+                    64
+                )
+            }\",\"wireSchemaId\":\"kast-wire-v1\",\"archive\":{\"fileName\":\"kast-semantic-runtime.zip\",\"url\":\"https://example.invalid/kast-semantic-runtime.zip\",\"sha256\":\"sha256:${
+                "2".repeat(
+                    64
+                )
+            }\",\"bytes\":123},\"layout\":{\"executable\":\"kast-indexer\",\"requiredEntries\":[\"kast-indexer\",\"runtime-libs/\",\"idea-home/product-info.json\",\"idea-home/plugins/kast-indexer/\"],\"executableEntries\":[\"kast-indexer\"]}}"
     }
 }

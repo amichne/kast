@@ -81,7 +81,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
             if (forbiddenPortableDistJars.isNotEmpty()) {
                 throw GradleException(
                     "Indexer portable distribution must not include fat jars: " +
-                        forbiddenPortableDistJars.joinToString(),
+                    forbiddenPortableDistJars.joinToString(),
                 )
             }
         }
@@ -97,7 +97,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         if (forbiddenRuntimeEntries.isNotEmpty()) {
             throw GradleException(
                 "Indexer runtime-libs classpath must not include private payload jars: " +
-                    forbiddenRuntimeEntries.joinToString(),
+                forbiddenRuntimeEntries.joinToString(),
             )
         }
 
@@ -109,7 +109,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         if (missingRuntimeClasses.isNotEmpty()) {
             throw GradleException(
                 "Indexer runtime-libs classpath is missing launcher or platform classes: " +
-                    missingRuntimeClasses.joinToString(),
+                missingRuntimeClasses.joinToString(),
             )
         }
 
@@ -126,7 +126,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
             PluginPayloadOwnershipCheck.Owned -> Unit
             is PluginPayloadOwnershipCheck.Conflicting -> throw GradleException(
                 "Indexer payload must not include platform-plugin-owned Kotlin classes: " +
-                    ownership.jarNames.joinToString(),
+                ownership.jarNames.joinToString(),
             )
         }
 
@@ -140,7 +140,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         if (forbiddenPluginDescriptors.isNotEmpty()) {
             throw GradleException(
                 "Indexer payload must not include nested plugin descriptors outside allowed jars: " +
-                    forbiddenPluginDescriptors.joinToString(),
+                forbiddenPluginDescriptors.joinToString(),
             )
         }
 
@@ -151,7 +151,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         if (missingPluginJarPrefixes.isNotEmpty()) {
             throw GradleException(
                 "Indexer payload is missing runtime jars with prefixes: " +
-                    missingPluginJarPrefixes.joinToString(),
+                missingPluginJarPrefixes.joinToString(),
             )
         }
 
@@ -163,7 +163,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         if (missingPluginClasses.isNotEmpty()) {
             throw GradleException(
                 "Indexer payload is missing required classes: " +
-                    missingPluginClasses.joinToString(),
+                missingPluginClasses.joinToString(),
             )
         }
 
@@ -177,7 +177,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         if (missingPlatformPluginClasses.isNotEmpty()) {
             throw GradleException(
                 "IntelliJ Kotlin plugin is missing required platform-owned classes: " +
-                    missingPlatformPluginClasses.joinToString(),
+                missingPlatformPluginClasses.joinToString(),
             )
         }
     }

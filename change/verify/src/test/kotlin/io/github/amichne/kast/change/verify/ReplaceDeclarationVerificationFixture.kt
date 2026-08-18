@@ -3,11 +3,11 @@ package io.github.amichne.kast.change.verify
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidenceInput
 import io.github.amichne.kast.change.contract.ExistingDeclarationSourceText
-import io.github.amichne.kast.change.contract.ReplacementDeclarationSourceText
 import io.github.amichne.kast.change.contract.ReplaceDeclarationChangePlan
 import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanResult
 import io.github.amichne.kast.change.contract.ReplaceDeclarationTarget
+import io.github.amichne.kast.change.contract.ReplacementDeclarationSourceText
 import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult

@@ -93,8 +93,14 @@ class SqliteAddDeclarationVerificationJournalTest {
         assertEquals(completed.receipt.publication, restored.receipt.publication)
         assertEquals(command.verification.publication, completed.receipt.publication)
         assertEquals(command.verification.identity.targetPath, restored.receipt.identity.targetPath)
-        assertEquals(command.verification.identity.sourceRange.startOffset, restored.receipt.identity.sourceRange.startOffset)
-        assertEquals(command.verification.identity.sourceRange.endOffset, restored.receipt.identity.sourceRange.endOffset)
+        assertEquals(
+            command.verification.identity.sourceRange.startOffset,
+            restored.receipt.identity.sourceRange.startOffset
+        )
+        assertEquals(
+            command.verification.identity.sourceRange.endOffset,
+            restored.receipt.identity.sourceRange.endOffset
+        )
         assertEquals(command.verification.identity.packageName, restored.receipt.identity.packageName)
         assertEquals(command.verification.identity.declarationName, restored.receipt.identity.declarationName)
         assertEquals(command.verification.identity.declarationKind, restored.receipt.identity.declarationKind)

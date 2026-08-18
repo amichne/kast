@@ -5,7 +5,6 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.search.searches.DefinitionsScopedSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
@@ -270,10 +269,10 @@ internal class IntellijK2RelationSearch(
         val depth = owners.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount }
                     ?: return OccurrenceProvenance.Unsupported
         val provenance = owners
-            .filter { Path.of(it.sourceRoot.value).nameCount == depth }
-            .map { it.provenance }
-            .distinct()
-            .singleOrNull() ?: return OccurrenceProvenance.Unsupported
+                             .filter { Path.of(it.sourceRoot.value).nameCount == depth }
+                             .map { it.provenance }
+                             .distinct()
+                             .singleOrNull() ?: return OccurrenceProvenance.Unsupported
         return when (provenance) {
             WorkspaceSourceRootProvenance.AUTHORED ->
                 OccurrenceProvenance.Found(RelationProvenance.K2_AUTHORED_SOURCE)

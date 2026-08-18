@@ -54,6 +54,7 @@ data class AddDeclarationVerificationCommand private constructor(
 enum class AddDeclarationCompilerDiagnosticsObservation {
     CLEAR,
 }
+
 enum class AddDeclarationCollisionObservation {
     ABSENT_COMPLETE,
 }
@@ -61,6 +62,7 @@ enum class AddDeclarationCollisionObservation {
 enum class AddDeclarationOutboundBindingsObservation {
     PRESERVED_COMPLETE,
 }
+
 enum class AddDeclarationExistingBindingsObservation {
     PRESERVED_NO_CANDIDATES,
 }
@@ -213,7 +215,7 @@ data class ObservedAddDeclarationVerification private constructor(
         ): Refinement<
             ObservedAddDeclarationVerification,
             ObservedAddDeclarationVerificationFailure,
-        > {
+            > {
             val expected = command.plan.expectedSemanticDelta
             if (identity.expectedSemanticDelta != expected) {
                 return Refinement.Rejected(
@@ -366,9 +368,9 @@ abstract class AddDeclarationVerificationExecutor {
         AddDeclarationVerificationResult
 
     /**
-         * Proof transition: scoped compiler evidence to [AddDeclarationVerificationResult]. Only an
-         * explicit compiler port may invoke this after one smart read proves the observations; the
-         * factory also reconciles G1, model, classpath, source images, and outbound cardinality.
+     * Proof transition: scoped compiler evidence to [AddDeclarationVerificationResult]. Only an
+     * explicit compiler port may invoke this after one smart read proves the observations; the
+     * factory also reconciles G1, model, classpath, source images, and outbound cardinality.
      */
     protected fun verified(
         command: AddDeclarationVerificationCommand,

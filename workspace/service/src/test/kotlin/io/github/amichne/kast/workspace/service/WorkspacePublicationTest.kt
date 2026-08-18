@@ -1,12 +1,12 @@
 package io.github.amichne.kast.workspace.service
 
-import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
-import io.github.amichne.kast.evidence.contract.WorkspacePublicationFailure
 import io.github.amichne.kast.evidence.contract.OpenCanonicalWorkspacePublication
 import io.github.amichne.kast.evidence.contract.PreparedCanonicalWorkspacePublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationDiscard
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationFailure
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationOpening
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationPreparation
+import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
@@ -27,10 +27,10 @@ import io.github.amichne.kast.workspace.contract.WorkspaceReconciliationPort
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import java.nio.file.Path
 
 class WorkspacePublicationTest {
     @Test
@@ -257,7 +257,10 @@ private data class TestPreparedPublication(
     val candidate: ReconciledWorkspace,
 ) : PreparedCanonicalWorkspacePublication
 
-private fun candidate(root: String, identity: String): WorkspaceCandidate = WorkspaceCandidate(
+private fun candidate(
+    root: String,
+    identity: String,
+): WorkspaceCandidate = WorkspaceCandidate(
     root = canonicalRoot(root),
     sourceState = WorkspaceStateIdentity(identity),
 )

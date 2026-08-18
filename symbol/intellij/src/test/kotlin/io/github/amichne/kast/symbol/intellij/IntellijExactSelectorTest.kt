@@ -98,7 +98,7 @@ class IntellijExactSelectorTest {
         val selector = (
             query.resolve(compiled(selection.lease, selection.scope), selection)
                 as IntellijSymbolSelectorResolution.Resolved
-        ).selector
+                       ).selector
         val described = query.describe(compiled(selector.lease, selector.scope), selector)
             as IntellijSymbolDescriptionResolution.Described
 

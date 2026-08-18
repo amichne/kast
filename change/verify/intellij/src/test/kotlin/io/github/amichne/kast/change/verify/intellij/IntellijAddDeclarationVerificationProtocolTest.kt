@@ -40,7 +40,7 @@ class IntellijAddDeclarationVerificationProtocolTest {
 
         val physical = assertInstanceOf<
             Refinement.Rejected<ExactVerifiedAddDeclarationPostimageFailure>,
-        >(
+            >(
             ExactVerifiedAddDeclarationPostimage.admit(
                 expectedPreimage = exact(before),
                 expectedPostimage = exact(after),
@@ -51,7 +51,7 @@ class IntellijAddDeclarationVerificationProtocolTest {
         )
         val document = assertInstanceOf<
             Refinement.Rejected<ExactVerifiedAddDeclarationPostimageFailure>,
-        >(
+            >(
             ExactVerifiedAddDeclarationPostimage.admit(
                 expectedPreimage = exact(before),
                 expectedPostimage = exact(after),
@@ -75,7 +75,7 @@ class IntellijAddDeclarationVerificationProtocolTest {
     fun `nonzero outbound references cannot manufacture preservation proof`() {
         val rejection = assertInstanceOf<
             Refinement.Rejected<IntellijAddDeclarationSemanticProofFailure>,
-        >(
+            >(
             admitVacuousOutboundBindingProof(
                 expected = outboundCount(1),
                 observed = outboundCount(1),
@@ -92,7 +92,7 @@ class IntellijAddDeclarationVerificationProtocolTest {
     fun `zero outbound references carry vacuous preservation proof`() {
         val observed = assertInstanceOf<
             Refinement.Refined<AddDeclarationOutboundBindingsObservation>,
-        >(
+            >(
             admitVacuousOutboundBindingProof(
                 expected = outboundCount(0),
                 observed = outboundCount(0),

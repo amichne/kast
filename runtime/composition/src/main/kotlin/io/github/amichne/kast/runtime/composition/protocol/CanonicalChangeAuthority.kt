@@ -111,7 +111,7 @@ internal class CanonicalChangeAuthority {
     fun application(identity: ProtocolText): ChangeApplicationLookup =
         applications[identity]
             ?.let(ChangeApplicationLookup::Found)
-            ?: ChangeApplicationLookup.Missing
+        ?: ChangeApplicationLookup.Missing
 
     /**
      * Proof transition: `VerifiedReceipt -> ChangeReceiptIssuance`.
@@ -147,7 +147,10 @@ internal class CanonicalChangeAuthority {
  * Establishes a fixed-prefix SHA-256 opaque change identity. Strong plan, application, and receipt
  * values are the only field source; the fixed representation is always bounded and non-blank.
  */
-private fun changeHandle(prefix: String, fields: List<String>): ProtocolText {
+private fun changeHandle(
+    prefix: String,
+    fields: List<String>,
+): ProtocolText {
     val canonical = buildString {
         fields.forEach { field ->
             append(field.toByteArray(StandardCharsets.UTF_8).size)

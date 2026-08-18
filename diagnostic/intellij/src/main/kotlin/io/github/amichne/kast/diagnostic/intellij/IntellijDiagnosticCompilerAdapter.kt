@@ -16,7 +16,6 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
-import org.jetbrains.kotlin.analysis.api.components.collectDiagnostics
 import org.jetbrains.kotlin.psi.KtFile
 
 internal sealed interface IntellijDiagnosticLeaseAdmission {

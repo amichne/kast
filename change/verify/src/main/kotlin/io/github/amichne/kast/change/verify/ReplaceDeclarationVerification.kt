@@ -41,7 +41,7 @@ class ObservedReplaceDeclarationDelta private constructor(
         ): Refinement<
             ObservedReplaceDeclarationDelta,
             ObservedReplaceDeclarationDeltaFailure,
-        > = when {
+            > = when {
             matchingDeclarationCount < 0 -> Refinement.Rejected(
                 ObservedReplaceDeclarationDeltaFailure.DECLARATION_COUNT_INVALID,
             )
@@ -115,7 +115,7 @@ class CompleteReplaceDeclarationVerification private constructor(
         ): Refinement<
             CompleteReplaceDeclarationVerification,
             Set<ReplaceDeclarationProofFailure>,
-        > {
+            > {
             val failures = linkedSetOf<ReplaceDeclarationProofFailure>()
             if (evidence.source != applied.source) {
                 failures += ReplaceDeclarationProofFailure.RESULT_SOURCE_MISMATCH

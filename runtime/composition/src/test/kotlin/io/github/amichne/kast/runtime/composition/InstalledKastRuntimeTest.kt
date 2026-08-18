@@ -2,7 +2,6 @@ package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.change.apply.AddDeclarationApplyFailure
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
-import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 import io.github.amichne.kast.change.apply.MutationAdmissionFailure
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.change.plan.PureAddFilePlanningService
@@ -25,27 +24,27 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalWorkspaceInspectHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDescribeHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalRelationReadHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRunHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeApplyHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeAuthority
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangePlanHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeRecoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeVerifyHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalRelationReadHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDescribeHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRunHandler
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalWorkspaceInspectHandler
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -64,6 +63,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.coroutines.startCoroutine
+import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 
 class InstalledKastRuntimeTest {
     @Test
@@ -215,11 +215,11 @@ class InstalledKastRuntimeTest {
                     ),
                 )
             } as OperationOutcome.Complete
-            ).evidence.payload.candidateSelectors.values.single()
+                        ).evidence.payload.candidateSelectors.values.single()
         val exact = (
             runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
                 OperationOutcome.Complete
-            ).evidence.payload.exactSelector
+                    ).evidence.payload.exactSelector
 
         val related = runImmediate {
             relation.execute(

@@ -5,9 +5,9 @@ import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidenceInput
 import io.github.amichne.kast.change.contract.AddDeclarationSourceText
 import io.github.amichne.kast.change.contract.EditableMutationTarget
+import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.MutationTargetObservation
 import io.github.amichne.kast.change.contract.ObservedMutationTargetState
-import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation

@@ -1,6 +1,25 @@
 package io.github.amichne.kast.protocol.wire
 
-import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
+import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.contract.ChangePlanQualification
+import io.github.amichne.kast.protocol.contract.ChangePlanRejection
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
+import io.github.amichne.kast.protocol.contract.ChangePlanResult
+import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
+import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
+import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
+import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
+import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
+import io.github.amichne.kast.protocol.contract.OperationRequest
+import io.github.amichne.kast.protocol.contract.OperationResult
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -124,7 +143,7 @@ private fun decodeIntent(element: kotlinx.serialization.json.JsonElement): Chang
         throw SerializationException("Invalid change intent")
     }
     val kind = kindObject["kind"]?.stringValue()
-        ?: throw SerializationException("Missing change intent kind")
+               ?: throw SerializationException("Missing change intent kind")
     return when (kind) {
         "add-file" -> kindObject.objectWithFields("kind", "relativePath", "content").let {
             ChangeIntentDocument.AddFile(it.protocolText("relativePath"), it.protocolText("content"))

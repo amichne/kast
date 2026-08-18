@@ -1,7 +1,5 @@
 package io.github.amichne.kast.runtime.composition
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
@@ -10,6 +8,8 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationCompilation
@@ -125,7 +125,10 @@ internal class InstalledSymbolProtocolFixture private constructor(
             )
         }
 
-        private fun batch(root: Path, request: SymbolDiscoveryRequest): SymbolDiscoveryBatch {
+        private fun batch(
+            root: Path,
+            request: SymbolDiscoveryRequest,
+        ): SymbolDiscoveryBatch {
             val candidate = SymbolDiscoveryCandidate.fromBoundary(
                 SymbolDiscoveryKind.SYMBOL,
                 "sample",

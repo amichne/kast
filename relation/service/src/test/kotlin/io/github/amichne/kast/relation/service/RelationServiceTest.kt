@@ -219,7 +219,10 @@ class RelationServiceTest {
         EvidenceGeneration.parse(generation).refined(),
     )
 
-    private fun lease(generation: Long, root: String = "/workspace"): SemanticReadLease =
+    private fun lease(
+        generation: Long,
+        root: String = "/workspace",
+    ): SemanticReadLease =
         SemanticReadLease(
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(root)).refined(),
             EvidenceGeneration.parse(generation).refined(),

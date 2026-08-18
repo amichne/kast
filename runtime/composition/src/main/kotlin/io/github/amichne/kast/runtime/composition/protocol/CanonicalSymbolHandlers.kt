@@ -26,30 +26,30 @@ import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescription
-import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection as DomainDiscoveryRejection
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest as DomainDiscoveryRequest
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult as DomainDiscoveryResult
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
-import io.github.amichne.kast.symbol.contract.SymbolResolutionResult as DomainResolutionResult
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection as DomainDiscoveryRejection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest as DomainDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult as DomainDiscoveryResult
+import io.github.amichne.kast.symbol.contract.SymbolResolutionResult as DomainResolutionResult
 
 private const val SYMBOL_DISCOVERY_WORK_MULTIPLIER = 100L
 private const val SYMBOL_DISCOVERY_TIME_MILLIS = 30_000L

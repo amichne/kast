@@ -1,8 +1,8 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.file.Path
 import kotlinx.serialization.Serializable
+import java.nio.file.Path
 
 enum class AddDeclarationSourceOwnerFailure {
     SOURCE_ROOT_NOT_CANONICAL,

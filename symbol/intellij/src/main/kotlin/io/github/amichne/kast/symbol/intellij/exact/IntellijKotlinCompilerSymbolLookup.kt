@@ -10,7 +10,6 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
@@ -130,61 +129,61 @@ private sealed interface IntellijCompilerSymbolProjectionResult {
  */
 private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionResult {
     return when (this) {
-    is KaConstructorSymbol -> {
-        val owner = containingClassId?.asSingleFqName()?.asString()
-                    ?: return compilerProjectionRejected()
-        IntellijCompilerSymbolProjectionResult.Projected(
-            IntellijCompilerSymbolProjection(
-                kind = CompilerSymbolKind.CONSTRUCTOR,
-                qualifiedIdentity = "$owner.<init>",
-                identity = functionIdentity("$owner.<init>"),
-            ),
-        )
-    }
-    is KaFunctionSymbol -> {
-        val callable = callableId?.asSingleFqName()?.asString()
-                       ?: return compilerProjectionRejected()
-        IntellijCompilerSymbolProjectionResult.Projected(
-            IntellijCompilerSymbolProjection(
-                kind = CompilerSymbolKind.FUNCTION,
-                qualifiedIdentity = callable,
-                identity = functionIdentity(callable),
-            ),
-        )
-    }
-    is KaKotlinPropertySymbol -> {
-        val callable = callableId?.asSingleFqName()?.asString()
-                       ?: return compilerProjectionRejected()
-        IntellijCompilerSymbolProjectionResult.Projected(
-            IntellijCompilerSymbolProjection(
-                kind = CompilerSymbolKind.PROPERTY,
-                qualifiedIdentity = callable,
-                identity = "property|$callable|${returnType.toString().canonicalCompilerType()}",
-            ),
-        )
-    }
-    is KaTypeAliasSymbol -> {
-        val className = classId?.asSingleFqName()?.asString()
+        is KaConstructorSymbol -> {
+            val owner = containingClassId?.asSingleFqName()?.asString()
                         ?: return compilerProjectionRejected()
-        IntellijCompilerSymbolProjectionResult.Projected(
-            IntellijCompilerSymbolProjection(
-                kind = CompilerSymbolKind.TYPE_ALIAS,
-                qualifiedIdentity = className,
-                identity = "typealias|$className",
-            ),
-        )
-    }
-    is KaClassLikeSymbol -> {
-        val className = classId?.asSingleFqName()?.asString()
-                        ?: return compilerProjectionRejected()
-        IntellijCompilerSymbolProjectionResult.Projected(
-            IntellijCompilerSymbolProjection(
-                kind = CompilerSymbolKind.CLASSLIKE,
-                qualifiedIdentity = className,
-                identity = "classlike|$className",
-            ),
-        )
-    }
+            IntellijCompilerSymbolProjectionResult.Projected(
+                IntellijCompilerSymbolProjection(
+                    kind = CompilerSymbolKind.CONSTRUCTOR,
+                    qualifiedIdentity = "$owner.<init>",
+                    identity = functionIdentity("$owner.<init>"),
+                ),
+            )
+        }
+        is KaFunctionSymbol -> {
+            val callable = callableId?.asSingleFqName()?.asString()
+                           ?: return compilerProjectionRejected()
+            IntellijCompilerSymbolProjectionResult.Projected(
+                IntellijCompilerSymbolProjection(
+                    kind = CompilerSymbolKind.FUNCTION,
+                    qualifiedIdentity = callable,
+                    identity = functionIdentity(callable),
+                ),
+            )
+        }
+        is KaKotlinPropertySymbol -> {
+            val callable = callableId?.asSingleFqName()?.asString()
+                           ?: return compilerProjectionRejected()
+            IntellijCompilerSymbolProjectionResult.Projected(
+                IntellijCompilerSymbolProjection(
+                    kind = CompilerSymbolKind.PROPERTY,
+                    qualifiedIdentity = callable,
+                    identity = "property|$callable|${returnType.toString().canonicalCompilerType()}",
+                ),
+            )
+        }
+        is KaTypeAliasSymbol -> {
+            val className = classId?.asSingleFqName()?.asString()
+                            ?: return compilerProjectionRejected()
+            IntellijCompilerSymbolProjectionResult.Projected(
+                IntellijCompilerSymbolProjection(
+                    kind = CompilerSymbolKind.TYPE_ALIAS,
+                    qualifiedIdentity = className,
+                    identity = "typealias|$className",
+                ),
+            )
+        }
+        is KaClassLikeSymbol -> {
+            val className = classId?.asSingleFqName()?.asString()
+                            ?: return compilerProjectionRejected()
+            IntellijCompilerSymbolProjectionResult.Projected(
+                IntellijCompilerSymbolProjection(
+                    kind = CompilerSymbolKind.CLASSLIKE,
+                    qualifiedIdentity = className,
+                    identity = "classlike|$className",
+                ),
+            )
+        }
         else -> compilerProjectionRejected()
     }
 }

@@ -46,7 +46,7 @@ internal value class SqliteMutationRecoveryDatabase private constructor(
                     SqliteMutationRecoveryJournalOpenFailure.SYMLINK_NOT_ALLOWED,
                 )
                 Files.exists(raw, LinkOption.NOFOLLOW_LINKS) &&
-                    !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) -> Refinement.Rejected(
+                !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) -> Refinement.Rejected(
                     SqliteMutationRecoveryJournalOpenFailure.EXISTING_PATH_NOT_REGULAR_FILE,
                 )
                 else -> Refinement.Refined(SqliteMutationRecoveryDatabase(raw))

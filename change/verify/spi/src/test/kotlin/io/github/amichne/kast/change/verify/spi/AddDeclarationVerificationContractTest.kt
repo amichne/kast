@@ -36,7 +36,7 @@ class AddDeclarationVerificationContractTest {
 
         val notNewer = assertInstanceOf<
             AddDeclarationVerificationCommandFailure.ResultGenerationNotNewer,
-        >(
+            >(
             assertInstanceOf<Refinement.Rejected<AddDeclarationVerificationCommandFailure>>(
                 AddDeclarationVerificationCommand.admit(plan, current),
             ).failure,

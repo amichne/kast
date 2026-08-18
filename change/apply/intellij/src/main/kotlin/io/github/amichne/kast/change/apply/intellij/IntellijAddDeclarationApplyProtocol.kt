@@ -74,7 +74,7 @@ internal fun commandFailure(progress: IntellijApplyAttemptProgress): IntellijCom
             )
         IntellijApplyAttemptProgress.BEGUN,
         IntellijApplyAttemptProgress.COMMAND_COMPLETED,
-        -> IntellijCommandExecution.RecoveryRequiredAfterMutation(
+            -> IntellijCommandExecution.RecoveryRequiredAfterMutation(
             AddDeclarationApplyRecoveryFailure.WRITE_COMMAND_FAILED,
         )
     }
@@ -116,6 +116,7 @@ internal fun observeAfterCommandOnEdt(
         }
         return IntellijAfterCommandObservation.Observed(changedPaths.toSet(), undo)
     }
+
     val application = ApplicationManager.getApplication()
     if (application.isDispatchThread) return observe()
     val result = java.util.concurrent.atomic.AtomicReference<IntellijAfterCommandObservation>()
@@ -241,12 +242,12 @@ internal data class ExactIntellijSourceImages private constructor(
                 )
             }
             val normalizedPreimage = NormalizedIntellijDocumentImage.parse(plannedPreimage)
-                .valueOrNull()
-                ?: return Refinement.Rejected(ExactIntellijSourceImagesFailure.INVALID_UTF8)
+                                         .valueOrNull()
+                                     ?: return Refinement.Rejected(ExactIntellijSourceImagesFailure.INVALID_UTF8)
             val plannedPostimage = expectedPostimage.copyBytes()
             val normalizedPostimage = NormalizedIntellijDocumentImage.parse(plannedPostimage)
-                .valueOrNull()
-                ?: return Refinement.Rejected(ExactIntellijSourceImagesFailure.INVALID_UTF8)
+                                          .valueOrNull()
+                                      ?: return Refinement.Rejected(ExactIntellijSourceImagesFailure.INVALID_UTF8)
             if (normalizedPreimage.text != normalizedDocumentText) {
                 return Refinement.Rejected(
                     ExactIntellijSourceImagesFailure.NORMALIZED_DOCUMENT_MISMATCH,

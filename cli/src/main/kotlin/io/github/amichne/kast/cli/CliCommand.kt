@@ -54,16 +54,52 @@ class CliCommandSyntax internal constructor(
 
 internal val canonicalCliSyntaxes = listOf(
     CliCommandSyntax(CanonicalOperation.WORKSPACE_INSPECT, listOf("workspace", "inspect"), "workspace inspect"),
-    CliCommandSyntax(CanonicalOperation.SYMBOL_DISCOVER, listOf("symbol", "discover"), "symbol discover --query <text> --limit <1..1000>"),
-    CliCommandSyntax(CanonicalOperation.SYMBOL_RESOLVE, listOf("symbol", "resolve"), "symbol resolve --candidate <candidate-selector>"),
-    CliCommandSyntax(CanonicalOperation.SYMBOL_DESCRIBE, listOf("symbol", "describe"), "symbol describe --selector <exact-selector>"),
-    CliCommandSyntax(CanonicalOperation.RELATION_READ, listOf("relation", "read"), "relation read --selector <exact-selector> --relation <kind> --limit <1..1000>"),
-    CliCommandSyntax(CanonicalOperation.TRAVERSAL_RUN, listOf("traversal", "run"), "traversal run --selector <exact-selector> --relation <kind> --maximum-depth <1..1000> --maximum-results <1..1000>"),
-    CliCommandSyntax(CanonicalOperation.DIAGNOSTIC_CHECK, listOf("diagnostic", "check"), "diagnostic check --scope <scope> --limit <1..1000>"),
-    CliCommandSyntax(CanonicalOperation.CHANGE_PLAN, listOf("change", "plan"), "change plan --intent <add-file|add-declaration|replace-declaration|rename-symbol> <intent-options>"),
+    CliCommandSyntax(
+        CanonicalOperation.SYMBOL_DISCOVER,
+        listOf("symbol", "discover"),
+        "symbol discover --query <text> --limit <1..1000>"
+    ),
+    CliCommandSyntax(
+        CanonicalOperation.SYMBOL_RESOLVE,
+        listOf("symbol", "resolve"),
+        "symbol resolve --candidate <candidate-selector>"
+    ),
+    CliCommandSyntax(
+        CanonicalOperation.SYMBOL_DESCRIBE,
+        listOf("symbol", "describe"),
+        "symbol describe --selector <exact-selector>"
+    ),
+    CliCommandSyntax(
+        CanonicalOperation.RELATION_READ,
+        listOf("relation", "read"),
+        "relation read --selector <exact-selector> --relation <kind> --limit <1..1000>"
+    ),
+    CliCommandSyntax(
+        CanonicalOperation.TRAVERSAL_RUN,
+        listOf("traversal", "run"),
+        "traversal run --selector <exact-selector> --relation <kind> --maximum-depth <1..1000> --maximum-results <1..1000>"
+    ),
+    CliCommandSyntax(
+        CanonicalOperation.DIAGNOSTIC_CHECK,
+        listOf("diagnostic", "check"),
+        "diagnostic check --scope <scope> --limit <1..1000>"
+    ),
+    CliCommandSyntax(
+        CanonicalOperation.CHANGE_PLAN,
+        listOf("change", "plan"),
+        "change plan --intent <add-file|add-declaration|replace-declaration|rename-symbol> <intent-options>"
+    ),
     CliCommandSyntax(CanonicalOperation.CHANGE_APPLY, listOf("change", "apply"), "change apply --plan <plan-identity>"),
-    CliCommandSyntax(CanonicalOperation.CHANGE_VERIFY, listOf("change", "verify"), "change verify --application <application-identity>"),
-    CliCommandSyntax(CanonicalOperation.CHANGE_RECOVER, listOf("change", "recover"), "change recover --plan <plan-identity>"),
+    CliCommandSyntax(
+        CanonicalOperation.CHANGE_VERIFY,
+        listOf("change", "verify"),
+        "change verify --application <application-identity>"
+    ),
+    CliCommandSyntax(
+        CanonicalOperation.CHANGE_RECOVER,
+        listOf("change", "recover"),
+        "change recover --plan <plan-identity>"
+    ),
 )
 
 sealed interface CliCommandParsing {
@@ -110,7 +146,7 @@ object CliCommandParser {
             localCommands[argv.single()]?.let { return CliCommandParsing.Local(it) }
         }
         val operation = operationByCommand[argv.take(2)]
-            ?: return CliCommandParsing.Rejected(CliCommandFailure.UnknownCommand)
+                        ?: return CliCommandParsing.Rejected(CliCommandFailure.UnknownCommand)
         val rawArguments = argv.drop(2)
         if (rawArguments.size > MAX_CLI_ARGUMENT_COUNT) {
             return CliCommandParsing.Rejected(CliCommandFailure.TooManyArguments)

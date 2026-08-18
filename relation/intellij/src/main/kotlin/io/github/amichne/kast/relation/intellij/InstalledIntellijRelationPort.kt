@@ -39,9 +39,9 @@ fun installedIntellijRelationCompiler(
     return RelationCompilerPort { request ->
         val project = exactProject(root) ?: return@RelationCompilerPort unavailable()
         val current = (workspaces.inspect() as? WorkspaceRuntimeState.Ready)
-            ?.workspace
-            ?.readLease
-            ?: return@RelationCompilerPort unavailable()
+                          ?.workspace
+                          ?.readLease
+                      ?: return@RelationCompilerPort unavailable()
         adapter.read(project, current, request, scopes.compile(current))
     }
 }

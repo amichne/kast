@@ -179,13 +179,13 @@ class RelationIncompleteCoverage private constructor(
 
     override fun equals(other: Any?): Boolean =
         other is RelationIncompleteCoverage &&
-            knownMinimum == other.knownMinimum &&
-            limitations == other.limitations &&
-            continuation.fingerprint == other.continuation.fingerprint
+        knownMinimum == other.knownMinimum &&
+        limitations == other.limitations &&
+        continuation.fingerprint == other.continuation.fingerprint
 
     override fun hashCode(): Int =
         31 * (31 * knownMinimum.hashCode() + limitations.hashCode()) +
-            continuation.fingerprint.hashCode()
+        continuation.fingerprint.hashCode()
 }
 
 enum class RelationCompilerRejection {

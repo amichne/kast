@@ -120,14 +120,14 @@ internal object AddDeclarationVerificationServiceTestSupport {
     fun identity(
         command: AddDeclarationVerificationCommand,
     ): AddDeclarationObservedIdentity = AddDeclarationObservedIdentity.admit(
-            command.plan.expectedSemanticDelta,
-            expectedTargetPath = command.plan.target.targetPath,
-            observedPackageName = "sample",
-            observedDeclarationName = "added",
-            observedKind = AddDeclarationKind.FUNCTION,
-            observedStartOffset = 16,
-            observedEndOffset = 36,
-        ).refined()
+        command.plan.expectedSemanticDelta,
+        expectedTargetPath = command.plan.target.targetPath,
+        observedPackageName = "sample",
+        observedDeclarationName = "added",
+        observedKind = AddDeclarationKind.FUNCTION,
+        observedStartOffset = 16,
+        observedEndOffset = 36,
+    ).refined()
 
     fun publication(value: Long): PublishedWorkspaceGeneration =
         PublishedWorkspaceGeneration(generation(value), WorkspaceStateIdentity("workspace-$value"))

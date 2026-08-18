@@ -17,7 +17,10 @@ fun interface WireClient {
      * [WireTransportFailure] is the closed expected failure. Raw documents may be extracted only
      * by the canonical wire codec and typed projection.
      */
-    fun exchange(endpoint: RuntimeEndpoint, document: String): WireExchange
+    fun exchange(
+        endpoint: RuntimeEndpoint,
+        document: String,
+    ): WireExchange
 }
 
 sealed interface WireExchange {
@@ -41,7 +44,10 @@ enum class WireTransportFailure {
 
 /** JDK-native Unix-domain-socket client using one bounded length-prefixed UTF-8 frame. */
 class UnixDomainWireClient : WireClient {
-    override fun exchange(endpoint: RuntimeEndpoint, document: String): WireExchange {
+    override fun exchange(
+        endpoint: RuntimeEndpoint,
+        document: String,
+    ): WireExchange {
         val channel = try {
             SocketChannel.open(StandardProtocolFamily.UNIX)
         } catch (_: IOException) {
@@ -94,7 +100,10 @@ internal object WireFrameCodec {
      * Establishes that one bounded UTF-8 frame was completely written.
      * [WireTransportFailure] is the closed expected failure. Raw bytes remain inside this adapter.
      */
-    fun write(channel: SocketChannel, document: String): WireFrameWrite {
+    fun write(
+        channel: SocketChannel,
+        document: String,
+    ): WireFrameWrite {
         val payload = document.toByteArray(StandardCharsets.UTF_8)
         if (payload.size > MAX_WIRE_FRAME_BYTES) {
             return WireFrameWrite.Rejected(WireTransportFailure.REQUEST_TOO_LARGE)
@@ -143,7 +152,10 @@ internal object WireFrameCodec {
         return WireFrameRead.Received(StandardCharsets.UTF_8.decode(payload).toString())
     }
 
-    private fun readCompletely(channel: SocketChannel, buffer: ByteBuffer): BufferRead = try {
+    private fun readCompletely(
+        channel: SocketChannel,
+        buffer: ByteBuffer,
+    ): BufferRead = try {
         while (buffer.hasRemaining()) {
             if (channel.read(buffer) < 0) return BufferRead.TRUNCATED
         }

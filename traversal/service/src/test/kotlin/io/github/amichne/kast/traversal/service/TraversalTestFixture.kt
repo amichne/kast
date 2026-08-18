@@ -65,7 +65,10 @@ internal class TraversalTestFixture {
         SymbolLibraryPolicy.EXCLUDE,
     )
 
-    fun selector(name: String, offset: Int): SymbolSelector {
+    fun selector(
+        name: String,
+        offset: Int,
+    ): SymbolSelector {
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(lease, scope),
             SymbolDiscoveryKind.SYMBOL,
@@ -248,7 +251,10 @@ internal class TraversalTestFixture {
             }
         }
 
-    private fun fact(request: RelationRequest, endpoint: RelationEndpoint.Resolved): RelationFact {
+    private fun fact(
+        request: RelationRequest,
+        endpoint: RelationEndpoint.Resolved,
+    ): RelationFact {
         val occurrence = RelationOccurrence.fromBoundary(
             request.subject.file,
             request.subject.range.startInclusive,
@@ -268,7 +274,10 @@ internal class TraversalTestFixture {
         ).refined()
     }
 
-    private fun batch(request: RelationRequest, facts: List<RelationFact>): RelationBatch {
+    private fun batch(
+        request: RelationRequest,
+        facts: List<RelationFact>,
+    ): RelationBatch {
         val bytes = facts.sumOf { fact ->
             fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
         }

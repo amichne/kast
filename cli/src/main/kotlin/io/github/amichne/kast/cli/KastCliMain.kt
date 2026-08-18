@@ -39,7 +39,7 @@ fun main(args: Array<String>) {
         is CliExit.Complete,
         is CliExit.Qualified,
         is CliExit.OperationRejected,
-        -> System.out.println(exit.document.value)
+            -> System.out.println(exit.document.value)
         is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
     }
     exitProcess(exit.code)

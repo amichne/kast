@@ -28,15 +28,18 @@ internal fun <Value> jsonContractSerializer(
 ): KSerializer<Value> = object : KSerializer<Value> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor(serialName)
 
-    override fun serialize(encoder: Encoder, value: Value) {
+    override fun serialize(
+        encoder: Encoder,
+        value: Value,
+    ) {
         val jsonEncoder = encoder as? JsonEncoder
-            ?: throw SerializationException("Canonical operation values require JSON")
+                          ?: throw SerializationException("Canonical operation values require JSON")
         jsonEncoder.encodeJsonElement(encode(value))
     }
 
     override fun deserialize(decoder: Decoder): Value {
         val jsonDecoder = decoder as? JsonDecoder
-            ?: throw SerializationException("Canonical operation values require JSON")
+                          ?: throw SerializationException("Canonical operation values require JSON")
         return decode(jsonDecoder.decodeJsonElement())
     }
 }

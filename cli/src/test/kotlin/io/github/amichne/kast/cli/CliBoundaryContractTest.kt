@@ -1,8 +1,8 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

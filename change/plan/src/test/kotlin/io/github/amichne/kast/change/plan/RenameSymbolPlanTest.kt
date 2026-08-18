@@ -5,9 +5,9 @@ import io.github.amichne.kast.change.contract.KotlinIdentifier
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrence
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceRole
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceSet
-import io.github.amichne.kast.change.contract.RenameSymbolPlanningFailure
 import io.github.amichne.kast.change.contract.RenameSymbolPlanRequest
 import io.github.amichne.kast.change.contract.RenameSymbolPlanResult
+import io.github.amichne.kast.change.contract.RenameSymbolPlanningFailure
 import io.github.amichne.kast.change.contract.SourceTextMutation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf

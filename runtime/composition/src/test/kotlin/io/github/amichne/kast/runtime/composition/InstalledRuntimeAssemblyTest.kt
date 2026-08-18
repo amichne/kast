@@ -6,9 +6,9 @@ import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
+import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings

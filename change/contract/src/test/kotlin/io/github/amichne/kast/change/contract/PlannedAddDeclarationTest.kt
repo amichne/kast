@@ -2,11 +2,11 @@ package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
-import java.util.Base64
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
+import java.util.Base64
 
 class PlannedAddDeclarationTest {
     @Test

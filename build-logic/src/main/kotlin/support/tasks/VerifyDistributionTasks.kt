@@ -24,8 +24,10 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val controlArchive: RegularFileProperty
 
-    @get:Input abstract val maximumArchiveBytes: Property<Long>
-    @get:Input abstract val maximumInstalledBytes: Property<Long>
+    @get:Input
+    abstract val maximumArchiveBytes: Property<Long>
+    @get:Input
+    abstract val maximumInstalledBytes: Property<Long>
 
     @TaskAction
     fun verify() {

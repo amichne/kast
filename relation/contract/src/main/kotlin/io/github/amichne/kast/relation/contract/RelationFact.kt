@@ -7,9 +7,9 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -25,7 +25,7 @@ value class RelationEndpointFingerprint internal constructor(
     init {
         require(
             value.length == RELATION_ENDPOINT_FINGERPRINT_LENGTH &&
-                value.all { character -> character in '0'..'9' || character in 'a'..'f' },
+            value.all { character -> character in '0'..'9' || character in 'a'..'f' },
         )
     }
 }

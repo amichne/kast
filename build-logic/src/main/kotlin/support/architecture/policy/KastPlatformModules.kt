@@ -344,11 +344,13 @@ internal object KastPlatformModules {
         role: ModuleRole,
         vararg allowedDependencies: ModuleId,
     ): ModulePolicy = module(id, ModuleLifecycle.ACTIVE, role, *allowedDependencies)
+
     private fun planned(
         id: ModuleId,
         role: ModuleRole,
         vararg allowedDependencies: ModuleId,
     ): ModulePolicy = module(id, ModuleLifecycle.PLANNED, role, *allowedDependencies)
+
     private fun module(
         id: ModuleId,
         lifecycle: ModuleLifecycle,

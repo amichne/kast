@@ -1,7 +1,6 @@
 package io.github.amichne.kast.workspace.service
 
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.WorkspaceAdmissionWaitMillis
 import io.github.amichne.kast.workspace.contract.WorkspaceEdtLiveness
 import io.github.amichne.kast.workspace.contract.WorkspaceExpensiveWork
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceAdmissionAction
@@ -10,12 +9,12 @@ import io.github.amichne.kast.workspace.contract.WorkspaceResourceBlocker
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceDurationNanos
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceInitiationResult
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservation
-import io.github.amichne.kast.workspace.contract.WorkspaceResourcePolicy
 import io.github.amichne.kast.workspace.contract.WorkspaceResourceObservationAuthority
-import java.lang.System as JavaSystem
+import io.github.amichne.kast.workspace.contract.WorkspaceResourcePolicy
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import java.lang.System as JavaSystem
 
 fun interface WorkspaceResourceInitiation {
     /** Runs only the expensive initiation step; readiness waiting remains outside this callback. */
@@ -326,11 +325,13 @@ private data class WorkspaceInitiationKey(
     val root: CanonicalWorkspaceRoot,
     val kind: WorkspaceExpensiveWork,
 )
+
 private sealed interface WorkspaceExactInitiation {
     data object Absent : WorkspaceExactInitiation
 
     data class Present(val entry: ActiveWorkspaceInitiation) : WorkspaceExactInitiation
 }
+
 private class ActiveWorkspaceInitiation(
     val key: WorkspaceInitiationKey,
 ) : WorkspaceAdmissionWaitSignal {
@@ -349,10 +350,12 @@ private class ActiveWorkspaceInitiation(
 
     fun completion(): WorkspaceInitiationCompletion = state.get()
 }
+
 private fun interface WorkspaceAdmissionWaitSignal {
     @Throws(InterruptedException::class)
     fun await(timeoutNanos: Long): Boolean
 }
+
 private class WorkspaceKindCapacityRelease : WorkspaceAdmissionWaitSignal {
     private val released = CountDownLatch(1)
 
@@ -362,11 +365,13 @@ private class WorkspaceKindCapacityRelease : WorkspaceAdmissionWaitSignal {
     override fun await(timeoutNanos: Long): Boolean =
         released.await(timeoutNanos, TimeUnit.NANOSECONDS)
 }
+
 private enum class WorkspaceInitiationCompletion {
     Running,
     Succeeded,
     Failed,
 }
+
 private sealed interface WorkspaceInitiationClaim {
     data class Start(val entry: ActiveWorkspaceInitiation) : WorkspaceInitiationClaim
 
@@ -379,6 +384,7 @@ private sealed interface WorkspaceInitiationClaim {
         val action: WorkspaceResourceAdmissionAction,
     ) : WorkspaceInitiationClaim
 }
+
 private sealed interface WorkspaceEntryWait {
     data class Completed(
         val queueDuration: WorkspaceResourceDurationNanos,
@@ -388,6 +394,7 @@ private sealed interface WorkspaceEntryWait {
         val result: WorkspaceResourceInitiationResult.Rejected,
     ) : WorkspaceEntryWait
 }
+
 private sealed interface WorkspaceCapacityWait {
     data class Retry(
         val queueDuration: WorkspaceResourceDurationNanos,

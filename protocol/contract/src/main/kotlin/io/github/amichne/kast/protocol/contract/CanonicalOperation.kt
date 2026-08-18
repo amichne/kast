@@ -32,7 +32,7 @@ enum class CanonicalOperation(
         fun resolve(id: OperationId): CanonicalOperationResolution =
             byId[id]
                 ?.let(CanonicalOperationResolution::Known)
-                ?: CanonicalOperationResolution.Unknown(id)
+            ?: CanonicalOperationResolution.Unknown(id)
     }
 }
 

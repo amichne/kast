@@ -88,8 +88,8 @@ class IndexerLaunchOptions private constructor(
             }
             if (arguments.drop(1).any { argument ->
                     !argument.startsWith(WORKSPACE_ROOT_PREFIX) &&
-                        !argument.startsWith(SOCKET_PATH_PREFIX)
-                        && !argument.startsWith(RUNTIME_ID_PREFIX)
+                    !argument.startsWith(SOCKET_PATH_PREFIX)
+                    && !argument.startsWith(RUNTIME_ID_PREFIX)
                 }
             ) {
                 failures += IndexerLaunchFailure.UNKNOWN_ARGUMENT

@@ -48,7 +48,7 @@ class LegacyImplementationBridgePolicyTest {
         assertTrue(
             obsolete.violations.any {
                 it is ArchitectureViolation.ObsoleteLegacyImplementationBridge &&
-                    it.bridge.dependency == dependency
+                it.bridge.dependency == dependency
             },
         )
 

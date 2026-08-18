@@ -11,8 +11,8 @@ import io.github.amichne.kast.change.contract.MutationTargetObservation
 import io.github.amichne.kast.change.contract.ObservedMutationTargetState
 import io.github.amichne.kast.change.intellij.InstalledAddDeclarationIntentCompilation
 import io.github.amichne.kast.change.intellij.InstalledAddDeclarationIntentCompiler
-import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.kernel.Refinement
@@ -20,11 +20,11 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.runtime.composition.installedSemanticBudgets
 import io.github.amichne.kast.runtime.composition.protocol.AuthorizedChangeIntent
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionFailure
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
-import io.github.amichne.kast.runtime.composition.installedSemanticBudgets
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
@@ -66,7 +66,7 @@ internal class InstalledChangePlanningAdmission(
         intent: AuthorizedChangeIntent.AddDeclaration,
     ): ChangePlanAdmission {
         val published = (workspace.inspect() as? WorkspaceRuntimeState.Ready)?.workspace
-            ?: return rejected(ChangePlanAdmissionFailure.WORKSPACE_NOT_READY)
+                        ?: return rejected(ChangePlanAdmissionFailure.WORKSPACE_NOT_READY)
         if (intent.selector.lease != published.readLease) {
             return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
         }
@@ -77,10 +77,10 @@ internal class InstalledChangePlanningAdmission(
             )
         }
         val file = selector.file as? SymbolDiscoveryFileIdentity.Workspace
-            ?: return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+                   ?: return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
         val observed = when (val result = sources.observe(file)) {
             is SourceObservationResult.Observed -> result.source as? ObservedMutationSource
-                ?: return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+                                                   ?: return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
             is SourceObservationResult.Rejected -> return rejected(
                 ChangePlanAdmissionFailure.TARGET_REJECTED,
             )
@@ -117,7 +117,7 @@ internal class InstalledChangePlanningAdmission(
             )
         }
         val budgets = installedSemanticBudgets()
-            ?: return rejected(ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE)
+                      ?: return rejected(ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE)
         val relation = relations.read(
             RelationRequest.start(selector, RelationMeaning.References, budgets.relation),
         )

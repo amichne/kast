@@ -123,8 +123,8 @@ internal fun admitRuntimeLayout(
     val executablesComplete = manifest.layout.executableEntries.all { entry ->
         val path = directory.resolve(entry.value).normalize()
         path.startsWith(directory) &&
-            Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) &&
-            Files.isExecutable(path)
+        Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) &&
+        Files.isExecutable(path)
     }
     return if (executablesComplete) {
         RuntimeLayoutAdmission.Complete
@@ -172,7 +172,7 @@ internal fun admitRuntimeReceipt(directory: Path): RuntimeReceiptAdmission = try
 private fun contentFiles(directory: Path): List<Path> = Files.walk(directory).use { paths ->
     paths.filter { path ->
         path != directory.resolve(RECEIPT_NAME) &&
-            Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
+        Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
     }.toList()
 }
 

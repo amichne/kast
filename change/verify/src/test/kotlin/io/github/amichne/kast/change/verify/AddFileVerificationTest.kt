@@ -25,10 +25,12 @@ class AddFileVerificationTest {
     fun `mismatched resulting file identity rejects proof`() {
         val complete = fixture.addFileEvidence(applied)
         val result = service(
-            complete.copy(observedDelta = ObservedAddFileDelta.fromCompilerBoundary(
-                fixture.plan.target.file,
-                1,
-            ).refined()),
+            complete.copy(
+                observedDelta = ObservedAddFileDelta.fromCompilerBoundary(
+                    fixture.plan.target.file,
+                    1,
+                ).refined()
+            ),
         ).verify(fixture.request(plan, applied))
 
         val rejected = assertInstanceOf(

@@ -72,7 +72,7 @@ class IntellijApplyModuleBoundaryTest {
                 if (module.id == ModuleId.CHANGE_INTELLIJ) {
                     module.copy(
                         allowedProjectDependencies = module.allowedProjectDependencies +
-                            ModuleId.WORKSPACE_SERVICE,
+                                                     ModuleId.WORKSPACE_SERVICE,
                     )
                 } else {
                     module

@@ -30,6 +30,7 @@ import io.github.amichne.kast.change.recovery.AddDeclarationRollbackFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
@@ -37,7 +38,6 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import org.jetbrains.kotlin.psi.KtPsiFactory
 
 internal sealed interface IntellijAddFileAbsenceObservation {
     data object TargetPresent : IntellijAddFileAbsenceObservation
@@ -81,9 +81,9 @@ internal class IntellijAddFileSourcePrimitive(
             SourceObservationFailure.TARGET_NOT_FOUND,
         )
         val parent = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(parentPath)
-            ?: return IntellijAddFileAbsenceObservation.Rejected(
-                SourceObservationFailure.TARGET_NOT_FOUND,
-            )
+                     ?: return IntellijAddFileAbsenceObservation.Rejected(
+                         SourceObservationFailure.TARGET_NOT_FOUND,
+                     )
         if (!parent.isValid || !parent.isDirectory) {
             return IntellijAddFileAbsenceObservation.Rejected(
                 SourceObservationFailure.TARGET_INVALIDATED,
@@ -185,7 +185,7 @@ internal class IntellijAddFileSourcePrimitive(
             return rejectedRollback(AddDeclarationRollbackFailure.CONTENT_DIVERGED)
         }
         val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
-            ?: return rejectedRollback(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
+                   ?: return rejectedRollback(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
         return try {
             onEdt {
                 WriteCommandAction.writeCommandAction(project)
@@ -241,7 +241,7 @@ internal class IntellijAddFileSourcePrimitive(
         authority: MutationAuthority,
     ): Refinement<IntellijAddFilePreparation, SourceWriteFailure> {
         val intent = authority.intent as? ChangeIntent.AddFile
-            ?: return Refinement.Rejected(SourceWriteFailure.MUTATION_FAILED)
+                     ?: return Refinement.Rejected(SourceWriteFailure.MUTATION_FAILED)
         if (
             authority.preconditionAtIntellijBoundary() !=
             MutationPreconditionAtIntellijBoundary.Absent
@@ -253,9 +253,9 @@ internal class IntellijAddFileSourcePrimitive(
             return Refinement.Rejected(SourceWriteFailure.PREIMAGE_CHANGED)
         }
         val parentPath = path.parent
-            ?: return Refinement.Rejected(SourceWriteFailure.TARGET_NOT_FOUND)
+                         ?: return Refinement.Rejected(SourceWriteFailure.TARGET_NOT_FOUND)
         val parent = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(parentPath)
-            ?: return Refinement.Rejected(SourceWriteFailure.TARGET_NOT_FOUND)
+                     ?: return Refinement.Rejected(SourceWriteFailure.TARGET_NOT_FOUND)
         if (!parent.isValid || !parent.isDirectory) {
             return Refinement.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
         }

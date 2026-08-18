@@ -18,11 +18,6 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.components.allOverriddenSymbols
-import org.jetbrains.kotlin.analysis.api.components.directlyOverriddenSymbols
-import org.jetbrains.kotlin.analysis.api.components.isDirectSubClassOf
-import org.jetbrains.kotlin.analysis.api.components.isSubClassOf
-import org.jetbrains.kotlin.analysis.api.components.resolveToSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
@@ -98,11 +93,11 @@ internal class IntellijK2RelationProjection(
         subject: RelationEndpoint,
     ): IntellijRelationSubjectLookup {
         val file = when (val identity = subject.file) {
-            is SymbolDiscoveryFileIdentity.Workspace ->
-                LocalFileSystem.getInstance().findFileByNioFile(Path.of(identity.path.value))
-            is SymbolDiscoveryFileIdentity.External ->
-                VirtualFileManager.getInstance().findFileByUrl(identity.url.value)
-        } ?: return rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
+                       is SymbolDiscoveryFileIdentity.Workspace ->
+                           LocalFileSystem.getInstance().findFileByNioFile(Path.of(identity.path.value))
+                       is SymbolDiscoveryFileIdentity.External ->
+                           VirtualFileManager.getInstance().findFileByUrl(identity.url.value)
+                   } ?: return rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
         if (!scope.nativeScope.contains(file)) {
             return rejected(IntellijRelationSubjectFailure.OUTSIDE_SCOPE)
         }
@@ -114,8 +109,8 @@ internal class IntellijK2RelationProjection(
             .filterIsInstance<KtNamedDeclaration>()
             .filter { declaration ->
                 declaration.textRange.startOffset == subject.range.startInclusive &&
-                    declaration.textRange.endOffset == subject.range.endExclusive &&
-                    declaration.name == subject.name.value
+                declaration.textRange.endOffset == subject.range.endExclusive &&
+                declaration.name == subject.name.value
             }
             .toList()
         val declaration = when (candidates.size) {
@@ -212,16 +207,16 @@ internal class IntellijK2RelationProjection(
         when (meaning) {
             RelationMeaning.Inheritors -> {
                 val parent = subjectSymbol as? KaClassSymbol
-                           ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
+                             ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                 val child = candidateSymbol as? KaClassSymbol
-                          ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
+                            ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                 if (child.isDirectSubClassOf(parent)) confirmed() else different()
             }
             RelationMeaning.Overrides -> {
                 val parent = subjectSymbol as? KaCallableSymbol
-                           ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
+                             ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                 val child = candidateSymbol as? KaCallableSymbol
-                          ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
+                            ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                 if (
                     child.directlyOverriddenSymbols.any {
                         it.compareIdentity(parent) == IntellijSymbolIdentityComparison.SAME

@@ -14,9 +14,9 @@ import io.github.amichne.kast.change.contract.AddDeclarationSourceText
 import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.EditableMutationTarget
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
+import io.github.amichne.kast.change.contract.KotlinIdentifier
 import io.github.amichne.kast.change.contract.MutationTargetObservation
 import io.github.amichne.kast.change.contract.ObservedMutationTargetState
-import io.github.amichne.kast.change.contract.KotlinIdentifier
 import io.github.amichne.kast.change.contract.RenameSymbolChangePlan
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrence
 import io.github.amichne.kast.change.contract.RenameSymbolOccurrenceRole
@@ -35,7 +35,6 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -356,7 +355,10 @@ internal class VerifiedMutationFixture {
         path: Path = targetPath,
     ): DiagnosticScope = DiagnosticScope.fromCanonicalPaths(workspace.readLease, listOf(path)).refined()
 
-    private fun workspace(generation: Long, state: String): PublishedWorkspace =
+    private fun workspace(
+        generation: Long,
+        state: String,
+    ): PublishedWorkspace =
         PublishedWorkspace.publish(
             ReconciledWorkspace.admit(
                 WorkspaceCandidate(root, WorkspaceStateIdentity(state)),

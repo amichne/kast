@@ -78,13 +78,13 @@ class DiagnosticService(
             is WorkspaceRuntimeState.Blocked,
             WorkspaceRuntimeState.Stopping,
                 -> return DiagnosticLeaseAdmission.Rejected(
-                    when (phase) {
-                        DiagnosticAdmissionPhase.INITIAL ->
-                            DiagnosticReadRejection.WORKSPACE_NOT_READY
-                        DiagnosticAdmissionPhase.REVALIDATION ->
-                            DiagnosticReadRejection.STALE_GENERATION
-                    },
-                )
+                when (phase) {
+                    DiagnosticAdmissionPhase.INITIAL ->
+                        DiagnosticReadRejection.WORKSPACE_NOT_READY
+                    DiagnosticAdmissionPhase.REVALIDATION ->
+                        DiagnosticReadRejection.STALE_GENERATION
+                },
+            )
         }
         return when {
             expected.workspaceRoot != current.workspaceRoot ->
@@ -130,8 +130,8 @@ private fun DiagnosticCompilation.Complete.admitFor(
     coverage.analyzedFiles == scope.files &&
     batch.facts.all { fact ->
         fact.scope === scope &&
-            fact.generation == scope.lease.generation &&
-            fact.location.file in scope.files
+        fact.generation == scope.lease.generation &&
+        fact.location.file in scope.files
     }
 ) {
     DiagnosticCompilerOutputAdmission.Admitted
@@ -158,8 +158,8 @@ private fun DiagnosticCompilation.Qualified.admitFor(
         analyzed + limited == scope.files.toSet() &&
         batch.facts.all { fact ->
             fact.scope === scope &&
-                fact.generation == scope.lease.generation &&
-                fact.location.file in scope.files
+            fact.generation == scope.lease.generation &&
+            fact.location.file in scope.files
         }
     ) {
         DiagnosticCompilerOutputAdmission.Admitted

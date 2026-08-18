@@ -83,8 +83,8 @@ class CliNativeTransportTest {
                     assertEquals(
                         WireFrameWrite.Written,
                         WireFrameCodec.write(
-                        channel,
-                        binding.encodeOutcome(outcome).encodedDocument(),
+                            channel,
+                            binding.encodeOutcome(outcome).encodedDocument(),
                         ),
                     )
                 }

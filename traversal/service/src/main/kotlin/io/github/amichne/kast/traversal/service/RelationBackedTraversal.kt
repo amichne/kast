@@ -80,6 +80,6 @@ private fun OneHopRelationRequest.toRelationRequest(): OneHopRelationRequestProj
  */
 private fun Refinement<RelationRequest, RelationResumeFailure>.toProjection():
     OneHopRelationRequestProjection = when (this) {
-        is Refinement.Refined -> OneHopRelationRequestProjection.Admitted(value)
-        is Refinement.Rejected -> OneHopRelationRequestProjection.Rejected
-    }
+    is Refinement.Refined -> OneHopRelationRequestProjection.Admitted(value)
+    is Refinement.Rejected -> OneHopRelationRequestProjection.Rejected
+}

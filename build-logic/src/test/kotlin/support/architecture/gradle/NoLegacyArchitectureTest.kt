@@ -110,7 +110,7 @@ class NoLegacyArchitectureTest {
         Files.writeString(
             fixture.resolve("settings.gradle.kts"),
             "rootProject.name = \"no-legacy-fixture\"\n" +
-                projects.joinToString("\n") { project -> "include(\":$project\")" },
+            projects.joinToString("\n") { project -> "include(\":$project\")" },
         )
         Files.writeString(
             fixture.resolve("build.gradle.kts"),

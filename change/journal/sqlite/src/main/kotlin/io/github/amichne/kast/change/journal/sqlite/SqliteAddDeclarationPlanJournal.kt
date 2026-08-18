@@ -133,10 +133,10 @@ class SqliteAddDeclarationPlanJournal private constructor(
             val loaded = connection.loadRecord(command.planId)
             val result = if (updated == 1) {
                 val approved = (loaded as? SqliteAddDeclarationPlanRecordLoad.Found)
-                    ?.record as? PersistedAddDeclarationPlan.Approved
-                    ?: return@use ApproveAddDeclarationPlanResult.Rejected(
-                        AddDeclarationPlanJournalFailure.CorruptRecord,
-                    )
+                                   ?.record as? PersistedAddDeclarationPlan.Approved
+                               ?: return@use ApproveAddDeclarationPlanResult.Rejected(
+                                   AddDeclarationPlanJournalFailure.CorruptRecord,
+                               )
                 ApproveAddDeclarationPlanResult.Approved(approved)
             } else {
                 when (loaded) {
@@ -342,7 +342,7 @@ private fun ResultSet.toRecord(
                                         Refinement.Refined(apply.value)
                                     } else {
                                         val applied = apply.value as? AppliedUnverifiedAddDeclaration
-                                            ?: return corruptRecord()
+                                                      ?: return corruptRecord()
                                         when (val verification = decodeAddDeclarationVerification(applied)) {
                                             is Refinement.Refined -> Refinement.Refined(verification.value)
                                             is Refinement.Rejected -> corruptRecord()
@@ -363,6 +363,7 @@ private fun ResultSet.toRecord(
 
 private fun corruptRecord(): Refinement.Rejected<SqliteAddDeclarationPlanRecordDecodeFailure> =
     Refinement.Rejected(SqliteAddDeclarationPlanRecordDecodeFailure.CORRUPT)
+
 private fun <T, F> Refinement<T, F>.valueOrNull(): T? = when (this) {
     is Refinement.Refined -> value
     is Refinement.Rejected -> null

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.change.apply
 
-import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
+import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
@@ -110,15 +110,15 @@ internal class DerivedMutationPostimage private constructor(
             val ranges = rangedMutations.map { it.second }.sortedBy(MutationRange::startInclusive)
             if (ranges.zipWithNext().any { (left, right) ->
                     left.startInclusive == right.startInclusive ||
-                        left.endExclusive > right.startInclusive
+                    left.endExclusive > right.startInclusive
                 }
             ) {
                 return Refinement.Rejected(MutationAdmissionFailure.MUTATION_OVERLAP)
             }
             if (ranges.any {
-                        it.startInclusive < 0 ||
-                        it.endExclusive < it.startInclusive ||
-                        it.endExclusive > preimage.text.length
+                    it.startInclusive < 0 ||
+                    it.endExclusive < it.startInclusive ||
+                    it.endExclusive > preimage.text.length
                 }
             ) {
                 return Refinement.Rejected(MutationAdmissionFailure.MUTATION_OUT_OF_BOUNDS)
@@ -151,7 +151,7 @@ internal class DerivedMutationPostimage private constructor(
                     is SourceTextMutation.InsertAfterDeclaration -> {
                         val offset = mutation.anchor.endExclusive
                         result.substring(0, offset) + "\n\n${mutation.declaration.value}" +
-                            result.substring(offset)
+                        result.substring(offset)
                     }
                     is SourceTextMutation.Replace -> result.substring(
                         0,
@@ -186,7 +186,7 @@ internal class DerivedMutationPostimage private constructor(
             mutations: List<SourceTextMutation>,
         ): Refinement<DerivedMutationPostimage, MutationAdmissionFailure> {
             val create = mutations.singleOrNull() as? SourceTextMutation.CreateFile
-                ?: return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
+                         ?: return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
             val result = create.content.value
             val content = when (val parsed = WorkspaceSourceContentHash.parse(
                 sha256(result.toByteArray(StandardCharsets.UTF_8)),
@@ -263,7 +263,7 @@ internal class MutationAdmissionService {
                 return rejected(MutationAdmissionFailure.UNKNOWN_TARGET_PROVENANCE)
         }
         val plannedWrite = plan.writes.entries.singleOrNull()
-            ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
+                           ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
         if (currentRoot.owner != plannedWrite.sourceRoot.owner) {
             return rejected(MutationAdmissionFailure.WRONG_SOURCE_ROOT_OWNER)
         }
@@ -327,7 +327,7 @@ internal class MutationAdmissionService {
     ): Refinement<SourceRoot, MutationAdmissionFailure> {
         val plan = request.plan
         val plannedWrite = plan.writes.entries.singleOrNull()
-            ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
+                           ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
         val matching = request.workspace.sourceRoots.filter { root ->
             root.location == plannedWrite.sourceRoot.location
         }
@@ -347,5 +347,4 @@ internal class MutationAdmissionService {
     private fun rejected(
         failure: MutationAdmissionFailure,
     ): Refinement.Rejected<MutationAdmissionFailure> = Refinement.Rejected(failure)
-
 }

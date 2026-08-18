@@ -16,12 +16,18 @@ sealed interface RuntimeArtifactAcquisition {
 
 fun interface RuntimeArtifactDownloader {
     /** Downloads one admitted manifest URI into the exact partial archive path. */
-    fun download(source: URI, target: Path): RuntimeArtifactAcquisition
+    fun download(
+        source: URI,
+        target: Path,
+    ): RuntimeArtifactAcquisition
 }
 
 /** JDK HTTP adapter for the managed semantic-runtime source. */
 object JdkRuntimeArtifactDownloader : RuntimeArtifactDownloader {
-    override fun download(source: URI, target: Path): RuntimeArtifactAcquisition = try {
+    override fun download(
+        source: URI,
+        target: Path,
+    ): RuntimeArtifactAcquisition = try {
         val connection = source.toURL().openConnection()
         connection.connectTimeout = 30_000
         connection.readTimeout = 120_000

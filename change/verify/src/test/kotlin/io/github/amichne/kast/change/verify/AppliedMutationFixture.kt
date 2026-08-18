@@ -87,7 +87,7 @@ private class InMemoryVerificationRecoveryStore : MutationRecoveryEvidenceStore 
 
     override fun load(binding: MutationPlanBinding): MutationRecoveryLoadResult =
         records[binding.value]?.let(MutationRecoveryLoadResult::Found)
-            ?: MutationRecoveryLoadResult.Absent(binding)
+        ?: MutationRecoveryLoadResult.Absent(binding)
 
     private fun <Record : MutationRecoveryRecord> persist(
         record: Record,

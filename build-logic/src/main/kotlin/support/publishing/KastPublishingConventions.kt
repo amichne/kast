@@ -36,17 +36,17 @@ private fun normalizeGithubRepository(value: String): String? {
     val trimmed = value.trim()
     val match = githubRepoRegex.find(trimmed)
     val candidate = match?.groupValues?.get(1)
-        ?: trimmed.takeIf { it.count { char -> char == '/' } == 1 && !it.contains("github.com") }
+                    ?: trimmed.takeIf { it.count { char -> char == '/' } == 1 && !it.contains("github.com") }
     return candidate?.removeSuffix(".git")?.trim()?.takeIf(String::isNotBlank)
 }
 
 internal fun Project.resolveKastProjectVersion(props: Map<String, *>): String =
     providers.gradleProperty("version").orNull
-        ?: providers.gradleProperty("VERSION").orNull
-        ?: (props["version"] as? String)
-        ?: (props["VERSION"] as? String)
-        ?: rootProject.version.toString().takeIf(String::isNotBlank)
-        ?: error("Missing project version. Pass -Pversion=... or create a v-prefixed Git tag.")
+    ?: providers.gradleProperty("VERSION").orNull
+    ?: (props["version"] as? String)
+    ?: (props["VERSION"] as? String)
+    ?: rootProject.version.toString().takeIf(String::isNotBlank)
+    ?: error("Missing project version. Pass -Pversion=... or create a v-prefixed Git tag.")
 
 internal fun deriveKastModuleName(artifactId: String): String =
     artifactId
@@ -86,20 +86,20 @@ fun Project.configureKastPublishing(
         .firstOrNull()
 
     val githubUser = (props["gpr.user"] as? String)?.trim()
-        ?: System.getenv("GITHUB_ACTOR")
-        ?: System.getenv("GITHUB_USERNAME")
+                     ?: System.getenv("GITHUB_ACTOR")
+                     ?: System.getenv("GITHUB_USERNAME")
 
     val githubToken = (props["gpr.key"] as? String)?.trim()
-        ?: System.getenv("GITHUB_TOKEN")
-        ?: System.getenv("GITHUB_PACKAGES_TOKEN")
+                      ?: System.getenv("GITHUB_TOKEN")
+                      ?: System.getenv("GITHUB_PACKAGES_TOKEN")
 
     extensions.configure<PublishingExtension> {
         publications {
             val publication =
                 findByName("maven") as? MavenPublication
-                    ?: create<MavenPublication>("maven").apply {
-                        from(components["java"])
-                    }
+                ?: create<MavenPublication>("maven").apply {
+                    from(components["java"])
+                }
 
             publication.apply {
                 groupId = props["GROUP"] as String
@@ -137,11 +137,11 @@ fun Project.configureKastPublishing(
 
     extensions.configure<SigningExtension> {
         val signingRequired = publishTarget != PublishTarget.Local &&
-            publishTarget != PublishTarget.Github
+                              publishTarget != PublishTarget.Github
         val useGpgCmd = props.containsKey("signing.gnupg.keyName") ||
-            System.getenv("SIGNING_GPG_KEY_NAME") != null
+                        System.getenv("SIGNING_GPG_KEY_NAME") != null
         val hasKeyringCredentials = props.containsKey("signing.keyId") ||
-            System.getenv("SIGNING_KEY_ID") != null
+                                    System.getenv("SIGNING_KEY_ID") != null
 
         if (useGpgCmd) {
             useGpgCmd()

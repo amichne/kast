@@ -28,7 +28,7 @@ internal class EffectBoundAddDeclarationTarget private constructor(
     fun revalidate(): Refinement<
         EffectBoundAddDeclarationTarget,
         EffectBoundAddDeclarationTargetFailure,
-    > = admit(capability)
+        > = admit(capability)
 
     companion object {
         /**

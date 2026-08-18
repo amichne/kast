@@ -64,7 +64,7 @@ object InstalledIntellijWorkspace {
         GradleSystemSettings.getInstance().isDownloadSources = false
         val gradleJvm = when (val admission = InstalledGradleJvm.admit(
             System.getProperty("java.home")
-                ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE),
+            ?: return rejected(InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE),
             System.getenv("JAVA_HOME"),
         )) {
             is InstalledGradleJvmAdmission.Admitted -> admission.jvm

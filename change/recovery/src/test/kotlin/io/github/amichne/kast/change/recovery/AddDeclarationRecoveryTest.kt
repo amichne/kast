@@ -182,7 +182,7 @@ private class InMemoryMutationRecoveryEvidenceStore : MutationRecoveryEvidenceSt
     override fun load(binding: io.github.amichne.kast.evidence.contract.MutationPlanBinding): MutationRecoveryLoadResult {
         loadFailure?.let { return MutationRecoveryLoadResult.Rejected(it) }
         return records[binding.value]?.let(MutationRecoveryLoadResult::Found)
-            ?: MutationRecoveryLoadResult.Absent(binding)
+               ?: MutationRecoveryLoadResult.Absent(binding)
     }
 
     fun current(): MutationRecoveryRecord = records.values.single()

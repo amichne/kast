@@ -133,7 +133,7 @@ value class SymbolSelectorFingerprint internal constructor(
     init {
         require(
             value.length == SYMBOL_SELECTOR_FINGERPRINT_HEX_LENGTH &&
-                value.all { character -> character in '0'..'9' || character in 'a'..'f' },
+            value.all { character -> character in '0'..'9' || character in 'a'..'f' },
         )
     }
 }

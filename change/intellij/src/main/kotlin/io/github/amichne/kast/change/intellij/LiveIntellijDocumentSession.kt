@@ -107,7 +107,7 @@ internal class LiveIntellijDocumentSession(
                     .withName("Kast semantic change")
                     .withGroupId("kast.change.semantic")
                     .compute<IntellijSessionStepResult, RuntimeException>(action)
-                    ?: IntellijSessionStepResult.Rejected(SourceWriteFailure.MUTATION_FAILED)
+                ?: IntellijSessionStepResult.Rejected(SourceWriteFailure.MUTATION_FAILED)
             }
         } catch (cancellation: ProcessCanceledException) {
             throw cancellation

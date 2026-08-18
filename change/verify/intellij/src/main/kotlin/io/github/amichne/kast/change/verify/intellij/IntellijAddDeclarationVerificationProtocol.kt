@@ -141,7 +141,7 @@ data class ExactVerifiedAddDeclarationPostimage private constructor(
         ): Refinement<
             ExactVerifiedAddDeclarationPostimage,
             ExactVerifiedAddDeclarationPostimageFailure,
-        > {
+            > {
             val postimageBytes = expectedPostimage.copyBytes()
             if (!currentPhysicalBytes.contentEquals(postimageBytes)) {
                 return Refinement.Rejected(
@@ -257,7 +257,7 @@ internal fun admitVacuousOutboundBindingProof(
 ): Refinement<
     AddDeclarationOutboundBindingsObservation,
     IntellijAddDeclarationSemanticProofFailure,
-> = if (expected.value == 0 && observed.value == 0) {
+    > = if (expected.value == 0 && observed.value == 0) {
     Refinement.Refined(AddDeclarationOutboundBindingsObservation.PRESERVED_COMPLETE)
 } else {
     Refinement.Rejected(IntellijAddDeclarationSemanticProofFailure.OUTBOUND_SCOPE_INCOMPLETE)

@@ -11,8 +11,8 @@ import io.github.amichne.kast.change.verify.ChangeVerificationObservationRejecti
 import io.github.amichne.kast.change.verify.ChangeVerificationObservationRequest
 import io.github.amichne.kast.change.verify.ChangeVerificationObserver
 import io.github.amichne.kast.change.verify.ObservedAddDeclarationDelta
-import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationCompilation
@@ -66,13 +66,13 @@ internal class InstalledChangeVerificationObserver(
     ): ChangeVerificationObservation {
         val plan = request.plan as? AddDeclarationChangePlan ?: return rejected()
         val published = (workspace.inspect() as? WorkspaceRuntimeState.Ready)?.workspace
-            ?: return rejected(ChangeVerificationObservationRejection.RESULTING_GENERATION_MOVED)
+                        ?: return rejected(ChangeVerificationObservationRejection.RESULTING_GENERATION_MOVED)
         if (!published.samePublication(request.resulting.workspace)) {
             return rejected(ChangeVerificationObservationRejection.RESULTING_GENERATION_MOVED)
         }
         val observedSource = when (val result = sources.observe(request.applied.source)) {
             is SourceObservationResult.Observed -> result.source as? ObservedMutationSource
-                ?: return rejected()
+                                                   ?: return rejected()
             is SourceObservationResult.Rejected -> return rejected()
         }
         val budgets = installedSemanticBudgets() ?: return rejected()
@@ -189,8 +189,8 @@ internal class InstalledChangeVerificationObserver(
         val candidates = batch.candidates.withIndex().filter { indexed ->
             val candidate = indexed.value
             candidate.name.value == name &&
-                candidate.location is SymbolDiscoveryCandidateLocation.Declaration &&
-                candidate.location.file.stableValue == file.value
+            candidate.location is SymbolDiscoveryCandidateLocation.Declaration &&
+            candidate.location.file.stableValue == file.value
         }
         val candidate = candidates.singleOrNull() ?: return null
         val selection = when (val selected = SymbolDiscoverySelection.select(
@@ -219,7 +219,7 @@ private data class InstalledObservedDeclarationIdentity(
 
 private fun SymbolSelector.observedIdentity(): InstalledObservedDeclarationIdentity? {
     val qualified = (qualifiedIdentity as? ExactDeclarationQualifiedIdentity.Available)?.value
-        ?: return null
+                    ?: return null
     val suffix = ".${name.value}"
     val packageName = when {
         qualified == name.value -> ""

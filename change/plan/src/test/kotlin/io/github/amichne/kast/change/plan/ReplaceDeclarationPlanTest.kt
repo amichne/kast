@@ -2,12 +2,12 @@ package io.github.amichne.kast.change.plan
 
 import io.github.amichne.kast.change.contract.ChangeIntent
 import io.github.amichne.kast.change.contract.ExistingDeclarationSourceText
-import io.github.amichne.kast.change.contract.ReplacementDeclarationSourceText
 import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanResult
 import io.github.amichne.kast.change.contract.ReplaceDeclarationPlanningFailure
 import io.github.amichne.kast.change.contract.ReplaceDeclarationTarget
 import io.github.amichne.kast.change.contract.ReplaceDeclarationTargetFailure
+import io.github.amichne.kast.change.contract.ReplacementDeclarationSourceText
 import io.github.amichne.kast.change.contract.SourceTextMutation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
