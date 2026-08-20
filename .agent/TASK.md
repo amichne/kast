@@ -2,30 +2,33 @@
 
 ## Goal
 
-Kast patch release `v0.25.4` publishes successfully without Rust-negation testing.
+Kast patch release `v0.25.4` publishes successfully with release acceptance consuming the structured symbol CLI documents.
 
 ## Allowed Writes
 
 - `.agent/TASK.md`
-- `.github/AGENTS.md`
-- `.github/scripts/check-no-rust-product.py`
-- `.github/scripts/release/verify-release-contract.py`
+- `integration-tests/enterprise_acceptance.py`
+- `packaging/verify-published-runtime-delivery.sh`
 
 No other paths may be modified.
 
 ## Allowed Reads
 
-- The complete `.github/` directory.
-- Root release and version metadata.
-- Pull request #625 and GitHub Actions release evidence.
-- Git tags and GitHub releases.
+- `AGENTS.md`
+- `.agent/TASK.md`
+- `build.gradle.kts`
+- `benchmarks/enterprise-acceptance.json`
+- `integration-tests/enterprise_acceptance.py`
+- `packaging/verify-published-runtime-delivery.sh`
+- `cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalCliOutcomeProjectors.kt`
+- GitHub Actions release evidence and release metadata.
 
 ## Non-Goals
 
 - Changing product behavior or Kotlin source.
+- Changing acceptance thresholds.
 - Changing release asset formats or destinations.
 - Changing secrets, permissions, environments, or deployment targets.
-- Removing non-Rust repository checks.
 - Refactoring unrelated code.
 - Generalizing the implementation.
 - Fixing unrelated failures.
@@ -36,25 +39,25 @@ No other paths may be modified.
 Command:
 
 ```shell
-python3 .github/scripts/release/verify-release-contract.py --root . && test ! -e .github/scripts/check-no-rust-product.py && ! rg -n 'check-no-rust-product|Rust product|retired-product' .github/AGENTS.md .github/workflows .github/scripts/release
+./gradlew -Pversion=0.25.4 enterpriseAcceptance
 ```
 
 Expected failure:
 
-The release-contract verifier fails because it still requires the removed CI Rust-negation check, and the obsolete checker still exists.
+Enterprise acceptance rejects a complete structured discovery result because it expects the retired bounded-discovery response shape.
 
 ## Green Proof
 
 Command:
 
 ```shell
-python3 .github/scripts/release/verify-release-contract.py --root . && test ! -e .github/scripts/check-no-rust-product.py && ! rg -n 'check-no-rust-product|Rust product|retired-product' .github/AGENTS.md .github/workflows .github/scripts/release && python3 .github/scripts/check-repository-shape.py --root .
+./gradlew -Pversion=0.25.4 enterpriseAcceptance && bash -n packaging/verify-published-runtime-delivery.sh && python3 .github/scripts/check-repository-shape.py --root .
 ```
 
 ## Done When
 
-- The release contract no longer requires Rust-negation testing.
-- The Rust-negation checker and its automation guidance are absent.
+- Enterprise acceptance reads structured discovery declaration items and accepts complete results within the configured bound.
+- Published-runtime verification reads declaration candidates and described symbols from structured CLI documents.
 - The Green Proof passes.
 - The change reaches `main` with passing CI.
 - GitHub release `v0.25.4` is published from the resulting `main` commit.
@@ -64,11 +67,12 @@ python3 .github/scripts/release/verify-release-contract.py --root . && test ! -e
 
 ## Execution State
 
-- Live RED: Release run `32376670124` for `0.25.4` failed because the release-contract verifier required `.github/scripts/check-no-rust-product.py` in CI after CI stopped invoking it.
+- Release run `32379780859` passed the repaired release contract and failed in `enterpriseAcceptance` because a complete 12-item structured discovery result did not satisfy the stale bounded-result assertion.
 - Release `v0.25.4` and tag `v0.25.4` do not exist.
-- Local RED: the declared check failed with the same stale release-contract requirement.
-- Implementation: removed the checker, its release-contract token, and its `.github` guidance.
-- Local GREEN: the declared Green Proof passed with zero repository-shape violations.
+- Local RED: `./gradlew -Pversion=0.25.4 enterpriseAcceptance` failed in 1m34s with the same stale discovery assertion.
+- Implementation: release acceptance now consumes structured discovery, symbol, relation, and traversal documents.
+- Investigation: the widened run reached stale-selector proof and exposed a retired exit-code expectation; operation rejections are structured documents with exit code 0, while nonzero codes are reserved for boundary failures.
+- Local GREEN: `./gradlew -Pversion=0.25.4 enterpriseAcceptance && bash -n packaging/verify-published-runtime-delivery.sh && python3 .github/scripts/check-repository-shape.py --root .` passed in 1m with zero shape violations.
 
 ## Out-of-Scope Findings
 
