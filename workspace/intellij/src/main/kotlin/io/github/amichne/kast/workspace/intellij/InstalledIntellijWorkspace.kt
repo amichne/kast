@@ -3,7 +3,7 @@ package io.github.amichne.kast.workspace.intellij
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListenerAdapter
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
@@ -14,6 +14,7 @@ import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.settings.GradleSystemSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
+import java.io.IOException
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
@@ -220,14 +221,60 @@ object InstalledIntellijWorkspace {
     }
 }
 
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 private class InstalledGradleImportObserver(
     private val workspaceRoot: Path,
-) : ExternalSystemTaskNotificationListenerAdapter() {
+) : ExternalSystemTaskNotificationListener {
     val completion = CompletableFuture<Void>()
+
+    override fun onSuccess(projectPath: String, id: ExternalSystemTaskId) {
+        if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
+            completion.complete(null)
+        }
+    }
+
+    override fun onFailure(projectPath: String, id: ExternalSystemTaskId, exception: Exception) {
+        if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
+            completion.completeExceptionally(exception)
+        }
+    }
+
+    override fun onCancel(projectPath: String, id: ExternalSystemTaskId) {
+        if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
+            completion.cancel(false)
+        }
+    }
 
     override fun onSuccess(id: ExternalSystemTaskId) {
         if (id.workspaceResolution() == GradleTaskIdentity.EXACT_WORKSPACE) {
             completion.complete(null)
+        }
+    }
+
+    /**
+     * Proof transition: `String + ExternalSystemTaskId -> GradleTaskIdentity`.
+     *
+     * [GradleTaskIdentity.EXACT_WORKSPACE] establishes one Gradle project-resolution task whose
+     * contextual project path is the exact canonical workspace. Invalid and inaccessible raw paths
+     * fail closed as [GradleTaskIdentity.OTHER]. Raw callback data remains inside this observer.
+     */
+    private fun ExternalSystemTaskId.workspaceResolution(projectPath: String): GradleTaskIdentity {
+        if (
+            projectSystemId != GradleConstants.SYSTEM_ID ||
+            type != ExternalSystemTaskType.RESOLVE_PROJECT
+        ) {
+            return GradleTaskIdentity.OTHER
+        }
+        return try {
+            if (Path.of(projectPath).toRealPath() == workspaceRoot) {
+                GradleTaskIdentity.EXACT_WORKSPACE
+            } else {
+                GradleTaskIdentity.OTHER
+            }
+        } catch (_: IOException) {
+            GradleTaskIdentity.OTHER
+        } catch (_: RuntimeException) {
+            GradleTaskIdentity.OTHER
         }
     }
 

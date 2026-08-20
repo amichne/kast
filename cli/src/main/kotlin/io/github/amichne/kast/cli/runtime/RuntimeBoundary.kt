@@ -205,7 +205,7 @@ object JdkRuntimeProcessStarter : RuntimeProcessStarter {
     override fun start(command: IndexerLaunchCommand): RuntimeProcessStart = try {
         ProcessBuilder(command.arguments)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-            .redirectError(ProcessBuilder.Redirect.INHERIT)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
         RuntimeProcessStart.Started
     } catch (_: IOException) {

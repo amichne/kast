@@ -70,6 +70,13 @@ pr="$(gh pr list --head feature/indexer-lifecycle-commands --state merged --json
 - Branch `feature/indexer-lifecycle-commands` was created from exact `origin/main` commit `5e834d4b678aaed072b3006aae376e8501cf7760`.
 - GitHub reports `v0.25.4` as the latest immutable release, so the requested minor release is `v0.26.0`.
 - The exact CI Gradle command and repository-shape check pass locally before publication.
+- Pull request `#628` merged as `9653fcc4339b8b8caa5282e128247e7f395c9142` after all five checks passed.
+- Release run `32403634592` failed before publication because enterprise acceptance timed out waiting for Gradle import completion; no `v0.26.0` tag or release exists.
+- The release-only failure reproduces locally. IntelliJ completed Gradle import and indexing, then invoked its contextual task-completion callback, which the legacy-only observer did not consume. After that callback was admitted, the indexer reached its server loop in about twelve seconds.
+- The same live proof exposed a second boundary defect: the detached indexer inherited the CLI's stderr pipe. The CLI process exited, but captured callers waited for pipe EOF until timeout. The launcher now detaches both output streams.
+- The focused CLI and workspace tests pass, and the previously failing `enterpriseAcceptance --rerun-tasks` proof now passes in 1 minute 58 seconds with no retained indexer process or recent Kast socket.
+- The full CI-equivalent Gradle command passes in 1 minute 30 seconds, and the repository-shape gate reports zero violations.
+- Branch `fix/gradle-import-observer` contains the narrow callback compatibility fix required to unblock release acceptance.
 - `session-ses_fecf.md` and `tmp.md` remain untracked and unstaged.
 
 
