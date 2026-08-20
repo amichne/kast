@@ -2,101 +2,69 @@
 
 ## Goal
 
-A client can use Kast's existing eleven-operation public surface end to end without ambiguous discovery completeness, class-only discovery, opaque or dead-end symbol evidence, session-only selectors, semantic-outcome process failures, undiscoverable single-use transport, or opaque change-authority rejection.
+Pull request #625's installed-product acceptance test consumes the structured symbol discovery and description CLI documents and passes.
 
 ## Allowed Writes
 
 - `.agent/TASK.md`
-- `.github/workflows/agent-source-export.yml` (temporary; absent from the final tree)
-- `protocol/contract/`
-- `protocol/registry/`
-- `protocol/wire/`
-- `symbol/contract/`
-- `symbol/service/`
-- `symbol/intellij/`
-- `relation/contract/`
-- `relation/service/`
-- `relation/intellij/`
-- `traversal/contract/`
-- `traversal/service/`
-- `runtime/server/`
-- `runtime/composition/`
-- `cli/`
-- `indexer/`
-- `evidence/contract/`
-- `evidence/sqlite/`
-- `change/contract/`
-- `change/plan/`
-- `change/apply/`
-- `change/verify/`
-- `change/recovery/`
-- `change/intellij/`
-- `.github/scripts/`
-- `scripts/`
-- `AGENTS.md` files beneath the allowed module roots when ownership guidance must change with code
+- `packaging/test-installed-product.sh`
 
 No other paths may be modified.
 
 ## Allowed Reads
 
-- The complete repository.
-- The supplied Kast Public Surface Redesign plan.
-- Current `amichne/kast` history, open pull requests, and CI evidence.
-- Published `amichne/slopsentral` process guidance relevant to proof-carrying types and parse-don't-validate design.
+- `.agent/TASK.md`
+- `AGENTS.md`
+- `cli/AGENTS.md`
+- `build.gradle.kts`
+- `packaging/test-installed-product.sh`
+- `cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalCliOutcomeProjectors.kt`
+- `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt`
+- Pull request #625 metadata, checks, and GitHub Actions logs.
 
 ## Non-Goals
 
-- Adding a twelfth public operation ID or changing the target Gradle topology.
-- Reintroducing an aggregate backend, generic service locator, raw semantic edit endpoint, or hidden cost escalation.
-- Implementing MCP, streaming, or unrelated product expansion.
-- Reworking verified mutation beyond making authority admission and rejection diagnosable.
+- Changing the structured Kotlin protocol or CLI projection.
+- Updating release or enterprise acceptance consumers that are not part of the failing check.
 - Refactoring unrelated code.
+- Generalizing the implementation.
 - Fixing unrelated failures.
-- Adding optional improvements unrelated to the supplied public-surface defects.
+- Adding optional improvements.
 
 ## Red Proof
 
 Command:
 
 ```shell
-./gradlew :symbol:intellij:test :runtime:composition:test :protocol:contract:test :protocol:wire:test :relation:service:test :cli:test
+./gradlew installedProductTest
 ```
 
 Expected failure:
 
-Focused regression tests fail because discovery can exhaust work on unrelated names; members are not reliably discoverable; describe and relations discard structured location evidence; selectors require live authority maps; semantic rejections exit non-zero; transport has no supported descriptor or connection reuse; and change authority failures are opaque.
+The installed-product parser raises `KeyError: 'candidateSelectors'` because it reads the retired flat discovery field instead of the structured `items` document.
 
 ## Green Proof
 
 Command:
 
 ```shell
-./gradlew test verifyKastModuleGraph verifyForbiddenEffects verifyNoLegacyArchitecture runtimeDeliveryMvpAcceptance && python3 .github/scripts/check-repository-shape.py --root .
+./gradlew installedProductTest && python3 .github/scripts/check-repository-shape.py --root .
 ```
 
 ## Done When
 
-- Discovery reports `Complete` only after terminal enumeration and distinguishes a true miss from bounded work.
-- Public discovery accepts a closed kind and returns member declarations when requested.
-- Describe and relation results preserve structured symbol and location evidence without caller parsing.
-- Every emitted selector is self-describing, generation-bound, reconstructable after authority recreation, and rejects stale evidence with a closed failure.
-- Location, file-structure, and bounded text discovery are available through the existing `symbol.discover` operation without adding a public operation ID.
-- Semantic `Rejected` outcomes remain machine-readable data and do not become process or transport failure.
-- A running indexer publishes a versioned endpoint descriptor and supports multiple framed requests on one connection.
-- Change authority rejection names the missing proof or capability and its admission path.
+- The installed-product acceptance test reads a declaration candidate from `items` and the described symbol from `symbol`.
 - The Green Proof passes.
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
 ## Execution State
 
-- Baseline: `amichne/kast@729ad3e00cc5eba622d2a292eef36151e3643e01`.
-- Focused regression tests were added before production changes.
-- Production implementation is published in pull request #625 across protocol, symbol, runtime composition, CLI, indexer transport, and change-plan admission.
-- Wire regression fixtures use explicitly typed structured discovery evidence.
-- Static repository shape and whitespace checks pass.
-- The repository CI is the authoritative full Gradle verification because the local environment does not contain the pinned Gradle distribution or dependency cache.
+- Live CI RED: run `32333294669`, job `96317923710`, failed in `:installedProductTest` with `KeyError: 'candidateSelectors'`.
+- Local RED: `./gradlew installedProductTest` failed in 1m55s with the same `KeyError`.
+- Implementation: the installed-product parser now consumes declaration items and structured symbol documents.
+- Local GREEN: `./gradlew installedProductTest && python3 .github/scripts/check-repository-shape.py --root .` passed; repository shape reported zero violations.
 
 ## Out-of-Scope Findings
 
-- None.
+- None

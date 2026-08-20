@@ -202,8 +202,9 @@ import sys
 document = json.loads(sys.argv[1])
 assert document["operation"] == "symbol.discover", document
 assert document["status"] in {"complete", "qualified"}, document
-assert document["candidateSelectors"], document
-print(document["candidateSelectors"][0])
+declarations = [item for item in document["items"] if item["type"] == "declaration"]
+assert declarations, document
+print(declarations[0]["candidateSelector"])
 PY
 )"
 
@@ -233,7 +234,7 @@ import sys
 document = json.loads(sys.argv[1])
 assert document["operation"] == "symbol.describe", document
 assert document["status"] == "complete", document
-assert "Greeter" in document["declaration"], document
+assert document["symbol"]["name"] == "Greeter", document
 PY
 
 plan_json="$(
