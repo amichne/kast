@@ -46,6 +46,17 @@ class CliInvocation internal constructor(
 
 enum class CliLocalCommand { HELP, VERSION, SCHEMA }
 
+/** Process-local operator actions that do not extend the semantic wire protocol. */
+enum class CliLifecycleCommand(
+    val command: String,
+) {
+    START("start"),
+    STOP("stop"),
+    STATUS("status"),
+    CLEAN("clean"),
+    REINDEX("reindex"),
+}
+
 class CliCommandSyntax internal constructor(
     val operation: CanonicalOperation,
     val command: List<String>,
@@ -105,6 +116,8 @@ internal val canonicalCliSyntaxes = listOf(
 sealed interface CliCommandParsing {
     data class Local(val command: CliLocalCommand) : CliCommandParsing
 
+    data class Lifecycle(val command: CliLifecycleCommand) : CliCommandParsing
+
     data class Parsed(
         val invocation: CliInvocation,
     ) : CliCommandParsing
@@ -132,18 +145,21 @@ object CliCommandParser {
         "--version" to CliLocalCommand.VERSION,
         "--schema" to CliLocalCommand.SCHEMA,
     )
+    private val lifecycleCommands = CliLifecycleCommand.entries.associateBy { it.command }
 
     /**
      * Proof transition: `List<String> -> CliCommandParsing`.
      *
-     * Establishes exactly one of the eleven canonical operation identities and a bounded refined
-     * argument sequence. [CliCommandFailure] is the closed expected failure. Raw argv extraction
-     * is permitted only here.
+     * Establishes exactly one local metadata command, one exact-root lifecycle command, or one of
+     * the eleven canonical operation identities with a bounded refined argument sequence.
+     * [CliCommandFailure] is the closed expected failure. Raw argv extraction is permitted only
+     * here.
      */
     fun parse(argv: List<String>): CliCommandParsing {
         if (argv.isEmpty()) return CliCommandParsing.Rejected(CliCommandFailure.MissingCommand)
         if (argv.size == 1) {
             localCommands[argv.single()]?.let { return CliCommandParsing.Local(it) }
+            lifecycleCommands[argv.single()]?.let { return CliCommandParsing.Lifecycle(it) }
         }
         val operation = operationByCommand[argv.take(2)]
                         ?: return CliCommandParsing.Rejected(CliCommandFailure.UnknownCommand)

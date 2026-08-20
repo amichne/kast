@@ -139,12 +139,12 @@ runtime bootstrap. Invoke the active public Kast CLI from the canonical
 workspace root:
 
 ```shell
-kast up
+kast start
 ```
 
 Kast reuses or starts one isolated indexer for the exact root. It
 starts Gradle import and semantic indexing without opening, closing, focusing,
-or routing through a foreground IDE project. `kast up` returns only when
+or routing through a foreground IDE project. `kast start` returns only when
 semantic evidence is ready, or it reports a typed blocker.
 
 Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio

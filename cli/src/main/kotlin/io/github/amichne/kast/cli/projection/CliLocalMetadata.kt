@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.CliLocalCommand
+import io.github.amichne.kast.cli.CliLifecycleCommand
 import io.github.amichne.kast.cli.CliProcessOutput
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.canonicalCliSyntaxes
@@ -75,6 +76,9 @@ class CliLocalMetadata private constructor(
             appendLine()
             appendLine("Semantic commands:")
             canonicalCliSyntaxes.forEach { syntax -> appendLine("  ${syntax.usage}") }
+            appendLine()
+            appendLine("Lifecycle commands:")
+            CliLifecycleCommand.entries.forEach { command -> appendLine("  ${command.command}") }
             appendLine()
             appendLine("Relation kinds: references, callers, callees, implementations, inheritors, overrides, type-uses")
             appendLine("Change intents: add-file, add-declaration, replace-declaration, rename-symbol")

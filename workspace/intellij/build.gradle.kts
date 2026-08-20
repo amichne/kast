@@ -48,6 +48,10 @@ private val gradlePluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/gradle*/lib/**/*.jar")
 }
 
+private val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("**/plugins/java/lib/**/*.jar")
+}
+
 dependencies {
     implementation(project(":workspace:contract"))
 
@@ -56,6 +60,8 @@ dependencies {
     }
     compileOnly(ideaLibs)
     compileOnly(gradlePluginLibs)
+    compileOnly(javaPluginLibs)
     testImplementation(ideaLibs)
     testImplementation(gradlePluginLibs)
+    testImplementation(javaPluginLibs)
 }

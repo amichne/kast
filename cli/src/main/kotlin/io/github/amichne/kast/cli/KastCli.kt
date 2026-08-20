@@ -1,6 +1,9 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.nio.file.Path
@@ -13,6 +16,7 @@ class KastCli(
     private val runtimeDemander: RuntimeDemander,
     private val wireClient: WireClient,
     private val localMetadata: CliLocalMetadata,
+    private val lifecycle: RuntimeLifecycleController = ExactRootRuntimeLifecycle(),
 ) {
     /**
      * Proof transition: `List<String> + Path -> CliExit`.
@@ -25,45 +29,125 @@ class KastCli(
         argv: List<String>,
         start: Path,
     ): CliExit {
-        val invocation = when (val parsed = CliCommandParser.parse(argv)) {
+        return when (val parsed = CliCommandParser.parse(argv)) {
             is CliCommandParsing.Local -> return CliExit.Complete(
                 localMetadata.output(parsed.command),
             )
-            is CliCommandParsing.Parsed -> parsed.invocation
-            is CliCommandParsing.Rejected -> return boundaryExit(
+            is CliCommandParsing.Lifecycle -> executeLifecycle(parsed.command, start)
+            is CliCommandParsing.Parsed -> executeSemantic(parsed.invocation, start)
+            is CliCommandParsing.Rejected -> boundaryExit(
                 CliBoundaryExitStatus.USAGE,
                 parsed.failure.outputReason(),
             )
         }
+    }
+
+    private fun executeSemantic(
+        invocation: CliInvocation,
+        start: Path,
+    ): CliExit {
         val request = when (val preparation = projections.prepare(invocation)) {
             is CliProjectionPreparation.Prepared -> preparation.request
             is CliProjectionPreparation.Rejected -> return projectionFailure(preparation.failure)
         }
+        val boundary = when (val resolution = resolveRuntimeBoundary(start)) {
+            is CliRuntimeBoundaryResolution.Resolved -> resolution
+            is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
+        }
+        return executeRequest(request, boundary)
+    }
+
+    private fun executeLifecycle(
+        command: CliLifecycleCommand,
+        start: Path,
+    ): CliExit {
+        val boundary = when (val resolution = resolveRuntimeBoundary(start)) {
+            is CliRuntimeBoundaryResolution.Resolved -> resolution
+            is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
+        }
+        return when (command) {
+            CliLifecycleCommand.START -> executeWorkspaceInspect(boundary)
+            CliLifecycleCommand.STATUS -> lifecycleExit(
+                command,
+                boundary.endpoint,
+                lifecycle.status(boundary.endpoint),
+            )
+            CliLifecycleCommand.STOP -> lifecycleExit(
+                command,
+                boundary.endpoint,
+                lifecycle.stop(boundary.endpoint),
+            )
+            CliLifecycleCommand.CLEAN -> lifecycleExit(
+                command,
+                boundary.endpoint,
+                lifecycle.clean(boundary.endpoint),
+            )
+            CliLifecycleCommand.REINDEX -> {
+                val stopped = lifecycle.stop(boundary.endpoint)
+                if (stopped is RuntimeLifecycleResult.Rejected) {
+                    return lifecycleExit(command, boundary.endpoint, stopped)
+                }
+                val cleaned = lifecycle.clean(boundary.endpoint)
+                if (cleaned is RuntimeLifecycleResult.Rejected) {
+                    return lifecycleExit(command, boundary.endpoint, cleaned)
+                }
+                executeWorkspaceInspect(boundary)
+            }
+        }
+    }
+
+    private fun executeWorkspaceInspect(
+        boundary: CliRuntimeBoundaryResolution.Resolved,
+    ): CliExit {
+        val invocation = CliInvocation(
+            CanonicalOperation.WORKSPACE_INSPECT,
+            CliArguments(emptyList()),
+        )
+        val request = when (val preparation = projections.prepare(invocation)) {
+            is CliProjectionPreparation.Prepared -> preparation.request
+            is CliProjectionPreparation.Rejected -> return projectionFailure(preparation.failure)
+        }
+        return executeRequest(request, boundary)
+    }
+
+    private fun resolveRuntimeBoundary(start: Path): CliRuntimeBoundaryResolution {
         val root = when (val discovery = rootDiscovery.discover(start)) {
             is CanonicalRootDiscovery.Discovered -> discovery.root
-            is CanonicalRootDiscovery.Rejected -> return boundaryExit(
-                CliBoundaryExitStatus.ROOT,
-                discovery.failure.name.lowercase(),
+            is CanonicalRootDiscovery.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
+                boundaryExit(CliBoundaryExitStatus.ROOT, discovery.failure.name.lowercase()),
             )
         }
         val endpoint = when (val resolution = endpointLocator.locate(root)) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
-            is RuntimeEndpointResolution.Rejected -> return boundaryExit(
-                CliBoundaryExitStatus.RUNTIME,
-                resolution.failure.name.lowercase().replace('_', '-'),
+            is RuntimeEndpointResolution.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
+                boundaryExit(
+                    CliBoundaryExitStatus.RUNTIME,
+                    resolution.failure.name.lowercase().replace('_', '-'),
+                ),
             )
         }
         if (endpoint.root != root) {
-            return boundaryExit(CliBoundaryExitStatus.RUNTIME, "root-mismatch")
+            return CliRuntimeBoundaryResolution.Rejected(
+                boundaryExit(CliBoundaryExitStatus.RUNTIME, "root-mismatch"),
+            )
         }
-        val readyEndpoint = when (val admission = runtimeDemander.demand(root, endpoint)) {
+        return CliRuntimeBoundaryResolution.Resolved(root, endpoint)
+    }
+
+    private fun executeRequest(
+        request: PreparedCliRequest,
+        boundary: CliRuntimeBoundaryResolution.Resolved,
+    ): CliExit {
+        val readyEndpoint = when (
+            val admission = runtimeDemander.demand(boundary.root, boundary.endpoint)
+        ) {
             is RuntimeAdmission.Ready -> admission.endpoint
             is RuntimeAdmission.Rejected -> return boundaryExit(
                 CliBoundaryExitStatus.RUNTIME,
                 admission.failure.name.lowercase().replace('_', '-'),
             )
         }
-        if (readyEndpoint != endpoint) {
+        if (readyEndpoint != boundary.endpoint) {
             return boundaryExit(CliBoundaryExitStatus.RUNTIME, "endpoint-mismatch")
         }
         val response = when (val exchange = wireClient.exchange(readyEndpoint, request.document)) {
@@ -83,6 +167,35 @@ class KastCli(
         }
     }
 
+    private fun lifecycleExit(
+        command: CliLifecycleCommand,
+        endpoint: RuntimeEndpoint,
+        result: RuntimeLifecycleResult,
+    ): CliExit = when (result) {
+        is RuntimeLifecycleResult.Completed -> CliExit.Complete(
+            CliJsonDocument.from(
+                buildJsonObject {
+                    put("command", command.command)
+                    put("status", "complete")
+                    put("runtime", result.state.name.lowercase())
+                    put("root", endpoint.root.path.toString())
+                    put("runtimeId", endpoint.runtimeId.value)
+                    put(
+                        "removed",
+                        JsonArray(
+                            result.removed.sortedBy(RuntimeEndpointArtifact::name)
+                                .map { artifact -> JsonPrimitive(artifact.name.lowercase()) },
+                        ),
+                    )
+                },
+            ),
+        )
+        is RuntimeLifecycleResult.Rejected -> boundaryExit(
+            CliBoundaryExitStatus.RUNTIME,
+            "${command.command}-${result.failure.name.lowercase().replace('_', '-')}",
+        )
+    }
+
     private fun projectionFailure(failure: CliProjectionFailure): CliExit = when (failure) {
         is CliProjectionFailure.ArgumentsRejected -> boundaryExit(
             CliBoundaryExitStatus.PROJECTION,
@@ -97,6 +210,17 @@ class KastCli(
             "response-decoding-rejected",
         )
     }
+}
+
+private sealed interface CliRuntimeBoundaryResolution {
+    data class Resolved(
+        val root: CanonicalRoot,
+        val endpoint: RuntimeEndpoint,
+    ) : CliRuntimeBoundaryResolution
+
+    data class Rejected(
+        val exit: CliExit.BoundaryRejected,
+    ) : CliRuntimeBoundaryResolution
 }
 
 enum class CliBoundaryExitStatus(

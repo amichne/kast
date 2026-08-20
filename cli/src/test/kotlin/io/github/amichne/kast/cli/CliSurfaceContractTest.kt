@@ -71,6 +71,9 @@ class CliSurfaceContractTest {
         assertFalse(boundaryTouched)
         assertTrue(help.document.value.contains("workspace inspect"))
         assertTrue(help.document.value.contains("change recover"))
+        CliLifecycleCommand.entries.forEach { command ->
+            assertTrue(help.document.value.contains("  ${command.command}"))
+        }
         assertFalse(help.document.value.contains(" setup"))
         assertEquals(
             "kast 1.2.3 (semantic runtime sha256:${"a".repeat(64)})",

@@ -145,6 +145,10 @@ private fun installedSchema(
 
     val projection = buildJsonObject {
         put("localFlags", JsonArray(listOf("--help", "--version", "--schema").map(::JsonPrimitive)))
+        put(
+            "lifecycleCommands",
+            JsonArray(CliLifecycleCommand.entries.map { JsonPrimitive(it.command) }),
+        )
         put("commands", buildJsonArray {
             canonicalCliSyntaxes.forEach { syntax -> add(JsonPrimitive(syntax.usage)) }
         })
