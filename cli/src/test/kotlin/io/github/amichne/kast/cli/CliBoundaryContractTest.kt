@@ -63,6 +63,20 @@ class CliBoundaryContractTest {
     }
 
     @Test
+    fun `semantic rejection is data and exits successfully`() {
+        val rejected = CliExit.OperationRejected(
+            CliJsonDocument.from(
+                kotlinx.serialization.json.buildJsonObject {
+                    put("status", "rejected")
+                    put("reason", "selector-stale")
+                },
+            ),
+        )
+
+        assertEquals(0, rejected.code)
+    }
+
+    @Test
     fun `root discovery returns nearest canonical settings owner`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo"))
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")

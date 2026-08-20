@@ -64,6 +64,17 @@ class SymbolDiscoveryTest {
     }
 
     @Test
+    fun `unrelated indexed names do not consume the matched work budget`() {
+        val outcome = fixture(
+            workLimit = 10L,
+            leadingUnrelatedNames = 1_000,
+        ).execute().outcome()
+
+        assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
+        assertEquals(listOf("AItem", "ZItem"), outcome.batch().candidates.map { it.name.value })
+    }
+
+    @Test
     fun `record byte work and elapsed limits qualify output instead of claiming complete`() {
         val recordOutcome = fixture(resultLimit = 1).execute().outcome()
         assertEquals(listOf(SymbolDiscoveryQualification.RESULT_LIMIT_REACHED), recordOutcome.qualifications())
@@ -164,6 +175,7 @@ class SymbolDiscoveryTest {
         clock: IntellijDiscoveryNanoClock = StepClock(),
         providerFails: Boolean = false,
         collidingNames: Boolean = false,
+        leadingUnrelatedNames: Int = 0,
     ): Fixture {
         val request = request(
             kind = kind,
@@ -201,7 +213,8 @@ class SymbolDiscoveryTest {
             nativeScope = scope,
         )
         val contributor = FakeContributor(
-            names = items.map(FakeItem::candidateName),
+            names = List(leadingUnrelatedNames) { index -> "Unrelated$index" } +
+                items.map(FakeItem::candidateName),
             items = items.groupBy(FakeItem::candidateName),
             fail = providerFails,
         )
