@@ -2,33 +2,33 @@
 
 ## Goal
 
-Kast patch release `v0.25.4` publishes successfully with release acceptance consuming the structured symbol CLI documents.
+The completed minimal indexer lifecycle changes are merged through a green pull request and published as the immutable minor release `v0.26.0`.
 
 ## Allowed Writes
 
 - `.agent/TASK.md`
-- `integration-tests/enterprise_acceptance.py`
-- `packaging/verify-published-runtime-delivery.sh`
+- `AGENTS.md`
+- `cli/AGENTS.md`
+- `cli/src/main/kotlin/io/github/amichne/kast/cli/`
+- `cli/src/test/kotlin/io/github/amichne/kast/cli/`
+- `workspace/intellij/build.gradle.kts`
+- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleJvm.kt`
+- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt`
+- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledProjectJvm.kt`
+- `workspace/intellij/src/test/kotlin/io/github/amichne/kast/workspace/intellij/InstalledProjectJvmTest.kt`
 
 No other paths may be modified.
 
 ## Allowed Reads
 
-- `AGENTS.md`
-- `.agent/TASK.md`
-- `build.gradle.kts`
-- `benchmarks/enterprise-acceptance.json`
-- `integration-tests/enterprise_acceptance.py`
-- `packaging/verify-published-runtime-delivery.sh`
-- `cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalCliOutcomeProjectors.kt`
-- GitHub Actions release evidence and release metadata.
+- Repository source, instructions, Git history, build and release metadata, local validation evidence, GitHub pull-request state, GitHub Actions state and logs, and GitHub release state.
 
 ## Non-Goals
 
-- Changing product behavior or Kotlin source.
-- Changing acceptance thresholds.
-- Changing release asset formats or destinations.
-- Changing secrets, permissions, environments, or deployment targets.
+- Changing behavior beyond fixes required for this pull request's deterministic CI failures.
+- Modifying release automation, repository secrets, environment protection, or branch protection.
+- Including `session-ses_fecf.md` or `tmp.md` in any commit.
+- Moving, deleting, or force-updating an existing tag or release.
 - Refactoring unrelated code.
 - Generalizing the implementation.
 - Fixing unrelated failures.
@@ -39,40 +39,39 @@ No other paths may be modified.
 Command:
 
 ```shell
-./gradlew -Pversion=0.25.4 enterpriseAcceptance
+test -n "$(gh pr list --head feature/indexer-lifecycle-commands --state merged --json number --jq '.[0].number')" && gh release view v0.26.0
 ```
 
 Expected failure:
 
-Enterprise acceptance rejects a complete structured discovery result because it expects the retired bounded-discovery response shape.
+No merged pull request exists for the delivery branch and release `v0.26.0` does not exist.
 
 ## Green Proof
 
 Command:
 
 ```shell
-./gradlew -Pversion=0.25.4 enterpriseAcceptance && bash -n packaging/verify-published-runtime-delivery.sh && python3 .github/scripts/check-repository-shape.py --root .
+pr="$(gh pr list --head feature/indexer-lifecycle-commands --state merged --json number --jq '.[0].number')" && test -n "$pr" && gh pr checks "$pr" --required --json bucket,name,state,workflow && gh release view v0.26.0 --json assets,isDraft,isImmutable,isLatest,isPrerelease,publishedAt,tagName,targetCommitish,url
 ```
 
 ## Done When
 
-- Enterprise acceptance reads structured discovery declaration items and accepts complete results within the configured bound.
-- Published-runtime verification reads declaration candidates and described symbols from structured CLI documents.
+- One focused pull request contains the completed minimal lifecycle changes and excludes unrelated user files.
+- The pull request's required checks are green for its final head.
+- The pull request is merged into `main`.
+- The checked-in release workflow completes successfully for version `0.26.0` from the exact merged `main` commit.
+- GitHub reports `v0.26.0` as a published, immutable, non-prerelease release with the expected control and semantic-runtime assets and checksums.
 - The Green Proof passes.
-- The change reaches `main` with passing CI.
-- GitHub release `v0.25.4` is published from the resulting `main` commit.
-- The release workflow's fresh published installation check passes.
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
 ## Execution State
 
-- Release run `32379780859` passed the repaired release contract and failed in `enterpriseAcceptance` because a complete 12-item structured discovery result did not satisfy the stale bounded-result assertion.
-- Release `v0.25.4` and tag `v0.25.4` do not exist.
-- Local RED: `./gradlew -Pversion=0.25.4 enterpriseAcceptance` failed in 1m34s with the same stale discovery assertion.
-- Implementation: release acceptance now consumes structured discovery, symbol, relation, and traversal documents.
-- Investigation: the widened run reached stale-selector proof and exposed a retired exit-code expectation; operation rejections are structured documents with exit code 0, while nonzero codes are reserved for boundary failures.
-- Local GREEN: `./gradlew -Pversion=0.25.4 enterpriseAcceptance && bash -n packaging/verify-published-runtime-delivery.sh && python3 .github/scripts/check-repository-shape.py --root .` passed in 1m with zero shape violations.
+- Branch `feature/indexer-lifecycle-commands` was created from exact `origin/main` commit `5e834d4b678aaed072b3006aae376e8501cf7760`.
+- GitHub reports `v0.25.4` as the latest immutable release, so the requested minor release is `v0.26.0`.
+- The exact CI Gradle command and repository-shape check pass locally before publication.
+- `session-ses_fecf.md` and `tmp.md` remain untracked and unstaged.
+
 
 ## Out-of-Scope Findings
 

@@ -12,13 +12,16 @@
 
 ## Contract invariants
 
-- Raw argv refines to exactly one of the eleven canonical operation projections.
+- Raw argv refines to exactly one of the eleven canonical operation projections, three local
+  metadata flags, or five local lifecycle commands.
 - Filesystem discovery returns one canonical, settings-owned repository root before process or UDS
   access.
 - Runtime demand and UDS exchange remain exact-root capabilities with closed failures.
 - A typed projection owns request parsing, generated wire encoding/decoding, outcome projection, and
   exhaustive exit status without `Any`, maps, unchecked casts, or raw RPC.
-- No fallback executable, hidden command, direct SQL, or lifecycle command exists.
+- Lifecycle commands coordinate only the existing exact-root process and UDS boundaries. They do
+  not extend the semantic wire protocol or interpret semantic payloads.
+- No fallback executable, hidden command, or direct SQL exists.
 
 ## Verification ladder
 

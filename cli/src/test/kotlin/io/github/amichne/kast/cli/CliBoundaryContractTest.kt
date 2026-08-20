@@ -49,6 +49,28 @@ class CliBoundaryContractTest {
     }
 
     @Test
+    fun `five local lifecycle commands are admitted without semantic arguments`() {
+        val commands = mapOf(
+            "start" to CliLifecycleCommand.START,
+            "stop" to CliLifecycleCommand.STOP,
+            "status" to CliLifecycleCommand.STATUS,
+            "clean" to CliLifecycleCommand.CLEAN,
+            "reindex" to CliLifecycleCommand.REINDEX,
+        )
+
+        commands.forEach { (argument, command) ->
+            assertEquals(
+                CliCommandParsing.Lifecycle(command),
+                CliCommandParser.parse(listOf(argument)),
+            )
+        }
+        assertEquals(
+            CliCommandParsing.Rejected(CliCommandFailure.UnknownCommand),
+            CliCommandParser.parse(listOf("start", "unexpected")),
+        )
+    }
+
+    @Test
     fun `command arguments are bounded boundary values`() {
         val parsed = CliCommandParser.parse(
             listOf("symbol", "discover", "--query", "Example"),
@@ -128,6 +150,7 @@ class CliBoundaryContractTest {
     private fun CliCommandParsing.parsedInvocation(): CliInvocation = when (this) {
         is CliCommandParsing.Parsed -> invocation
         is CliCommandParsing.Local -> error("Expected semantic invocation, got $command")
+        is CliCommandParsing.Lifecycle -> error("Expected semantic invocation, got $command")
         is CliCommandParsing.Rejected -> error("Expected parsed invocation, got $failure")
     }
 
