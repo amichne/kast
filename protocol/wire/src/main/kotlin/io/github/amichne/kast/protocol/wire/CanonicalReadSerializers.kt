@@ -12,16 +12,12 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
-import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
@@ -29,7 +25,6 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
@@ -70,25 +65,8 @@ internal object CanonicalReadSerializers {
     val workspaceInspectRejection =
         canonicalEnumSerializer<WorkspaceInspectRejection>("kast.workspace.inspect.rejection.v1")
 
-    val symbolDiscoverRequest = jsonContractSerializer<SymbolDiscoverRequest>(
-        "kast.symbol.discover.request.v1",
-        encode = {
-            buildJsonObject {
-                put("query", it.query.asJson())
-                put("limit", it.limit.asJson())
-            }
-        },
-        decode = {
-            val value = it.objectWithFields("query", "limit")
-            SymbolDiscoverRequest(value.protocolText("query"), value.protocolCount("limit"))
-        },
-    )
-    val symbolDiscoverResult = textListResultSerializer(
-        "kast.symbol.discover.result.v1",
-        "candidateSelectors",
-        SymbolDiscoverResult::candidateSelectors,
-        ::SymbolDiscoverResult,
-    )
+    val symbolDiscoverRequest = CanonicalSymbolSerializers.discoverRequest
+    val symbolDiscoverResult = CanonicalSymbolSerializers.discoverResult
     val symbolDiscoverQualification = jsonContractSerializer<SymbolDiscoverQualification>(
         "kast.symbol.discover.qualification.v1",
         encode = { qualification ->
@@ -140,12 +118,7 @@ internal object CanonicalReadSerializers {
         SymbolDescribeRequest::exactSelector,
         ::SymbolDescribeRequest,
     )
-    val symbolDescribeResult = textResultSerializer(
-        "kast.symbol.describe.result.v1",
-        "declaration",
-        SymbolDescribeResult::declaration,
-        ::SymbolDescribeResult,
-    )
+    val symbolDescribeResult = CanonicalSymbolSerializers.describeResult
     val symbolDescribeQualification =
         canonicalEnumSerializer<SymbolDescribeQualification>("kast.symbol.describe.qualification.v1")
     val symbolDescribeRejection =
@@ -169,12 +142,7 @@ internal object CanonicalReadSerializers {
             )
         },
     )
-    val relationReadResult = textListResultSerializer(
-        "kast.relation.read.result.v1",
-        "targetSelectors",
-        RelationReadResult::targetSelectors,
-        ::RelationReadResult,
-    )
+    val relationReadResult = CanonicalSymbolSerializers.relationResult
     val relationReadQualification =
         canonicalEnumSerializer<RelationReadQualification>("kast.relation.read.qualification.v1")
     val relationReadRejection =
@@ -205,12 +173,7 @@ internal object CanonicalReadSerializers {
             )
         },
     )
-    val traversalRunResult = textListResultSerializer(
-        "kast.traversal.run.result.v1",
-        "reachedSelectors",
-        TraversalRunResult::reachedSelectors,
-        ::TraversalRunResult,
-    )
+    val traversalRunResult = CanonicalSymbolSerializers.traversalResult
     val traversalRunQualification =
         canonicalEnumSerializer<TraversalRunQualification>("kast.traversal.run.qualification.v1")
     val traversalRunRejection =

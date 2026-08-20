@@ -1,5 +1,7 @@
 package io.github.amichne.kast.symbol.contract
 
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
+
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
@@ -137,7 +139,7 @@ class SymbolSelectorContractTest {
                     SymbolLibraryPolicy.EXCLUDE,
                 ),
             ),
-            SymbolDiscoveryKind.SYMBOL,
+            SymbolNameDiscoveryKind.SYMBOL,
             SymbolDiscoveryPattern.parse("call").refined(),
             SymbolDiscoveryBudget(
                 ResourceBudget(

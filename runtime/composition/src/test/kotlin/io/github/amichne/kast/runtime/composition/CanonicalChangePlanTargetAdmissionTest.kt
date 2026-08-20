@@ -49,7 +49,7 @@ class CanonicalChangePlanTargetAdmissionTest {
             )
         }
 
-        assertEquals(OperationOutcome.Rejected(ChangePlanRejection.TARGET_REJECTED), outcome)
+        assertEquals(OperationOutcome.Rejected(ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED), outcome)
         assertFalse(admissionInvoked)
     }
 }

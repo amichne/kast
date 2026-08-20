@@ -28,7 +28,11 @@ import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
+import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
+import io.github.amichne.kast.protocol.contract.SymbolDocument
+import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
@@ -43,6 +47,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -67,7 +72,7 @@ internal val symbolDiscoverCliProjector = CliOutcomeProjector<
     SymbolDiscoverRejection,
     > { outcome ->
     projectOutcome(CanonicalOperation.SYMBOL_DISCOVER, outcome) { result ->
-        fields("candidateSelectors" to result.candidateSelectors.values.jsonTexts())
+        fields("items" to JsonArray(result.items.values.map { it.cliJson() }))
     }
 }
 
@@ -87,7 +92,7 @@ internal val symbolDescribeCliProjector = CliOutcomeProjector<
     SymbolDescribeRejection,
     > { outcome ->
     projectOutcome(CanonicalOperation.SYMBOL_DESCRIBE, outcome) { result ->
-        fields("declaration" to JsonPrimitive(result.declaration.value))
+        fields("symbol" to result.symbol.cliJson())
     }
 }
 
@@ -97,7 +102,7 @@ internal val relationReadCliProjector = CliOutcomeProjector<
     RelationReadRejection,
     > { outcome ->
     projectOutcome(CanonicalOperation.RELATION_READ, outcome) { result ->
-        fields("targetSelectors" to result.targetSelectors.values.jsonTexts())
+        fields("targets" to JsonArray(result.targets.values.map { it.cliJson() }))
     }
 }
 
@@ -107,7 +112,7 @@ internal val traversalRunCliProjector = CliOutcomeProjector<
     TraversalRunRejection,
     > { outcome ->
     projectOutcome(CanonicalOperation.TRAVERSAL_RUN, outcome) { result ->
-        fields("reachedSelectors" to result.reachedSelectors.values.jsonTexts())
+        fields("reached" to JsonArray(result.reached.values.map { it.cliJson() }))
     }
 }
 
@@ -203,6 +208,48 @@ private fun fields(vararg values: Pair<String, JsonElement>): JsonObject = JsonO
 
 private fun List<io.github.amichne.kast.protocol.contract.ProtocolText>.jsonTexts(): JsonArray =
     JsonArray(map { JsonPrimitive(it.value) })
+
+private fun SymbolDiscoveryDocument.cliJson(): JsonObject = when (this) {
+    is SymbolDiscoveryDocument.File -> buildJsonObject {
+        put("type", "file")
+        put("name", name.value)
+        put("file", file.value)
+    }
+    is SymbolDiscoveryDocument.Declaration -> buildJsonObject {
+        put("type", "declaration")
+        put("candidateSelector", candidateSelector.value)
+        put("kind", kind.documentValue())
+        put("name", name.value)
+        put("file", file.value)
+        put("offset", offset.value)
+    }
+    is SymbolDiscoveryDocument.TextMatch -> buildJsonObject {
+        put("type", "text-match")
+        put("query", query.value)
+        put("file", file.value)
+        put("range", range.cliJson())
+    }
+}
+
+private fun SymbolDocument.cliJson(): JsonObject = buildJsonObject {
+    put("selector", selector.value)
+    put("kind", kind.documentValue())
+    put("name", name.value)
+    put(
+        "qualifiedIdentity",
+        when (val identity = qualifiedIdentity) {
+            is SymbolQualifiedIdentityDocument.Available -> JsonPrimitive(identity.value.value)
+            SymbolQualifiedIdentityDocument.Unavailable -> JsonNull
+        },
+    )
+    put("file", file.value)
+    put("range", range.cliJson())
+}
+
+private fun SourceRangeDocument.cliJson(): JsonObject = buildJsonObject {
+    put("startInclusive", startInclusive.value)
+    put("endExclusive", endExclusive.value)
+}
 
 private fun JsonObject.copyInto(target: kotlinx.serialization.json.JsonObjectBuilder) {
     forEach(target::put)

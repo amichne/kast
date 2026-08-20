@@ -12,11 +12,16 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
+import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolTextScopeDocument
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
@@ -26,10 +31,10 @@ internal val workspaceInspectCliParser = CliRequestParser { arguments ->
 }
 
 internal val symbolDiscoverCliParser = CliRequestParser { arguments ->
-    val options = arguments.options("--query", "--limit") ?: return@CliRequestParser rejected()
-    val query = options.text("--query") ?: return@CliRequestParser rejected()
+    val options = CliOptionSet.parse(arguments) ?: return@CliRequestParser rejected()
     val limit = options.count("--limit") ?: return@CliRequestParser rejected()
-    parsed(SymbolDiscoverRequest(query, limit))
+    val target = options.discoveryTarget() ?: return@CliRequestParser rejected()
+    parsed(SymbolDiscoverRequest(target, limit))
 }
 
 internal val symbolResolveCliParser = CliRequestParser { arguments ->
@@ -129,10 +134,65 @@ private class CliOptionSet private constructor(
         }
     }
 
+    fun offset(name: String): ProtocolOffset? = raw(name)?.toIntOrNull()?.let { raw ->
+        when (val parsed = ProtocolOffset.parse(raw)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> null
+        }
+    }
+
+    fun discoveryTarget(): SymbolDiscoverTargetDocument? = when (raw("--mode") ?: "name") {
+        "name" -> {
+            val expected = if (raw("--mode") == null) {
+                arrayOf("--query", "--limit")
+            } else {
+                arrayOf("--mode", "--query", "--kind", "--match", "--limit")
+            }
+            if (!hasExactly(*expected)) return null
+            val query = text("--query") ?: return null
+            val kind = raw("--kind")?.closedEnum<SymbolNameKindDocument>()
+                ?: SymbolNameKindDocument.SYMBOL
+            val match = raw("--match")?.closedEnum<SymbolDiscoveryMatchDocument>()
+                ?: SymbolDiscoveryMatchDocument.FUZZY
+            SymbolDiscoverTargetDocument.Name(query, kind, match)
+        }
+        "location" -> {
+            if (!hasExactly("--mode", "--file", "--offset", "--limit")) return null
+            SymbolDiscoverTargetDocument.Location(
+                text("--file") ?: return null,
+                offset("--offset") ?: return null,
+            )
+        }
+        "structure" -> {
+            if (!hasExactly("--mode", "--file", "--limit")) return null
+            SymbolDiscoverTargetDocument.Structure(text("--file") ?: return null)
+        }
+        "text" -> {
+            val scope = when (raw("--scope")) {
+                "workspace" -> {
+                    if (!hasExactly("--mode", "--query", "--scope", "--limit")) return null
+                    SymbolTextScopeDocument.Workspace
+                }
+                "file" -> {
+                    if (!hasExactly("--mode", "--query", "--scope", "--file", "--limit")) {
+                        return null
+                    }
+                    SymbolTextScopeDocument.File(text("--file") ?: return null)
+                }
+                else -> return null
+            }
+            SymbolDiscoverTargetDocument.Text(text("--query") ?: return null, scope)
+        }
+        else -> null
+    }
+
     fun relation(name: String): RelationKindDocument? = raw(name)
         ?.replace('-', '_')
         ?.uppercase()
         ?.let { raw -> RelationKindDocument.entries.singleOrNull { it.name == raw } }
+
+    private inline fun <reified Value : Enum<Value>> String.closedEnum(): Value? =
+        runCatching { enumValueOf<Value>(replace('-', '_').uppercase()) }.getOrNull()
 
     fun hasExactly(vararg names: String): Boolean =
         values.map(CliOption::name).toSet() == names.toSet()

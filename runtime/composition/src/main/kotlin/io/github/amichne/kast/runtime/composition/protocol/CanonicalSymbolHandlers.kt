@@ -1,15 +1,10 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResourceBudget
-import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
@@ -24,26 +19,13 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveResult
 import io.github.amichne.kast.runtime.server.OperationHandler
-import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
-import io.github.amichne.kast.symbol.contract.SymbolDescription
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
-import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
-import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
-import io.github.amichne.kast.symbol.contract.SymbolSearchScope
-import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
-import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
-import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
@@ -52,9 +34,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest as DomainDi
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult as DomainDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult as DomainResolutionResult
 
-private const val SYMBOL_DISCOVERY_WORK_MULTIPLIER = 100L
-private const val SYMBOL_DISCOVERY_TIME_MILLIS = 30_000L
-private const val SYMBOL_DISCOVERY_RETURNED_BYTES = 1_048_576L
 
 internal class CanonicalSymbolDiscoverHandler(
     private val workspace: WorkspaceInspectionOperations,
@@ -96,11 +75,29 @@ internal class CanonicalSymbolDiscoverHandler(
             is SymbolDiscoveryOutcome.Qualified -> outcome.batch
         }
         val selectors = when (val issuance = authority.issueCandidates(batch)) {
-            is CandidateSelectorIssuance.Issued -> issuance.selectors
+            is CandidateSelectorIssuance.Issued -> issuance.selectors.iterator()
             is CandidateSelectorIssuance.Rejected ->
                 return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
         }
-        val bounded = when (val admitted = BoundedProtocolList.create(selectors)) {
+        val documents = batch.candidates.map { candidate ->
+            val selector = if (
+                candidate.location is
+                io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation.Declaration
+            ) {
+                if (!selectors.hasNext()) {
+                    return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+                }
+                selectors.next()
+            } else {
+                null
+            }
+            candidate.protocolDocument(selector)
+                ?: return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+        }
+        if (selectors.hasNext()) {
+            return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+        }
+        val bounded = when (val admitted = BoundedProtocolList.create(documents)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected ->
                 return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
@@ -214,80 +211,19 @@ internal class CanonicalSymbolDescribeHandler(
             is DomainDescriptionResult.Rejected -> OperationOutcome.Rejected(
                 result.reason.describeProtocol(),
             )
-            is DomainDescriptionResult.Described -> when (
-                val declaration = ProtocolText.parse(result.description.protocolProjection())
-            ) {
-                is Refinement.Refined -> OperationOutcome.Complete(
+            is DomainDescriptionResult.Described -> {
+                val document = result.description.protocolDocument(request.exactSelector)
+                    ?: return OperationOutcome.Rejected(SymbolDescribeRejection.NOT_FOUND)
+                OperationOutcome.Complete(
                     EvidenceEnvelope(
                         CanonicalOperation.SYMBOL_DESCRIBE.id,
                         result.description.selector.lease.generation,
-                        SymbolDescribeResult(declaration.value),
+                        SymbolDescribeResult(document),
                     ),
                 )
-                is Refinement.Rejected ->
-                    OperationOutcome.Rejected(SymbolDescribeRejection.NOT_FOUND)
             }
         }
     }
-}
-
-private sealed interface DiscoveryRequestAdmission {
-    data class Admitted(
-        val request: DomainDiscoveryRequest,
-    ) : DiscoveryRequestAdmission
-
-    data object Rejected : DiscoveryRequestAdmission
-}
-
-/**
- * Proof transition: `(PublishedWorkspace, SymbolDiscoverRequest) -> DiscoveryRequestAdmission`.
- *
- * Admitted establishes the exact current lease, closed workspace scope, parsed pattern, and finite
- * resource/byte limits. Rejected closes every boundary refinement failure. Raw public query and
- * count extraction is confined to this protocol-to-domain transition.
- */
-private fun admitDiscoveryRequest(
-    workspace: PublishedWorkspace,
-    request: SymbolDiscoverRequest,
-): DiscoveryRequestAdmission {
-    val pattern = when (val parsed = SymbolDiscoveryPattern.parse(request.query.value)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return DiscoveryRequestAdmission.Rejected
-    }
-    val results = when (val parsed = ResultLimit.parse(request.limit.value)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return DiscoveryRequestAdmission.Rejected
-    }
-    val work = when (
-        val parsed = WorkUnitLimit.parse(request.limit.value * SYMBOL_DISCOVERY_WORK_MULTIPLIER)
-    ) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return DiscoveryRequestAdmission.Rejected
-    }
-    val elapsed = when (val parsed = ElapsedTimeLimitMillis.parse(SYMBOL_DISCOVERY_TIME_MILLIS)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return DiscoveryRequestAdmission.Rejected
-    }
-    val bytes = when (val parsed = SymbolDiscoveryByteLimit.parse(SYMBOL_DISCOVERY_RETURNED_BYTES)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return DiscoveryRequestAdmission.Rejected
-    }
-    return DiscoveryRequestAdmission.Admitted(
-        DomainDiscoveryRequest(
-            scope = SymbolSearchScopeRequest(
-                workspace.readLease,
-                SymbolSearchScope.Workspace(
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.EXCLUDE,
-                    SymbolLibraryPolicy.INCLUDE,
-                ),
-            ),
-            kind = SymbolDiscoveryKind.SYMBOL,
-            pattern = pattern,
-            budget = SymbolDiscoveryBudget(ResourceBudget(results, work, elapsed), bytes),
-            match = SymbolDiscoveryMatch.FUZZY,
-        ),
-    )
 }
 
 private fun DomainDiscoveryRejection.protocol(): SymbolDiscoverRejection = when (this) {
@@ -333,21 +269,4 @@ private fun SymbolExactRejection.describeProtocol(): SymbolDescribeRejection = w
     SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
     SymbolExactRejection.COMPILER_CONTRACT_VIOLATION,
         -> SymbolDescribeRejection.NOT_FOUND
-}
-
-private fun SymbolDescription.protocolProjection(): String = buildString {
-    append(kind.name.lowercase())
-    append(' ')
-    append(
-        when (val qualified = qualifiedIdentity) {
-            is ExactDeclarationQualifiedIdentity.Available -> qualified.value
-            ExactDeclarationQualifiedIdentity.Unavailable -> name.value
-        },
-    )
-    append(" @ ")
-    append(file.stableValue)
-    append(':')
-    append(range.startInclusive)
-    append('-')
-    append(range.endExclusive)
 }

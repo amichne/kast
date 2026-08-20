@@ -78,7 +78,7 @@ class CliLocalMetadata private constructor(
             appendLine()
             appendLine("Relation kinds: references, callers, callees, implementations, inheritors, overrides, type-uses")
             appendLine("Change intents: add-file, add-declaration, replace-declaration, rename-symbol")
-            appendLine("Exit codes: 0 success, 2 usage, 3 root, 4 runtime, 5 transport, 6 wire, 7 projection, 8 operation, 9 bootstrap")
+            appendLine("Exit codes: 0 semantic outcome, 2 usage, 3 root, 4 runtime, 5 transport, 6 wire, 7 projection, 9 bootstrap")
         }.trimEnd()
     }
 }

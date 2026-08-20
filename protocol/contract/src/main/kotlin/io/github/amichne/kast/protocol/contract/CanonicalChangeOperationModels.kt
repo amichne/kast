@@ -37,8 +37,11 @@ enum class ChangePlanQualification : OperationQualification {
 
 enum class ChangePlanRejection : OperationRejection {
     WORKSPACE_NOT_READY,
-    TARGET_REJECTED,
-    REQUIRED_EVIDENCE_INCOMPLETE,
+    SYMBOL_RESOLVE_REQUIRED,
+    EDITABLE_TARGET_REQUIRED,
+    RELATION_READ_REQUIRED,
+    TRAVERSAL_RUN_REQUIRED,
+    DIAGNOSTIC_CHECK_REQUIRED,
     INTENT_REJECTED,
 }
 

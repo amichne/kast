@@ -26,6 +26,11 @@ import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
+import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
@@ -47,6 +52,7 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRun
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalWorkspaceInspectHandler
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
@@ -169,20 +175,23 @@ class InstalledKastRuntimeTest {
 
         val discovered = runImmediate {
             discover.execute(
-                SymbolDiscoverRequest(
-                    ProtocolText.parse("sample").refined(),
-                    io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
-                ),
+                symbolDiscoverRequest("sample", 4),
             )
         } as OperationOutcome.Complete
-        val candidate = discovered.evidence.payload.candidateSelectors.values.single()
+        val candidate = (
+            discovered.evidence.payload.items.values.single() as
+                SymbolDiscoveryDocument.Declaration
+            ).candidateSelector
         val resolved = runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
             OperationOutcome.Complete
         val described = runImmediate {
             describe.execute(SymbolDescribeRequest(resolved.evidence.payload.exactSelector))
         } as OperationOutcome.Complete
 
-        assertEquals("sample", fixture.discoveryRequest?.pattern?.value)
+        assertEquals(
+            "sample",
+            (fixture.discoveryRequest?.target as? SymbolDiscoveryTarget.Name)?.pattern?.value,
+        )
         assertEquals(
             fixture.resolutionRequest?.selection?.candidate?.name,
             fixture.descriptionRequest?.selector?.name,
@@ -190,8 +199,9 @@ class InstalledKastRuntimeTest {
         assertEquals(11, resolved.evidence.generation.value)
         assertEquals(11, described.evidence.generation.value)
         assertEquals(
-            true,
-            described.evidence.payload.declaration.value.contains("sample.Sample.sample"),
+            "sample.Sample.sample",
+            (described.evidence.payload.symbol.qualifiedIdentity as
+                SymbolQualifiedIdentityDocument.Available).value.value,
         )
     }
 
@@ -209,13 +219,12 @@ class InstalledKastRuntimeTest {
         val candidate = (
             runImmediate {
                 discover.execute(
-                    SymbolDiscoverRequest(
-                        ProtocolText.parse("sample").refined(),
-                        io.github.amichne.kast.protocol.contract.ProtocolCount.parse(4).refined(),
-                    ),
+                    symbolDiscoverRequest("sample", 4),
                 )
             } as OperationOutcome.Complete
-                        ).evidence.payload.candidateSelectors.values.single()
+                        ).evidence.payload.items.values.single().let { item ->
+                            (item as SymbolDiscoveryDocument.Declaration).candidateSelector
+                        }
         val exact = (
             runImmediate { resolve.execute(SymbolResolveRequest(candidate)) } as
                 OperationOutcome.Complete
@@ -241,8 +250,8 @@ class InstalledKastRuntimeTest {
             )
         } as OperationOutcome.Qualified
 
-        assertEquals(1, related.evidence.payload.targetSelectors.values.size)
-        assertEquals(1, traversed.evidence.payload.reachedSelectors.values.size)
+        assertEquals(1, related.evidence.payload.targets.values.size)
+        assertEquals(1, traversed.evidence.payload.reached.values.size)
         assertEquals(TraversalRunQualification.DEPTH_LIMIT, traversed.qualification)
     }
 
@@ -349,6 +358,16 @@ class InstalledKastRuntimeTest {
         assertEquals(fixture.addFile.target.file, observed?.plan?.writes?.entries?.single()?.source)
     }
 }
+
+private fun symbolDiscoverRequest(raw: String, limit: Int): SymbolDiscoverRequest =
+    SymbolDiscoverRequest(
+        SymbolDiscoverTargetDocument.Name(
+            ProtocolText.parse(raw).refined(),
+            SymbolNameKindDocument.SYMBOL,
+            SymbolDiscoveryMatchDocument.FUZZY,
+        ),
+        io.github.amichne.kast.protocol.contract.ProtocolCount.parse(limit).refined(),
+    )
 
 private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
     is Refinement.Refined -> value

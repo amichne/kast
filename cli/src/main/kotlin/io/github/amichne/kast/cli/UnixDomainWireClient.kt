@@ -42,35 +42,85 @@ enum class WireTransportFailure {
     TRUNCATED_FRAME,
 }
 
-/** JDK-native Unix-domain-socket client using one bounded length-prefixed UTF-8 frame. */
+/** One connected exact-root wire session that can exchange multiple canonical frames. */
+class WireSession internal constructor(
+    private val channel: SocketChannel,
+) : AutoCloseable {
+    /**
+     * Proof transition: `connected WireSession + String -> WireExchange`.
+     *
+     * Establishes one bounded request/response exchange on the already-admitted endpoint.
+     * [WireTransportFailure] is the closed expected failure. Raw documents remain confined to the
+     * framing and canonical wire boundaries.
+     */
+    fun exchange(document: String): WireExchange =
+        when (val written = WireFrameCodec.write(channel, document)) {
+            WireFrameWrite.Written -> when (val read = WireFrameCodec.read(channel)) {
+                is WireFrameRead.Received -> WireExchange.Received(read.document)
+                is WireFrameRead.Rejected -> WireExchange.Rejected(read.failure)
+            }
+            is WireFrameWrite.Rejected -> WireExchange.Rejected(written.failure)
+        }
+
+    override fun close() {
+        try {
+            channel.close()
+        } catch (_: IOException) {
+        }
+    }
+}
+
+sealed interface WireSessionOpening {
+    data class Opened(
+        val session: WireSession,
+    ) : WireSessionOpening
+
+    data class Rejected(
+        val failure: WireTransportFailure,
+    ) : WireSessionOpening
+}
+
+/** JDK-native Unix-domain client with reusable bounded length-prefixed UTF-8 sessions. */
 class UnixDomainWireClient : WireClient {
     override fun exchange(
         endpoint: RuntimeEndpoint,
         document: String,
-    ): WireExchange {
+    ): WireExchange = when (val opening = open(endpoint)) {
+        is WireSessionOpening.Opened -> opening.session.use { it.exchange(document) }
+        is WireSessionOpening.Rejected -> WireExchange.Rejected(opening.failure)
+    }
+
+    /**
+     * Proof transition: `RuntimeEndpoint -> WireSessionOpening`.
+     *
+     * Establishes one connected session bound to the exact endpoint. The closed expected failure is
+     * [WireSessionOpening.Rejected]. Raw socket paths leave only at the JDK connection boundary.
+     */
+    fun open(endpoint: RuntimeEndpoint): WireSessionOpening {
         val channel = try {
             SocketChannel.open(StandardProtocolFamily.UNIX)
         } catch (_: IOException) {
-            return WireExchange.Rejected(WireTransportFailure.CONNECTION_FAILED)
+            return WireSessionOpening.Rejected(WireTransportFailure.CONNECTION_FAILED)
         } catch (_: UnsupportedOperationException) {
-            return WireExchange.Rejected(WireTransportFailure.CONNECTION_FAILED)
+            return WireSessionOpening.Rejected(WireTransportFailure.CONNECTION_FAILED)
         }
-        return channel.use { socket ->
-            try {
-                socket.connect(UnixDomainSocketAddress.of(endpoint.socketPath))
-            } catch (_: IOException) {
-                return@use WireExchange.Rejected(WireTransportFailure.CONNECTION_FAILED)
-            } catch (_: SecurityException) {
-                return@use WireExchange.Rejected(WireTransportFailure.CONNECTION_FAILED)
-            }
-            when (val written = WireFrameCodec.write(socket, document)) {
-                WireFrameWrite.Written -> when (val read = WireFrameCodec.read(socket)) {
-                    is WireFrameRead.Received -> WireExchange.Received(read.document)
-                    is WireFrameRead.Rejected -> WireExchange.Rejected(read.failure)
-                }
-                is WireFrameWrite.Rejected -> WireExchange.Rejected(written.failure)
-            }
+        return try {
+            channel.connect(UnixDomainSocketAddress.of(endpoint.socketPath))
+            WireSessionOpening.Opened(WireSession(channel))
+        } catch (_: IOException) {
+            channel.closeQuietly()
+            WireSessionOpening.Rejected(WireTransportFailure.CONNECTION_FAILED)
+        } catch (_: SecurityException) {
+            channel.closeQuietly()
+            WireSessionOpening.Rejected(WireTransportFailure.CONNECTION_FAILED)
         }
+    }
+}
+
+private fun SocketChannel.closeQuietly() {
+    try {
+        close()
+    } catch (_: IOException) {
     }
 }
 

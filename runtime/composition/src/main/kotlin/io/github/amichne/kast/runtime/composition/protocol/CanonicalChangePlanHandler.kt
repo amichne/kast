@@ -58,8 +58,11 @@ internal sealed interface ChangePlanAdmission {
 /** Finite failures while refining a public intent into one exact typed planning request. */
 internal enum class ChangePlanAdmissionFailure {
     WORKSPACE_NOT_READY,
-    TARGET_REJECTED,
-    REQUIRED_EVIDENCE_INCOMPLETE,
+    SYMBOL_RESOLVE_REQUIRED,
+    EDITABLE_TARGET_REQUIRED,
+    RELATION_READ_REQUIRED,
+    TRAVERSAL_RUN_REQUIRED,
+    DIAGNOSTIC_CHECK_REQUIRED,
     INTENT_REJECTED,
 }
 
@@ -96,7 +99,7 @@ internal class CanonicalChangePlanHandler(
         val authorized = when (val result = authorize(request.intent)) {
             is ChangeIntentAuthorization.Authorized -> result.intent
             ChangeIntentAuthorization.MissingTarget -> return OperationOutcome.Rejected(
-                ChangePlanRejection.TARGET_REJECTED,
+                ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED,
             )
         }
         return when (val admitted = admission.admit(authorized)) {
@@ -183,30 +186,40 @@ private sealed interface ChangeIntentAuthorization {
 
 private fun ChangePlanAdmissionFailure.protocol(): ChangePlanRejection = when (this) {
     ChangePlanAdmissionFailure.WORKSPACE_NOT_READY -> ChangePlanRejection.WORKSPACE_NOT_READY
-    ChangePlanAdmissionFailure.TARGET_REJECTED -> ChangePlanRejection.TARGET_REJECTED
-    ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE ->
-        ChangePlanRejection.REQUIRED_EVIDENCE_INCOMPLETE
+    ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED ->
+        ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED
+    ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED ->
+        ChangePlanRejection.EDITABLE_TARGET_REQUIRED
+    ChangePlanAdmissionFailure.RELATION_READ_REQUIRED ->
+        ChangePlanRejection.RELATION_READ_REQUIRED
+    ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED ->
+        ChangePlanRejection.TRAVERSAL_RUN_REQUIRED
+    ChangePlanAdmissionFailure.DIAGNOSTIC_CHECK_REQUIRED ->
+        ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED
     ChangePlanAdmissionFailure.INTENT_REJECTED -> ChangePlanRejection.INTENT_REJECTED
 }
 
 private fun ChangePlanningFailure.protocol(): ChangePlanRejection = when (this) {
     ChangePlanningFailure.RELATION_EVIDENCE_REQUIRED,
     ChangePlanningFailure.RELATION_EVIDENCE_INCOMPLETE,
+        -> ChangePlanRejection.RELATION_READ_REQUIRED
     ChangePlanningFailure.TRAVERSAL_EVIDENCE_REQUIRED,
     ChangePlanningFailure.TRAVERSAL_EVIDENCE_INCOMPLETE,
+        -> ChangePlanRejection.TRAVERSAL_RUN_REQUIRED
     ChangePlanningFailure.DIAGNOSTIC_EVIDENCE_REQUIRED,
     ChangePlanningFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE,
-        -> ChangePlanRejection.REQUIRED_EVIDENCE_INCOMPLETE
+        -> ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED
     ChangePlanningFailure.EVIDENCE_LEASE_MISMATCH,
     ChangePlanningFailure.EVIDENCE_TARGET_MISMATCH,
-        -> ChangePlanRejection.TARGET_REJECTED
+        -> ChangePlanRejection.SYMBOL_RESOLVE_REQUIRED
 }
 
 private fun RenameSymbolPlanningFailure.protocol(): ChangePlanRejection = when (this) {
     is RenameSymbolPlanningFailure.Evidence -> failure.protocol()
-    RenameSymbolPlanningFailure.NEW_NAME_UNCHANGED,
     RenameSymbolPlanningFailure.REFERENCE_EVIDENCE_REQUIRED,
     RenameSymbolPlanningFailure.REFERENCE_EVIDENCE_AMBIGUOUS,
+        -> ChangePlanRejection.RELATION_READ_REQUIRED
+    RenameSymbolPlanningFailure.NEW_NAME_UNCHANGED,
     RenameSymbolPlanningFailure.OCCURRENCE_EVIDENCE_MISMATCH,
         -> ChangePlanRejection.INTENT_REJECTED
 }

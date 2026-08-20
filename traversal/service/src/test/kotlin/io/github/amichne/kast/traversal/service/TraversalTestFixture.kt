@@ -33,6 +33,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -71,7 +72,7 @@ internal class TraversalTestFixture {
     ): SymbolSelector {
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(lease, scope),
-            SymbolDiscoveryKind.SYMBOL,
+            SymbolNameDiscoveryKind.SYMBOL,
             SymbolDiscoveryPattern.parse(name).refined(),
             SymbolDiscoveryBudget(
                 ResourceBudget(

@@ -66,8 +66,6 @@ internal class CanonicalRelationReadHandler(
         val domainRequest = when (val subject = authority.relationSubject(request.exactSelector)) {
             is RelationSubjectLookup.Selector ->
                 DomainRelationRequest.start(subject.selector, meaning, budget)
-            is RelationSubjectLookup.Endpoint ->
-                DomainRelationRequest.start(subject.endpoint, meaning, budget)
             RelationSubjectLookup.Missing ->
                 return OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE)
         }
@@ -91,16 +89,19 @@ internal class CanonicalRelationReadHandler(
         subject: RelationEndpoint,
         projection: RelationProjection,
     ): OperationOutcome<RelationReadResult, RelationReadQualification, RelationReadRejection> {
-        val selectors = linkedSetOf<io.github.amichne.kast.protocol.contract.ProtocolText>()
+        val documents = linkedMapOf<String, io.github.amichne.kast.protocol.contract.SymbolDocument>()
         facts.forEach { fact ->
             val endpoint = fact.relatedTo(subject)
-            when (val issued = authority.issueEndpoint(endpoint)) {
-                is RelationEndpointIssuance.Issued -> selectors += issued.selector
+            val issued = when (val result = authority.issueEndpoint(endpoint)) {
+                is RelationEndpointIssuance.Issued -> result.selector
                 is RelationEndpointIssuance.Rejected ->
                     return OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE)
             }
+            val document = endpoint.protocolDocument(issued)
+                ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
+            documents.putIfAbsent(issued.value, document)
         }
-        val bounded = when (val admitted = BoundedProtocolList.create(selectors.toList())) {
+        val bounded = when (val admitted = BoundedProtocolList.create(documents.values.toList())) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected ->
                 return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
@@ -180,15 +181,18 @@ internal class CanonicalTraversalRunHandler(
         plan: TraversalPlan,
         projection: TraversalProjection,
     ): OperationOutcome<TraversalRunResult, TraversalRunQualification, TraversalRunRejection> {
-        val selectors = linkedSetOf<io.github.amichne.kast.protocol.contract.ProtocolText>()
+        val documents = linkedMapOf<String, io.github.amichne.kast.protocol.contract.SymbolDocument>()
         endpoints.forEach { endpoint ->
-            when (val issued = authority.issueEndpoint(endpoint)) {
-                is RelationEndpointIssuance.Issued -> selectors += issued.selector
+            val issued = when (val result = authority.issueEndpoint(endpoint)) {
+                is RelationEndpointIssuance.Issued -> result.selector
                 is RelationEndpointIssuance.Rejected ->
                     return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
             }
+            val document = endpoint.protocolDocument(issued)
+                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
+            documents.putIfAbsent(issued.value, document)
         }
-        val bounded = when (val admitted = BoundedProtocolList.create(selectors.toList())) {
+        val bounded = when (val admitted = BoundedProtocolList.create(documents.values.toList())) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected ->
                 return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)

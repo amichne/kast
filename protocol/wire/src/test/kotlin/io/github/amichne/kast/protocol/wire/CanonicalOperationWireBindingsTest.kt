@@ -34,6 +34,7 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
@@ -41,6 +42,7 @@ import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
+import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
@@ -50,6 +52,14 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
+import io.github.amichne.kast.protocol.contract.SymbolDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
@@ -86,8 +96,20 @@ class CanonicalOperationWireBindingsTest {
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.symbolDiscover,
-            SymbolDiscoverRequest(text("Target"), count(20)),
-            SymbolDiscoverResult(texts("candidate:Target")),
+            discoverRequest("Target", 20),
+            SymbolDiscoverResult(
+                BoundedProtocolList.create(
+                    listOf<SymbolDiscoveryDocument>(
+                        SymbolDiscoveryDocument.Declaration(
+                            text("candidate:v1:Target"),
+                            SymbolDiscoveryKindDocument.SYMBOL,
+                            text("Target"),
+                            text("src/Target.kt"),
+                            offset(7),
+                        ),
+                    ),
+                ).refinedValue(),
+            ),
             SymbolDiscoverQualification.from(setOf(SymbolDiscoverLimitation.RESULT_LIMIT)).refinedValue(),
             SymbolDiscoverRejection.QUERY_REJECTED,
         )
@@ -101,14 +123,17 @@ class CanonicalOperationWireBindingsTest {
         assertRoundTrips(
             CanonicalOperationWireBindings.symbolDescribe,
             SymbolDescribeRequest(text("exact:Target")),
-            SymbolDescribeResult(text("class Target")),
+            SymbolDescribeResult(symbol("exact:v1:Target", "Target")),
             SymbolDescribeQualification.EVIDENCE_INCOMPLETE,
             SymbolDescribeRejection.SELECTOR_STALE,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.relationRead,
             RelationReadRequest(text("exact:Target"), RelationKindDocument.CALLERS, count(50)),
-            RelationReadResult(texts("exact:Caller")),
+            RelationReadResult(
+                BoundedProtocolList.create(listOf(symbol("exact:v1:Caller", "Caller")))
+                    .refinedValue(),
+            ),
             RelationReadQualification.COVERAGE_INCOMPLETE,
             RelationReadRejection.RELATION_UNSUPPORTED,
         )
@@ -120,7 +145,14 @@ class CanonicalOperationWireBindingsTest {
                 count(3),
                 count(100),
             ),
-            TraversalRunResult(texts("exact:Caller", "exact:Root")),
+            TraversalRunResult(
+                BoundedProtocolList.create(
+                    listOf(
+                        symbol("exact:v1:Caller", "Caller"),
+                        symbol("exact:v1:Root", "Root"),
+                    ),
+                ).refinedValue(),
+            ),
             TraversalRunQualification.DEPTH_LIMIT,
             TraversalRunRejection.PLAN_REJECTED,
         )
@@ -141,7 +173,7 @@ class CanonicalOperationWireBindingsTest {
             ),
             ChangePlanResult(text("plan:1")),
             ChangePlanQualification.OPTIONAL_EVIDENCE_INCOMPLETE,
-            ChangePlanRejection.REQUIRED_EVIDENCE_INCOMPLETE,
+            ChangePlanRejection.RELATION_READ_REQUIRED,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.changeApply,
@@ -190,7 +222,7 @@ class CanonicalOperationWireBindingsTest {
     @Test
     fun `production binding rejects unknown operation schema and invalid refined payload`() {
         val binding = CanonicalOperationWireBindings.symbolDiscover
-        val encoded = binding.encodeRequest(SymbolDiscoverRequest(text("Target"), count(20)))
+        val encoded = binding.encodeRequest(discoverRequest("Target", 20))
             .encodedDocument()
         val unknownSchema = SchemaIdentity.parse("kast.unknown.v1").refinedValue()
         val unknownOperation = OperationId.parse("symbol.missing").refinedValue()
@@ -249,6 +281,27 @@ class CanonicalOperationWireBindingsTest {
             assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(document))
         }
     }
+
+    private fun discoverRequest(raw: String, limit: Int): SymbolDiscoverRequest =
+        SymbolDiscoverRequest(
+            SymbolDiscoverTargetDocument.Name(
+                text(raw),
+                SymbolNameKindDocument.SYMBOL,
+                SymbolDiscoveryMatchDocument.FUZZY,
+            ),
+            count(limit),
+        )
+
+    private fun symbol(selector: String, name: String): SymbolDocument = SymbolDocument(
+        selector = text(selector),
+        kind = SymbolKindDocument.CLASSLIKE,
+        name = text(name),
+        qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(text("sample.$name")),
+        file = text("src/$name.kt"),
+        range = SourceRangeDocument.create(offset(0), offset(name.length)).refinedValue(),
+    )
+
+    private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 

@@ -113,6 +113,9 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
                 }
                 element.textRange.startOffset
             }
+            SymbolDiscoveryKind.TEXT -> return Refinement.Rejected(
+                SymbolDiscoveryCandidateFailure.INVALID_DECLARATION_OFFSET,
+            )
         }
         val classifiedPath = nativePath(file)
         return SymbolDiscoveryCandidate.fromBoundary(

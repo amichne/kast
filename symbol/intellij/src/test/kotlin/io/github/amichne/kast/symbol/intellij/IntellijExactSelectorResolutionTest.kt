@@ -19,6 +19,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -282,7 +283,7 @@ class IntellijExactSelectorResolutionTest {
                 libraries = SymbolLibraryPolicy.EXCLUDE,
             ),
         ),
-        kind = SymbolDiscoveryKind.SYMBOL,
+        kind = SymbolNameDiscoveryKind.SYMBOL,
         pattern = SymbolDiscoveryPattern.parse("service").refined(),
         budget = SymbolDiscoveryBudget(
             resources = ResourceBudget(

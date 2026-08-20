@@ -119,6 +119,74 @@ class InstalledIndexerLaunchTest {
     }
 
     @Test
+    fun `prepared transport publishes one versioned discoverable endpoint descriptor`() {
+        val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
+        val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
+        val options = admittedOptions(workspace, socket)
+        val prepared = assertInstanceOf(
+            IndexerTransportPreparation.Prepared::class.java,
+            InstalledIndexerTransport.prepare(options),
+        )
+        val descriptor = socket.resolveSibling("${socket.fileName}.endpoint.json")
+
+        prepared.transport.use {
+            val document = Files.readString(descriptor)
+            assertTrue(document.contains("\"schema\":\"kast.runtime.endpoint.v1\""))
+            assertTrue(document.contains("\"canonicalRoot\":\"$workspace\""))
+            assertTrue(document.contains("\"runtimeId\":\"$runtimeId\""))
+            assertTrue(document.contains("\"socketPath\":\"$socket\""))
+            assertTrue(document.contains("\"framing\":\"length-prefixed-json-v1\""))
+        }
+        assertTrue(Files.notExists(descriptor))
+    }
+
+    @Test
+    fun `one accepted connection serves multiple request response frames`() {
+        val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
+        val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
+        val options = admittedOptions(workspace, socket)
+        val prepared = assertInstanceOf(
+            IndexerTransportPreparation.Prepared::class.java,
+            InstalledIndexerTransport.prepare(options),
+        )
+
+        prepared.transport.use { transport ->
+            val executor = Executors.newSingleThreadExecutor()
+            try {
+                val served = executor.submit<IndexerConnectionHandling> {
+                    transport.serveNext(
+                        KastIndexerHost { request ->
+                            KastRuntimeDispatch.Responded("response:$request")
+                        },
+                    )
+                }
+                SocketChannel.open(StandardProtocolFamily.UNIX).use { client ->
+                    client.connect(UnixDomainSocketAddress.of(socket))
+                    assertEquals(
+                        IndexerFrameWrite.Written,
+                        IndexerWireFrameCodec.write(client, "first"),
+                    )
+                    assertEquals(
+                        IndexerFrameRead.Received("response:first"),
+                        IndexerWireFrameCodec.read(client),
+                    )
+                    assertEquals(
+                        IndexerFrameWrite.Written,
+                        IndexerWireFrameCodec.write(client, "second"),
+                    )
+                    assertEquals(
+                        IndexerFrameRead.Received("response:second"),
+                        IndexerWireFrameCodec.read(client),
+                    )
+                }
+                assertEquals(IndexerConnectionHandling.Served, served.get(5, TimeUnit.SECONDS))
+            } finally {
+                executor.shutdownNow()
+            }
+        }
+    }
+
+    @Test
     fun `prepared transport owns exact socket state and one canonical exchange`() {
         val workspace = Files.createDirectory(temporaryDirectory.resolve("workspace")).toRealPath()
         val socket = temporaryDirectory.resolve("runtime/kast.sock").toAbsolutePath()
@@ -160,6 +228,18 @@ class InstalledIndexerLaunchTest {
         }
         assertTrue(Files.notExists(socket))
     }
+
+    private fun admittedOptions(
+        workspace: Path,
+        socket: Path,
+    ): IndexerLaunchOptions = (IndexerLaunchOptions.admit(
+        listOf(
+            KAST_INDEXER_COMMAND_NAME,
+            "--workspace-root=$workspace",
+            "--socket-path=$socket",
+            "--runtime-id=$runtimeId",
+        ),
+    ) as IndexerLaunchAdmission.Admitted).options
 }
 
 private const val MACOS_JDK_UNIX_SOCKET_PATH_MAX_BYTES = 102

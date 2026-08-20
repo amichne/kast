@@ -5,10 +5,10 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -66,7 +66,7 @@ class SymbolDiscoverQualificationWireTest {
         operation = CanonicalOperationWireBindings.symbolDiscover.operation.id,
         generation = EvidenceGeneration.parse(17).refinedValue(),
         payload = SymbolDiscoverResult(
-            BoundedProtocolList.create(emptyList<ProtocolText>()).refinedValue(),
+            BoundedProtocolList.create(emptyList<SymbolDiscoveryDocument>()).refinedValue(),
         ),
     )
 

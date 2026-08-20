@@ -68,25 +68,25 @@ internal class InstalledChangePlanningAdmission(
         val published = (workspace.inspect() as? WorkspaceRuntimeState.Ready)?.workspace
                         ?: return rejected(ChangePlanAdmissionFailure.WORKSPACE_NOT_READY)
         if (intent.selector.lease != published.readLease) {
-            return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+            return rejected(ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED)
         }
         val selector = when (val described = symbols.describe(ExactSymbolRequest(intent.selector))) {
             is SymbolDescriptionResult.Described -> described.description.selector
             is SymbolDescriptionResult.Rejected -> return rejected(
-                ChangePlanAdmissionFailure.TARGET_REJECTED,
+                ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED,
             )
         }
         val file = selector.file as? SymbolDiscoveryFileIdentity.Workspace
-                   ?: return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+                   ?: return rejected(ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED)
         val observed = when (val result = sources.observe(file)) {
             is SourceObservationResult.Observed -> result.source as? ObservedMutationSource
-                                                   ?: return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+                                                   ?: return rejected(ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED)
             is SourceObservationResult.Rejected -> return rejected(
-                ChangePlanAdmissionFailure.TARGET_REJECTED,
+                ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED,
             )
         }
         if (observed.access != SourceWriteAccess.Writable) {
-            return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+            return rejected(ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED)
         }
         val owner = published.sourceRoots.singleOrNull { sourceRoot ->
             val sourceRootPath = Path.of(published.root.value)
@@ -94,7 +94,7 @@ internal class InstalledChangePlanningAdmission(
                 .normalize()
             val targetPath = Path.of(file.path.value)
             targetPath != sourceRootPath && targetPath.startsWith(sourceRootPath)
-        }?.owner ?: return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+        }?.owner ?: return rejected(ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED)
         val target = when (val admitted = EditableMutationTarget.admit(
             MutationTargetObservation(
                 workspace = published,
@@ -108,7 +108,7 @@ internal class InstalledChangePlanningAdmission(
             ),
         )) {
             is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+            is Refinement.Rejected -> return rejected(ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED)
         }
         val compiled = when (val result = intents.compile(selector, intent.declaration.value)) {
             is InstalledAddDeclarationIntentCompilation.Compiled -> result.intent
@@ -117,12 +117,12 @@ internal class InstalledChangePlanningAdmission(
             )
         }
         val budgets = installedSemanticBudgets()
-                      ?: return rejected(ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE)
+            ?: return rejected(ChangePlanAdmissionFailure.RELATION_READ_REQUIRED)
         val relation = relations.read(
             RelationRequest.start(selector, RelationMeaning.References, budgets.relation),
         )
         if (relation !is RelationReadResult.Complete) {
-            return rejected(ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE)
+            return rejected(ChangePlanAdmissionFailure.RELATION_READ_REQUIRED)
         }
         val traversalPlan = when (val admitted = TraversalPlan.start(
             selector,
@@ -131,23 +131,23 @@ internal class InstalledChangePlanningAdmission(
         )) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejected(
-                ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE,
+                ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED,
             )
         }
         val traversal = traversals.run(traversalPlan)
         if (traversal !is TraversalResult.Complete) {
-            return rejected(ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE)
+            return rejected(ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED)
         }
         val diagnosticScope = when (val admitted = DiagnosticScope.fromCanonicalPaths(
             published.readLease,
             listOf(Path.of(file.path.value)),
         )) {
             is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return rejected(ChangePlanAdmissionFailure.TARGET_REJECTED)
+            is Refinement.Rejected -> return rejected(ChangePlanAdmissionFailure.EDITABLE_TARGET_REQUIRED)
         }
         val diagnostic = diagnostics.check(DiagnosticCheckRequest(diagnosticScope))
         if (diagnostic !is DiagnosticCheckResult.Complete) {
-            return rejected(ChangePlanAdmissionFailure.REQUIRED_EVIDENCE_INCOMPLETE)
+            return rejected(ChangePlanAdmissionFailure.DIAGNOSTIC_CHECK_REQUIRED)
         }
         return ChangePlanAdmission.AddDeclaration(
             AddDeclarationPlanRequest(

@@ -20,6 +20,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -189,7 +190,7 @@ class SymbolExactServiceTest {
                     SymbolLibraryPolicy.EXCLUDE,
                 ),
             ),
-            kind = SymbolDiscoveryKind.SYMBOL,
+            kind = SymbolNameDiscoveryKind.SYMBOL,
             pattern = SymbolDiscoveryPattern.parse("call").refined(),
             budget = SymbolDiscoveryBudget(
                 ResourceBudget(
