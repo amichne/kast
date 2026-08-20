@@ -57,7 +57,7 @@ internal val canonicalCliSyntaxes = listOf(
     CliCommandSyntax(
         CanonicalOperation.SYMBOL_DISCOVER,
         listOf("symbol", "discover"),
-        "symbol discover --query <text> --limit <1..1000>"
+        "symbol discover --mode <name|location|structure|text> ... --limit <1..1000>"
     ),
     CliCommandSyntax(
         CanonicalOperation.SYMBOL_RESOLVE,

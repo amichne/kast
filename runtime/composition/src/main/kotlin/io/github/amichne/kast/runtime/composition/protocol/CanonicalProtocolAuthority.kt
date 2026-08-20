@@ -7,13 +7,10 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 
 internal enum class CandidateSelectorIssuanceFailure {
     NON_DECLARATION_CANDIDATE,
-    HANDLE_COLLISION,
+    TOKEN_REJECTED,
 }
 
 internal sealed interface CandidateSelectorIssuance {
@@ -35,7 +32,7 @@ internal sealed interface CandidateSelectorLookup {
 }
 
 internal enum class ExactSelectorIssuanceFailure {
-    HANDLE_COLLISION,
+    TOKEN_REJECTED,
 }
 
 internal sealed interface ExactSelectorIssuance {
@@ -57,7 +54,7 @@ internal sealed interface ExactSelectorLookup {
 }
 
 internal enum class RelationEndpointIssuanceFailure {
-    HANDLE_COLLISION,
+    TOKEN_REJECTED,
 }
 
 internal sealed interface RelationEndpointIssuance {
@@ -75,196 +72,68 @@ internal sealed interface RelationSubjectLookup {
         val selector: SymbolSelector,
     ) : RelationSubjectLookup
 
-    data class Endpoint(
-        val endpoint: RelationEndpoint.Resolved,
-    ) : RelationSubjectLookup
-
     data object Missing : RelationSubjectLookup
 }
 
-/** Operation-specific authority retained behind opaque canonical selector documents. */
+/** Stateless protocol authority over self-describing, generation-bound selector documents. */
 internal class CanonicalProtocolAuthority {
-    private val candidates = ConcurrentHashMap<ProtocolText, SymbolDiscoverySelection>()
-    private val exact = ConcurrentHashMap<ProtocolText, SymbolSelector>()
-    private val endpoints = ConcurrentHashMap<ProtocolText, RelationEndpoint.Resolved>()
-
     /**
      * Proof transition: `SymbolDiscoveryBatch -> CandidateSelectorIssuance`.
      *
-     * Establishes one deterministic opaque selector for every declaration selected from the exact
-     * generation-bound batch. [CandidateSelectorIssuanceFailure] is the closed expected failure.
-     * Raw ordinals are extracted only while applying the batch-owned selection transition.
+     * Issues one deterministic self-describing token for every declaration candidate. File and
+     * text evidence remain structured result variants and never acquire exact-selector authority.
      */
     fun issueCandidates(batch: SymbolDiscoveryBatch): CandidateSelectorIssuance {
-        val issued = ArrayList<ProtocolText>(batch.candidates.size)
-        batch.candidates.indices.forEach { ordinal ->
-            val candidate = batch.candidates[ordinal]
-            if (candidate.location !is SymbolDiscoveryCandidateLocation.Declaration) {
-                return CandidateSelectorIssuance.Rejected(
-                    CandidateSelectorIssuanceFailure.NON_DECLARATION_CANDIDATE,
-                )
-            }
+        val issued = mutableListOf<ProtocolText>()
+        batch.candidates.forEachIndexed { ordinal, candidate ->
+            if (candidate.location !is SymbolDiscoveryCandidateLocation.Declaration) return@forEachIndexed
             val selection = when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
                 is Refinement.Refined -> selected.value
                 is Refinement.Rejected -> return CandidateSelectorIssuance.Rejected(
                     CandidateSelectorIssuanceFailure.NON_DECLARATION_CANDIDATE,
                 )
             }
-            val handle = candidateHandle(selection)
-            val prior = candidates.putIfAbsent(handle, selection)
-            if (prior != null && !prior.sameSelection(selection)) {
-                return CandidateSelectorIssuance.Rejected(
-                    CandidateSelectorIssuanceFailure.HANDLE_COLLISION,
-                )
-            }
-            issued += handle
+            issued += CanonicalSelectorCodec.encodeCandidate(selection)
         }
         return CandidateSelectorIssuance.Issued(issued)
     }
 
-    /**
-     * Proof transition: `ProtocolText -> CandidateSelectorLookup`.
-     *
-     * Restores only a previously batch-issued [SymbolDiscoverySelection]. Missing or manufactured
-     * documents remain the finite [CandidateSelectorLookup.Missing] state. Raw text lookup is
-     * confined to this protocol authority boundary.
-     */
+    /** Restores candidate authority from token facts without process-local retained state. */
     fun candidate(selector: ProtocolText): CandidateSelectorLookup =
-        candidates[selector]
+        CanonicalSelectorCodec.decodeCandidate(selector)
             ?.let(CandidateSelectorLookup::Found)
         ?: CandidateSelectorLookup.Missing
 
-    /**
-     * Proof transition: `SymbolSelector -> ExactSelectorIssuance`.
-     *
-     * Preserves the compiler-grounded selector behind its own opaque fingerprint.
-     * [ExactSelectorIssuanceFailure] is the closed expected collision failure. Raw fingerprint
-     * extraction occurs only at this protocol authority boundary.
-     */
-    fun issueExact(selector: SymbolSelector): ExactSelectorIssuance {
-        val handle = exactHandle(selector)
-        val prior = exact.putIfAbsent(handle, selector)
-        return if (prior == null || prior.sameSelector(selector)) {
-            ExactSelectorIssuance.Issued(handle)
-        } else {
-            ExactSelectorIssuance.Rejected(ExactSelectorIssuanceFailure.HANDLE_COLLISION)
-        }
-    }
+    /** Issues one self-describing exact selector token. */
+    fun issueExact(selector: SymbolSelector): ExactSelectorIssuance =
+        ExactSelectorIssuance.Issued(CanonicalSelectorCodec.encodeExact(selector))
 
-    /**
-     * Proof transition: `ProtocolText -> ExactSelectorLookup`.
-     *
-     * Restores only a selector issued by `symbol.resolve`. Missing or manufactured documents
-     * remain [ExactSelectorLookup.Missing]. Raw text lookup is confined to this boundary.
-     */
+    /** Restores exact selector authority and verifies its deterministic fingerprint. */
     fun exact(selector: ProtocolText): ExactSelectorLookup =
-        exact[selector]?.let(ExactSelectorLookup::Found) ?: ExactSelectorLookup.Missing
+        CanonicalSelectorCodec.decodeExact(selector)
+            ?.let(ExactSelectorLookup::Found)
+        ?: ExactSelectorLookup.Missing
 
     /**
-     * Proof transition: `RelationEndpoint -> RelationEndpointIssuance`.
-     *
-     * Preserves a selector subject under its exact selector handle or a compiler-grounded related
-     * endpoint under its own fingerprint handle. [RelationEndpointIssuanceFailure] is the closed
-     * expected collision failure. Raw fingerprints leave endpoint authority only here.
+     * Converts every compiler-grounded relation endpoint into the same exact selector family used
+     * by describe, relation, and traversal consumers.
      */
-    fun issueEndpoint(endpoint: RelationEndpoint): RelationEndpointIssuance = when (endpoint) {
-        is RelationEndpoint.Subject -> when (val exact = issueExact(endpoint.selector)) {
-            is ExactSelectorIssuance.Issued -> RelationEndpointIssuance.Issued(exact.selector)
-            is ExactSelectorIssuance.Rejected -> RelationEndpointIssuance.Rejected(
-                RelationEndpointIssuanceFailure.HANDLE_COLLISION,
-            )
+    fun issueEndpoint(endpoint: RelationEndpoint): RelationEndpointIssuance {
+        val selector = when (endpoint) {
+            is RelationEndpoint.Subject -> endpoint.selector
+            is RelationEndpoint.Resolved ->
+                SymbolSelector.issue(endpoint.lease, endpoint.scope, endpoint.evidence)
         }
-        is RelationEndpoint.Resolved -> {
-            val handle = protocolHandle("relation", listOf(endpoint.fingerprint.value))
-            val prior = endpoints.putIfAbsent(handle, endpoint)
-            if (prior == null || prior.sameEndpoint(endpoint)) {
-                RelationEndpointIssuance.Issued(handle)
-            } else {
-                RelationEndpointIssuance.Rejected(
-                    RelationEndpointIssuanceFailure.HANDLE_COLLISION,
-                )
-            }
+        return when (val issued = issueExact(selector)) {
+            is ExactSelectorIssuance.Issued -> RelationEndpointIssuance.Issued(issued.selector)
+            is ExactSelectorIssuance.Rejected ->
+                RelationEndpointIssuance.Rejected(RelationEndpointIssuanceFailure.TOKEN_REJECTED)
         }
     }
 
-    /**
-     * Proof transition: `ProtocolText -> RelationSubjectLookup`.
-     *
-     * Restores only a prior exact selector or compiler-grounded related endpoint. Manufactured or
-     * missing documents remain [RelationSubjectLookup.Missing]. Raw text lookup is confined here.
-     */
-    fun relationSubject(selector: ProtocolText): RelationSubjectLookup =
-        exact[selector]
-            ?.let(RelationSubjectLookup::Selector)
-        ?: endpoints[selector]?.let(RelationSubjectLookup::Endpoint)
-        ?: RelationSubjectLookup.Missing
-}
-
-private fun candidateHandle(selection: SymbolDiscoverySelection): ProtocolText {
-    val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
-    return protocolHandle(
-        "candidate",
-        listOf(
-            selection.lease.workspaceRoot.value,
-            selection.lease.generation.value.toString(),
-            selection.candidate.name.value,
-            location.file.stableValue,
-            location.offset.value.toString(),
-        ),
-    )
-}
-
-private fun exactHandle(selector: SymbolSelector): ProtocolText =
-    protocolHandle("exact", listOf(selector.fingerprint.value))
-
-/**
- * Proof transition: `(String, List<String>) -> ProtocolText`.
- *
- * Establishes a non-blank bounded opaque document from a closed prefix and SHA-256 digest of
- * length-framed detached fields. Inputs are extracted only from already strong selector authority
- * at this protocol boundary; the fixed canonical representation cannot reach protocol rejection.
- */
-private fun protocolHandle(
-    prefix: String,
-    fields: List<String>,
-): ProtocolText {
-    val canonical = buildString {
-        fields.forEach { field ->
-            append(field.toByteArray(StandardCharsets.UTF_8).size)
-            append(':')
-            append(field)
-        }
-    }
-    val digest = MessageDigest.getInstance("SHA-256")
-        .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-        .joinToString(separator = "") { byte ->
-            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-        }
-    return when (val parsed = ProtocolText.parse("$prefix:$digest")) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> error("canonical selector handle is bounded and non-blank")
+    /** Exact relation subjects use the canonical exact selector family; no third handle exists. */
+    fun relationSubject(selector: ProtocolText): RelationSubjectLookup = when (val exact = exact(selector)) {
+        is ExactSelectorLookup.Found -> RelationSubjectLookup.Selector(exact.selector)
+        ExactSelectorLookup.Missing -> RelationSubjectLookup.Missing
     }
 }
-
-private fun SymbolDiscoverySelection.sameSelection(other: SymbolDiscoverySelection): Boolean =
-    lease == other.lease && scope == other.scope && candidate == other.candidate
-
-private fun SymbolSelector.sameSelector(other: SymbolSelector): Boolean =
-    lease == other.lease &&
-    scope == other.scope &&
-    file == other.file &&
-    range == other.range &&
-    name == other.name &&
-    qualifiedIdentity == other.qualifiedIdentity &&
-    kind == other.kind &&
-    fingerprint == other.fingerprint
-
-private fun RelationEndpoint.Resolved.sameEndpoint(other: RelationEndpoint.Resolved): Boolean =
-    lease == other.lease &&
-    scope == other.scope &&
-    file == other.file &&
-    range == other.range &&
-    name == other.name &&
-    qualifiedIdentity == other.qualifiedIdentity &&
-    kind == other.kind &&
-    fingerprint == other.fingerprint

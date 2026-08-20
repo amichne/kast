@@ -9,6 +9,9 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
+import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
@@ -123,7 +126,11 @@ class SymbolDiscoverQualificationProjectionTest {
         return runImmediate {
             handler.execute(
                 SymbolDiscoverRequest(
-                    ProtocolText.parse("sample").refined(),
+                    SymbolDiscoverTargetDocument.Name(
+                        ProtocolText.parse("sample").refined(),
+                        SymbolNameKindDocument.SYMBOL,
+                        SymbolDiscoveryMatchDocument.FUZZY,
+                    ),
                     ProtocolCount.parse(4).refined(),
                 ),
             )

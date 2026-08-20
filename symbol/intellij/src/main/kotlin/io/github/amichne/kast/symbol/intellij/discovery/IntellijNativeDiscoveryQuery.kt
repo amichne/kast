@@ -20,6 +20,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import java.util.concurrent.CancellationException
@@ -56,30 +57,6 @@ internal typealias IntellijDiscoveryNanoClock = IntellijReadNanoClock
 
 internal object SystemIntellijDiscoveryNanoClock : IntellijReadNanoClock {
     override fun now(): Long = System.nanoTime()
-}
-
-@JvmInline
-internal value class IntellijDiscoveryElapsedLimitNanoseconds private constructor(
-    val value: Long,
-) {
-    companion object {
-        /**
-         * Proof transition:
-         * `SymbolDiscoveryRequest -> IntellijDiscoveryElapsedLimitNanoseconds`.
-         *
-         * Establishes the request's non-negative elapsed limit in saturated nanoseconds. Raw
-         * nanoseconds may be extracted only at the monotonic-clock comparison boundary.
-         */
-        fun from(request: SymbolDiscoveryRequest): IntellijDiscoveryElapsedLimitNanoseconds {
-            val millis = request.budget.resources.elapsedTimeLimit.value
-            val nanoseconds = if (millis > Long.MAX_VALUE / NANOS_PER_MILLISECOND) {
-                Long.MAX_VALUE
-            } else {
-                millis * NANOS_PER_MILLISECOND
-            }
-            return IntellijDiscoveryElapsedLimitNanoseconds(nanoseconds)
-        }
-    }
 }
 
 internal class IntellijNativeDiscoveryQuery(
@@ -127,6 +104,10 @@ internal class IntellijNativeDiscoveryQuery(
             )
         }
 
+        val target = request.target as? SymbolDiscoveryTarget.Name
+            ?: return IntellijNativeDiscoveryExecution.Rejected(
+                IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
+            )
         val collector = BoundedNativeDiscoveryCollector(
             compiledScope = compiledScope,
             request = request,
@@ -137,15 +118,15 @@ internal class IntellijNativeDiscoveryQuery(
             cancellationCheck = cancellationCheck,
             clock = clock,
         )
-        val fuzzyMatcher = when (request.match) {
+        val fuzzyMatcher = when (target.match) {
             SymbolDiscoveryMatch.FUZZY -> NameUtil.buildMatcher(
-                "*${request.pattern.value}",
+                "*${target.pattern.value}",
                 MatchingMode.IGNORE_CASE,
             )
             SymbolDiscoveryMatch.EXACT_NAME -> null
         }
         val parameters = FindSymbolParameters.wrap(
-            request.pattern.value,
+            target.pattern.value,
             compiledScope.nativeScope,
         )
 
@@ -161,12 +142,12 @@ internal class IntellijNativeDiscoveryQuery(
                 val matchingNames = mutableListOf<String>()
                 contributor.processNames(
                     Processor { name ->
-                        if (!collector.admitWork()) {
+                        if (!collector.observe()) {
                             return@Processor false
                         }
-                        val matches = when (request.match) {
+                        val matches = when (target.match) {
                             SymbolDiscoveryMatch.FUZZY -> checkNotNull(fuzzyMatcher).matches(name)
-                            SymbolDiscoveryMatch.EXACT_NAME -> name == request.pattern.value
+                            SymbolDiscoveryMatch.EXACT_NAME -> name == target.pattern.value
                         }
                         if (!matches) {
                             return@Processor true
@@ -228,7 +209,7 @@ private class BoundedNativeDiscoveryCollector(
     var halted: Boolean = false
         private set
 
-    fun admitWork(): Boolean {
+    fun observe(): Boolean {
         cancellationCheck()
         when (environmentState()) {
             IntellijDiscoveryEnvironmentState.DUMB -> {
@@ -245,6 +226,11 @@ private class BoundedNativeDiscoveryCollector(
             qualifyAndHalt(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
             return false
         }
+        return true
+    }
+
+    private fun admitWork(): Boolean {
+        if (!observe()) return false
         if (workUnits >= request.budget.resources.workUnitLimit.value) {
             qualifyAndHalt(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
             return false
@@ -254,7 +240,7 @@ private class BoundedNativeDiscoveryCollector(
     }
 
     fun accept(item: NavigationItem): Boolean {
-        if (!admitWork()) {
+        if (!observe()) {
             return false
         }
         val file = when (val itemFileResult = itemFile.find(item)) {
@@ -290,6 +276,9 @@ private class BoundedNativeDiscoveryCollector(
         }
         if (candidate in candidates) {
             return true
+        }
+        if (!admitWork()) {
+            return false
         }
         if (candidates.size >= request.budget.resources.resultLimit.value) {
             qualifyAndHalt(SymbolDiscoveryQualification.RESULT_LIMIT_REACHED)
@@ -361,10 +350,6 @@ private class BoundedNativeDiscoveryCollector(
     private fun elapsedSince(start: Long): Long = (clock.now() - start).coerceAtLeast(0L)
 }
 
-internal fun SymbolDiscoveryRequest.elapsedLimitNanoseconds():
-    IntellijDiscoveryElapsedLimitNanoseconds =
-    IntellijDiscoveryElapsedLimitNanoseconds.from(this)
-
 private fun Long.byteMeasure(): SymbolDiscoveryByteCount =
     when (val parsed = SymbolDiscoveryByteCount.parse(this)) {
         is Refinement.Refined -> parsed.value
@@ -388,5 +373,3 @@ private fun saturatedAdd(
     right: Long,
 ): Long =
     if (right > Long.MAX_VALUE - left) Long.MAX_VALUE else left + right
-
-private const val NANOS_PER_MILLISECOND = 1_000_000L

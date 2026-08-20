@@ -13,10 +13,12 @@ import io.github.amichne.kast.symbol.contract.NativeProjectionByteCount
 import io.github.amichne.kast.symbol.contract.RevalidatedExactDeclaration
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
 internal sealed interface IntellijNativeDiscoveryResult {
@@ -43,8 +45,8 @@ internal class IntellijNativeDiscoveryAdapter(
      *
      * Establishes a write-priority cancellable IntelliJ read whose Choose-by-Name provider work can
      * begin only after KIP-012 compiles exact model ownership into a generation-bound native scope.
-     * Only Kotlin declaration contributors that can refine into the product's K2 exact selector
-     * are admitted. [IntellijSearchScopeFailure], [IntellijNativeDiscoveryRejection], and
+     * File contributors remain scoped discovery providers; class and symbol contributors are limited
+     * to Kotlin declarations that can refine into the product's K2 exact selector. [IntellijSearchScopeFailure], [IntellijNativeDiscoveryRejection], and
      * [io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification] are the closed expected
      * failure and partial-coverage states. Cancellation propagates through [readAction]. The live
      * project, providers, PSI, files, and scope remain inside the restarted request-local read.
@@ -60,15 +62,24 @@ internal class IntellijNativeDiscoveryAdapter(
                 request = request.scope,
                 modelCompilation = modelCompilation,
             ) { compiledScope ->
-                IntellijNativeDiscoveryQuery(
-                    environmentState = { project.discoveryEnvironmentState() },
-                    cancellationCheck = ProgressManager::checkCanceled,
-                ).discover(
-                    compiledScope = compiledScope,
-                    request = request,
-                    contributors = request.kind.nativeContributors()
-                        .filter(request.kind::isKotlinDeclarationContributor),
-                )
+                when (val target = request.target) {
+                    is SymbolDiscoveryTarget.Name -> IntellijNativeDiscoveryQuery(
+                        environmentState = { project.discoveryEnvironmentState() },
+                        cancellationCheck = ProgressManager::checkCanceled,
+                    ).discover(
+                        compiledScope = compiledScope,
+                        request = request,
+                        contributors = target.kind.nativeContributors()
+                            .filter(target.kind::isAdmittedContributor),
+                    )
+                    is SymbolDiscoveryTarget.Location,
+                    is SymbolDiscoveryTarget.Structure,
+                    is SymbolDiscoveryTarget.Text,
+                        -> IntellijSupplementalDiscoveryQuery(
+                        project = project,
+                        environmentState = { project.discoveryEnvironmentState() },
+                    ).discover(compiledScope, request)
+                }
             }
         ) {
             is IntellijScopedQueryResult.Completed -> when (val execution = scoped.value) {
@@ -95,10 +106,10 @@ internal fun Project.discoveryEnvironmentState(): IntellijDiscoveryEnvironmentSt
     else -> IntellijDiscoveryEnvironmentState.READY
 }
 
-internal fun SymbolDiscoveryKind.nativeContributors(): List<ChooseByNameContributor> = when (this) {
-    SymbolDiscoveryKind.FILE -> ChooseByNameContributor.FILE_EP_NAME.extensionList
-    SymbolDiscoveryKind.CLASS -> ChooseByNameContributor.CLASS_EP_NAME.extensionList
-    SymbolDiscoveryKind.SYMBOL -> ChooseByNameRegistry.getInstance().symbolModelContributors
+internal fun SymbolNameDiscoveryKind.nativeContributors(): List<ChooseByNameContributor> = when (this) {
+    SymbolNameDiscoveryKind.FILE -> ChooseByNameContributor.FILE_EP_NAME.extensionList
+    SymbolNameDiscoveryKind.CLASS -> ChooseByNameContributor.CLASS_EP_NAME.extensionList
+    SymbolNameDiscoveryKind.SYMBOL -> ChooseByNameRegistry.getInstance().symbolModelContributors
 }
 
 enum class IntellijFastSymbolReadRejection {
@@ -180,6 +191,10 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
         itemAdmission: IntellijDiscoveryItemAdmissionPolicy =
             AdmitEveryIntellijDiscoveryItem,
     ): IntellijFastSymbolReadResult<Definition> = readAction {
+        val target = request.target as? SymbolDiscoveryTarget.Name
+            ?: return@readAction IntellijFastSymbolReadResult.Rejected(
+                IntellijFastSymbolReadRejection.DISCOVERY_REJECTED,
+            )
         var scopeCompilationNanoseconds = 0L
         val scopeStartedAt = clock.now()
         val scoped = scopeQuery.execute(
@@ -198,8 +213,8 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
                 val execution = query.discover(
                     compiledScope = compiledScope,
                     request = request,
-                    contributors = request.kind.nativeContributors()
-                        .filter(request.kind::isKotlinDeclarationContributor),
+                    contributors = target.kind.nativeContributors()
+                        .filter(target.kind::isAdmittedContributor),
                 )
             ) {
                 is IntellijNativeDiscoveryExecution.Rejected ->
@@ -343,18 +358,18 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
         elapsedSince(startedAt) >= elapsedLimitNanoseconds().value
 }
 
-private fun SymbolDiscoveryKind.isKotlinDeclarationContributor(
+private fun SymbolNameDiscoveryKind.isAdmittedContributor(
     contributor: ChooseByNameContributor,
-): Boolean = contributor.javaClass.name in when (this) {
-    SymbolDiscoveryKind.CLASS -> setOf(
+): Boolean = when (this) {
+    SymbolNameDiscoveryKind.FILE -> true
+    SymbolNameDiscoveryKind.CLASS -> contributor.javaClass.name in setOf(
         "org.jetbrains.kotlin.idea.goto.KotlinGotoClassContributor",
     )
-    SymbolDiscoveryKind.SYMBOL -> setOf(
+    SymbolNameDiscoveryKind.SYMBOL -> contributor.javaClass.name in setOf(
         "org.jetbrains.kotlin.idea.goto.KotlinGotoClassSymbolContributor",
         "org.jetbrains.kotlin.idea.goto.KotlinGotoFunctionSymbolContributor",
         "org.jetbrains.kotlin.idea.goto.KotlinGotoPropertySymbolContributor",
     )
-    SymbolDiscoveryKind.FILE -> emptySet()
 }
 
 private fun SymbolDiscoveryOutcome.batch(): SymbolDiscoveryBatch = when (this) {

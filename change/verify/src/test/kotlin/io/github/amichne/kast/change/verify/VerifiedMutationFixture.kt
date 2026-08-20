@@ -60,6 +60,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -267,7 +268,7 @@ internal class VerifiedMutationFixture {
         )
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(workspace.readLease, scope),
-            SymbolDiscoveryKind.SYMBOL,
+            SymbolNameDiscoveryKind.SYMBOL,
             SymbolDiscoveryPattern.parse("service").refined(),
             SymbolDiscoveryBudget(resourceBudget(), SymbolDiscoveryByteLimit.parse(10_000L).refined()),
         )
@@ -394,7 +395,6 @@ internal class VerifiedMutationFixture {
         relationBudget(),
     )
 
-    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
-        .digest(bytes)
+    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes)
         .joinToString("") { byte -> "%02x".format(byte) }
 }

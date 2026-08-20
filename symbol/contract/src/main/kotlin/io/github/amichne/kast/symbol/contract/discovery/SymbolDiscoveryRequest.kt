@@ -9,6 +9,13 @@ enum class SymbolDiscoveryKind {
     FILE,
     CLASS,
     SYMBOL,
+    TEXT,
+}
+
+enum class SymbolNameDiscoveryKind {
+    FILE,
+    CLASS,
+    SYMBOL,
 }
 
 enum class SymbolDiscoveryMatch {
@@ -31,9 +38,9 @@ value class SymbolDiscoveryPattern private constructor(
          * Proof transition:
          * String to Refinement<SymbolDiscoveryPattern, SymbolDiscoveryPatternFailure>.
          *
-         * Establishes a non-blank, bounded IntelliJ Choose-by-Name pattern without control
-         * characters. [SymbolDiscoveryPatternFailure] is the closed expected failure. Raw text may
-         * be extracted only by the request-local native matcher and provider boundary.
+         * Establishes a non-blank, bounded IntelliJ discovery pattern without control characters.
+         * [SymbolDiscoveryPatternFailure] is the closed expected failure. Raw text may be extracted
+         * only by the request-local native matcher, provider, or indexed-text boundary.
          */
         fun parse(raw: String): Refinement<SymbolDiscoveryPattern, SymbolDiscoveryPatternFailure> = when {
             raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryPatternFailure.BLANK)
@@ -77,10 +84,56 @@ data class SymbolDiscoveryBudget(
     val returnedBytes: SymbolDiscoveryByteLimit,
 )
 
+/** Closed domain meaning for the existing `symbol.discover` operation. */
+sealed interface SymbolDiscoveryTarget {
+    val resultKind: SymbolDiscoveryKind
+
+    data class Name(
+        val kind: SymbolNameDiscoveryKind,
+        val pattern: SymbolDiscoveryPattern,
+        val match: SymbolDiscoveryMatch,
+    ) : SymbolDiscoveryTarget {
+        override val resultKind: SymbolDiscoveryKind = when (kind) {
+            SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
+            SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
+            SymbolNameDiscoveryKind.SYMBOL -> SymbolDiscoveryKind.SYMBOL
+        }
+    }
+
+    data class Location(
+        val file: CanonicalWorkspaceFilePath,
+        val offset: SymbolDiscoverySourceOffset,
+    ) : SymbolDiscoveryTarget {
+        override val resultKind: SymbolDiscoveryKind = SymbolDiscoveryKind.SYMBOL
+    }
+
+    data class Structure(
+        val file: CanonicalWorkspaceFilePath,
+    ) : SymbolDiscoveryTarget {
+        override val resultKind: SymbolDiscoveryKind = SymbolDiscoveryKind.SYMBOL
+    }
+
+    data class Text(
+        val pattern: SymbolDiscoveryPattern,
+    ) : SymbolDiscoveryTarget {
+        override val resultKind: SymbolDiscoveryKind = SymbolDiscoveryKind.TEXT
+    }
+}
+
 data class SymbolDiscoveryRequest(
     val scope: SymbolSearchScopeRequest,
-    val kind: SymbolDiscoveryKind,
-    val pattern: SymbolDiscoveryPattern,
+    val target: SymbolDiscoveryTarget,
     val budget: SymbolDiscoveryBudget,
-    val match: SymbolDiscoveryMatch = SymbolDiscoveryMatch.FUZZY,
-)
+) {
+    /** Compatibility constructor for the name-discovery domain path. */
+    constructor(
+        scope: SymbolSearchScopeRequest,
+        kind: SymbolNameDiscoveryKind,
+        pattern: SymbolDiscoveryPattern,
+        budget: SymbolDiscoveryBudget,
+        match: SymbolDiscoveryMatch = SymbolDiscoveryMatch.FUZZY,
+    ) : this(scope, SymbolDiscoveryTarget.Name(kind, pattern, match), budget)
+
+    val kind: SymbolDiscoveryKind
+        get() = target.resultKind
+}

@@ -27,6 +27,7 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolCompilation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
@@ -172,7 +173,7 @@ internal class InstalledChangeVerificationObserver(
                 published.readLease,
                 scope,
             ),
-            SymbolDiscoveryKind.SYMBOL,
+            SymbolNameDiscoveryKind.SYMBOL,
             pattern,
             budgets.discovery,
             SymbolDiscoveryMatch.EXACT_NAME,

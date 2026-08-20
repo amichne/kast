@@ -14,6 +14,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection
@@ -154,7 +155,7 @@ class SymbolDiscoveryServiceTest {
                 libraries = SymbolLibraryPolicy.EXCLUDE,
             ),
         ),
-        kind = SymbolDiscoveryKind.SYMBOL,
+        kind = SymbolNameDiscoveryKind.SYMBOL,
         pattern = SymbolDiscoveryPattern.parse("Service").refined(),
         budget = SymbolDiscoveryBudget(
             resources = ResourceBudget(

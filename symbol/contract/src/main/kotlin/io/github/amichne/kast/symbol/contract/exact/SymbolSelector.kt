@@ -126,15 +126,34 @@ data class CompilerGroundedSymbolEvidence private constructor(
     }
 }
 
+enum class SymbolSelectorFingerprintFailure {
+    INVALID_FORMAT,
+}
+
 @JvmInline
-value class SymbolSelectorFingerprint internal constructor(
+value class SymbolSelectorFingerprint private constructor(
     val value: String,
 ) {
-    init {
-        require(
-            value.length == SYMBOL_SELECTOR_FINGERPRINT_HEX_LENGTH &&
-            value.all { character -> character in '0'..'9' || character in 'a'..'f' },
-        )
+    companion object {
+        /**
+         * Proof transition: `String -> Refinement<SymbolSelectorFingerprint,
+         * SymbolSelectorFingerprintFailure>`.
+         *
+         * Establishes the canonical lowercase SHA-256 fingerprint form. The closed expected
+         * failure is [SymbolSelectorFingerprintFailure]. Raw text may enter only at compiler issue
+         * or protocol-token restoration boundaries.
+         */
+        fun parse(
+            raw: String,
+        ): Refinement<SymbolSelectorFingerprint, SymbolSelectorFingerprintFailure> =
+            if (
+                raw.length == SYMBOL_SELECTOR_FINGERPRINT_HEX_LENGTH &&
+                raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
+            ) {
+                Refinement.Refined(SymbolSelectorFingerprint(raw))
+            } else {
+                Refinement.Rejected(SymbolSelectorFingerprintFailure.INVALID_FORMAT)
+            }
     }
 }
 
@@ -142,6 +161,7 @@ enum class SymbolSelectorIssueFailure {
     FILE_MISMATCH,
     NAME_MISMATCH,
     START_OFFSET_MISMATCH,
+    FINGERPRINT_MISMATCH,
 }
 
 /** Compiler-grounded exact symbol authority bound to one root, generation, scope, and declaration. */
@@ -153,7 +173,7 @@ class SymbolSelector private constructor(
     val name: SymbolDiscoveryCandidateName,
     val qualifiedIdentity: ExactDeclarationQualifiedIdentity,
     val kind: CompilerSymbolKind,
-    internal val compilerIdentity: CompilerSymbolIdentity,
+    val compilerIdentity: CompilerSymbolIdentity,
     val fingerprint: SymbolSelectorFingerprint,
 ) {
     companion object {
@@ -181,24 +201,51 @@ class SymbolSelector private constructor(
             if (evidence.range.startInclusive != location.offset.value) {
                 return Refinement.Rejected(SymbolSelectorIssueFailure.START_OFFSET_MISMATCH)
             }
-            return Refinement.Refined(
-                SymbolSelector(
-                    lease = selection.lease,
-                    scope = selection.scope,
-                    file = evidence.file,
-                    range = evidence.range,
-                    name = evidence.name,
-                    qualifiedIdentity = evidence.qualifiedIdentity,
-                    kind = evidence.kind,
-                    compilerIdentity = evidence.compilerIdentity,
-                    fingerprint = symbolSelectorFingerprint(
-                        selection.lease,
-                        selection.scope,
-                        evidence,
-                    ),
-                ),
-            )
+            return Refinement.Refined(issue(selection.lease, selection.scope, evidence))
         }
+
+        /**
+         * Proof transition: `(SemanticReadLease, SymbolSearchScope,
+         * CompilerGroundedSymbolEvidence) -> SymbolSelector`.
+         *
+         * Issues exact selector authority from already compiler-grounded relation evidence. Raw
+         * compiler values cannot enter this transition.
+         */
+        fun issue(
+            lease: SemanticReadLease,
+            scope: SymbolSearchScope,
+            evidence: CompilerGroundedSymbolEvidence,
+        ): SymbolSelector = SymbolSelector(
+            lease = lease,
+            scope = scope,
+            file = evidence.file,
+            range = evidence.range,
+            name = evidence.name,
+            qualifiedIdentity = evidence.qualifiedIdentity,
+            kind = evidence.kind,
+            compilerIdentity = evidence.compilerIdentity,
+            fingerprint = symbolSelectorFingerprint(lease, scope, evidence),
+        )
+
+        /**
+         * Proof transition: `(SemanticReadLease, SymbolSearchScope,
+         * CompilerGroundedSymbolEvidence, SymbolSelectorFingerprint) ->
+         * Refinement<SymbolSelector, SymbolSelectorIssueFailure>`.
+         *
+         * Restores exact selector authority only when every decoded fact reproduces the encoded
+         * fingerprint. [SymbolSelectorIssueFailure] closes tampering and stale reconstruction.
+         */
+        fun restore(
+            lease: SemanticReadLease,
+            scope: SymbolSearchScope,
+            evidence: CompilerGroundedSymbolEvidence,
+            fingerprint: SymbolSelectorFingerprint,
+        ): Refinement<SymbolSelector, SymbolSelectorIssueFailure> =
+            if (symbolSelectorFingerprint(lease, scope, evidence) == fingerprint) {
+                Refinement.Refined(issue(lease, scope, evidence))
+            } else {
+                Refinement.Rejected(SymbolSelectorIssueFailure.FINGERPRINT_MISMATCH)
+            }
     }
 }
 
@@ -288,11 +335,13 @@ private fun symbolSelectorFingerprint(
     }
     val digest = MessageDigest.getInstance("SHA-256")
         .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-    return SymbolSelectorFingerprint(
-        digest.joinToString(separator = "") { byte ->
-            (byte.toInt() and 0xff).toString(SELECTOR_HEX_RADIX).padStart(2, '0')
-        },
-    )
+    val raw = digest.joinToString(separator = "") { byte ->
+        (byte.toInt() and 0xff).toString(SELECTOR_HEX_RADIX).padStart(2, '0')
+    }
+    return when (val parsed = SymbolSelectorFingerprint.parse(raw)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("SHA-256 projection is a canonical selector fingerprint")
+    }
 }
 
 private fun SymbolSearchScope.appendSelectorFields(target: StringBuilder) {

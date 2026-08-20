@@ -22,6 +22,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
@@ -42,7 +43,7 @@ import java.nio.file.Path
 class SymbolDiscoveryTest {
     @Test
     fun `native file class and symbol discovery uses matching scope projection and stable order`() {
-        SymbolDiscoveryKind.entries.forEach { kind ->
+        SymbolNameDiscoveryKind.entries.forEach { kind ->
             val fixture = fixture(kind = kind)
             val execution = fixture.execute()
 
@@ -86,7 +87,7 @@ class SymbolDiscoveryTest {
 
         val workOutcome = fixture(workLimit = 1L).execute().outcome()
         assertEquals(listOf(SymbolDiscoveryQualification.WORK_LIMIT_REACHED), workOutcome.qualifications())
-        assertTrue(workOutcome.batch().candidates.isEmpty())
+        assertEquals(1, workOutcome.batch().candidates.size)
 
         val timeOutcome = fixture(
             elapsedMillis = 1L,
@@ -163,7 +164,7 @@ class SymbolDiscoveryTest {
     }
 
     private fun fixture(
-        kind: SymbolDiscoveryKind = SymbolDiscoveryKind.SYMBOL,
+        kind: SymbolNameDiscoveryKind = SymbolNameDiscoveryKind.SYMBOL,
         resultLimit: Int = 10,
         returnedBytes: Long = 10_000L,
         workLimit: Long = 100L,
@@ -256,7 +257,7 @@ class SymbolDiscoveryTest {
     }
 
     private fun request(
-        kind: SymbolDiscoveryKind,
+        kind: SymbolNameDiscoveryKind,
         resultLimit: Int,
         returnedBytes: Long,
         workLimit: Long,

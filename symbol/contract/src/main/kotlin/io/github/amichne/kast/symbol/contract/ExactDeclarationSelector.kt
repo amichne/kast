@@ -10,6 +10,7 @@ enum class SymbolDiscoverySelectionFailure {
     NEGATIVE_ORDINAL,
     ORDINAL_OUT_OF_RANGE,
     FILE_IS_NOT_A_DECLARATION,
+    LEASE_MISMATCH,
 }
 
 /**
@@ -56,6 +57,26 @@ class SymbolDiscoverySelection private constructor(
                     candidate = candidate,
                 ),
             )
+        }
+
+        /**
+         * Proof transition: `(SemanticReadLease, SymbolSearchScope, SymbolDiscoveryCandidate) ->
+         * Refinement<SymbolDiscoverySelection, SymbolDiscoverySelectionFailure>`.
+         *
+         * Restores a self-describing selector only when the candidate retains the exact lease and
+         * declaration location encoded by the token. [SymbolDiscoverySelectionFailure] closes
+         * malformed or mismatched state. Decoded primitives may enter only at protocol authority.
+         */
+        fun restore(
+            lease: SemanticReadLease,
+            scope: SymbolSearchScope,
+            candidate: SymbolDiscoveryCandidate,
+        ): Refinement<SymbolDiscoverySelection, SymbolDiscoverySelectionFailure> = when {
+            candidate.lease != lease ->
+                Refinement.Rejected(SymbolDiscoverySelectionFailure.LEASE_MISMATCH)
+            candidate.location !is SymbolDiscoveryCandidateLocation.Declaration ->
+                Refinement.Rejected(SymbolDiscoverySelectionFailure.FILE_IS_NOT_A_DECLARATION)
+            else -> Refinement.Refined(SymbolDiscoverySelection(lease, scope, candidate))
         }
     }
 }

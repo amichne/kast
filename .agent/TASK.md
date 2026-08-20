@@ -91,7 +91,10 @@ Command:
 ## Execution State
 
 - Baseline: `amichne/kast@729ad3e00cc5eba622d2a292eef36151e3643e01`.
-- Implementation not started.
+- Focused regression tests were added before production changes.
+- Production implementation completed locally across protocol, symbol, runtime composition, CLI, indexer transport, and change-plan admission.
+- Static repository shape and whitespace checks pass.
+- Full Gradle verification is delegated to the repository macOS CI because the local environment does not contain the pinned Gradle distribution or dependency cache.
 
 ## Out-of-Scope Findings
 

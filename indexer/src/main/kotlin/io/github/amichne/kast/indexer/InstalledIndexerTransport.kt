@@ -4,10 +4,8 @@ import io.github.amichne.kast.runtime.composition.KastRuntimeDispatch
 import java.io.IOException
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
-import java.nio.ByteBuffer
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -17,13 +15,12 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 
-private const val MAX_INDEXER_FRAME_BYTES = 8 * 1_024 * 1_024
-
 enum class IndexerTransportFailure {
     SOCKET_PARENT_UNAVAILABLE,
     STATE_DIRECTORY_UNAVAILABLE,
     SOCKET_PATH_OCCUPIED,
     SOCKET_BIND_FAILED,
+    ENDPOINT_DESCRIPTOR_UNAVAILABLE,
 }
 
 sealed interface IndexerTransportPreparation {
@@ -55,12 +52,13 @@ sealed interface IndexerConnectionHandling {
 class InstalledIndexerTransport private constructor(
     private val server: ServerSocketChannel,
     private val socketPath: Path,
+    private val descriptorPath: Path,
     val stateDirectory: Path,
 ) : AutoCloseable {
     /**
      * Proof transition: `KastIndexerHost + one accepted socket -> IndexerConnectionHandling`.
      *
-     * Establishes one bounded request frame, composition dispatch, and bounded response frame.
+     * Establishes zero or more bounded request/response exchanges until clean connection closure.
      * [IndexerConnectionFailure] is the closed expected failure. Raw documents may cross only the
      * frame codec and [KastIndexerHost].
      */
@@ -70,10 +68,18 @@ class InstalledIndexerTransport private constructor(
         } catch (_: IOException) {
             return IndexerConnectionHandling.Rejected(IndexerConnectionFailure.ACCEPT_FAILED)
         }
-        return channel.use { connection ->
+        return channel.use { connection -> serveFrames(connection, host) }
+    }
+
+    private fun serveFrames(
+        connection: SocketChannel,
+        host: KastIndexerHost,
+    ): IndexerConnectionHandling {
+        while (true) {
             val request = when (val frame = IndexerWireFrameCodec.read(connection)) {
                 is IndexerFrameRead.Received -> frame.document
-                is IndexerFrameRead.Rejected -> return@use IndexerConnectionHandling.Rejected(
+                IndexerFrameRead.EndOfStream -> return IndexerConnectionHandling.Served
+                IndexerFrameRead.Rejected -> return IndexerConnectionHandling.Rejected(
                     IndexerConnectionFailure.INVALID_REQUEST_FRAME,
                 )
             }
@@ -81,12 +87,12 @@ class InstalledIndexerTransport private constructor(
                 is KastRuntimeDispatch.Responded -> when (
                     IndexerWireFrameCodec.write(connection, dispatch.document)
                 ) {
-                    IndexerFrameWrite.Written -> IndexerConnectionHandling.Served
-                    is IndexerFrameWrite.Rejected -> IndexerConnectionHandling.Rejected(
+                    IndexerFrameWrite.Written -> Unit
+                    IndexerFrameWrite.Rejected -> return IndexerConnectionHandling.Rejected(
                         IndexerConnectionFailure.RESPONSE_WRITE_FAILED,
                     )
                 }
-                is KastRuntimeDispatch.Rejected -> IndexerConnectionHandling.Rejected(
+                is KastRuntimeDispatch.Rejected -> return IndexerConnectionHandling.Rejected(
                     IndexerConnectionFailure.DISPATCH_REJECTED,
                 )
             }
@@ -101,6 +107,7 @@ class InstalledIndexerTransport private constructor(
         try {
             server.close()
         } finally {
+            deleteEndpointDescriptor(descriptorPath)
             deleteOwnedSocket(socketPath)
         }
     }
@@ -163,97 +170,24 @@ class InstalledIndexerTransport private constructor(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             }
+            val descriptorPath = when (val publication = publishEndpointDescriptor(options)) {
+                is EndpointDescriptorPublication.Published -> publication.path
+                EndpointDescriptorPublication.Rejected -> {
+                    try {
+                        server.close()
+                    } finally {
+                        deleteOwnedSocket(socketPath)
+                    }
+                    return IndexerTransportPreparation.Rejected(
+                        IndexerTransportFailure.ENDPOINT_DESCRIPTOR_UNAVAILABLE,
+                    )
+                }
+            }
             return IndexerTransportPreparation.Prepared(
-                InstalledIndexerTransport(server, socketPath, stateDirectory),
+                InstalledIndexerTransport(server, socketPath, descriptorPath, stateDirectory),
             )
         }
     }
-}
-
-sealed interface IndexerFrameRead {
-    data class Received(
-        val document: String,
-    ) : IndexerFrameRead
-
-    data object Rejected : IndexerFrameRead
-}
-
-sealed interface IndexerFrameWrite {
-    data object Written : IndexerFrameWrite
-
-    data object Rejected : IndexerFrameWrite
-}
-
-/** Bounded length-prefixed UTF-8 framing at the installed host boundary. */
-internal object IndexerWireFrameCodec {
-    /**
-     * Proof transition: `SocketChannel -> IndexerFrameRead`.
-     *
-     * Establishes one complete frame of at most eight MiB. Rejection is closed by
-     * [IndexerFrameRead.Rejected]. Raw bytes leave only as the received boundary document.
-     */
-    fun read(channel: SocketChannel): IndexerFrameRead {
-        val header = ByteBuffer.allocate(Int.SIZE_BYTES)
-        if (readCompletely(channel, header) is BufferRead.Rejected) {
-            return IndexerFrameRead.Rejected
-        }
-        header.flip()
-        val length = header.int
-        if (length !in 0..MAX_INDEXER_FRAME_BYTES) return IndexerFrameRead.Rejected
-        val payload = ByteBuffer.allocate(length)
-        if (readCompletely(channel, payload) is BufferRead.Rejected) {
-            return IndexerFrameRead.Rejected
-        }
-        payload.flip()
-        return IndexerFrameRead.Received(StandardCharsets.UTF_8.decode(payload).toString())
-    }
-
-    /**
-     * Proof transition: `SocketChannel + String -> IndexerFrameWrite`.
-     *
-     * Establishes that one response of at most eight MiB was completely written. Rejection is
-     * closed by [IndexerFrameWrite.Rejected]. Raw bytes remain inside this transport adapter.
-     */
-    fun write(
-        channel: SocketChannel,
-        document: String,
-    ): IndexerFrameWrite {
-        val payload = document.toByteArray(StandardCharsets.UTF_8)
-        if (payload.size > MAX_INDEXER_FRAME_BYTES) return IndexerFrameWrite.Rejected
-        val frame = ByteBuffer.allocate(Int.SIZE_BYTES + payload.size)
-            .putInt(payload.size)
-            .put(payload)
-            .flip()
-        return try {
-            while (frame.hasRemaining()) channel.write(frame)
-            IndexerFrameWrite.Written
-        } catch (_: IOException) {
-            IndexerFrameWrite.Rejected
-        }
-    }
-
-    /**
-     * Proof transition: `SocketChannel + ByteBuffer -> BufferRead`.
-     *
-     * Establishes that the supplied buffer was filled completely. [BufferRead.Rejected] is the
-     * closed expected failure. Raw bytes remain inside [IndexerWireFrameCodec].
-     */
-    private fun readCompletely(
-        channel: SocketChannel,
-        buffer: ByteBuffer,
-    ): BufferRead = try {
-        while (buffer.hasRemaining()) {
-            if (channel.read(buffer) < 0) return BufferRead.Rejected
-        }
-        BufferRead.Complete
-    } catch (_: IOException) {
-        BufferRead.Rejected
-    }
-}
-
-private sealed interface BufferRead {
-    data object Complete : BufferRead
-    data object Rejected : BufferRead
 }
 
 private sealed interface SocketPathAdmission {

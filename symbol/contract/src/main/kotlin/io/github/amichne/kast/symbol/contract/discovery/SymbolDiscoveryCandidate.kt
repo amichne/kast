@@ -19,6 +19,8 @@ enum class SymbolDiscoveryCandidateFailure {
     INVALID_DECLARATION_OFFSET,
     FILE_CANDIDATE_HAS_DECLARATION_OFFSET,
     DECLARATION_CANDIDATE_MISSING_OFFSET,
+    TEXT_CANDIDATE_MISSING_RANGE,
+    INVALID_TEXT_RANGE,
 }
 
 @JvmInline
@@ -148,6 +150,40 @@ sealed interface SymbolDiscoveryFileIdentity {
     }
 }
 
+data class SymbolDiscoverySourceRange private constructor(
+    val startInclusive: SymbolDiscoverySourceOffset,
+    val endExclusive: SymbolDiscoverySourceOffset,
+) {
+    companion object {
+        /**
+         * Proof transition: `(Int, Int) -> Refinement<SymbolDiscoverySourceRange,
+         * SymbolDiscoveryCandidateFailure>`.
+         *
+         * Establishes one non-empty half-open text match range. The closed expected failure is
+         * [SymbolDiscoveryCandidateFailure]. Raw offsets may be extracted only by indexed text
+         * projection or transport boundaries.
+         */
+        fun parse(
+            rawStartInclusive: Int,
+            rawEndExclusive: Int,
+        ): Refinement<SymbolDiscoverySourceRange, SymbolDiscoveryCandidateFailure> {
+            val start = when (val parsed = SymbolDiscoverySourceOffset.parse(rawStartInclusive)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return parsed
+            }
+            val end = when (val parsed = SymbolDiscoverySourceOffset.parse(rawEndExclusive)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return parsed
+            }
+            return if (end.value <= start.value) {
+                Refinement.Rejected(SymbolDiscoveryCandidateFailure.INVALID_TEXT_RANGE)
+            } else {
+                Refinement.Refined(SymbolDiscoverySourceRange(start, end))
+            }
+        }
+    }
+}
+
 sealed interface SymbolDiscoveryCandidateLocation {
     val file: SymbolDiscoveryFileIdentity
 
@@ -158,6 +194,11 @@ sealed interface SymbolDiscoveryCandidateLocation {
     data class Declaration(
         override val file: SymbolDiscoveryFileIdentity,
         val offset: SymbolDiscoverySourceOffset,
+    ) : SymbolDiscoveryCandidateLocation
+
+    data class Text(
+        override val file: SymbolDiscoveryFileIdentity,
+        val range: SymbolDiscoverySourceRange,
     ) : SymbolDiscoveryCandidateLocation
 }
 
@@ -203,6 +244,12 @@ data class SymbolDiscoveryCandidate private constructor(
                 append('\u0000')
                 append(candidateLocation.offset.value)
             }
+            is SymbolDiscoveryCandidateLocation.Text -> {
+                append('\u0000')
+                append(candidateLocation.range.startInclusive.value)
+                append('\u0000')
+                append(candidateLocation.range.endExclusive.value)
+            }
         }
     }
 
@@ -225,6 +272,7 @@ data class SymbolDiscoveryCandidate private constructor(
             nativePath: Path?,
             virtualFileUrl: String,
             rawOffset: Int?,
+            rawEndOffset: Int? = null,
         ): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure> {
             val name = when (val parsed = SymbolDiscoveryCandidateName.parse(rawName)) {
                 is Refinement.Refined -> parsed.value
@@ -262,6 +310,19 @@ data class SymbolDiscoveryCandidate private constructor(
                         is Refinement.Rejected -> return parsed
                     }
                 }
+                SymbolDiscoveryKind.TEXT -> {
+                    val start = rawOffset ?: return Refinement.Rejected(
+                        SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE,
+                    )
+                    val end = rawEndOffset ?: return Refinement.Rejected(
+                        SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE,
+                    )
+                    when (val parsed = SymbolDiscoverySourceRange.parse(start, end)) {
+                        is Refinement.Refined ->
+                            SymbolDiscoveryCandidateLocation.Text(file, parsed.value)
+                        is Refinement.Rejected -> return parsed
+                    }
+                }
             }
             return Refinement.Refined(SymbolDiscoveryCandidate(lease, kind, name, location))
         }
@@ -277,6 +338,8 @@ data class SymbolDiscoveryCandidate private constructor(
                     when (val location = it.location) {
                         is SymbolDiscoveryCandidateLocation.File -> -1
                         is SymbolDiscoveryCandidateLocation.Declaration -> location.offset.value
+                        is SymbolDiscoveryCandidateLocation.Text ->
+                            location.range.startInclusive.value
                     }
                 },
             )

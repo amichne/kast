@@ -131,7 +131,7 @@ sealed interface CliExit {
     data class OperationRejected(
         override val document: CliJsonDocument,
     ) : CliExit {
-        override val code: Int = 8
+        override val code: Int = 0
     }
 
     data class BoundaryRejected(

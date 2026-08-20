@@ -1,5 +1,7 @@
 package io.github.amichne.kast.symbol.contract
 
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
+
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
@@ -207,7 +209,7 @@ class NativeRelationContractTest {
         ).refined()
         val discoveryRequest = SymbolDiscoveryRequest(
             scope = SymbolSearchScopeRequest(lease(), scope),
-            kind = SymbolDiscoveryKind.SYMBOL,
+            kind = SymbolNameDiscoveryKind.SYMBOL,
             pattern = SymbolDiscoveryPattern.parse("service").refined(),
             budget = SymbolDiscoveryBudget(
                 resources = ResourceBudget(
