@@ -42,7 +42,6 @@ def main() -> None:
             "  push:",
             "      - main",
             "  repository-contracts:",
-            ".github/scripts/check-no-rust-product.py",
             ".github/scripts/check-repository-shape.py",
             "  kotlin:",
             "    runs-on: macos-15",
