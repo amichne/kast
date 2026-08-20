@@ -93,6 +93,7 @@ Command:
 - Baseline: `amichne/kast@729ad3e00cc5eba622d2a292eef36151e3643e01`.
 - Focused regression tests were added before production changes.
 - Production implementation is published in pull request #625 across protocol, symbol, runtime composition, CLI, indexer transport, and change-plan admission.
+- Wire regression fixtures use explicitly typed structured discovery evidence.
 - Static repository shape and whitespace checks pass.
 - The repository CI is the authoritative full Gradle verification because the local environment does not contain the pinned Gradle distribution or dependency cache.
 
