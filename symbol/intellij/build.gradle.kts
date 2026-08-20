@@ -49,6 +49,7 @@ dependencies {
     }
 
     compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
+    compileOnly("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
@@ -58,6 +59,7 @@ dependencies {
     compileOnly(kotlinPluginLibs)
 
     testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
+    testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
