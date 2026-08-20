@@ -24,8 +24,9 @@ jobs:
           if [ -f scripts/agent-green.ready ]; then
             cat scripts/agent-green.patch.gz.b64.* | base64 --decode | gunzip > /tmp/agent.patch
             echo "3948a8e33b903c80094039c3cdeede15244b3c9f769fabca71b4f24302b859e1  /tmp/agent.patch" | sha256sum --check
-            git apply --check /tmp/agent.patch
-            git apply /tmp/agent.patch
+            git apply --check --exclude=.github/workflows/agent-source-export.yml /tmp/agent.patch
+            git apply --exclude=.github/workflows/agent-source-export.yml /tmp/agent.patch
+            rm -f .github/workflows/agent-source-export.yml
             rm -f scripts/agent-green.patch.gz.b64.* scripts/agent-green.ready
             git config user.name "OpenAI Codex"
             git config user.email "codex@openai.com"
