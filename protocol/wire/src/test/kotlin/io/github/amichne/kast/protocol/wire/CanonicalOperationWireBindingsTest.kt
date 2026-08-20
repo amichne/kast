@@ -99,7 +99,7 @@ class CanonicalOperationWireBindingsTest {
             discoverRequest("Target", 20),
             SymbolDiscoverResult(
                 BoundedProtocolList.create(
-                    listOf(
+                    listOf<SymbolDiscoveryDocument>(
                         SymbolDiscoveryDocument.Declaration(
                             text("candidate:v1:Target"),
                             SymbolDiscoveryKindDocument.SYMBOL,
