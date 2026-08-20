@@ -36,6 +36,23 @@ def positive_integer(document: dict[str, Any], name: str, minimum: int = 1) -> i
     return value
 
 
+def declaration_candidates(document: dict[str, Any]) -> list[str]:
+    items = document.get("items")
+    if not isinstance(items, list):
+        fail(f"symbol discovery omitted structured items: {document}")
+    candidates: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            fail(f"symbol discovery returned a non-object item: {document}")
+        if item.get("type") != "declaration":
+            continue
+        candidate = item.get("candidateSelector")
+        if not isinstance(candidate, str):
+            fail(f"declaration item omitted its candidate selector: {item}")
+        candidates.append(candidate)
+    return candidates
+
+
 class Acceptance:
     def __init__(
         self,
@@ -118,11 +135,8 @@ class Acceptance:
         second_discovery = self.command(*discovery_arguments)
         if first_discovery != second_discovery:
             fail("bounded symbol discovery is not deterministic")
-        candidates = first_discovery.get("candidateSelectors")
-        if (
-            first_discovery.get("status") not in {"complete", "qualified"}
-            or not isinstance(candidates, list)
-        ):
+        candidates = declaration_candidates(first_discovery)
+        if first_discovery.get("status") not in {"complete", "qualified"}:
             fail(f"scale fixture did not produce bounded discovery: {first_discovery}")
         minimum_modules = positive_integer(bounds, "minimumFixtureModules", 2)
         if len(candidates) < minimum_modules or len(candidates) > discovery_limit:
@@ -131,20 +145,24 @@ class Acceptance:
                 f"{minimum_modules} and at most {discovery_limit}"
             )
 
-        overloads = self.resolve_descriptions("enterpriseRouteOverload", discovery_limit)
+        overloads = self.resolve_symbols("enterpriseRouteOverload", discovery_limit)
         route_overloads = {
-            selector: declaration
-            for selector, declaration in overloads.items()
-            if "enterpriseRouteOverload" in declaration
+            selector: symbol
+            for selector, symbol in overloads.items()
+            if symbol.get("name") == "enterpriseRouteOverload"
         }
-        if len(route_overloads) != 2 or len(set(route_overloads.values())) != 2:
+        overload_locations = {
+            (symbol.get("file"), json.dumps(symbol.get("range"), sort_keys=True))
+            for symbol in route_overloads.values()
+        }
+        if len(route_overloads) != 2 or len(overload_locations) != 2:
             fail(f"exact overload identity collapsed: {route_overloads}")
 
-        roots = self.resolve_descriptions("enterpriseRootOperation", discovery_limit)
+        roots = self.resolve_symbols("enterpriseRootOperation", discovery_limit)
         exact_roots = [
             selector
-            for selector, declaration in roots.items()
-            if "enterpriseRootOperation" in declaration
+            for selector, symbol in roots.items()
+            if symbol.get("name") == "enterpriseRootOperation"
         ]
         if len(exact_roots) != 1:
             fail(f"expected one exact enterprise traversal root: {roots}")
@@ -162,7 +180,7 @@ class Acceptance:
             str(relation_limit),
         )
         self.prove_bounded_result(
-            relation, "relation.read", "targetSelectors", relation_limit
+            relation, "relation.read", "targets", relation_limit
         )
 
         traversal_limit = positive_integer(bounds, "traversalResultLimit")
@@ -179,14 +197,16 @@ class Acceptance:
             str(traversal_limit),
         )
         self.prove_bounded_result(
-            traversal, "traversal.run", "reachedSelectors", traversal_limit
+            traversal, "traversal.run", "reached", traversal_limit
         )
 
-        routers = self.resolve_descriptions("EnterpriseRouter", discovery_limit)
+        routers = self.resolve_symbols("EnterpriseRouter", discovery_limit)
         exact_routers = [
             selector
-            for selector, declaration in routers.items()
-            if "classlike enterprise.alpha.one.EnterpriseRouter" in declaration
+            for selector, symbol in routers.items()
+            if symbol.get("kind") == "classlike"
+            and symbol.get("qualifiedIdentity")
+            == "enterprise.alpha.one.EnterpriseRouter"
         ]
         if len(exact_routers) != 1:
             fail(f"expected one exact enterprise mutation target: {routers}")
@@ -221,22 +241,21 @@ class Acceptance:
             "describe",
             "--selector",
             stale_selector,
-            allowed_codes={8},
         )
         if stale.get("status") != "rejected" or stale.get("reason") != "selector-stale":
             fail(f"prior-generation selector was not rejected: {stale}")
 
-    def resolve_descriptions(self, query: str, limit: int) -> dict[str, str]:
+    def resolve_symbols(self, query: str, limit: int) -> dict[str, dict[str, Any]]:
         discovery = self.command(
             "symbol", "discover", "--query", query, "--limit", str(limit)
         )
-        candidates = discovery.get("candidateSelectors")
-        if not isinstance(candidates, list) or not candidates:
+        candidates = declaration_candidates(discovery)
+        if not candidates:
             fail(f"symbol discovery found no candidates for {query}: {discovery}")
-        resolved: dict[str, str] = {}
+        resolved: dict[str, dict[str, Any]] = {}
         for candidate in candidates:
             resolution = self.command(
-                "symbol", "resolve", "--candidate", str(candidate), allowed_codes={0, 8}
+                "symbol", "resolve", "--candidate", candidate
             )
             if resolution.get("status") != "complete":
                 continue
@@ -244,10 +263,12 @@ class Acceptance:
             if not isinstance(selector, str):
                 fail(f"symbol.resolve omitted exact identity: {resolution}")
             description = self.command("symbol", "describe", "--selector", selector)
-            declaration = description.get("declaration")
-            if not isinstance(declaration, str):
-                fail(f"symbol.describe omitted detached declaration: {description}")
-            resolved[selector] = declaration
+            symbol = description.get("symbol")
+            if not isinstance(symbol, dict):
+                fail(f"symbol.describe omitted structured symbol evidence: {description}")
+            if symbol.get("selector") != selector:
+                fail(f"symbol.describe returned mismatched exact identity: {description}")
+            resolved[selector] = symbol
         return resolved
 
     @staticmethod
