@@ -21,12 +21,12 @@ jobs:
 
       - name: Apply staged agent patch
         run: |
-          patch_file="$(find scripts -maxdepth 1 -name 'agent-*.patch.gz.b64' -print -quit)"
-          if [ -n "$patch_file" ]; then
-            base64 --decode "$patch_file" | gunzip > /tmp/agent.patch
+          chunk_pattern='scripts/agent-red.patch.gz.b64.*'
+          if compgen -G "$chunk_pattern" > /dev/null; then
+            cat $chunk_pattern | base64 --decode | gunzip > /tmp/agent.patch
             git apply --check /tmp/agent.patch
             git apply /tmp/agent.patch
-            rm "$patch_file"
+            rm -f $chunk_pattern scripts/agent-red.patch.gz.b64
             git config user.name "OpenAI Codex"
             git config user.email "codex@openai.com"
             git add --all
