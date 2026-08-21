@@ -67,29 +67,28 @@ class KastCli(
         }
         return when (command) {
             CliLifecycleCommand.START -> executeWorkspaceInspect(boundary)
-            CliLifecycleCommand.STATUS -> lifecycleExit(
-                command,
+            CliLifecycleCommand.STATUS -> statusExit(
                 boundary.endpoint,
                 lifecycle.status(boundary.endpoint),
             )
-            CliLifecycleCommand.STOP -> lifecycleExit(
+            CliLifecycleCommand.STOP -> stopExit(
                 command,
                 boundary.endpoint,
                 lifecycle.stop(boundary.endpoint),
             )
-            CliLifecycleCommand.CLEAN -> lifecycleExit(
+            CliLifecycleCommand.CLEAN -> cleanExit(
                 command,
                 boundary.endpoint,
                 lifecycle.clean(boundary.endpoint),
             )
             CliLifecycleCommand.REINDEX -> {
                 val stopped = lifecycle.stop(boundary.endpoint)
-                if (stopped is RuntimeLifecycleResult.Rejected) {
-                    return lifecycleExit(command, boundary.endpoint, stopped)
+                if (stopped is RuntimeStopResult.Rejected) {
+                    return stopExit(command, boundary.endpoint, stopped)
                 }
                 val cleaned = lifecycle.clean(boundary.endpoint)
-                if (cleaned is RuntimeLifecycleResult.Rejected) {
-                    return lifecycleExit(command, boundary.endpoint, cleaned)
+                if (cleaned is RuntimeCleanResult.Rejected) {
+                    return cleanExit(command, boundary.endpoint, cleaned)
                 }
                 executeWorkspaceInspect(boundary)
             }
@@ -167,30 +166,51 @@ class KastCli(
         }
     }
 
-    private fun lifecycleExit(
-        command: CliLifecycleCommand,
+    private fun statusExit(
         endpoint: RuntimeEndpoint,
-        result: RuntimeLifecycleResult,
+        result: RuntimeStatusResult,
     ): CliExit = when (result) {
-        is RuntimeLifecycleResult.StatusObserved -> lifecycleCompletedExit(
-            command,
+        is RuntimeStatusResult.Observed -> lifecycleCompletedExit(
+            CliLifecycleCommand.STATUS,
             endpoint,
             result.state,
             emptySet(),
         )
-        is RuntimeLifecycleResult.Stopped -> lifecycleCompletedExit(
+        is RuntimeStatusResult.Rejected -> boundaryExit(
+            CliBoundaryExitStatus.RUNTIME,
+            "${CliLifecycleCommand.STATUS.command}-${result.failure.name.lowercase().replace('_', '-')}",
+        )
+    }
+
+    private fun stopExit(
+        command: CliLifecycleCommand,
+        endpoint: RuntimeEndpoint,
+        result: RuntimeStopResult,
+    ): CliExit = when (result) {
+        is RuntimeStopResult.Stopped -> lifecycleCompletedExit(
             command,
             endpoint,
             RuntimeLifecycleState.STOPPED,
             result.removed,
         )
-        is RuntimeLifecycleResult.Cleaned -> lifecycleCompletedExit(
+        is RuntimeStopResult.Rejected -> boundaryExit(
+            CliBoundaryExitStatus.RUNTIME,
+            "${command.command}-${result.failure.name.lowercase().replace('_', '-')}",
+        )
+    }
+
+    private fun cleanExit(
+        command: CliLifecycleCommand,
+        endpoint: RuntimeEndpoint,
+        result: RuntimeCleanResult,
+    ): CliExit = when (result) {
+        is RuntimeCleanResult.Cleaned -> lifecycleCompletedExit(
             command,
             endpoint,
             RuntimeLifecycleState.STOPPED,
             result.removed,
         )
-        is RuntimeLifecycleResult.Rejected -> boundaryExit(
+        is RuntimeCleanResult.Rejected -> boundaryExit(
             CliBoundaryExitStatus.RUNTIME,
             "${command.command}-${result.failure.name.lowercase().replace('_', '-')}",
         )

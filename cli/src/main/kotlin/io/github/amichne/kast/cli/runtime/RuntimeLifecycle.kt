@@ -38,43 +38,62 @@ fun interface RuntimeProcessAuthority {
     fun observe(endpoint: RuntimeEndpoint): RuntimeProcessObservation
 }
 
-enum class RuntimeLifecycleFailure {
+enum class RuntimeStatusFailure { ARTIFACT_OBSERVATION_FAILED }
+
+sealed interface RuntimeStatusResult {
+    data class Observed(
+        val state: RuntimeLifecycleState,
+    ) : RuntimeStatusResult
+
+    data class Rejected(
+        val failure: RuntimeStatusFailure,
+    ) : RuntimeStatusResult
+}
+
+enum class RuntimeStopFailure {
     ACTIVE_ENDPOINT,
     PROCESS_AMBIGUOUS,
     PROCESS_TERMINATION_FAILED,
     ENDPOINT_MARKER_RETIREMENT_FAILED,
-    ARTIFACT_CLEAN_FAILED,
-    ARTIFACT_OBSERVATION_FAILED,
     INTERRUPTED,
 }
 
-sealed interface RuntimeLifecycleResult {
-    data class StatusObserved(
-        val state: RuntimeLifecycleState,
-    ) : RuntimeLifecycleResult
-
+sealed interface RuntimeStopResult {
     data class Stopped(
         val removed: Set<RuntimeEndpointMarker> = emptySet(),
-    ) : RuntimeLifecycleResult
-
-    data class Cleaned(
-        val removed: Set<RuntimeEndpointArtifact>,
-    ) : RuntimeLifecycleResult
+    ) : RuntimeStopResult
 
     data class Rejected(
-        val failure: RuntimeLifecycleFailure,
-    ) : RuntimeLifecycleResult
+        val failure: RuntimeStopFailure,
+    ) : RuntimeStopResult
+}
+
+enum class RuntimeCleanFailure {
+    ACTIVE_ENDPOINT,
+    PROCESS_AMBIGUOUS,
+    ARTIFACT_CLEAN_FAILED,
+    INTERRUPTED,
+}
+
+sealed interface RuntimeCleanResult {
+    data class Cleaned(
+        val removed: Set<RuntimeEndpointArtifact>,
+    ) : RuntimeCleanResult
+
+    data class Rejected(
+        val failure: RuntimeCleanFailure,
+    ) : RuntimeCleanResult
 }
 
 interface RuntimeLifecycleController {
     /** Observes the exact endpoint without starting or acquiring a runtime. */
-    fun status(endpoint: RuntimeEndpoint): RuntimeLifecycleResult
+    fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult
 
     /** Stops only a process proven to own the exact endpoint. */
-    fun stop(endpoint: RuntimeEndpoint): RuntimeLifecycleResult
+    fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult
 
     /** Removes only inactive artifacts derived from the exact endpoint. */
-    fun clean(endpoint: RuntimeEndpoint): RuntimeLifecycleResult
+    fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult
 }
 
 /** Minimal exact-root lifecycle coordination over existing process and UDS boundaries. */
@@ -85,13 +104,13 @@ class ExactRootRuntimeLifecycle internal constructor(
 ) : RuntimeLifecycleController {
     constructor() : this(JdkUnixDomainEndpointProbe, JdkRuntimeProcessAuthority)
 
-    override fun status(endpoint: RuntimeEndpoint): RuntimeLifecycleResult {
+    override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult {
         if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-            return RuntimeLifecycleResult.StatusObserved(RuntimeLifecycleState.RUNNING)
+            return RuntimeStatusResult.Observed(RuntimeLifecycleState.RUNNING)
         }
         val state = when (val observation = artifacts.observeMarkers(endpoint)) {
-            RuntimeEndpointMarkerObservation.Rejected -> return RuntimeLifecycleResult.Rejected(
-                RuntimeLifecycleFailure.ARTIFACT_OBSERVATION_FAILED,
+            RuntimeEndpointMarkerObservation.Rejected -> return RuntimeStatusResult.Rejected(
+                RuntimeStatusFailure.ARTIFACT_OBSERVATION_FAILED,
             )
             is RuntimeEndpointMarkerObservation.Observed -> if (observation.present.isEmpty()) {
                 RuntimeLifecycleState.STOPPED
@@ -99,38 +118,38 @@ class ExactRootRuntimeLifecycle internal constructor(
                 RuntimeLifecycleState.STALE
             }
         }
-        return RuntimeLifecycleResult.StatusObserved(state)
+        return RuntimeStatusResult.Observed(state)
     }
 
-    override fun stop(endpoint: RuntimeEndpoint): RuntimeLifecycleResult =
+    override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
         when (val observation = processAuthority.observe(endpoint)) {
             RuntimeProcessObservation.Absent -> stoppedAfterObservedAbsence(
                 endpoint,
                 RuntimeProcessObservation.Absent,
             )
-            RuntimeProcessObservation.Ambiguous -> RuntimeLifecycleResult.Rejected(
-                RuntimeLifecycleFailure.PROCESS_AMBIGUOUS,
+            RuntimeProcessObservation.Ambiguous -> RuntimeStopResult.Rejected(
+                RuntimeStopFailure.PROCESS_AMBIGUOUS,
             )
             is RuntimeProcessObservation.Owned -> when (observation.process.terminate()) {
                 RuntimeProcessTermination.Terminated -> stoppedAfterTermination(
                     endpoint,
                     RuntimeProcessTermination.Terminated,
                 )
-                RuntimeProcessTermination.Interrupted -> RuntimeLifecycleResult.Rejected(
-                    RuntimeLifecycleFailure.INTERRUPTED,
+                RuntimeProcessTermination.Interrupted -> RuntimeStopResult.Rejected(
+                    RuntimeStopFailure.INTERRUPTED,
                 )
-                RuntimeProcessTermination.Rejected -> RuntimeLifecycleResult.Rejected(
-                    RuntimeLifecycleFailure.PROCESS_TERMINATION_FAILED,
+                RuntimeProcessTermination.Rejected -> RuntimeStopResult.Rejected(
+                    RuntimeStopFailure.PROCESS_TERMINATION_FAILED,
                 )
             }
         }
 
-    override fun clean(endpoint: RuntimeEndpoint): RuntimeLifecycleResult {
+    override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult {
         val reachability: RuntimeEndpointReachability.Unreachable = when (
             endpointProbe.probe(endpoint)
         ) {
-            RuntimeEndpointReachability.Reachable -> return RuntimeLifecycleResult.Rejected(
-                RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
+            RuntimeEndpointReachability.Reachable -> return RuntimeCleanResult.Rejected(
+                RuntimeCleanFailure.ACTIVE_ENDPOINT,
             )
             RuntimeEndpointReachability.Unreachable -> RuntimeEndpointReachability.Unreachable
         }
@@ -138,11 +157,11 @@ class ExactRootRuntimeLifecycle internal constructor(
             processAuthority.observe(endpoint)
         ) {
             RuntimeProcessObservation.Absent -> RuntimeProcessObservation.Absent
-            RuntimeProcessObservation.Ambiguous -> return RuntimeLifecycleResult.Rejected(
-                RuntimeLifecycleFailure.PROCESS_AMBIGUOUS,
+            RuntimeProcessObservation.Ambiguous -> return RuntimeCleanResult.Rejected(
+                RuntimeCleanFailure.PROCESS_AMBIGUOUS,
             )
-            is RuntimeProcessObservation.Owned -> return RuntimeLifecycleResult.Rejected(
-                RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
+            is RuntimeProcessObservation.Owned -> return RuntimeCleanResult.Rejected(
+                RuntimeCleanFailure.ACTIVE_ENDPOINT,
             )
         }
         val inactive = InactiveRuntimeEndpoint.afterObservedAbsence(
@@ -151,32 +170,32 @@ class ExactRootRuntimeLifecycle internal constructor(
             reachability,
         )
         return when (val cleaning = artifacts.clean(inactive)) {
-            is RuntimeEndpointArtifactCleaning.Cleaned -> RuntimeLifecycleResult.Cleaned(
+            is RuntimeEndpointArtifactCleaning.Cleaned -> RuntimeCleanResult.Cleaned(
                 cleaning.removed,
             )
-            RuntimeEndpointArtifactCleaning.Rejected -> RuntimeLifecycleResult.Rejected(
-                RuntimeLifecycleFailure.ARTIFACT_CLEAN_FAILED,
+            RuntimeEndpointArtifactCleaning.Rejected -> RuntimeCleanResult.Rejected(
+                RuntimeCleanFailure.ARTIFACT_CLEAN_FAILED,
             )
-            RuntimeEndpointArtifactCleaning.Interrupted -> RuntimeLifecycleResult.Rejected(
-                RuntimeLifecycleFailure.INTERRUPTED,
+            RuntimeEndpointArtifactCleaning.Interrupted -> RuntimeCleanResult.Rejected(
+                RuntimeCleanFailure.INTERRUPTED,
             )
         }
     }
 
     /**
      * Proof transition: `RuntimeEndpoint + RuntimeProcessObservation.Absent ->
-     * RuntimeLifecycleResult`.
+     * RuntimeStopResult`.
      *
      * Establishes that the already-absent exact process also has an unreachable endpoint before
-     * marker retirement. Reachability and marker failures remain closed [RuntimeLifecycleFailure]
+     * marker retirement. Reachability and marker failures remain closed [RuntimeStopFailure]
      * values.
      */
     private fun stoppedAfterObservedAbsence(
         endpoint: RuntimeEndpoint,
         absence: RuntimeProcessObservation.Absent,
-    ): RuntimeLifecycleResult = when (endpointProbe.probe(endpoint)) {
-        RuntimeEndpointReachability.Reachable -> RuntimeLifecycleResult.Rejected(
-            RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
+    ): RuntimeStopResult = when (endpointProbe.probe(endpoint)) {
+        RuntimeEndpointReachability.Reachable -> RuntimeStopResult.Rejected(
+            RuntimeStopFailure.ACTIVE_ENDPOINT,
         )
         RuntimeEndpointReachability.Unreachable -> stoppedAfterRetiringMarkers(
             InactiveRuntimeEndpoint.afterObservedAbsence(
@@ -189,18 +208,18 @@ class ExactRootRuntimeLifecycle internal constructor(
 
     /**
      * Proof transition: `RuntimeEndpoint + RuntimeProcessTermination.Terminated ->
-     * RuntimeLifecycleResult`.
+     * RuntimeStopResult`.
      *
      * Establishes that the terminated exact process also has an unreachable endpoint before
-     * marker retirement. Reachability and marker failures remain closed [RuntimeLifecycleFailure]
+     * marker retirement. Reachability and marker failures remain closed [RuntimeStopFailure]
      * values.
      */
     private fun stoppedAfterTermination(
         endpoint: RuntimeEndpoint,
         termination: RuntimeProcessTermination.Terminated,
-    ): RuntimeLifecycleResult = when (endpointProbe.probe(endpoint)) {
-        RuntimeEndpointReachability.Reachable -> RuntimeLifecycleResult.Rejected(
-            RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
+    ): RuntimeStopResult = when (endpointProbe.probe(endpoint)) {
+        RuntimeEndpointReachability.Reachable -> RuntimeStopResult.Rejected(
+            RuntimeStopFailure.ACTIVE_ENDPOINT,
         )
         RuntimeEndpointReachability.Unreachable -> stoppedAfterRetiringMarkers(
             InactiveRuntimeEndpoint.afterTermination(
@@ -212,23 +231,23 @@ class ExactRootRuntimeLifecycle internal constructor(
     }
 
     /**
-     * Proof transition: `InactiveRuntimeEndpoint -> RuntimeLifecycleResult.Stopped`.
+     * Proof transition: `InactiveRuntimeEndpoint -> RuntimeStopResult.Stopped`.
      *
      * Establishes that the exact socket and descriptor markers are absent without removing
-     * persistent runtime state. [RuntimeLifecycleFailure] closes marker retirement rejection and
+     * persistent runtime state. [RuntimeStopFailure] closes marker retirement rejection and
      * interruption. Raw paths stay inside [RuntimeEndpointArtifacts].
      */
     private fun stoppedAfterRetiringMarkers(
         inactive: InactiveRuntimeEndpoint,
-    ): RuntimeLifecycleResult = when (val retirement = artifacts.retireMarkers(inactive)) {
-        is RuntimeEndpointMarkerRetirement.Retired -> RuntimeLifecycleResult.Stopped(
+    ): RuntimeStopResult = when (val retirement = artifacts.retireMarkers(inactive)) {
+        is RuntimeEndpointMarkerRetirement.Retired -> RuntimeStopResult.Stopped(
             retirement.removed,
         )
-        RuntimeEndpointMarkerRetirement.Rejected -> RuntimeLifecycleResult.Rejected(
-            RuntimeLifecycleFailure.ENDPOINT_MARKER_RETIREMENT_FAILED,
+        RuntimeEndpointMarkerRetirement.Rejected -> RuntimeStopResult.Rejected(
+            RuntimeStopFailure.ENDPOINT_MARKER_RETIREMENT_FAILED,
         )
-        RuntimeEndpointMarkerRetirement.Interrupted -> RuntimeLifecycleResult.Rejected(
-            RuntimeLifecycleFailure.INTERRUPTED,
+        RuntimeEndpointMarkerRetirement.Interrupted -> RuntimeStopResult.Rejected(
+            RuntimeStopFailure.INTERRUPTED,
         )
     }
 }
