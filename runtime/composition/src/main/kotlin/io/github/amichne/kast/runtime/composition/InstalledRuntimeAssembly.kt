@@ -23,6 +23,8 @@ import io.github.amichne.kast.symbol.intellij.InstalledSymbolScopeOperations
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspace
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceOpening
+import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCapture
+import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure
 import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliationPort
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 
@@ -67,22 +69,63 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
                 capture.root,
                 true,
                 capture.sourceRoots,
-                capture.identityFields,
+                capture.identity,
             ),
         )
-        if (read is InstalledGradleModelRead.Unavailable) {
-            return@InstalledRuntimeAssembler rejected(
+        val initial = when (read) {
+            is InstalledGradleModelRead.Captured -> read
+            is InstalledGradleModelRead.Unavailable -> return@InstalledRuntimeAssembler rejected(
                 InstalledRuntimeWorkspaceFailure.ModelRefinementUnavailable(read.failure),
             )
         }
         assembleInstalledRuntime(
             request,
-            { read },
+            RefreshingInstalledGradleModelReads(initial, capture),
             { workspace, model ->
                 productionPlatformPorts(request, workspace, model)
             },
         )
     }
+
+private class RefreshingInstalledGradleModelReads(
+    initial: InstalledGradleModelRead.Captured,
+    capture: InstalledGradleModelCapture,
+) : InstalledGradleModelReadOperations {
+    private var state: State = State.Initial(initial, capture)
+
+    override fun read(): InstalledGradleModelRead = synchronized(this) {
+        when (val current = state) {
+            is State.Initial -> {
+                state = State.Refreshing(current.capture)
+                current.read
+            }
+            is State.Refreshing -> current.capture.currentModelRead()
+        }
+    }
+
+    private sealed interface State {
+        data class Initial(
+            val read: InstalledGradleModelRead.Captured,
+            val capture: InstalledGradleModelCapture,
+        ) : State
+
+        data class Refreshing(
+            val capture: InstalledGradleModelCapture,
+        ) : State
+    }
+}
+
+private fun InstalledGradleModelCapture.currentModelRead(): InstalledGradleModelRead = when (
+    val current = captureCurrentSemanticIdentity()
+) {
+    is Refinement.Refined -> projectInstalledGradleModel(
+        InstalledGradleModelBoundary(root, true, sourceRoots, current.value),
+    )
+    is Refinement.Rejected -> InstalledGradleModelRead.Unavailable(
+        io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelFailure
+            .SemanticIdentityUnavailable(current.failure),
+    )
+}
 
 /**
  * Proof transition: `InstalledRuntimeAssemblyInputs -> InstalledRuntimeAssembler`.
@@ -132,18 +175,18 @@ private fun assembleInstalledRuntime(
         workspaceModel,
     )
     val workspace = WorkspacePublicationCoordinator(reconciliation, publication)
-    when (val publicationRun = workspace.reconcile()) {
-        is WorkspacePublicationRun.Published -> if (
-            publicationRun.workspace.root != request.workspaceRoot.canonicalRoot
-        ) {
-            return rejected(InstalledRuntimeWorkspaceFailure.RootMismatch)
-        }
+    val publishedWorkspace = when (val publicationRun = workspace.reconcile()) {
+        is WorkspacePublicationRun.Published -> publicationRun.workspace
+        is WorkspacePublicationRun.Unchanged -> publicationRun.workspace
         WorkspacePublicationRun.NoWork ->
             return rejected(InstalledRuntimeWorkspaceFailure.NoPublication)
         WorkspacePublicationRun.Invalidated ->
             return rejected(InstalledRuntimeWorkspaceFailure.Invalidated)
         is WorkspacePublicationRun.Blocked ->
             return rejected(InstalledRuntimeWorkspaceFailure.Blocked)
+    }
+    if (publishedWorkspace.root != request.workspaceRoot.canonicalRoot) {
+        return rejected(InstalledRuntimeWorkspaceFailure.RootMismatch)
     }
     val platform = ports.create(workspace, workspaceModel)
     val graph = KastRuntimeComposition.constructGraph(

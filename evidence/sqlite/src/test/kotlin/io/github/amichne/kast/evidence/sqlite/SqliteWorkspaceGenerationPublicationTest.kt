@@ -1,5 +1,6 @@
 package io.github.amichne.kast.evidence.sqlite
 
+import io.github.amichne.kast.evidence.contract.GenerationPublication
 import io.github.amichne.kast.evidence.contract.WorkspaceGraphPublication
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationDiscard
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationFailure
@@ -15,6 +16,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -37,7 +39,9 @@ class SqliteWorkspaceGenerationPublicationTest {
         )
         assertEquals(PublishedWorkspaceGenerationState.Unpublished, authority.current())
 
-        val committed = authority.commit(prepared).commit.publication
+        val committed = (
+            authority.commit(prepared) as GenerationPublication.Published
+        ).commit.publication
         val reopened = SqliteWorkspaceGenerationPublication(
             publicationDatabase(tempDir.resolve("generation/workspace.db")),
         )
@@ -48,6 +52,52 @@ class SqliteWorkspaceGenerationPublicationTest {
             PublishedWorkspaceGenerationState.Published(committed),
             reopened.current(),
         )
+    }
+
+    @Test
+    fun `identical canonical state preserves the durable generation`() {
+        val database = publicationDatabase(tempDir.resolve("unchanged/workspace.db"))
+        val authority = SqliteWorkspaceGenerationPublication(database)
+        val identity = WorkspaceStateIdentity("stable-state")
+        val first = publish(authority, identity)
+
+        repeat(100) {
+            val unchanged = authority.commit(
+                authority.prepare(
+                    authority.begin(),
+                    identity,
+                    WorkspaceGraphPublication.Ready,
+                ),
+            )
+            assertInstanceOf(GenerationPublication.Unchanged::class.java, unchanged)
+        }
+        val retained = (
+            authority.current() as PublishedWorkspaceGenerationState.Published
+        ).publication
+        assertEquals(first, retained)
+        assertEquals(1L, retained.generation.value)
+    }
+
+    @Test
+    fun `canonical identical publication returns unchanged with the same read lease`() {
+        val database = publicationDatabase(tempDir.resolve("canonical-unchanged/workspace.db"))
+        val transaction = SqliteCanonicalWorkspacePublicationTransaction(database)
+        val candidate = reconciled(tempDir.resolve("workspace"), "stable-state")
+        val first = publish(transaction, candidate)
+        val prepared = (
+            transaction.prepare(
+                (transaction.begin() as WorkspacePublicationOpening.Opened).publication,
+                candidate,
+            ) as WorkspacePublicationPreparation.Prepared
+        ).publication
+
+        val unchanged = assertInstanceOf(
+            WorkspacePublicationResult.Unchanged::class.java,
+            transaction.commit(prepared),
+        )
+
+        assertEquals(first.readLease, unchanged.workspace.readLease)
+        assertEquals(first.sourceState, unchanged.workspace.sourceState)
     }
 
     @Test
@@ -115,12 +165,14 @@ class SqliteWorkspaceGenerationPublicationTest {
     private fun publish(
         authority: SqliteWorkspaceGenerationPublication,
         identity: WorkspaceStateIdentity,
-    ): PublishedWorkspaceGeneration = authority.commit(
-        authority.prepare(
-            authority.begin(),
-            identity,
-            WorkspaceGraphPublication.Ready,
-        ),
+    ): PublishedWorkspaceGeneration = (
+        authority.commit(
+            authority.prepare(
+                authority.begin(),
+                identity,
+                WorkspaceGraphPublication.Ready,
+            ),
+        ) as GenerationPublication.Published
     ).commit.publication
 
     private fun publish(
@@ -133,7 +185,7 @@ class SqliteWorkspaceGenerationPublicationTest {
                 candidate,
             ) as WorkspacePublicationPreparation.Prepared
         ).publication,
-    ) as WorkspacePublicationResult.Published).workspace
+    ) as WorkspacePublicationResult.Advanced).workspace
 
     private fun reconciled(
         root: Path,

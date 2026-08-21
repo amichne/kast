@@ -25,9 +25,17 @@ interface WorkspacePublicationCommit {
 }
 
 sealed interface GenerationPublication {
+    sealed interface Committed : GenerationPublication {
+        val commit: WorkspacePublicationCommit
+    }
+
     data class Published(
-        val commit: WorkspacePublicationCommit,
-    ) : GenerationPublication
+        override val commit: WorkspacePublicationCommit,
+    ) : Committed
+
+    data class Unchanged(
+        override val commit: WorkspacePublicationCommit,
+    ) : Committed
 
     data object InvalidatedBeforeCommit : GenerationPublication
 

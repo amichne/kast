@@ -48,9 +48,14 @@ class SqliteWorkspaceGenerationPublication private constructor(
 
     override fun commit(
         prepared: PreparedWorkspacePublication,
-    ): GenerationPublication.Published = GenerationPublication.Published(
-        SqliteWorkspacePublicationCommit(prepared.requireOwned().commit().publication),
-    )
+    ): GenerationPublication = when (val result = prepared.requireOwned().commit()) {
+        is SqliteWorkspacePublicationCommitResult.Advanced -> GenerationPublication.Published(
+            SqliteWorkspacePublicationCommit(result.record.publication),
+        )
+        is SqliteWorkspacePublicationCommitResult.Unchanged -> GenerationPublication.Unchanged(
+            SqliteWorkspacePublicationCommit(result.record.publication),
+        )
+    }
 
     override fun discard(open: OpenWorkspacePublication) = open.requireOwned().discard()
 

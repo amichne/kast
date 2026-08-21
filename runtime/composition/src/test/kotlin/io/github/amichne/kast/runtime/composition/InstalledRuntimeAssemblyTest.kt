@@ -5,6 +5,7 @@ import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
+import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
@@ -23,6 +24,7 @@ import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -42,22 +44,21 @@ class InstalledRuntimeAssemblyTest {
         val fixture = InstalledChangeProtocolFixture.create(root)
         val published = fixture.published
         val sourceRoot = published.sourceRoots.single()
+        val sourceRootBoundary = WorkspaceSourceRootBoundary(
+            sourceRoot.owner.module.value,
+            root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
+            sourceRoot.owner.project.projectPath.value,
+            sourceRoot.owner.sourceSet.value,
+            root.resolve(sourceRoot.location.value).normalize(),
+            WorkspaceSourceRootKind.PRODUCTION,
+            WorkspaceSourceRootProvenance.AUTHORED,
+        )
         val read = projectInstalledGradleModel(
             InstalledGradleModelBoundary(
                 published.root,
                 true,
-                listOf(
-                    WorkspaceSourceRootBoundary(
-                        sourceRoot.owner.module.value,
-                        root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
-                        sourceRoot.owner.project.projectPath.value,
-                        sourceRoot.owner.sourceSet.value,
-                        root.resolve(sourceRoot.location.value).normalize(),
-                        WorkspaceSourceRootKind.PRODUCTION,
-                        WorkspaceSourceRootProvenance.AUTHORED,
-                    ),
-                ),
-                listOf("classpath:file:///fixture.jar", "source:fixture"),
+                listOf(sourceRootBoundary),
+                published.sourceState,
             ),
         ) as InstalledGradleModelRead.Captured
         val assembler = productionInstalledRuntimeAssembler(
@@ -73,10 +74,44 @@ class InstalledRuntimeAssemblyTest {
         val created = construction as InstalledKastRuntimeConstruction.Created
         assertTrue(Files.isRegularFile(state.resolve("workspace-publication.sqlite")))
         assertTrue(Files.isRegularFile(state.resolve("mutation-recovery.sqlite")))
+        val first = inspectWorkspace(created)
+        assertEquals(root.toString(), first.payload.canonicalRoot.value)
+        assertEquals(WorkspaceStateDocument.READY, first.payload.state)
+        assertEquals(1L, first.generation.value)
+
+        val restarted = InstalledKastRuntime.create(root, state, assembler) as
+            InstalledKastRuntimeConstruction.Created
+        val retained = inspectWorkspace(restarted)
+        assertEquals(first.generation, retained.generation)
+
+        val changedRead = projectInstalledGradleModel(
+            InstalledGradleModelBoundary(
+                published.root,
+                true,
+                listOf(sourceRootBoundary),
+                WorkspaceStateIdentity("changed-semantic-state"),
+            ),
+        ) as InstalledGradleModelRead.Captured
+        val changedAssembler = productionInstalledRuntimeAssembler(
+            InstalledRuntimeAssemblyInputs(
+                workspaceModel = { changedRead },
+                semantic = unusedSemanticPorts(),
+                change = unusedChangePhysicalPorts(),
+            ),
+        )
+        val changed = InstalledKastRuntime.create(root, state, changedAssembler) as
+            InstalledKastRuntimeConstruction.Created
+
+        assertEquals(2L, inspectWorkspace(changed).generation.value)
+    }
+
+    private fun inspectWorkspace(
+        runtime: InstalledKastRuntimeConstruction.Created,
+    ): EvidenceEnvelope<WorkspaceInspectResult> {
         val request = CanonicalOperationWireBindings.workspaceInspect
             .encodeRequest(WorkspaceInspectRequest)
             .encoded()
-        val response = runAssemblyImmediate { created.dispatch.dispatch(request) } as
+        val response = runAssemblyImmediate { runtime.dispatch.dispatch(request) } as
             KastRuntimeDispatch.Responded
         val outcome: OperationOutcome<
             WorkspaceInspectResult,
@@ -85,11 +120,8 @@ class InstalledRuntimeAssemblyTest {
             > = CanonicalOperationWireBindings.workspaceInspect
             .decodeOutcome(response.document)
             .decoded()
-        when (outcome) {
-            is OperationOutcome.Complete -> {
-                assertEquals(root.toString(), outcome.evidence.payload.canonicalRoot.value)
-                assertEquals(WorkspaceStateDocument.READY, outcome.evidence.payload.state)
-            }
+        return when (outcome) {
+            is OperationOutcome.Complete -> outcome.evidence
             else -> error("unexpected workspace outcome: $outcome")
         }
     }

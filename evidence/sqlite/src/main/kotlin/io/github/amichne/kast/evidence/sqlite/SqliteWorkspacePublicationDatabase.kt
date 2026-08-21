@@ -102,17 +102,29 @@ class SqliteWorkspacePublicationDatabase private constructor(
         val connection = connect()
         return try {
             connection.autoCommit = false
-            val priorGeneration = connection.prepareStatement(
-                "SELECT generation FROM workspace_publication WHERE singleton = 1",
+            val prior = connection.prepareStatement(
+                "SELECT generation, identity, graph_publication " +
+                "FROM workspace_publication WHERE singleton = 1",
             ).use { statement ->
                 statement.executeQuery().use { rows ->
-                    if (rows.next()) rows.getLong(1) else 0L
+                    if (!rows.next()) {
+                        null
+                    } else {
+                        SqliteWorkspacePublicationRecord(
+                            publication = PublishedWorkspaceGeneration(
+                                generation = evidenceGeneration(rows.getLong("generation")),
+                                identity = WorkspaceStateIdentity(rows.getString("identity")),
+                            ),
+                            graphPublication = WorkspaceGraphPublication.valueOf(
+                                rows.getString("graph_publication"),
+                            ),
+                        )
+                    }
                 }
             }
             SqliteWorkspacePublicationSession(
                 connection = connection,
-                priorGeneration = priorGeneration,
-                nextGeneration = evidenceGeneration(Math.addExact(priorGeneration, 1L)),
+                prior = prior,
                 faultInjector = faultInjector,
             )
         } catch (failure: Exception) {
@@ -153,6 +165,16 @@ internal data class SqliteWorkspacePublicationRecord(
     val graphPublication: WorkspaceGraphPublication,
 )
 
+internal sealed interface SqliteWorkspacePublicationCommitResult {
+    data class Advanced(
+        val record: SqliteWorkspacePublicationRecord,
+    ) : SqliteWorkspacePublicationCommitResult
+
+    data class Unchanged(
+        val record: SqliteWorkspacePublicationRecord,
+    ) : SqliteWorkspacePublicationCommitResult
+}
+
 internal enum class SqliteWorkspacePublicationFaultPoint {
     BEFORE_COMMIT,
 }
@@ -167,8 +189,7 @@ internal fun interface SqliteWorkspacePublicationFaultInjector {
 
 internal class SqliteWorkspacePublicationSession(
     private val connection: Connection,
-    private val priorGeneration: Long,
-    private val nextGeneration: EvidenceGeneration,
+    private val prior: SqliteWorkspacePublicationRecord?,
     private val faultInjector: SqliteWorkspacePublicationFaultInjector,
 ) {
     private var state: State = State.Open
@@ -181,40 +202,82 @@ internal class SqliteWorkspacePublicationSession(
         state = State.Prepared(identity, graphPublication)
     }
 
-    fun commit(): SqliteWorkspacePublicationRecord {
+    /**
+     * Proof transition: `State.Prepared -> SqliteWorkspacePublicationCommitResult`.
+     *
+     * Establishes under the active SQLite transaction that canonically identical identity and
+     * graph evidence retain the prior durable generation, while changed evidence advances exactly
+     * once. SQLite state remains confined to this adapter boundary.
+     */
+    fun commit(): SqliteWorkspacePublicationCommitResult {
         val prepared = state as? State.Prepared
                        ?: error("SQLite workspace publication is not prepared")
-        val record = SqliteWorkspacePublicationRecord(
-            PublishedWorkspaceGeneration(nextGeneration, prepared.identity),
-            prepared.graphPublication,
-        )
         try {
-            val changed = connection.prepareStatement(
-                """INSERT INTO workspace_publication(
-                       singleton, generation, identity, graph_publication
-                   ) VALUES (1, ?, ?, ?)
-                   ON CONFLICT(singleton) DO UPDATE SET
-                       generation = excluded.generation,
-                       identity = excluded.identity,
-                       graph_publication = excluded.graph_publication
-                   WHERE workspace_publication.generation = ?""",
-            ).use { statement ->
-                statement.setLong(1, record.publication.generation.value)
-                statement.setString(2, record.publication.identity.value)
-                statement.setString(3, record.graphPublication.name)
-                statement.setLong(4, priorGeneration)
-                statement.executeUpdate()
+            val result = if (
+                prior?.publication?.identity == prepared.identity &&
+                prior.graphPublication == prepared.graphPublication
+            ) {
+                retainPrior(prepared, prior)
+                SqliteWorkspacePublicationCommitResult.Unchanged(prior)
+            } else {
+                val record = SqliteWorkspacePublicationRecord(
+                    PublishedWorkspaceGeneration(
+                        evidenceGeneration(
+                            Math.addExact(prior?.publication?.generation?.value ?: 0L, 1L),
+                        ),
+                        prepared.identity,
+                    ),
+                    prepared.graphPublication,
+                )
+                advance(record)
+                SqliteWorkspacePublicationCommitResult.Advanced(record)
             }
-            check(changed == 1) { "Workspace publication generation moved before commit" }
             faultInjector.observe(SqliteWorkspacePublicationFaultPoint.BEFORE_COMMIT)
             connection.commit()
             state = State.Committed
             connection.close()
-            return record
+            return result
         } catch (failure: Exception) {
             runCatching { connection.rollback() }
             throw failure
         }
+    }
+
+    private fun retainPrior(
+        prepared: State.Prepared,
+        retained: SqliteWorkspacePublicationRecord,
+    ) {
+        val matched = connection.prepareStatement(
+            """UPDATE workspace_publication SET generation = generation
+               WHERE singleton = 1 AND generation = ? AND identity = ?
+               AND graph_publication = ?""",
+        ).use { statement ->
+            statement.setLong(1, retained.publication.generation.value)
+            statement.setString(2, prepared.identity.value)
+            statement.setString(3, prepared.graphPublication.name)
+            statement.executeUpdate()
+        }
+        check(matched == 1) { "Workspace publication moved before unchanged commit" }
+    }
+
+    private fun advance(record: SqliteWorkspacePublicationRecord) {
+        val changed = connection.prepareStatement(
+            """INSERT INTO workspace_publication(
+                   singleton, generation, identity, graph_publication
+               ) VALUES (1, ?, ?, ?)
+               ON CONFLICT(singleton) DO UPDATE SET
+                   generation = excluded.generation,
+                   identity = excluded.identity,
+                   graph_publication = excluded.graph_publication
+               WHERE workspace_publication.generation = ?""",
+        ).use { statement ->
+            statement.setLong(1, record.publication.generation.value)
+            statement.setString(2, record.publication.identity.value)
+            statement.setString(3, record.graphPublication.name)
+            statement.setLong(4, prior?.publication?.generation?.value ?: 0L)
+            statement.executeUpdate()
+        }
+        check(changed == 1) { "Workspace publication generation moved before commit" }
     }
 
     fun discard() {
