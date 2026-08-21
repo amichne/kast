@@ -2,83 +2,78 @@
 
 ## Goal
 
-The completed minimal indexer lifecycle changes are merged through a green pull request and published as the immutable minor release `v0.26.0`.
+Publish the completed runtime lifecycle changes as a focused draft pull request with a post-push self-review and representative isolated validation using genuine implementations and fixtures.
 
 ## Allowed Writes
 
 - `.agent/TASK.md`
-- `AGENTS.md`
-- `cli/AGENTS.md`
-- `cli/src/main/kotlin/io/github/amichne/kast/cli/`
-- `cli/src/test/kotlin/io/github/amichne/kast/cli/`
-- `workspace/intellij/build.gradle.kts`
-- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleJvm.kt`
-- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt`
-- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledProjectJvm.kt`
-- `workspace/intellij/src/test/kotlin/io/github/amichne/kast/workspace/intellij/InstalledProjectJvmTest.kt`
+- `.agent-turn/kotlin-agentic-correctness/20260821T032000Z-runtime-lifecycle-pr/`
+- `cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt`
+- `cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeLifecycle.kt`
+- `cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeEndpointArtifacts.kt`
+- `cli/src/test/kotlin/io/github/amichne/kast/cli/RuntimeLifecycleTest.kt`
+- `/Users/amichne/code/kast/.git/worktrees/kast/`
+- `/Users/amichne/code/kast/.git/refs/heads/feature/runtime-lifecycle-markers`
+- `/Users/amichne/.colima/`
+- `/Users/amichne/.docker/contexts/`
+- `/Users/amichne/.lima/`
+- GitHub branch and pull-request metadata for `feature/runtime-lifecycle-markers`.
 
 No other paths may be modified.
 
 ## Allowed Reads
 
-- Repository source, instructions, Git history, build and release metadata, local validation evidence, GitHub pull-request state, GitHub Actions state and logs, and GitHub release state.
+- Repository instructions, lifecycle source and tests, build metadata, CI workflows, Git history, diffs, status, and remote metadata.
+- Kotlin Engineering, Effective Delivery, GitHub, pstack, and Git change-flow instructions and evidence.
+- Local container-runtime status and read-only host environment metadata.
+- Pull-request checks, diff, review state, and Actions logs.
 
 ## Non-Goals
 
-- Changing behavior beyond fixes required for this pull request's deterministic CI failures.
-- Modifying release automation, repository secrets, environment protection, or branch protection.
-- Including `session-ses_fecf.md` or `tmp.md` in any commit.
-- Moving, deleting, or force-updating an existing tag or release.
+- Merging the pull request.
+- Publishing a release.
+- Changing repository CI or adding persistent container configuration.
+- Adding mocks or a mocking framework.
+- Replacing genuine filesystem and process implementations with simulated behavior.
 - Refactoring unrelated code.
-- Generalizing the implementation.
+- Generalizing the lifecycle implementation.
 - Fixing unrelated failures.
-- Adding optional improvements.
 
 ## Red Proof
 
 Command:
 
 ```shell
-test -n "$(gh pr list --head feature/indexer-lifecycle-commands --state merged --json number --jq '.[0].number')" && gh release view v0.26.0
+test "$(git branch --show-current)" = "feature/runtime-lifecycle-markers" && test -n "$(gh pr list --head feature/runtime-lifecycle-markers --state open --json number --jq '.[0].number')"
 ```
 
 Expected failure:
 
-No merged pull request exists for the delivery branch and release `v0.26.0` does not exist.
+The checkout is detached and no open pull request exists for `feature/runtime-lifecycle-markers`.
 
 ## Green Proof
 
 Command:
 
 ```shell
-pr="$(gh pr list --head feature/indexer-lifecycle-commands --state merged --json number --jq '.[0].number')" && test -n "$pr" && gh pr checks "$pr" --required --json bucket,name,state,workflow && gh release view v0.26.0 --json assets,isDraft,isImmutable,isLatest,isPrerelease,publishedAt,tagName,targetCommitish,url
+test "$(git branch --show-current)" = "feature/runtime-lifecycle-markers" && pr="$(gh pr list --head feature/runtime-lifecycle-markers --state open --json number --jq '.[0].number')" && test -n "$pr" && gh pr view "$pr" --json number,url,headRefOid,baseRefName,state,isDraft
 ```
 
 ## Done When
 
-- One focused pull request contains the completed minimal lifecycle changes and excludes unrelated user files.
-- The pull request's required checks are green for its final head.
-- The pull request is merged into `main`.
-- The checked-in release workflow completes successfully for version `0.26.0` from the exact merged `main` commit.
-- GitHub reports `v0.26.0` as a published, immutable, non-prerelease release with the expected control and semantic-runtime assets and checksums.
+- A focused commit containing only the requested lifecycle changes is pushed on `feature/runtime-lifecycle-markers`.
+- A draft pull request targets `main` and describes behavior, validation, and residual risk.
+- The pushed pull-request diff receives a Kotlin type, boundary, package, and test self-review; justified findings are fixed and revalidated.
+- Representative validation passes in a clean container, or the exact container blocker is recorded and an isolated temporary-checkout proof passes instead.
+- Validation uses genuine implementations and filesystem fixtures without mocks or a mocking framework.
+- Remote checks are read after the latest push.
 - The Green Proof passes.
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
 ## Execution State
 
-- Branch `feature/indexer-lifecycle-commands` was created from exact `origin/main` commit `5e834d4b678aaed072b3006aae376e8501cf7760`.
-- GitHub reports `v0.25.4` as the latest immutable release, so the requested minor release is `v0.26.0`.
-- The exact CI Gradle command and repository-shape check pass locally before publication.
-- Pull request `#628` merged as `9653fcc4339b8b8caa5282e128247e7f395c9142` after all five checks passed.
-- Release run `32403634592` failed before publication because enterprise acceptance timed out waiting for Gradle import completion; no `v0.26.0` tag or release exists.
-- The release-only failure reproduces locally. IntelliJ completed Gradle import and indexing, then invoked its contextual task-completion callback, which the legacy-only observer did not consume. After that callback was admitted, the indexer reached its server loop in about twelve seconds.
-- The same live proof exposed a second boundary defect: the detached indexer inherited the CLI's stderr pipe. The CLI process exited, but captured callers waited for pipe EOF until timeout. The launcher now detaches both output streams.
-- The focused CLI and workspace tests pass, and the previously failing `enterpriseAcceptance --rerun-tasks` proof now passes in 1 minute 58 seconds with no retained indexer process or recent Kast socket.
-- The full CI-equivalent Gradle command passes in 1 minute 30 seconds, and the repository-shape gate reports zero violations.
-- Branch `fix/gradle-import-observer` contains the narrow callback compatibility fix required to unblock release acceptance.
-- `session-ses_fecf.md` and `tmp.md` remain untracked and unstaged.
-
+- Delivery task contract established from the pull-request and validation request.
 
 ## Out-of-Scope Findings
 

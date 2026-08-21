@@ -1,42 +1,10 @@
 package io.github.amichne.kast.cli
 
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.LinkOption
-import java.nio.file.NoSuchFileException
-import java.nio.file.Path
-import java.nio.file.attribute.BasicFileAttributes
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 enum class RuntimeLifecycleState { RUNNING, STOPPED, STALE }
-enum class RuntimeEndpointArtifact { SOCKET, DESCRIPTOR, STATE }
-
-sealed interface RuntimeEndpointArtifactObservation {
-    data class Observed(
-        val present: Set<RuntimeEndpointArtifact>,
-    ) : RuntimeEndpointArtifactObservation
-
-    data object Rejected : RuntimeEndpointArtifactObservation
-}
-
-sealed interface RuntimeEndpointArtifactCleaning {
-    data class Cleaned(
-        val removed: Set<RuntimeEndpointArtifact>,
-    ) : RuntimeEndpointArtifactCleaning
-
-    data object Rejected : RuntimeEndpointArtifactCleaning
-    data object Interrupted : RuntimeEndpointArtifactCleaning
-}
-
-interface RuntimeEndpointArtifacts {
-    /** Observes only filesystem entries derived from the admitted exact endpoint. */
-    fun observe(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactObservation
-
-    /** Deletes only unreachable filesystem entries derived from the admitted exact endpoint. */
-    fun clean(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactCleaning
-}
 
 sealed interface RuntimeProcessTermination {
     data object Terminated : RuntimeProcessTermination
@@ -74,15 +42,23 @@ enum class RuntimeLifecycleFailure {
     ACTIVE_ENDPOINT,
     PROCESS_AMBIGUOUS,
     PROCESS_TERMINATION_FAILED,
+    ENDPOINT_MARKER_RETIREMENT_FAILED,
     ARTIFACT_CLEAN_FAILED,
     ARTIFACT_OBSERVATION_FAILED,
     INTERRUPTED,
 }
 
 sealed interface RuntimeLifecycleResult {
-    data class Completed(
+    data class StatusObserved(
         val state: RuntimeLifecycleState,
-        val removed: Set<RuntimeEndpointArtifact> = emptySet(),
+    ) : RuntimeLifecycleResult
+
+    data class Stopped(
+        val removed: Set<RuntimeEndpointMarker> = emptySet(),
+    ) : RuntimeLifecycleResult
+
+    data class Cleaned(
+        val removed: Set<RuntimeEndpointArtifact>,
     ) : RuntimeLifecycleResult
 
     data class Rejected(
@@ -102,42 +78,44 @@ interface RuntimeLifecycleController {
 }
 
 /** Minimal exact-root lifecycle coordination over existing process and UDS boundaries. */
-class ExactRootRuntimeLifecycle(
-    private val endpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
-    private val processAuthority: RuntimeProcessAuthority = JdkRuntimeProcessAuthority,
+class ExactRootRuntimeLifecycle internal constructor(
+    private val endpointProbe: RuntimeEndpointProbe,
+    private val processAuthority: RuntimeProcessAuthority,
     private val artifacts: RuntimeEndpointArtifacts = PosixRuntimeEndpointArtifacts,
 ) : RuntimeLifecycleController {
+    constructor() : this(JdkUnixDomainEndpointProbe, JdkRuntimeProcessAuthority)
+
     override fun status(endpoint: RuntimeEndpoint): RuntimeLifecycleResult {
         if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-            return RuntimeLifecycleResult.Completed(RuntimeLifecycleState.RUNNING)
+            return RuntimeLifecycleResult.StatusObserved(RuntimeLifecycleState.RUNNING)
         }
-        val state = when (val observation = artifacts.observe(endpoint)) {
-            RuntimeEndpointArtifactObservation.Rejected -> return RuntimeLifecycleResult.Rejected(
+        val state = when (val observation = artifacts.observeMarkers(endpoint)) {
+            RuntimeEndpointMarkerObservation.Rejected -> return RuntimeLifecycleResult.Rejected(
                 RuntimeLifecycleFailure.ARTIFACT_OBSERVATION_FAILED,
             )
-            is RuntimeEndpointArtifactObservation.Observed -> if (observation.present.isEmpty()) {
+            is RuntimeEndpointMarkerObservation.Observed -> if (observation.present.isEmpty()) {
                 RuntimeLifecycleState.STOPPED
             } else {
                 RuntimeLifecycleState.STALE
             }
         }
-        return RuntimeLifecycleResult.Completed(state)
+        return RuntimeLifecycleResult.StatusObserved(state)
     }
 
     override fun stop(endpoint: RuntimeEndpoint): RuntimeLifecycleResult =
         when (val observation = processAuthority.observe(endpoint)) {
-            RuntimeProcessObservation.Absent -> {
-                if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-                    RuntimeLifecycleResult.Rejected(RuntimeLifecycleFailure.ACTIVE_ENDPOINT)
-                } else {
-                    RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STOPPED)
-                }
-            }
+            RuntimeProcessObservation.Absent -> stoppedAfterObservedAbsence(
+                endpoint,
+                RuntimeProcessObservation.Absent,
+            )
             RuntimeProcessObservation.Ambiguous -> RuntimeLifecycleResult.Rejected(
                 RuntimeLifecycleFailure.PROCESS_AMBIGUOUS,
             )
             is RuntimeProcessObservation.Owned -> when (observation.process.terminate()) {
-                RuntimeProcessTermination.Terminated -> stoppedIfUnreachable(endpoint)
+                RuntimeProcessTermination.Terminated -> stoppedAfterTermination(
+                    endpoint,
+                    RuntimeProcessTermination.Terminated,
+                )
                 RuntimeProcessTermination.Interrupted -> RuntimeLifecycleResult.Rejected(
                     RuntimeLifecycleFailure.INTERRUPTED,
                 )
@@ -148,11 +126,18 @@ class ExactRootRuntimeLifecycle(
         }
 
     override fun clean(endpoint: RuntimeEndpoint): RuntimeLifecycleResult {
-        if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-            return RuntimeLifecycleResult.Rejected(RuntimeLifecycleFailure.ACTIVE_ENDPOINT)
+        val reachability: RuntimeEndpointReachability.Unreachable = when (
+            endpointProbe.probe(endpoint)
+        ) {
+            RuntimeEndpointReachability.Reachable -> return RuntimeLifecycleResult.Rejected(
+                RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
+            )
+            RuntimeEndpointReachability.Unreachable -> RuntimeEndpointReachability.Unreachable
         }
-        when (processAuthority.observe(endpoint)) {
-            RuntimeProcessObservation.Absent -> Unit
+        val absence: RuntimeProcessObservation.Absent = when (
+            processAuthority.observe(endpoint)
+        ) {
+            RuntimeProcessObservation.Absent -> RuntimeProcessObservation.Absent
             RuntimeProcessObservation.Ambiguous -> return RuntimeLifecycleResult.Rejected(
                 RuntimeLifecycleFailure.PROCESS_AMBIGUOUS,
             )
@@ -160,9 +145,13 @@ class ExactRootRuntimeLifecycle(
                 RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
             )
         }
-        return when (val cleaning = artifacts.clean(endpoint)) {
-            is RuntimeEndpointArtifactCleaning.Cleaned -> RuntimeLifecycleResult.Completed(
-                RuntimeLifecycleState.STOPPED,
+        val inactive = InactiveRuntimeEndpoint.afterObservedAbsence(
+            endpoint,
+            absence,
+            reachability,
+        )
+        return when (val cleaning = artifacts.clean(inactive)) {
+            is RuntimeEndpointArtifactCleaning.Cleaned -> RuntimeLifecycleResult.Cleaned(
                 cleaning.removed,
             )
             RuntimeEndpointArtifactCleaning.Rejected -> RuntimeLifecycleResult.Rejected(
@@ -174,12 +163,115 @@ class ExactRootRuntimeLifecycle(
         }
     }
 
-    private fun stoppedIfUnreachable(endpoint: RuntimeEndpoint): RuntimeLifecycleResult =
-        if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
-            RuntimeLifecycleResult.Rejected(RuntimeLifecycleFailure.ACTIVE_ENDPOINT)
-        } else {
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STOPPED)
+    /**
+     * Proof transition: `RuntimeEndpoint + RuntimeProcessObservation.Absent ->
+     * RuntimeLifecycleResult`.
+     *
+     * Establishes that the already-absent exact process also has an unreachable endpoint before
+     * marker retirement. Reachability and marker failures remain closed [RuntimeLifecycleFailure]
+     * values.
+     */
+    private fun stoppedAfterObservedAbsence(
+        endpoint: RuntimeEndpoint,
+        absence: RuntimeProcessObservation.Absent,
+    ): RuntimeLifecycleResult = when (endpointProbe.probe(endpoint)) {
+        RuntimeEndpointReachability.Reachable -> RuntimeLifecycleResult.Rejected(
+            RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
+        )
+        RuntimeEndpointReachability.Unreachable -> stoppedAfterRetiringMarkers(
+            InactiveRuntimeEndpoint.afterObservedAbsence(
+                endpoint,
+                absence,
+                RuntimeEndpointReachability.Unreachable,
+            ),
+        )
+    }
+
+    /**
+     * Proof transition: `RuntimeEndpoint + RuntimeProcessTermination.Terminated ->
+     * RuntimeLifecycleResult`.
+     *
+     * Establishes that the terminated exact process also has an unreachable endpoint before
+     * marker retirement. Reachability and marker failures remain closed [RuntimeLifecycleFailure]
+     * values.
+     */
+    private fun stoppedAfterTermination(
+        endpoint: RuntimeEndpoint,
+        termination: RuntimeProcessTermination.Terminated,
+    ): RuntimeLifecycleResult = when (endpointProbe.probe(endpoint)) {
+        RuntimeEndpointReachability.Reachable -> RuntimeLifecycleResult.Rejected(
+            RuntimeLifecycleFailure.ACTIVE_ENDPOINT,
+        )
+        RuntimeEndpointReachability.Unreachable -> stoppedAfterRetiringMarkers(
+            InactiveRuntimeEndpoint.afterTermination(
+                endpoint,
+                termination,
+                RuntimeEndpointReachability.Unreachable,
+            ),
+        )
+    }
+
+    /**
+     * Proof transition: `InactiveRuntimeEndpoint -> RuntimeLifecycleResult.Stopped`.
+     *
+     * Establishes that the exact socket and descriptor markers are absent without removing
+     * persistent runtime state. [RuntimeLifecycleFailure] closes marker retirement rejection and
+     * interruption. Raw paths stay inside [RuntimeEndpointArtifacts].
+     */
+    private fun stoppedAfterRetiringMarkers(
+        inactive: InactiveRuntimeEndpoint,
+    ): RuntimeLifecycleResult = when (val retirement = artifacts.retireMarkers(inactive)) {
+        is RuntimeEndpointMarkerRetirement.Retired -> RuntimeLifecycleResult.Stopped(
+            retirement.removed,
+        )
+        RuntimeEndpointMarkerRetirement.Rejected -> RuntimeLifecycleResult.Rejected(
+            RuntimeLifecycleFailure.ENDPOINT_MARKER_RETIREMENT_FAILED,
+        )
+        RuntimeEndpointMarkerRetirement.Interrupted -> RuntimeLifecycleResult.Rejected(
+            RuntimeLifecycleFailure.INTERRUPTED,
+        )
+    }
+}
+
+/** Exact endpoint whose process closure and UDS unreachability have both been proven. */
+internal class InactiveRuntimeEndpoint private constructor(
+    internal val endpoint: RuntimeEndpoint,
+) {
+    companion object {
+        /**
+         * Proof transition: `RuntimeEndpoint + RuntimeProcessObservation.Absent +
+         * RuntimeEndpointReachability.Unreachable -> InactiveRuntimeEndpoint`.
+         *
+         * Establishes that no exact owned process exists and the endpoint is unreachable. Raw
+         * endpoint extraction is permitted only by lifecycle filesystem adapters.
+         */
+        fun afterObservedAbsence(
+            endpoint: RuntimeEndpoint,
+            absence: RuntimeProcessObservation.Absent,
+            reachability: RuntimeEndpointReachability.Unreachable,
+        ): InactiveRuntimeEndpoint = when (absence) {
+            RuntimeProcessObservation.Absent -> when (reachability) {
+                RuntimeEndpointReachability.Unreachable -> InactiveRuntimeEndpoint(endpoint)
+            }
         }
+
+        /**
+         * Proof transition: `RuntimeEndpoint + RuntimeProcessTermination.Terminated +
+         * RuntimeEndpointReachability.Unreachable -> InactiveRuntimeEndpoint`.
+         *
+         * Establishes that the exact owned process terminated and the endpoint is unreachable. Raw
+         * endpoint extraction is permitted only by lifecycle filesystem adapters.
+         */
+        fun afterTermination(
+            endpoint: RuntimeEndpoint,
+            termination: RuntimeProcessTermination.Terminated,
+            reachability: RuntimeEndpointReachability.Unreachable,
+        ): InactiveRuntimeEndpoint = when (termination) {
+            RuntimeProcessTermination.Terminated -> when (reachability) {
+                RuntimeEndpointReachability.Unreachable -> InactiveRuntimeEndpoint(endpoint)
+            }
+        }
+    }
 }
 
 private object JdkRuntimeProcessAuthority : RuntimeProcessAuthority {
@@ -255,146 +347,5 @@ private class JdkRuntimeOwnedProcess(
     }
 }
 
-private object PosixRuntimeEndpointArtifacts : RuntimeEndpointArtifacts {
-    override fun observe(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactObservation {
-        val paths = RuntimeEndpointArtifactPaths.from(endpoint)
-        val present = mutableSetOf<RuntimeEndpointArtifact>()
-        return when {
-            observe(paths.socket, RuntimeEndpointArtifact.SOCKET, present) == PathObservation.Rejected ->
-                RuntimeEndpointArtifactObservation.Rejected
-            observe(paths.descriptor, RuntimeEndpointArtifact.DESCRIPTOR, present) == PathObservation.Rejected ->
-                RuntimeEndpointArtifactObservation.Rejected
-            observe(paths.state, RuntimeEndpointArtifact.STATE, present) == PathObservation.Rejected ->
-                RuntimeEndpointArtifactObservation.Rejected
-            else -> RuntimeEndpointArtifactObservation.Observed(present)
-        }
-    }
-
-    override fun clean(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactCleaning {
-        val paths = RuntimeEndpointArtifactPaths.from(endpoint)
-        val observed = when (val observation = observe(endpoint)) {
-            RuntimeEndpointArtifactObservation.Rejected ->
-                return RuntimeEndpointArtifactCleaning.Rejected
-            is RuntimeEndpointArtifactObservation.Observed -> observation.present
-        }
-        if (Files.isSymbolicLink(paths.state)) return RuntimeEndpointArtifactCleaning.Rejected
-        return when (
-            remove(
-                buildList {
-                    if (RuntimeEndpointArtifact.STATE in observed) add(RemovalTarget.Tree(paths.state))
-                    if (RuntimeEndpointArtifact.DESCRIPTOR in observed) {
-                        add(RemovalTarget.Entry(paths.descriptor))
-                    }
-                    if (RuntimeEndpointArtifact.SOCKET in observed) {
-                        add(RemovalTarget.Entry(paths.socket))
-                    }
-                },
-            )
-        ) {
-            RuntimeArtifactRemoval.REMOVED -> when (val remaining = observe(endpoint)) {
-                RuntimeEndpointArtifactObservation.Rejected ->
-                    RuntimeEndpointArtifactCleaning.Rejected
-                is RuntimeEndpointArtifactObservation.Observed -> if (remaining.present.isEmpty()) {
-                    RuntimeEndpointArtifactCleaning.Cleaned(observed)
-                } else {
-                    RuntimeEndpointArtifactCleaning.Rejected
-                }
-            }
-            RuntimeArtifactRemoval.REJECTED -> RuntimeEndpointArtifactCleaning.Rejected
-            RuntimeArtifactRemoval.INTERRUPTED -> RuntimeEndpointArtifactCleaning.Interrupted
-        }
-    }
-
-    /**
-     * Proof transition: `List<RemovalTarget> -> RuntimeArtifactRemoval`.
-     *
-     * Establishes that every exact admitted target is absent after one macOS POSIX removal
-     * process per target. [RuntimeArtifactRemoval] closes process rejection and interruption. Raw
-     * paths leave only as distinct process arguments at the CLI's admitted process-control edge.
-     */
-    private fun remove(targets: List<RemovalTarget>): RuntimeArtifactRemoval {
-        targets.forEach { target ->
-            val arguments = when (target) {
-                is RemovalTarget.Entry -> listOf(RM_EXECUTABLE, "-f", "--", target.path.toString())
-                is RemovalTarget.Tree -> listOf(RM_EXECUTABLE, "-rf", "--", target.path.toString())
-            }
-            val exitCode = try {
-                ProcessBuilder(arguments)
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .start()
-                    .waitFor()
-            } catch (_: IOException) {
-                return RuntimeArtifactRemoval.REJECTED
-            } catch (_: SecurityException) {
-                return RuntimeArtifactRemoval.REJECTED
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                return RuntimeArtifactRemoval.INTERRUPTED
-            }
-            if (exitCode != 0) return RuntimeArtifactRemoval.REJECTED
-        }
-        return RuntimeArtifactRemoval.REMOVED
-    }
-
-    private fun observe(
-        path: Path,
-        artifact: RuntimeEndpointArtifact,
-        present: MutableSet<RuntimeEndpointArtifact>,
-    ): PathObservation = try {
-        Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-        present += artifact
-        PathObservation.Observed
-    } catch (_: NoSuchFileException) {
-        PathObservation.Absent
-    } catch (_: IOException) {
-        PathObservation.Rejected
-    } catch (_: SecurityException) {
-        PathObservation.Rejected
-    }
-}
-
-private enum class PathObservation { Observed, Absent, Rejected }
-
-private sealed interface RemovalTarget {
-    val path: Path
-
-    data class Entry(override val path: Path) : RemovalTarget
-    data class Tree(override val path: Path) : RemovalTarget
-}
-
-private enum class RuntimeArtifactRemoval { REMOVED, REJECTED, INTERRUPTED }
-
-private data class RuntimeEndpointArtifactPaths(
-    val socket: Path,
-    val descriptor: Path,
-    val state: Path,
-) {
-    companion object {
-        /**
-         * Proof transition: `RuntimeEndpoint -> RuntimeEndpointArtifactPaths`.
-         *
-         * Establishes the sole descriptor and canonical-parent state paths derived from the exact
-         * socket. Raw paths remain inside the lifecycle filesystem adapter.
-         */
-        fun from(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactPaths {
-            val socket = endpoint.socketPath
-            val parent = socket.parent
-            val stateParent = try {
-                parent.toRealPath()
-            } catch (_: IOException) {
-                parent.toAbsolutePath().normalize()
-            } catch (_: SecurityException) {
-                parent.toAbsolutePath().normalize()
-            }
-            return RuntimeEndpointArtifactPaths(
-                socket,
-                socket.resolveSibling("${socket.fileName}.endpoint.json"),
-                stateParent.resolve("${socket.fileName}.state"),
-            )
-        }
-    }
-}
-
 private const val PROCESS_STOP_TIMEOUT_SECONDS = 10L
-private const val RM_EXECUTABLE = "/bin/rm"
 private const val INDEXER_MAIN_CLASS = "io.github.amichne.kast.indexer.KastIndexerMainKt"

@@ -21,17 +21,25 @@ class RuntimeLifecycleTest {
         )
 
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STOPPED),
+            RuntimeLifecycleResult.StatusObserved(RuntimeLifecycleState.STOPPED),
             lifecycle.status(endpoint),
         )
-        artifacts.present = setOf(RuntimeEndpointArtifact.DESCRIPTOR)
+        artifacts.present = setOf(RuntimePersistentState)
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STALE),
+            RuntimeLifecycleResult.StatusObserved(RuntimeLifecycleState.STOPPED),
+            lifecycle.status(endpoint),
+        )
+        artifacts.present = setOf(
+            RuntimeEndpointMarker.DESCRIPTOR,
+            RuntimePersistentState,
+        )
+        assertEquals(
+            RuntimeLifecycleResult.StatusObserved(RuntimeLifecycleState.STALE),
             lifecycle.status(endpoint),
         )
         reachability = RuntimeEndpointReachability.Reachable
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.RUNNING),
+            RuntimeLifecycleResult.StatusObserved(RuntimeLifecycleState.RUNNING),
             lifecycle.status(endpoint),
         )
     }
@@ -54,10 +62,46 @@ class RuntimeLifecycleTest {
         )
 
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STOPPED),
+            RuntimeLifecycleResult.Stopped(),
             lifecycle.stop(endpoint),
         )
         assertEquals(endpoint, observed)
+    }
+
+    @Test
+    fun `stop removes endpoint markers and preserves persistent state`(@TempDir temporary: Path) {
+        val endpoint = endpoint(temporary)
+        val descriptor = endpoint.socketPath.resolveSibling(
+            "${endpoint.socketPath.fileName}.endpoint.json",
+        )
+        val state = endpoint.socketPath.parent.toRealPath().resolve(
+            "${endpoint.socketPath.fileName}.state",
+        )
+        Files.writeString(endpoint.socketPath, "stale")
+        Files.writeString(descriptor, "stale")
+        val persisted = Files.createDirectories(state).resolve("workspace-publication.sqlite")
+        Files.writeString(persisted, "persistent")
+        val lifecycle = ExactRootRuntimeLifecycle(
+            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+            processAuthority = RuntimeProcessAuthority { RuntimeProcessObservation.Absent },
+        )
+
+        assertEquals(
+            RuntimeLifecycleResult.Stopped(
+                setOf(
+                    RuntimeEndpointMarker.SOCKET,
+                    RuntimeEndpointMarker.DESCRIPTOR,
+                ),
+            ),
+            lifecycle.stop(endpoint),
+        )
+        assertEquals(false, Files.exists(endpoint.socketPath))
+        assertEquals(false, Files.exists(descriptor))
+        assertEquals("persistent", Files.readString(persisted))
+        assertEquals(
+            RuntimeLifecycleResult.StatusObserved(RuntimeLifecycleState.STOPPED),
+            lifecycle.status(endpoint),
+        )
     }
 
     @Test
@@ -88,9 +132,9 @@ class RuntimeLifecycleTest {
         val endpoint = endpoint(temporary)
         val artifacts = FakeRuntimeEndpointArtifacts(
             setOf(
-                RuntimeEndpointArtifact.SOCKET,
-                RuntimeEndpointArtifact.DESCRIPTOR,
-                RuntimeEndpointArtifact.STATE,
+                RuntimeEndpointMarker.SOCKET,
+                RuntimeEndpointMarker.DESCRIPTOR,
+                RuntimePersistentState,
             ),
         )
         var reachability: RuntimeEndpointReachability = RuntimeEndpointReachability.Reachable
@@ -106,9 +150,8 @@ class RuntimeLifecycleTest {
         )
         reachability = RuntimeEndpointReachability.Unreachable
         assertEquals(
-            RuntimeLifecycleResult.Completed(
-                RuntimeLifecycleState.STOPPED,
-                RuntimeEndpointArtifact.entries.toSet(),
+            RuntimeLifecycleResult.Cleaned(
+                allRuntimeEndpointArtifacts,
             ),
             lifecycle.clean(endpoint),
         )
@@ -133,9 +176,8 @@ class RuntimeLifecycleTest {
         Files.writeString(state.resolve("cache.bin"), "stale")
 
         assertEquals(
-            RuntimeLifecycleResult.Completed(
-                RuntimeLifecycleState.STOPPED,
-                RuntimeEndpointArtifact.entries.toSet(),
+            RuntimeLifecycleResult.Cleaned(
+                allRuntimeEndpointArtifacts,
             ),
             ExactRootRuntimeLifecycle().clean(endpoint),
         )
@@ -170,12 +212,25 @@ class RuntimeLifecycleTest {
 private class FakeRuntimeEndpointArtifacts(
     var present: Set<RuntimeEndpointArtifact> = emptySet(),
 ) : RuntimeEndpointArtifacts {
-    override fun observe(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactObservation =
-        RuntimeEndpointArtifactObservation.Observed(present)
+    override fun observeMarkers(endpoint: RuntimeEndpoint): RuntimeEndpointMarkerObservation =
+        RuntimeEndpointMarkerObservation.Observed(
+            present.filterIsInstance<RuntimeEndpointMarker>().toSet(),
+        )
 
-    override fun clean(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactCleaning {
+    override fun retireMarkers(
+        endpoint: InactiveRuntimeEndpoint,
+    ): RuntimeEndpointMarkerRetirement {
+        val removed = present.filterIsInstance<RuntimeEndpointMarker>().toSet()
+        present -= removed
+        return RuntimeEndpointMarkerRetirement.Retired(removed)
+    }
+
+    override fun clean(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointArtifactCleaning {
         val removed = present
         present = emptySet()
         return RuntimeEndpointArtifactCleaning.Cleaned(removed)
     }
 }
+
+private val allRuntimeEndpointArtifacts: Set<RuntimeEndpointArtifact> =
+    RuntimeEndpointMarker.entries.toSet() + RuntimePersistentState

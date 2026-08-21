@@ -172,28 +172,59 @@ class KastCli(
         endpoint: RuntimeEndpoint,
         result: RuntimeLifecycleResult,
     ): CliExit = when (result) {
-        is RuntimeLifecycleResult.Completed -> CliExit.Complete(
-            CliJsonDocument.from(
-                buildJsonObject {
-                    put("command", command.command)
-                    put("status", "complete")
-                    put("runtime", result.state.name.lowercase())
-                    put("root", endpoint.root.path.toString())
-                    put("runtimeId", endpoint.runtimeId.value)
-                    put(
-                        "removed",
-                        JsonArray(
-                            result.removed.sortedBy(RuntimeEndpointArtifact::name)
-                                .map { artifact -> JsonPrimitive(artifact.name.lowercase()) },
-                        ),
-                    )
-                },
-            ),
+        is RuntimeLifecycleResult.StatusObserved -> lifecycleCompletedExit(
+            command,
+            endpoint,
+            result.state,
+            emptySet(),
+        )
+        is RuntimeLifecycleResult.Stopped -> lifecycleCompletedExit(
+            command,
+            endpoint,
+            RuntimeLifecycleState.STOPPED,
+            result.removed,
+        )
+        is RuntimeLifecycleResult.Cleaned -> lifecycleCompletedExit(
+            command,
+            endpoint,
+            RuntimeLifecycleState.STOPPED,
+            result.removed,
         )
         is RuntimeLifecycleResult.Rejected -> boundaryExit(
             CliBoundaryExitStatus.RUNTIME,
             "${command.command}-${result.failure.name.lowercase().replace('_', '-')}",
         )
+    }
+
+    private fun lifecycleCompletedExit(
+        command: CliLifecycleCommand,
+        endpoint: RuntimeEndpoint,
+        state: RuntimeLifecycleState,
+        removed: Set<RuntimeEndpointArtifact>,
+    ): CliExit = CliExit.Complete(
+        CliJsonDocument.from(
+            buildJsonObject {
+                put("command", command.command)
+                put("status", "complete")
+                put("runtime", state.name.lowercase())
+                put("root", endpoint.root.path.toString())
+                put("runtimeId", endpoint.runtimeId.value)
+                put(
+                    "removed",
+                    JsonArray(
+                        removed.map { artifact -> artifact.lifecycleOutputName() }
+                            .sorted()
+                            .map(::JsonPrimitive),
+                    ),
+                )
+            },
+        ),
+    )
+
+    /** Projects a lifecycle artifact to its stable JSON-boundary name. */
+    private fun RuntimeEndpointArtifact.lifecycleOutputName(): String = when (this) {
+        is RuntimeEndpointMarker -> name.lowercase()
+        RuntimePersistentState -> "state"
     }
 
     private fun projectionFailure(failure: CliProjectionFailure): CliExit = when (failure) {
