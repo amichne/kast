@@ -36,6 +36,24 @@ if [[ -z "${classpath}" ]]; then
   exit 1
 fi
 
+socket_path=""
+for argument in "$@"; do
+  case "${argument}" in
+    --socket-path=*)
+      if [[ -n "${socket_path}" ]]; then
+        echo "kast-indexer: socket-path argument must occur exactly once" >&2
+        exit 1
+      fi
+      socket_path="${argument#--socket-path=}"
+      ;;
+  esac
+done
+if [[ -z "${socket_path}" ]]; then
+  echo "kast-indexer: socket-path argument is required" >&2
+  exit 1
+fi
+idea_instance_root="${socket_path}.state/idea"
+
 java_exec="${JAVA_HOME:+${JAVA_HOME}/bin/java}"
 java_exec="${java_exec:-java}"
 physical_java_home="$(
@@ -57,7 +75,10 @@ idea_jvm_args=(
   "-Xbootclasspath/a:${idea_home}/lib/nio-fs.jar"
   "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader"
   "-Didea.vendor.name=JetBrains"
-  "-Didea.paths.selector=KastIndexer"
+  "-Didea.config.path=${idea_instance_root}/config"
+  "-Didea.system.path=${idea_instance_root}/system"
+  "-Didea.plugins.path=${idea_instance_root}/plugins"
+  "-Didea.log.path=${idea_instance_root}/log"
   "-Djna.boot.library.path=${idea_home}/lib/jna/${jna_arch}"
   "-Djna.nosys=true"
   "-Djna.noclasspath=true"
