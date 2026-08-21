@@ -12,6 +12,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailur
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure
 import java.nio.file.Path
 
 /** Raw live-model projection consumed once at the installed IntelliJ boundary. */
@@ -23,6 +24,10 @@ internal data class InstalledGradleModelBoundary(
 )
 
 sealed interface InstalledGradleModelFailure {
+    data class SemanticIdentityUnavailable(
+        val failure: InstalledGradleModelCaptureFailure,
+    ) : InstalledGradleModelFailure
+
     data object IncompleteBoundary : InstalledGradleModelFailure
 
     data class ScopeRejected(

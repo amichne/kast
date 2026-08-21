@@ -88,9 +88,11 @@ Command:
 - SQLite now compares typed identity and graph evidence inside the transaction and returns `Unchanged` without allocating a new durable generation.
 - The canonical publication contract now distinguishes `Advanced`, `Unchanged`, and `Rejected`; an unchanged mutation result remains a typed `GENERATION_NOT_NEWER` rejection.
 - The IntelliJ capture now consumes import timestamps only as model-completeness evidence and emits one versioned `WorkspaceStateIdentity` from typed, order-independent semantic inputs and exact classpath URLs.
+- Reconciliation now re-hashes current source content under the detached Gradle topology; semantic request scopes reuse the last admitted typed model instead of triggering physical identity reads.
 - Focused proofs retain generation `1` across an installed-runtime reconstruction and advance to generation `2` for a changed semantic identity.
 - The owning-module and direct-consumer test ring passes after a clean build; the final full `test`, module-graph, no-legacy, and repository-shape checks also pass.
-- Repository-wide completion is blocked by pre-existing verification infrastructure: `verifyKastArchitecture` describes retired modules as active and the current `runtime:composition` module as merely planned, while `installedProductTest` stages the product but cannot establish the runtime endpoint.
+- The first clean CI run exposed the previously masked static-snapshot defect as `resulting-generation-unavailable`; a filesystem-backed regression now proves that a real source edit changes the refreshed typed identity.
+- Repository-wide completion is blocked locally by pre-existing verification infrastructure: `verifyKastArchitecture` describes retired modules as active and the current `runtime:composition` module as merely planned, while `installedProductTest` stages the product but cannot establish the runtime endpoint on this machine.
 - `session-ses_fecf.md` and `tmp.md` are pre-existing untracked user files and must remain untouched.
 
 ## Out-of-Scope Findings

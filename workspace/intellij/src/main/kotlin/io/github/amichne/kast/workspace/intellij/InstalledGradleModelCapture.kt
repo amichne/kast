@@ -33,7 +33,40 @@ class InstalledGradleModelCapture internal constructor(
     val root: CanonicalWorkspaceRoot,
     val sourceRoots: List<WorkspaceSourceRootBoundary>,
     val identity: WorkspaceStateIdentity,
-)
+    private val identityBoundary: InstalledGradleSemanticIdentityBoundary,
+) {
+    /**
+     * Proof transition: `InstalledGradleModelCapture -> Refinement<WorkspaceStateIdentity,
+     * InstalledGradleModelCaptureFailure>`.
+     *
+     * Establishes the current source-content identity under the same detached Gradle ownership,
+     * module, SDK, and classpath evidence proven by this capture. The closed expected failure is
+     * [InstalledGradleModelCaptureFailure]. Raw filesystem reads remain inside this physical
+     * identity boundary.
+     */
+    fun captureCurrentSemanticIdentity(): Refinement<
+        WorkspaceStateIdentity,
+        InstalledGradleModelCaptureFailure,
+        > {
+        val currentContents = when (val captured = captureSourceContentIdentities(
+            Path.of(root.value),
+            sourceRoots,
+        )) {
+            is InstalledSourceContentIdentityCapture.Captured -> captured.contents
+            is InstalledSourceContentIdentityCapture.Rejected -> return Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE,
+            )
+        }
+        return when (val derived = deriveInstalledGradleSemanticIdentity(
+            identityBoundary.copy(sourceContents = currentContents),
+        )) {
+            is Refinement.Refined -> derived
+            is Refinement.Rejected -> Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE,
+            )
+        }
+    }
+}
 
 enum class InstalledGradleModelCaptureFailure {
     ROOT_UNAVAILABLE,
@@ -128,7 +161,9 @@ internal fun captureInstalledGradleModel(
                 InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE,
             )
         }
-        Refinement.Refined(InstalledGradleModelCapture(root, boundaries, identity))
+        Refinement.Refined(
+            InstalledGradleModelCapture(root, boundaries, identity, identityBoundary),
+        )
     }.inSmartMode(project).executeSynchronously()
 
 private enum class InstalledSourceContentIdentityFailure {

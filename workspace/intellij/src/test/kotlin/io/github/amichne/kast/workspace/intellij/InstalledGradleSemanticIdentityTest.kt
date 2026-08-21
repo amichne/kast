@@ -68,6 +68,30 @@ class InstalledGradleSemanticIdentityTest {
         assertNotEquals(identity(before), identity(after))
     }
 
+    @Test
+    fun `detached capture rehashes current source content`(
+        @TempDir temporary: Path,
+    ) {
+        val rootPath = Files.createDirectories(temporary.resolve("workspace")).toRealPath()
+        val sourceDirectory = Files.createDirectories(rootPath.resolve("src/main/kotlin/example"))
+        val source = sourceDirectory.resolve("App.kt")
+        Files.writeString(source, "fun value() = 1")
+        val root = canonicalRoot(rootPath)
+        val sourceRoot = sourceRoot(rootPath)
+        val boundary = boundary(root, rootPath, sourceRoot, contentHash('a'))
+        val capture = InstalledGradleModelCapture(
+            root,
+            listOf(sourceRoot),
+            identity(boundary),
+            boundary,
+        )
+        val before = currentIdentity(capture)
+
+        Files.writeString(source, "fun value() = 2")
+
+        assertNotEquals(before, currentIdentity(capture))
+    }
+
     private fun boundary(
         root: CanonicalWorkspaceRoot,
         rootPath: Path,
@@ -106,6 +130,13 @@ class InstalledGradleSemanticIdentityTest {
     ): WorkspaceStateIdentity = when (val derived = deriveInstalledGradleSemanticIdentity(boundary)) {
         is Refinement.Refined -> derived.value
         is Refinement.Rejected -> error(derived.failure)
+    }
+
+    private fun currentIdentity(
+        capture: InstalledGradleModelCapture,
+    ): WorkspaceStateIdentity = when (val captured = capture.captureCurrentSemanticIdentity()) {
+        is Refinement.Refined -> captured.value
+        is Refinement.Rejected -> error(captured.failure)
     }
 
     private fun canonicalRoot(path: Path): CanonicalWorkspaceRoot = when (
