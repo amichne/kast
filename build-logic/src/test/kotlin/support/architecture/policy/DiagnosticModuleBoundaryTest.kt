@@ -50,10 +50,10 @@ class DiagnosticModuleBoundaryTest {
             ModuleId.WORKSPACE_INTELLIJ,
             ModuleId.EVIDENCE_SQLITE,
             ModuleId.TRAVERSAL_SERVICE,
-            ModuleId.CHANGE_PLAN_SERVICE,
-            ModuleId.CHANGE_APPLY_SERVICE,
-            ModuleId.CHANGE_APPLY_INTELLIJ,
-            ModuleId.CHANGE_VERIFY_SERVICE,
+            ModuleId.CHANGE_PLAN,
+            ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_INTELLIJ,
+            ModuleId.CHANGE_VERIFY,
         )
 
         setOf(

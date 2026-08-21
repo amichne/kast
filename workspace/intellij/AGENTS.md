@@ -15,4 +15,4 @@ aggregate backend.
 
 1. Run `./gradlew :workspace:intellij:test`.
 2. Run the indexer transition runtime and event-driven integration tests.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

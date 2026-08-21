@@ -28,7 +28,17 @@ class MutationTargetModuleBoundaryTest {
 
         assertEquals(ModuleLifecycle.ACTIVE, changePlan.lifecycle)
         assertEquals(ModuleRole.SERVICE, changePlan.role)
-        assertEquals(setOf(ModuleId.CHANGE_CONTRACT), changePlan.allowedProjectDependencies)
+        assertEquals(
+            setOf(
+                ModuleId.CHANGE_CONTRACT,
+                ModuleId.WORKSPACE_CONTRACT,
+                ModuleId.SYMBOL_CONTRACT,
+                ModuleId.RELATION_CONTRACT,
+                ModuleId.TRAVERSAL_CONTRACT,
+                ModuleId.DIAGNOSTIC_CONTRACT,
+            ),
+            changePlan.allowedProjectDependencies,
+        )
         assertTrue(changePlan.allowedEffects.isEmpty())
     }
 

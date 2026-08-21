@@ -20,4 +20,4 @@ shared by the registry, wire transport, runtime server, and CLI.
 ## Verification ladder
 
 1. Run `./gradlew :protocol:registry:test :protocol:wire:test`.
-2. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+2. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

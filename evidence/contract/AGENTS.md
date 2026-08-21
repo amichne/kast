@@ -17,5 +17,5 @@ contains no persistence implementation and performs no I/O.
 ## Verification ladder
 
 1. Run `./gradlew :evidence:contract:test`.
-2. Run `./gradlew :evidence:spi:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+2. Run `./gradlew :evidence:sqlite:test`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

@@ -25,4 +25,4 @@ nominal association between each canonical operation and its direct target servi
 
 1. Run `./gradlew :runtime:composition:test --tests '*KastRuntimeCompositionTest'`.
 2. Run `./gradlew :runtime:composition:test :runtime:server:test verifyKastModuleGraph`.
-3. Run `./gradlew verifyNoLegacyArchitecture verifyKastModuleGraph build` after the legacy cutover.
+3. Run `./gradlew verifyNoLegacyArchitecture verifyKastModuleGraph build` for full repository proof.

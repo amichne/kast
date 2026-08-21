@@ -3,7 +3,6 @@ import org.gradle.api.tasks.SourceSetContainer
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastArchitectureProjectionTask
-import support.architecture.gradle.ArchitectureVerificationMode
 import support.architecture.gradle.VerifyKastArchitectureTask
 import support.architecture.gradle.VerifyNoLegacyArchitectureTask
 
@@ -24,30 +23,21 @@ tasks.register<GenerateKastArchitectureProjectionTask>("generateKastArchitecture
 fun registerArchitectureVerification(
     name: String,
     descriptionText: String,
-    mode: ArchitectureVerificationMode,
 ) = tasks.register<VerifyKastArchitectureTask>(name) {
     group = "verification"
     description = descriptionText
     projectionFile.set(architectureProjection)
     rootDirectory.set(layout.projectDirectory)
     reportFile.set(layout.buildDirectory.file("reports/kast-architecture/$name.json"))
-    verificationMode.set(mode)
 }
 
 val verifyKastModuleGraph = registerArchitectureVerification(
     "verifyKastModuleGraph",
     "Verifies the clean-slate target module graph against observed project membership and edges.",
-    ArchitectureVerificationMode.AUTOMATIC,
 )
 val verifyForbiddenEffects = registerArchitectureVerification(
     "verifyForbiddenEffects",
     "Verifies compiled references against the sole clean-slate effect owners.",
-    ArchitectureVerificationMode.AUTOMATIC,
-)
-val verifyKastArchitecture = registerArchitectureVerification(
-    "verifyKastArchitecture",
-    "Verifies the migration graph, compiled effects, and exact migration baseline.",
-    ArchitectureVerificationMode.MIGRATION,
 )
 val verifyNoLegacyArchitecture = tasks.register<VerifyNoLegacyArchitectureTask>(
     "verifyNoLegacyArchitecture",
@@ -68,7 +58,6 @@ val verifyNoLegacyArchitecture = tasks.register<VerifyNoLegacyArchitectureTask>(
 val architectureVerifications = listOf(
     verifyKastModuleGraph,
     verifyForbiddenEffects,
-    verifyKastArchitecture,
 )
 
 subprojects {

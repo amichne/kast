@@ -139,8 +139,11 @@ class SymbolSelectorContractTest {
                     SymbolLibraryPolicy.EXCLUDE,
                 ),
             ),
-            SymbolNameDiscoveryKind.SYMBOL,
-            SymbolDiscoveryPattern.parse("call").refined(),
+            SymbolDiscoveryTarget.Name(
+                SymbolNameDiscoveryKind.SYMBOL,
+                SymbolDiscoveryPattern.parse("call").refined(),
+                SymbolDiscoveryMatch.FUZZY,
+            ),
             SymbolDiscoveryBudget(
                 ResourceBudget(
                     ResultLimit.parse(1).refined(),

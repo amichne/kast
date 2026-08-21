@@ -17,4 +17,4 @@ source writes, or mutation.
 1. Run `./gradlew :diagnostic:intellij:test --tests '*DiagnosticReadTest'`.
 2. Inspect and build changed Kotlin files through the exact-worktree IDEA MCP.
 3. Run `./gradlew :diagnostic:service:test :diagnostic:intellij:test`.
-4. Run `./gradlew verifyKastArchitecture --configuration-cache` after architecture admission.
+4. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects` after architecture admission.

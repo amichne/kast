@@ -150,6 +150,7 @@ sealed interface SymbolDiscoveryFileIdentity {
     }
 }
 
+@ConsistentCopyVisibility
 data class SymbolDiscoverySourceRange private constructor(
     val startInclusive: SymbolDiscoverySourceOffset,
     val endExclusive: SymbolDiscoverySourceOffset,

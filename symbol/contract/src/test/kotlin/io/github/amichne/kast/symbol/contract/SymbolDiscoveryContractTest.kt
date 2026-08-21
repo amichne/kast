@@ -217,8 +217,11 @@ class SymbolDiscoveryContractTest {
                 libraries = SymbolLibraryPolicy.EXCLUDE,
             ),
         ),
-        kind = SymbolNameDiscoveryKind.SYMBOL,
-        pattern = SymbolDiscoveryPattern.parse("Type").refined(),
+        target = SymbolDiscoveryTarget.Name(
+            kind = SymbolNameDiscoveryKind.SYMBOL,
+            pattern = SymbolDiscoveryPattern.parse("Type").refined(),
+            match = SymbolDiscoveryMatch.FUZZY,
+        ),
         budget = SymbolDiscoveryBudget(
             resources = ResourceBudget(
                 resultLimit = ResultLimit.parse(resultLimit).refined(),

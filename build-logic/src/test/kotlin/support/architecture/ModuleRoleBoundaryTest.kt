@@ -42,12 +42,11 @@ class ModuleRoleBoundaryTest {
             ModuleRoleConventionRequirement.Required(ModuleRoleConvention.INTELLIJ_READ),
             readModule.conventionRequirement,
         )
-        assertEquals(53, architecture.legacyAllowances.size)
     }
 
     @Test
     fun `read role rejects implementation role cost and effect even when raw policy allows them`() {
-        val dependency = ModuleId.CHANGE_APPLY_INTELLIJ
+        val dependency = ModuleId.CHANGE_INTELLIJ
         val definition = KastArchitecturePolicy.definition().copy(
             modules = KastArchitecturePolicy.definition().modules.map { module ->
                 if (module.id == ModuleId.SYMBOL_INTELLIJ) {
@@ -59,7 +58,6 @@ class ModuleRoleBoundaryTest {
                     module
                 }
             },
-            legacyAllowances = emptyList(),
         )
 
         val invalid = assertInstanceOf<ArchitecturePolicyValidation.Invalid>(
@@ -90,9 +88,9 @@ class ModuleRoleBoundaryTest {
 
     @Test
     fun `exported implementation and missing or mismatched role conventions fail admission`() {
-        val architecture = canonical(ModuleId.SYMBOL_CONTRACT, ModuleId.SYMBOL_INTELLIJ)
+        val architecture = canonical()
         val dependency = ProjectDependencyObservation(ModuleId.SYMBOL_INTELLIJ, ModuleId.SYMBOL_CONTRACT)
-        val modules = activeLegacyModules + ModuleId.SYMBOL_CONTRACT + ModuleId.SYMBOL_INTELLIJ
+        val modules = architecture.modules.keys
         val matchingRoles = mapOf(
             ModuleId.SYMBOL_CONTRACT to ModuleRoleConvention.CONTRACT,
             ModuleId.SYMBOL_INTELLIJ to ModuleRoleConvention.INTELLIJ_READ,
@@ -264,14 +262,8 @@ class ModuleRoleBoundaryTest {
         )
     }
 
-    private fun canonical(vararg activated: ModuleId): ValidatedArchitecturePolicy {
-        val activatedSet = activated.toSet()
-        val definition = KastArchitecturePolicy.definition().copy(
-            modules = KastArchitecturePolicy.definition().modules.map { module ->
-                if (module.id in activatedSet) module.copy(lifecycle = ModuleLifecycle.ACTIVE) else module
-            },
-            legacyAllowances = emptyList(),
-        )
+    private fun canonical(): ValidatedArchitecturePolicy {
+        val definition = KastArchitecturePolicy.definition()
         return assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             ArchitecturePolicyValidator.validate(definition),
         ).architecture
@@ -344,12 +336,4 @@ class ModuleRoleBoundaryTest {
         return temporary.resolve("ForbiddenAuthorities.class").also { Files.write(it, bytecode) }
     }
 
-    private companion object {
-        val activeLegacyModules = setOf(
-            ModuleId.ANALYSIS_API,
-            ModuleId.ANALYSIS_SERVER,
-            ModuleId.INDEX_STORE,
-            ModuleId.INDEXER,
-        )
-    }
 }

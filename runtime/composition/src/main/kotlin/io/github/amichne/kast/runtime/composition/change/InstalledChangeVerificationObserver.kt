@@ -33,6 +33,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -173,10 +174,12 @@ internal class InstalledChangeVerificationObserver(
                 published.readLease,
                 scope,
             ),
-            SymbolNameDiscoveryKind.SYMBOL,
-            pattern,
+            SymbolDiscoveryTarget.Name(
+                SymbolNameDiscoveryKind.SYMBOL,
+                pattern,
+                SymbolDiscoveryMatch.EXACT_NAME,
+            ),
             budgets.discovery,
-            SymbolDiscoveryMatch.EXACT_NAME,
         )
         val compilation = when (val read = awaitCompilerRead {
             semantic.symbolDiscovery.compile(request)

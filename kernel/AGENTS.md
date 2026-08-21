@@ -28,5 +28,5 @@
 
 1. Run `./gradlew :kernel:test --tests io.github.amichne.kast.kernel.KernelPrimitivesTest`.
 2. Run `./gradlew :kernel:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache` to prove role, dependency, and effect boundaries.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects` to prove role, dependency, and effect boundaries.
 4. Run direct consumers after a public kernel contract changes.

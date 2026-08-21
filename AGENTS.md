@@ -1,86 +1,57 @@
 # Repository Guidelines
 
-## Task contract protocol
+## Per-session task evidence
 
-For every implementation task:
+For every implementation task, keep its definition and proof in the current
+session directory. Use the session directory supplied or selected by the active
+workflow. Do not depend on a particular harness, provider, environment
+variable, or repository-local session path.
 
-1. Before modifying source code, create or replace `.agent/TASK.md` using the required template below.
-2. Populate it solely from the user's request. Do not invent additional goals.
-3. Read `.agent/TASK.md` immediately before:
-   - making the first source change;
-   - starting any investigation not explicitly listed;
-   - running verification;
-   - declaring completion.
-4. Treat `.agent/TASK.md` as the authoritative and closed execution scope.
-5. Do not modify the Goal, Allowed Writes, Non-Goals, Red Proof, Green Proof, or Done When sections after implementation begins.
-6. Record progress only under Execution State.
-7. Any work not required by the Goal or Done When criteria is prohibited.
-8. If an action would exceed scope, do not perform it. Record it under Out-of-Scope Findings only when it blocks completion.
-9. Stop immediately when every Done When condition is satisfied.
-10. Do not perform cleanup, hardening, refactoring, documentation, or additional testing after completion unless explicitly required by the contract.
+### Define a task
 
-If `.agent/TASK.md` cannot be completed from the request, make the narrowest reasonable assumption. Ask a question only when no implementation can proceed safely.
+Each session owns a `tasks/` directory. Each task uses the next available
+`tasks/[0-9]{3}/` name: increment the highest existing number, or start with
+`001` when the session has no task directories.
 
-### Required `.agent/TASK.md` template
+Create all five definition files when defining the task:
 
-````
+- `TASK.md` explains where we are, what we're solving, why we need to solve it,
+  and how we know it's solved. Derive these statements from the user's request.
+- `red.md` defines the semantics of the first required red case. State what the
+  case exercises, the exact missing-behavior observation, and why that
+  observation establishes the red instance. Name `red.sh` as its executable
+  authority.
+- `red.sh` is the executable authority for the red instance. It must expose the
+  underlying failing check and exit successfully only when the exact red
+  observation defined by `red.md` occurs.
+- `green.md` defines the required green cases, their expected observations, and
+  why those observations are sufficient to establish the requested outcome.
+  Name `green.sh` as their executable authority.
+- `green.sh` is the executable authority for completion. It must expose the
+  checks it runs and exit successfully only when every case defined by
+  `green.md` passes.
 
-# Task Contract
+Keep paths, commands, and tool choices specific to the task, not to the agent
+harness. If the active workflow does not provide a session directory, select a
+session-scoped directory before defining the task.
 
-## Goal
+### Capture and judge proof
 
-One observable outcome.
+Run `red.sh` before implementation and capture its complete standard output,
+standard error, and final exit status in `red-proof.out`. Run `green.sh` after
+implementation and capture the same evidence in `green-proof.out`. Create each
+output in the numbered task directory when its script runs; the outputs are not
+part of the five definition files.
 
-## Allowed Writes
+A proof output is valid only when it is fresh for the current definition,
+identifies the script that ran, contains the observed check results, and records
+a zero proof-script exit status. A red proof succeeds when `red.sh` confirms the
+expected underlying failure. A green proof succeeds when `green.sh` confirms
+all required behavior.
 
-- Exact file or directory paths.
-
-No other paths may be modified.
-
-## Allowed Reads
-
-- Relevant file or directory paths.
-
-## Non-Goals
-
-- Explicitly excluded adjacent work.
-- Refactoring unrelated code.
-- Generalizing the implementation.
-- Fixing unrelated failures.
-- Adding optional improvements.
-
-## Red Proof
-
-Command:
-
-```shell
-<command>
-```
-
-Expected failure:
-
-<specific failure proving the missing behavior>
-
-## Green Proof
-
-Command:
-
-```shell
-<command>
-```
-
-## Done When
-
-- The requested observable behavior exists.
-- The Green Proof passes.
-- No files outside Allowed Writes changed.
-- No Non-Goal work was performed.
-
-
-## Out-of-Scope Findings
-
-- None
-````
+Agents must inspect and validate `red-proof.out` and `green-proof.out`. These
+captured outputs are the arbiters of truth; summaries, uncaptured commands, and
+verbal completion claims cannot replace them.
 
 ## Kotlin proof-carrying validation transitions
 

@@ -20,4 +20,4 @@
 
 1. Run `./gradlew :traversal:service:test --tests '*TraversalServiceTest'`.
 2. Run `./gradlew :traversal:contract:test :traversal:service:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

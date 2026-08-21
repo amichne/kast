@@ -1,9 +1,5 @@
 package support.architecture
 
-import support.architecture.process.MutationRuntimeProcessId
-import support.architecture.process.MutationRuntimeProcessPolicy
-import support.architecture.process.ValidatedMutationRuntimeTopology
-
 enum class ModuleLifecycle {
     ACTIVE,
     PLANNED,
@@ -43,11 +39,6 @@ enum class ForbiddenEffect {
 }
 
 enum class ModuleId(val projectPath: String) {
-    CLI(":cli"),
-    ANALYSIS_API(":analysis-api"),
-    ANALYSIS_SERVER(":analysis-server"),
-    INDEX_STORE(":index-store"),
-    INDEXER(":indexer"),
     KERNEL(":kernel"),
     DISTRIBUTION_CONTRACT(":distribution:contract"),
     DISTRIBUTION_MANAGED(":distribution:managed"),
@@ -55,11 +46,8 @@ enum class ModuleId(val projectPath: String) {
     PROTOCOL_REGISTRY(":protocol:registry"),
     PROTOCOL_WIRE(":protocol:wire"),
     WORKSPACE_CONTRACT(":workspace:contract"),
-    WORKSPACE_SPI(":workspace:spi"),
     WORKSPACE_SERVICE(":workspace:service"),
     WORKSPACE_INTELLIJ(":workspace:intellij"),
-    EVIDENCE_CONTRACT(":evidence:contract"),
-    EVIDENCE_SPI(":evidence:spi"),
     SYMBOL_CONTRACT(":symbol:contract"),
     SYMBOL_SERVICE(":symbol:service"),
     SYMBOL_INTELLIJ(":symbol:intellij"),
@@ -71,35 +59,18 @@ enum class ModuleId(val projectPath: String) {
     DIAGNOSTIC_CONTRACT(":diagnostic:contract"),
     DIAGNOSTIC_SERVICE(":diagnostic:service"),
     DIAGNOSTIC_INTELLIJ(":diagnostic:intellij"),
-    PROTOCOL_CONTINUATION(":protocol:continuation"),
     CHANGE_CONTRACT(":change:contract"),
     CHANGE_PLAN(":change:plan"),
     CHANGE_APPLY(":change:apply"),
     CHANGE_VERIFY(":change:verify"),
     CHANGE_RECOVERY(":change:recovery"),
     CHANGE_INTELLIJ(":change:intellij"),
-    CHANGE_PLAN_SPI(":change:plan:spi"),
-    CHANGE_PLAN_INTELLIJ(":change:plan:intellij"),
-    CHANGE_PLAN_SERVICE(":change:plan:service"),
-    CHANGE_JOURNAL_CONTRACT(":change:journal:contract"),
-    CHANGE_JOURNAL_SQLITE(":change:journal:sqlite"),
-    WORKSPACE_MUTATION_CONTRACT(":workspace:mutation:contract"),
-    WORKSPACE_MUTATION_SERVICE(":workspace:mutation:service"),
-    CHANGE_APPLY_SPI(":change:apply:spi"),
-    CHANGE_APPLY_SERVICE(":change:apply:service"),
-    CHANGE_APPLY_INTELLIJ(":change:apply:intellij"),
-    CHANGE_APPLY_FILESYSTEM(":change:apply:filesystem"),
-    CHANGE_RECOVERY_CONTRACT(":change:recovery:contract"),
-    CHANGE_RECOVERY_SPI(":change:recovery:spi"),
-    CHANGE_RECOVERY_FILESYSTEM(":change:recovery:filesystem"),
-    CHANGE_RECOVERY_SERVICE(":change:recovery:service"),
-    CHANGE_VERIFY_SPI(":change:verify:spi"),
-    CHANGE_VERIFY_INTELLIJ(":change:verify:intellij"),
-    CHANGE_VERIFY_SERVICE(":change:verify:service"),
+    EVIDENCE_CONTRACT(":evidence:contract"),
     EVIDENCE_SQLITE(":evidence:sqlite"),
-    RUNTIME_BINDINGS(":runtime:bindings"),
-    RUNTIME_COMPOSITION(":runtime:composition"),
     RUNTIME_SERVER(":runtime:server"),
+    RUNTIME_COMPOSITION(":runtime:composition"),
+    CLI(":cli"),
+    INDEXER(":indexer"),
 }
 
 data class ModulePolicy(
@@ -125,15 +96,8 @@ data class JvmMember(
     val descriptor: JvmDescriptor,
 ) {
     companion object {
-        fun of(
-            owner: String,
-            name: String,
-            descriptor: String,
-        ): JvmMember = JvmMember(
-            JvmClassName(owner),
-            JvmMemberName(name),
-            JvmDescriptor(descriptor),
-        )
+        fun of(owner: String, name: String, descriptor: String): JvmMember =
+            JvmMember(JvmClassName(owner), JvmMemberName(name), JvmDescriptor(descriptor))
     }
 }
 
@@ -149,123 +113,9 @@ data class ProjectDependencyObservation(
     val dependency: ModuleId,
 )
 
-sealed interface LegacyViolationKey {
-    data class UnapprovedProjectDependency(
-        val dependency: ProjectDependencyObservation,
-    ) : LegacyViolationKey
-
-    data class ForbiddenEffectUse(val observation: EffectObservation) : LegacyViolationKey
-}
-
-data class LegacyAllowance(
-    val violation: LegacyViolationKey,
-    val retirementTask: MutationDeliveryTaskId,
-)
-
-enum class LegacyMigrationLifecycle {
-    PLANNED,
-    ACTIVE,
-    COMPLETED,
-}
-
-data class LegacyMigrationEdgePolicy(
-    val dependency: ProjectDependencyObservation,
-    val lifecycle: LegacyMigrationLifecycle,
-    val retirementTask: MutationDeliveryTaskId,
-)
-
-sealed interface ValidatedLegacyMigrationEdge {
-    val dependency: ProjectDependencyObservation
-    val retirementTask: MutationDeliveryTaskId
-
-    class Planned internal constructor(
-        override val dependency: ProjectDependencyObservation,
-        override val retirementTask: MutationDeliveryTaskId,
-    ) : ValidatedLegacyMigrationEdge
-
-    class Active internal constructor(
-        override val dependency: ProjectDependencyObservation,
-        override val retirementTask: MutationDeliveryTaskId,
-    ) : ValidatedLegacyMigrationEdge
-}
-
-enum class LegacyImplementationBridgeLifecycle {
-    ACTIVE,
-    COMPLETED,
-}
-
-data class LegacyImplementationBridgePolicy(
-    val dependency: ProjectDependencyObservation,
-    val lifecycle: LegacyImplementationBridgeLifecycle,
-    val retirementTask: MutationDeliveryTaskId,
-)
-
-sealed interface ValidatedLegacyImplementationBridge {
-    val dependency: ProjectDependencyObservation
-    val retirementTask: MutationDeliveryTaskId
-
-    class Active internal constructor(
-        override val dependency: ProjectDependencyObservation,
-        override val retirementTask: MutationDeliveryTaskId,
-    ) : ValidatedLegacyImplementationBridge
-}
-
-enum class MutationDeliveryPhase {
-    FOUNDATION,
-    PLANNING,
-    APPLY,
-    TRANSITION_AND_VERIFICATION,
-    RECOVERY,
-    MIGRATION,
-    PROOF,
-}
-
-enum class MutationDeliveryTaskId {
-    F01, F02, F03, F04,
-    P01, P02, P03, P04, P05,
-    A01, A02, A03, A04, A05, A06, A07, A08,
-    V01, V02, V03, V04, V05,
-    R01, R02, R03,
-    M01, M02, M03, M04,
-    T01, T02, T03, T04, T05,
-}
-
-enum class MutationDeliveryTaskLifecycle {
-    OPEN,
-    COMPLETED,
-}
-
-sealed interface MutationDeliveryOwner {
-    data object BuildLogic : MutationDeliveryOwner
-
-    data object EndToEndCorpus : MutationDeliveryOwner
-
-    data class Modules(val ids: Set<ModuleId>) : MutationDeliveryOwner
-}
-
-data class MutationDeliveryTaskPolicy(
-    val id: MutationDeliveryTaskId,
-    val phase: MutationDeliveryPhase,
-    val name: String,
-    val lifecycle: MutationDeliveryTaskLifecycle,
-    val dependsOn: Set<MutationDeliveryTaskId>,
-    val owner: MutationDeliveryOwner,
-)
-
 data class ArchitecturePolicyDefinition(
     val modules: List<ModulePolicy>,
-    val targetModules: List<ModulePolicy>,
-    val mutationDeliveryTasks: List<MutationDeliveryTaskPolicy>,
-    val mutationRuntimeProcesses: List<MutationRuntimeProcessPolicy>,
-    val legacyAllowances: List<LegacyAllowance> = emptyList(),
-    val legacyMigrationEdges: List<LegacyMigrationEdgePolicy> = emptyList(),
-    val legacyImplementationBridges: List<LegacyImplementationBridgePolicy> = emptyList(),
 )
-
-enum class LegacyMigrationTargetFailure {
-    TARGET_ROLE_NOT_INWARD,
-    TARGET_RETIRED,
-}
 
 sealed interface ArchitecturePolicyValidation {
     data class Valid(val architecture: ValidatedArchitecturePolicy) : ArchitecturePolicyValidation
@@ -275,34 +125,5 @@ sealed interface ArchitecturePolicyValidation {
 
 class ValidatedArchitecturePolicy internal constructor(
     val modules: Map<ModuleId, ValidatedModulePolicy>,
-    val targetModules: Map<ModuleId, ValidatedModulePolicy>,
-    val mutationDeliveryTasks: Map<MutationDeliveryTaskId, MutationDeliveryTaskPolicy>,
-    val mutationRuntimeTopology: ValidatedMutationRuntimeTopology,
     val moduleOrder: List<ModuleId>,
-    val targetModuleOrder: List<ModuleId>,
-    val mutationDeliveryOrder: List<MutationDeliveryTaskId>,
-    val mutationRuntimeProcessOrder: List<MutationRuntimeProcessId>,
-    val legacyAllowances: Set<LegacyAllowance>,
-    val legacyMigrationEdges: Map<ProjectDependencyObservation, ValidatedLegacyMigrationEdge>,
-    val legacyImplementationBridges: Map<
-        ProjectDependencyObservation,
-        ValidatedLegacyImplementationBridge.Active,
-        >,
-) {
-    val mutationRuntimeProcesses: Map<MutationRuntimeProcessId, MutationRuntimeProcessPolicy>
-        get() = mutationRuntimeTopology.processes
-
-    internal fun targetView(): ValidatedArchitecturePolicy = ValidatedArchitecturePolicy(
-        modules = targetModules,
-        targetModules = targetModules,
-        mutationDeliveryTasks = mutationDeliveryTasks,
-        mutationRuntimeTopology = mutationRuntimeTopology,
-        moduleOrder = targetModuleOrder,
-        targetModuleOrder = targetModuleOrder,
-        mutationDeliveryOrder = mutationDeliveryOrder,
-        mutationRuntimeProcessOrder = mutationRuntimeProcessOrder,
-        legacyAllowances = emptySet(),
-        legacyMigrationEdges = emptyMap(),
-        legacyImplementationBridges = emptyMap(),
-    )
-}
+)
