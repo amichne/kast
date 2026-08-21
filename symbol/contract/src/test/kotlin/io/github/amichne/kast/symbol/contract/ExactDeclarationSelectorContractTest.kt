@@ -203,13 +203,16 @@ class ExactDeclarationSelectorContractTest {
             lease = lease(),
             scope = scope,
         ),
-        kind = when (kind) {
-            SymbolDiscoveryKind.FILE -> SymbolNameDiscoveryKind.FILE
-            SymbolDiscoveryKind.CLASS -> SymbolNameDiscoveryKind.CLASS
-            SymbolDiscoveryKind.SYMBOL -> SymbolNameDiscoveryKind.SYMBOL
-            SymbolDiscoveryKind.TEXT -> error("text candidates are not declaration selectors")
-        },
-        pattern = SymbolDiscoveryPattern.parse("service").refined(),
+        target = SymbolDiscoveryTarget.Name(
+            kind = when (kind) {
+                SymbolDiscoveryKind.FILE -> SymbolNameDiscoveryKind.FILE
+                SymbolDiscoveryKind.CLASS -> SymbolNameDiscoveryKind.CLASS
+                SymbolDiscoveryKind.SYMBOL -> SymbolNameDiscoveryKind.SYMBOL
+                SymbolDiscoveryKind.TEXT -> error("text candidates are not declaration selectors")
+            },
+            pattern = SymbolDiscoveryPattern.parse("service").refined(),
+            match = SymbolDiscoveryMatch.FUZZY,
+        ),
         budget = SymbolDiscoveryBudget(
             resources = ResourceBudget(
                 resultLimit = ResultLimit.parse(resultLimit.coerceAtLeast(1)).refined(),

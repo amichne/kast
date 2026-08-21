@@ -209,8 +209,11 @@ class NativeRelationContractTest {
         ).refined()
         val discoveryRequest = SymbolDiscoveryRequest(
             scope = SymbolSearchScopeRequest(lease(), scope),
-            kind = SymbolNameDiscoveryKind.SYMBOL,
-            pattern = SymbolDiscoveryPattern.parse("service").refined(),
+            target = SymbolDiscoveryTarget.Name(
+                kind = SymbolNameDiscoveryKind.SYMBOL,
+                pattern = SymbolDiscoveryPattern.parse("service").refined(),
+                match = SymbolDiscoveryMatch.FUZZY,
+            ),
             budget = SymbolDiscoveryBudget(
                 resources = ResourceBudget(
                     resultLimit = ResultLimit.parse(1).refined(),

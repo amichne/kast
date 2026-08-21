@@ -125,15 +125,6 @@ data class SymbolDiscoveryRequest(
     val target: SymbolDiscoveryTarget,
     val budget: SymbolDiscoveryBudget,
 ) {
-    /** Compatibility constructor for the name-discovery domain path. */
-    constructor(
-        scope: SymbolSearchScopeRequest,
-        kind: SymbolNameDiscoveryKind,
-        pattern: SymbolDiscoveryPattern,
-        budget: SymbolDiscoveryBudget,
-        match: SymbolDiscoveryMatch = SymbolDiscoveryMatch.FUZZY,
-    ) : this(scope, SymbolDiscoveryTarget.Name(kind, pattern, match), budget)
-
     val kind: SymbolDiscoveryKind
         get() = target.resultKind
 }

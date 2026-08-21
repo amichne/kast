@@ -241,7 +241,7 @@ class IntellijChangeSourceAdapter(
         if (DumbService.getInstance(project).isDumb) {
             IntellijSourcePreparation.Rejected(SourceWriteFailure.DUMB_MODE)
         } else {
-            ReadAction.compute<IntellijSourcePreparation, RuntimeException> {
+            ReadAction.computeBlocking<IntellijSourcePreparation, RuntimeException> {
                 prepareRead(authority)
             }
         }

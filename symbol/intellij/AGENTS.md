@@ -85,4 +85,4 @@ transport, or composition.
 2. Reformat and inspect every changed Kotlin file through the exact-worktree IDEA MCP.
 3. Build the changed files through IDEA.
 4. Run `./gradlew :symbol:intellij:test`.
-5. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+5. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

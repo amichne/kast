@@ -92,7 +92,8 @@ data class RawAddDeclarationPlanRequest(
      * Establishes a canonical absolute workspace root, one canonical workspace-contained Kotlin
      * target, an exact lowercase SHA-256 preimage identity, and non-blank normalized-LF declaration
      * text without a terminal line break. AddDeclarationIntentFailure is the closed expected
-     * failure. Raw strings may be extracted only by the legacy transport compatibility boundary.
+     * failure. Raw extraction is permitted only at the plan codec and explicit adapter
+     * boundaries.
      */
     fun refine(): Refinement<AddDeclarationIntent, AddDeclarationIntentFailure> {
         val root = canonicalAbsolutePath(workspaceRoot)

@@ -46,8 +46,8 @@ class TraversalModuleBoundaryTest {
             ModuleId.WORKSPACE_INTELLIJ,
             ModuleId.WORKSPACE_SERVICE,
             ModuleId.EVIDENCE_SQLITE,
-            ModuleId.CHANGE_APPLY_INTELLIJ,
-            ModuleId.CHANGE_APPLY_SERVICE,
+            ModuleId.CHANGE_INTELLIJ,
+            ModuleId.CHANGE_APPLY,
         )
 
         setOf(ModuleId.TRAVERSAL_CONTRACT, ModuleId.TRAVERSAL_SERVICE).forEach { id ->

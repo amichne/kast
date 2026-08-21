@@ -22,10 +22,13 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -278,10 +281,11 @@ class SymbolDiscoveryTest {
                     libraries = SymbolLibraryPolicy.EXCLUDE,
                 ),
             ),
-            kind = kind,
-            pattern = io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
-                .parse("Item")
-                .refined(),
+            target = SymbolDiscoveryTarget.Name(
+                kind = kind,
+                pattern = SymbolDiscoveryPattern.parse("Item").refined(),
+                match = SymbolDiscoveryMatch.FUZZY,
+            ),
             budget = SymbolDiscoveryBudget(
                 resources = ResourceBudget(
                     resultLimit = ResultLimit.parse(resultLimit).refined(),
@@ -292,7 +296,6 @@ class SymbolDiscoveryTest {
             ),
         )
     }
-
     private data class Fixture(
         val request: SymbolDiscoveryRequest,
         val scope: GlobalSearchScope,

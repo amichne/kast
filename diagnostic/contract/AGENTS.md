@@ -16,4 +16,4 @@ persistence, traversal, transport, or mutation.
 ## Verification ladder
 
 1. Run `./gradlew :diagnostic:service:test :diagnostic:intellij:test`.
-2. Run `./gradlew verifyKastArchitecture --configuration-cache` after architecture admission.
+2. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects` after architecture admission.

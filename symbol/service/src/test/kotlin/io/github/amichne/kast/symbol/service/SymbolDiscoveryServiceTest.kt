@@ -14,6 +14,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
@@ -21,6 +22,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
@@ -155,8 +157,11 @@ class SymbolDiscoveryServiceTest {
                 libraries = SymbolLibraryPolicy.EXCLUDE,
             ),
         ),
-        kind = SymbolNameDiscoveryKind.SYMBOL,
-        pattern = SymbolDiscoveryPattern.parse("Service").refined(),
+        target = SymbolDiscoveryTarget.Name(
+            kind = SymbolNameDiscoveryKind.SYMBOL,
+            pattern = SymbolDiscoveryPattern.parse("Service").refined(),
+            match = SymbolDiscoveryMatch.FUZZY,
+        ),
         budget = SymbolDiscoveryBudget(
             resources = ResourceBudget(
                 resultLimit = ResultLimit.parse(10).refined(),

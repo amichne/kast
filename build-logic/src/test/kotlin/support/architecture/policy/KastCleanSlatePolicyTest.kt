@@ -45,7 +45,7 @@ class KastCleanSlatePolicyTest {
                 ":cli",
                 ":indexer",
             ),
-            architecture.targetModules.values.mapTo(linkedSetOf()) { it.id.projectPath },
+            architecture.modules.values.mapTo(linkedSetOf()) { it.id.projectPath },
         )
     }
 
@@ -53,7 +53,7 @@ class KastCleanSlatePolicyTest {
     fun `terminal policy assigns every privileged effect to its sole owner`() {
         val architecture = canonicalArchitecture()
         val owners = ForbiddenEffect.entries.associateWith { effect ->
-            architecture.targetModules.values
+            architecture.modules.values
                 .filter { effect in it.allowedEffects }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id)
         }
@@ -90,14 +90,14 @@ class KastCleanSlatePolicyTest {
     @Test
     fun `runtime composition is the sole complete implementation graph owner`() {
         val architecture = canonicalArchitecture()
-        val composition = architecture.targetModules.getValue(ModuleId.RUNTIME_COMPOSITION)
+        val composition = architecture.modules.getValue(ModuleId.RUNTIME_COMPOSITION)
         val excluded = setOf(ModuleId.CLI, ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION)
 
         assertEquals(ModuleRole.COMPOSITION, composition.role)
-        assertEquals(architecture.targetModules.keys - excluded, composition.allowedProjectDependencies)
+        assertEquals(architecture.modules.keys - excluded, composition.allowedProjectDependencies)
         assertEquals(
             setOf(ModuleId.RUNTIME_COMPOSITION),
-            architecture.targetModules.values
+            architecture.modules.values
                 .filter { it.role == ModuleRole.COMPOSITION }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id),
         )
@@ -106,10 +106,10 @@ class KastCleanSlatePolicyTest {
     @Test
     fun `injected outward edge and foreign effect are closed policy failures`() {
         val definition = KastArchitecturePolicy.definition()
-        val traversal = definition.targetModules.single { it.id == ModuleId.TRAVERSAL_SERVICE }
-        val cli = definition.targetModules.single { it.id == ModuleId.CLI }
+        val traversal = definition.modules.single { it.id == ModuleId.TRAVERSAL_SERVICE }
+        val cli = definition.modules.single { it.id == ModuleId.CLI }
         val injected = definition.copy(
-            targetModules = definition.targetModules.map { module ->
+            modules = definition.modules.map { module ->
                 when (module.id) {
                     ModuleId.TRAVERSAL_SERVICE -> module.copy(
                         allowedProjectDependencies = module.allowedProjectDependencies +

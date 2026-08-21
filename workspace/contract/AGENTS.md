@@ -10,8 +10,8 @@ physical effects.
   lease.
 - `SourceRoot.kt` owns the clean-slate detached source-root proof, exact Gradle source-set
   ownership, and authored/generated/qualified-unknown provenance.
-- `WorkspaceSearchScopeModel.kt` retains the pre-clean-slate search-scope model until legacy
-  architecture removal.
+- `WorkspaceSearchScopeModel.kt` owns the generation-bound source-root model compiled into native
+  symbol and relation search scopes.
 - `WorkspaceResourcePolicy.kt` owns validated admission limits and pressure thresholds.
 - `WorkspaceResourceObservation.kt` owns detached resource observations, blockers, recovery
   actions, and separately timed admission outcomes.
@@ -43,5 +43,5 @@ physical effects.
 2. Run `./gradlew :workspace:contract:test --tests '*SourceRoot*PolicyTest'` after scope-model changes.
 3. Run `./gradlew :workspace:contract:test --tests '*WorkspaceResourcePolicyTest'` after resource-contract changes.
 4. Run `./gradlew :workspace:contract:test`.
-5. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+5. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.
 6. Run direct SPI and adapter consumers after changing a public contract.

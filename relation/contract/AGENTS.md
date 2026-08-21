@@ -20,4 +20,4 @@ not own IntelliJ, traversal, persistence, transport, workspace transitions, or m
 
 1. Run `./gradlew :relation:contract:test`.
 2. Run `./gradlew :relation:service:test :relation:intellij:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

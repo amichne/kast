@@ -39,5 +39,5 @@ cost, scope, finite resource budget, and completeness policy.
 
 1. Run `./gradlew :protocol:registry:test --tests io.github.amichne.kast.protocol.registry.OperationRegistryContractTest`.
 2. Run `./gradlew :kernel:test :protocol:registry:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.
 4. Run direct consumers after changing the public registry contract.

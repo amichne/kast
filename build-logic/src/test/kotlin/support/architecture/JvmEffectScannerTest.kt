@@ -48,7 +48,7 @@ class JvmEffectScannerTest {
         )
 
         val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
-            JvmEffectScanner.scan(module(ModuleId.ANALYSIS_API), listOf(classFile)),
+            JvmEffectScanner.scan(module(ModuleId.KERNEL), listOf(classFile)),
         )
 
         assertTrue(scanned.effects.any { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
@@ -59,7 +59,7 @@ class JvmEffectScannerTest {
         val classFile = sourceMutationClassFile(temporary, "fixture/mutation/SourceWriter")
 
         val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
-            JvmEffectScanner.scan(module(ModuleId.ANALYSIS_API), listOf(classFile)),
+            JvmEffectScanner.scan(module(ModuleId.KERNEL), listOf(classFile)),
         )
 
         assertTrue(scanned.effects.any { it.effect == ForbiddenEffect.FILESYSTEM_WRITE })

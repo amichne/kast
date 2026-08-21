@@ -20,10 +20,12 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
@@ -167,8 +169,11 @@ class MutationTargetAdmissionTest {
         )
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(lease, scope),
-            SymbolNameDiscoveryKind.SYMBOL,
-            SymbolDiscoveryPattern.parse("service").refined(),
+            SymbolDiscoveryTarget.Name(
+                SymbolNameDiscoveryKind.SYMBOL,
+                SymbolDiscoveryPattern.parse("service").refined(),
+                SymbolDiscoveryMatch.FUZZY,
+            ),
             SymbolDiscoveryBudget(
                 ResourceBudget(
                     ResultLimit.parse(1).refined(),

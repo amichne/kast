@@ -16,4 +16,4 @@ transport, workspace transitions, or mutation.
 
 1. Run `./gradlew :relation:service:test --tests '*RelationServiceTest'`.
 2. Run `./gradlew :relation:contract:test :relation:service:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

@@ -174,6 +174,99 @@ val stageInstalledProduct by tasks.registering(Sync::class) {
     from(controlProductDirectory)
 }
 
+val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
+    .map { configuredPrefix ->
+        require(configuredPrefix.isNotBlank()) {
+            "kastLocalPrefix must name a non-blank installation prefix"
+        }
+        file(configuredPrefix).toPath().toAbsolutePath().normalize().toFile()
+    }
+    .orElse(
+        providers.systemProperty("user.home")
+            .map { userHome -> file(userHome).resolve(".local") },
+    )
+
+val installLocalControl by tasks.registering(Sync::class) {
+    group = "distribution"
+    description = "Installs the current Kast control product into the local prefix."
+    dependsOn(stageKastControlProduct)
+    from(controlProductDirectory)
+    into(localInstallPrefix.map { it.resolve("share/kast/control") })
+}
+
+val installLocalRuntime by tasks.registering(Sync::class) {
+    group = "distribution"
+    description = "Installs the matching semantic runtime archive into the local prefix."
+    dependsOn(semanticRuntimeArchive)
+    from(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
+    into(localInstallPrefix.map { it.resolve("share/kast/runtime") })
+}
+
+val localLauncherContent = semanticRuntimeArchive.flatMap(Zip::getArchiveFileName)
+    .map { runtimeArchiveFileName ->
+        $$"""
+        |#!/bin/sh
+        |set -eu
+        |
+        |script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+        |install_prefix="$(CDPATH= cd -- "${script_dir}/.." && pwd -P)"
+        |control_executable="${install_prefix}/share/kast/control/bin/kast"
+        |runtime_archive="${install_prefix}/share/kast/runtime/$$runtimeArchiveFileName"
+        |
+        |if [ ! -x "${control_executable}" ]; then
+        |  echo "kast: installed control executable is missing: ${control_executable}" >&2
+        |  exit 1
+        |fi
+        |if [ ! -f "${runtime_archive}" ]; then
+        |  echo "kast: installed semantic runtime is missing: ${runtime_archive}" >&2
+        |  exit 1
+        |fi
+        |
+        |export KAST_RUNTIME_ARCHIVE="${runtime_archive}"
+        |exec "${control_executable}" "$@"
+        """.trimMargin()
+    }
+
+val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
+val installLocalLauncher = tasks.register<Exec>("installLocalLauncher") {
+    group = "distribution"
+    description = "Installs the relocatable local Kast launcher."
+    dependsOn(installLocalControl, installLocalRuntime)
+    inputs.property("launcherContent", localLauncherContent)
+    outputs.file(localLauncherFile)
+    outputs.upToDateWhen { false }
+    commandLine(
+        "bash",
+        "-c",
+        $$"""
+        |set -eu
+        |launcher="$1"
+        |launcher_content="$2"
+        |launcher_directory="$(dirname -- "${launcher}")"
+        |mkdir -p -- "${launcher_directory}"
+        |temporary_launcher="$(mktemp "${launcher_directory}/.kast.XXXXXX")"
+        |cleanup() {
+        |  rm -f -- "${temporary_launcher}"
+        |}
+        |trap cleanup EXIT
+        |printf '%s' "${launcher_content}" >"${temporary_launcher}"
+        |chmod 755 "${temporary_launcher}"
+        |mv -f -- "${temporary_launcher}" "${launcher}"
+        |trap - EXIT
+        """.trimMargin(),
+        "install-local-launcher",
+        localLauncherFile.get().absolutePath,
+        localLauncherContent.get(),
+    )
+}
+
+tasks.register("installLocal") {
+    group = "distribution"
+    description =
+        "Installs Kast under ~/.local, or the prefix selected by -PkastLocalPrefix."
+    dependsOn(installLocalLauncher)
+}
+
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
     description = "Executes the public target surface through only the staged installed product."

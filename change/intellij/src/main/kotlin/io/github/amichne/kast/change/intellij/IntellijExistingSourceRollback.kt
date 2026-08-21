@@ -49,7 +49,7 @@ internal class IntellijExistingSourceRollback(
         }
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
                    ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
-        val target = ReadAction.compute<KtFile?, RuntimeException> {
+        val target = ReadAction.computeBlocking<KtFile?, RuntimeException> {
             PsiManager.getInstance(project).findFile(file) as? KtFile
         } ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
         val document = FileDocumentManager.getInstance().getDocument(file)

@@ -20,6 +20,6 @@ It has no live IDE, filesystem, Gradle, database, transport, or aggregate-backen
 ## Verification ladder
 
 1. Run `./gradlew :workspace:service:test --tests '*WorkspaceTransitionCoordinatorTest' --tests '*WorkspaceResourceAdmissionControllerTest'`.
-2. Run `./gradlew :workspace:contract:test :workspace:spi:test :workspace:service:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+2. Run `./gradlew :workspace:contract:test :workspace:service:test`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.
 4. Run the indexer ingress and worker transition suites.

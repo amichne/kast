@@ -15,8 +15,8 @@ the consuming projects.
 - `support/tasks` owns IDEA distribution extraction, test-tag selection,
   runtime library synchronization, classpath layout proof, indexer-version
   generation, and wrapper scripts.
-- `support/architecture` owns the typed module graph, effect policy, migration
-  baseline, and checked-in architecture projection.
+- `support/architecture` owns the typed clean-slate module graph, effect policy,
+  and checked-in architecture projection.
 - `src/test/kotlin` contains task and convention contract tests.
 
 ## Dependency boundary

@@ -68,4 +68,4 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
 1. Run `./gradlew :symbol:contract:test --tests '*SourceRoot*PolicyTest' --tests '*SymbolDiscoveryContractTest' --tests '*SymbolSelectorContractTest' --tests '*ExactDeclarationSelectorContractTest' --tests '*NativeRelationContractTest'`.
 2. Run `./gradlew :symbol:contract:test`.
 3. Run direct IntelliJ adapter consumers after changing a public contract.
-4. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+4. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.
