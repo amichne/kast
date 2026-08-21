@@ -12,16 +12,14 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailur
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import java.nio.charset.StandardCharsets
 import java.nio.file.Path
-import java.security.MessageDigest
 
 /** Raw live-model projection consumed once at the installed IntelliJ boundary. */
 internal data class InstalledGradleModelBoundary(
     val root: CanonicalWorkspaceRoot,
     val importedModelComplete: Boolean,
     val sourceRoots: List<WorkspaceSourceRootBoundary>,
-    val identityFields: List<String>,
+    val identity: WorkspaceStateIdentity,
 )
 
 sealed interface InstalledGradleModelFailure {
@@ -35,8 +33,6 @@ sealed interface InstalledGradleModelFailure {
 
     data object SourceRootRejected : InstalledGradleModelFailure
 
-    data object StateIdentityRejected : InstalledGradleModelFailure
-
     data object ModelRejected : InstalledGradleModelFailure
 }
 
@@ -44,18 +40,14 @@ sealed interface InstalledGradleModelFailure {
  * Proof transition: `InstalledGradleModelBoundary -> InstalledGradleModelRead`.
  *
  * Captured establishes a complete coherent semantic scope, identical typed publication roots,
- * and deterministic state identity over explicit model, classpath, and source-content fields.
+ * and the semantic identity already refined by the physical Gradle-model capture boundary.
  * [InstalledGradleModelRead.Unavailable] closes every incomplete or inconsistent boundary state.
  * Raw Gradle strings and paths may enter only through [InstalledGradleModelBoundary].
  */
 internal fun projectInstalledGradleModel(
     boundary: InstalledGradleModelBoundary,
 ): InstalledGradleModelRead {
-    if (
-        !boundary.importedModelComplete ||
-        boundary.identityFields.isEmpty() ||
-        boundary.identityFields.any(String::isBlank)
-    ) {
+    if (!boundary.importedModelComplete) {
         return InstalledGradleModelRead.Unavailable(
             InstalledGradleModelFailure.IncompleteBoundary,
         )
@@ -83,14 +75,7 @@ internal fun projectInstalledGradleModel(
             )
         }
     }.distinct()
-    val state = when (val parsed = WorkspaceStateIdentity.parse(
-        modelIdentity(boundary),
-    )) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return InstalledGradleModelRead.Unavailable(
-            InstalledGradleModelFailure.StateIdentityRejected,
-        )
-    }
+    val state = boundary.identity
     return when (val model = InstalledGradleWorkspaceModel.admit(
         boundary.root,
         state,
@@ -127,30 +112,3 @@ private fun WorkspaceSourceRootBoundary.publicationEvidence(
 
 private fun Path.portableRelative(): String =
     joinToString("/") { it.toString() }.ifEmpty { "." }
-
-private fun modelIdentity(boundary: InstalledGradleModelBoundary): String {
-    val canonical = buildString {
-        appendField(boundary.root.value)
-        boundary.sourceRoots.sortedBy { it.sourceRoot.toString() }.forEach { sourceRoot ->
-            appendField(sourceRoot.ideaModuleName)
-            appendField(sourceRoot.linkedBuildRoot.toString())
-            appendField(sourceRoot.gradleProjectPath)
-            appendField(sourceRoot.sourceSetName)
-            appendField(sourceRoot.sourceRoot.toString())
-            appendField(sourceRoot.sourceKind.name)
-            appendField(sourceRoot.provenance.name)
-        }
-        boundary.identityFields.sorted().forEach { identity -> appendField(identity) }
-    }
-    return MessageDigest.getInstance("SHA-256")
-        .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-        .joinToString("") { byte ->
-            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-        }
-}
-
-private fun StringBuilder.appendField(value: String) {
-    append(value.toByteArray(StandardCharsets.UTF_8).size)
-    append(':')
-    append(value)
-}

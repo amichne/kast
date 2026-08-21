@@ -68,12 +68,27 @@ class SqliteCanonicalWorkspacePublicationTransaction private constructor(
         )
         is PreparedAdmission.Owned -> try {
             val committed = delegate.commit(admission.publication)
-            WorkspacePublicationResult.Published(
-                PublishedWorkspace.publish(
-                    admission.candidate,
-                    committed.commit.publication.generation,
-                ),
-            )
+            when (committed) {
+                is io.github.amichne.kast.evidence.contract.GenerationPublication.Published ->
+                    WorkspacePublicationResult.Advanced(
+                        PublishedWorkspace.publish(
+                            admission.candidate,
+                            committed.commit.publication.generation,
+                        ),
+                    )
+                is io.github.amichne.kast.evidence.contract.GenerationPublication.Unchanged ->
+                    WorkspacePublicationResult.Unchanged(
+                        PublishedWorkspace.publish(
+                            admission.candidate,
+                            committed.commit.publication.generation,
+                        ),
+                    )
+                io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedBeforeCommit,
+                is io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedAfterCommit,
+                    -> WorkspacePublicationResult.Rejected(
+                        WorkspacePublicationFailure.CapabilityUnavailable,
+                    )
+            }
         } catch (failure: Exception) {
             failure.rejectedResult()
         }

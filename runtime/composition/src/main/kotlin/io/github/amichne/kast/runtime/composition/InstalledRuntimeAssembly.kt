@@ -67,7 +67,7 @@ internal fun productionInstalledRuntimeAssembler(): InstalledRuntimeAssembler =
                 capture.root,
                 true,
                 capture.sourceRoots,
-                capture.identityFields,
+                capture.identity,
             ),
         )
         if (read is InstalledGradleModelRead.Unavailable) {
@@ -132,18 +132,18 @@ private fun assembleInstalledRuntime(
         workspaceModel,
     )
     val workspace = WorkspacePublicationCoordinator(reconciliation, publication)
-    when (val publicationRun = workspace.reconcile()) {
-        is WorkspacePublicationRun.Published -> if (
-            publicationRun.workspace.root != request.workspaceRoot.canonicalRoot
-        ) {
-            return rejected(InstalledRuntimeWorkspaceFailure.RootMismatch)
-        }
+    val publishedWorkspace = when (val publicationRun = workspace.reconcile()) {
+        is WorkspacePublicationRun.Published -> publicationRun.workspace
+        is WorkspacePublicationRun.Unchanged -> publicationRun.workspace
         WorkspacePublicationRun.NoWork ->
             return rejected(InstalledRuntimeWorkspaceFailure.NoPublication)
         WorkspacePublicationRun.Invalidated ->
             return rejected(InstalledRuntimeWorkspaceFailure.Invalidated)
         is WorkspacePublicationRun.Blocked ->
             return rejected(InstalledRuntimeWorkspaceFailure.Blocked)
+    }
+    if (publishedWorkspace.root != request.workspaceRoot.canonicalRoot) {
+        return rejected(InstalledRuntimeWorkspaceFailure.RootMismatch)
     }
     val platform = ports.create(workspace, workspaceModel)
     val graph = KastRuntimeComposition.constructGraph(

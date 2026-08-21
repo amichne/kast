@@ -41,7 +41,7 @@ class InstalledWorkspaceModelAdapterTest {
                 published.root,
                 true,
                 listOf(boundary),
-                listOf("classpath:file:///fixture.jar", "source:fixture"),
+                published.sourceState,
             ),
         ) as InstalledGradleModelRead.Captured
         val model = read.model

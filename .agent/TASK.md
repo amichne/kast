@@ -2,33 +2,48 @@
 
 ## Goal
 
-The completed minimal indexer lifecycle changes are merged through a green pull request and published as the immutable minor release `v0.26.0`.
+A semantically identical workspace observation produces the same strongly typed, reproducible semantic identity and atomically preserves the current generation and read lease, while a real semantic change advances the generation exactly once.
 
 ## Allowed Writes
 
 - `.agent/TASK.md`
-- `AGENTS.md`
-- `cli/AGENTS.md`
-- `cli/src/main/kotlin/io/github/amichne/kast/cli/`
-- `cli/src/test/kotlin/io/github/amichne/kast/cli/`
-- `workspace/intellij/build.gradle.kts`
-- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleJvm.kt`
-- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt`
-- `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledProjectJvm.kt`
-- `workspace/intellij/src/test/kotlin/io/github/amichne/kast/workspace/intellij/InstalledProjectJvmTest.kt`
+- `.agent-turn/kotlin-agentic-correctness/`
+- `workspace/contract/src/`
+- `workspace/service/src/`
+- `workspace/intellij/src/`
+- `evidence/contract/src/`
+- `evidence/sqlite/src/`
+- `runtime/composition/src/`
 
 No other paths may be modified.
 
 ## Allowed Reads
 
-- Repository source, instructions, Git history, build and release metadata, local validation evidence, GitHub pull-request state, GitHub Actions state and logs, and GitHub release state.
+- `AGENTS.md`
+- `.agent/TASK.md`
+- `workspace/`
+- `evidence/`
+- `runtime/`
+- `protocol/`
+- `kernel/`
+- `packaging/`
+- `integration-tests/`
+- `build.gradle.kts`
+- `settings.gradle.kts`
+- `gradle/`
+- `gradlew`
+- `.github/`
+- Git history and repository state.
+- The installed Kast command, its managed installation, and official GitHub release metadata.
 
 ## Non-Goals
 
-- Changing behavior beyond fixes required for this pull request's deterministic CI failures.
-- Modifying release automation, repository secrets, environment protection, or branch protection.
-- Including `session-ses_fecf.md` or `tmp.md` in any commit.
-- Moving, deleting, or force-updating an existing tag or release.
+- Implementing or changing member extension function or property resolution.
+- Implementing or changing request chaining or pipeline semantics.
+- Implementing or changing call-graph resolution.
+- Rebinding selectors or read leases across a real semantic mutation.
+- Redesigning event-source federation beyond changes strictly required for semantic identity stability.
+- Publishing the findings report to an external gist or service.
 - Refactoring unrelated code.
 - Generalizing the implementation.
 - Fixing unrelated failures.
@@ -39,47 +54,46 @@ No other paths may be modified.
 Command:
 
 ```shell
-test -n "$(gh pr list --head feature/indexer-lifecycle-commands --state merged --json number --jq '.[0].number')" && gh release view v0.26.0
+./gradlew :evidence:sqlite:test --tests '*SqliteWorkspaceGenerationPublicationTest'
 ```
 
 Expected failure:
 
-No merged pull request exists for the delivery branch and release `v0.26.0` does not exist.
+The added identical-publication test shows that committing the same canonical semantic state a second time allocates a new generation instead of returning an atomic unchanged result with the current generation.
 
 ## Green Proof
 
 Command:
 
 ```shell
-pr="$(gh pr list --head feature/indexer-lifecycle-commands --state merged --json number --jq '.[0].number')" && test -n "$pr" && gh pr checks "$pr" --required --json bucket,name,state,workflow && gh release view v0.26.0 --json assets,isDraft,isImmutable,isLatest,isPrerelease,publishedAt,tagName,targetCommitish,url
+./gradlew :workspace:contract:test :workspace:service:test :workspace:intellij:test :evidence:contract:test :evidence:sqlite:test :runtime:composition:test :runtime:server:test verifyKastArchitecture verifyKastModuleGraph verifyNoLegacyArchitecture installedProductTest
 ```
 
 ## Done When
 
-- One focused pull request contains the completed minimal lifecycle changes and excludes unrelated user files.
-- The pull request's required checks are green for its final head.
-- The pull request is merged into `main`.
-- The checked-in release workflow completes successfully for version `0.26.0` from the exact merged `main` commit.
-- GitHub reports `v0.26.0` as a published, immutable, non-prerelease release with the expected control and semantic-runtime assets and checksums.
+- Canonically equivalent semantic inputs produce the same strongly typed identity regardless of capture order, no-op Gradle import metadata, or process restart.
+- Identical publication returns a typed unchanged outcome inside the SQLite transaction and preserves the current generation and read lease.
+- A real semantic input change returns a typed advanced outcome and increments the generation exactly once.
+- Local stress evidence covers restart, no-op refresh, real semantic change, and reuse of a generation-bound read token.
+- Extension/property, request-chaining, and call-graph observations are documented without implementation changes.
 - The Green Proof passes.
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
 ## Execution State
 
-- Branch `feature/indexer-lifecycle-commands` was created from exact `origin/main` commit `5e834d4b678aaed072b3006aae376e8501cf7760`.
-- GitHub reports `v0.25.4` as the latest immutable release, so the requested minor release is `v0.26.0`.
-- The exact CI Gradle command and repository-shape check pass locally before publication.
-- Pull request `#628` merged as `9653fcc4339b8b8caa5282e128247e7f395c9142` after all five checks passed.
-- Release run `32403634592` failed before publication because enterprise acceptance timed out waiting for Gradle import completion; no `v0.26.0` tag or release exists.
-- The release-only failure reproduces locally. IntelliJ completed Gradle import and indexing, then invoked its contextual task-completion callback, which the legacy-only observer did not consume. After that callback was admitted, the indexer reached its server loop in about twelve seconds.
-- The same live proof exposed a second boundary defect: the detached indexer inherited the CLI's stderr pipe. The CLI process exited, but captured callers waited for pipe EOF until timeout. The launcher now detaches both output streams.
-- The focused CLI and workspace tests pass, and the previously failing `enterpriseAcceptance --rerun-tasks` proof now passes in 1 minute 58 seconds with no retained indexer process or recent Kast socket.
-- The full CI-equivalent Gradle command passes in 1 minute 30 seconds, and the repository-shape gate reports zero violations.
-- Branch `fix/gradle-import-observer` contains the narrow callback compatibility fix required to unblock release acceptance.
-- `session-ses_fecf.md` and `tmp.md` remain untracked and unstaged.
-
+- The task plan was confirmed with semantic identity stability as the exclusive implementation scope.
+- The installed command is Kast `0.26.0`, which GitHub reports as the latest non-prerelease release, so the requested local upgrade is already satisfied.
+- RED proved that a second identical SQLite commit persisted generation `2` for the same identity.
+- SQLite now compares typed identity and graph evidence inside the transaction and returns `Unchanged` without allocating a new durable generation.
+- The canonical publication contract now distinguishes `Advanced`, `Unchanged`, and `Rejected`; an unchanged mutation result remains a typed `GENERATION_NOT_NEWER` rejection.
+- The IntelliJ capture now consumes import timestamps only as model-completeness evidence and emits one versioned `WorkspaceStateIdentity` from typed, order-independent semantic inputs and exact classpath URLs.
+- Focused proofs retain generation `1` across an installed-runtime reconstruction and advance to generation `2` for a changed semantic identity.
+- The owning-module and direct-consumer test ring passes after a clean build; the final full `test`, module-graph, no-legacy, and repository-shape checks also pass.
+- Repository-wide completion is blocked by pre-existing verification infrastructure: `verifyKastArchitecture` describes retired modules as active and the current `runtime:composition` module as merely planned, while `installedProductTest` stages the product but cannot establish the runtime endpoint.
+- `session-ses_fecf.md` and `tmp.md` are pre-existing untracked user files and must remain untouched.
 
 ## Out-of-Scope Findings
 
-- None
+- The architecture policy model is stale relative to the 32-project topology in `settings.gradle.kts`; repairing it is unrelated to semantic identity stability.
+- Both the staged product and installed Kast `0.26.0` report `endpoint-unavailable` before a live semantic request can run. Another user-owned Kast indexer for a separate worktree is active and was not interrupted.
