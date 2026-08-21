@@ -1,11 +1,9 @@
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
-import io.github.amichne.kast.cli.CliLocalCommand
-import io.github.amichne.kast.cli.CliLifecycleCommand
 import io.github.amichne.kast.cli.CliProcessOutput
 import io.github.amichne.kast.cli.CliTextDocument
-import io.github.amichne.kast.cli.canonicalCliSyntaxes
+import io.github.amichne.kast.cli.command.CliLocalCommand
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
@@ -18,14 +16,12 @@ sealed interface CliLocalMetadataAdmission {
     data class Rejected(val failure: CliLocalMetadataFailure) : CliLocalMetadataAdmission
 }
 
-/** Exact process-local help, version, and schema documents. */
+/** Exact process-local version and schema documents. Clikt owns help rendering. */
 class CliLocalMetadata private constructor(
-    private val help: CliTextDocument,
     private val version: CliTextDocument,
     private val schema: CliJsonDocument,
 ) {
     fun output(command: CliLocalCommand): CliProcessOutput = when (command) {
-        CliLocalCommand.HELP -> help
         CliLocalCommand.VERSION -> version
         CliLocalCommand.SCHEMA -> schema
     }
@@ -34,8 +30,8 @@ class CliLocalMetadata private constructor(
         /**
          * Proof transition: `String + String + String -> CliLocalMetadataAdmission`.
          *
-         * Establishes non-blank product identity, canonical runtime identity, canonical JSON
-         * schema, and help generated from the executable command authority.
+         * Establishes non-blank product identity, canonical runtime identity, and canonical JSON
+         * schema. Clikt generates help from the executable command graph.
          * [CliLocalMetadataFailure] is the closed expected failure. Raw resource text may leave
          * only at this installed-control metadata boundary.
          */
@@ -61,7 +57,6 @@ class CliLocalMetadata private constructor(
             } ?: return CliLocalMetadataAdmission.Rejected(CliLocalMetadataFailure.SCHEMA_INVALID)
             return CliLocalMetadataAdmission.Admitted(
                 CliLocalMetadata(
-                    CliTextDocument.admitted(helpText()),
                     CliTextDocument.admitted(
                         "kast $productVersion (semantic runtime $runtimeIdentity)",
                     ),
@@ -69,20 +64,5 @@ class CliLocalMetadata private constructor(
                 ),
             )
         }
-
-        private fun helpText(): String = buildString {
-            appendLine("Usage: kast <command> [options]")
-            appendLine("       kast --help | --version | --schema")
-            appendLine()
-            appendLine("Semantic commands:")
-            canonicalCliSyntaxes.forEach { syntax -> appendLine("  ${syntax.usage}") }
-            appendLine()
-            appendLine("Lifecycle commands:")
-            CliLifecycleCommand.entries.forEach { command -> appendLine("  ${command.command}") }
-            appendLine()
-            appendLine("Relation kinds: references, callers, callees, implementations, inheritors, overrides, type-uses")
-            appendLine("Change intents: add-file, add-declaration, replace-declaration, rename-symbol")
-            appendLine("Exit codes: 0 semantic outcome, 2 usage, 3 root, 4 runtime, 5 transport, 6 wire, 7 projection, 9 bootstrap")
-        }.trimEnd()
     }
 }

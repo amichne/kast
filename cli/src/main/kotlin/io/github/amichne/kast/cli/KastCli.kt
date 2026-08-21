@@ -1,7 +1,12 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.cli.command.CliAction
+import io.github.amichne.kast.cli.command.CliCommandFailure
+import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.cli.command.CliCommandParsing
+import io.github.amichne.kast.cli.command.CliLifecycleCommand
+import io.github.amichne.kast.cli.command.outputReason
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -10,7 +15,7 @@ import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
 class KastCli(
-    private val projections: CliProjectionTable,
+    private val commandGraphFactory: CliCommandGraphFactory,
     private val rootDiscovery: CanonicalRootDiscoverer,
     private val endpointLocator: RuntimeEndpointLocator,
     private val runtimeDemander: RuntimeDemander,
@@ -29,27 +34,24 @@ class KastCli(
         argv: List<String>,
         start: Path,
     ): CliExit {
-        return when (val parsed = CliCommandParser.parse(argv)) {
-            is CliCommandParsing.Local -> return CliExit.Complete(
-                localMetadata.output(parsed.command),
-            )
-            is CliCommandParsing.Lifecycle -> executeLifecycle(parsed.command, start)
-            is CliCommandParsing.Parsed -> executeSemantic(parsed.invocation, start)
-            is CliCommandParsing.Rejected -> boundaryExit(
-                CliBoundaryExitStatus.USAGE,
-                parsed.failure.outputReason(),
-            )
+        return when (val parsed = commandGraphFactory.parse(argv)) {
+            is CliCommandParsing.Parsed -> executeAction(parsed.action, start)
+            is CliCommandParsing.Help -> CliExit.Complete(parsed.document)
+            is CliCommandParsing.Rejected -> usageExit(parsed.failure, parsed.diagnostic)
+            is CliCommandParsing.ProjectionRejected -> projectionFailure(parsed.failure)
         }
     }
 
+    private fun executeAction(action: CliAction, start: Path): CliExit = when (action) {
+        is CliAction.Local -> CliExit.Complete(localMetadata.output(action.command))
+        is CliAction.Semantic -> executeSemantic(action.request, start)
+        is CliAction.Lifecycle -> executeLifecycle(action, start)
+    }
+
     private fun executeSemantic(
-        invocation: CliInvocation,
+        request: PreparedCliRequest,
         start: Path,
     ): CliExit {
-        val request = when (val preparation = projections.prepare(invocation)) {
-            is CliProjectionPreparation.Prepared -> preparation.request
-            is CliProjectionPreparation.Rejected -> return projectionFailure(preparation.failure)
-        }
         val boundary = when (val resolution = resolveRuntimeBoundary(start)) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
@@ -58,55 +60,41 @@ class KastCli(
     }
 
     private fun executeLifecycle(
-        command: CliLifecycleCommand,
+        action: CliAction.Lifecycle,
         start: Path,
     ): CliExit {
         val boundary = when (val resolution = resolveRuntimeBoundary(start)) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
         }
-        return when (command) {
-            CliLifecycleCommand.START -> executeWorkspaceInspect(boundary)
-            CliLifecycleCommand.STATUS -> statusExit(
+        return when (action) {
+            is CliAction.Lifecycle.Start -> executeRequest(action.request, boundary)
+            CliAction.Lifecycle.Status -> statusExit(
                 boundary.endpoint,
                 lifecycle.status(boundary.endpoint),
             )
-            CliLifecycleCommand.STOP -> stopExit(
-                command,
+            CliAction.Lifecycle.Stop -> stopExit(
+                action.command,
                 boundary.endpoint,
                 lifecycle.stop(boundary.endpoint),
             )
-            CliLifecycleCommand.CLEAN -> cleanExit(
-                command,
+            CliAction.Lifecycle.Clean -> cleanExit(
+                action.command,
                 boundary.endpoint,
                 lifecycle.clean(boundary.endpoint),
             )
-            CliLifecycleCommand.REINDEX -> {
+            is CliAction.Lifecycle.Reindex -> {
                 val stopped = lifecycle.stop(boundary.endpoint)
                 if (stopped is RuntimeStopResult.Rejected) {
-                    return stopExit(command, boundary.endpoint, stopped)
+                    return stopExit(action.command, boundary.endpoint, stopped)
                 }
                 val cleaned = lifecycle.clean(boundary.endpoint)
                 if (cleaned is RuntimeCleanResult.Rejected) {
-                    return cleanExit(command, boundary.endpoint, cleaned)
+                    return cleanExit(action.command, boundary.endpoint, cleaned)
                 }
-                executeWorkspaceInspect(boundary)
+                executeRequest(action.request, boundary)
             }
         }
-    }
-
-    private fun executeWorkspaceInspect(
-        boundary: CliRuntimeBoundaryResolution.Resolved,
-    ): CliExit {
-        val invocation = CliInvocation(
-            CanonicalOperation.WORKSPACE_INSPECT,
-            CliArguments(emptyList()),
-        )
-        val request = when (val preparation = projections.prepare(invocation)) {
-            is CliProjectionPreparation.Prepared -> preparation.request
-            is CliProjectionPreparation.Rejected -> return projectionFailure(preparation.failure)
-        }
-        return executeRequest(request, boundary)
     }
 
     private fun resolveRuntimeBoundary(start: Path): CliRuntimeBoundaryResolution {
@@ -248,10 +236,6 @@ class KastCli(
     }
 
     private fun projectionFailure(failure: CliProjectionFailure): CliExit = when (failure) {
-        is CliProjectionFailure.ArgumentsRejected -> boundaryExit(
-            CliBoundaryExitStatus.PROJECTION,
-            "arguments-rejected",
-        )
         is CliProjectionFailure.RequestEncodingFailed -> boundaryExit(
             CliBoundaryExitStatus.PROTOCOL,
             "request-encoding-rejected",
@@ -282,11 +266,10 @@ enum class CliBoundaryExitStatus(
     RUNTIME(4),
     TRANSPORT(5),
     PROTOCOL(6),
-    PROJECTION(7),
     BOOTSTRAP(9),
 }
 
-/** Complete and exhaustive process result; every variant carries canonical JSON. */
+/** Complete and exhaustive process result; every variant carries one admitted process document. */
 sealed interface CliExit {
     val code: Int
     val document: CliProcessOutput
@@ -332,9 +315,17 @@ internal fun boundaryExit(
         ),
     )
 
-private fun CliCommandFailure.outputReason(): String = when (this) {
-    CliCommandFailure.MissingCommand -> "missing-command"
-    CliCommandFailure.UnknownCommand -> "unknown-command"
-    CliCommandFailure.TooManyArguments -> "too-many-arguments"
-    is CliCommandFailure.InvalidArgument -> "invalid-argument-${failure.name.lowercase()}"
-}
+private fun usageExit(
+    failure: CliCommandFailure,
+    diagnostic: CliTextDocument,
+): CliExit.BoundaryRejected = CliExit.BoundaryRejected(
+    CliBoundaryExitStatus.USAGE,
+    CliJsonDocument.from(
+        buildJsonObject {
+            put("status", "rejected")
+            put("boundary", "usage")
+            put("reason", failure.outputReason())
+            put("diagnostic", diagnostic.value)
+        },
+    ),
+)

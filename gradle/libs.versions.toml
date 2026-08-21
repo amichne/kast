@@ -1,5 +1,6 @@
 [versions]
 kotlin = "2.4.10"
+clikt = "5.1.0"
 shadow = "9.4.1"
 vanniktech-maven-publish-plugin = "0.35.0"
 coroutines = "1.10.2"
@@ -19,6 +20,7 @@ json-schema-validator = "3.0.3"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+clikt-core = { module = "com.github.ajalt.clikt:clikt-core", version.ref = "clikt" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }

@@ -11,6 +11,7 @@ application {
 }
 
 dependencies {
+    implementation(libs.clikt.core)
     implementation(project(":distribution:contract"))
     implementation(project(":distribution:managed"))
     implementation(project(":kernel"))

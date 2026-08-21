@@ -2,7 +2,10 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
-import io.github.amichne.kast.cli.projection.canonicalCliProjections
+import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
+import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.cli.command.CliCommandSurface
+import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifestAdmission
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeSource
@@ -34,10 +37,12 @@ class InstalledKastCliComposition : KastCliComposition {
     override fun create(): KastCli {
         val installation = InstalledKastControlProduct.discover()
         val manifest = installation.runtimeManifest()
-        val projections = when (val construction = CliProjectionTable.create(canonicalCliProjections())) {
-            is CliProjectionTableConstruction.Created -> construction.table
-            is CliProjectionTableConstruction.Rejected -> error(
-                "canonical CLI projection table is incomplete: ${construction.failures}",
+        val commandGraphFactory = when (
+            val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
+        ) {
+            is CliCommandGraphConstruction.Created -> construction.factory
+            is CliCommandGraphConstruction.Rejected -> error(
+                "canonical CLI command graph is incomplete: ${construction.failures}",
             )
         }
         val runtimeDirectory = when (val admitted = InstalledRuntimeDirectory.admit()) {
@@ -47,7 +52,7 @@ class InstalledKastCliComposition : KastCliComposition {
             )
         }
         return KastCli(
-            projections,
+            commandGraphFactory,
             FilesystemCanonicalRootDiscovery,
             Sha256RuntimeEndpointLocator(runtimeDirectory.path, manifest.runtimeId),
             ManagedExactRootRuntimeDemander(
@@ -55,7 +60,7 @@ class InstalledKastCliComposition : KastCliComposition {
                 InstalledSemanticRuntimeResolver(::resolveInstalledRuntime),
             ),
             UnixDomainWireClient(),
-            installation.localMetadata(manifest),
+            installation.localMetadata(manifest, commandGraphFactory.surface),
         )
     }
 }
@@ -74,11 +79,15 @@ private class InstalledKastControlProduct private constructor(
         }
     }
 
-    fun localMetadata(manifest: SemanticRuntimeManifest): CliLocalMetadata {
+    fun localMetadata(
+        manifest: SemanticRuntimeManifest,
+        commandSurface: CliCommandSurface,
+    ): CliLocalMetadata {
         val schema = installedSchema(
             readResource("operation-registry.json"),
             readResource("wire-schema.json"),
             manifest.canonicalJson.value,
+            commandSurface,
         )
         return when (
             val admitted = CliLocalMetadata.admit(
@@ -137,6 +146,7 @@ private fun installedSchema(
     operationRegistry: String,
     wireSchema: String,
     runtimeManifest: String,
+    commandSurface: CliCommandSurface,
 ): String {
     val json = Json { explicitNulls = false }
     fun objectResource(raw: String): JsonObject =
@@ -144,13 +154,15 @@ private fun installedSchema(
         ?: error("control schema resource is not an object")
 
     val projection = buildJsonObject {
-        put("localFlags", JsonArray(listOf("--help", "--version", "--schema").map(::JsonPrimitive)))
+        put("localFlags", JsonArray(commandSurface.localFlags.map(::JsonPrimitive)))
         put(
             "lifecycleCommands",
-            JsonArray(CliLifecycleCommand.entries.map { JsonPrimitive(it.command) }),
+            JsonArray(commandSurface.lifecycleCommands.map { JsonPrimitive(it.command) }),
         )
         put("commands", buildJsonArray {
-            canonicalCliSyntaxes.forEach { syntax -> add(JsonPrimitive(syntax.usage)) }
+            commandSurface.semanticCommands.forEach { command ->
+                add(JsonPrimitive(command.usage))
+            }
         })
     }
     val schema = buildJsonObject {

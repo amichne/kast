@@ -98,6 +98,15 @@ Command:
 - Scope constraint: the implementation delta after the recorded `B630 + B631` baseline is a subset of `.agent/TASK.md`, `.agent-turn/kotlin-agentic-correctness/`, `gradle/libs.versions.toml`, `cli/AGENTS.md`, `cli/build.gradle.kts`, and `cli/src/`.
 - Immutability constraint: the implementation delta after the recorded baseline contains no path under `protocol/`, `runtime/`, `workspace/`, `symbol/`, `relation/`, `traversal/`, `diagnostic/`, `change/`, `evidence/`, `distribution/`, or `kernel/`.
 - Baseline heads confirmed: PR 630 `6811f04894db12138808ad490e3d50eb7c367693`; PR 631 `45cde77e934b61ef1641a87d312ebbd7f0c3815c`.
+- Ordered baseline merge recorded as `d5d399f8bb0589bf4c2eacb2e7a213330470a6f4`.
+- Kotlin evidence session: `.agent-turn/kotlin-agentic-correctness/20260821T060501Z-clikt-command-graph/`.
+- RED observed: `CliCommandGraphContractTest` failed because `-h` was rejected by the hand-rolled parser instead of completing with root help.
+- `CLI_BOUNDARY`, `COMMAND_FAMILIES`, and `LEGACY_REMOVAL` completed: Clikt is the sole token grammar and every leaf refines directly to an existing request or lifecycle action.
+- Final Green Proof passed after the proof-carrying Kotlin audit.
+- Repository shape passed with zero violations; the command package has ten direct children and every changed Kotlin file remains below 400 lines.
+- Distribution content and size proofs passed with Clikt packaged in the staged product.
+- Staged launcher proof passed: `--schema | jq` reported eleven semantic commands, five lifecycle commands, and three local entries; malformed mode options returned one JSON diagnostic with exit status 2.
+- Optional `installedProductTest` reached the baseline environment concern `runtime/endpoint-unavailable`; CLI-local staged-product behavior remained independently proven.
 
 ## Out-of-Scope Findings
 

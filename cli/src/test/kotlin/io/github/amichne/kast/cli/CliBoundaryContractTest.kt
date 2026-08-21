@@ -2,6 +2,12 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.cli.command.CliAction
+import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
+import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.cli.command.CliCommandParsing
+import io.github.amichne.kast.cli.command.CliLifecycleCommand
+import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -16,36 +22,44 @@ class CliBoundaryContractTest {
     fun `exactly eleven public command projections parse to canonical operations`() {
         val commands = mapOf(
             listOf("workspace", "inspect") to CanonicalOperation.WORKSPACE_INSPECT,
-            listOf("symbol", "discover") to CanonicalOperation.SYMBOL_DISCOVER,
-            listOf("symbol", "resolve") to CanonicalOperation.SYMBOL_RESOLVE,
-            listOf("symbol", "describe") to CanonicalOperation.SYMBOL_DESCRIBE,
-            listOf("relation", "read") to CanonicalOperation.RELATION_READ,
-            listOf("traversal", "run") to CanonicalOperation.TRAVERSAL_RUN,
-            listOf("diagnostic", "check") to CanonicalOperation.DIAGNOSTIC_CHECK,
-            listOf("change", "plan") to CanonicalOperation.CHANGE_PLAN,
-            listOf("change", "apply") to CanonicalOperation.CHANGE_APPLY,
-            listOf("change", "verify") to CanonicalOperation.CHANGE_VERIFY,
-            listOf("change", "recover") to CanonicalOperation.CHANGE_RECOVER,
+            listOf("symbol", "discover", "--query", "Example", "--limit", "10") to
+                CanonicalOperation.SYMBOL_DISCOVER,
+            listOf("symbol", "resolve", "--candidate", "candidate") to
+                CanonicalOperation.SYMBOL_RESOLVE,
+            listOf("symbol", "describe", "--selector", "selector") to
+                CanonicalOperation.SYMBOL_DESCRIBE,
+            listOf(
+                "relation", "read", "--selector", "selector", "--relation", "references",
+                "--limit", "10",
+            ) to CanonicalOperation.RELATION_READ,
+            listOf(
+                "traversal", "run", "--selector", "selector", "--relation", "callers",
+                "--maximum-depth", "2", "--maximum-results", "10",
+            ) to CanonicalOperation.TRAVERSAL_RUN,
+            listOf("diagnostic", "check", "--scope", ".", "--limit", "10") to
+                CanonicalOperation.DIAGNOSTIC_CHECK,
+            listOf(
+                "change", "plan", "--intent", "add-file", "--path", "A.kt", "--content",
+                "class A",
+            ) to CanonicalOperation.CHANGE_PLAN,
+            listOf("change", "apply", "--plan", "plan") to CanonicalOperation.CHANGE_APPLY,
+            listOf("change", "verify", "--application", "application") to
+                CanonicalOperation.CHANGE_VERIFY,
+            listOf("change", "recover", "--plan", "plan") to CanonicalOperation.CHANGE_RECOVER,
         )
 
+        val factory = commandGraphFactory()
         assertEquals(CanonicalOperation.entries.toSet(), commands.values.toSet())
         commands.forEach { (argv, operation) ->
-            val invocation = CliCommandParser.parse(argv).parsedInvocation()
-            assertEquals(operation, invocation.operation)
-            assertTrue(invocation.arguments.values.isEmpty())
+            val parsed = factory.parse(argv)
+            assertTrue(parsed is CliCommandParsing.Parsed)
+            val action = (parsed as CliCommandParsing.Parsed).action
+            assertTrue(action is CliAction.Semantic)
+            assertEquals(operation, (action as CliAction.Semantic).request.operation)
         }
-        assertEquals(
-            CliCommandParsing.Rejected(CliCommandFailure.MissingCommand),
-            CliCommandParser.parse(emptyList()),
-        )
-        assertEquals(
-            CliCommandParsing.Rejected(CliCommandFailure.UnknownCommand),
-            CliCommandParser.parse(listOf("workspace", "refresh")),
-        )
-        assertEquals(
-            CliCommandParsing.Rejected(CliCommandFailure.UnknownCommand),
-            CliCommandParser.parse(listOf("up")),
-        )
+        assertTrue(factory.parse(emptyList()) is CliCommandParsing.Rejected)
+        assertTrue(factory.parse(listOf("workspace", "refresh")) is CliCommandParsing.Rejected)
+        assertTrue(factory.parse(listOf("up")) is CliCommandParsing.Rejected)
     }
 
     @Test
@@ -58,30 +72,28 @@ class CliBoundaryContractTest {
             "reindex" to CliLifecycleCommand.REINDEX,
         )
 
+        val factory = commandGraphFactory()
         commands.forEach { (argument, command) ->
-            assertEquals(
-                CliCommandParsing.Lifecycle(command),
-                CliCommandParser.parse(listOf(argument)),
-            )
+            val parsed = factory.parse(listOf(argument))
+            assertTrue(parsed is CliCommandParsing.Parsed)
+            val action = (parsed as CliCommandParsing.Parsed).action
+            assertTrue(action is CliAction.Lifecycle)
+            assertEquals(command, (action as CliAction.Lifecycle).command)
         }
-        assertEquals(
-            CliCommandParsing.Rejected(CliCommandFailure.UnknownCommand),
-            CliCommandParser.parse(listOf("start", "unexpected")),
-        )
+        assertTrue(factory.parse(listOf("start", "unexpected")) is CliCommandParsing.Rejected)
     }
 
     @Test
     fun `command arguments are bounded boundary values`() {
-        val parsed = CliCommandParser.parse(
-            listOf("symbol", "discover", "--query", "Example"),
-        ).parsedInvocation()
+        val factory = commandGraphFactory()
 
-        assertEquals(listOf("--query", "Example"), parsed.arguments.values.map(CliArgument::value))
-        assertEquals(
-            CliCommandParsing.Rejected(
-                CliCommandFailure.InvalidArgument(CliArgumentFailure.BLANK),
-            ),
-            CliCommandParser.parse(listOf("symbol", "discover", "")),
+        assertTrue(
+            factory.parse(
+                listOf("symbol", "discover", "--query=Example", "--limit=10"),
+            ) is CliCommandParsing.Parsed,
+        )
+        assertTrue(
+            factory.parse(listOf("symbol", "discover", "")) is CliCommandParsing.Rejected,
         )
     }
 
@@ -147,11 +159,11 @@ class CliBoundaryContractTest {
         )
     }
 
-    private fun CliCommandParsing.parsedInvocation(): CliInvocation = when (this) {
-        is CliCommandParsing.Parsed -> invocation
-        is CliCommandParsing.Local -> error("Expected semantic invocation, got $command")
-        is CliCommandParsing.Lifecycle -> error("Expected semantic invocation, got $command")
-        is CliCommandParsing.Rejected -> error("Expected parsed invocation, got $failure")
+    private fun commandGraphFactory(): CliCommandGraphFactory = when (
+        val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
+    ) {
+        is CliCommandGraphConstruction.Created -> construction.factory
+        is CliCommandGraphConstruction.Rejected -> error("command graph: ${construction.failures}")
     }
 
     private fun CanonicalRootDiscovery.discoveredRoot(): CanonicalRoot = when (this) {
