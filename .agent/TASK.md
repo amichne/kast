@@ -76,6 +76,8 @@ bash .agent-turn/kotlin-agentic-correctness/20260821T165727Z-merge-clikt-pr632/s
 - Output constraint: every semantic and lifecycle invocation must yield one parseable JSON document; help/version remain local text boundaries.
 - Remote heads observed: PR 630 merged as `e20a9d3a9b71cc5b1e7614704fc93263e2a459b8`; PR 631 merged as `34d33bcfec781b039a1fce027ce1ef06fdf676bc`.
 - Read-only merge analysis identified conflicts only in `.agent/TASK.md` and `cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt`.
+- RED observed: latest `origin/main` was not an ancestor of the pre-merge PR 632 head.
+- Merge resolution preserves the current task contract and the typed lifecycle action dispatch already carrying PR 631 stop/clean behavior.
 
 ## Out-of-Scope Findings
 
