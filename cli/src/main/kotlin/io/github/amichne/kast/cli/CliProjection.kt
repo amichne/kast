@@ -11,23 +11,15 @@ import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.WireFailure
 
-fun interface CliRequestParser<Request : OperationRequest> {
+fun interface CliRequestPreparer<Request : OperationRequest> {
     /**
-     * Proof transition: `CliArguments -> CliRequestParsing<Request>`.
+     * Proof transition: `Request -> CliProjectionPreparation`.
      *
-     * Establishes the operation-specific typed request or rejects the complete argument sequence.
-     * Expected failure is the closed [CliRequestParsing.Rejected] variant. Raw argument values may
-     * be extracted only within this outer request boundary.
+     * Establishes a generated request document and captured outcome decoder for the concrete
+     * request type. [CliProjectionFailure.RequestEncodingFailed] is the closed expected failure.
+     * Raw wire text may leave only at the UDS exchange boundary.
      */
-    fun parse(arguments: CliArguments): CliRequestParsing<Request>
-}
-
-sealed interface CliRequestParsing<out Request : OperationRequest> {
-    data class Parsed<Request : OperationRequest>(
-        val request: Request,
-    ) : CliRequestParsing<Request>
-
-    data object Rejected : CliRequestParsing<Nothing>
+    fun prepare(request: Request): CliProjectionPreparation
 }
 
 fun interface CliOutcomeProjector<
@@ -47,7 +39,7 @@ fun interface CliOutcomeProjector<
     ): ProjectedCliOutcome
 }
 
-/** A projection whose generic binding remains captured through request and outcome conversion. */
+/** A generated wire binding whose concrete request and outcome types stay captured. */
 class TypedCliProjection<
     Request : OperationRequest,
     Result : OperationResult,
@@ -55,52 +47,31 @@ class TypedCliProjection<
     Rejection : OperationRejection,
     >(
     private val wireBinding: OperationWireBinding<Request, Result, Qualification, Rejection>,
-    private val requestParser: CliRequestParser<Request>,
     private val outcomeProjector: CliOutcomeProjector<Result, Qualification, Rejection>,
-) : CliProjection {
-    override val operation: CanonicalOperation
-        get() = wireBinding.operation
-
-    override fun prepare(arguments: CliArguments): CliProjectionPreparation {
-        val request = when (val parsed = requestParser.parse(arguments)) {
-            is CliRequestParsing.Parsed -> parsed.request
-            CliRequestParsing.Rejected -> return CliProjectionPreparation.Rejected(
-                CliProjectionFailure.ArgumentsRejected(operation),
-            )
-        }
+) : CliRequestPreparer<Request> {
+    override fun prepare(request: Request): CliProjectionPreparation {
         val requestDocument = when (val encoded = wireBinding.encodeRequest(request)) {
             is WireEncoding.Encoded -> encoded.document
             is WireEncoding.Rejected -> return CliProjectionPreparation.Rejected(
-                CliProjectionFailure.RequestEncodingFailed(operation, encoded.failure),
+                CliProjectionFailure.RequestEncodingFailed(wireBinding.operation, encoded.failure),
             )
         }
         return CliProjectionPreparation.Prepared(
-            PreparedCliRequest(operation, requestDocument) { response ->
+            PreparedCliRequest(wireBinding.operation, requestDocument) { response ->
                 when (val decoded = wireBinding.decodeOutcome(response)) {
                     is WireDecoding.Decoded -> CliProjectionCompletion.Completed(
                         outcomeProjector.project(decoded.value),
                     )
                     is WireDecoding.Rejected -> CliProjectionCompletion.Rejected(
-                        CliProjectionFailure.ResponseDecodingFailed(operation, decoded.failure),
+                        CliProjectionFailure.ResponseDecodingFailed(
+                            wireBinding.operation,
+                            decoded.failure,
+                        ),
                     )
                 }
             },
         )
     }
-}
-
-/** Type-erased routing surface whose implementation retains captured generic evidence. */
-interface CliProjection {
-    val operation: CanonicalOperation
-
-    /**
-     * Proof transition: `CliArguments -> CliProjectionPreparation`.
-     *
-     * Establishes a captured generated request document and outcome decoder for this exact
-     * operation. [CliProjectionFailure] is the closed expected failure. Raw argument extraction
-     * remains inside the captured [CliRequestParser].
-     */
-    fun prepare(arguments: CliArguments): CliProjectionPreparation
 }
 
 class PreparedCliRequest internal constructor(
@@ -139,10 +110,6 @@ sealed interface CliProjectionCompletion {
 }
 
 sealed interface CliProjectionFailure {
-    data class ArgumentsRejected(
-        val operation: CanonicalOperation,
-    ) : CliProjectionFailure
-
     data class RequestEncodingFailed(
         val operation: CanonicalOperation,
         val failure: WireFailure,
@@ -152,62 +119,4 @@ sealed interface CliProjectionFailure {
         val operation: CanonicalOperation,
         val failure: WireFailure,
     ) : CliProjectionFailure
-}
-
-/** An immutable table proven to contain exactly one projection for every public operation. */
-class CliProjectionTable private constructor(
-    private val projections: Map<CanonicalOperation, CliProjection>,
-) {
-    /** Routes only after exact table completeness was established at construction. */
-    fun prepare(invocation: CliInvocation): CliProjectionPreparation =
-        projections.getValue(invocation.operation).prepare(invocation.arguments)
-
-    companion object {
-        /**
-         * Proof transition: `Iterable<CliProjection> -> CliProjectionTableConstruction`.
-         *
-         * Establishes exactly one projection for each of the eleven canonical operations.
-         * [CliProjectionTableFailure] is the closed expected failure. Weak iteration is permitted
-         * only at runtime composition.
-         */
-        fun create(projections: Iterable<CliProjection>): CliProjectionTableConstruction {
-            val materialized = projections.toList()
-            val failures = buildSet {
-                materialized.groupingBy(CliProjection::operation).eachCount()
-                    .filterValues { count -> count > 1 }
-                    .keys
-                    .forEach { add(CliProjectionTableFailure.DuplicateProjection(it)) }
-                val present = materialized.mapTo(mutableSetOf(), CliProjection::operation)
-                CanonicalOperation.entries.filterNot(present::contains)
-                    .forEach { add(CliProjectionTableFailure.MissingProjection(it)) }
-            }
-            return if (failures.isEmpty()) {
-                CliProjectionTableConstruction.Created(
-                    CliProjectionTable(materialized.associateBy(CliProjection::operation)),
-                )
-            } else {
-                CliProjectionTableConstruction.Rejected(failures)
-            }
-        }
-    }
-}
-
-sealed interface CliProjectionTableConstruction {
-    data class Created(
-        val table: CliProjectionTable,
-    ) : CliProjectionTableConstruction
-
-    data class Rejected(
-        val failures: Set<CliProjectionTableFailure>,
-    ) : CliProjectionTableConstruction
-}
-
-sealed interface CliProjectionTableFailure {
-    data class MissingProjection(
-        val operation: CanonicalOperation,
-    ) : CliProjectionTableFailure
-
-    data class DuplicateProjection(
-        val operation: CanonicalOperation,
-    ) : CliProjectionTableFailure
 }

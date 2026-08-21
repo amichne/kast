@@ -2,80 +2,83 @@
 
 ## Goal
 
-Publish the completed runtime lifecycle changes as a focused draft pull request with a post-push self-review and representative isolated validation using genuine implementations and fixtures.
+Pull merged PRs 630 and 631 into the current PR 632 branch, preserve both the Clikt command graph and current lifecycle behavior through conflict resolution, merge PR 632, and prove the merged executable through a real full-lifecycle, all-operation, and composed semantic smoke run.
 
 ## Allowed Writes
 
 - `.agent/TASK.md`
-- `.agent-turn/kotlin-agentic-correctness/20260821T032000Z-runtime-lifecycle-pr/`
+- `.agent-turn/kotlin-agentic-correctness/`
 - `cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt`
-- `cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeLifecycle.kt`
-- `cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeEndpointArtifacts.kt`
-- `cli/src/test/kotlin/io/github/amichne/kast/cli/RuntimeLifecycleTest.kt`
-- `/Users/amichne/code/kast/.git/worktrees/kast/`
-- `/Users/amichne/code/kast/.git/refs/heads/feature/runtime-lifecycle-markers`
-- `/Users/amichne/.colima/`
-- `/Users/amichne/.docker/contexts/`
-- `/Users/amichne/.lima/`
-- GitHub branch and pull-request metadata for `feature/runtime-lifecycle-markers`.
+- `/Users/amichne/code/kast/.git/worktrees/kast1/`
+- `/Users/amichne/code/kast/.git/refs/heads/feature/clikt-command-graph`
+- `/Users/amichne/code/kast/.git/refs/heads/main`
+- GitHub pull-request metadata for PR 632.
 
 No other paths may be modified.
 
 ## Allowed Reads
 
-- Repository instructions, lifecycle source and tests, build metadata, CI workflows, Git history, diffs, status, and remote metadata.
-- Kotlin Engineering, Effective Delivery, GitHub, pstack, and Git change-flow instructions and evidence.
-- Local container-runtime status and read-only host environment metadata.
-- Pull-request checks, diff, review state, and Actions logs.
+- Repository instructions, `.agent/TASK.md`, `.agent-turn/`, CLI source and tests, protocol contracts and wire schemas, build logic, packaging, integration tests, and Gradle configuration.
+- Git history, refs, status, diffs, merge analysis, and GitHub metadata for PRs 630, 631, and 632.
+- Kotlin Engineering, Effective Delivery, GitHub, Git change-flow, and pstack instructions and evidence.
+- Installed and staged Kast artifacts, their structured process output, runtime state for the isolated smoke fixture, and read-only host/runtime diagnostics.
 
 ## Non-Goals
 
-- Merging the pull request.
+- Changing any wire model, protocol contract, API shape, semantic operation, downstream implementation, or lifecycle behavior beyond the already-merged PR 630 and PR 631 content.
+- Adding new public commands, options, operation variants, or compatibility parsing.
+- Modifying user source files or running change operations against the primary workspace.
 - Publishing a release.
-- Changing repository CI or adding persistent container configuration.
-- Adding mocks or a mocking framework.
-- Replacing genuine filesystem and process implementations with simulated behavior.
 - Refactoring unrelated code.
-- Generalizing the lifecycle implementation.
+- Generalizing the implementation.
 - Fixing unrelated failures.
+- Adding optional improvements.
 
 ## Red Proof
 
 Command:
 
 ```shell
-test "$(git branch --show-current)" = "feature/runtime-lifecycle-markers" && test -n "$(gh pr list --head feature/runtime-lifecycle-markers --state open --json number --jq '.[0].number')"
+git merge-base --is-ancestor origin/main HEAD
 ```
 
 Expected failure:
 
-The checkout is detached and no open pull request exists for `feature/runtime-lifecycle-markers`.
+The current PR 632 head does not yet contain the merge commits for PR 630 and PR 631 from the latest `origin/main`.
 
 ## Green Proof
 
 Command:
 
 ```shell
-test "$(git branch --show-current)" = "feature/runtime-lifecycle-markers" && pr="$(gh pr list --head feature/runtime-lifecycle-markers --state open --json number --jq '.[0].number')" && test -n "$pr" && gh pr view "$pr" --json number,url,headRefOid,baseRefName,state,isDraft
+bash .agent-turn/kotlin-agentic-correctness/20260821T165727Z-merge-clikt-pr632/smoke-merged-clikt.sh
 ```
 
 ## Done When
 
-- A focused commit containing only the requested lifecycle changes is pushed on `feature/runtime-lifecycle-markers`.
-- A draft pull request targets `main` and describes behavior, validation, and residual risk.
-- The pushed pull-request diff receives a Kotlin type, boundary, package, and test self-review; justified findings are fixed and revalidated.
-- Representative validation passes in a clean container, or the exact container blocker is recorded and an isolated temporary-checkout proof passes instead.
-- Validation uses genuine implementations and filesystem fixtures without mocks or a mocking framework.
-- Remote checks are read after the latest push.
+- The current branch contains latest `origin/main`, with conflicts resolved by preserving current PR 631 lifecycle behavior and PR 632 typed Clikt actions.
+- PR 632 has passing required checks and is merged into `main`.
+- Local `main` matches the remote PR 632 merge result.
+- The staged merged executable completes stop, clean, start, status, reindex, final stop, and final clean against an isolated real Kotlin Gradle fixture.
+- All eleven canonical semantic operations execute through the staged merged executable.
+- A representative symbol workflow composes discover, resolve, describe, callers, callees, references, and bounded traversal using output identities from prior commands.
+- A real change plan is applied, verified, and recovered in the isolated fixture.
+- Smoke outputs remain valid single JSON documents suitable for piping and every unexpected stderr or exit status fails the proof.
 - The Green Proof passes.
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
 ## Execution State
 
-- Delivery task contract established from the pull-request and validation request.
+- Task graph expression: `ORIENT -> CONTRACT -> FETCH_MAIN -> RED -> MERGE_MAIN -> CONFLICT_PROOF -> LOCAL_GATE -> UPDATE_PR -> REMOTE_GREEN -> MERGE_PR -> SYNC_MAIN -> STAGE_PRODUCT -> LIFECYCLE -> OPERATIONS -> COMPOSITION -> CLEANUP -> REPORT`.
+- Merge constraint: the resolved product tree may differ from PR 632 only where latest `main` already differs or where `KastCli.kt` must compose the typed action model with the merged lifecycle result model.
+- Smoke constraint: lifecycle and change effects are confined to `.agent-turn/kotlin-agentic-correctness/20260821T165727Z-merge-clikt-pr632/fixture/`.
+- Output constraint: every semantic and lifecycle invocation must yield one parseable JSON document; help/version remain local text boundaries.
+- Remote heads observed: PR 630 merged as `e20a9d3a9b71cc5b1e7614704fc93263e2a459b8`; PR 631 merged as `34d33bcfec781b039a1fce027ce1ef06fdf676bc`.
+- Read-only merge analysis identified conflicts only in `.agent/TASK.md` and `cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt`.
+- RED observed: latest `origin/main` was not an ancestor of the pre-merge PR 632 head.
+- Merge resolution preserves the current task contract and the typed lifecycle action dispatch already carrying PR 631 stop/clean behavior.
 
 ## Out-of-Scope Findings
 
-- The architecture policy model is stale relative to the 32-project topology in `settings.gradle.kts`; repairing it is unrelated to semantic identity stability.
-- Both the staged product and installed Kast `0.26.0` report `endpoint-unavailable` before a live semantic request can run. Another user-owned Kast indexer for a separate worktree is active and was not interrupted.
+- None

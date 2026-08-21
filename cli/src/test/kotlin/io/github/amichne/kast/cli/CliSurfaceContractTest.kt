@@ -2,7 +2,10 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
-import io.github.amichne.kast.cli.projection.canonicalCliProjections
+import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
+import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.cli.command.CliLifecycleCommand
+import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -13,29 +16,28 @@ import java.nio.file.Path
 class CliSurfaceContractTest {
     @Test
     fun `public syntax is exact over all eleven canonical operations`() {
-        assertEquals(CanonicalOperation.entries, canonicalCliSyntaxes.map { it.operation })
-        canonicalCliSyntaxes.forEach { syntax ->
-            val parsed = CliCommandParser.parse(syntax.command)
-            assertTrue(parsed is CliCommandParsing.Parsed)
-            assertEquals(
-                syntax.operation,
-                (parsed as CliCommandParsing.Parsed).invocation.operation,
-            )
-        }
+        val surface = commandGraphFactory().surface
+
+        assertEquals(CanonicalOperation.entries, surface.semanticCommands.map { it.operation })
         assertEquals(
             setOf("add-file", "add-declaration", "replace-declaration", "rename-symbol"),
             Regex("add-file|add-declaration|replace-declaration|rename-symbol")
-                .findAll(canonicalCliSyntaxes.single { it.operation == CanonicalOperation.CHANGE_PLAN }.usage)
+                .findAll(
+                    surface.semanticCommands.single {
+                        it.operation == CanonicalOperation.CHANGE_PLAN
+                    }.usage,
+                )
                 .map { match -> match.value }
                 .toSet(),
         )
+        assertEquals(CliLifecycleCommand.entries, surface.lifecycleCommands)
     }
 
     @Test
     fun `local metadata returns before root or runtime demand`() {
         var boundaryTouched = false
         val cli = KastCli(
-            projections = errorProjectionTable(),
+            commandGraphFactory = commandGraphFactory(),
             rootDiscovery = CanonicalRootDiscoverer {
                 boundaryTouched = true
                 error("root discovery must not run")
@@ -69,10 +71,10 @@ class CliSurfaceContractTest {
         val schema = cli.execute(listOf("--schema"), Path.of("/missing")) as CliExit.Complete
 
         assertFalse(boundaryTouched)
-        assertTrue(help.document.value.contains("workspace inspect"))
-        assertTrue(help.document.value.contains("change recover"))
+        assertTrue(help.document.value.contains("workspace"))
+        assertTrue(help.document.value.contains("change"))
         CliLifecycleCommand.entries.forEach { command ->
-            assertTrue(help.document.value.contains("  ${command.command}"))
+            assertTrue(help.document.value.contains(command.command))
         }
         assertFalse(help.document.value.contains(" setup"))
         assertEquals(
@@ -82,10 +84,10 @@ class CliSurfaceContractTest {
         assertEquals("{\"schemaVersion\":1}", schema.document.value)
     }
 
-    private fun errorProjectionTable(): CliProjectionTable = when (
-        val construction = CliProjectionTable.create(canonicalCliProjections())
+    private fun commandGraphFactory(): CliCommandGraphFactory = when (
+        val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
     ) {
-        is CliProjectionTableConstruction.Created -> construction.table
-        is CliProjectionTableConstruction.Rejected -> error("projection table: ${construction.failures}")
+        is CliCommandGraphConstruction.Created -> construction.factory
+        is CliCommandGraphConstruction.Rejected -> error("command graph: ${construction.failures}")
     }
 }
