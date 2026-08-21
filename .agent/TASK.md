@@ -92,7 +92,8 @@ Command:
 - Focused proofs retain generation `1` across an installed-runtime reconstruction and advance to generation `2` for a changed semantic identity.
 - The owning-module and direct-consumer test ring passes after a clean build; the final full `test`, module-graph, no-legacy, and repository-shape checks also pass.
 - The first clean CI run exposed the previously masked static-snapshot defect as `resulting-generation-unavailable`; a filesystem-backed regression now proves that a real source edit changes the refreshed typed identity.
-- Repository-wide completion is blocked locally by pre-existing verification infrastructure: `verifyKastArchitecture` describes retired modules as active and the current `runtime:composition` module as merely planned, while `installedProductTest` stages the product but cannot establish the runtime endpoint on this machine.
+- The corrected clean CI run passes all checks, including the live installed-product mutation and verification flow.
+- Repository-wide local completion is blocked by pre-existing verification infrastructure: `verifyKastArchitecture` describes retired modules as active and the current `runtime:composition` module as merely planned, while `installedProductTest` cannot establish the runtime endpoint on this machine despite passing in clean CI.
 - `session-ses_fecf.md` and `tmp.md` are pre-existing untracked user files and must remain untouched.
 
 ## Out-of-Scope Findings
