@@ -39,7 +39,11 @@ sealed interface WorkspacePublicationPreparation {
 
 /** Atomic result of publishing one reconciled candidate and its evidence generation. */
 sealed interface WorkspacePublicationResult {
-    data class Published(
+    data class Advanced(
+        val workspace: PublishedWorkspace,
+    ) : WorkspacePublicationResult
+
+    data class Unchanged(
         val workspace: PublishedWorkspace,
     ) : WorkspacePublicationResult
 
@@ -82,10 +86,11 @@ interface WorkspacePublicationTransaction {
     /**
      * Proof transition: `PreparedCanonicalWorkspacePublication -> WorkspacePublicationResult`.
      *
-     * A published result atomically commits one evidence generation and returns the only
-     * [PublishedWorkspace] assembled from that exact prepared candidate. The closed expected
-     * failure is [WorkspacePublicationFailure]. Persistence primitives may be extracted only by
-     * the evidence adapter implementing this transaction.
+     * An advanced result atomically commits one new evidence generation. An unchanged result
+     * proves the candidate is canonically identical and retains the current generation. Both
+     * return the only [PublishedWorkspace] assembled from that exact prepared candidate. The
+     * closed expected failure is [WorkspacePublicationFailure]. Persistence primitives may be
+     * extracted only by the evidence adapter implementing this transaction.
      */
     fun commit(prepared: PreparedCanonicalWorkspacePublication): WorkspacePublicationResult
 

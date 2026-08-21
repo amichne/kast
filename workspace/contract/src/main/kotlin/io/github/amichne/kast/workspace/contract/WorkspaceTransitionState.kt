@@ -77,6 +77,7 @@ data class WorkspaceTransitionSnapshot(
 enum class TransitionRun {
     NoWork,
     Published,
+    Unchanged,
     Invalidated,
     Retry,
     Blocked,

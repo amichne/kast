@@ -212,7 +212,7 @@ class WorkspaceTransitionCoordinator(
                 TransitionRun.Blocked
             } else {
                 when (publication) {
-                    is GenerationPublication.Published -> {
+                    is GenerationPublication.Committed -> {
                         if (isCurrent(cycle)) {
                             published = PublishedWorkspaceGenerationState.Published(
                                 publication.commit.publication,
@@ -220,7 +220,10 @@ class WorkspaceTransitionCoordinator(
                             blocker = null
                             lifecycle = WorkspaceLifecycle.Ready
                             activeSourceFreshness = WorkspaceSourceFreshness.Absent
-                            TransitionRun.Published
+                            when (publication) {
+                                is GenerationPublication.Published -> TransitionRun.Published
+                                is GenerationPublication.Unchanged -> TransitionRun.Unchanged
+                            }
                         } else {
                             retainForRetry(cycle, includeAudit = false)
                             discard = false

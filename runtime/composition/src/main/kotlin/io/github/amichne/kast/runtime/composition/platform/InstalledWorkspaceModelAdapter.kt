@@ -96,10 +96,13 @@ internal fun interface InstalledGradleModelReadOperations {
 internal class InstalledWorkspaceModelAdapter(
     private val models: InstalledGradleModelReadOperations,
 ) : GradleWorkspaceModelPort, IntellijWorkspaceReconciliation {
+    private val lock = Any()
+    private var state: State = State.Unavailable
+
     override fun capture(
         root: CanonicalWorkspaceRoot,
         signals: Set<WorkspaceSignal>,
-    ): GradleWorkspaceModelCapture = when (val read = models.read()) {
+    ): GradleWorkspaceModelCapture = when (val read = refresh()) {
         is InstalledGradleModelRead.Captured -> if (read.model.root == root) {
             GradleWorkspaceModelCapture.Captured(read.model.state)
         } else {
@@ -109,7 +112,7 @@ internal class InstalledWorkspaceModelAdapter(
     }
 
     override fun reconcile(candidate: WorkspaceCandidate): IntellijWorkspaceReconciliationResult =
-        when (val read = models.read()) {
+        when (val read = refresh()) {
             is InstalledGradleModelRead.Captured -> if (
                 read.model.root == candidate.root && read.model.state == candidate.sourceState
             ) {
@@ -125,14 +128,31 @@ internal class InstalledWorkspaceModelAdapter(
         }
 
     fun searchScope(lease: SemanticReadLease): WorkspaceSearchScopeModelCompilation =
-        when (val read = models.read()) {
-            is InstalledGradleModelRead.Captured -> if (read.model.root == lease.workspaceRoot) {
-                read.model.searchScope
+        when (val current = synchronized(lock) { state }) {
+            is State.Ready -> if (current.model.root == lease.workspaceRoot) {
+                current.model.searchScope
             } else {
                 unavailableScope(lease.workspaceRoot)
             }
-            is InstalledGradleModelRead.Unavailable -> unavailableScope(lease.workspaceRoot)
+            State.Unavailable -> unavailableScope(lease.workspaceRoot)
         }
+
+    private fun refresh(): InstalledGradleModelRead = models.read().also { read ->
+        synchronized(lock) {
+            state = when (read) {
+                is InstalledGradleModelRead.Captured -> State.Ready(read.model)
+                is InstalledGradleModelRead.Unavailable -> State.Unavailable
+            }
+        }
+    }
+
+    private sealed interface State {
+        data object Unavailable : State
+
+        data class Ready(
+            val model: InstalledGradleWorkspaceModel,
+        ) : State
+    }
 }
 
 private data class InstalledSourceRootIdentity(

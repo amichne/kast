@@ -77,4 +77,5 @@ test "$(git branch --show-current)" = "feature/runtime-lifecycle-markers" && pr=
 
 ## Out-of-Scope Findings
 
-- None
+- The architecture policy model is stale relative to the 32-project topology in `settings.gradle.kts`; repairing it is unrelated to semantic identity stability.
+- Both the staged product and installed Kast `0.26.0` report `endpoint-unavailable` before a live semantic request can run. Another user-owned Kast indexer for a separate worktree is active and was not interrupted.

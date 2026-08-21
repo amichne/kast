@@ -228,6 +228,10 @@ sealed interface WorkspacePublicationRun {
         val workspace: PublishedWorkspace,
     ) : WorkspacePublicationRun
 
+    data class Unchanged(
+        val workspace: PublishedWorkspace,
+    ) : WorkspacePublicationRun
+
     data object Invalidated : WorkspacePublicationRun
 
     data class Blocked(

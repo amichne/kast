@@ -85,6 +85,37 @@ class WorkspacePublicationTest {
     }
 
     @Test
+    fun `resulting publication rejects an unchanged semantic generation`() {
+        val first = candidate("/workspace", "stable")
+        val inspection = ScriptedWorkspaceReconciliationPort(first, first)
+        val publication = RecordingWorkspacePublicationTransaction()
+        val coordinator = WorkspacePublicationCoordinator(inspection, publication)
+        val initial = assertInstanceOf(
+            WorkspacePublicationRun.Published::class.java,
+            coordinator.reconcile(),
+        ).workspace
+        inspection.enqueue(first, first)
+        publication.unchangedNext = true
+
+        val rejected = assertInstanceOf(
+            ResultingWorkspacePublicationResult.Rejected::class.java,
+            coordinator.reconcileAfter(initial.readLease),
+        )
+
+        assertEquals(
+            ResultingWorkspacePublicationFailure.InvalidResult(
+                ResultingWorkspacePublicationAdmissionFailure.GENERATION_NOT_NEWER,
+            ),
+            rejected.failure,
+        )
+        val ready = assertInstanceOf(
+            WorkspaceRuntimeState.Ready::class.java,
+            coordinator.inspect(),
+        )
+        assertEquals(initial.readLease, ready.workspace.readLease)
+    }
+
+    @Test
     fun `workspace movement discards the in-flight candidate`() {
         val first = candidate("/workspace", "first")
         val moving = candidate("/workspace", "moving")
@@ -209,6 +240,7 @@ private class RecordingWorkspacePublicationTransaction : WorkspacePublicationTra
     val committed = mutableListOf<PublishedWorkspace>()
     var discarded = 0
     var rejectNext = false
+    var unchangedNext = false
     var beforeCommit: () -> Unit = {}
 
     override fun begin(): WorkspacePublicationOpening =
@@ -230,12 +262,21 @@ private class RecordingWorkspacePublicationTransaction : WorkspacePublicationTra
             return WorkspacePublicationResult.Rejected(WorkspacePublicationFailure.StorageUnavailable)
         }
         val candidate = (prepared as TestPreparedPublication).candidate
+        val generation = if (unchangedNext) {
+            committed.last().generation
+        } else {
+            evidenceGeneration(committed.size.toLong() + 1)
+        }
         val workspace = PublishedWorkspace.publish(
             candidate,
-            evidenceGeneration(committed.size.toLong() + 1),
+            generation,
         )
+        if (unchangedNext) {
+            unchangedNext = false
+            return WorkspacePublicationResult.Unchanged(workspace)
+        }
         committed += workspace
-        return WorkspacePublicationResult.Published(workspace)
+        return WorkspacePublicationResult.Advanced(workspace)
     }
 
     override fun discard(open: OpenCanonicalWorkspacePublication): WorkspacePublicationDiscard {

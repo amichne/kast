@@ -41,12 +41,16 @@ class InstalledWorkspaceModelAdapterTest {
                 published.root,
                 true,
                 listOf(boundary),
-                listOf("classpath:file:///fixture.jar", "source:fixture"),
+                published.sourceState,
             ),
         ) as InstalledGradleModelRead.Captured
         val model = read.model
         val scope = model.searchScope
-        val adapter = InstalledWorkspaceModelAdapter { read }
+        var reads = 0
+        val adapter = InstalledWorkspaceModelAdapter {
+            reads += 1
+            read
+        }
 
         assertEquals(
             GradleWorkspaceModelCapture.Captured(model.state),
@@ -59,6 +63,8 @@ class InstalledWorkspaceModelAdapterTest {
             ),
             adapter.reconcile(WorkspaceCandidate(published.root, model.state)),
         )
+        val reconciliationReads = reads
         assertSame(scope, adapter.searchScope(published.readLease))
+        assertEquals(reconciliationReads, reads)
     }
 }

@@ -123,16 +123,8 @@ class WorkspacePublicationCoordinator(
                 return ResultingWorkspacePublicationResult.Rejected(beginning.failure)
         }
         return when (val run = reconcile()) {
-            is WorkspacePublicationRun.Published -> when (val admitted =
-                ResultingWorkspacePublication.admit(prior, run.workspace)
-            ) {
-                is io.github.amichne.kast.kernel.Refinement.Refined ->
-                    ResultingWorkspacePublicationResult.Published(admitted.value)
-                is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                    ResultingWorkspacePublicationResult.Rejected(
-                        ResultingWorkspacePublicationFailure.InvalidResult(admitted.failure),
-                    )
-            }
+            is WorkspacePublicationRun.Published -> resultingPublication(prior, run.workspace)
+            is WorkspacePublicationRun.Unchanged -> resultingPublication(prior, run.workspace)
             WorkspacePublicationRun.NoWork -> ResultingWorkspacePublicationResult.Rejected(
                 ResultingWorkspacePublicationFailure.NoPublication,
             )
@@ -143,6 +135,20 @@ class WorkspacePublicationCoordinator(
                 ResultingWorkspacePublicationFailure.Blocked(run.blocker),
             )
         }
+    }
+
+    private fun resultingPublication(
+        prior: SemanticReadLease,
+        workspace: io.github.amichne.kast.workspace.contract.PublishedWorkspace,
+    ): ResultingWorkspacePublicationResult = when (
+        val admitted = ResultingWorkspacePublication.admit(prior, workspace)
+    ) {
+        is io.github.amichne.kast.kernel.Refinement.Refined ->
+            ResultingWorkspacePublicationResult.Published(admitted.value)
+        is io.github.amichne.kast.kernel.Refinement.Rejected ->
+            ResultingWorkspacePublicationResult.Rejected(
+                ResultingWorkspacePublicationFailure.InvalidResult(admitted.failure),
+            )
     }
 
     private fun beginResultingCycle(prior: SemanticReadLease): ResultingCycleBeginning = synchronized(lock) {
@@ -210,9 +216,13 @@ class WorkspacePublicationCoordinator(
             )
         }
         when (result) {
-            is WorkspacePublicationResult.Published -> {
+            is WorkspacePublicationResult.Advanced -> {
                 runtimeState = WorkspaceRuntimeState.Ready(result.workspace)
                 WorkspacePublicationRun.Published(result.workspace)
+            }
+            is WorkspacePublicationResult.Unchanged -> {
+                runtimeState = WorkspaceRuntimeState.Ready(result.workspace)
+                WorkspacePublicationRun.Unchanged(result.workspace)
             }
             is WorkspacePublicationResult.Rejected -> {
                 val blocker = WorkspacePublicationBlocker.PublicationUnavailable
