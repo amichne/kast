@@ -5,8 +5,12 @@ import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.net.StandardProtocolFamily
+import java.net.UnixDomainSocketAddress
+import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 class RuntimeLifecycleTest {
     @Test
@@ -21,17 +25,25 @@ class RuntimeLifecycleTest {
         )
 
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STOPPED),
+            RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED),
             lifecycle.status(endpoint),
         )
-        artifacts.present = setOf(RuntimeEndpointArtifact.DESCRIPTOR)
+        artifacts.present = setOf(RuntimePersistentState)
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STALE),
+            RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED),
+            lifecycle.status(endpoint),
+        )
+        artifacts.present = setOf(
+            RuntimeEndpointMarker.DESCRIPTOR,
+            RuntimePersistentState,
+        )
+        assertEquals(
+            RuntimeStatusResult.Observed(RuntimeLifecycleState.STALE),
             lifecycle.status(endpoint),
         )
         reachability = RuntimeEndpointReachability.Reachable
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.RUNNING),
+            RuntimeStatusResult.Observed(RuntimeLifecycleState.RUNNING),
             lifecycle.status(endpoint),
         )
     }
@@ -54,10 +66,81 @@ class RuntimeLifecycleTest {
         )
 
         assertEquals(
-            RuntimeLifecycleResult.Completed(RuntimeLifecycleState.STOPPED),
+            RuntimeStopResult.Stopped(),
             lifecycle.stop(endpoint),
         )
         assertEquals(endpoint, observed)
+    }
+
+    @Test
+    fun `default stop closes the exact child process and preserves persistent state`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val descriptor = endpoint.socketPath.resolveSibling(
+            "${endpoint.socketPath.fileName}.endpoint.json",
+        )
+        val state = endpoint.socketPath.parent.toRealPath().resolve(
+            "${endpoint.socketPath.fileName}.state",
+        )
+        val persisted = Files.createDirectories(state).resolve("workspace-publication.sqlite")
+        Files.writeString(persisted, "persistent")
+        val process = startRuntimeFixture(endpoint)
+
+        try {
+            assertEquals(
+                RuntimeStopResult.Stopped(
+                    setOf(
+                        RuntimeEndpointMarker.SOCKET,
+                        RuntimeEndpointMarker.DESCRIPTOR,
+                    ),
+                ),
+                ExactRootRuntimeLifecycle().stop(endpoint),
+            )
+            assertEquals(false, process.isAlive)
+            assertEquals(false, Files.exists(endpoint.socketPath))
+            assertEquals(false, Files.exists(descriptor))
+            assertEquals("persistent", Files.readString(persisted))
+        } finally {
+            if (process.isAlive) process.destroyForcibly()
+            process.onExit().get(10, TimeUnit.SECONDS)
+        }
+    }
+
+    @Test
+    fun `stop removes endpoint markers and preserves persistent state`(@TempDir temporary: Path) {
+        val endpoint = endpoint(temporary)
+        val descriptor = endpoint.socketPath.resolveSibling(
+            "${endpoint.socketPath.fileName}.endpoint.json",
+        )
+        val state = endpoint.socketPath.parent.toRealPath().resolve(
+            "${endpoint.socketPath.fileName}.state",
+        )
+        Files.writeString(endpoint.socketPath, "stale")
+        Files.writeString(descriptor, "stale")
+        val persisted = Files.createDirectories(state).resolve("workspace-publication.sqlite")
+        Files.writeString(persisted, "persistent")
+        val lifecycle = ExactRootRuntimeLifecycle(
+            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+            processAuthority = RuntimeProcessAuthority { RuntimeProcessObservation.Absent },
+        )
+
+        assertEquals(
+            RuntimeStopResult.Stopped(
+                setOf(
+                    RuntimeEndpointMarker.SOCKET,
+                    RuntimeEndpointMarker.DESCRIPTOR,
+                ),
+            ),
+            lifecycle.stop(endpoint),
+        )
+        assertEquals(false, Files.exists(endpoint.socketPath))
+        assertEquals(false, Files.exists(descriptor))
+        assertEquals("persistent", Files.readString(persisted))
+        assertEquals(
+            RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED),
+            lifecycle.status(endpoint),
+        )
     }
 
     @Test
@@ -76,7 +159,7 @@ class RuntimeLifecycleTest {
         )
 
         assertEquals(
-            RuntimeLifecycleResult.Rejected(RuntimeLifecycleFailure.ACTIVE_ENDPOINT),
+            RuntimeStopResult.Rejected(RuntimeStopFailure.ACTIVE_ENDPOINT),
             lifecycle.stop(endpoint),
         )
     }
@@ -88,9 +171,9 @@ class RuntimeLifecycleTest {
         val endpoint = endpoint(temporary)
         val artifacts = FakeRuntimeEndpointArtifacts(
             setOf(
-                RuntimeEndpointArtifact.SOCKET,
-                RuntimeEndpointArtifact.DESCRIPTOR,
-                RuntimeEndpointArtifact.STATE,
+                RuntimeEndpointMarker.SOCKET,
+                RuntimeEndpointMarker.DESCRIPTOR,
+                RuntimePersistentState,
             ),
         )
         var reachability: RuntimeEndpointReachability = RuntimeEndpointReachability.Reachable
@@ -101,14 +184,13 @@ class RuntimeLifecycleTest {
         )
 
         assertEquals(
-            RuntimeLifecycleResult.Rejected(RuntimeLifecycleFailure.ACTIVE_ENDPOINT),
+            RuntimeCleanResult.Rejected(RuntimeCleanFailure.ACTIVE_ENDPOINT),
             lifecycle.clean(endpoint),
         )
         reachability = RuntimeEndpointReachability.Unreachable
         assertEquals(
-            RuntimeLifecycleResult.Completed(
-                RuntimeLifecycleState.STOPPED,
-                RuntimeEndpointArtifact.entries.toSet(),
+            RuntimeCleanResult.Cleaned(
+                allRuntimeEndpointArtifacts,
             ),
             lifecycle.clean(endpoint),
         )
@@ -133,9 +215,8 @@ class RuntimeLifecycleTest {
         Files.writeString(state.resolve("cache.bin"), "stale")
 
         assertEquals(
-            RuntimeLifecycleResult.Completed(
-                RuntimeLifecycleState.STOPPED,
-                RuntimeEndpointArtifact.entries.toSet(),
+            RuntimeCleanResult.Cleaned(
+                allRuntimeEndpointArtifacts,
             ),
             ExactRootRuntimeLifecycle().clean(endpoint),
         )
@@ -165,17 +246,68 @@ class RuntimeLifecycleTest {
             is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
         }
     }
+
+    private fun startRuntimeFixture(endpoint: RuntimeEndpoint): Process {
+        val process = ProcessBuilder(
+            Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+            "-cp",
+            System.getProperty("java.class.path"),
+            RuntimeLifecycleFixtureProcess::class.java.name,
+            INDEXER_FIXTURE_MARKER,
+            "--workspace-root=${endpoint.root.path}",
+            "--socket-path=${endpoint.socketPath}",
+            "--runtime-id=${endpoint.runtimeId.value}",
+        ).redirectErrorStream(true).start()
+        val ready = process.inputReader().readLine()
+        check(ready == FIXTURE_READY) {
+            "runtime fixture failed before readiness: ${ready ?: "<no output>"}"
+        }
+        return process
+    }
+}
+
+internal object RuntimeLifecycleFixtureProcess {
+    @JvmStatic
+    fun main(arguments: Array<String>) {
+        val socket = arguments.single { argument -> argument.startsWith(SOCKET_ARGUMENT_PREFIX) }
+            .removePrefix(SOCKET_ARGUMENT_PREFIX)
+            .let(Path::of)
+        val descriptor = socket.resolveSibling("${socket.fileName}.endpoint.json")
+        val channel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
+        channel.bind(UnixDomainSocketAddress.of(socket))
+        Files.writeString(descriptor, "fixture")
+        Runtime.getRuntime().addShutdownHook(Thread(channel::close))
+        println(FIXTURE_READY)
+        while (true) channel.accept().use { }
+    }
 }
 
 private class FakeRuntimeEndpointArtifacts(
     var present: Set<RuntimeEndpointArtifact> = emptySet(),
 ) : RuntimeEndpointArtifacts {
-    override fun observe(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactObservation =
-        RuntimeEndpointArtifactObservation.Observed(present)
+    override fun observeMarkers(endpoint: RuntimeEndpoint): RuntimeEndpointMarkerObservation =
+        RuntimeEndpointMarkerObservation.Observed(
+            present.filterIsInstance<RuntimeEndpointMarker>().toSet(),
+        )
 
-    override fun clean(endpoint: RuntimeEndpoint): RuntimeEndpointArtifactCleaning {
+    override fun retireMarkers(
+        endpoint: InactiveRuntimeEndpoint,
+    ): RuntimeEndpointMarkerRetirement {
+        val removed = present.filterIsInstance<RuntimeEndpointMarker>().toSet()
+        present -= removed
+        return RuntimeEndpointMarkerRetirement.Retired(removed)
+    }
+
+    override fun clean(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointArtifactCleaning {
         val removed = present
         present = emptySet()
         return RuntimeEndpointArtifactCleaning.Cleaned(removed)
     }
 }
+
+private val allRuntimeEndpointArtifacts: Set<RuntimeEndpointArtifact> =
+    RuntimeEndpointMarker.entries.toSet() + RuntimePersistentState
+
+private const val INDEXER_FIXTURE_MARKER = "io.github.amichne.kast.indexer.KastIndexerMainKt"
+private const val SOCKET_ARGUMENT_PREFIX = "--socket-path="
+private const val FIXTURE_READY = "ready"

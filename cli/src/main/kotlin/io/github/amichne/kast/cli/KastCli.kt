@@ -67,29 +67,28 @@ class KastCli(
         }
         return when (command) {
             CliLifecycleCommand.START -> executeWorkspaceInspect(boundary)
-            CliLifecycleCommand.STATUS -> lifecycleExit(
-                command,
+            CliLifecycleCommand.STATUS -> statusExit(
                 boundary.endpoint,
                 lifecycle.status(boundary.endpoint),
             )
-            CliLifecycleCommand.STOP -> lifecycleExit(
+            CliLifecycleCommand.STOP -> stopExit(
                 command,
                 boundary.endpoint,
                 lifecycle.stop(boundary.endpoint),
             )
-            CliLifecycleCommand.CLEAN -> lifecycleExit(
+            CliLifecycleCommand.CLEAN -> cleanExit(
                 command,
                 boundary.endpoint,
                 lifecycle.clean(boundary.endpoint),
             )
             CliLifecycleCommand.REINDEX -> {
                 val stopped = lifecycle.stop(boundary.endpoint)
-                if (stopped is RuntimeLifecycleResult.Rejected) {
-                    return lifecycleExit(command, boundary.endpoint, stopped)
+                if (stopped is RuntimeStopResult.Rejected) {
+                    return stopExit(command, boundary.endpoint, stopped)
                 }
                 val cleaned = lifecycle.clean(boundary.endpoint)
-                if (cleaned is RuntimeLifecycleResult.Rejected) {
-                    return lifecycleExit(command, boundary.endpoint, cleaned)
+                if (cleaned is RuntimeCleanResult.Rejected) {
+                    return cleanExit(command, boundary.endpoint, cleaned)
                 }
                 executeWorkspaceInspect(boundary)
             }
@@ -167,33 +166,85 @@ class KastCli(
         }
     }
 
-    private fun lifecycleExit(
+    private fun statusExit(
+        endpoint: RuntimeEndpoint,
+        result: RuntimeStatusResult,
+    ): CliExit = when (result) {
+        is RuntimeStatusResult.Observed -> lifecycleCompletedExit(
+            CliLifecycleCommand.STATUS,
+            endpoint,
+            result.state,
+            emptySet(),
+        )
+        is RuntimeStatusResult.Rejected -> boundaryExit(
+            CliBoundaryExitStatus.RUNTIME,
+            "${CliLifecycleCommand.STATUS.command}-${result.failure.name.lowercase().replace('_', '-')}",
+        )
+    }
+
+    private fun stopExit(
         command: CliLifecycleCommand,
         endpoint: RuntimeEndpoint,
-        result: RuntimeLifecycleResult,
+        result: RuntimeStopResult,
     ): CliExit = when (result) {
-        is RuntimeLifecycleResult.Completed -> CliExit.Complete(
-            CliJsonDocument.from(
-                buildJsonObject {
-                    put("command", command.command)
-                    put("status", "complete")
-                    put("runtime", result.state.name.lowercase())
-                    put("root", endpoint.root.path.toString())
-                    put("runtimeId", endpoint.runtimeId.value)
-                    put(
-                        "removed",
-                        JsonArray(
-                            result.removed.sortedBy(RuntimeEndpointArtifact::name)
-                                .map { artifact -> JsonPrimitive(artifact.name.lowercase()) },
-                        ),
-                    )
-                },
-            ),
+        is RuntimeStopResult.Stopped -> lifecycleCompletedExit(
+            command,
+            endpoint,
+            RuntimeLifecycleState.STOPPED,
+            result.removed,
         )
-        is RuntimeLifecycleResult.Rejected -> boundaryExit(
+        is RuntimeStopResult.Rejected -> boundaryExit(
             CliBoundaryExitStatus.RUNTIME,
             "${command.command}-${result.failure.name.lowercase().replace('_', '-')}",
         )
+    }
+
+    private fun cleanExit(
+        command: CliLifecycleCommand,
+        endpoint: RuntimeEndpoint,
+        result: RuntimeCleanResult,
+    ): CliExit = when (result) {
+        is RuntimeCleanResult.Cleaned -> lifecycleCompletedExit(
+            command,
+            endpoint,
+            RuntimeLifecycleState.STOPPED,
+            result.removed,
+        )
+        is RuntimeCleanResult.Rejected -> boundaryExit(
+            CliBoundaryExitStatus.RUNTIME,
+            "${command.command}-${result.failure.name.lowercase().replace('_', '-')}",
+        )
+    }
+
+    private fun lifecycleCompletedExit(
+        command: CliLifecycleCommand,
+        endpoint: RuntimeEndpoint,
+        state: RuntimeLifecycleState,
+        removed: Set<RuntimeEndpointArtifact>,
+    ): CliExit = CliExit.Complete(
+        CliJsonDocument.from(
+            buildJsonObject {
+                put("command", command.command)
+                put("status", "complete")
+                put("runtime", state.name.lowercase())
+                put("root", endpoint.root.path.toString())
+                put("runtimeId", endpoint.runtimeId.value)
+                put(
+                    "removed",
+                    JsonArray(
+                        removed.map { artifact -> artifact.lifecycleOutputName() }
+                            .sorted()
+                            .map(::JsonPrimitive),
+                    ),
+                )
+            },
+        ),
+    )
+
+    /** Projects a lifecycle artifact to its stable JSON-boundary name. */
+    private fun RuntimeEndpointArtifact.lifecycleOutputName(): String = when (this) {
+        is RuntimeEndpointMarker -> name.lowercase()
+        RuntimePersistentState -> "state"
     }
 
     private fun projectionFailure(failure: CliProjectionFailure): CliExit = when (failure) {

@@ -2,18 +2,18 @@
 
 ## Goal
 
-A semantically identical workspace observation produces the same strongly typed, reproducible semantic identity and atomically preserves the current generation and read lease, while a real semantic change advances the generation exactly once.
+The Kotlin `kast` executable uses one predictable, composable Clikt command graph instead of the hand-rolled CLI grammar while preserving every existing semantic request, wire, API, runtime, and downstream contract.
 
 ## Allowed Writes
 
 - `.agent/TASK.md`
 - `.agent-turn/kotlin-agentic-correctness/`
-- `workspace/contract/src/`
-- `workspace/service/src/`
-- `workspace/intellij/src/`
-- `evidence/contract/src/`
-- `evidence/sqlite/src/`
-- `runtime/composition/src/`
+- `gradle/libs.versions.toml`
+- `cli/AGENTS.md`
+- `cli/build.gradle.kts`
+- `cli/src/main/kotlin/io/github/amichne/kast/cli/`
+- `cli/src/test/kotlin/io/github/amichne/kast/cli/`
+- Baseline-only paths already changed by PR 630 under `workspace/`, `evidence/`, and `runtime/composition/` at head `6811f04894db12138808ad490e3d50eb7c367693`.
 
 No other paths may be modified.
 
@@ -21,29 +21,34 @@ No other paths may be modified.
 
 - `AGENTS.md`
 - `.agent/TASK.md`
-- `workspace/`
-- `evidence/`
-- `runtime/`
-- `protocol/`
-- `kernel/`
+- `.agent-turn/`
+- `cli/`
+- `gradle/`
+- `build-logic/`
 - `packaging/`
 - `integration-tests/`
-- `build.gradle.kts`
+- `install.sh`
 - `settings.gradle.kts`
-- `gradle/`
-- `gradlew`
+- `protocol/`
+- `distribution/`
+- `kernel/`
+- `runtime/`
+- `workspace/`
+- `symbol/`
+- `relation/`
+- `traversal/`
+- `diagnostic/`
+- `change/`
+- `evidence/`
 - `.github/`
-- Git history and repository state.
-- The installed Kast command, its managed installation, and official GitHub release metadata.
+- Git metadata and GitHub pull-request metadata for PRs 630, 631, and the resulting change.
+- Installed Clikt artifacts and Kotlin, Effective Delivery, pstack, TDD, and Git skill instructions.
 
 ## Non-Goals
 
-- Implementing or changing member extension function or property resolution.
-- Implementing or changing request chaining or pipeline semantics.
-- Implementing or changing call-graph resolution.
-- Rebinding selectors or read leases across a real semantic mutation.
-- Redesigning event-source federation beyond changes strictly required for semantic identity stability.
-- Publishing the findings report to an external gist or service.
+- Changing any protocol contract, generated wire model, wire schema, semantic request, semantic outcome, API shape, runtime implementation, or downstream service behavior.
+- Adding a second parser, compatibility parser, fallback executable, hidden command, shell interpreter, or task runtime.
+- Adding shell-specific output, prompts, color-dependent meaning, environment-variable options, or argument-file expansion.
 - Refactoring unrelated code.
 - Generalizing the implementation.
 - Fixing unrelated failures.
@@ -54,49 +59,46 @@ No other paths may be modified.
 Command:
 
 ```shell
-./gradlew :evidence:sqlite:test --tests '*SqliteWorkspaceGenerationPublicationTest'
+./gradlew :cli:test --tests '*CliCommandGraphContractTest'
 ```
 
 Expected failure:
 
-The added identical-publication test shows that committing the same canonical semantic state a second time allocates a new generation instead of returning an atomic unchanged result with the current generation.
+The new public command-graph contract fails because the current hand-rolled parser does not provide Clikt-generated nested help and option forms, one typed command authority, or composable stdout/stderr and exit routing.
 
 ## Green Proof
 
 Command:
 
 ```shell
-./gradlew :workspace:contract:test :workspace:service:test :workspace:intellij:test :evidence:contract:test :evidence:sqlite:test :runtime:composition:test :runtime:server:test verifyKastArchitecture verifyKastModuleGraph verifyNoLegacyArchitecture installedProductTest
+./gradlew :cli:test :cli:nativeTest verifyKastModuleGraph verifyNoLegacyArchitecture
 ```
 
 ## Done When
 
-- Canonically equivalent semantic inputs produce the same strongly typed identity regardless of capture order, no-op Gradle import metadata, or process restart.
-- Identical publication returns a typed unchanged outcome inside the SQLite transaction and preserves the current generation and read lease.
-- A real semantic input change returns a typed advanced outcome and increments the generation exactly once.
-- Local stress evidence covers restart, no-op refresh, real semantic change, and reuse of a generation-bound read token.
-- Extension/property, request-chaining, and call-graph observations are documented without implementation changes.
+- PR 630 and PR 631 are present in order as the immutable baseline for this change.
+- Clikt is the sole owner of public CLI token parsing, command dispatch, option conversion, validation, and help generation.
+- Every command produces stable machine-composable stdout, reserves stderr for diagnostics, and returns a deterministic exit status.
+- All eleven semantic operations, three local metadata flags, and five lifecycle commands remain reachable through one typed command graph.
+- The legacy command parser, option-set parser, and parallel syntax/help authority are deleted.
+- No file outside the CLI migration scope differs from the recorded post-630/631 baseline merge commit.
+- No protocol, wire, API, runtime implementation, or downstream contract changes.
 - The Green Proof passes.
+- The repository-shape proof passes.
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
 ## Execution State
 
-- The task plan was confirmed with semantic identity stability as the exclusive implementation scope.
-- The installed command is Kast `0.26.0`, which GitHub reports as the latest non-prerelease release, so the requested local upgrade is already satisfied.
-- RED proved that a second identical SQLite commit persisted generation `2` for the same identity.
-- SQLite now compares typed identity and graph evidence inside the transaction and returns `Unchanged` without allocating a new durable generation.
-- The canonical publication contract now distinguishes `Advanced`, `Unchanged`, and `Rejected`; an unchanged mutation result remains a typed `GENERATION_NOT_NEWER` rejection.
-- The IntelliJ capture now consumes import timestamps only as model-completeness evidence and emits one versioned `WorkspaceStateIdentity` from typed, order-independent semantic inputs and exact classpath URLs.
-- Reconciliation now re-hashes current source content under the detached Gradle topology; semantic request scopes reuse the last admitted typed model instead of triggering physical identity reads.
-- Focused proofs retain generation `1` across an installed-runtime reconstruction and advance to generation `2` for a changed semantic identity.
-- The owning-module and direct-consumer test ring passes after a clean build; the final full `test`, module-graph, no-legacy, and repository-shape checks also pass.
-- The first clean CI run exposed the previously masked static-snapshot defect as `resulting-generation-unavailable`; a filesystem-backed regression now proves that a real source edit changes the refreshed typed identity.
-- The corrected clean CI run passes all checks, including the live installed-product mutation and verification flow.
-- Repository-wide local completion is blocked by pre-existing verification infrastructure: `verifyKastArchitecture` describes retired modules as active and the current `runtime:composition` module as merely planned, while `installedProductTest` cannot establish the runtime endpoint on this machine despite passing in clean CI.
-- `session-ses_fecf.md` and `tmp.md` are pre-existing untracked user files and must remain untouched.
+- Task graph expression: `B630 -> B631 -> RED -> CLI_BOUNDARY -> COMMAND_FAMILIES -> LEGACY_REMOVAL -> PROOF -> DELIVERY`.
+- `CLI_BOUNDARY` owns Clikt adaptation and typed command actions only.
+- `COMMAND_FAMILIES` depends on `CLI_BOUNDARY` and may construct only existing protocol request types.
+- `LEGACY_REMOVAL` depends on every command-family proof and removes all superseded grammar authorities in the same wave.
+- `PROOF` depends on legacy absence, public command behavior, native transport, module direction, and repository shape.
+- Scope constraint: the implementation delta after the recorded `B630 + B631` baseline is a subset of `.agent/TASK.md`, `.agent-turn/kotlin-agentic-correctness/`, `gradle/libs.versions.toml`, `cli/AGENTS.md`, `cli/build.gradle.kts`, and `cli/src/`.
+- Immutability constraint: the implementation delta after the recorded baseline contains no path under `protocol/`, `runtime/`, `workspace/`, `symbol/`, `relation/`, `traversal/`, `diagnostic/`, `change/`, `evidence/`, `distribution/`, or `kernel/`.
+- Baseline heads confirmed: PR 630 `6811f04894db12138808ad490e3d50eb7c367693`; PR 631 `45cde77e934b61ef1641a87d312ebbd7f0c3815c`.
 
 ## Out-of-Scope Findings
 
-- The architecture policy model is stale relative to the 32-project topology in `settings.gradle.kts`; repairing it is unrelated to semantic identity stability.
-- Both the staged product and installed Kast `0.26.0` report `endpoint-unavailable` before a live semantic request can run. Another user-owned Kast indexer for a separate worktree is active and was not interrupted.
+- None
