@@ -183,6 +183,21 @@ shared domain-code module.
   the same change and verify that every named path, symbol, task, and authority
   still exists.
 
+## Turn-scoped guide maintenance
+
+The repo-local Codex hook snapshots the Git worktree at `UserPromptSubmit` and
+checks it at `Stop`. It reviews directories changed during the turn and their
+ancestors in reverse breadth-first order, with changed leaves before parents.
+
+- Create a missing local `AGENTS.md` when the reviewed directory still owns
+  files or child directories.
+- Update an existing guide only when the turn changed a durable local fact.
+- When an existing guide remains correct, record `unchanged` with the exact
+  command emitted by the hook instead of manufacturing a documentation edit.
+- Remove `AGENTS.md` when it is the directory's only remaining entry.
+- Do not bypass a pending guide operation. The hook's empty operation list is
+  the mechanical completion evidence for this review.
+
 ## Repository verification
 
 Use widening proof and stop at the first ring that fully covers the change:
