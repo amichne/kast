@@ -122,7 +122,7 @@ node_modules/
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
-site/
+/site/
 !/gradle/wrapper/gradle-wrapper.jar
 .agent-workflows/
 .agent-workflow/
@@ -136,6 +136,10 @@ dist/
 # Python bytecode (from evaluation/scripts/ and friends)
 __pycache__/
 *.pyc
+
+# Documentation build output
+/.zensical-build-*.toml
+/zensical-stage-*/
 
 # Agent-tool-specific files (not part of kast product)
 .claude/

@@ -1,0 +1,45 @@
+views {
+  dynamic view runtime-flow {
+    title "One exact-root request"
+    description "From local command to compiler evidence, with acquisition, admission, and effects kept explicit."
+    autoLayout TopBottom 65 45
+
+    caller -> kast.cli "runs kast start or one semantic command"
+    kast.cli -> kast.acquisition "resolves the digest-verified runtime"
+    kast.acquisition -> kast.indexer "starts or reuses this canonical root"
+    jetbrains -> kast.indexer "supplies matched platform libraries"
+    kast.indexer -> kast.composition "constructs all eleven operations"
+    kast.composition -> kast.operations "admits identity, capability, scope, cost, and effect"
+    kast.operations -> kast.adapters "executes one bounded workflow"
+    kast.adapters -> compiler "uses request-local PSI and K2"
+    kast.adapters -> kast.evidence "projects and publishes host-neutral evidence"
+    kast.evidence -> kast.cli "returns complete or qualified evidence"
+    kast.cli -> caller "emits one JSON outcome"
+  }
+
+  dynamic view module-ownership {
+    title "Where each proof is owned"
+    description "Contracts point inward; compiler, SQLite, lifecycle, and source writes remain explicit outer adapters."
+
+    source.cli -> source.distribution "acquires and reuses the semantic runtime"
+    source.cli -> source.protocol "uses canonical operations and wire bindings"
+    source.indexer -> source.runtime "hosts one complete runtime composition"
+    source.runtime -> source.protocol "dispatches the closed operation set"
+    source.runtime -> source.workspace "binds readiness and publication"
+    source.runtime -> source.symbol "binds discovery and exact identity"
+    source.runtime -> source.relation "binds one-hop semantic reads"
+    source.runtime -> source.traversal "binds bounded graph workflows"
+    source.runtime -> source.diagnostic "binds compiler diagnostics"
+    source.runtime -> source.change "binds plan, apply, verify, and recovery"
+    source.runtime -> source.evidence "binds the sole persistence adapter"
+    source.workspace -> source.kernel "retains host-neutral evidence"
+    source.symbol -> source.kernel "retains exact selectors"
+    source.relation -> source.kernel "retains bounded outcomes"
+    source.traversal -> source.kernel "retains traversal limits"
+    source.diagnostic -> source.kernel "retains generation-bound facts"
+    source.change -> source.evidence "publishes and recovers workspace state"
+    source.change -> source.kernel "retains proof transitions"
+    source.evidence -> source.kernel "stores host-neutral evidence"
+    source.protocol -> source.kernel "binds permanent operation identities"
+  }
+}
