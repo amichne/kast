@@ -1,0 +1,105 @@
+specification {
+  tag public
+  tag discovery
+  tag identity
+  tag evidence
+  tag effect
+  tag external
+
+  element person {
+    notation "Caller"
+    style {
+      shape person
+      color primary
+    }
+  }
+  element boundary {
+    notation "Typed boundary"
+    style {
+      shape browser
+      color primary
+    }
+  }
+  element runtime {
+    notation "Isolated runtime"
+    style {
+      shape component
+      color secondary
+    }
+  }
+  element service {
+    notation "Semantic service"
+    style {
+      shape component
+      color blue
+    }
+  }
+  element authority {
+    notation "Proof authority"
+    style {
+      shape rectangle
+      color indigo
+    }
+  }
+  element datastore {
+    notation "Published evidence"
+    style {
+      shape storage
+      color green
+    }
+  }
+  element platform {
+    notation "External platform"
+    style {
+      shape rectangle
+      color muted
+    }
+  }
+  element module {
+    notation "Module family"
+    style {
+      shape component
+      color blue
+    }
+  }
+
+  relationship request {
+    technology "typed request"
+    color primary
+    head normal
+  }
+  relationship admit {
+    technology "capability admission"
+    color indigo
+    line dashed
+    head normal
+  }
+  relationship inspect {
+    technology "compiler read"
+    color blue
+    head normal
+  }
+  relationship prove {
+    technology "generation-bound evidence"
+    color green
+    head normal
+  }
+  relationship effect {
+    technology "explicit effect"
+    color amber
+    line dashed
+    head normal
+  }
+  relationship supply {
+    technology "matched runtime libraries"
+    color muted
+    line dotted
+    head vee
+  }
+  relationship depend {
+    technology "source dependency"
+    color muted
+    line dashed
+    head vee
+  }
+}

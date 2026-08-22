@@ -1,0 +1,40 @@
+{
+  "$schema": "https://likec4.dev/schemas/config.json",
+  "name": "kast-public-architecture",
+  "title": "How Kast works",
+  "metadata": {
+    "owner": "Kast maintainers",
+    "domain": "compiler-grounded Kotlin evidence"
+  },
+  "styles": {
+    "theme": {
+      "colors": {
+        "primary": "#2563EB",
+        "secondary": "#6D28D9",
+        "indigo": "#4F46E5",
+        "green": "#047857",
+        "amber": "#B45309",
+        "muted": "#64748B"
+      }
+    },
+    "defaults": {
+      "group": {
+        "color": "slate",
+        "opacity": 7,
+        "border": "solid"
+      },
+      "relationship": {
+        "color": "slate",
+        "line": "solid",
+        "arrow": "vee"
+      }
+    }
+  },
+  "implicitViews": false,
+  "landingPage": {
+    "include": [
+      "runtime-flow",
+      "module-ownership"
+    ]
+  }
+}

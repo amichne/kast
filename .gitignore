@@ -30,6 +30,11 @@ replay_pid*
 __pycache__/
 *.pyc
 
+# Documentation build output
+/site/
+/.zensical-build-*.toml
+/zensical-stage-*/
+
 # Agent-local state
 .agent-workflows/
 .agent-workflow/

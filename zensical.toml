@@ -1,0 +1,88 @@
+[project]
+site_name = "Kast"
+site_description = "Compiler-grounded evidence for exact Kotlin repositories."
+site_author = "amichne"
+site_url = "https://kast.michne.com/"
+repo_url = "https://github.com/amichne/kast"
+repo_name = "amichne/kast"
+edit_uri = "edit/main/docs/public"
+docs_dir = "docs/public"
+site_dir = "site"
+copyright = "Copyright &copy; 2026 amichne"
+extra_css = ["stylesheets/extra.css"]
+extra_javascript = ["javascripts/accessibility.js"]
+nav = [
+  { "Start" = [
+    "index.md",
+    { "Set up and start Kast" = "start.md" },
+  ] },
+  { "Repository questions" = [
+    { "What is Kast ready to inspect?" = "questions/workspace-readiness.md" },
+    { "What declaration is this?" = "questions/declaration-identity.md" },
+    { "How is this code connected?" = "questions/code-connections.md" },
+    { "Is this code semantically valid?" = "questions/semantic-validity.md" },
+    { "How can I change it safely?" = "questions/safe-change.md" },
+  ] },
+  { "Trust the evidence" = "concepts/evidence-boundaries.md" },
+  { "CLI reference" = "reference/cli.md" },
+  { "How Kast works" = "explanation/how-kast-works.md" },
+]
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.pymdownx.highlight]
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+
+[project.theme]
+variant = "modern"
+language = "en"
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.copy",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+]
+
+[project.theme.icon]
+logo = "lucide/braces"
+repo = "fontawesome/brands/github"
+edit = "material/file-edit-outline"
+view = "material/file-eye-outline"
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "indigo"
+accent = "deep-purple"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "indigo"
+accent = "deep-purple"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.validation]
+invalid_links = true
+invalid_link_anchors = true
+unresolved_references = false
+unresolved_footnotes = false
+unused_definitions = false
+unused_footnotes = false
+shadowed_definitions = false
+shadowed_footnotes = false
+
+[project.plugins.search]
+enabled = false
