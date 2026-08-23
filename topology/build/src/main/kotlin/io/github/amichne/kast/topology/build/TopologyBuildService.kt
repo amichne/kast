@@ -21,11 +21,43 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLeaseGuard
 import io.github.amichne.kast.workspace.contract.SemanticReadLeaseUse
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import java.util.concurrent.atomic.AtomicReference
 
 /** Private capability whose construction and use exist only inside `:topology:build`. */
 private class TopologyBuildAuthority {
+    private val retained = AtomicReference<RetainedTopologySnapshot>(
+        RetainedTopologySnapshot.Unavailable,
+    )
+
     suspend fun execute(operation: suspend () -> TopologyBuildResult): TopologyBuildResult =
         operation()
+
+    /**
+     * Proof transition: `TopologyWorkspaceIdentity -> RetainedTopologySnapshot`.
+     *
+     * Exact establishes an already-published snapshot for the requested identity; Unavailable is
+     * the closed absence state. The retained publication proof never leaves this private build
+     * authority.
+     */
+    fun recall(identity: TopologyWorkspaceIdentity): RetainedTopologySnapshot =
+        when (val current = retained.get()) {
+            is RetainedTopologySnapshot.Exact -> if (current.snapshot.identity == identity) {
+                current
+            } else {
+                RetainedTopologySnapshot.Unavailable
+            }
+            RetainedTopologySnapshot.Unavailable -> RetainedTopologySnapshot.Unavailable
+        }
+
+    /** Preserves one exact publication proof for a later build with the same identity. */
+    fun retain(snapshot: PublishedTopologySnapshot) {
+        retained.set(RetainedTopologySnapshot.Exact(snapshot))
+    }
+}
+
+private sealed interface RetainedTopologySnapshot {
+    data object Unavailable : RetainedTopologySnapshot
+    data class Exact(val snapshot: PublishedTopologySnapshot) : RetainedTopologySnapshot
 }
 
 /** Explicit coordinator that alone can turn terminal K2 coverage into publication. */
@@ -50,9 +82,15 @@ class TopologyBuildService private constructor(
                 -> return rejected(TopologyBuildFailure.WorkspaceNotReady)
         }
         val identity = TopologyWorkspaceIdentity.from(workspace)
+        when (val retained = authority.recall(identity)) {
+            is RetainedTopologySnapshot.Exact ->
+                return TopologyBuildResult.Reused(retained.snapshot)
+            RetainedTopologySnapshot.Unavailable -> Unit
+        }
         val prior = when (val existing = snapshots.eligible(identity)) {
             is TopologySnapshotEligibility.Eligible ->
                 return if (existing.snapshot.identity == identity) {
+                    authority.retain(existing.snapshot)
                     TopologyBuildResult.Reused(existing.snapshot)
                 } else {
                     rejected(TopologyBuildFailure.SnapshotContractViolation)
@@ -142,14 +180,19 @@ class TopologyBuildService private constructor(
     ) {
         SemanticReadLeaseUse.Moved -> TopologyBuildResult.WorkspaceMoved
         is SemanticReadLeaseUse.Completed -> when (val publication = guarded.value) {
-            is TopologyPublicationResult.Published -> when (mode) {
-                TopologyPublicationMode.EXTRACTED ->
-                    TopologyBuildResult.Published(publication.snapshot)
-                TopologyPublicationMode.REBOUND ->
-                    TopologyBuildResult.Reused(publication.snapshot)
+            is TopologyPublicationResult.Published -> {
+                authority.retain(publication.snapshot)
+                when (mode) {
+                    TopologyPublicationMode.EXTRACTED ->
+                        TopologyBuildResult.Published(publication.snapshot)
+                    TopologyPublicationMode.REBOUND ->
+                        TopologyBuildResult.Reused(publication.snapshot)
+                }
             }
-            is TopologyPublicationResult.Unchanged ->
+            is TopologyPublicationResult.Unchanged -> {
+                authority.retain(publication.snapshot)
                 TopologyBuildResult.Reused(publication.snapshot)
+            }
             is TopologyPublicationResult.Rejected -> rejected(
                 TopologyBuildFailure.Publication(publication.failure),
             )

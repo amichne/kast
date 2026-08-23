@@ -5,9 +5,10 @@ performs no IntelliJ, K2, JDBC, filesystem, Gradle, startup, or workspace-public
 
 ## Invariants
 
-- Exact-identity reuse is checked before candidate enumeration. A stale snapshot may be rebound
-  without K2 only after current source-root enumeration proves an identical canonical file set;
-  edited files proceed to extraction.
+- Exact-identity reuse first consumes a publication proof retained by this build coordinator, then
+  checks durable eligibility before candidate enumeration. A stale snapshot may be rebound without
+  K2 only after current source-root enumeration proves an identical canonical file set; edited
+  files proceed to extraction.
 - The coordinator enumerates only through the admitted-source-root port and accepts publication
   only after every candidate returns `CompleteTopologyFile`.
 - Publication runs only while the original semantic lease remains current. Failure and
