@@ -1,0 +1,11 @@
+{
+  "name": "kast-likec4-tooling",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "devDependencies": {
+    "likec4": "1.59.2"
+  }
+}

@@ -22,7 +22,8 @@ module graph before the reader understands the runtime flow.
 - Generate `public/architecture/likec4-views.mjs` with:
 
   ```shell
-  npx --yes likec4@1.59.2 gen webcomponent \
+  npm ci --prefix docs/tooling/likec4 --ignore-scripts --no-audit --no-fund
+  docs/tooling/likec4/node_modules/.bin/likec4 gen webcomponent \
     --outfile docs/public/architecture/likec4-views.mjs \
     --webcomponent-prefix kast \
     docs/public/architecture
@@ -46,7 +47,8 @@ Run these checks after changing this directory:
 ./gradlew :protocol:wire:generateOperationRegistry
 python3 docs/generate_cli_reference.py --check
 python3 docs/test_public_docs.py
-npx --yes likec4@1.59.2 validate --json --no-layout \
+npm ci --prefix docs/tooling/likec4 --ignore-scripts --no-audit --no-fund
+docs/tooling/likec4/node_modules/.bin/likec4 validate --json --no-layout \
   --file docs/public/architecture/specification.c4 \
   --file docs/public/architecture/model.c4 \
   --file docs/public/architecture/views.c4 \

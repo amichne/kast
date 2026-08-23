@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "docs/public"
+LIKEC4_TOOLING = ROOT / "docs/tooling/likec4"
 
 PAGES = {
     "index.md": [
@@ -224,11 +225,25 @@ def check_architecture() -> None:
     require("view module-ownership" in views, "module-ownership view is missing")
     require("navigateTo" not in views, "architecture source still defines dialog navigation")
 
+    subprocess.run(
+        [
+            "npm",
+            "ci",
+            "--prefix",
+            str(LIKEC4_TOOLING),
+            "--ignore-scripts",
+            "--no-audit",
+            "--no-fund",
+        ],
+        cwd=ROOT,
+        check=True,
+    )
+    likec4 = LIKEC4_TOOLING / "node_modules/.bin/likec4"
+    require(likec4.is_file(), "locked LikeC4 executable is missing")
+
     validation = subprocess.run(
         [
-            "npx",
-            "--yes",
-            "likec4@1.59.2",
+            str(likec4),
             "validate",
             "--json",
             "--no-layout",
@@ -255,9 +270,7 @@ def check_architecture() -> None:
         generated = Path(temporary) / "likec4-views.mjs"
         subprocess.run(
             [
-                "npx",
-                "--yes",
-                "likec4@1.59.2",
+                str(likec4),
                 "gen",
                 "webcomponent",
                 "--outfile",

@@ -37,6 +37,7 @@ __pycache__/
 # Documentation build output
 /.zensical-build-*.toml
 /zensical-stage-*/
+node_modules/
 
 # Agent-local state
 .agent-workflows/
