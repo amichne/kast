@@ -46,6 +46,9 @@ val verifyGeneratedCliReference = registerPr633Exec(
     "docs/generate_cli_reference.py",
     "--check",
 )
+verifyGeneratedCliReference.configure {
+    dependsOn(":protocol:wire:generateOperationRegistry")
+}
 val verifyPublicDocs = registerPr633Exec(
     "verifyPublicDocs",
     "python3",
