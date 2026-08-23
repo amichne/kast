@@ -9,6 +9,9 @@ import io.github.amichne.kast.runtime.composition.ChangePlanningOperations
 import io.github.amichne.kast.runtime.composition.ChangeRecoveryOperations
 import io.github.amichne.kast.runtime.composition.InstalledWorkspaceRoot
 import io.github.amichne.kast.runtime.composition.KastOperationHandlerFactory
+import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
+import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTopologyBuildHandler
+import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations

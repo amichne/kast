@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition.protocol
+package io.github.amichne.kast.runtime.composition.protocol.graph
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
@@ -25,6 +25,11 @@ import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
+import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorLookup
+import io.github.amichne.kast.runtime.composition.protocol.RelationEndpointIssuance
+import io.github.amichne.kast.runtime.composition.protocol.RelationSubjectLookup
+import io.github.amichne.kast.runtime.composition.protocol.protocolDocument
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
