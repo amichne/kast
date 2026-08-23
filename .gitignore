@@ -1,5 +1,8 @@
 # Gradle and Kotlin build state
 **/build/
+!/topology/build/
+!/topology/build/**
+/topology/build/build/
 .gradle/
 /.kotlin/
 .intellijPlatform/
