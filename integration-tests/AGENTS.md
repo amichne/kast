@@ -9,8 +9,8 @@ must not depend on developer checkout state or control a foreground IDE.
 - Exercise only the staged public executable and its documented environment boundaries.
 - Use the public lifecycle command for behavior under test. Direct process termination is reserved
   for bounded `finally` cleanup of a test-owned workspace.
-- Keep independent stress concerns in isolated workspaces when mutation or compiler reindexing
-  would contaminate restart evidence.
+- Prove restart reuse after initial publication and before mutation in the enterprise workspace.
+  This ordering keeps restart evidence uncontaminated without paying for a redundant cold indexer.
 - Enterprise topology acceptance must cover real K2 publication, SQLite-backed graph reads, clean
   stop, restart reuse, bounded output, and the single measured elapsed-time budget.
 - Expected failure is asserted from structured JSON outcomes and exact exit codes.

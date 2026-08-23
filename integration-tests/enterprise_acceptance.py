@@ -178,6 +178,7 @@ class Acceptance:
             or not isinstance(topology.get("digest"), str)
         ):
             fail(f"installed K2 topology build did not publish: {topology}")
+        self.prove_topology_snapshot_restart(topology["digest"])
 
         relation_limit = positive_integer(bounds, "relationResultLimit")
         relation = self.command(
@@ -223,18 +224,7 @@ class Acceptance:
             fail(f"expected one exact enterprise mutation target: {routers}")
         self.prove_generation_transition(exact_routers[0], next(iter(route_overloads)))
 
-    def prove_topology_snapshot_restart(self) -> None:
-        published = self.command(
-            "topology", "build", timeout=self.maximum_startup_seconds
-        )
-        if (
-            published.get("operation") != "topology.build"
-            or published.get("status") != "complete"
-            or published.get("snapshotStatus") != "published"
-            or not isinstance(published.get("digest"), str)
-        ):
-            fail(f"installed K2 topology build did not publish: {published}")
-
+    def prove_topology_snapshot_restart(self, published_digest: str) -> None:
         stopped = self.command("stop")
         if (
             stopped.get("command") != "stop"
@@ -249,9 +239,12 @@ class Acceptance:
             reused.get("operation") != "topology.build"
             or reused.get("status") != "complete"
             or reused.get("snapshotStatus") != "reused"
-            or not isinstance(reused.get("digest"), str)
+            or reused.get("digest") != published_digest
         ):
-            fail(f"restarted runtime did not reuse SQLite topology facts: {reused}")
+            fail(
+                "restarted runtime did not reuse the exact published SQLite "
+                f"topology facts: {reused}"
+            )
 
     def prove_generation_transition(self, target: str, stale_selector: str) -> None:
         plan = self.command(
@@ -425,28 +418,6 @@ def main() -> None:
             )
             try:
                 acceptance.prove_installed_surface(bounds)
-            finally:
-                stop_indexer(workspace)
-    with tempfile.TemporaryDirectory(prefix="kast-topology-") as workspace_text:
-        with tempfile.TemporaryDirectory(prefix="ktr.", dir="/tmp") as runtime_text:
-            workspace = Path(workspace_text)
-            runtime = Path(runtime_text)
-            shutil.copytree(
-                args.fixture,
-                workspace,
-                dirs_exist_ok=True,
-                ignore=shutil.ignore_patterns(".gradle", ".idea", "build"),
-            )
-            prepare_workspace_fixture(workspace)
-            acceptance = Acceptance(
-                executable,
-                workspace,
-                runtime,
-                args.runtime_archive,
-                bounds,
-            )
-            try:
-                acceptance.prove_topology_snapshot_restart()
             finally:
                 stop_indexer(workspace)
     elapsed = time.monotonic() - started_at
