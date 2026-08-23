@@ -328,3 +328,53 @@ tasks.register<Exec>("enterpriseAcceptance") {
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
 }
+
+val buildLogicTests = gradle.includedBuild("build-logic").task(":test")
+val topologyAcceptanceChecks: Map<String, List<Any>> = mapOf(
+    "topologyEnumerationAcceptance" to listOf(":topology:intellij:test"),
+    "topologyCoverageAcceptance" to listOf(
+        ":topology:contract:test",
+        ":topology:build:test",
+        ":protocol:registry:test",
+        ":protocol:wire:test",
+        ":cli:test",
+    ),
+    "topologyFailureAtomicityAcceptance" to listOf(
+        ":topology:build:test",
+        ":evidence:sqlite:test",
+    ),
+    "topologyRestartAcceptance" to listOf(":evidence:sqlite:test"),
+    "topologyReuseAcceptance" to listOf(":topology:build:test", ":evidence:sqlite:test"),
+    "topologyStalenessAcceptance" to listOf(
+        ":topology:build:test",
+        ":workspace:intellij:test",
+        ":evidence:sqlite:test",
+    ),
+    "topologyRebuildRollbackAcceptance" to listOf(":evidence:sqlite:test"),
+    "topologyGraphReadAcceptance" to listOf(
+        ":topology:service:test",
+        ":traversal:service:test",
+        ":runtime:composition:test",
+    ),
+    "topologyDeterminismAcceptance" to listOf(":topology:service:test", ":evidence:sqlite:test"),
+    "verifyTopologyAuthority" to listOf(
+        buildLogicTests,
+        "verifyKastModuleGraph",
+        "verifyForbiddenEffects",
+    ),
+    "topologyScaleAcceptance" to listOf("enterpriseAcceptance"),
+)
+
+topologyAcceptanceChecks.forEach { (name, dependencies) ->
+    tasks.register(name) {
+        group = "verification"
+        description = "Runs the $name proof ring."
+        dependsOn(dependencies)
+    }
+}
+
+tasks.register("topologyAcceptance") {
+    group = "verification"
+    description = "Proves the explicit generation-bound topology snapshot contract."
+    dependsOn(topologyAcceptanceChecks.keys)
+}

@@ -7,6 +7,8 @@ import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournal
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournalOpenResult
 import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabase
 import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabaseOpening
+import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStore
+import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.intellij.InstalledRelationScopeOperations
 import io.github.amichne.kast.relation.intellij.installedIntellijRelationCompiler
@@ -27,16 +29,21 @@ import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCapture
 import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure
 import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliationPort
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
+import io.github.amichne.kast.topology.contract.TopologyFileExtractor
+import io.github.amichne.kast.topology.intellij.AdmittedSourceRootEnumerator
+import io.github.amichne.kast.topology.intellij.installedIntellijTopologyExtractor
 
 /** Closed construction inputs whose live platform values remain behind narrow adapter ports. */
 internal data class InstalledRuntimeAssemblyInputs(
     val workspaceModel: InstalledGradleModelReadOperations,
     val semantic: SemanticRuntimePorts,
+    val topologyExtractor: TopologyFileExtractor,
     val change: InstalledChangePhysicalPorts,
 )
 
 private data class InstalledRuntimePlatformPorts(
     val semantic: SemanticRuntimePorts,
+    val topologyExtractor: TopologyFileExtractor,
     val change: InstalledChangePhysicalPorts,
 )
 
@@ -142,7 +149,7 @@ internal fun productionInstalledRuntimeAssembler(
         request,
         inputs.workspaceModel,
     ) { _, _ ->
-        InstalledRuntimePlatformPorts(inputs.semantic, inputs.change)
+        InstalledRuntimePlatformPorts(inputs.semantic, inputs.topologyExtractor, inputs.change)
     }
 }
 
@@ -166,6 +173,14 @@ private fun assembleInstalledRuntime(
         is SqliteMutationRecoveryJournalOpenResult.Opened -> opened.journal
         is SqliteMutationRecoveryJournalOpenResult.Rejected -> return rejected(
             InstalledRuntimePersistenceFailure.MUTATION_RECOVERY_UNAVAILABLE,
+        )
+    }
+    val topologySnapshots = when (val opened = SqliteTopologySnapshotStore.open(
+        request.stateDirectory.path.resolve("topology.sqlite"),
+    )) {
+        is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
+        is SqliteTopologySnapshotStoreOpening.Rejected -> return rejected(
+            InstalledRuntimePersistenceFailure.TOPOLOGY_SNAPSHOT_UNAVAILABLE,
         )
     }
     val workspaceModel = InstalledWorkspaceModelAdapter(modelRead)
@@ -192,6 +207,11 @@ private fun assembleInstalledRuntime(
     val graph = KastRuntimeComposition.constructGraph(
         workspace,
         platform.semantic,
+        TopologyRuntimePorts(
+            AdmittedSourceRootEnumerator(),
+            platform.topologyExtractor,
+            topologySnapshots,
+        ),
         ChangeRuntimePorts(
             recovery,
             platform.change.sourceObserver,
@@ -256,6 +276,7 @@ private fun productionPlatformPorts(
             relation,
             installedIntellijDiagnosticCompiler(root, workspace),
         ),
+        installedIntellijTopologyExtractor(root, workspace),
         InstalledChangePhysicalPorts(
             change.sourceObserver,
             change.sourceWriter,

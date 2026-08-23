@@ -12,6 +12,7 @@ import io.github.amichne.kast.runtime.composition.KastOperationHandlerFactory
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
+import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 
 /** Canonical operation handlers sharing exact selector and change-transition authorities. */
@@ -25,6 +26,10 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
     override fun workspaceInspect(
         operations: WorkspaceInspectionOperations,
     ): CanonicalWorkspaceInspectHandler = workspaceHandler
+
+    override fun topologyBuild(
+        operations: TopologyBuildOperations,
+    ) = CanonicalTopologyBuildHandler(operations)
 
     override fun symbolDiscover(
         operations: SymbolDiscoveryOperations,
@@ -77,7 +82,7 @@ internal class CanonicalKastOperationHandlerFactory private constructor(
          * ChangePlanAdmissionOperations) -> Refinement<CanonicalKastOperationHandlerFactory,
          * WorkspaceInspectHandlerConstructionFailure>`.
          *
-         * Establishes all eleven canonical handlers under one exact installed root, one selector
+         * Establishes all twelve canonical handlers under one exact installed root, one selector
          * authority, and one plan/apply/verify authority. The closed construction failure preserves
          * an unrepresentable root. Raw root extraction remains confined to workspace projection.
          */

@@ -13,7 +13,7 @@
 ## Contract invariants
 
 - One fresh Clikt graph is the sole argv grammar, dispatch, option conversion, validation, and help
-  authority. It refines raw argv to exactly one of the eleven canonical operation actions, three
+  authority. It refines raw argv to exactly one of the twelve canonical operation actions, three
   local metadata flags, or five local lifecycle actions.
 - Command leaves construct existing protocol request types directly from refined option values.
   Mode-specific and intent-specific combinations become closed failures before runtime access.

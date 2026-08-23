@@ -15,6 +15,7 @@ on standard error.
 | Operation | Command shape | Result role |
 | --- | --- | --- |
 | `workspace.inspect` | `kast workspace inspect` | Report exact-root readiness and workspace identity. |
+| `topology.build` | `kast topology build` | Build or reuse the exact generation's durable repository graph. |
 | `symbol.discover` | `kast symbol discover --mode <name\|location\|structure\|text> ... --limit <1..1000>` | Find bounded candidates by name, location, structure, or text. |
 | `symbol.resolve` | `kast symbol resolve --candidate <candidate-selector>` | Refine one candidate into an exact symbol selector. |
 | `symbol.describe` | `kast symbol describe --selector <exact-selector>` | Describe one exact, current-generation symbol. |

@@ -137,17 +137,18 @@ and authored diagram sources do not enter the ignored `site/` output.
 ## Gradle topology
 
 `settings.gradle.kts` is the project-membership authority. The main build has
-exactly 32 target subprojects and one included build:
+exactly 36 target subprojects and one included build:
 
 | Project or family | Broad owner | Dependency direction | Local guide |
 | --- | --- | --- | --- |
 | `:kernel` | Host-neutral refinement and generation primitives | Leaf project | `kernel/AGENTS.md` |
 | `:distribution:{contract,managed}` | Runtime identity and the sole acquisition/store adapter | Contract then managed adapter | Each project root |
-| `:protocol:{contract,registry,wire}` | Eleven canonical operations, typed metadata, and generated wire bindings | Contract then registry/wire | Each project root |
+| `:protocol:{contract,registry,wire}` | Twelve canonical operations, typed metadata, and generated wire bindings | Contract then registry/wire | Each project root |
 | `:workspace:{contract,service,intellij}` | Published-workspace identity, transition coordination, and IntelliJ/Gradle effects | Contract then service/adapter | Each project root |
 | `:symbol:{contract,service,intellij}` | Discovery/exact-symbol contracts, admission, and IntelliJ/K2 execution | Contract then service/adapter | Each project root |
 | `:relation:{contract,service,intellij}` | One-hop semantic relation evidence and bounded K2 execution | Contract then service/adapter | Each project root |
 | `:traversal:{contract,service}` | Deterministic bounded traversal contracts and pure workflow | Contract then service | Each project root |
+| `:topology:{contract,build,service,intellij}` | Explicit generation-bound graph construction, durable graph algorithms, and K2 extraction | Contract inward; build/service and IntelliJ adapter outward | Each project root |
 | `:diagnostic:{contract,service,intellij}` | Generation-bound diagnostic evidence and compiler projection | Contract then service/adapter | Each project root |
 | `:change:{contract,plan,apply,verify,recovery,intellij}` | Closed change intents and proof-preserving mutation stages | Contract inward; services and sole write adapter outward | Each project root |
 | `:evidence:{contract,sqlite}` | Publication/recovery contracts and sole physical persistence | Contract then SQLite adapter | Each project root |
@@ -167,7 +168,7 @@ runtime:server -> protocol:{contract,registry,wire}
 services -> their contracts and narrower contracts
 IntelliJ/SQLite adapters -> their contracts
 cli -> distribution:{contract,managed} + kernel + protocol:{contract,registry,wire}
-workspace, symbol, relation, traversal, diagnostic, change, and evidence contracts -> kernel
+workspace, symbol, relation, traversal, topology, diagnostic, change, and evidence contracts -> kernel
 ```
 
 `build-logic` configures the graph but does not become a product dependency.

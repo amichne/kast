@@ -50,6 +50,7 @@ PAGES = {
     "questions/code-connections.md": [
         "# How is this code connected?",
         "kast relation read",
+        "kast topology build",
         "kast traversal run",
         "explicit limits",
     ],
@@ -86,7 +87,7 @@ PAGES = {
         '<kast-view view-id="module-ownership"',
         '<details class="kast-architecture-details"',
         "foreground IDE",
-        "eleven canonical operations",
+        "twelve canonical operations",
     ],
 }
 

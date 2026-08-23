@@ -19,9 +19,10 @@ import java.nio.file.Path
 
 class CliBoundaryContractTest {
     @Test
-    fun `exactly eleven public command projections parse to canonical operations`() {
+    fun `exactly twelve public command projections parse to canonical operations`() {
         val commands = mapOf(
             listOf("workspace", "inspect") to CanonicalOperation.WORKSPACE_INSPECT,
+            listOf("topology", "build") to CanonicalOperation.TOPOLOGY_BUILD,
             listOf("symbol", "discover", "--query", "Example", "--limit", "10") to
                 CanonicalOperation.SYMBOL_DISCOVER,
             listOf("symbol", "resolve", "--candidate", "candidate") to

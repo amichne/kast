@@ -17,6 +17,7 @@ import io.github.amichne.kast.runtime.server.TypedOperationBinding
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
 import io.github.amichne.kast.traversal.service.traversalOperations
+import io.github.amichne.kast.topology.build.TopologyBuildService
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationFailure
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationResult
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
@@ -63,16 +64,18 @@ class KastRuntimeComposition private constructor(
         fun create(
             workspacePorts: WorkspaceRuntimePorts,
             semanticPorts: SemanticRuntimePorts,
+            topologyPorts: TopologyRuntimePorts,
             changePorts: ChangeRuntimePorts,
             handlers: KastOperationHandlerFactory,
         ): KastRuntimeCompositionConstruction = bind(
-            constructGraph(workspacePorts, semanticPorts, changePorts).operations,
+            constructGraph(workspacePorts, semanticPorts, topologyPorts, changePorts).operations,
             handlers,
         )
 
         internal fun constructGraph(
             workspacePorts: WorkspaceRuntimePorts,
             semanticPorts: SemanticRuntimePorts,
+            topologyPorts: TopologyRuntimePorts,
             changePorts: ChangeRuntimePorts,
         ): DirectKastRuntimeGraph = constructGraph(
             WorkspacePublicationCoordinator(
@@ -80,18 +83,27 @@ class KastRuntimeComposition private constructor(
                 workspacePorts.publication,
             ),
             semanticPorts,
+            topologyPorts,
             changePorts,
         )
 
         internal fun constructGraph(
             workspace: WorkspacePublicationCoordinator,
             semanticPorts: SemanticRuntimePorts,
+            topologyPorts: TopologyRuntimePorts,
             changePorts: ChangeRuntimePorts,
         ): DirectKastRuntimeGraph {
             val symbolDiscovery = SymbolDiscoveryService(workspace, semanticPorts.symbolDiscovery)
             val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
             val relation = RelationService(workspace, semanticPorts.relation)
-            val traversal = traversalOperations(relation)
+            val topology = TopologyBuildService.create(
+                workspace,
+                workspace,
+                topologyPorts.candidates,
+                topologyPorts.extractor,
+                topologyPorts.snapshots,
+            )
+            val traversal = TopologyBackedTraversalOperations(workspace, topologyPorts.snapshots)
             val diagnostic = DiagnosticService(workspace, semanticPorts.diagnostic)
             val recovery = AddDeclarationRecoveryService(changePorts.recoveryEvidence)
             val changeApply = AddDeclarationApplyService(
@@ -106,6 +118,7 @@ class KastRuntimeComposition private constructor(
             )
             val operations = DirectKastOperations.assemble(
                 workspace,
+                topology,
                 symbolDiscovery,
                 symbolExact,
                 relation,
@@ -127,6 +140,10 @@ class KastRuntimeComposition private constructor(
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.workspaceInspect,
                     handlers.workspaceInspect(operations.workspaceInspect),
+                ),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.topologyBuild,
+                    handlers.topologyBuild(operations.topologyBuild),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.symbolDiscover,

@@ -36,6 +36,8 @@ enum class ForbiddenEffect {
     GRAPH_BUILD,
     PROCESS_CONTROL,
     ANALYSIS_BACKEND,
+    TOPOLOGY_BUILD_AUTHORITY,
+    TOPOLOGY_PUBLICATION,
 }
 
 enum class ModuleId(val projectPath: String) {
@@ -56,6 +58,10 @@ enum class ModuleId(val projectPath: String) {
     RELATION_INTELLIJ(":relation:intellij"),
     TRAVERSAL_CONTRACT(":traversal:contract"),
     TRAVERSAL_SERVICE(":traversal:service"),
+    TOPOLOGY_CONTRACT(":topology:contract"),
+    TOPOLOGY_BUILD(":topology:build"),
+    TOPOLOGY_SERVICE(":topology:service"),
+    TOPOLOGY_INTELLIJ(":topology:intellij"),
     DIAGNOSTIC_CONTRACT(":diagnostic:contract"),
     DIAGNOSTIC_SERVICE(":diagnostic:service"),
     DIAGNOSTIC_INTELLIJ(":diagnostic:intellij"),

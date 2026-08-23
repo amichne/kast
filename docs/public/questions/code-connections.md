@@ -20,6 +20,19 @@ Use this form when one edge answers the decision. For example, callers answer
 which declarations make a compiler-resolved call to this symbol. A matching
 token elsewhere does not become a caller.
 
+## Publish the repository graph
+
+Build topology explicitly before following more than one edge:
+
+```console
+kast topology build
+```
+
+This is the only command that constructs repository topology. It covers every
+admitted Kotlin file with K2 facts, then atomically publishes one snapshot for
+the exact workspace generation. Repeating the command without a source change
+reuses that snapshot. Reads never create or repair it implicitly.
+
 ## Follow a bounded graph
 
 ```console
@@ -33,6 +46,10 @@ kast traversal run \
 Traversal repeats one relation with explicit limits for depth and results.
 Those limits are part of the question, not an implementation detail. Reaching
 one produces a qualified answer rather than an unmarked partial graph.
+
+Traversal reads the eligible SQLite snapshot, including after the indexer
+restarts. If the workspace generation moved, Kast rejects the stale graph and
+requires another explicit topology build.
 
 <div class="kast-boundary" markdown>
 

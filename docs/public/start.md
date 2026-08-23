@@ -60,7 +60,7 @@ kast --version
 kast --schema
 ```
 
-`kast --schema` lists the eleven canonical operations, command shapes, runtime
+`kast --schema` lists the twelve canonical operations, command shapes, runtime
 identity, and wire schema without touching the runtime store.
 
 ## Start the exact repository

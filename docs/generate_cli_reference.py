@@ -19,6 +19,7 @@ class SemanticCommand:
 
 OPERATION_DESCRIPTIONS = {
     "workspace.inspect": "Report exact-root readiness and workspace identity.",
+    "topology.build": "Build or reuse the exact generation's durable repository graph.",
     "symbol.discover": "Find bounded candidates by name, location, structure, or text.",
     "symbol.resolve": "Refine one candidate into an exact symbol selector.",
     "symbol.describe": "Describe one exact, current-generation symbol.",
@@ -50,8 +51,8 @@ def parse_operations(root: Path) -> list[tuple[str, str]]:
         source.read_text(),
         re.MULTILINE,
     )
-    if len(matches) != 11:
-        raise ValueError(f"expected 11 canonical operations, found {len(matches)}")
+    if len(matches) != 12:
+        raise ValueError(f"expected 12 canonical operations, found {len(matches)}")
     if len({operation_id for _, operation_id in matches}) != len(matches):
         raise ValueError("canonical operation identities are not unique")
     return matches

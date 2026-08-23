@@ -34,12 +34,12 @@ model {
 
     composition = authority "Runtime composition" {
       #identity
-      description "Proves exactly one implementation for all eleven canonical operations."
+      description "Proves exactly one implementation for all twelve canonical operations."
     }
 
     operations = service "Operation services" {
       #discovery
-      description "Runs bounded workspace, symbol, relation, traversal, diagnostic, and change workflows."
+      description "Runs bounded workspace, topology, symbol, relation, traversal, diagnostic, and change workflows."
     }
 
     adapters = authority "Compiler and write adapters" {
@@ -85,6 +85,13 @@ model {
     }
     traversal = module "traversal" {
       description "Deterministic bounded graph traversal."
+    }
+    topology = module "topology" {
+      #evidence
+      description "Explicit K2 graph builds, durable snapshots, and deterministic graph algorithms."
+      style {
+        color green
+      }
     }
     diagnostic = module "diagnostic" {
       description "Generation-bound compiler diagnostics."
@@ -143,6 +150,7 @@ model {
   source.runtime -[depend]-> source.symbol "binds symbol services"
   source.runtime -[depend]-> source.relation "binds relation services"
   source.runtime -[depend]-> source.traversal "binds traversal services"
+  source.runtime -[depend]-> source.topology "binds explicit topology construction"
   source.runtime -[depend]-> source.diagnostic "binds diagnostic services"
   source.runtime -[depend]-> source.change "binds change services"
   source.runtime -[depend]-> source.evidence "binds persistence"
@@ -150,9 +158,12 @@ model {
   source.symbol -[depend]-> source.kernel "preserves evidence types"
   source.relation -[depend]-> source.kernel "preserves evidence types"
   source.traversal -[depend]-> source.kernel "preserves evidence types"
+  source.topology -[depend]-> source.workspace "retains exact generation identity"
+  source.topology -[depend]-> source.kernel "retains detached graph evidence"
   source.diagnostic -[depend]-> source.kernel "preserves evidence types"
   source.change -[depend]-> source.evidence "publishes and recovers"
   source.change -[depend]-> source.kernel "preserves proof transitions"
   source.evidence -[depend]-> source.kernel "stores host-neutral evidence"
+  source.evidence -[depend]-> source.topology "publishes topology snapshots"
   source.protocol -[depend]-> source.kernel "binds operation identities"
 }

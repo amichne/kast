@@ -12,6 +12,9 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
+import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
+import io.github.amichne.kast.topology.contract.TopologyFileExtractor
+import io.github.amichne.kast.topology.contract.TopologySnapshotStore
 import io.github.amichne.kast.workspace.contract.WorkspaceReconciliationPort
 
 /** Narrow workspace effects from which composition constructs the publication coordinator. */
@@ -26,6 +29,13 @@ data class SemanticRuntimePorts(
     val symbolExact: SymbolExactCompilerPort,
     val relation: RelationCompilerPort,
     val diagnostic: DiagnosticCompilerPort,
+)
+
+/** Explicit topology build and durable read effects owned by runtime composition. */
+data class TopologyRuntimePorts(
+    val candidates: TopologyCandidateEnumerator,
+    val extractor: TopologyFileExtractor,
+    val snapshots: TopologySnapshotStore,
 )
 
 /** Narrow durable, physical, and resulting-proof effects for the closed change workflow. */

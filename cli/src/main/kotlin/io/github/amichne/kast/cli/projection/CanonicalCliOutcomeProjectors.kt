@@ -45,6 +45,9 @@ import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -62,6 +65,19 @@ internal val workspaceInspectCliProjector = CliOutcomeProjector<
         fields(
             "canonicalRoot" to JsonPrimitive(result.canonicalRoot.value),
             "state" to JsonPrimitive(result.state.documentValue()),
+        )
+    }
+}
+
+internal val topologyBuildCliProjector = CliOutcomeProjector<
+    TopologyBuildResult,
+    TopologyBuildQualification,
+    TopologyBuildRejection,
+    > { outcome ->
+    projectOutcome(CanonicalOperation.TOPOLOGY_BUILD, outcome) { result ->
+        fields(
+            "snapshotStatus" to JsonPrimitive(result.status.documentValue()),
+            "digest" to JsonPrimitive(result.digest.value),
         )
     }
 }

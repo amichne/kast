@@ -168,6 +168,17 @@ class Acceptance:
             fail(f"expected one exact enterprise traversal root: {roots}")
         root_selector = exact_roots[0]
 
+        topology = self.command(
+            "topology", "build", timeout=self.maximum_startup_seconds
+        )
+        if (
+            topology.get("operation") != "topology.build"
+            or topology.get("status") != "complete"
+            or topology.get("snapshotStatus") != "published"
+            or not isinstance(topology.get("digest"), str)
+        ):
+            fail(f"installed K2 topology build did not publish: {topology}")
+
         relation_limit = positive_integer(bounds, "relationResultLimit")
         relation = self.command(
             "relation",
@@ -211,6 +222,36 @@ class Acceptance:
         if len(exact_routers) != 1:
             fail(f"expected one exact enterprise mutation target: {routers}")
         self.prove_generation_transition(exact_routers[0], next(iter(route_overloads)))
+
+    def prove_topology_snapshot_restart(self) -> None:
+        published = self.command(
+            "topology", "build", timeout=self.maximum_startup_seconds
+        )
+        if (
+            published.get("operation") != "topology.build"
+            or published.get("status") != "complete"
+            or published.get("snapshotStatus") != "published"
+            or not isinstance(published.get("digest"), str)
+        ):
+            fail(f"installed K2 topology build did not publish: {published}")
+
+        stopped = self.command("stop")
+        if (
+            stopped.get("command") != "stop"
+            or stopped.get("status") != "complete"
+            or stopped.get("runtime") != "stopped"
+        ):
+            fail(f"public runtime stop did not complete: {stopped}")
+        reused = self.command(
+            "topology", "build", timeout=self.maximum_startup_seconds
+        )
+        if (
+            reused.get("operation") != "topology.build"
+            or reused.get("status") != "complete"
+            or reused.get("snapshotStatus") != "reused"
+            or not isinstance(reused.get("digest"), str)
+        ):
+            fail(f"restarted runtime did not reuse SQLite topology facts: {reused}")
 
     def prove_generation_transition(self, target: str, stale_selector: str) -> None:
         plan = self.command(
@@ -363,6 +404,7 @@ def main() -> None:
         )
 
     maximum_acceptance_seconds = positive_integer(bounds, "maximumAcceptanceSeconds")
+    started_at = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="kast-enterprise-") as workspace_text:
         with tempfile.TemporaryDirectory(prefix="kr.", dir="/tmp") as runtime_text:
             workspace = Path(workspace_text)
@@ -383,14 +425,35 @@ def main() -> None:
             )
             try:
                 acceptance.prove_installed_surface(bounds)
-                elapsed = time.monotonic() - acceptance.started_at
-                if elapsed > maximum_acceptance_seconds:
-                    fail(
-                        f"acceptance took {elapsed:.3f}s; bound is "
-                        f"{maximum_acceptance_seconds}s"
-                    )
             finally:
                 stop_indexer(workspace)
+    with tempfile.TemporaryDirectory(prefix="kast-topology-") as workspace_text:
+        with tempfile.TemporaryDirectory(prefix="ktr.", dir="/tmp") as runtime_text:
+            workspace = Path(workspace_text)
+            runtime = Path(runtime_text)
+            shutil.copytree(
+                args.fixture,
+                workspace,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns(".gradle", ".idea", "build"),
+            )
+            prepare_workspace_fixture(workspace)
+            acceptance = Acceptance(
+                executable,
+                workspace,
+                runtime,
+                args.runtime_archive,
+                bounds,
+            )
+            try:
+                acceptance.prove_topology_snapshot_restart()
+            finally:
+                stop_indexer(workspace)
+    elapsed = time.monotonic() - started_at
+    if elapsed > maximum_acceptance_seconds:
+        fail(
+            f"acceptance took {elapsed:.3f}s; bound is {maximum_acceptance_seconds}s"
+        )
 
 
 if __name__ == "__main__":

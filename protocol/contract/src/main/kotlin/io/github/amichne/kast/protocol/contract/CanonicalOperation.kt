@@ -8,6 +8,7 @@ enum class CanonicalOperation(
     val id: OperationId,
 ) {
     WORKSPACE_INSPECT(canonicalOperationId("workspace.inspect")),
+    TOPOLOGY_BUILD(canonicalOperationId("topology.build")),
     SYMBOL_DISCOVER(canonicalOperationId("symbol.discover")),
     SYMBOL_RESOLVE(canonicalOperationId("symbol.resolve")),
     SYMBOL_DESCRIBE(canonicalOperationId("symbol.describe")),

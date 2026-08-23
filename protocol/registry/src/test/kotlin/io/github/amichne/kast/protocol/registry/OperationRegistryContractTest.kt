@@ -42,6 +42,7 @@ class OperationRegistryContractTest {
         assertEquals(
             listOf(
                 "workspace.inspect",
+                "topology.build",
                 "symbol.discover",
                 "symbol.resolve",
                 "symbol.describe",

@@ -64,6 +64,11 @@ import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildCapability
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectCapability
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
@@ -71,7 +76,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import kotlin.reflect.KClass
 
-/** Sole production metadata catalog for the eleven canonical public operations. */
+/** Sole production metadata catalog for the twelve canonical public operations. */
 object CanonicalOperationDefinitions {
     val workspaceInspect = definition(
         CanonicalOperation.WORKSPACE_INSPECT,
@@ -85,6 +90,20 @@ object CanonicalOperationDefinitions {
         OperationCost.HOST_NEUTRAL,
         OperationScope.WORKSPACE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
+    )
+
+    val topologyBuild = definition(
+        CanonicalOperation.TOPOLOGY_BUILD,
+        TopologyBuildRequest::class,
+        TopologyBuildResult::class,
+        TopologyBuildQualification::class,
+        TopologyBuildRejection::class,
+        TopologyBuildCapability::class,
+        OperationLane.REGISTERED_LONG_WORK,
+        OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
+        OperationCost.PHYSICAL_EFFECT,
+        OperationScope.WORKSPACE,
+        CompletenessPolicy.COMPLETE_REQUIRED,
     )
 
     val symbolDiscover = definition(
@@ -229,6 +248,7 @@ object CanonicalOperationDefinitions {
 
     val all: List<OperationDefinition<*, *, *, *, *>> = listOf(
         workspaceInspect,
+        topologyBuild,
         symbolDiscover,
         symbolResolve,
         symbolDescribe,

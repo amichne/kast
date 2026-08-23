@@ -175,6 +175,7 @@ sealed interface InstalledRuntimeAssemblyFailure {
 enum class InstalledRuntimePersistenceFailure {
     WORKSPACE_PUBLICATION_UNAVAILABLE,
     MUTATION_RECOVERY_UNAVAILABLE,
+    TOPOLOGY_SNAPSHOT_UNAVAILABLE,
 }
 
 /** Finite initial exact-root publication failures. */
