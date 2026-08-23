@@ -1,7 +1,7 @@
 # PR 633 path policies
 
-These policies admit only the cleanup and PR 633 delivery surfaces. Keep cleanup exclusions and
-the PR diff policy synchronized with the corresponding typed task scopes.
+The cleanup policy admits only its predecessor surface. The PR 633 policy is a deny-list; the
+program's KTP633-010 through KTP633-070 task scopes are the sole allow-list authority.
 
-The PR policy admits an `AGENTS.md` only when the guide is under an allowed guide prefix and is an
-ancestor of another changed non-guide path. A guide alone never expands the product-write scope.
+The program admits an `AGENTS.md` only when its ancestor-guide marker is present and the guide is
+an ancestor of another admitted changed non-guide path. A guide alone never expands product scope.

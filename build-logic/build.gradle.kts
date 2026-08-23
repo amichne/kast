@@ -17,6 +17,10 @@ private val catalog = extensions.getByType<VersionCatalogsExtension>().named("li
 
 dependencies {
     implementation(catalog.findLibrary("kotlin-gradle-plugin").get())
+    implementation(
+        "org.jetbrains.kotlin:kotlin-metadata-jvm:" +
+            catalog.findVersion("kotlin").get().requiredVersion,
+    )
     implementation(catalog.findLibrary("kotlin-serialization-plugin").get())
     implementation(catalog.findLibrary("serialization-json").get())
     implementation(catalog.findLibrary("vanniktech-maven-publish-plugin").get())

@@ -84,6 +84,7 @@ val verifyPr633Stack = tasks.register<VerifyPr633StackTask>("verifyPr633Stack") 
     group = "verification"
     dependsOn(verifyPr633ProgramArtifacts)
     eventFile.set(pr633EventFile)
+    programFile.set(pr633ProgramFile)
     pathPolicyFile.set(pr633PathPolicyFile)
     expectedPullRequest.set(633)
     expectedBaseRef.set("main")

@@ -2,6 +2,7 @@ package kast
 
 import java.io.File
 import org.gradle.api.tasks.Exec
+import support.pr633.VerifyPr633GitDiffTask
 import support.pr633.WritePr633GateEvidenceTask
 
 val deliveryProgramFile = layout.projectDirectory.file("gradle/pr633/kast-pr633-program.json")
@@ -50,7 +51,13 @@ val verifyPublicDocs = registerPr633Exec(
     "python3",
     "docs/test_public_docs.py",
 )
-val verifyGitDiff = registerPr633Exec("verifyGitDiff", "git", "diff", "--check")
+val verifyGitDiff = tasks.register<VerifyPr633GitDiffTask>("verifyGitDiff") {
+    group = "verification"
+    mainGitRef.set("origin/main")
+    headGitRef.set("HEAD")
+    repositoryDirectory.set(layout.projectDirectory)
+    reportFile.set(layout.buildDirectory.file("reports/pr633/checks/git-diff.json"))
+}
 
 val pr633AuthorityAcceptance = tasks.register<WritePr633GateEvidenceTask>(
     "pr633AuthorityAcceptance",
@@ -121,11 +128,15 @@ val pr633MergeCandidateAcceptance = tasks.register<WritePr633GateEvidenceTask>(
 val exactHeadCiEvidenceFile = layout.file(
     providers.gradleProperty("pr633ExactHeadCiEvidence").map(::File),
 )
+val pr633Gate060EvidenceFile = layout.file(
+    providers.gradleProperty("pr633Gate060Evidence").map(::File),
+)
 tasks.register<WritePr633GateEvidenceTask>("pr633ExactHeadCiAcceptance") {
     group = "verification"
-    dependsOn(pr633MergeCandidateAcceptance)
+    dependsOn("verifyPr633ProgramArtifacts")
     programFile.set(deliveryProgramFile)
     gateId.set("GATE-070")
+    headSha.set(deliveryGitHead)
     externalEvidenceFile.set(exactHeadCiEvidenceFile)
     expectedExternalKind.set("exact-head-ci")
     expectedExternalFacts.set(
@@ -140,11 +151,13 @@ tasks.register<WritePr633GateEvidenceTask>("pr633ExactHeadCiAcceptance") {
     checkIds.set(
         listOf(
             "checkout-exact-pr-head",
+            "gate-060-program-and-head-bound",
             "required-merge-candidate-check",
             "check-conclusion-success",
             "check-head-equals-pr-head",
+            "evidence-reused-without-product-work",
         ),
     )
-    dependencyReports.from(pr633MergeCandidateAcceptance.flatMap { it.reportFile })
+    dependencyReports.from(pr633Gate060EvidenceFile)
     reportFile.set(deliveryGateDirectory.map { it.file("exact-head-ci.json") })
 }

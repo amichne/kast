@@ -1,13 +1,18 @@
 package kast
 
 import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.SourceSetContainer
 import support.pr633.VerifyForbiddenBytecodeReferencesTask
+import support.pr633.VerifyInternalKotlinClassTask
 import support.pr633.VerifyTopologyContractApiTask
 import support.pr633.WritePr633GateEvidenceTask
 
 val topologyProgramFile = layout.projectDirectory.file("gradle/pr633/kast-pr633-program.json")
 val topologyLifecycleSchemaFile = layout.projectDirectory.file(
     "gradle/pr633/schemas/topology-installed-lifecycle.schema.json",
+)
+val topologyContractApiManifest = layout.projectDirectory.file(
+    "gradle/architecture/topology-contract-api.txt",
 )
 val topologyGateDirectory = layout.buildDirectory.dir("reports/pr633/gates")
 val topologyGitHead = providers.exec {
@@ -16,8 +21,36 @@ val topologyGitHead = providers.exec {
 val registryEvidence = tasks.named<WritePr633GateEvidenceTask>(
     "operationRegistryAuthorityAcceptance",
 )
-val runtimeCompositionClasses = project(":runtime:composition").layout.buildDirectory.dir(
-    "classes/kotlin/main",
+
+fun mainOutputClassDirectories(projectPath: String) = objects.fileCollection().also { directories ->
+    val targetProject = project(projectPath)
+    targetProject.pluginManager.withPlugin("java") {
+        val mainSourceSet = targetProject.extensions.getByType<SourceSetContainer>().named("main")
+        directories.from(mainSourceSet.map { sourceSet -> sourceSet.output.classesDirs })
+    }
+}
+
+val runtimeCompositionMainClassDirectories = mainOutputClassDirectories(":runtime:composition")
+val evidenceSqliteMainClassDirectories = mainOutputClassDirectories(":evidence:sqlite")
+val relationServiceMainClassDirectories = mainOutputClassDirectories(":relation:service")
+val traversalServiceMainClassDirectories = mainOutputClassDirectories(":traversal:service")
+val topologyContractMainClassDirectories = mainOutputClassDirectories(":topology:contract")
+val topologyServiceMainClassDirectories = mainOutputClassDirectories(":topology:service")
+val topologyConstructionAndPublicationOwners = listOf(
+    "io/github/amichne/kast/topology/build/",
+    "io/github/amichne/kast/topology/contract/TopologyBuildOperations",
+    "io/github/amichne/kast/topology/contract/TopologyCandidateEnumerator",
+    "io/github/amichne/kast/topology/contract/TopologyFileExtractor",
+    "io/github/amichne/kast/topology/contract/TopologySnapshotPublisher",
+    "io/github/amichne/kast/topology/contract/TopologySnapshotStore",
+)
+val topologyRuntimeAuthorityHolders = listOf(
+    "io/github/amichne/kast/runtime/composition/TopologyRuntimePorts",
+    "io/github/amichne/kast/runtime/composition/DirectKastOperations",
+    "io/github/amichne/kast/runtime/composition/DirectKastRuntimeGraph",
+    "io/github/amichne/kast/runtime/composition/KastRuntimeComposition",
+    "io/github/amichne/kast/runtime/composition/KastRuntimeCompositionConstruction",
+    "io/github/amichne/kast/runtime/composition/InstalledRuntimeAssemblyInputs",
 )
 
 val verifyChangePlanHasNoTopologyBuildAuthority =
@@ -26,21 +59,39 @@ val verifyChangePlanHasNoTopologyBuildAuthority =
     ) {
         group = "verification"
         dependsOn(":runtime:composition:classes")
-        classDirectories.from(runtimeCompositionClasses)
+        classDirectories.from(runtimeCompositionMainClassDirectories)
         callerInternalNamePrefixes.set(
             listOf(
                 "io/github/amichne/kast/runtime/composition/change/",
+                "io/github/amichne/kast/runtime/composition/ChangePlanningOperations",
                 "io/github/amichne/kast/runtime/composition/protocol/CanonicalChangePlan",
+                "io/github/amichne/kast/runtime/composition/protocol/AuthorizedChangeIntent",
+                "io/github/amichne/kast/runtime/composition/protocol/ChangeIntentAuthorization",
+                "io/github/amichne/kast/runtime/composition/protocol/ChangePlanAdmission",
             ),
         )
         forbiddenOwnerPrefixes.set(
+            topologyConstructionAndPublicationOwners + topologyRuntimeAuthorityHolders,
+        )
+        ruleName.set("change.plan cannot construct or publish topology")
+    }
+
+val verifyTraversalHasNoTopologyBuildOrPublishAuthority =
+    tasks.register<VerifyForbiddenBytecodeReferencesTask>(
+        "verifyTraversalHasNoTopologyBuildOrPublishAuthority",
+    ) {
+        group = "verification"
+        dependsOn(":runtime:composition:classes")
+        classDirectories.from(runtimeCompositionMainClassDirectories)
+        callerInternalNamePrefixes.set(
             listOf(
-                "io/github/amichne/kast/topology/build/",
-                "io/github/amichne/kast/topology/contract/TopologyBuildOperations",
-                "io/github/amichne/kast/topology/contract/TopologySnapshotPublisher",
+                "io/github/amichne/kast/runtime/composition/protocol/graph/TopologyBackedTraversalOperations",
             ),
         )
-        ruleName.set("change.plan cannot construct topology")
+        forbiddenOwnerPrefixes.set(
+            topologyConstructionAndPublicationOwners + topologyRuntimeAuthorityHolders,
+        )
+        ruleName.set("traversal.run cannot construct, publish, or hold the topology store")
     }
 
 val topologyPrerequisiteAcceptance = tasks.register<WritePr633GateEvidenceTask>(
@@ -50,6 +101,7 @@ val topologyPrerequisiteAcceptance = tasks.register<WritePr633GateEvidenceTask>(
     dependsOn(
         registryEvidence,
         verifyChangePlanHasNoTopologyBuildAuthority,
+        verifyTraversalHasNoTopologyBuildOrPublishAuthority,
         ":traversal:contract:test",
         ":traversal:service:test",
         ":protocol:wire:test",
@@ -65,8 +117,9 @@ val topologyPrerequisiteAcceptance = tasks.register<WritePr633GateEvidenceTask>(
             "stale-topology-build-required",
             "stale-selector-selector-stale",
             "bounded-required-traversal-incomplete",
-            "invalid-public-traversal-plan-rejected",
-            "change-plan-no-topology-build-authority",
+            "traversal-contract-violation-plan-rejected",
+            "change-plan-no-topology-build-or-publish-authority",
+            "traversal-router-no-topology-build-publish-or-store-authority",
         ),
     )
     dependencyReports.from(registryEvidence.flatMap { it.reportFile })
@@ -79,19 +132,24 @@ val verifyTopologyTraversalNoK2 = tasks.register<VerifyForbiddenBytecodeReferenc
     group = "verification"
     dependsOn(
         ":runtime:composition:classes",
-        ":topology:build:classes",
         ":evidence:sqlite:classes",
+        ":relation:service:classes",
+        ":traversal:service:classes",
     )
     classDirectories.from(
-        runtimeCompositionClasses,
-        project(":topology:build").layout.buildDirectory.dir("classes/kotlin/main"),
-        project(":evidence:sqlite").layout.buildDirectory.dir("classes/kotlin/main"),
+        runtimeCompositionMainClassDirectories,
+        evidenceSqliteMainClassDirectories,
+        relationServiceMainClassDirectories,
+        traversalServiceMainClassDirectories,
     )
     callerInternalNamePrefixes.set(
         listOf(
+            "io/github/amichne/kast/runtime/composition/protocol/graph/CanonicalTraversalRunHandler",
+            "io/github/amichne/kast/runtime/composition/protocol/graph/CanonicalRelationTraversalHandlersKt",
             "io/github/amichne/kast/runtime/composition/protocol/graph/TopologyBackedTraversalOperations",
-            "io/github/amichne/kast/topology/build/",
-            "io/github/amichne/kast/evidence/sqlite/SqliteTopologySnapshotStore",
+            "io/github/amichne/kast/evidence/sqlite/SqliteTopology",
+            "io/github/amichne/kast/relation/service/",
+            "io/github/amichne/kast/traversal/service/",
         ),
     )
     forbiddenOwnerPrefixes.set(
@@ -102,9 +160,11 @@ val verifyTopologyTraversalNoK2 = tasks.register<VerifyForbiddenBytecodeReferenc
             "io/github/amichne/kast/relation/intellij/",
             "io/github/amichne/kast/symbol/intellij/",
             "org/gradle/",
-        ),
+        ) + topologyConstructionAndPublicationOwners.filterNot {
+            it == "io/github/amichne/kast/topology/contract/TopologySnapshotStore"
+        } + topologyRuntimeAuthorityHolders,
     )
-    ruleName.set("topology build, publication, and traversal routes cannot reach K2")
+    ruleName.set("installed traversal route cannot reach live compiler or topology construction")
 }
 
 val topologyJourneyReport = layout.buildDirectory.file(
@@ -196,9 +256,8 @@ val verifyTopologyContractApi = tasks.register<VerifyTopologyContractApiTask>(
 ) {
     group = "verification"
     dependsOn(":topology:contract:classes")
-    classDirectories.from(
-        project(":topology:contract").layout.buildDirectory.dir("classes/kotlin/main"),
-    )
+    classDirectories.from(topologyContractMainClassDirectories)
+    manifestFile.set(topologyContractApiManifest)
     forbiddenClassSimpleNames.set(
         setOf(
             "TopologyGraph",
@@ -211,10 +270,51 @@ val verifyTopologyContractApi = tasks.register<VerifyTopologyContractApiTask>(
             "TopologyQuotientNode",
             "TopologyQuotientEdge",
             "TopologyQuotientGraph",
+            "TopologyPath",
+            "TopologyQuery",
         ),
     )
     forbiddenPublicMethodNames.set(
-        setOf("traverse", "reachability", "cycles", "stronglyConnectedComponents", "condensation", "quotient"),
+        setOf(
+            "traverse",
+            "reachability",
+            "cycles",
+            "stronglyConnectedComponents",
+            "condensation",
+            "quotient",
+            "path",
+            "query",
+        ),
+    )
+}
+
+val verifyGraphIndexInternal = tasks.register<VerifyInternalKotlinClassTask>(
+    "verifyGraphIndexInternal",
+) {
+    group = "verification"
+    dependsOn(":topology:service:classes")
+    sourceFile.set(
+        layout.projectDirectory.file(
+            "topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/GraphIndex.kt",
+        ),
+    )
+    classDirectories.from(topologyServiceMainClassDirectories)
+    expectedPackageName.set("io.github.amichne.kast.topology.service")
+    expectedSimpleClassName.set("GraphIndex")
+    reportFile.set(layout.buildDirectory.file("reports/pr633/checks/graph-index-internal.txt"))
+}
+
+val verifyTopologyOperationNames = tasks.register<Exec>("verifyTopologyOperationNames") {
+    group = "verification"
+    dependsOn(":protocol:wire:generateOperationRegistry")
+    inputs.file(topologyProgramFile)
+    inputs.file(layout.projectDirectory.file(".github/scripts/verify_pr633_program.py"))
+    commandLine(
+        "python3",
+        layout.projectDirectory.file(".github/scripts/verify_pr633_program.py").asFile.absolutePath,
+        "operation-names",
+        "--root",
+        layout.projectDirectory.asFile.absolutePath,
     )
 }
 
@@ -225,6 +325,8 @@ val topologyContractAcceptance = tasks.register<WritePr633GateEvidenceTask>(
     dependsOn(
         topologyInstalledProductAcceptance,
         verifyTopologyContractApi,
+        verifyGraphIndexInternal,
+        verifyTopologyOperationNames,
         ":topology:contract:test",
         ":topology:service:test",
         "verifyKastModuleGraph",
@@ -235,10 +337,12 @@ val topologyContractAcceptance = tasks.register<WritePr633GateEvidenceTask>(
     headSha.set(topologyGitHead)
     checkIds.set(
         listOf(
+            "topology-contract-abi-manifest-exact",
             "topology-contract-no-zero-budget-graph-api",
             "graph-index-internal",
             "no-topology-read-operation-in-pr633",
             "no-topology-cycles-operation",
+            "canonical-topology-operation-name-set-exact",
         ),
     )
     dependencyReports.from(topologyInstalledProductAcceptance.flatMap { it.reportFile })

@@ -1,6 +1,7 @@
 package support.pr633
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
@@ -10,18 +11,15 @@ import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
-import org.objectweb.asm.ClassReader
-import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.Handle
-import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.Type
 
 /**
- * Rejects direct bytecode references from one declared caller namespace to forbidden owners.
+ * Proof transition: `(BytecodeAuthorityPolicy.Raw, List<ByteArray>) ->
+ * BytecodeAuthorityVerification`.
  *
- * Use this for authority boundaries that share a composition module and therefore cannot be
- * expressed as a project dependency rule.
+ * Establishes that declared callers exist and cannot directly or transitively reach forbidden
+ * owners. [BytecodeAuthorityPolicy.Failure] and [BytecodeAuthorityViolation] form the closed
+ * expected failures. Gradle properties and class files are the only raw extraction boundary;
+ * this task alone projects rejection to a build exception.
  */
 @CacheableTask
 abstract class VerifyForbiddenBytecodeReferencesTask : DefaultTask() {
@@ -40,76 +38,193 @@ abstract class VerifyForbiddenBytecodeReferencesTask : DefaultTask() {
 
     @TaskAction
     fun verify() {
-        val callers = callerInternalNamePrefixes.get()
-        val forbidden = forbiddenOwnerPrefixes.get()
-        val violations = mutableListOf<String>()
-
-        classDirectories.asFileTree
+        val rawPolicy = BytecodeAuthorityPolicy.Raw(
+            callers = callerInternalNamePrefixes.get(),
+            forbiddenOwners = forbiddenOwnerPrefixes.get(),
+            ruleName = ruleName.get(),
+        )
+        val policy = when (val refinement = BytecodeAuthorityPolicy.refine(rawPolicy)) {
+            is BytecodeAuthorityPolicy.Refinement.Refined -> refinement.policy
+            is BytecodeAuthorityPolicy.Refinement.Rejected -> throw GradleException(
+                "invalid bytecode authority policy: ${refinement.failures.sortedBy(Enum<*>::name)}",
+            )
+        }
+        val classes = classDirectories.asFileTree
             .matching { include("**/*.class") }
             .files
             .sortedBy { it.path }
-            .forEach { classFile ->
-                val reader = ClassReader(classFile.readBytes())
-                if (callers.none(reader.className::startsWith)) return@forEach
-                reader.accept(
-                    object : ClassVisitor(Opcodes.ASM9) {
-                        override fun visitMethod(
-                            access: Int,
-                            name: String,
-                            descriptor: String,
-                            signature: String?,
-                            exceptions: Array<out String>?,
-                        ): MethodVisitor = object : MethodVisitor(Opcodes.ASM9) {
-                            override fun visitTypeInsn(opcode: Int, type: String) =
-                                record(name, type)
+            .map { it.readBytes() }
 
-                            override fun visitFieldInsn(
-                                opcode: Int,
-                                owner: String,
-                                fieldName: String,
-                                fieldDescriptor: String,
-                            ) = record(name, owner)
+        when (val verification = verifyBytecodeAuthority(policy, classes)) {
+            BytecodeAuthorityVerification.Accepted -> Unit
+            is BytecodeAuthorityVerification.Rejected -> throw IllegalStateException(
+                buildString {
+                    appendLine("${policy.ruleName.value} rejected forbidden bytecode references:")
+                    verification.violations.sortedBy(BytecodeAuthorityViolation::display).forEach {
+                        appendLine("  ${it.display()}")
+                    }
+                },
+            )
+        }
+    }
+}
 
-                            override fun visitMethodInsn(
-                                opcode: Int,
-                                owner: String,
-                                methodName: String,
-                                methodDescriptor: String,
-                                isInterface: Boolean,
-                            ) = record(name, owner)
+internal class BytecodeAuthorityPolicy private constructor(
+    val callers: Set<JvmInternalNamePrefix>,
+    val forbiddenOwners: Set<JvmInternalNamePrefix>,
+    val ruleName: AuthorityRuleName,
+) {
+    data class Raw(
+        val callers: List<String>,
+        val forbiddenOwners: List<String>,
+        val ruleName: String,
+    )
 
-                            override fun visitLdcInsn(value: Any?) {
-                                if (value is Type && value.sort == Type.OBJECT) {
-                                    record(name, value.internalName)
-                                }
-                            }
+    enum class Failure {
+        NO_CALLERS,
+        BLANK_CALLER,
+        NON_CANONICAL_CALLER,
+        INVALID_CALLER,
+        NO_FORBIDDEN_OWNERS,
+        BLANK_FORBIDDEN_OWNER,
+        NON_CANONICAL_FORBIDDEN_OWNER,
+        INVALID_FORBIDDEN_OWNER,
+        BLANK_RULE_NAME,
+        NON_CANONICAL_RULE_NAME,
+    }
 
-                            override fun visitInvokeDynamicInsn(
-                                name: String,
-                                descriptor: String,
-                                bootstrapMethodHandle: Handle,
-                                vararg bootstrapMethodArguments: Any,
-                            ) {
-                                record(name, bootstrapMethodHandle.owner)
-                                bootstrapMethodArguments.filterIsInstance<Handle>()
-                                    .forEach { record(name, it.owner) }
-                            }
+    sealed interface Refinement {
+        data class Refined(val policy: BytecodeAuthorityPolicy) : Refinement
+        data class Rejected(
+            val firstFailure: Failure,
+            val additionalFailures: Set<Failure>,
+        ) : Refinement {
+            val failures: Set<Failure> = setOf(firstFailure) + additionalFailures
+        }
+    }
 
-                            private fun record(method: String, owner: String) {
-                                if (forbidden.any(owner::startsWith)) {
-                                    violations += "${reader.className}#$method -> $owner"
-                                }
-                            }
-                        }
-                    },
-                    ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES,
-                )
+    @JvmInline
+    value class JvmInternalNamePrefix private constructor(val value: String) {
+        sealed interface Refinement {
+            data class Refined(val prefix: JvmInternalNamePrefix) : Refinement
+            data object Blank : Refinement
+            data object NonCanonical : Refinement
+            data object Invalid : Refinement
+        }
+
+        companion object {
+            /**
+             * Proof transition: `String -> JvmInternalNamePrefix.Refinement`.
+             *
+             * [Refinement.Refined] proves a non-blank, trim-canonical supported JVM internal-name
+             * or package prefix. Blank, non-canonical, and invalid grammar are the closed expected
+             * failures. Raw strings enter only from [Raw].
+             */
+            fun refine(value: String): Refinement = when {
+                value.isBlank() -> Refinement.Blank
+                value != value.trim() -> Refinement.NonCanonical
+                !value.matches(SUPPORTED_INTERNAL_NAME_PREFIX) -> Refinement.Invalid
+                else -> Refinement.Refined(JvmInternalNamePrefix(value))
             }
 
-        check(violations.isEmpty()) {
-            buildString {
-                appendLine("${ruleName.get()} rejected forbidden bytecode references:")
-                violations.distinct().sorted().forEach { appendLine("  $it") }
+            private val SUPPORTED_INTERNAL_NAME_PREFIX = Regex(
+                "(?:[A-Za-z_${'$'}][A-Za-z0-9_${'$'}]*/)*" +
+                    "(?:[A-Za-z_${'$'}][A-Za-z0-9_${'$'}]*)?",
+            )
+        }
+    }
+
+    @JvmInline
+    value class AuthorityRuleName private constructor(val value: String) {
+        sealed interface Refinement {
+            data class Refined(val name: AuthorityRuleName) : Refinement
+            data object Blank : Refinement
+            data object NonCanonical : Refinement
+        }
+
+        companion object {
+            /**
+             * Proof transition: `String -> AuthorityRuleName.Refinement`.
+             *
+             * [Refinement.Refined] proves a non-blank, trim-canonical diagnostic rule name.
+             * [Refinement.Blank] and [Refinement.NonCanonical] are the closed expected failures.
+             * Raw strings enter only from [Raw].
+             */
+            fun refine(value: String): Refinement = when {
+                value.isBlank() -> Refinement.Blank
+                value != value.trim() -> Refinement.NonCanonical
+                else -> Refinement.Refined(AuthorityRuleName(value))
+            }
+        }
+    }
+
+    companion object {
+        /**
+         * Proof transition: [Raw] `->` [Refinement].
+         *
+         * [Refinement.Refined] proves non-empty caller and forbidden-owner sets whose entries are
+         * trim-canonical supported JVM internal-name prefixes, plus a non-blank trim-canonical
+         * diagnostic rule name. [Failure] is the closed expected failure type. Raw strings are
+         * extracted only at the Gradle task boundary.
+         */
+        fun refine(raw: Raw): Refinement {
+            val failures = mutableSetOf<Failure>()
+            val callers = mutableSetOf<JvmInternalNamePrefix>()
+            val forbiddenOwners = mutableSetOf<JvmInternalNamePrefix>()
+            if (raw.callers.isEmpty()) failures += Failure.NO_CALLERS
+            raw.callers.forEach { value ->
+                when (val refinement = JvmInternalNamePrefix.refine(value)) {
+                    JvmInternalNamePrefix.Refinement.Blank -> failures += Failure.BLANK_CALLER
+                    JvmInternalNamePrefix.Refinement.NonCanonical ->
+                        failures += Failure.NON_CANONICAL_CALLER
+                    JvmInternalNamePrefix.Refinement.Invalid -> failures += Failure.INVALID_CALLER
+                    is JvmInternalNamePrefix.Refinement.Refined -> callers += refinement.prefix
+                }
+            }
+            if (raw.forbiddenOwners.isEmpty()) failures += Failure.NO_FORBIDDEN_OWNERS
+            raw.forbiddenOwners.forEach { value ->
+                when (val refinement = JvmInternalNamePrefix.refine(value)) {
+                    JvmInternalNamePrefix.Refinement.Blank ->
+                        failures += Failure.BLANK_FORBIDDEN_OWNER
+                    JvmInternalNamePrefix.Refinement.NonCanonical ->
+                        failures += Failure.NON_CANONICAL_FORBIDDEN_OWNER
+                    JvmInternalNamePrefix.Refinement.Invalid ->
+                        failures += Failure.INVALID_FORBIDDEN_OWNER
+                    is JvmInternalNamePrefix.Refinement.Refined ->
+                        forbiddenOwners += refinement.prefix
+                }
+            }
+            val refinedRuleName = when (val refinement = AuthorityRuleName.refine(raw.ruleName)) {
+                AuthorityRuleName.Refinement.Blank -> {
+                    failures += Failure.BLANK_RULE_NAME
+                    AuthorityRuleName.Refinement.Blank
+                }
+                AuthorityRuleName.Refinement.NonCanonical -> {
+                    failures += Failure.NON_CANONICAL_RULE_NAME
+                    AuthorityRuleName.Refinement.NonCanonical
+                }
+                is AuthorityRuleName.Refinement.Refined -> refinement
+            }
+            return when (refinedRuleName) {
+                AuthorityRuleName.Refinement.Blank -> Refinement.Rejected(
+                    failures.first(),
+                    failures.drop(1).toSet(),
+                )
+                AuthorityRuleName.Refinement.NonCanonical -> Refinement.Rejected(
+                    failures.first(),
+                    failures.drop(1).toSet(),
+                )
+                is AuthorityRuleName.Refinement.Refined -> if (failures.isEmpty()) {
+                    Refinement.Refined(
+                        BytecodeAuthorityPolicy(
+                            callers = callers,
+                            forbiddenOwners = forbiddenOwners,
+                            ruleName = refinedRuleName.name,
+                        ),
+                    )
+                } else {
+                    Refinement.Rejected(failures.first(), failures.drop(1).toSet())
+                }
             }
         }
     }

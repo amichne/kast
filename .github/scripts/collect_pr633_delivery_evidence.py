@@ -30,6 +30,11 @@ def text(value: Any, label: str) -> str:
     return value
 
 
+def positive_integer(value: Any, label: str) -> int:
+    require(type(value) is int and value > 0, f"{label} is not a positive integer")
+    return value
+
+
 class GitHub:
     def __init__(self, repository: str, token: str, api_url: str) -> None:
         owner, separator, name = repository.partition("/")
@@ -102,13 +107,18 @@ def pull_refs(client: GitHub, number: int, expected_base: str, expected_head: st
 
 
 def exact_head_ci(client: GitHub, args: argparse.Namespace) -> dict[str, Any]:
-    _, head_sha = pull_refs(client, args.pull_request, args.expected_base, args.expected_head)
-    matches = [run for run in client.check_runs(head_sha) if run.get("name") == args.check_name]
-    require(len(matches) == 1, f"expected one check named {args.check_name}, found {len(matches)}")
+    expected_head = text(args.expected_head, "expected head")
+    check_name = text(args.check_name, "check name")
+    pull_request, head_sha = pull_refs(client, args.pull_request, args.expected_base, expected_head)
+    require(pull_request.get("state") == "open", "pull request is not open")
+    require(pull_request.get("merged") is False, "pull request is merged or merge state is missing")
+    matches = [run for run in client.check_runs(head_sha) if run.get("name") == check_name]
+    require(len(matches) == 1, f"expected one check named {check_name}, found {len(matches)}")
     run = matches[0]
     require(run.get("status") == "completed", "check is not completed")
     require(run.get("conclusion") == "success", "check is not successful")
-    require(run.get("head_sha", head_sha) == head_sha, "check belongs to another head")
+    require(text(run.get("head_sha"), "check head_sha") == head_sha, "check belongs to another head")
+    check_run_id = positive_integer(run.get("id"), "check run id")
     return evidence(
         "exact-head-ci",
         head_sha,
@@ -116,8 +126,8 @@ def exact_head_ci(client: GitHub, args: argparse.Namespace) -> dict[str, Any]:
         args.pull_request,
         args.expected_base,
         {
-            "checkName": args.check_name,
-            "checkRunId": str(run.get("id")),
+            "checkName": check_name,
+            "checkRunId": str(check_run_id),
             "checkConclusion": "success",
         },
     )
@@ -178,7 +188,7 @@ def parser() -> argparse.ArgumentParser:
     exact = commands.add_parser("exact-head-ci")
     exact.add_argument("--pull-request", type=int, required=True)
     exact.add_argument("--expected-base", default="main")
-    exact.add_argument("--expected-head")
+    exact.add_argument("--expected-head", required=True)
     exact.add_argument("--check-name", required=True)
     merged = commands.add_parser("merged-pull-request")
     merged.add_argument("--pull-request", type=int, required=True)

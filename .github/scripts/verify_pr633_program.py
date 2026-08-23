@@ -10,31 +10,34 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-TASK_IDS = ["001", "002", "010", "020", "030", "040", "050", "060", "070"]
-OPERATION_IDS = [
-    "workspace.inspect",
-    "topology.build",
-    "symbol.discover",
-    "symbol.resolve",
-    "symbol.describe",
-    "relation.read",
-    "traversal.run",
-    "diagnostic.check",
-    "change.plan",
-    "change.apply",
-    "change.verify",
-    "change.recover",
-]
+from pr633.program_authority import (
+    EXPECTED_CLEAN_SLATE_DEPENDENCIES,
+    VerificationFailure,
+    require,
+    verify_ci_reuse,
+    verify_gate_authority_tokens,
+    verify_gate_check_bindings,
+    verify_invariant_enforcers,
+    verify_no_rust_paths,
+    verify_no_rust_product,
+    verify_repository_sources,
+    verify_topology_api_zero_budget_policy,
+)
 
 
-class VerificationFailure(RuntimeError):
-    pass
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise VerificationFailure(message)
+TASK_IDS = "001 002 010 020 030 040 050 060 070".split()
+OPERATION_IDS = """workspace.inspect topology.build symbol.discover symbol.resolve symbol.describe
+relation.read traversal.run diagnostic.check change.plan change.apply change.verify change.recover""".split()
+FORBIDDEN_FOLLOW_ON_OPERATION_IDS = """topology.path topology.condensation topology.quotient
+topology.cycles topology.scc topology.query""".split()
+CLEAN_SLATE_SEMANTICS = {
+    "relation.read": {"authority": "LIVE_K2", "maximumHops": 1, "topology": "NOT_USED"},
+    "topology.build": {"authority": "PUBLISHED_WORKSPACE_K2", "effect": "PUBLISH_COMPLETE_SQLITE_SNAPSHOT"},
+    "traversal.run": {"authority": "ELIGIBLE_SQLITE_SNAPSHOT", "bounded": True, "implicitBuild": False,
+                      "missingOrStale": "TOPOLOGY_BUILD_REQUIRED", "staleSelector": "SELECTOR_STALE"},
+    "change.plan": {"implicitBuild": False, "missingOrStaleTopology": "TOPOLOGY_BUILD_REQUIRED",
+                    "incompleteRequiredTraversal": "REQUIRED_TRAVERSAL_INCOMPLETE"},
+}
 
 
 def load_json(path: Path) -> Any:
@@ -104,14 +107,14 @@ def validate_schema(value: Any, schema: dict[str, Any], root: dict[str, Any], pa
 
 def repository_paths(root: Path) -> dict[str, Path]:
     base = root / "gradle" / "pr633"
+    schemas = base / "schemas"
     return {
-        "program": base / "kast-pr633-program.json",
-        "program_schema": base / "schemas" / "kast-pr633-program.schema.json",
-        "evidence_schema": base / "schemas" / "pr633-gate-evidence.schema.json",
-        "lifecycle_schema": base / "schemas" / "topology-installed-lifecycle.schema.json",
-        "expected_registry": base / "operation-registry.expected.json",
-        "path_policy": base / "policies" / "pr633-path-policy.json",
-        "cleanup_policy": base / "policies" / "cleanup-path-policy.json",
+        "program": base / "kast-pr633-program.json", "program_schema": schemas / "kast-pr633-program.schema.json",
+        "evidence_schema": schemas / "pr633-gate-evidence.schema.json", "lifecycle_schema": schemas / "topology-installed-lifecycle.schema.json",
+        "expected_registry": base / "operation-registry.expected.json", "path_policy": base / "policies/pr633-path-policy.json",
+        "cleanup_policy": base / "policies/cleanup-path-policy.json", "clean_slate_plan": root / "kast-clean-slate-plan.md",
+        "clean_slate_graph": root / "kast-clean-slate-task-graph.json", "clean_slate_graph_schema": schemas / "kast-clean-slate-task-graph.schema.json",
+        "ci_workflow": root / ".github/workflows/ci.yml",
     }
 
 
@@ -123,6 +126,14 @@ def verify_artifact(root: Path) -> dict[str, Any]:
     schema = load_json(paths["program_schema"])
     require(isinstance(program, dict) and isinstance(schema, dict), "program and schema must be objects")
     validate_schema(program, schema, schema)
+    verify_repository_sources(program, root)
+    verify_invariant_enforcers(program, root)
+    verify_gate_check_bindings(program, root)
+    verify_ci_reuse(paths["ci_workflow"].read_text(encoding="utf-8"))
+    observed = program["observedState"]
+    require([fact["gateId"] for fact in observed["deliveryFacts"]] == ["GATE-001", "GATE-002", "GATE-070"], "delivery fact gates differ")
+    require(observed["terminalDisposition"] == program["status"], "observed terminal disposition differs")
+    require(re.search(r"\b[0-9a-f]{40}\b", json.dumps(program)) is None, "program embeds a self-stale Git SHA")
     expected_tasks = [f"KTP633-{value}" for value in TASK_IDS]
     expected_gates = [f"GATE-{value}" for value in TASK_IDS]
     task_ids = [task.get("id") for task in program["tasks"]]
@@ -163,21 +174,133 @@ def verify_registry(args: argparse.Namespace) -> dict[str, Any]:
     return {"status": "passed", "operationIds": OPERATION_IDS}
 
 
+def marked_plan_operations(plan: str) -> list[str]:
+    match = re.search(
+        r"<!-- canonical-operations:start -->\s*```text\s*(.*?)\s*```\s*"
+        r"<!-- canonical-operations:end -->",
+        plan,
+        re.DOTALL,
+    )
+    require(match is not None, "clean-slate plan has no canonical operation block")
+    return [line.strip() for line in match.group(1).splitlines() if line.strip()]
+
+
+def verify_clean_slate_graph(graph: dict[str, Any]) -> None:
+    require(graph.get("operationIds") == OPERATION_IDS, "clean-slate graph operation set differs")
+    require(graph.get("semantics") == CLEAN_SLATE_SEMANTICS, "clean-slate semantics differ")
+    tasks = graph.get("tasks")
+    require(isinstance(tasks, list), "clean-slate tasks are not an array")
+    task_ids = [task.get("id") for task in tasks]
+    expected_ids = {f"KCS-{index:03d}" for index in range(1, 24)}
+    require(len(task_ids) == len(set(task_ids)), "clean-slate graph has duplicate task IDs")
+    require(set(task_ids) == expected_ids, f"clean-slate task set differs: {task_ids}")
+    task_by_id = {task["id"]: task for task in tasks}
+    remaining: dict[str, set[str]] = {}
+    for task_id, task in task_by_id.items():
+        dependencies = task.get("dependsOn")
+        require(isinstance(dependencies, list), f"{task_id} dependencies are not an array")
+        require(len(dependencies) == len(set(dependencies)), f"{task_id} repeats a dependency")
+        require(set(dependencies) <= expected_ids, f"{task_id} has an unknown dependency")
+        require(
+            all(task_by_id[dependency]["wave"] <= task["wave"] for dependency in dependencies),
+            f"{task_id} depends on a later wave",
+        )
+        remaining[task_id] = set(dependencies)
+    for task_id, expected in EXPECTED_CLEAN_SLATE_DEPENDENCIES.items():
+        require(remaining[task_id] == expected, f"{task_id} dependency set differs")
+    while remaining:
+        ready = {task_id for task_id, dependencies in remaining.items() if not dependencies}
+        require(bool(ready), "clean-slate task graph contains a dependency cycle")
+        remaining = {
+            task_id: dependencies - ready
+            for task_id, dependencies in remaining.items()
+            if task_id not in ready
+        }
+    lifecycle = task_by_id["KCS-021"]["scope"] + task_by_id["KCS-021"]["green"]["expected"]
+    require(
+        all(term in lifecycle.lower() for term in ["publish", "reuse", "restart", "stale", "rebuild"]),
+        "installed clean-slate acceptance omits the durable topology lifecycle",
+    )
+
+
 def verify_authorities(root: Path) -> dict[str, Any]:
     artifact = verify_artifact(root)
+    paths = repository_paths(root)
     forbidden = ["traversal-run-required", "TopologyGraph.kt"]
     required = ["TOPOLOGY_BUILD_REQUIRED", "REQUIRED_TRAVERSAL_INCOMPLETE"]
     authority_paths = [
         root / "docs/public/questions/safe-change.md",
         root / "docs/public/questions/code-connections.md",
         root / "docs/public/reference/cli.md",
+        paths["clean_slate_plan"],
+        paths["clean_slate_graph"],
     ]
     missing = [str(path.relative_to(root)) for path in authority_paths if not path.is_file()]
     require(not missing, f"missing public authorities: {missing}")
     joined = "\n".join(path.read_text(encoding="utf-8") for path in authority_paths)
     require(not any(term in joined for term in forbidden), "public authority retains obsolete topology text")
     require(all(term in joined for term in required), "public authority omits typed topology prerequisites")
+    require("eleven" not in joined.lower(), "authority still describes an eleven-operation product")
+
+    plan = paths["clean_slate_plan"].read_text(encoding="utf-8")
+    graph_text = paths["clean_slate_graph"].read_text(encoding="utf-8")
+    graph = load_json(paths["clean_slate_graph"])
+    graph_schema = load_json(paths["clean_slate_graph_schema"])
+    require(isinstance(graph, dict), "clean-slate task graph is not an object")
+    require(isinstance(graph_schema, dict), "clean-slate task graph schema is not an object")
+    validate_schema(graph, graph_schema, graph_schema)
+    require(marked_plan_operations(plan) == OPERATION_IDS, "clean-slate plan operation set differs")
+    require(
+        all(operation_id not in plan for operation_id in FORBIDDEN_FOLLOW_ON_OPERATION_IDS),
+        "clean-slate plan exposes a follow-on topology operation",
+    )
+    require(re.search(r"\b[0-9a-f]{40}\b", plan + graph_text) is None, "clean-slate authority embeds a Git SHA")
+    verify_clean_slate_graph(graph)
+    safe_change = (root / "docs/public/questions/safe-change.md").read_text(encoding="utf-8")
+    connections = (root / "docs/public/questions/code-connections.md").read_text(encoding="utf-8")
+    cli = (root / "docs/public/reference/cli.md").read_text(encoding="utf-8")
+    require(safe_change.index("kast topology build") < safe_change.index("kast change plan"), "safe-change order differs")
+    require(all(term in connections for term in ["one-hop K2", "eligible SQLite snapshot"]), "connection authorities differ")
+    cli_operations = re.findall(r"^\| `([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+)` \|", cli, re.MULTILINE)
+    require(cli_operations == OPERATION_IDS, f"generated CLI operation set differs: {cli_operations}")
     return {"status": "passed", "artifact": artifact["status"], "authorities": len(authority_paths)}
+
+
+def verify_operation_names(root: Path) -> dict[str, Any]:
+    paths = repository_paths(root)
+    expected = load_json(paths["expected_registry"])
+    require(expected == {"schemaVersion": 1, "operationIds": OPERATION_IDS}, "registry authority differs")
+
+    canonical_path = root / "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
+    canonical = canonical_path.read_text(encoding="utf-8")
+    canonical_ids = re.findall(r'canonicalOperationId\("([^"]+)"\)', canonical)
+    require(canonical_ids == OPERATION_IDS, f"canonical operation enum differs: {canonical_ids}")
+    verify_topology_operation_ids(canonical_ids)
+
+    production_roots = [
+        root / "protocol/contract/src/main",
+        root / "protocol/registry/src/main",
+        root / "protocol/wire/src/main",
+        root / "cli/src/main",
+        root / "runtime/server/src/main",
+        root / "runtime/composition/src/main",
+    ]
+    violations: list[str] = []
+    for production_root in production_roots:
+        for path in sorted(production_root.rglob("*")):
+            if not path.is_file() or path.suffix not in {".kt", ".kts"}:
+                continue
+            text = path.read_text(encoding="utf-8")
+            for operation_id in FORBIDDEN_FOLLOW_ON_OPERATION_IDS:
+                if operation_id in text:
+                    violations.append(f"{path.relative_to(root)}: {operation_id}")
+    require(not violations, f"follow-on topology operation entered production: {violations}")
+    return {"status": "passed", "operationIds": canonical_ids, "forbidden": FORBIDDEN_FOLLOW_ON_OPERATION_IDS}
+
+
+def verify_topology_operation_ids(operation_ids: list[str]) -> None:
+    topology_ids = [operation_id for operation_id in operation_ids if operation_id.startswith("topology.")]
+    require(topology_ids == ["topology.build"], f"topology operation set differs: {topology_ids}")
 
 
 def verify_lifecycle(report: Path, schema_path: Path) -> dict[str, Any]:
@@ -207,6 +330,10 @@ def parser() -> argparse.ArgumentParser:
     artifact.add_argument("--root", type=Path, required=True)
     authorities = commands.add_parser("authorities")
     authorities.add_argument("--root", type=Path, required=True)
+    operation_names = commands.add_parser("operation-names")
+    operation_names.add_argument("--root", type=Path, required=True)
+    no_rust = commands.add_parser("no-rust-product")
+    no_rust.add_argument("--root", type=Path, required=True)
     registry = commands.add_parser("registry")
     for name in ("expected", "generated", "installed", "schema"):
         registry.add_argument(f"--{name}", type=Path, required=True)
@@ -226,6 +353,10 @@ def main() -> int:
             result = verify_artifact(args.root.resolve())
         elif args.command == "authorities":
             result = verify_authorities(args.root.resolve())
+        elif args.command == "operation-names":
+            result = verify_operation_names(args.root.resolve())
+        elif args.command == "no-rust-product":
+            result = verify_no_rust_product(args.root.resolve())
         elif args.command == "registry":
             result = verify_registry(args)
         elif args.command == "lifecycle":

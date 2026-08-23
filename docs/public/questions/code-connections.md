@@ -12,7 +12,7 @@ kast relation read \
   --limit 100
 ```
 
-One-hop reads support references, callers, callees, implementations,
+This is a live one-hop K2 read. It supports references, callers, callees, implementations,
 inheritors, overrides, and type uses. The subject stays exact while the result
 names the selected relation and its bound.
 

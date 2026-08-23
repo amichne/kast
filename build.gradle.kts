@@ -310,8 +310,8 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
 tasks.register<Exec>("enterpriseAcceptance") {
     group = "verification"
     description = "Proves the installed product against enterprise-scale and failure bounds."
-    mustRunAfter(installedProductTest)
     dependsOn(
+        installedProductTest,
         stageInstalledProduct,
         semanticRuntimeArchive,
         ":change:recovery:test",

@@ -135,12 +135,11 @@ internal class InstalledChangePlanningAdmission(
                 ChangePlanAdmissionFailure.INTENT_REJECTED,
             )
         }
-        val traversal = when (val result = traversals.run(traversalPlan)) {
-            is TraversalResult.Complete -> result
-            is TraversalResult.Qualified -> return rejected(
-                ChangePlanAdmissionFailure.REQUIRED_TRAVERSAL_INCOMPLETE,
-            )
-            is TraversalResult.Rejected -> return rejected(result.reason.admissionFailure())
+        val traversal = when (
+            val required = traversals.run(traversalPlan).requireCompleteChangePlanTraversal()
+        ) {
+            is Refinement.Refined -> required.value
+            is Refinement.Rejected -> return rejected(required.failure)
         }
         val diagnosticScope = when (val admitted = DiagnosticScope.fromCanonicalPaths(
             published.readLease,
@@ -166,6 +165,26 @@ internal class InstalledChangePlanningAdmission(
             ),
         )
     }
+}
+
+/**
+ * Proof transition: `TraversalResult ->
+ * Refinement<TraversalResult.Complete, ChangePlanAdmissionFailure>`.
+ *
+ * Establishes that required change-planning traversal evidence is complete. Qualified evidence
+ * remains the closed [ChangePlanAdmissionFailure.REQUIRED_TRAVERSAL_INCOMPLETE] failure, while
+ * every traversal rejection retains its exact admission failure. The complete result may be
+ * unpacked only while constructing planning evidence at the installed change-planning boundary.
+ */
+internal fun TraversalResult.requireCompleteChangePlanTraversal(): Refinement<
+    TraversalResult.Complete,
+    ChangePlanAdmissionFailure,
+    > = when (this) {
+    is TraversalResult.Complete -> Refinement.Refined(this)
+    is TraversalResult.Qualified -> Refinement.Rejected(
+        ChangePlanAdmissionFailure.REQUIRED_TRAVERSAL_INCOMPLETE,
+    )
+    is TraversalResult.Rejected -> Refinement.Rejected(reason.admissionFailure())
 }
 
 private fun TraversalRejection.admissionFailure(): ChangePlanAdmissionFailure = when (this) {
