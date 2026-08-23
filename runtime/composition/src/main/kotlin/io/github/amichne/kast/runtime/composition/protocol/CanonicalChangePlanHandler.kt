@@ -61,7 +61,8 @@ internal enum class ChangePlanAdmissionFailure {
     SYMBOL_RESOLVE_REQUIRED,
     EDITABLE_TARGET_REQUIRED,
     RELATION_READ_REQUIRED,
-    TRAVERSAL_RUN_REQUIRED,
+    TOPOLOGY_BUILD_REQUIRED,
+    REQUIRED_TRAVERSAL_INCOMPLETE,
     DIAGNOSTIC_CHECK_REQUIRED,
     INTENT_REJECTED,
 }
@@ -192,8 +193,10 @@ private fun ChangePlanAdmissionFailure.protocol(): ChangePlanRejection = when (t
         ChangePlanRejection.EDITABLE_TARGET_REQUIRED
     ChangePlanAdmissionFailure.RELATION_READ_REQUIRED ->
         ChangePlanRejection.RELATION_READ_REQUIRED
-    ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED ->
-        ChangePlanRejection.TRAVERSAL_RUN_REQUIRED
+    ChangePlanAdmissionFailure.TOPOLOGY_BUILD_REQUIRED ->
+        ChangePlanRejection.TOPOLOGY_BUILD_REQUIRED
+    ChangePlanAdmissionFailure.REQUIRED_TRAVERSAL_INCOMPLETE ->
+        ChangePlanRejection.REQUIRED_TRAVERSAL_INCOMPLETE
     ChangePlanAdmissionFailure.DIAGNOSTIC_CHECK_REQUIRED ->
         ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED
     ChangePlanAdmissionFailure.INTENT_REJECTED -> ChangePlanRejection.INTENT_REJECTED
@@ -203,9 +206,10 @@ private fun ChangePlanningFailure.protocol(): ChangePlanRejection = when (this) 
     ChangePlanningFailure.RELATION_EVIDENCE_REQUIRED,
     ChangePlanningFailure.RELATION_EVIDENCE_INCOMPLETE,
         -> ChangePlanRejection.RELATION_READ_REQUIRED
-    ChangePlanningFailure.TRAVERSAL_EVIDENCE_REQUIRED,
-    ChangePlanningFailure.TRAVERSAL_EVIDENCE_INCOMPLETE,
-        -> ChangePlanRejection.TRAVERSAL_RUN_REQUIRED
+    ChangePlanningFailure.TRAVERSAL_EVIDENCE_REQUIRED ->
+        ChangePlanRejection.INTENT_REJECTED
+    ChangePlanningFailure.TRAVERSAL_EVIDENCE_INCOMPLETE ->
+        ChangePlanRejection.REQUIRED_TRAVERSAL_INCOMPLETE
     ChangePlanningFailure.DIAGNOSTIC_EVIDENCE_REQUIRED,
     ChangePlanningFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE,
         -> ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED

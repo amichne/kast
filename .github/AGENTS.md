@@ -4,7 +4,8 @@ This tree owns repository automation.
 
 CI admits only the Kotlin/Gradle product surface. The repository-contract job
 owns the repository-shape gate. The Kotlin job owns architecture verification
-and the Gradle test graph.
+and the Gradle test graph. PR #633 reuses that Kotlin job for GATE-060 and a
+lightweight `pr633-merge-candidate` job verifies its exact-head evidence.
 
 Do not add a second build, packaging, installation, or release authority.
 Release and documentation automation are introduced only by their owning

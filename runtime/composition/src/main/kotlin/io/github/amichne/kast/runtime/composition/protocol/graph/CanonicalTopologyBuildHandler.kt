@@ -52,7 +52,11 @@ internal class CanonicalTopologyBuildHandler(
             EvidenceEnvelope(
                 CanonicalOperation.TOPOLOGY_BUILD.id,
                 snapshot.identity.lease.generation,
-                ProtocolTopologyBuildResult(status, digest),
+                ProtocolTopologyBuildResult(
+                    status,
+                    snapshot.identity.lease.generation,
+                    digest,
+                ),
             ),
         )
     }

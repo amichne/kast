@@ -96,6 +96,10 @@ internal class DerivedMutationPostimage private constructor(
                         mutation.anchor.endExclusive,
                         mutation.anchor.endExclusive,
                     )
+                    is SourceTextMutation.InsertIntoClassBody -> MutationRange(
+                        mutation.anchor.endExclusive - 1,
+                        mutation.anchor.endExclusive - 1,
+                    )
                     is SourceTextMutation.Replace -> MutationRange(
                         mutation.range.startInclusive,
                         mutation.range.endExclusive,
@@ -122,6 +126,15 @@ internal class DerivedMutationPostimage private constructor(
                 }
             ) {
                 return Refinement.Rejected(MutationAdmissionFailure.MUTATION_OUT_OF_BOUNDS)
+            }
+            if (mutations.any { mutation ->
+                    mutation is SourceTextMutation.InsertIntoClassBody &&
+                    preimage.text.getOrNull(mutation.anchor.endExclusive - 1) != '}'
+                }
+            ) {
+                return Refinement.Rejected(
+                    MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH,
+                )
             }
             if (mutations.any { mutation ->
                     when (mutation) {
@@ -151,6 +164,11 @@ internal class DerivedMutationPostimage private constructor(
                     is SourceTextMutation.InsertAfterDeclaration -> {
                         val offset = mutation.anchor.endExclusive
                         result.substring(0, offset) + "\n\n${mutation.declaration.value}" +
+                        result.substring(offset)
+                    }
+                    is SourceTextMutation.InsertIntoClassBody -> {
+                        val offset = mutation.anchor.endExclusive - 1
+                        result.substring(0, offset) + "\n    ${mutation.declaration.value}\n" +
                         result.substring(offset)
                     }
                     is SourceTextMutation.Replace -> result.substring(

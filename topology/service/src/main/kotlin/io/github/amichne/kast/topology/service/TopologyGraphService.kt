@@ -2,18 +2,8 @@ package io.github.amichne.kast.topology.service
 
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
-import io.github.amichne.kast.topology.contract.TopologyCondensation
-import io.github.amichne.kast.topology.contract.TopologyCycle
-import io.github.amichne.kast.topology.contract.TopologyGraph
-import io.github.amichne.kast.topology.contract.TopologyGraphOpen
-import io.github.amichne.kast.topology.contract.TopologyGraphOperations
-import io.github.amichne.kast.topology.contract.TopologyGraphTraversal
-import io.github.amichne.kast.topology.contract.TopologyQuotientGraph
-import io.github.amichne.kast.topology.contract.TopologyQuotientLevel
-import io.github.amichne.kast.topology.contract.TopologyReachability
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentReader
-import io.github.amichne.kast.topology.contract.TopologyStrongComponent
 
 /**
  * Proof transition: `TopologySnapshotContentReader -> TopologyGraphOperations`.
@@ -22,7 +12,7 @@ import io.github.amichne.kast.topology.contract.TopologyStrongComponent
  * detached snapshot content. No compiler, filesystem, Gradle, module-model, or live workspace
  * capability is accepted by this service boundary.
  */
-fun topologyGraphOperations(reader: TopologySnapshotContentReader): TopologyGraphOperations =
+internal fun topologyGraphOperations(reader: TopologySnapshotContentReader): TopologyGraphOperations =
     TopologyGraphService(reader)
 
 private class TopologyGraphService(

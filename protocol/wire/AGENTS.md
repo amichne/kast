@@ -9,6 +9,8 @@ table for the canonical public operation set.
 - Serialization primitives and raw wire text stay inside this module.
 - Do not import runtime, service, adapter, platform, filesystem, Gradle, JDBC, or IntelliJ types.
 - Wire code transports typed contracts; it does not dispatch operations or gain capabilities.
+- The generated `operation-registry.json` projection is encoded here from the registry's typed
+  artifact; Gradle owns filesystem output and installed metadata copies those bytes unchanged.
 
 ## Contract invariants
 

@@ -12,6 +12,8 @@ persistence, diagnostics, or mutation.
 - Complete means the deterministic frontier is exhausted under complete one-hop coverage.
 - Every stopped frontier or incomplete one-hop page is qualified with a continuation bound to the
   exact start selector, meaning, root, generation, and scope.
+- Missing required topology and stale required topology are separate closed rejections. They both
+  require an explicit `topology.build`; a stale selector remains a selector rejection.
 
 ## Verification ladder
 

@@ -15,7 +15,8 @@ module graph before the reader understands the runtime flow.
 ## Source and generated boundaries
 
 - Author human-facing pages under `public/`.
-- Generate `public/reference/cli.md` with
+- Generate `public/reference/cli.md` from the typed operation-registry artifact with
+  `./gradlew :protocol:wire:generateOperationRegistry` followed by
   `python3 docs/generate_cli_reference.py`. Do not edit that page by hand.
 - Edit the LikeC4 contract in `public/architecture/{specification,model,views}.c4`.
 - Generate `public/architecture/likec4-views.mjs` with:
@@ -42,6 +43,7 @@ module graph before the reader understands the runtime flow.
 Run these checks after changing this directory:
 
 ```shell
+./gradlew :protocol:wire:generateOperationRegistry
 python3 docs/generate_cli_reference.py --check
 python3 docs/test_public_docs.py
 npx --yes likec4@1.59.2 validate --json --no-layout \

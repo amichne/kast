@@ -1,20 +1,18 @@
 package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.ide.impl.OpenProjectTask
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
-import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
+import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
-import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.startup.StartupManager
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.settings.GradleSystemSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
-import java.io.IOException
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
@@ -30,6 +28,7 @@ enum class InstalledIntellijWorkspaceFailure {
     STARTUP_FAILED,
     GRADLE_JVM_UNAVAILABLE,
     PROJECT_JVM_UNAVAILABLE,
+    GRADLE_LINK_RESET_FAILED,
     GRADLE_IMPORT_FAILED,
     GRADLE_IMPORT_TIMED_OUT,
     INDEXING_INTERRUPTED,
@@ -39,13 +38,39 @@ enum class InstalledIntellijWorkspaceFailure {
     MODEL_EXTERNAL_PROJECT_INCOMPLETE,
     MODEL_SOURCE_ROOTS_UNAVAILABLE,
     MODEL_SOURCE_STATE_UNAVAILABLE,
-    MODEL_IDENTITIES_UNAVAILABLE,
+    MODEL_SEMANTIC_INPUT_INCOMPLETE,
+    MODEL_SEMANTIC_PROJECT_PATH_INVALID,
+    MODEL_SEMANTIC_SOURCE_ROOT_INVALID,
+    MODEL_SEMANTIC_MODULE_INVALID,
+    MODEL_STATE_IDENTITY_REJECTED,
 }
 
 /** Detached complete model proof from one exact IntelliJ-opened Gradle workspace. */
 class InstalledIntellijWorkspaceModel internal constructor(
     val capture: InstalledGradleModelCapture,
-)
+    private val project: Project,
+) {
+    /**
+     * Proof transition: `InstalledIntellijWorkspaceModel -> Refinement<WorkspaceStateIdentity,
+     * InstalledGradleModelCaptureFailure>`.
+     *
+     * Establishes a continuous smart, scanner-idle interval before capturing current source
+     * content under the same imported Gradle identity. The closed failure retains indexing and
+     * capture rejection. The live IntelliJ project remains inside this capability boundary.
+     */
+    fun captureCurrentSemanticIdentity(): io.github.amichne.kast.kernel.Refinement<
+        io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
+        InstalledGradleModelCaptureFailure,
+        > = when (awaitInstalledIndexingQuiescence(project)) {
+        InstalledIndexingReadiness.READY -> capture.captureCurrentSemanticIdentity()
+        InstalledIndexingReadiness.INTERRUPTED,
+        InstalledIndexingReadiness.TIMED_OUT,
+        InstalledIndexingReadiness.FAILED,
+            -> io.github.amichne.kast.kernel.Refinement.Rejected(
+                InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE,
+            )
+    }
+}
 
 sealed interface InstalledIntellijWorkspaceOpening {
     data class Opened(
@@ -63,7 +88,7 @@ object InstalledIntellijWorkspace {
      * Proof transition: `Path -> InstalledIntellijWorkspaceOpening`.
      *
      * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened the exact path,
-     * completed one Gradle link or refresh, reached smart mode, and detached one complete Gradle
+     * completed one fresh Gradle link, reached smart mode, and detached one complete Gradle
      * model. [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live
      * project and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
      */
@@ -79,91 +104,104 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        val importObserver = InstalledGradleImportObserver(workspaceRoot)
-        val notificationManager = ExternalSystemProgressNotificationManager.getInstance()
-        if (!notificationManager.addNotificationListener(importObserver)) {
+        val project = try {
+            ProjectManagerEx.getInstanceEx().openProject(workspaceRoot, openProjectTask())
+        } catch (_: RuntimeException) {
+            null
+        } ?: return rejected(InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED)
+
+        val projectJvm = InstalledProjectJvm.from(gradleJvm)
+        when (projectJvm.assign(project)) {
+            InstalledProjectJvmAssignment.Assigned -> Unit
+            is InstalledProjectJvmAssignment.Rejected -> return rejected(
+                InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
+            )
+        }
+
+        when (awaitStartup(project)) {
+            FutureCompletion.COMPLETED -> Unit
+            FutureCompletion.INTERRUPTED -> return rejected(
+                InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
+            )
+            FutureCompletion.TIMED_OUT,
+            FutureCompletion.FAILED,
+                -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
+        }
+
+        val imported = CompletableFuture<Void>()
+        val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
+            .withCallback(imported)
+        val gradleSettings = GradleSettings.getInstance(project)
+        when (linkedProjectSettings(gradleSettings, workspaceRoot)) {
+            GradleLinkState.Linked -> if (
+                !gradleSettings.unlinkExternalProject(
+                    workspaceRoot.toString(),
+                )
+            ) {
+                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_LINK_RESET_FAILED)
+            }
+            GradleLinkState.Unlinked -> Unit
+        }
+        val importCompletion = try {
+            val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
+                this.gradleJvm = gradleJvm.projectSettingsSelector()
+            }
+            ExternalSystemUtil.linkExternalProject(settings, specification)
+            imported
+        } catch (_: RuntimeException) {
             return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
         }
-        try {
-            val project = try {
-                ProjectManagerEx.getInstanceEx().openProject(workspaceRoot, openProjectTask())
-            } catch (_: RuntimeException) {
-                null
-            } ?: return rejected(InstalledIntellijWorkspaceFailure.PROJECT_OPEN_FAILED)
-
-            when (InstalledProjectJvm.from(gradleJvm).assign(project)) {
-                InstalledProjectJvmAssignment.Assigned -> Unit
-                is InstalledProjectJvmAssignment.Rejected -> return rejected(
-                    InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
-                )
-            }
-
-            when (awaitStartup(project)) {
-                FutureCompletion.COMPLETED -> Unit
-                FutureCompletion.INTERRUPTED -> return rejected(
-                    InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
-                )
-                FutureCompletion.TIMED_OUT,
-                FutureCompletion.FAILED,
-                    -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
-            }
-
-            val imported = CompletableFuture<Void>()
-            val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
-                .withCallback(imported)
-            val importCompletion = try {
-                when (val link = linkedProjectSettings(project, workspaceRoot)) {
-                    is GradleLinkState.Linked -> {
-                        link.settings.gradleJvm = gradleJvm.projectSettingsSelector()
-                        importObserver.completion
-                    }
-                    GradleLinkState.Unlinked -> {
-                        val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
-                            this.gradleJvm = gradleJvm.projectSettingsSelector()
-                        }
-                        ExternalSystemUtil.linkExternalProject(settings, specification)
-                        imported
-                    }
-                }
-            } catch (_: RuntimeException) {
-                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
-            }
-            when (await(importCompletion)) {
-                FutureCompletion.COMPLETED -> Unit
-                FutureCompletion.INTERRUPTED -> return rejected(
-                    InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
-                )
-                FutureCompletion.TIMED_OUT -> return rejected(
-                    InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_TIMED_OUT,
-                )
-                FutureCompletion.FAILED -> return rejected(
-                    InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
-                )
-            }
-            try {
-                DumbService.getInstance(project).waitForSmartMode()
-            } catch (_: RuntimeException) {
-                return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
-            }
-            val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
-                    captured.failure.workspaceFailure(),
-                )
-            }
-            return InstalledIntellijWorkspaceOpening.Opened(
-                InstalledIntellijWorkspaceModel(capture),
+        when (await(importCompletion)) {
+            FutureCompletion.COMPLETED -> Unit
+            FutureCompletion.INTERRUPTED -> return rejected(
+                InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
             )
-        } finally {
-            notificationManager.removeNotificationListener(importObserver)
+            FutureCompletion.TIMED_OUT -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_TIMED_OUT,
+            )
+            FutureCompletion.FAILED -> return rejected(
+                InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED,
+            )
         }
+        when (materializeImportedModules(project, workspaceRoot)) {
+            InstalledModuleMaterialization.AVAILABLE,
+            InstalledModuleMaterialization.IMPORTED,
+                -> Unit
+            InstalledModuleMaterialization.UNAVAILABLE,
+            InstalledModuleMaterialization.FAILED,
+                -> return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
+        }
+        when (projectJvm.assign(project)) {
+            InstalledProjectJvmAssignment.Assigned -> Unit
+            is InstalledProjectJvmAssignment.Rejected -> return rejected(
+                InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
+            )
+        }
+        when (awaitInstalledIndexingQuiescence(project)) {
+            InstalledIndexingReadiness.READY -> Unit
+            InstalledIndexingReadiness.INTERRUPTED -> return rejected(
+                InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
+            )
+            InstalledIndexingReadiness.TIMED_OUT,
+            InstalledIndexingReadiness.FAILED,
+                -> return rejected(InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE)
+        }
+        val capture = when (val captured = captureInstalledGradleModel(project, workspaceRoot)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> captured.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejected(
+                captured.failure.workspaceFailure(),
+            )
+        }
+        return InstalledIntellijWorkspaceOpening.Opened(
+            InstalledIntellijWorkspaceModel(capture, project),
+        )
     }
 
     private fun openProjectTask(): OpenProjectTask = OpenProjectTask.build().copy(
-        isRefreshVfsNeeded = false,
-        runConfigurators = false,
+        isRefreshVfsNeeded = true,
+        runConfigurators = true,
         runConversionBeforeOpen = false,
-        preloadServices = false,
+        preloadServices = true,
     )
 
     private fun awaitStartup(
@@ -184,6 +222,7 @@ object InstalledIntellijWorkspace {
         return FutureCompletion.COMPLETED
     }
 
+
     /**
      * Proof transition: `Project + Path -> GradleLinkState`.
      *
@@ -192,15 +231,15 @@ object InstalledIntellijWorkspace {
      * remain inside the Gradle import boundary.
      */
     private fun linkedProjectSettings(
-        project: com.intellij.openapi.project.Project,
+        gradleSettings: GradleSettings,
         workspaceRoot: Path,
     ): GradleLinkState {
-        GradleSettings.getInstance(project).linkedProjectsSettings.forEach { settings ->
+        gradleSettings.linkedProjectsSettings.forEach { settings ->
             if (
                 settings.externalProjectPath?.let(Path::of)?.toAbsolutePath()?.normalize() ==
                 workspaceRoot
             ) {
-                return GradleLinkState.Linked(settings)
+                return GradleLinkState.Linked
             }
         }
         return GradleLinkState.Unlinked
@@ -219,104 +258,43 @@ object InstalledIntellijWorkspace {
     } catch (_: CancellationException) {
         FutureCompletion.FAILED
     }
-}
-
-@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
-private class InstalledGradleImportObserver(
-    private val workspaceRoot: Path,
-) : ExternalSystemTaskNotificationListener {
-    val completion = CompletableFuture<Void>()
-
-    override fun onSuccess(projectPath: String, id: ExternalSystemTaskId) {
-        if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
-            completion.complete(null)
-        }
-    }
-
-    override fun onFailure(projectPath: String, id: ExternalSystemTaskId, exception: Exception) {
-        if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
-            completion.completeExceptionally(exception)
-        }
-    }
-
-    override fun onCancel(projectPath: String, id: ExternalSystemTaskId) {
-        if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
-            completion.cancel(false)
-        }
-    }
-
-    override fun onSuccess(id: ExternalSystemTaskId) {
-        if (id.workspaceResolution() == GradleTaskIdentity.EXACT_WORKSPACE) {
-            completion.complete(null)
-        }
-    }
 
     /**
-     * Proof transition: `String + ExternalSystemTaskId -> GradleTaskIdentity`.
+     * Proof transition: `Project + Path -> InstalledModuleMaterialization`.
      *
-     * [GradleTaskIdentity.EXACT_WORKSPACE] establishes one Gradle project-resolution task whose
-     * contextual project path is the exact canonical workspace. Invalid and inaccessible raw paths
-     * fail closed as [GradleTaskIdentity.OTHER]. Raw callback data remains inside this observer.
+     * Available or imported establishes at least one live IntelliJ module for the exact complete
+     * Gradle project data. Other variants close absent cached data and platform import failure.
+     * Live project data remains inside this installed bootstrap boundary.
      */
-    private fun ExternalSystemTaskId.workspaceResolution(projectPath: String): GradleTaskIdentity {
-        if (
-            projectSystemId != GradleConstants.SYSTEM_ID ||
-            type != ExternalSystemTaskType.RESOLVE_PROJECT
-        ) {
-            return GradleTaskIdentity.OTHER
-        }
-        return try {
-            if (Path.of(projectPath).toRealPath() == workspaceRoot) {
-                GradleTaskIdentity.EXACT_WORKSPACE
-            } else {
-                GradleTaskIdentity.OTHER
-            }
-        } catch (_: IOException) {
-            GradleTaskIdentity.OTHER
+    private fun materializeImportedModules(
+        project: com.intellij.openapi.project.Project,
+        workspaceRoot: Path,
+    ): InstalledModuleMaterialization {
+        val hasModules = try {
+            ReadAction.nonBlocking<Boolean> {
+                ModuleManager.getInstance(project).modules.any { module -> !module.isDisposed }
+            }.executeSynchronously()
         } catch (_: RuntimeException) {
-            GradleTaskIdentity.OTHER
+            return InstalledModuleMaterialization.FAILED
         }
-    }
+        if (hasModules) return InstalledModuleMaterialization.AVAILABLE
 
-    override fun onFailure(id: ExternalSystemTaskId, exception: Exception) {
-        if (id.workspaceResolution() == GradleTaskIdentity.EXACT_WORKSPACE) {
-            completion.completeExceptionally(exception)
-        }
-    }
-
-    override fun onCancel(id: ExternalSystemTaskId) {
-        if (id.workspaceResolution() == GradleTaskIdentity.EXACT_WORKSPACE) {
-            completion.cancel(false)
-        }
-    }
-
-    /**
-     * Proof transition: `ExternalSystemTaskId -> GradleTaskIdentity`.
-     *
-     * [GradleTaskIdentity.EXACT_WORKSPACE] establishes one Gradle project-resolution task for the
-     * exact canonical workspace. Raw platform task identity does not leave this observer.
-     */
-    private fun ExternalSystemTaskId.workspaceResolution(): GradleTaskIdentity {
-        if (
-            projectSystemId != GradleConstants.SYSTEM_ID ||
-            type != ExternalSystemTaskType.RESOLVE_PROJECT
-        ) {
-            return GradleTaskIdentity.OTHER
-        }
-        val basePath = findProject()?.basePath ?: return GradleTaskIdentity.OTHER
-        return try {
-            if (Path.of(basePath).toAbsolutePath().normalize() == workspaceRoot) {
-                GradleTaskIdentity.EXACT_WORKSPACE
-            } else {
-                GradleTaskIdentity.OTHER
+        val dataManager = ProjectDataManager.getInstance()
+        val structure = dataManager.getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
+            .singleOrNull { info ->
+                Path.of(info.externalProjectPath).toAbsolutePath().normalize() == workspaceRoot
             }
+            ?.externalProjectStructure
+            ?: return InstalledModuleMaterialization.UNAVAILABLE
+        return try {
+            dataManager.ensureTheDataIsReadyToUse(structure)
+            dataManager.importData(structure, project)
+            InstalledModuleMaterialization.IMPORTED
         } catch (_: RuntimeException) {
-            GradleTaskIdentity.OTHER
+            InstalledModuleMaterialization.FAILED
         }
     }
 }
-
-private enum class GradleTaskIdentity { EXACT_WORKSPACE, OTHER }
 
 private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledIntellijWorkspaceFailure =
     when (this) {
@@ -330,15 +308,22 @@ private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledInte
             InstalledIntellijWorkspaceFailure.MODEL_SOURCE_ROOTS_UNAVAILABLE
         InstalledGradleModelCaptureFailure.SOURCE_STATE_UNAVAILABLE ->
             InstalledIntellijWorkspaceFailure.MODEL_SOURCE_STATE_UNAVAILABLE
-        InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE ->
-            InstalledIntellijWorkspaceFailure.MODEL_IDENTITIES_UNAVAILABLE
+        InstalledGradleModelCaptureFailure.INDEXING_UNAVAILABLE ->
+            InstalledIntellijWorkspaceFailure.MODEL_UNAVAILABLE
+        InstalledGradleModelCaptureFailure.SEMANTIC_INPUT_INCOMPLETE ->
+            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_INPUT_INCOMPLETE
+        InstalledGradleModelCaptureFailure.SEMANTIC_PROJECT_PATH_INVALID ->
+            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_PROJECT_PATH_INVALID
+        InstalledGradleModelCaptureFailure.SEMANTIC_SOURCE_ROOT_INVALID ->
+            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_SOURCE_ROOT_INVALID
+        InstalledGradleModelCaptureFailure.SEMANTIC_MODULE_INVALID ->
+            InstalledIntellijWorkspaceFailure.MODEL_SEMANTIC_MODULE_INVALID
+        InstalledGradleModelCaptureFailure.STATE_IDENTITY_REJECTED ->
+            InstalledIntellijWorkspaceFailure.MODEL_STATE_IDENTITY_REJECTED
     }
 
 private sealed interface GradleLinkState {
-    data class Linked(
-        val settings: GradleProjectSettings,
-    ) : GradleLinkState
-
+    data object Linked : GradleLinkState
     data object Unlinked : GradleLinkState
 }
 
@@ -348,6 +333,8 @@ private enum class FutureCompletion {
     TIMED_OUT,
     FAILED,
 }
+
+private enum class InstalledModuleMaterialization { AVAILABLE, IMPORTED, UNAVAILABLE, FAILED }
 
 private fun rejected(
     failure: InstalledIntellijWorkspaceFailure,

@@ -14,6 +14,8 @@ outcomes, read eligibility, and narrow extraction and persistence ports.
   generation equality. A stale snapshot remains named but cannot acquire read authority.
 - Contract types are immutable and detached. Do not import IntelliJ, K2, JDBC, filesystem effects,
   runtime dispatch, or protocol serialization.
+- Unbounded traversal, reachability, cycle, SCC, condensation, and quotient APIs are not part of
+  the stable contract.
 
 ## Verification
 

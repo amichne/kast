@@ -11,8 +11,14 @@ This directory owns executable checks and the tests that prove them.
 - `agents_md_turn_refresh.py` computes guide work but does not synthesize
   semantic Markdown. The active turn must inspect the changed files and own the
   resulting guidance.
+- `scaffold_agents_md_turn_guides.py` creates only inheritance guides for missing directories in
+  that queue. Run it with `--write`, or use `--write --refresh` to retarget generated guides to the
+  nearest substantive owner. Inspect every generated guide and add durable local facts where the
+  directory has its own boundary.
 - `test_agents_md_turn_refresh.py` is the focused authority for prompt-start
   isolation, reverse breadth-first ordering, guide outcomes, and convergence.
+- `verify_pr633_program.py` and `collect_pr633_delivery_evidence.py` use only the standard library
+  and bind program, registry, cleanup, and exact-head CI evidence to closed checks.
 
 Run:
 

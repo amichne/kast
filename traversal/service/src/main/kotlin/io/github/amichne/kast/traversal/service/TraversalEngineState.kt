@@ -1,6 +1,7 @@
 package io.github.amichne.kast.traversal.service
 
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
+import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.traversal.contract.TraversalCheckpoint
 import io.github.amichne.kast.traversal.contract.TraversalFrontierEntry
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
@@ -79,8 +80,9 @@ internal sealed interface TraversalWorkAvailability {
 }
 
 internal sealed interface TraversalReadAdmission {
-    data object Admitted : TraversalReadAdmission
+    data class Admitted(val budget: RelationBudget) : TraversalReadAdmission
     data class Limited(val limitation: TraversalLimitation) : TraversalReadAdmission
+    data object Rejected : TraversalReadAdmission
 }
 
 internal enum class ReaderBatchAdmission {

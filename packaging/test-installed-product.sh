@@ -4,6 +4,8 @@ set -euo pipefail
 product_root="${KAST_INSTALLED_PRODUCT:?KAST_INSTALLED_PRODUCT must name the staged product}"
 control_archive="${KAST_CONTROL_ARCHIVE:?KAST_CONTROL_ARCHIVE must name the control archive}"
 runtime_archive="${KAST_SEMANTIC_RUNTIME_ARCHIVE:?KAST_SEMANTIC_RUNTIME_ARCHIVE must name the runtime archive}"
+project_root="${KAST_PROJECT_ROOT:?KAST_PROJECT_ROOT must name the checkout}"
+report_directory="${KAST_INSTALLED_REPORT_DIRECTORY:?KAST_INSTALLED_REPORT_DIRECTORY must name the report directory}"
 kast_executable="${product_root}/bin/kast"
 
 fail() {
@@ -91,6 +93,7 @@ package example
 
 class Greeter {
     fun greeting(): String = "hello"
+    fun firstCaller(): String = greeting()
 }
 EOF
 
@@ -106,12 +109,14 @@ schema_json="$(
   KAST_RUNTIME_ARCHIVE='' KAST_RUNTIME_STORE="${runtime_directory}/must-not-exist" \
     "${kast_executable}" --schema
 )"
-python3 - "${schema_json}" <<'PY'
+python3 - "${schema_json}" "${control_root}/share/kast/operation-registry.json" <<'PY'
 import json
+from pathlib import Path
 import sys
 
 document = json.loads(sys.argv[1])
-assert len(document["operationRegistry"]["operationIds"]) == 11, document
+expected_registry = json.loads(Path(sys.argv[2]).read_text())
+assert document["operationRegistry"] == expected_registry, document
 assert document["semanticRuntime"]["runtimeId"].startswith("sha256:"), document
 PY
 [[ ! -e "${runtime_directory}/must-not-exist" ]] ||
@@ -191,102 +196,12 @@ wait "${server_pid}" >/dev/null 2>&1 || true
 server_pid=""
 rm -f -- "${server_root}/$(basename "${runtime_archive}")"
 
-discover_json="$(
-  cd "${fixture}" &&
-    "${kast_executable}" symbol discover --query Greeter --limit 1000
-)"
-candidate="$(python3 - "${discover_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "symbol.discover", document
-assert document["status"] in {"complete", "qualified"}, document
-declarations = [item for item in document["items"] if item["type"] == "declaration"]
-assert declarations, document
-print(declarations[0]["candidateSelector"])
-PY
-)"
-
-resolve_json="$(
-  cd "${fixture}" &&
-    "${kast_executable}" symbol resolve --candidate "${candidate}"
-)"
-exact_selector="$(python3 - "${resolve_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "symbol.resolve", document
-assert document["status"] == "complete", document
-print(document["exactSelector"])
-PY
-)"
-
-describe_json="$(
-  cd "${fixture}" &&
-    "${kast_executable}" symbol describe --selector "${exact_selector}"
-)"
-python3 - "${describe_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "symbol.describe", document
-assert document["status"] == "complete", document
-assert document["symbol"]["name"] == "Greeter", document
-PY
-
-plan_json="$(
-  cd "${fixture}" &&
-    "${kast_executable}" change plan \
-      --intent add-declaration \
-      --target "${exact_selector}" \
-      --declaration 'fun farewell(): String = "goodbye"'
-)"
-plan_identity="$(python3 - "${plan_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "change.plan", document
-assert document["status"] == "complete", document
-print(document["planIdentity"])
-PY
-)"
-
-apply_json="$(
-  cd "${fixture}" &&
-    "${kast_executable}" change apply --plan "${plan_identity}"
-)"
-application_identity="$(python3 - "${apply_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "change.apply", document
-assert document["status"] == "complete", document
-print(document["applicationIdentity"])
-PY
-)"
-
-verify_json="$(
-  cd "${fixture}" &&
-    "${kast_executable}" change verify --application "${application_identity}"
-)"
-python3 - "${verify_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "change.verify", document
-assert document["status"] == "complete", document
-assert document["receiptIdentity"], document
-PY
-
-grep -F 'fun farewell(): String = "goodbye"' \
-  "${fixture}/src/main/kotlin/example/Greeter.kt" >/dev/null ||
-  fail "verified mutation did not reach the fixture source"
+mkdir -p -- "${report_directory}"
+python3 "${project_root}/packaging/topology_installed_acceptance.py" run \
+  --kast "${kast_executable}" \
+  --workspace "${fixture}" \
+  --registry "${control_root}/share/kast/operation-registry.json" \
+  --report "${report_directory}/topology-installed-product.json"
 
 runtime_snapshot_after="$(
   find "${runtime_store}" -type f -exec stat -f '%N:%z:%m' {} + | sort

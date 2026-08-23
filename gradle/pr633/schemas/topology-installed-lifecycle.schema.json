@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/topology-installed-lifecycle.schema.json",
+  "title": "Installed durable topology lifecycle evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "operationIds",
+    "operationRegistrySha256",
+    "workspace",
+    "source",
+    "prerequisites",
+    "selectors",
+    "firstBuild",
+    "secondBuild",
+    "restart",
+    "mutation",
+    "rebuild",
+    "semanticResults",
+    "invocations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "kast-pr633-installed-topology-lifecycle" },
+    "operationIds": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "operationRegistrySha256": { "$ref": "#/$defs/sha256" },
+    "workspace": { "type": "string", "minLength": 1 },
+    "source": { "$ref": "#/$defs/source" },
+    "prerequisites": { "$ref": "#/$defs/prerequisites" },
+    "selectors": { "$ref": "#/$defs/selectors" },
+    "firstBuild": { "$ref": "#/$defs/build" },
+    "secondBuild": { "$ref": "#/$defs/build" },
+    "restart": { "$ref": "#/$defs/restart" },
+    "mutation": { "$ref": "#/$defs/mutation" },
+    "rebuild": { "$ref": "#/$defs/rebuild" },
+    "semanticResults": { "$ref": "#/$defs/semanticResults" },
+    "invocations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/invocation" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relativePath", "beforeSha256", "afterSha256"],
+      "properties": {
+        "relativePath": { "const": "src/main/kotlin/example/Greeter.kt" },
+        "beforeSha256": { "$ref": "#/$defs/sha256" },
+        "afterSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "prerequisite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["traversal", "changePlan"],
+      "properties": {
+        "traversal": { "const": "topology-build-required" },
+        "changePlan": { "const": "topology-build-required" }
+      }
+    },
+    "prerequisites": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["beforeFirstBuild", "afterMutation"],
+      "properties": {
+        "beforeFirstBuild": { "$ref": "#/$defs/prerequisite" },
+        "afterMutation": { "$ref": "#/$defs/prerequisite" }
+      }
+    },
+    "selectors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classG0Sha256",
+        "classMutationSha256",
+        "classG1Sha256",
+        "greetingG0Sha256",
+        "greetingG1Sha256",
+        "oldSelectorRejection"
+      ],
+      "properties": {
+        "classG0Sha256": { "$ref": "#/$defs/sha256" },
+        "classMutationSha256": { "$ref": "#/$defs/sha256" },
+        "classG1Sha256": { "$ref": "#/$defs/sha256" },
+        "greetingG0Sha256": { "$ref": "#/$defs/sha256" },
+        "greetingG1Sha256": { "$ref": "#/$defs/sha256" },
+        "oldSelectorRejection": { "const": "selector-stale" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "generation", "digest"],
+      "properties": {
+        "status": { "enum": ["published", "reused"] },
+        "generation": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "restart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "traversalBeforeSha256",
+        "traversalAfterSha256",
+        "semanticResultEqual",
+        "topologyBuildInvokedBetweenStopAndTraversal"
+      ],
+      "properties": {
+        "traversalBeforeSha256": { "$ref": "#/$defs/sha256" },
+        "traversalAfterSha256": { "$ref": "#/$defs/sha256" },
+        "semanticResultEqual": { "const": true },
+        "topologyBuildInvokedBetweenStopAndTraversal": { "const": false }
+      }
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planIdentitySha256",
+        "applicationIdentitySha256",
+        "receiptIdentitySha256",
+        "sourceChanged"
+      ],
+      "properties": {
+        "planIdentitySha256": { "$ref": "#/$defs/sha256" },
+        "applicationIdentitySha256": { "$ref": "#/$defs/sha256" },
+        "receiptIdentitySha256": { "$ref": "#/$defs/sha256" },
+        "sourceChanged": { "const": true }
+      }
+    },
+    "rebuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "generation", "digest", "generationChanged", "digestChanged"],
+      "properties": {
+        "status": { "const": "published" },
+        "generation": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/sha256" },
+        "generationChanged": { "const": true },
+        "digestChanged": { "const": true }
+      }
+    },
+    "semanticResults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beforeRestartSha256",
+        "afterRestartSha256",
+        "afterRebuildSha256",
+        "beforeRestartNames",
+        "afterRebuildNames"
+      ],
+      "properties": {
+        "beforeRestartSha256": { "$ref": "#/$defs/sha256" },
+        "afterRestartSha256": { "$ref": "#/$defs/sha256" },
+        "afterRebuildSha256": { "$ref": "#/$defs/sha256" },
+        "beforeRestartNames": { "type": "array", "items": { "type": "string" } },
+        "afterRebuildNames": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "argv",
+        "returncode",
+        "stdoutSha256",
+        "stderrSha256",
+        "operation",
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "argv": { "type": "array", "items": { "type": "string" } },
+        "returncode": { "type": "integer" },
+        "stdoutSha256": { "$ref": "#/$defs/sha256" },
+        "stderrSha256": { "$ref": "#/$defs/sha256" },
+        "operation": {},
+        "status": {},
+        "reason": {}
+      }
+    }
+  }
+}

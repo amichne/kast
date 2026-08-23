@@ -19,6 +19,18 @@ class MutationAdmissionTest {
     }
 
     @Test
+    fun `classlike add declaration derives a postimage inside the class body`() {
+        val fixture = ApplyTestFixture(classLike = true)
+        val admitted = admission.admit(fixture.request(), fixture.observed())
+            as Refinement.Refined<AdmittedMutation>
+
+        assertEquals(
+            "package sample\n\nclass service {\n\n    fun added(): Int = 1\n}\n",
+            admitted.value.write.postimage.text,
+        )
+    }
+
+    @Test
     fun `wrong root stale content and scope remain distinct closed failures`() {
         assertRejected(
             MutationAdmissionFailure.WRONG_ROOT,

@@ -3,8 +3,9 @@ package io.github.amichne.kast.runtime.composition.protocol.graph
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompiler
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.service.RelationService
+import io.github.amichne.kast.topology.contract.TopologySnapshotContentReader
 import io.github.amichne.kast.topology.contract.TopologySnapshotEligibility
-import io.github.amichne.kast.topology.contract.TopologySnapshotStore
+import io.github.amichne.kast.topology.contract.TopologySnapshotReader
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.traversal.contract.TraversalPlan
@@ -17,7 +18,8 @@ import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 /** Public traversal router whose only repository graph backend is an eligible SQLite snapshot. */
 internal class TopologyBackedTraversalOperations(
     private val workspaces: WorkspaceInspectionOperations,
-    private val snapshots: TopologySnapshotStore,
+    private val snapshotReader: TopologySnapshotReader,
+    private val contentReader: TopologySnapshotContentReader,
 ) : TraversalOperations {
     override suspend fun run(plan: TraversalPlan): TraversalResult {
         val workspace = when (val state = workspaces.inspect()) {
@@ -27,26 +29,49 @@ internal class TopologyBackedTraversalOperations(
             WorkspaceRuntimeState.Reconciling,
             WorkspaceRuntimeState.Starting,
             WorkspaceRuntimeState.Stopping,
-                -> return rejected(RelationReadRejection.WORKSPACE_NOT_READY)
+                -> return rejected(TraversalRejection.OneHopRejected(
+                    RelationReadRejection.WORKSPACE_NOT_READY,
+                ))
         }
         if (plan.start.lease != workspace.readLease) {
-            return rejected(RelationReadRejection.STALE_GENERATION)
+            return rejected(TraversalRejection.OneHopRejected(
+                RelationReadRejection.STALE_GENERATION,
+            ))
         }
-        val snapshot = when (val eligible = snapshots.eligible(TopologyWorkspaceIdentity.from(workspace))) {
+        val snapshot = when (
+            val eligible = snapshotReader.eligible(TopologyWorkspaceIdentity.from(workspace))
+        ) {
             is TopologySnapshotEligibility.Eligible -> eligible.snapshot
             is TopologySnapshotEligibility.Stale ->
-                return rejected(RelationReadRejection.STALE_GENERATION)
+                return rejected(TraversalRejection.RequiredEvidenceStale)
             TopologySnapshotEligibility.Unavailable,
             is TopologySnapshotEligibility.Rejected,
-                -> return rejected(RelationReadRejection.WORKSPACE_INDEX_UNAVAILABLE)
+                -> return rejected(TraversalRejection.RequiredEvidenceUnavailable)
         }
         val relations = RelationService(
             workspaces,
-            SqliteTopologyRelationCompiler(snapshot, snapshots),
+            SqliteTopologyRelationCompiler(snapshot, contentReader),
         )
-        return traversalOperations(relations).run(plan)
+        return when (val result = traversalOperations(relations).run(plan)) {
+            is TraversalResult.Rejected -> when (val reason = result.reason) {
+                is TraversalRejection.OneHopRejected ->
+                    if (reason.reason == RelationReadRejection.WORKSPACE_INDEX_UNAVAILABLE) {
+                        rejected(TraversalRejection.RequiredEvidenceUnavailable)
+                    } else {
+                        result
+                    }
+                TraversalRejection.ReaderContractViolation,
+                TraversalRejection.RequiredEvidenceStale,
+                TraversalRejection.RequiredEvidenceUnavailable,
+                TraversalRejection.TraversalContractViolation,
+                    -> result
+            }
+            is TraversalResult.Complete,
+            is TraversalResult.Qualified,
+                -> result
+        }
     }
 }
 
-private fun rejected(reason: RelationReadRejection): TraversalResult =
-    TraversalResult.Rejected(TraversalRejection.OneHopRejected(reason))
+private fun rejected(reason: TraversalRejection): TraversalResult =
+    TraversalResult.Rejected(reason)

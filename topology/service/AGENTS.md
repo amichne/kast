@@ -7,7 +7,7 @@ protocol transport.
 ## Invariants
 
 - Reachability, cycles, strongly connected components, condensation order, and quotient graphs
-  operate only on an already eligible detached snapshot read.
+  are module-internal algorithms over an already eligible detached snapshot read.
 - Canonical ordering is independent of SQLite row order and map insertion order.
 - Every bounded or rejected result remains closed typed data.
 

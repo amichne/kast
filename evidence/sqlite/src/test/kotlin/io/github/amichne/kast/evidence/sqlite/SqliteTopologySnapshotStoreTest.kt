@@ -153,6 +153,53 @@ class SqliteTopologySnapshotStoreTest {
         assertEquals(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT, rejected.failure)
     }
 
+    @Test
+    fun `corrupted stale content is rejected before stale evidence is returned`() {
+        val generation = generation(workspace("state-a", 7), "a", "b")
+        val path = databasePath("corrupt-stale")
+        val store = store(path)
+        assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
+        mutate(path, "DELETE FROM topology_edge")
+
+        assertCorrupt(store.eligible(TopologyWorkspaceIdentity.from(workspace("state-b", 8))))
+    }
+
+    @Test
+    fun `missing persisted edge is rejected as incomplete content`() {
+        val generation = generation(workspace("state-a", 7), "a", "b")
+        val path = databasePath("missing-edge")
+        val store = store(path)
+        assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
+        mutate(path, "DELETE FROM topology_edge")
+
+        assertCorrupt(store.eligible(generation.identity))
+    }
+
+    @Test
+    fun `dangling persisted edge target is rejected`() {
+        val generation = generation(workspace("state-a", 7), "a", "b")
+        val path = databasePath("dangling-edge")
+        val store = store(path)
+        assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
+        mutate(path, "UPDATE topology_edge SET target_identity = 'class|missing.Target'")
+
+        assertCorrupt(store.eligible(generation.identity))
+    }
+
+    @Test
+    fun `persisted edge occurrence cannot move to another existing file`() {
+        val generation = generation(workspace("state-a", 7), "a", "b")
+        val path = databasePath("moved-occurrence")
+        val store = store(path)
+        assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
+        mutate(
+            path,
+            "UPDATE topology_edge SET occurrence_file_path = 'src/main/kotlin/Target.kt'",
+        )
+
+        assertCorrupt(store.eligible(generation.identity))
+    }
+
     private fun generation(
         workspace: PublishedWorkspace,
         sourceHash: String,
@@ -252,6 +299,20 @@ class SqliteTopologySnapshotStoreTest {
 
     private fun databasePath(name: String): Path =
         tempDir.resolve(name).resolve("topology.sqlite").also { Files.createDirectories(it.parent) }
+
+    private fun mutate(path: Path, sql: String) {
+        DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
+            connection.createStatement().use { statement -> statement.executeUpdate(sql) }
+        }
+    }
+
+    private fun assertCorrupt(eligibility: TopologySnapshotEligibility) {
+        val rejected = assertInstanceOf(
+            TopologySnapshotEligibility.Rejected::class.java,
+            eligibility,
+        )
+        assertEquals(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT, rejected.failure)
+    }
 
     private fun store(path: Path): SqliteTopologySnapshotStore = when (
         val opened = SqliteTopologySnapshotStore.open(path)

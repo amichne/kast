@@ -98,13 +98,19 @@ import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Path
 import java.security.MessageDigest
 
-internal class ApplyTestFixture {
-    val sourceText = "package sample\n\nfun service(): Int = 0\n"
+internal class ApplyTestFixture(
+    private val classLike: Boolean = false,
+) {
+    val sourceText = if (classLike) {
+        "package sample\n\nclass service {\n}\n"
+    } else {
+        "package sample\n\nfun service(): Int = 0\n"
+    }
     private val root = canonicalRoot("/workspace")
     private val generation = EvidenceGeneration.parse(11L).refined()
     private val targetPath = Path.of("/workspace/app/src/main/kotlin/sample/Service.kt")
-    private val anchorStart = sourceText.indexOf("fun service")
-    private val anchorEnd = sourceText.lastIndexOf('\n')
+    private val anchorStart = sourceText.indexOf(if (classLike) "class service" else "fun service")
+    private val anchorEnd = if (classLike) sourceText.indexOf('}') + 1 else sourceText.lastIndexOf('\n')
     private val sourceRoot = sourceRoot(SourceRootProvenance.Authored, ":app")
     val workspace = workspace()
     private val selector = selector()
@@ -303,8 +309,10 @@ internal class ApplyTestFixture {
             anchorEnd,
             "service",
             "sample.service",
-            CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.service").refined(),
+            if (classLike) CompilerSymbolKind.CLASSLIKE else CompilerSymbolKind.FUNCTION,
+            CompilerSymbolIdentity.parse(
+                if (classLike) "class|sample.service" else "function|sample.service",
+            ).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

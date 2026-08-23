@@ -15,12 +15,12 @@ on standard error.
 | Operation | Command shape | Result role |
 | --- | --- | --- |
 | `workspace.inspect` | `kast workspace inspect` | Report exact-root readiness and workspace identity. |
-| `topology.build` | `kast topology build` | Build or reuse the exact generation's durable repository graph. |
+| `topology.build` | `kast topology build` | Build or reuse the durable graph and return its generation and digest. |
 | `symbol.discover` | `kast symbol discover --mode <name\|location\|structure\|text> ... --limit <1..1000>` | Find bounded candidates by name, location, structure, or text. |
 | `symbol.resolve` | `kast symbol resolve --candidate <candidate-selector>` | Refine one candidate into an exact symbol selector. |
 | `symbol.describe` | `kast symbol describe --selector <exact-selector>` | Describe one exact, current-generation symbol. |
 | `relation.read` | `kast relation read --selector <exact-selector> --relation <kind> --limit <1..1000>` | Read one bounded semantic relation from an exact symbol. |
-| `traversal.run` | `kast traversal run --selector <exact-selector> --relation <kind> --maximum-depth <1..1000> --maximum-results <1..1000>` | Follow one relation with explicit depth and result limits. |
+| `traversal.run` | `kast traversal run --selector <exact-selector> --relation <kind> --maximum-depth <1..1000> --maximum-results <1..1000>` | Read the eligible durable snapshot with explicit depth and result limits. |
 | `diagnostic.check` | `kast diagnostic check --scope <scope> --limit <1..1000>` | Read compiler diagnostics for one explicit scope. |
 | `change.plan` | `kast change plan --intent <add-file\|add-declaration\|replace-declaration\|rename-symbol> <intent-options>` | Derive a typed plan without writing the workspace. |
 | `change.apply` | `kast change apply --plan <plan-identity>` | Apply one admitted plan and return an application identity. |

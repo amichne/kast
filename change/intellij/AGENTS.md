@@ -17,8 +17,9 @@ Live IntelliJ values exist only during one observation, write, or rollback call.
 - Read preparation proves a valid writable Kotlin target, exact document preimage, and exact
   compiler-grounded declaration range before command entry.
 - The command performs only the authority's exact typed transformations and commits only the
-  admitted target document. AddDeclaration insertion, RenameSymbol replacement, and whole
-  ReplaceDeclaration replacement do not expose a public raw-edit primitive.
+  admitted target document. AddDeclaration distinguishes typed class-body and sibling insertions;
+  RenameSymbol replacement and whole ReplaceDeclaration replacement likewise do not expose a
+  public raw-edit primitive.
 - ReplaceDeclaration read preparation matches exactly one declaration PSI range and preimage and
   parses the typed replacement as one Kotlin declaration before command entry.
 - Applied-write durability is recorded after the in-memory command and before physical save.

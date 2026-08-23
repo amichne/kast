@@ -31,6 +31,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.traversal.contract.TraversalPlan
+import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
@@ -131,12 +132,15 @@ internal class InstalledChangePlanningAdmission(
         )) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejected(
-                ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED,
+                ChangePlanAdmissionFailure.INTENT_REJECTED,
             )
         }
-        val traversal = traversals.run(traversalPlan)
-        if (traversal !is TraversalResult.Complete) {
-            return rejected(ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED)
+        val traversal = when (val result = traversals.run(traversalPlan)) {
+            is TraversalResult.Complete -> result
+            is TraversalResult.Qualified -> return rejected(
+                ChangePlanAdmissionFailure.REQUIRED_TRAVERSAL_INCOMPLETE,
+            )
+            is TraversalResult.Rejected -> return rejected(result.reason.admissionFailure())
         }
         val diagnosticScope = when (val admitted = DiagnosticScope.fromCanonicalPaths(
             published.readLease,
@@ -162,6 +166,24 @@ internal class InstalledChangePlanningAdmission(
             ),
         )
     }
+}
+
+private fun TraversalRejection.admissionFailure(): ChangePlanAdmissionFailure = when (this) {
+    TraversalRejection.RequiredEvidenceUnavailable,
+    TraversalRejection.RequiredEvidenceStale,
+        -> ChangePlanAdmissionFailure.TOPOLOGY_BUILD_REQUIRED
+    is TraversalRejection.OneHopRejected -> when (reason) {
+        io.github.amichne.kast.relation.contract.RelationReadRejection.WORKSPACE_NOT_READY ->
+            ChangePlanAdmissionFailure.WORKSPACE_NOT_READY
+        io.github.amichne.kast.relation.contract.RelationReadRejection.WORKSPACE_ROOT_MISMATCH,
+        io.github.amichne.kast.relation.contract.RelationReadRejection.STALE_GENERATION,
+        io.github.amichne.kast.relation.contract.RelationReadRejection.STALE_SELECTOR,
+            -> ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED
+        else -> ChangePlanAdmissionFailure.INTENT_REJECTED
+    }
+    TraversalRejection.ReaderContractViolation,
+    TraversalRejection.TraversalContractViolation,
+        -> ChangePlanAdmissionFailure.INTENT_REJECTED
 }
 
 private fun rejected(failure: ChangePlanAdmissionFailure): ChangePlanAdmission.Rejected =

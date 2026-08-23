@@ -48,8 +48,11 @@ Those limits are part of the question, not an implementation detail. Reaching
 one produces a qualified answer rather than an unmarked partial graph.
 
 Traversal reads the eligible SQLite snapshot, including after the indexer
-restarts. If the workspace generation moved, Kast rejects the stale graph and
-requires another explicit topology build.
+restarts. Missing or stale snapshot evidence rejects with
+`TOPOLOGY_BUILD_REQUIRED`; a stale selector remains the distinct
+`SELECTOR_STALE` failure. Kast never starts a hidden topology build on either
+read path. Required change-planning traversal that reaches a bound is the
+distinct `REQUIRED_TRAVERSAL_INCOMPLETE` prerequisite failure.
 
 <div class="kast-boundary" markdown>
 

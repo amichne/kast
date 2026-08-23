@@ -20,6 +20,8 @@ nominal association between each canonical operation and its direct target servi
   SQLite snapshot and never falls back to K2 extraction.
 - `protocol/graph` owns topology construction handling, relation and traversal projection, and the
   snapshot-only public traversal router.
+- Installed change verification resolves both the original and added declarations in G1 and proves
+  the added declaration occupies the compiler-qualified container implied by the planned target.
 - Each slot receives its operation-specific target service boundary directly.
 - A binding factory result is admitted only when its canonical operation matches the nominal slot.
 - Runtime-server construction remains closed data; missing, duplicate, or mismatched bindings

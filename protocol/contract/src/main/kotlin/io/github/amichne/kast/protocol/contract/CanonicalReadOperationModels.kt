@@ -170,6 +170,7 @@ enum class TraversalRunQualification : OperationQualification {
 enum class TraversalRunRejection : OperationRejection {
     WORKSPACE_NOT_READY,
     SELECTOR_STALE,
+    TOPOLOGY_BUILD_REQUIRED,
     PLAN_REJECTED,
 }
 

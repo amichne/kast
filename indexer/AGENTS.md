@@ -13,6 +13,8 @@
 ## Contract invariants
 
 - The host consumes only the composition-owned dispatch capability.
+- Each indexer process receives endpoint-local IntelliJ config, system, and log directories;
+  durable workspace evidence remains in the endpoint's SQLite siblings across process restarts.
 - Raw request documents enter at one outer host frame and immediately refine to the closed
   composition dispatch result.
 - No aggregate backend or duplicate semantic authority exists in this module.

@@ -2,24 +2,10 @@ package io.github.amichne.kast.topology.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
-import io.github.amichne.kast.topology.contract.TopologyCondensation
-import io.github.amichne.kast.topology.contract.TopologyCondensationEdge
-import io.github.amichne.kast.topology.contract.TopologyCycle
 import io.github.amichne.kast.topology.contract.TopologyEdge
 import io.github.amichne.kast.topology.contract.TopologyEdgeKind
-import io.github.amichne.kast.topology.contract.TopologyGraphTraversal
-import io.github.amichne.kast.topology.contract.TopologyHopDepth
-import io.github.amichne.kast.topology.contract.TopologyPath
-import io.github.amichne.kast.topology.contract.TopologyQuotientEdge
-import io.github.amichne.kast.topology.contract.TopologyQuotientGraph
-import io.github.amichne.kast.topology.contract.TopologyQuotientLevel
-import io.github.amichne.kast.topology.contract.TopologyQuotientNode
-import io.github.amichne.kast.topology.contract.TopologyReachability
 import io.github.amichne.kast.topology.contract.TopologySnapshotContent
-import io.github.amichne.kast.topology.contract.TopologyStrongComponent
 import io.github.amichne.kast.topology.contract.TopologySymbol
-import io.github.amichne.kast.topology.contract.TopologyTraversal
-import io.github.amichne.kast.topology.contract.TopologyVisit
 import java.util.PriorityQueue
 
 internal class GraphIndex(content: TopologySnapshotContent) {

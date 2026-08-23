@@ -4,7 +4,6 @@ import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.ObservedMutationSource
 import io.github.amichne.kast.change.apply.SourceObservationResult
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
-import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.verify.AddDeclarationVerificationEvidence
 import io.github.amichne.kast.change.verify.ChangeVerificationObservation
 import io.github.amichne.kast.change.verify.ChangeVerificationObservationRejection
@@ -22,8 +21,6 @@ import io.github.amichne.kast.runtime.composition.InstalledSemanticBudgets
 import io.github.amichne.kast.runtime.composition.SemanticRuntimePorts
 import io.github.amichne.kast.runtime.composition.installedSemanticBudgets
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolCompilation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
@@ -66,7 +63,8 @@ internal class InstalledChangeVerificationObserver(
     override fun observe(
         request: ChangeVerificationObservationRequest,
     ): ChangeVerificationObservation {
-        val plan = request.plan as? AddDeclarationChangePlan ?: return rejected()
+        val plan = request.plan as? AddDeclarationChangePlan
+                   ?: return rejected()
         val published = (workspace.inspect() as? WorkspaceRuntimeState.Ready)?.workspace
                         ?: return rejected(ChangeVerificationObservationRejection.RESULTING_GENERATION_MOVED)
         if (!published.samePublication(request.resulting.workspace)) {
@@ -87,7 +85,8 @@ internal class InstalledChangeVerificationObserver(
         ) ?: return rejected()
         when (original.matchDeclarationAcrossGeneration(plan.target.selector)) {
             InstalledPriorDeclarationMatch.Matched -> Unit
-            InstalledPriorDeclarationMatch.MovedOrChanged -> return rejected()
+            InstalledPriorDeclarationMatch.MovedOrChanged ->
+                return rejected()
         }
         val relations = plan.evidence.relations.map { planned ->
             val compilation = when (val read = awaitCompilerRead {
@@ -100,7 +99,8 @@ internal class InstalledChangeVerificationObserver(
                 )
             }) {
                 is InstalledCompilerRead.Completed ->
-                    read.value as? RelationCompilation.Complete ?: return rejected()
+                    read.value as? RelationCompilation.Complete
+                    ?: return rejected()
                 is InstalledCompilerRead.Rejected -> return rejected()
             }
             RelationReadResult.Complete(compilation.batch, compilation.coverage)
@@ -116,7 +116,8 @@ internal class InstalledChangeVerificationObserver(
             semantic.diagnostic.check(scope)
         }) {
             is InstalledCompilerRead.Completed ->
-                read.value as? DiagnosticCompilation.Complete ?: return rejected()
+                read.value as? DiagnosticCompilation.Complete
+                ?: return rejected()
             is InstalledCompilerRead.Rejected -> return rejected()
         }
         val diagnostic = DiagnosticCheckResult.Complete(
@@ -130,7 +131,14 @@ internal class InstalledChangeVerificationObserver(
             plan.target.selector.scope,
             budgets,
         ) ?: return rejected()
-        val identity = added.observedIdentity() ?: return rejected()
+        val identity = when (val observed = added.observeAddedIdentity(
+            original,
+            plan.expectedSemanticDelta.packageName,
+        )) {
+            is InstalledObservedDeclarationIdentityObservation.Observed -> observed.identity
+            InstalledObservedDeclarationIdentityObservation.Rejected ->
+                return rejected()
+        }
         val delta = when (val admitted = ObservedAddDeclarationDelta.fromCompilerBoundary(
             identity.packageName,
             added.name.value,
@@ -214,61 +222,6 @@ internal class InstalledChangeVerificationObserver(
             is InstalledCompilerRead.Rejected -> null
         }
     }
-}
-
-private data class InstalledObservedDeclarationIdentity(
-    val packageName: String,
-    val kind: AddDeclarationKind,
-)
-
-private fun SymbolSelector.observedIdentity(): InstalledObservedDeclarationIdentity? {
-    val qualified = (qualifiedIdentity as? ExactDeclarationQualifiedIdentity.Available)?.value
-                    ?: return null
-    val suffix = ".${name.value}"
-    val packageName = when {
-        qualified == name.value -> ""
-        qualified.endsWith(suffix) -> qualified.removeSuffix(suffix)
-        else -> return null
-    }
-    val declarationKind = when (kind) {
-        CompilerSymbolKind.FUNCTION -> AddDeclarationKind.FUNCTION
-        CompilerSymbolKind.PROPERTY -> AddDeclarationKind.PROPERTY
-        CompilerSymbolKind.TYPE_ALIAS -> AddDeclarationKind.TYPE_ALIAS
-        CompilerSymbolKind.CLASSLIKE,
-        CompilerSymbolKind.CONSTRUCTOR,
-            -> return null
-    }
-    return InstalledObservedDeclarationIdentity(packageName, declarationKind)
-}
-
-private sealed interface InstalledPriorDeclarationMatch {
-    data object Matched : InstalledPriorDeclarationMatch
-
-    data object MovedOrChanged : InstalledPriorDeclarationMatch
-}
-
-/**
- * Proof transition: `(G1 SymbolSelector, G0 SymbolSelector) -> InstalledPriorDeclarationMatch`.
- *
- * Matched establishes the same file, declaration start, name, qualified identity, and kind across
- * generations while permitting the planned AddDeclaration to extend the target's end range.
- * Discovery scope is request provenance rather than declaration identity and remains subject to
- * the verification service's relation-target proof.
- * [InstalledPriorDeclarationMatch.MovedOrChanged] closes every identity mismatch. Raw selector
- * fields remain inside the resulting-generation observation boundary.
- */
-private fun SymbolSelector.matchDeclarationAcrossGeneration(
-    prior: SymbolSelector,
-): InstalledPriorDeclarationMatch = if (
-    file == prior.file &&
-    range.startInclusive == prior.range.startInclusive &&
-    name == prior.name &&
-    qualifiedIdentity == prior.qualifiedIdentity &&
-    kind == prior.kind
-) {
-    InstalledPriorDeclarationMatch.Matched
-} else {
-    InstalledPriorDeclarationMatch.MovedOrChanged
 }
 
 private fun PublishedWorkspace.samePublication(other: PublishedWorkspace): Boolean =

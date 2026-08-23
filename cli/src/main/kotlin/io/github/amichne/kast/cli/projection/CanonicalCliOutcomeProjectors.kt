@@ -77,6 +77,7 @@ internal val topologyBuildCliProjector = CliOutcomeProjector<
     projectOutcome(CanonicalOperation.TOPOLOGY_BUILD, outcome) { result ->
         fields(
             "snapshotStatus" to JsonPrimitive(result.status.documentValue()),
+            "generation" to JsonPrimitive(result.generation.value),
             "digest" to JsonPrimitive(result.digest.value),
         )
     }

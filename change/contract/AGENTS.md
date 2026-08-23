@@ -33,6 +33,9 @@ or source effect.
 - Add-declaration planning consumes only complete detached relation, traversal, and diagnostic
   variants for that exact target lease. The plan normalizes evidence order before identity,
   retains one exact insertion and every closed obligation, and grants no apply capability.
+- AddDeclaration targeting a classlike declaration retains a typed class-body insertion; other
+  declaration targets retain a typed sibling insertion. The target kind fixes this choice during
+  planning, so apply cannot reinterpret the insertion location.
 - RenameSymbol planning admits one changed Kotlin identifier and a deterministic compiler-grounded
   occurrence set. Every replacement retains its exact expected old identifier, and the resulting
   plan implements the same sealed `ChangePlan` contract as AddDeclaration.

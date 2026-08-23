@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import java.nio.file.Path
 
 enum class TopologySymbolFailure {
@@ -73,6 +74,7 @@ enum class TopologyEdgeKind {
 enum class TopologyEdgeFailure {
     WORKSPACE_MISMATCH,
     SOURCE_FILE_MISMATCH,
+    OCCURRENCE_FILE_MISMATCH,
     INVALID_OCCURRENCE,
 }
 
@@ -110,9 +112,37 @@ data class TopologyEdge private constructor(
             target: TopologySymbol,
             rawStartInclusive: Int,
             rawEndExclusive: Int,
+        ): Refinement<TopologyEdge, TopologyEdgeFailure> = restore(
+            kind,
+            source,
+            target,
+            source.file.path,
+            rawStartInclusive,
+            rawEndExclusive,
+        )
+
+        /**
+         * Proof transition: `(TopologyEdgeKind, TopologySymbol, TopologySymbol,
+         * WorkspaceSourcePath, Int, Int) -> Refinement<TopologyEdge, TopologyEdgeFailure>`.
+         *
+         * Re-establishes common workspace identity, persisted occurrence-file equality with the
+         * source symbol, source-evidence ownership, and one non-empty source range.
+         * [TopologyEdgeFailure] is the closed expected failure. Persisted path and offsets may
+         * enter only from the topology SQLite adapter.
+         */
+        fun restore(
+            kind: TopologyEdgeKind,
+            source: TopologySymbol,
+            target: TopologySymbol,
+            occurrenceFile: WorkspaceSourcePath,
+            rawStartInclusive: Int,
+            rawEndExclusive: Int,
         ): Refinement<TopologyEdge, TopologyEdgeFailure> {
             if (source.file.workspace != target.file.workspace) {
                 return Refinement.Rejected(TopologyEdgeFailure.WORKSPACE_MISMATCH)
+            }
+            if (occurrenceFile != source.file.path) {
+                return Refinement.Rejected(TopologyEdgeFailure.OCCURRENCE_FILE_MISMATCH)
             }
             val sourceEvidenceFile = source.evidence.file.stableValue
             val expectedFile = Path.of(source.file.workspace.lease.workspaceRoot.value)

@@ -161,15 +161,31 @@ class TopologyBuildServiceTest {
     }
 
     @Test
-    fun `failed extraction makes publication unreachable`() = runTest {
+    fun `partial two file extraction makes publication unreachable`() = runTest {
         val fixture = fixture()
+        val second = TopologySourceFile.admit(
+            fixture.workspace,
+            fixture.complete.file.sourceRoot,
+            WorkspaceSourcePath.parse("alpha/src/main/kotlin/Beta.kt").refined(),
+            WorkspaceSourceContentHash.parse("b".repeat(64)).refined(),
+        ).refined()
+        val candidates = TopologyCandidateSet.admit(
+            fixture.workspace,
+            listOf(fixture.complete.file, second),
+        ).refined()
+        val extractionCalls = AtomicInteger()
         val publicationCalls = AtomicInteger()
         val service = TopologyBuildService.create(
             ready(fixture.workspace),
             CurrentGuard(fixture.workspace.readLease),
-            TopologyCandidateEnumerator { fixture.enumeration },
-            TopologyFileExtractor {
-                TopologyFileExtraction.Failed(TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+            TopologyCandidateEnumerator { TopologyCandidateEnumeration.Complete(candidates) },
+            TopologyFileExtractor { request ->
+                extractionCalls.incrementAndGet()
+                if (request.file == fixture.complete.file) {
+                    TopologyFileExtraction.Complete(fixture.complete)
+                } else {
+                    TopologyFileExtraction.Failed(TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+                }
             },
             FixedSnapshots(
                 TopologySnapshotEligibility.Unavailable,
@@ -181,6 +197,7 @@ class TopologyBuildServiceTest {
         val result = service.build()
 
         assertInstanceOf(TopologyBuildResult.Rejected::class.java, result)
+        assertEquals(2, extractionCalls.get())
         assertEquals(0, publicationCalls.get())
     }
 

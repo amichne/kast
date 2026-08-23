@@ -150,37 +150,39 @@ class TraversalServiceTest {
     @Test
     fun `every explicit aggregate bound qualifies with a continuation`() {
         val graph = linkedMapOf(a to listOf(b, c), b to emptyList(), c to emptyList())
-        val oneHop = fixture.relationBudget(records = 2, bytes = 100_000L, work = 10L, time = 10L)
+        val baseline = assertInstanceOf(
+            TraversalResult.Complete::class.java,
+            runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(fixture.plan(a)) },
+        )
+        val exactBytes = baseline.page.encodedBytes.value
         val cases = listOf(
             TraversalLimitation.RECORD_LIMIT_REACHED to fixture.plan(
                 a,
                 aggregateRecords = 2,
-                oneHop = oneHop,
+                oneHop = fixture.relationBudget(records = 2),
             ),
             TraversalLimitation.BYTE_LIMIT_REACHED to fixture.plan(
                 a,
-                aggregateBytes = 100_000L,
-                oneHop = oneHop,
+                aggregateBytes = exactBytes,
+                oneHop = fixture.relationBudget(bytes = exactBytes),
             ),
             TraversalLimitation.WORK_LIMIT_REACHED to fixture.plan(
                 a,
-                aggregateWork = 10L,
-                oneHop = oneHop,
+                aggregateWork = 2L,
+                oneHop = fixture.relationBudget(work = 2L),
             ),
             TraversalLimitation.TIME_LIMIT_REACHED to fixture.plan(
                 a,
-                aggregateTime = 10L,
-                oneHop = oneHop,
+                aggregateTime = 1L,
+                oneHop = fixture.relationBudget(time = 1L),
             ),
             TraversalLimitation.DEPTH_LIMIT_REACHED to fixture.plan(
                 a,
                 depth = 1,
-                oneHop = oneHop,
             ),
             TraversalLimitation.FRONTIER_LIMIT_REACHED to fixture.plan(
                 a,
                 frontier = 1,
-                oneHop = oneHop,
             ),
         )
 
@@ -193,6 +195,21 @@ class TraversalServiceTest {
             assertEquals(setOf(expected), result.qualification.limitations, expected.name)
             assertEquals(plan.identity, result.qualification.continuation.identity, expected.name)
         }
+    }
+
+    @Test
+    fun `unused one hop capacity remains available to prove frontier exhaustion`() {
+        val graph = linkedMapOf(a to listOf(b), b to emptyList())
+        val budget = fixture.relationBudget(records = 2, bytes = 100_000L, work = 10L, time = 10L)
+
+        val result = runSuspend {
+            TraversalService(InMemoryRelationReader(graph, fixture)).run(
+                fixture.plan(a, aggregateRecords = 2, oneHop = budget),
+            )
+        }
+
+        val complete = assertInstanceOf(TraversalResult.Complete::class.java, result)
+        assertEquals(1, complete.coverage.exactRecordCount.value)
     }
 
     @Test

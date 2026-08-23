@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 HOOK = REPOSITORY_ROOT / ".github" / "scripts" / "agents_md_turn_refresh.py"
+SCAFFOLD = REPOSITORY_ROOT / ".github" / "scripts" / "scaffold_agents_md_turn_guides.py"
+SCAFFOLD_SPEC = importlib.util.spec_from_file_location("scaffold_agents_md_turn_guides", SCAFFOLD)
+assert SCAFFOLD_SPEC is not None and SCAFFOLD_SPEC.loader is not None
+SCAFFOLD_MODULE = importlib.util.module_from_spec(SCAFFOLD_SPEC)
+SCAFFOLD_SPEC.loader.exec_module(SCAFFOLD_MODULE)
 
 
 class AgentsMdTurnRefreshTest(unittest.TestCase):
@@ -122,6 +128,40 @@ class AgentsMdTurnRefreshTest(unittest.TestCase):
         self.assertIn(
             "python3 .github/scripts/check-repository-shape.py --root .",
             stop_commands,
+        )
+
+
+class ScaffoldAgentsMdTurnGuidesTest(unittest.TestCase):
+    def test_nearest_available_parent_is_selected(self) -> None:
+        available = {
+            PurePosixPath("AGENTS.md"),
+            PurePosixPath("module/AGENTS.md"),
+            PurePosixPath("module/src/AGENTS.md"),
+        }
+
+        owner = SCAFFOLD_MODULE.nearest_owner_guide(
+            PurePosixPath("module/src/main/AGENTS.md"),
+            available,
+        )
+
+        self.assertEqual(owner, PurePosixPath("module/src/AGENTS.md"))
+
+    def test_render_uses_relative_owner_link_and_production_scope(self) -> None:
+        text = SCAFFOLD_MODULE.render(
+            PurePosixPath("module/src/main/AGENTS.md"),
+            PurePosixPath("module/AGENTS.md"),
+        )
+
+        self.assertIn("production sources", text)
+        self.assertIn("](../../AGENTS.md)", text)
+
+    def test_render_is_stable(self) -> None:
+        guide = PurePosixPath("module/src/test/AGENTS.md")
+        owner = PurePosixPath("module/AGENTS.md")
+
+        self.assertEqual(
+            SCAFFOLD_MODULE.render(guide, owner),
+            SCAFFOLD_MODULE.render(guide, owner),
         )
 
 

@@ -1,0 +1,1 @@
+{"schemaVersion":1,"purpose":"Reject topology implementation from the dedicated cleanup pull request.","forbiddenRegex":["^topology/","^evidence/sqlite/src/(main|test)/.*SqliteTopology","^runtime/composition/src/(main|test)/.*(/graph/|Topology)","^protocol/(contract|registry|wire)/src/(main|test)/.*Topology","^traversal/service/src/(main|test)/.*Topology"]}

@@ -8,6 +8,9 @@ import support.tasks.VerifySemanticRuntimeDistributionTask
 plugins {
     base
     id("kast.architecture")
+    id("kast.pr633-stack")
+    id("kast.pr633-topology")
+    id("kast.pr633-delivery")
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
@@ -75,13 +78,17 @@ tasks.register("assembleKastSemanticRuntimeDist") {
 }
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
+val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
+    "generated/operation-registry/operation-registry.json",
+)
 val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask::class) {
     group = "distribution"
     description = "Generates the exact runtime manifest and public schema resources."
-    dependsOn(semanticRuntimeArchive)
+    dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry")
     runtimeArchive.set(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
     runtimeDirectory.set(semanticRuntimeStage)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
+    operationRegistryFile.set(generatedOperationRegistry)
     productVersion.set(project.version.toString())
     ideaBuild.set(libs.versions.idea.platform.build)
     kotlinPluginBuild.set(libs.versions.kotlin)
@@ -274,6 +281,11 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
+    inputs.file(layout.projectDirectory.file("packaging/topology_installed_acceptance.py"))
+    inputs.file(layout.projectDirectory.file("packaging/topology_installed_support.py"))
+    outputs.file(
+        layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"),
+    )
     outputs.upToDateWhen { false }
     environment(
         "KAST_INSTALLED_PRODUCT",
@@ -286,6 +298,11 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     environment(
         "KAST_CONTROL_ARCHIVE",
         assembleKastControlDist.get().archiveFile.get().asFile.absolutePath,
+    )
+    environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
+    environment(
+        "KAST_INSTALLED_REPORT_DIRECTORY",
+        layout.buildDirectory.dir("reports/installed-product").get().asFile.absolutePath,
     )
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }

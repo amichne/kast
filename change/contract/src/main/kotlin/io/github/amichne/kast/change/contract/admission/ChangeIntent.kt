@@ -208,6 +208,12 @@ sealed interface SourceTextMutation {
     ) : SourceTextMutation
 
     @ConsistentCopyVisibility
+    data class InsertIntoClassBody internal constructor(
+        val anchor: ExactDeclarationTextRange,
+        val declaration: AddDeclarationSourceText,
+    ) : SourceTextMutation
+
+    @ConsistentCopyVisibility
     data class Replace internal constructor(
         val range: ExactDeclarationTextRange,
         val expected: KotlinIdentifier,

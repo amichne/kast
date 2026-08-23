@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -19,12 +20,12 @@ class SemanticCommand:
 
 OPERATION_DESCRIPTIONS = {
     "workspace.inspect": "Report exact-root readiness and workspace identity.",
-    "topology.build": "Build or reuse the exact generation's durable repository graph.",
+    "topology.build": "Build or reuse the durable graph and return its generation and digest.",
     "symbol.discover": "Find bounded candidates by name, location, structure, or text.",
     "symbol.resolve": "Refine one candidate into an exact symbol selector.",
     "symbol.describe": "Describe one exact, current-generation symbol.",
     "relation.read": "Read one bounded semantic relation from an exact symbol.",
-    "traversal.run": "Follow one relation with explicit depth and result limits.",
+    "traversal.run": "Read the eligible durable snapshot with explicit depth and result limits.",
     "diagnostic.check": "Read compiler diagnostics for one explicit scope.",
     "change.plan": "Derive a typed plan without writing the workspace.",
     "change.apply": "Apply one admitted plan and return an application identity.",
@@ -41,21 +42,28 @@ LIFECYCLE_DESCRIPTIONS = {
 }
 
 
-def parse_operations(root: Path) -> list[tuple[str, str]]:
-    source = root / (
-        "protocol/contract/src/main/kotlin/io/github/amichne/kast/"
-        "protocol/contract/CanonicalOperation.kt"
-    )
-    matches = re.findall(
-        r'^\s*([A-Z][A-Z_]*)\(canonicalOperationId\("([^"]+)"\)\),$',
-        source.read_text(),
-        re.MULTILINE,
-    )
-    if len(matches) != 12:
-        raise ValueError(f"expected 12 canonical operations, found {len(matches)}")
-    if len({operation_id for _, operation_id in matches}) != len(matches):
+def parse_operations(registry_path: Path) -> list[tuple[str, str]]:
+    if not registry_path.is_file():
+        raise ValueError(
+            "generated operation registry is missing; run "
+            "./gradlew :protocol:wire:generateOperationRegistry"
+        )
+    registry = json.loads(registry_path.read_text())
+    if registry.get("schemaVersion") != 1:
+        raise ValueError("generated operation registry has an unsupported schema version")
+    operation_ids = registry.get("operationIds")
+    if not isinstance(operation_ids, list) or not all(
+        isinstance(operation_id, str) and operation_id for operation_id in operation_ids
+    ):
+        raise ValueError("generated operation registry has invalid operation identities")
+    if len(set(operation_ids)) != len(operation_ids):
         raise ValueError("canonical operation identities are not unique")
-    return matches
+    if set(operation_ids) != set(OPERATION_DESCRIPTIONS):
+        raise ValueError("operation descriptions do not match the generated registry")
+    return [
+        (operation_id.upper().replace(".", "_"), operation_id)
+        for operation_id in operation_ids
+    ]
 
 
 def kotlin_string(expression: str) -> str:
@@ -196,11 +204,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--root", type=Path)
+    parser.add_argument("--registry", type=Path)
     args = parser.parse_args()
 
     root = (args.root or Path(__file__).resolve().parents[1]).resolve()
     target = root / "docs/public/reference/cli.md"
-    operations = parse_operations(root)
+    registry = args.registry or (
+        root / "protocol/wire/build/generated/operation-registry/operation-registry.json"
+    )
+    operations = parse_operations(registry)
     semantic = parse_semantic_commands(root, operations)
     lifecycle = parse_lifecycle_commands(root)
     local_flags = parse_local_flags(root)

@@ -12,11 +12,7 @@ import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.TopologyEdge
 import io.github.amichne.kast.topology.contract.TopologyEdgeKind
-import io.github.amichne.kast.topology.contract.TopologyGraphOpen
-import io.github.amichne.kast.topology.contract.TopologyGraphTraversal
 import io.github.amichne.kast.topology.contract.TopologyPublicationResult
-import io.github.amichne.kast.topology.contract.TopologyQuotientLevel
-import io.github.amichne.kast.topology.contract.TopologyReachability
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot

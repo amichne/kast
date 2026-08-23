@@ -46,6 +46,7 @@ import io.github.amichne.kast.traversal.contract.TraversalResult as DomainTraver
 
 private const val SEMANTIC_WORK_MULTIPLIER = 100L
 private const val SEMANTIC_TIME_MILLIS = 30_000L
+private const val SEMANTIC_TRAVERSAL_HOP_TIME_MILLIS = 1_000L
 private const val SEMANTIC_RETURNED_BYTES = 1_048_576L
 
 internal class CanonicalRelationReadHandler(
@@ -249,12 +250,15 @@ private sealed interface BudgetValue<out Value> {
 }
 
 /**
- * Proof transition: `Int -> RelationBudgetAdmission`.
+ * Proof transition: `(Int, Long) -> RelationBudgetAdmission`.
  *
  * Admitted establishes positive record, work, elapsed, and byte bounds. Rejected closes every
  * refinement failure. Raw count extraction is confined to this protocol boundary.
  */
-private fun relationBudget(rawLimit: Int): RelationBudgetAdmission {
+private fun relationBudget(
+    rawLimit: Int,
+    rawElapsedMillis: Long = SEMANTIC_TIME_MILLIS,
+): RelationBudgetAdmission {
     val results = when (val value = ResultLimit.parse(rawLimit).budgetValue()) {
         is BudgetValue.Refined -> value.value
         BudgetValue.Rejected -> return RelationBudgetAdmission.Rejected
@@ -265,7 +269,7 @@ private fun relationBudget(rawLimit: Int): RelationBudgetAdmission {
         is BudgetValue.Refined -> value.value
         BudgetValue.Rejected -> return RelationBudgetAdmission.Rejected
     }
-    val elapsed = when (val value = ElapsedTimeLimitMillis.parse(SEMANTIC_TIME_MILLIS).budgetValue()) {
+    val elapsed = when (val value = ElapsedTimeLimitMillis.parse(rawElapsedMillis).budgetValue()) {
         is BudgetValue.Refined -> value.value
         BudgetValue.Rejected -> return RelationBudgetAdmission.Rejected
     }
@@ -288,7 +292,9 @@ private fun traversalBudget(
     rawDepth: Int,
     rawResults: Int,
 ): TraversalBudgetAdmission {
-    val relation = when (val admitted = relationBudget(rawResults)) {
+    val relation = when (
+        val admitted = relationBudget(rawResults, SEMANTIC_TRAVERSAL_HOP_TIME_MILLIS)
+    ) {
         is RelationBudgetAdmission.Admitted -> admitted.budget
         RelationBudgetAdmission.Rejected -> return TraversalBudgetAdmission.Rejected
     }
@@ -372,6 +378,9 @@ private fun TraversalRejection.protocol(): TraversalRunRejection = when (this) {
             -> TraversalRunRejection.SELECTOR_STALE
         else -> TraversalRunRejection.PLAN_REJECTED
     }
+    TraversalRejection.RequiredEvidenceUnavailable,
+    TraversalRejection.RequiredEvidenceStale,
+        -> TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED
     TraversalRejection.ReaderContractViolation,
     TraversalRejection.TraversalContractViolation,
         -> TraversalRunRejection.PLAN_REJECTED

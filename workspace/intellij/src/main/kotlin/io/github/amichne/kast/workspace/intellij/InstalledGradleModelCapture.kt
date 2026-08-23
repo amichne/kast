@@ -61,9 +61,7 @@ class InstalledGradleModelCapture internal constructor(
             identityBoundary.copy(sourceContents = currentContents),
         )) {
             is Refinement.Refined -> derived
-            is Refinement.Rejected -> Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE,
-            )
+            is Refinement.Rejected -> Refinement.Rejected(derived.failure.captureFailure())
         }
     }
 }
@@ -74,7 +72,12 @@ enum class InstalledGradleModelCaptureFailure {
     EXTERNAL_PROJECT_INCOMPLETE,
     SOURCE_ROOTS_UNAVAILABLE,
     SOURCE_STATE_UNAVAILABLE,
-    IDENTITIES_UNAVAILABLE,
+    INDEXING_UNAVAILABLE,
+    SEMANTIC_INPUT_INCOMPLETE,
+    SEMANTIC_PROJECT_PATH_INVALID,
+    SEMANTIC_SOURCE_ROOT_INVALID,
+    SEMANTIC_MODULE_INVALID,
+    STATE_IDENTITY_REJECTED,
 }
 
 /**
@@ -158,13 +161,27 @@ internal fun captureInstalledGradleModel(
         val identity = when (val derived = deriveInstalledGradleSemanticIdentity(identityBoundary)) {
             is Refinement.Refined -> derived.value
             is Refinement.Rejected -> return@model Refinement.Rejected(
-                InstalledGradleModelCaptureFailure.IDENTITIES_UNAVAILABLE,
+                derived.failure.captureFailure(),
             )
         }
         Refinement.Refined(
             InstalledGradleModelCapture(root, boundaries, identity, identityBoundary),
         )
     }.inSmartMode(project).executeSynchronously()
+
+private fun InstalledGradleSemanticIdentityFailure.captureFailure(): InstalledGradleModelCaptureFailure =
+    when (this) {
+        InstalledGradleSemanticIdentityFailure.INCOMPLETE_SEMANTIC_INPUT ->
+            InstalledGradleModelCaptureFailure.SEMANTIC_INPUT_INCOMPLETE
+        InstalledGradleSemanticIdentityFailure.INVALID_PROJECT_PATH ->
+            InstalledGradleModelCaptureFailure.SEMANTIC_PROJECT_PATH_INVALID
+        InstalledGradleSemanticIdentityFailure.INVALID_SOURCE_ROOT ->
+            InstalledGradleModelCaptureFailure.SEMANTIC_SOURCE_ROOT_INVALID
+        InstalledGradleSemanticIdentityFailure.INVALID_MODULE ->
+            InstalledGradleModelCaptureFailure.SEMANTIC_MODULE_INVALID
+        InstalledGradleSemanticIdentityFailure.STATE_IDENTITY_REJECTED ->
+            InstalledGradleModelCaptureFailure.STATE_IDENTITY_REJECTED
+    }
 
 private enum class InstalledSourceContentIdentityFailure {
     OUTSIDE_WORKSPACE,

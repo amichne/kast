@@ -1,0 +1,1 @@
+{"schemaVersion":1,"operationIds":["workspace.inspect","topology.build","symbol.discover","symbol.resolve","symbol.describe","relation.read","traversal.run","diagnostic.check","change.plan","change.apply","change.verify","change.recover"]}

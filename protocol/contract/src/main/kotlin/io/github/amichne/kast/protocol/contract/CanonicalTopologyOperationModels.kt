@@ -1,5 +1,7 @@
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.EvidenceGeneration
+
 /** Explicit request for the one generation-bound repository-topology build. */
 data object TopologyBuildRequest : OperationRequest
 
@@ -11,6 +13,7 @@ enum class TopologyBuildStatus {
 /** Successful topology snapshot identity; only complete or exactly reusable builds produce it. */
 data class TopologyBuildResult(
     val status: TopologyBuildStatus,
+    val generation: EvidenceGeneration,
     val digest: ProtocolText,
 ) : OperationResult
 

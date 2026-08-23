@@ -36,13 +36,15 @@ internal fun installedSemanticBudgets(): InstalledSemanticBudgets? {
     val discoveryBytes = SymbolDiscoveryByteLimit.parse(4_194_304L).refinedOrNull() ?: return null
     val relationBytes = RelationByteLimit.parse(4_194_304L).refinedOrNull() ?: return null
     val relation = RelationBudget(resources, relationBytes)
+    val oneHopElapsed = ElapsedTimeLimitMillis.parse(1_000L).refinedOrNull() ?: return null
+    val oneHopRelation = RelationBudget(ResourceBudget(records, work, oneHopElapsed), relationBytes)
     val traversalBytes = TraversalByteLimit.parse(4_194_304L).refinedOrNull() ?: return null
     val depth = TraversalDepthLimit.parse(1).refinedOrNull() ?: return null
     val frontier = TraversalFrontierLimit.parse(256).refinedOrNull() ?: return null
     return InstalledSemanticBudgets(
         SymbolDiscoveryBudget(resources, discoveryBytes),
         relation,
-        TraversalBudget(records, traversalBytes, work, elapsed, depth, frontier, relation),
+        TraversalBudget(records, traversalBytes, work, elapsed, depth, frontier, oneHopRelation),
     )
 }
 
