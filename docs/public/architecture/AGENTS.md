@@ -10,8 +10,8 @@ validate it with `python3 docs/tooling/likec4/generate_bundle.py`, and keep the
 web-component prefix `kast` stable for the explanation-page embed. Its first
 two lines carry the exact npm lockfile and semantic-model fingerprints. Authored
 compute semantics are the stable generated boundary. Tool-owned view hashes and
-layout geometry are validated as complete presentation data but may vary across
-supported hosts.
+workspace-derived relationship IDs are normalized separately. Layout geometry
+is validated as complete presentation data but may vary across supported hosts.
 
 The model may summarize module families, but every ownership and dependency
 claim must remain consistent with the repository topology in the root

@@ -28,9 +28,11 @@ module graph before the reader understands the runtime flow.
   The generator records the exact npm lockfile and semantic-model fingerprints.
   Its check mode compares every authored model field with LikeC4's own
   compute-only JSON export and validates the complete layouted module wrapper
-  separately. Tool-owned view hashes, layout geometry, and third-party
-  minification are required generated structure but are not byte-stable across
-  supported hosts.
+  separately. Tool-owned view hashes, workspace-derived relationship IDs,
+  layout geometry, and third-party minification are required generated
+  structure but are not byte-stable across supported hosts. Relationship
+  semantics remain exact after re-keying each relationship from its complete
+  content.
 
 - Keep authored pages focused on a reader decision or outcome. The generated
   CLI page is the only command reference. `kast --schema` remains the

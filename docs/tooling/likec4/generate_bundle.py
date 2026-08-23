@@ -142,6 +142,21 @@ def canonical_bytes(model: object) -> bytes:
 def semantic_model(model: object) -> object:
     semantic = copy.deepcopy(model)
     require(isinstance(semantic, dict), "LikeC4 semantic model is not an object")
+    relations = semantic.get("relations")
+    require(isinstance(relations, dict), "LikeC4 semantic model relations are missing")
+    relation_ids: dict[str, str] = {}
+    normalized_relations: dict[str, object] = {}
+    for relation_id, relation in relations.items():
+        require(isinstance(relation, dict), f"LikeC4 relation {relation_id} is not an object")
+        embedded_id = relation.pop("id", None)
+        require(embedded_id == relation_id, f"LikeC4 relation {relation_id} has a mismatched identity")
+        stable_id = "semantic-" + hashlib.sha256(canonical_bytes(relation)).hexdigest()
+        require(stable_id not in normalized_relations, f"duplicate LikeC4 relation semantics: {relation_id}")
+        relation_ids[relation_id] = stable_id
+        relation["id"] = stable_id
+        normalized_relations[stable_id] = relation
+    semantic["relations"] = normalized_relations
+
     views = semantic.get("views")
     require(isinstance(views, dict), "LikeC4 semantic model views are missing")
     for view_id, view in views.items():
@@ -151,6 +166,17 @@ def semantic_model(model: object) -> object:
             isinstance(view_hash, str) and bool(view_hash),
             f"LikeC4 semantic view {view_id} has no generated hash",
         )
+        edges = view.get("edges")
+        require(isinstance(edges, list), f"LikeC4 semantic view {view_id} edges are missing")
+        for edge in edges:
+            require(isinstance(edge, dict), f"LikeC4 semantic view {view_id} edge is not an object")
+            references = edge.get("relations")
+            require(isinstance(references, list), f"LikeC4 semantic view {view_id} edge relations are missing")
+            require(
+                all(isinstance(reference, str) and reference in relation_ids for reference in references),
+                f"LikeC4 semantic view {view_id} edge has an unknown relation identity",
+            )
+            edge["relations"] = [relation_ids[reference] for reference in references]
     return semantic
 
 
