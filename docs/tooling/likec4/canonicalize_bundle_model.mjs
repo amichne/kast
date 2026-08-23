@@ -54,6 +54,10 @@ function canonicalize(model) {
 
   for (const [viewId, view] of Object.entries(model.views)) {
     requireCondition(view._stage === 'layouted', `LikeC4 view ${viewId} is not layouted`)
+    requireCondition(
+      typeof view.hash === 'string' && view.hash.length > 0,
+      `LikeC4 view ${viewId} has no generated hash`,
+    )
     requireOwn(view, 'bounds', `LikeC4 view ${viewId}`)
     delete view.bounds
     view._stage = 'computed'

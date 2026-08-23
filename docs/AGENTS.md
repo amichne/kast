@@ -25,11 +25,12 @@ module graph before the reader understands the runtime flow.
   python3 docs/tooling/likec4/generate_bundle.py
   ```
 
-  The generator records the exact npm lockfile and compute-model fingerprints.
-  Its check mode compares every non-layout model field with LikeC4's own
+  The generator records the exact npm lockfile and semantic-model fingerprints.
+  Its check mode compares every authored model field with LikeC4's own
   compute-only JSON export and validates the complete layouted module wrapper
-  separately because layout geometry and third-party minification are not
-  byte-stable across supported hosts.
+  separately. Tool-owned view hashes, layout geometry, and third-party
+  minification are required generated structure but are not byte-stable across
+  supported hosts.
 
 - Keep authored pages focused on a reader decision or outcome. The generated
   CLI page is the only command reference. `kast --schema` remains the

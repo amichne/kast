@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -126,6 +127,21 @@ def canonical_bytes(model: object) -> bytes:
     return json.dumps(model, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
 
 
+def semantic_model(model: object) -> object:
+    semantic = copy.deepcopy(model)
+    require(isinstance(semantic, dict), "LikeC4 semantic model is not an object")
+    views = semantic.get("views")
+    require(isinstance(views, dict), "LikeC4 semantic model views are missing")
+    for view_id, view in views.items():
+        require(isinstance(view, dict), f"LikeC4 semantic view {view_id} is not an object")
+        view_hash = view.pop("hash", None)
+        require(
+            isinstance(view_hash, str) and bool(view_hash),
+            f"LikeC4 semantic view {view_id} has no generated hash",
+        )
+    return semantic
+
+
 def write_atomically(target: Path, content: bytes) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
@@ -138,14 +154,14 @@ def write_atomically(target: Path, content: bytes) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def report(lock_sha256: str, model: bytes, checked: bool) -> None:
+def report(lock_sha256: str, semantic: bytes, checked: bool) -> None:
     print(
         json.dumps(
             {
                 "checked": checked,
                 "lockSha256": lock_sha256,
-                "modelBytes": len(model),
-                "modelSha256": hashlib.sha256(model).hexdigest(),
+                "semanticModelBytes": len(semantic),
+                "semanticModelSha256": hashlib.sha256(semantic).hexdigest(),
                 "status": "passed",
             },
             sort_keys=True,
@@ -177,8 +193,9 @@ def main() -> None:
         generated_model == computed_model,
         "generated LikeC4 bundle does not encode the compute-only model",
     )
-    model = canonical_bytes(computed_model)
-    model_sha256 = hashlib.sha256(model).hexdigest()
+    semantic = semantic_model(computed_model)
+    semantic_bytes = canonical_bytes(semantic)
+    model_sha256 = hashlib.sha256(semantic_bytes).hexdigest()
     expected_provenance = provenance(lock_sha256, model_sha256)
 
     output = arguments.output.resolve()
@@ -192,13 +209,13 @@ def main() -> None:
         committed_wrapper = committed[len(expected_provenance) :]
         verify_wrapper(committed_wrapper, "committed LikeC4 bundle")
         require(
-            canonical_bundle_model(output) == computed_model,
-            "committed LikeC4 bundle does not encode the current compute-only model",
+            semantic_model(canonical_bundle_model(output)) == semantic,
+            "committed LikeC4 bundle does not encode the current architecture semantics",
         )
     else:
         write_atomically(output, expected_provenance + generated)
 
-    report(lock_sha256, model, arguments.check)
+    report(lock_sha256, semantic_bytes, arguments.check)
 
 
 if __name__ == "__main__":
