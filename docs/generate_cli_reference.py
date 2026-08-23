@@ -105,7 +105,7 @@ def parse_semantic_commands(
 
 def parse_lifecycle_commands(root: Path) -> list[str]:
     source = root / (
-        "cli/src/main/kotlin/io/github/amichne/kast/cli/command/CliCommandModel.kt"
+        "cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandModel.kt"
     )
     match = re.search(
         r"enum class CliLifecycleCommand\([^)]*\)\s*\{(?P<body>.*?)\n\}",
@@ -122,7 +122,7 @@ def parse_lifecycle_commands(root: Path) -> list[str]:
 
 def parse_local_flags(root: Path) -> list[str]:
     source = root / (
-        "cli/src/main/kotlin/io/github/amichne/kast/cli/command/CliCommandModel.kt"
+        "cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandModel.kt"
     )
     match = re.search(r"enum class CliLocalCommand\s*\{([^}]+)\}", source.read_text())
     if match is None:

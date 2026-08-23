@@ -18,6 +18,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -55,7 +56,7 @@ abstract class VerifyPr633StackTask @Inject constructor(
     @get:Input
     abstract val headGitRef: Property<String>
 
-    @get:Input
+    @get:Internal
     abstract val repositoryDirectory: DirectoryProperty
 
     @get:OutputFile
