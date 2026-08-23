@@ -105,9 +105,9 @@ internal class IntellijNativeDiscoveryQuery(
         }
 
         val target = request.target as? SymbolDiscoveryTarget.Name
-            ?: return IntellijNativeDiscoveryExecution.Rejected(
-                IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
-            )
+                     ?: return IntellijNativeDiscoveryExecution.Rejected(
+                         IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
+                     )
         val collector = BoundedNativeDiscoveryCollector(
             compiledScope = compiledScope,
             request = request,

@@ -13,8 +13,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
@@ -51,7 +51,7 @@ internal sealed interface TopologyOverrideProjection {
 
 internal fun isRepositoryDeclaration(declaration: KtNamedDeclaration): Boolean =
     declaration is KtClassOrObject || declaration is KtConstructor<*> ||
-        declaration is KtNamedFunction || declaration is KtProperty || declaration is KtTypeAlias
+    declaration is KtNamedFunction || declaration is KtProperty || declaration is KtTypeAlias
 
 /**
  * Proof transition: `(TopologySourceFile, KtNamedDeclaration) -> TopologySymbolProjection`.
@@ -137,7 +137,7 @@ internal fun KtNamedDeclaration.directOverrideTopologyIdentities(): TopologyOver
             }
         }
         TopologyOverrideProjection.Projected(identities.sortedBy(CompilerSymbolIdentity::value))
-}
+    }
 
 private data class TopologyCompilerProjection(
     val kind: CompilerSymbolKind,

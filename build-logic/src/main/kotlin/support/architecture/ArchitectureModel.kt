@@ -102,7 +102,11 @@ data class JvmMember(
     val descriptor: JvmDescriptor,
 ) {
     companion object {
-        fun of(owner: String, name: String, descriptor: String): JvmMember =
+        fun of(
+            owner: String,
+            name: String,
+            descriptor: String,
+        ): JvmMember =
             JvmMember(JvmClassName(owner), JvmMemberName(name), JvmDescriptor(descriptor))
     }
 }

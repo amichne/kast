@@ -103,7 +103,7 @@ internal class CanonicalRelationReadHandler(
                     return OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE)
             }
             val document = endpoint.protocolDocument(issued)
-                ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
+                           ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
             documents.putIfAbsent(issued.value, document)
         }
         val bounded = when (val admitted = BoundedProtocolList.create(documents.values.toList())) {
@@ -194,7 +194,7 @@ internal class CanonicalTraversalRunHandler(
                     return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
             }
             val document = endpoint.protocolDocument(issued)
-                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
+                           ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
             documents.putIfAbsent(issued.value, document)
         }
         val bounded = when (val admitted = BoundedProtocolList.create(documents.values.toList())) {

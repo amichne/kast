@@ -302,7 +302,7 @@ private object JdkRuntimeProcessAuthority : RuntimeProcessAuthority {
         )
         val current = ProcessHandle.current()
         val currentUser = current.info().user().orElse(null)
-            ?: return RuntimeProcessObservation.Ambiguous
+                          ?: return RuntimeProcessObservation.Ambiguous
         val matches = mutableListOf<ProcessHandle>()
         var inaccessibleIndexer = false
         try {
@@ -313,7 +313,7 @@ private object JdkRuntimeProcessAuthority : RuntimeProcessAuthority {
                     val arguments = info.arguments().orElse(null)
                     val commandLine = info.commandLine().orElse("")
                     val isIndexer = arguments?.contains(INDEXER_MAIN_CLASS) == true ||
-                        commandLine.contains(INDEXER_MAIN_CLASS)
+                                    commandLine.contains(INDEXER_MAIN_CLASS)
                     if (!isIndexer) return@forEach
                     val user = info.user().orElse(null)
                     if (user == null || arguments == null) {

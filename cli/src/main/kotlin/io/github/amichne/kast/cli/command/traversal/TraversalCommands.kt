@@ -30,7 +30,7 @@ private class TraversalRunCommand(
     name = "run",
     operation = CanonicalOperation.TRAVERSAL_RUN,
     schemaUsage = "traversal run --selector <exact-selector> --relation <kind> " +
-        "--maximum-depth <1..1000> --maximum-results <1..1000>",
+                  "--maximum-depth <1..1000> --maximum-results <1..1000>",
     preparer = preparers.traversalRun,
 ) {
     private val selector by protocolTextOption("--selector", "Exact starting selector.").requiredOnce()

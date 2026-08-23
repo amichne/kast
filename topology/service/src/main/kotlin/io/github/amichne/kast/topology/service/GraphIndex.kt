@@ -59,9 +59,9 @@ internal class GraphIndex(content: TopologySnapshotContent) {
         target: CompilerSymbolIdentity,
     ): TopologyReachability {
         val sourceSymbol = symbolByIdentity[source]
-            ?: return TopologyReachability.UnknownEndpoint
+                           ?: return TopologyReachability.UnknownEndpoint
         val targetSymbol = symbolByIdentity[target]
-            ?: return TopologyReachability.UnknownEndpoint
+                           ?: return TopologyReachability.UnknownEndpoint
         if (source == target) return TopologyReachability.Reachable(
             GraphPath(listOf(sourceSymbol), emptyList()),
         )
@@ -258,7 +258,10 @@ private data class GraphQuotient(
     override val edges: List<TopologyQuotientEdge>,
 ) : TopologyQuotientGraph
 
-private fun quotientNode(symbol: TopologySymbol, level: TopologyQuotientLevel): TopologyQuotientNode =
+private fun quotientNode(
+    symbol: TopologySymbol,
+    level: TopologyQuotientLevel,
+): TopologyQuotientNode =
     when (level) {
         TopologyQuotientLevel.FILE -> TopologyQuotientNode.File(symbol.file.path)
         TopologyQuotientLevel.PROJECT -> TopologyQuotientNode.Project(symbol.file.sourceRoot.owner.project)

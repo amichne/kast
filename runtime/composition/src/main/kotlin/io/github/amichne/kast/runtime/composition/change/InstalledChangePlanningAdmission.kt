@@ -117,7 +117,7 @@ internal class InstalledChangePlanningAdmission(
             )
         }
         val budgets = installedSemanticBudgets()
-            ?: return rejected(ChangePlanAdmissionFailure.RELATION_READ_REQUIRED)
+                      ?: return rejected(ChangePlanAdmissionFailure.RELATION_READ_REQUIRED)
         val relation = relations.read(
             RelationRequest.start(selector, RelationMeaning.References, budgets.relation),
         )

@@ -100,12 +100,12 @@ internal fun <Value : Any> ParameterHolder.closedChoiceOption(
  */
 internal fun <Value, Raw> NullableOption<Value, Raw>.requiredOnce():
     OptionWithValues<Value, Value, Raw> = transformAll(showAsRequired = true) { calls ->
-        when (calls.size) {
-            0 -> throw MissingOption(option)
-            1 -> calls.single()
-            else -> fail("may be specified exactly once")
-        }
+    when (calls.size) {
+        0 -> throw MissingOption(option)
+        1 -> calls.single()
+        else -> fail("may be specified exactly once")
     }
+}
 
 /**
  * Proof transition: `NullableOption<Value> -> optional at-most-once Value option`.
@@ -115,12 +115,12 @@ internal fun <Value, Raw> NullableOption<Value, Raw>.requiredOnce():
  */
 internal fun <Value, Raw> NullableOption<Value, Raw>.optionalOnce():
     OptionWithValues<CliOptionValue<Value>, Value, Raw> = transformAll { calls ->
-        when (calls.size) {
-            0 -> CliOptionValue.Absent
-            1 -> CliOptionValue.Present(calls.single())
-            else -> fail("may be specified at most once")
-        }
+    when (calls.size) {
+        0 -> CliOptionValue.Absent
+        1 -> CliOptionValue.Present(calls.single())
+        else -> fail("may be specified at most once")
     }
+}
 
 /**
  * Proof transition: `NullableOption<Value> + Value -> exactly-once-or-default Value option`.

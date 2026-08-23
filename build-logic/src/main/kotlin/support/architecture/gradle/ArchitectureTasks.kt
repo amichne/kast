@@ -267,8 +267,8 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
         finding(
             "FORBIDDEN_EFFECT",
             "${module.projectPath} ${effect.name} " +
-                "${caller.owner.internalName}.${caller.name.value}${caller.descriptor.value} -> " +
-                "${target.owner.internalName}.${target.name.value}${target.descriptor.value}",
+            "${caller.owner.internalName}.${caller.name.value}${caller.descriptor.value} -> " +
+            "${target.owner.internalName}.${target.name.value}${target.descriptor.value}",
             "module" to module.projectPath,
             "effect" to effect.name,
             "callerOwner" to caller.owner.internalName,

@@ -49,7 +49,7 @@ class TopologySnapshotContent private constructor(
             val identities = symbols.mapTo(hashSetOf()) { it.evidence.compilerIdentity.value }
             if (ordered.flatMap(CompleteTopologyFile::edges).any { edge ->
                     edge.source.evidence.compilerIdentity.value !in identities ||
-                        edge.target.evidence.compilerIdentity.value !in identities
+                    edge.target.evidence.compilerIdentity.value !in identities
                 }
             ) {
                 failures += TopologySnapshotContentFailure.MISSING_EDGE_TARGET

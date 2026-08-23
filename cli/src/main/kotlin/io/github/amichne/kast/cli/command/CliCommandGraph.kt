@@ -6,9 +6,9 @@ import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.output.PlaintextHelpFormatter
 import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parsers.CommandLineParser
-import com.github.ajalt.clikt.output.PlaintextHelpFormatter
 import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
@@ -17,8 +17,8 @@ import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.relation.relationCommandGroup
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
 import io.github.amichne.kast.cli.command.traversal.traversalCommandGroup
-import io.github.amichne.kast.cli.command.workspace.workspaceCommandGroup
 import io.github.amichne.kast.cli.command.workspace.topologyCommandGroup
+import io.github.amichne.kast.cli.command.workspace.workspaceCommandGroup
 import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 

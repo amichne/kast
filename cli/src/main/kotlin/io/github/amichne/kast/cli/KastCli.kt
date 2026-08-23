@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.command.outputReason
+import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -42,7 +42,10 @@ class KastCli(
         }
     }
 
-    private fun executeAction(action: CliAction, start: Path): CliExit = when (action) {
+    private fun executeAction(
+        action: CliAction,
+        start: Path,
+    ): CliExit = when (action) {
         is CliAction.Local -> CliExit.Complete(localMetadata.output(action.command))
         is CliAction.Semantic -> executeSemantic(action.request, start)
         is CliAction.Lifecycle -> executeLifecycle(action, start)

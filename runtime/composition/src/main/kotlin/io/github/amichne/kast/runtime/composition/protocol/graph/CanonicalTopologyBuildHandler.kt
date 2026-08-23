@@ -8,12 +8,12 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
-import io.github.amichne.kast.protocol.contract.TopologyBuildResult as ProtocolTopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.topology.contract.TopologyBuildFailure
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult as ProtocolTopologyBuildResult
 
 /** Canonical protocol projection for the explicit topology build boundary. */
 internal class CanonicalTopologyBuildHandler(

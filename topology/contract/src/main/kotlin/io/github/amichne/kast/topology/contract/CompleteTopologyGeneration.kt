@@ -132,8 +132,8 @@ class CompleteTopologyGeneration private constructor(
             val ordered = completed.sortedBy { it.file }
             val workspaceMismatches = (
                 candidates.filter { it.workspace != identity }.map { it.path } +
-                    completed.filter { it.file.workspace != identity }.map { it.file.path }
-                ).toSet()
+                completed.filter { it.file.workspace != identity }.map { it.file.path }
+                                      ).toSet()
             val symbolGroups = ordered.flatMap(CompleteTopologyFile::symbols)
                 .groupBy { it.evidence.compilerIdentity }
             val duplicateSymbols = symbolGroups.filterValues { symbols ->
@@ -177,7 +177,6 @@ class CompleteTopologyGeneration private constructor(
                 CompleteTopologyGeneration(identity, ordered, TopologyGenerationDigest(digest)),
             )
         }
-
     }
 }
 

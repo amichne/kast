@@ -3,10 +3,10 @@ package io.github.amichne.kast.cli.command.change
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.subcommands
 import io.github.amichne.kast.cli.command.CliActionResolution
+import io.github.amichne.kast.cli.command.CliOptionValue
 import io.github.amichne.kast.cli.command.CliUsageFailure
 import io.github.amichne.kast.cli.command.CommandFamily
 import io.github.amichne.kast.cli.command.KastCommandGroup
-import io.github.amichne.kast.cli.command.CliOptionValue
 import io.github.amichne.kast.cli.command.SemanticKastCommand
 import io.github.amichne.kast.cli.command.closedChoiceOption
 import io.github.amichne.kast.cli.command.optionalOnce
@@ -46,7 +46,7 @@ private class ChangePlanCommand(
     name = "plan",
     operation = CanonicalOperation.CHANGE_PLAN,
     schemaUsage = "change plan --intent <add-file|add-declaration|replace-declaration|rename-symbol> " +
-        "<intent-options>",
+                  "<intent-options>",
     preparer = preparers.changePlan,
 ) {
     private val intent by closedChoiceOption(

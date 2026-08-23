@@ -76,15 +76,15 @@ internal fun initializeTopologySchema(connection: Connection) {
         )
         statement.execute(
             "CREATE INDEX IF NOT EXISTS topology_snapshot_root_order " +
-                "ON topology_snapshot(workspace_root, snapshot_id DESC)",
+            "ON topology_snapshot(workspace_root, snapshot_id DESC)",
         )
         statement.execute(
             "CREATE INDEX IF NOT EXISTS topology_edge_source " +
-                "ON topology_edge(snapshot_id, source_identity, edge_kind)",
+            "ON topology_edge(snapshot_id, source_identity, edge_kind)",
         )
         statement.execute(
             "CREATE INDEX IF NOT EXISTS topology_edge_target " +
-                "ON topology_edge(snapshot_id, target_identity, edge_kind)",
+            "ON topology_edge(snapshot_id, target_identity, edge_kind)",
         )
     }
 }

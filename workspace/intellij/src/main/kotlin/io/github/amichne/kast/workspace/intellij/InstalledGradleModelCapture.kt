@@ -144,7 +144,7 @@ internal fun captureInstalledGradleModel(
                         InstalledSdkSemanticIdentity.Present(
                             installed.versionString?.takeIf(String::isNotBlank)
                                 ?.let(InstalledSdkVersion::Known)
-                                ?: InstalledSdkVersion.Unknown,
+                            ?: InstalledSdkVersion.Unknown,
                         )
                     } ?: InstalledSdkSemanticIdentity.Absent
                     InstalledModuleSemanticIdentity(

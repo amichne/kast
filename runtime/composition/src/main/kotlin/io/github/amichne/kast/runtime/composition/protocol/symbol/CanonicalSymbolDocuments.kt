@@ -107,7 +107,10 @@ private fun text(raw: String): ProtocolText? = ProtocolText.parse(raw).refinedOr
 
 private fun offset(raw: Int): ProtocolOffset? = ProtocolOffset.parse(raw).refinedOrNull()
 
-private fun range(start: Int, end: Int): SourceRangeDocument? {
+private fun range(
+    start: Int,
+    end: Int,
+): SourceRangeDocument? {
     val startOffset = offset(start) ?: return null
     val endOffset = offset(end) ?: return null
     return SourceRangeDocument.create(startOffset, endOffset).refinedOrNull()

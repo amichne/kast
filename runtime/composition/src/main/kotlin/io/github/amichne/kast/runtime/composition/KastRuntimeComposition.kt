@@ -17,7 +17,6 @@ import io.github.amichne.kast.runtime.server.ServerDispatch
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
-import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.topology.build.TopologyBuildService
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationFailure
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationResult

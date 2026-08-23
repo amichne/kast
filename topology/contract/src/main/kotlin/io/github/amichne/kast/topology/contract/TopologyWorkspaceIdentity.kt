@@ -20,5 +20,4 @@ data class TopologyWorkspaceIdentity(
         fun from(workspace: PublishedWorkspace): TopologyWorkspaceIdentity =
             TopologyWorkspaceIdentity(workspace.readLease, workspace.sourceState)
     }
-
 }

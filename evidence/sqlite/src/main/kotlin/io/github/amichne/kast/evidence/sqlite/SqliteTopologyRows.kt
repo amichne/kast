@@ -133,7 +133,10 @@ internal fun Connection.insertTopologyContent(
     generation.edges.forEach { edge -> insertEdge(snapshotId, edge) }
 }
 
-private fun Connection.insertFile(snapshotId: SqliteTopologySnapshotId, file: TopologySourceFile) {
+private fun Connection.insertFile(
+    snapshotId: SqliteTopologySnapshotId,
+    file: TopologySourceFile,
+) {
     prepareStatement(
         """INSERT INTO topology_file(
                snapshot_id, path, content_hash, module_name, build_root, project_path,
@@ -175,7 +178,10 @@ private fun Connection.insertSymbol(
     }
 }
 
-private fun Connection.insertEdge(snapshotId: SqliteTopologySnapshotId, edge: TopologyEdge) {
+private fun Connection.insertEdge(
+    snapshotId: SqliteTopologySnapshotId,
+    edge: TopologyEdge,
+) {
     prepareStatement(
         """INSERT INTO topology_edge(
                snapshot_id, edge_kind, source_identity, target_identity,

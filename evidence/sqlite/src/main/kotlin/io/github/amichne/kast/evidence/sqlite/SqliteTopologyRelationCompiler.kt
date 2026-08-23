@@ -21,7 +21,6 @@ import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
 import io.github.amichne.kast.topology.contract.TopologyEdge
 import io.github.amichne.kast.topology.contract.TopologyEdgeKind
-import io.github.amichne.kast.topology.contract.TopologySnapshotContent
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentReader
 import io.github.amichne.kast.topology.contract.TopologySymbol
@@ -82,7 +81,10 @@ class SqliteTopologyRelationCompiler(
         )
     }
 
-    private fun page(request: RelationRequest, facts: List<RelationFact>): RelationCompilation {
+    private fun page(
+        request: RelationRequest,
+        facts: List<RelationFact>,
+    ): RelationCompilation {
         val offset = request.position.workOffset.value
         if (offset > facts.size.toLong()) {
             return RelationCompilation.Rejected(
@@ -204,7 +206,10 @@ private sealed interface RelationFactProjection {
     data object Rejected : RelationFactProjection
 }
 
-private fun TopologyEdge.matches(meaning: RelationMeaning, subject: TopologySymbol): Boolean =
+private fun TopologyEdge.matches(
+    meaning: RelationMeaning,
+    subject: TopologySymbol,
+): Boolean =
     when (meaning) {
         RelationMeaning.Callees -> kind == TopologyEdgeKind.CALL && source == subject
         RelationMeaning.Callers -> kind == TopologyEdgeKind.CALL && target == subject

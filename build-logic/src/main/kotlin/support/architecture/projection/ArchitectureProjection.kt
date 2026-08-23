@@ -48,7 +48,10 @@ private fun StringBuilder.appendConventionRequirement(
             .append("}")
 }
 
-private fun StringBuilder.appendComma(index: Int, lastIndex: Int): StringBuilder =
+private fun StringBuilder.appendComma(
+    index: Int,
+    lastIndex: Int,
+): StringBuilder =
     apply { if (index < lastIndex) append(',') }
 
 private fun String.jsonEscape(): String = buildString(length) {

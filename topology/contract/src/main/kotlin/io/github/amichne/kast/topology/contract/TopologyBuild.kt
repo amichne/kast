@@ -139,6 +139,7 @@ sealed interface TopologyBuildFailure {
         val file: WorkspaceSourcePath,
         val failure: TopologyExtractionFailure,
     ) : TopologyBuildFailure
+
     data object ExtractionContractViolation : TopologyBuildFailure
     data class Coverage(val failure: TopologyGenerationCoverageFailure) : TopologyBuildFailure
     data class Publication(val failure: TopologyPublicationFailure) : TopologyBuildFailure

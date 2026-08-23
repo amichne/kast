@@ -172,7 +172,10 @@ class IntellijTopologyFileExtractor {
      * Unavailable is the closed expected failure. Raw VFS and PSI extraction stays in this K2
      * adapter.
      */
-    private fun load(project: Project, file: TopologySourceFile): TopologyFileLoad {
+    private fun load(
+        project: Project,
+        file: TopologySourceFile,
+    ): TopologyFileLoad {
         val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
         val virtualFile = LocalFileSystem.getInstance().findFileByPath(absolute.toString())
                           ?: return TopologyFileLoad.Unavailable

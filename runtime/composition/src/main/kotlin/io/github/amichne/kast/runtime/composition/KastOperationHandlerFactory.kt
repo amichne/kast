@@ -39,6 +39,10 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
@@ -51,12 +55,8 @@ import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
-import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
-import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
-import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
-import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
-import io.github.amichne.kast.protocol.contract.TopologyBuildResult
+import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 
 /**

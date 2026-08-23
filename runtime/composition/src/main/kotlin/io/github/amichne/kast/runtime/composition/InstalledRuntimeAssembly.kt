@@ -5,10 +5,10 @@ import io.github.amichne.kast.diagnostic.intellij.installedIntellijDiagnosticCom
 import io.github.amichne.kast.evidence.sqlite.SqliteCanonicalWorkspacePublicationTransaction
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournal
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournalOpenResult
-import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabase
-import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabaseOpening
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStore
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
+import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabase
+import io.github.amichne.kast.evidence.sqlite.SqliteWorkspacePublicationDatabaseOpening
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.intellij.InstalledRelationScopeOperations
 import io.github.amichne.kast.relation.intellij.installedIntellijRelationCompiler
@@ -22,16 +22,15 @@ import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradl
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalKastOperationHandlerFactory
 import io.github.amichne.kast.symbol.intellij.InstalledIntellijSymbolPorts
 import io.github.amichne.kast.symbol.intellij.InstalledSymbolScopeOperations
-import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
-import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspace
-import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceOpening
-import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCapture
-import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure
-import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliationPort
-import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.intellij.AdmittedSourceRootEnumerator
 import io.github.amichne.kast.topology.intellij.installedIntellijTopologyExtractor
+import io.github.amichne.kast.workspace.contract.WorkspacePublicationRun
+import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCapture
+import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspace
+import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceOpening
+import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliationPort
+import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 
 /** Closed construction inputs whose live platform values remain behind narrow adapter ports. */
 internal data class InstalledRuntimeAssemblyInputs(

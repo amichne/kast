@@ -248,8 +248,8 @@ sealed interface ArchitectureAdmission {
             }
             val violations = (
                 lifecycleViolations + unapprovedDependencies + forbiddenEffects +
-                    forbiddenExports + roleConventionViolations
-                ).toSet()
+                forbiddenExports + roleConventionViolations
+                             ).toSet()
             return if (violations.isEmpty()) {
                 Accepted
             } else {

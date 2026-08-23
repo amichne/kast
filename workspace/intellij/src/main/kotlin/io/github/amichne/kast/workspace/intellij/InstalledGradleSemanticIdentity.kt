@@ -203,17 +203,22 @@ private fun InstalledModuleSemanticIdentity.canonicalIdentity(): String = buildS
             }
         }
     }
-    classpath.map { entry -> buildString {
-        appendRecord("classpath-entry")
-        appendField(entry.url)
-    } }.distinct().sorted().forEach { entry -> appendField(entry) }
+    classpath.map { entry ->
+        buildString {
+            appendRecord("classpath-entry")
+            appendField(entry.url)
+        }
+    }.distinct().sorted().forEach { entry -> appendField(entry) }
 }
 
 private fun StringBuilder.appendRecord(tag: String) {
     appendField(tag)
 }
 
-private fun StringBuilder.appendRecord(tag: String, value: String) {
+private fun StringBuilder.appendRecord(
+    tag: String,
+    value: String,
+) {
     appendField(tag)
     appendField(value)
 }

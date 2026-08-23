@@ -116,14 +116,20 @@ internal object CanonicalSelectorCodec {
     }
 }
 
-private fun token(prefix: String, value: JsonObject): ProtocolText {
+private fun token(
+    prefix: String,
+    value: JsonObject,
+): ProtocolText {
     val payload = value.toString().toByteArray(StandardCharsets.UTF_8)
     val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
     val digest = sha256(payload)
     return ProtocolText.parse("$prefix:$VERSION:$encoded:$digest").refinedOrError()
 }
 
-private fun parseToken(document: ProtocolText, prefix: String): JsonObject? {
+private fun parseToken(
+    document: ProtocolText,
+    prefix: String,
+): JsonObject? {
     val parts = document.value.split(':')
     if (parts.size != 4 || parts[0] != prefix || parts[1] != VERSION) return null
     val payload = runCatching { Base64.getUrlDecoder().decode(parts[2]) }.getOrNull() ?: return null
@@ -173,7 +179,7 @@ private fun JsonObject.lease(): SemanticReadLease? {
     val rootPath = path("root") ?: return null
     val root = CanonicalWorkspaceRoot.fromCanonicalPath(rootPath).refinedOrNull() ?: return null
     val generation = EvidenceGeneration.parse(long("generation") ?: return null).refinedOrNull()
-        ?: return null
+                     ?: return null
     return SemanticReadLease(root, generation)
 }
 
@@ -210,7 +216,7 @@ private fun JsonObject.file(root: CanonicalWorkspaceRoot): SymbolDiscoveryFileId
         }
         "external" -> {
             val url = DetachedVirtualFileUrl.parse(string("file") ?: return null).refinedOrNull()
-                ?: return null
+                      ?: return null
             SymbolDiscoveryFileIdentity.External(url)
         }
         else -> null

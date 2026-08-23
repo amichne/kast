@@ -78,7 +78,7 @@ data class TopologySourceFile private constructor(
             val filePath = Path.of(path.value)
             val rootPath = Path.of(sourceRoot.location.value)
             val withinRoot = sourceRoot.location.value == "." ||
-                filePath != rootPath && filePath.startsWith(rootPath)
+                             filePath != rootPath && filePath.startsWith(rootPath)
             if (!withinRoot) {
                 return Refinement.Rejected(TopologySourceFileFailure.FILE_OUTSIDE_SOURCE_ROOT)
             }

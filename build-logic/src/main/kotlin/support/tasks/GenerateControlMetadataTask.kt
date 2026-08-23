@@ -32,10 +32,13 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
 
     @get:Input
     abstract val productVersion: Property<String>
+
     @get:Input
     abstract val ideaBuild: Property<String>
+
     @get:Input
     abstract val kotlinPluginBuild: Property<String>
+
     @get:Input
     abstract val runtimeBaseUrl: Property<String>
 

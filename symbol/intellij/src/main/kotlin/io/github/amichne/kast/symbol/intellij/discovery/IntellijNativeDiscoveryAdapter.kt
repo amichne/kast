@@ -12,13 +12,12 @@ import io.github.amichne.kast.symbol.contract.NativeDetachedDefinition
 import io.github.amichne.kast.symbol.contract.NativeProjectionByteCount
 import io.github.amichne.kast.symbol.contract.RevalidatedExactDeclaration
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
-import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 
 internal sealed interface IntellijNativeDiscoveryResult {
@@ -192,9 +191,9 @@ class IntellijFastSymbolReadAdapter<Definition : NativeDetachedDefinition> priva
             AdmitEveryIntellijDiscoveryItem,
     ): IntellijFastSymbolReadResult<Definition> = readAction {
         val target = request.target as? SymbolDiscoveryTarget.Name
-            ?: return@readAction IntellijFastSymbolReadResult.Rejected(
-                IntellijFastSymbolReadRejection.DISCOVERY_REJECTED,
-            )
+                     ?: return@readAction IntellijFastSymbolReadResult.Rejected(
+                         IntellijFastSymbolReadRejection.DISCOVERY_REJECTED,
+                     )
         var scopeCompilationNanoseconds = 0L
         val scopeStartedAt = clock.now()
         val scoped = scopeQuery.execute(

@@ -16,7 +16,7 @@ import io.github.amichne.kast.kernel.Refinement
 internal fun MutationAuthority.toIntellijInput(): Refinement<
     IntellijMutationInput,
     SourceWriteFailure,
-> {
+    > {
     val preimage = when (val expected = preconditionAtIntellijBoundary()) {
         MutationPreconditionAtIntellijBoundary.Absent -> return Refinement.Rejected(
             SourceWriteFailure.PREIMAGE_CHANGED,

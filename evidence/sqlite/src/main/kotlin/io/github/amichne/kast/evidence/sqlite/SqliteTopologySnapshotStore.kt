@@ -180,7 +180,7 @@ class SqliteTopologySnapshotStore private constructor(
                 Files.isSymbolicLink(raw) ->
                     SqliteTopologySnapshotStoreFailure.SYMLINK_NOT_ALLOWED
                 Files.exists(raw, LinkOption.NOFOLLOW_LINKS) &&
-                    !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) ->
+                !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) ->
                     SqliteTopologySnapshotStoreFailure.EXISTING_PATH_NOT_REGULAR_FILE
                 else -> null
             }

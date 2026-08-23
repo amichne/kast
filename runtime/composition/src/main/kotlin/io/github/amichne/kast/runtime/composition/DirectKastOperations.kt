@@ -18,8 +18,8 @@ import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
-import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
+import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 
 /** The four closed intent planners consumed by the single public `change.plan` operation. */

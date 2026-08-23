@@ -14,8 +14,8 @@ import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTopolo
 import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
-import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
+import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 
 /** Canonical operation handlers sharing exact selector and change-transition authorities. */

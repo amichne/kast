@@ -1,10 +1,10 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CliLocalMetadata
-import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandSurface
+import io.github.amichne.kast.cli.projection.CliLocalMetadata
+import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifestAdmission

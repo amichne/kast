@@ -107,9 +107,9 @@ class InstalledGradleJvm private constructor(
                 )
             }
             val rawRuntimeHome = System.getProperty("java.home")
-                ?: return InstalledGradleJvmAdmission.Rejected(
-                    InstalledGradleJvmFailure.RUNTIME_HOME_MISMATCH,
-                )
+                                 ?: return InstalledGradleJvmAdmission.Rejected(
+                                     InstalledGradleJvmFailure.RUNTIME_HOME_MISMATCH,
+                                 )
             val runtimeHome = try {
                 Path.of(rawRuntimeHome).toRealPath()
             } catch (_: IOException) {

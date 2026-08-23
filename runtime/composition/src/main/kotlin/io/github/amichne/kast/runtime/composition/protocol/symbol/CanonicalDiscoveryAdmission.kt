@@ -13,7 +13,6 @@ import io.github.amichne.kast.protocol.contract.SymbolTextScopeDocument
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
@@ -46,13 +45,13 @@ internal fun admitDiscoveryRequest(
     request: SymbolDiscoverRequest,
 ): DiscoveryRequestAdmission {
     val results = ResultLimit.parse(request.limit.value).refinedOrNull()
-        ?: return DiscoveryRequestAdmission.Rejected
+                  ?: return DiscoveryRequestAdmission.Rejected
     val work = WorkUnitLimit.parse(SYMBOL_DISCOVERY_WORK_LIMIT).refinedOrNull()
-        ?: return DiscoveryRequestAdmission.Rejected
+               ?: return DiscoveryRequestAdmission.Rejected
     val elapsed = ElapsedTimeLimitMillis.parse(SYMBOL_DISCOVERY_TIME_MILLIS).refinedOrNull()
-        ?: return DiscoveryRequestAdmission.Rejected
+                  ?: return DiscoveryRequestAdmission.Rejected
     val bytes = SymbolDiscoveryByteLimit.parse(SYMBOL_DISCOVERY_RETURNED_BYTES).refinedOrNull()
-        ?: return DiscoveryRequestAdmission.Rejected
+                ?: return DiscoveryRequestAdmission.Rejected
     val budget = SymbolDiscoveryBudget(ResourceBudget(results, work, elapsed), bytes)
     val workspaceScope = SymbolSearchScope.Workspace(
         SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
@@ -62,7 +61,7 @@ internal fun admitDiscoveryRequest(
     val admitted = when (val target = request.target) {
         is SymbolDiscoverTargetDocument.Name -> {
             val pattern = SymbolDiscoveryPattern.parse(target.query.value).refinedOrNull()
-                ?: return DiscoveryRequestAdmission.Rejected
+                          ?: return DiscoveryRequestAdmission.Rejected
             val kind = when (target.kind) {
                 SymbolNameKindDocument.FILE -> SymbolNameDiscoveryKind.FILE
                 SymbolNameKindDocument.CLASS -> SymbolNameDiscoveryKind.CLASS
@@ -76,24 +75,24 @@ internal fun admitDiscoveryRequest(
         }
         is SymbolDiscoverTargetDocument.Location -> {
             val file = workspaceFile(workspace, target.file.value)
-                ?: return DiscoveryRequestAdmission.Rejected
+                       ?: return DiscoveryRequestAdmission.Rejected
             val offset = SymbolDiscoverySourceOffset.parse(target.offset.value).refinedOrNull()
-                ?: return DiscoveryRequestAdmission.Rejected
+                         ?: return DiscoveryRequestAdmission.Rejected
             exactFileScope(file) to SymbolDiscoveryTarget.Location(file, offset)
         }
         is SymbolDiscoverTargetDocument.Structure -> {
             val file = workspaceFile(workspace, target.file.value)
-                ?: return DiscoveryRequestAdmission.Rejected
+                       ?: return DiscoveryRequestAdmission.Rejected
             exactFileScope(file) to SymbolDiscoveryTarget.Structure(file)
         }
         is SymbolDiscoverTargetDocument.Text -> {
             val pattern = SymbolDiscoveryPattern.parse(target.query.value).refinedOrNull()
-                ?: return DiscoveryRequestAdmission.Rejected
+                          ?: return DiscoveryRequestAdmission.Rejected
             val scope = when (val textScope = target.scope) {
                 SymbolTextScopeDocument.Workspace -> workspaceScope
                 is SymbolTextScopeDocument.File -> {
                     val file = workspaceFile(workspace, textScope.file.value)
-                        ?: return DiscoveryRequestAdmission.Rejected
+                               ?: return DiscoveryRequestAdmission.Rejected
                     exactFileScope(file)
                 }
             }

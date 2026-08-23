@@ -227,19 +227,29 @@ private class InstalledGradleImportObserver(
 ) : ExternalSystemTaskNotificationListener {
     val completion = CompletableFuture<Void>()
 
-    override fun onSuccess(projectPath: String, id: ExternalSystemTaskId) {
+    override fun onSuccess(
+        projectPath: String,
+        id: ExternalSystemTaskId,
+    ) {
         if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
             completion.complete(null)
         }
     }
 
-    override fun onFailure(projectPath: String, id: ExternalSystemTaskId, exception: Exception) {
+    override fun onFailure(
+        projectPath: String,
+        id: ExternalSystemTaskId,
+        exception: Exception,
+    ) {
         if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
             completion.completeExceptionally(exception)
         }
     }
 
-    override fun onCancel(projectPath: String, id: ExternalSystemTaskId) {
+    override fun onCancel(
+        projectPath: String,
+        id: ExternalSystemTaskId,
+    ) {
         if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
             completion.cancel(false)
         }
@@ -278,7 +288,10 @@ private class InstalledGradleImportObserver(
         }
     }
 
-    override fun onFailure(id: ExternalSystemTaskId, exception: Exception) {
+    override fun onFailure(
+        id: ExternalSystemTaskId,
+        exception: Exception,
+    ) {
         if (id.workspaceResolution() == GradleTaskIdentity.EXACT_WORKSPACE) {
             completion.completeExceptionally(exception)
         }

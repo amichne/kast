@@ -30,10 +30,8 @@ import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection as DomainDiscoveryRejection
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest as DomainDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult as DomainDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult as DomainResolutionResult
-
 
 internal class CanonicalSymbolDiscoverHandler(
     private val workspace: WorkspaceInspectionOperations,
@@ -82,7 +80,7 @@ internal class CanonicalSymbolDiscoverHandler(
         val documents = batch.candidates.map { candidate ->
             val selector = if (
                 candidate.location is
-                io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation.Declaration
+                    io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation.Declaration
             ) {
                 if (!selectors.hasNext()) {
                     return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
@@ -92,7 +90,7 @@ internal class CanonicalSymbolDiscoverHandler(
                 null
             }
             candidate.protocolDocument(selector)
-                ?: return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
+            ?: return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
         }
         if (selectors.hasNext()) {
             return OperationOutcome.Rejected(SymbolDiscoverRejection.QUERY_REJECTED)
@@ -213,7 +211,7 @@ internal class CanonicalSymbolDescribeHandler(
             )
             is DomainDescriptionResult.Described -> {
                 val document = result.description.protocolDocument(request.exactSelector)
-                    ?: return OperationOutcome.Rejected(SymbolDescribeRejection.NOT_FOUND)
+                               ?: return OperationOutcome.Rejected(SymbolDescribeRejection.NOT_FOUND)
                 OperationOutcome.Complete(
                     EvidenceEnvelope(
                         CanonicalOperation.SYMBOL_DESCRIBE.id,

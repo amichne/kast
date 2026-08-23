@@ -217,9 +217,9 @@ private class SupplementalCollector(
         } else {
             val admitted = SymbolDiscoveryQualifications.from(qualifications)
             val values = (admitted as? Refinement.Refined)?.value
-                ?: return IntellijNativeDiscoveryExecution.Rejected(
-                    IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
-                )
+                         ?: return IntellijNativeDiscoveryExecution.Rejected(
+                             IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
+                         )
             SymbolDiscoveryOutcome.Qualified(batch, values)
         }
         return IntellijNativeDiscoveryExecution.Produced(outcome)
@@ -240,7 +240,7 @@ private fun KtNamedDeclaration.candidate(
     request: SymbolDiscoveryRequest,
 ): Refinement<SymbolDiscoveryCandidate, *> {
     val file = containingFile?.virtualFile
-        ?: return Refinement.Rejected(Unit)
+               ?: return Refinement.Rejected(Unit)
     return SymbolDiscoveryCandidate.fromBoundary(
         discoveryKind(),
         name.orEmpty(),

@@ -86,8 +86,8 @@ class SqliteCanonicalWorkspacePublicationTransaction private constructor(
                 io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedBeforeCommit,
                 is io.github.amichne.kast.evidence.contract.GenerationPublication.InvalidatedAfterCommit,
                     -> WorkspacePublicationResult.Rejected(
-                        WorkspacePublicationFailure.CapabilityUnavailable,
-                    )
+                    WorkspacePublicationFailure.CapabilityUnavailable,
+                )
             }
         } catch (failure: Exception) {
             failure.rejectedResult()

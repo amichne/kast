@@ -26,6 +26,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
 
     @get:Input
     abstract val maximumArchiveBytes: Property<Long>
+
     @get:Input
     abstract val maximumInstalledBytes: Property<Long>
 
