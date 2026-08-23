@@ -3,3 +3,6 @@
 /benchmarks/repository-intelligence/baselines/README.md !repository-shape -linguist-generated
 /benchmarks/repository-intelligence/results/** repository-shape=generated linguist-generated=true
 /benchmarks/repository-intelligence/results/README.md !repository-shape -linguist-generated
+
+# LikeC4 owns this minified bundle. Embedded template strings contain intentional indentation.
+/docs/public/architecture/likec4-views.mjs linguist-generated=true -whitespace
