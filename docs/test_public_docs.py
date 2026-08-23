@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import tempfile
 import tomllib
 from pathlib import Path
 
@@ -226,15 +225,7 @@ def check_architecture() -> None:
     require("navigateTo" not in views, "architecture source still defines dialog navigation")
 
     subprocess.run(
-        [
-            "npm",
-            "ci",
-            "--prefix",
-            str(LIKEC4_TOOLING),
-            "--ignore-scripts",
-            "--no-audit",
-            "--no-fund",
-        ],
+        ["python3", "docs/tooling/likec4/generate_bundle.py", "--check"],
         cwd=ROOT,
         check=True,
     )
@@ -266,25 +257,7 @@ def check_architecture() -> None:
     require(report["stats"]["totalErrors"] == 0, "LikeC4 diagnostics are not empty")
     print("public-docs: LikeC4 sources are valid with zero diagnostics")
 
-    with tempfile.TemporaryDirectory(prefix="kast-likec4-check.") as temporary:
-        generated = Path(temporary) / "likec4-views.mjs"
-        subprocess.run(
-            [
-                str(likec4),
-                "gen",
-                "webcomponent",
-                "--outfile",
-                str(generated),
-                "--webcomponent-prefix",
-                "kast",
-                str(architecture),
-            ],
-            cwd=ROOT,
-            check=True,
-        )
-        checked_in = architecture / "likec4-views.mjs"
-        require(checked_in.read_bytes() == generated.read_bytes(), "LikeC4 bundle is stale")
-    print("public-docs: architecture bundle is current")
+    print("public-docs: architecture payload and generated wrapper contract are current")
 
 
 def main() -> None:

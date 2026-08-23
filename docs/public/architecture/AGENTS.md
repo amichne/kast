@@ -6,8 +6,10 @@ authority. Keep `runtime-flow` as the first, sparse view and
 through LikeC4 browser navigation or another dialog surface.
 
 `likec4-views.mjs` is generated. Do not edit it by hand. Regenerate and
-validate it with the commands in `docs/AGENTS.md`, and keep the web-component
-prefix `kast` stable for the explanation-page embed.
+validate it with `python3 docs/tooling/likec4/generate_bundle.py`, and keep the
+web-component prefix `kast` stable for the explanation-page embed. Its first
+line carries the exact npm lockfile fingerprint; its architecture payload is
+the byte-stable generated boundary.
 
 The model may summarize module families, but every ownership and dependency
 claim must remain consistent with the repository topology in the root

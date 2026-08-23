@@ -22,12 +22,13 @@ module graph before the reader understands the runtime flow.
 - Generate `public/architecture/likec4-views.mjs` with:
 
   ```shell
-  npm ci --prefix docs/tooling/likec4 --ignore-scripts --no-audit --no-fund
-  docs/tooling/likec4/node_modules/.bin/likec4 gen webcomponent \
-    --outfile docs/public/architecture/likec4-views.mjs \
-    --webcomponent-prefix kast \
-    docs/public/architecture
+  python3 docs/tooling/likec4/generate_bundle.py
   ```
+
+  The generator records the exact npm lockfile fingerprint. Its check mode
+  compares the embedded architecture payload byte-for-byte and validates the
+  generated module wrapper separately because third-party minification is not
+  byte-stable across supported hosts.
 
 - Keep authored pages focused on a reader decision or outcome. The generated
   CLI page is the only command reference. `kast --schema` remains the
@@ -46,8 +47,8 @@ Run these checks after changing this directory:
 ```shell
 ./gradlew :protocol:wire:generateOperationRegistry
 python3 docs/generate_cli_reference.py --check
+python3 docs/tooling/likec4/generate_bundle.py --check
 python3 docs/test_public_docs.py
-npm ci --prefix docs/tooling/likec4 --ignore-scripts --no-audit --no-fund
 docs/tooling/likec4/node_modules/.bin/likec4 validate --json --no-layout \
   --file docs/public/architecture/specification.c4 \
   --file docs/public/architecture/model.c4 \
