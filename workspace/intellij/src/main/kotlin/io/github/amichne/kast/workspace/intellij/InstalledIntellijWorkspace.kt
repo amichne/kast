@@ -4,6 +4,7 @@ import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -28,7 +29,6 @@ enum class InstalledIntellijWorkspaceFailure {
     STARTUP_FAILED,
     GRADLE_JVM_UNAVAILABLE,
     PROJECT_JVM_UNAVAILABLE,
-    GRADLE_LINK_RESET_FAILED,
     GRADLE_IMPORT_FAILED,
     GRADLE_IMPORT_TIMED_OUT,
     INDEXING_INTERRUPTED,
@@ -88,7 +88,7 @@ object InstalledIntellijWorkspace {
      * Proof transition: `Path -> InstalledIntellijWorkspaceOpening`.
      *
      * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened the exact path,
-     * completed one fresh Gradle link, reached smart mode, and detached one complete Gradle
+     * completed one Gradle link or refresh, reached smart mode, and detached one complete Gradle
      * model. [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live
      * project and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
      */
@@ -104,6 +104,23 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
+        val importObserver = InstalledGradleImportObserver(workspaceRoot)
+        val notificationManager = ExternalSystemProgressNotificationManager.getInstance()
+        if (!notificationManager.addNotificationListener(importObserver)) {
+            return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+        }
+        return try {
+            openObserved(workspaceRoot, gradleJvm, importObserver)
+        } finally {
+            notificationManager.removeNotificationListener(importObserver)
+        }
+    }
+
+    private fun openObserved(
+        workspaceRoot: Path,
+        gradleJvm: InstalledGradleJvm,
+        importObserver: InstalledGradleImportObserver,
+    ): InstalledIntellijWorkspaceOpening {
         val project = try {
             ProjectManagerEx.getInstanceEx().openProject(workspaceRoot, openProjectTask())
         } catch (_: RuntimeException) {
@@ -132,22 +149,21 @@ object InstalledIntellijWorkspace {
         val specification = ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
             .withCallback(imported)
         val gradleSettings = GradleSettings.getInstance(project)
-        when (linkedProjectSettings(gradleSettings, workspaceRoot)) {
-            GradleLinkState.Linked -> if (
-                !gradleSettings.unlinkExternalProject(
-                    workspaceRoot.toString(),
-                )
-            ) {
-                return rejected(InstalledIntellijWorkspaceFailure.GRADLE_LINK_RESET_FAILED)
-            }
-            GradleLinkState.Unlinked -> Unit
-        }
+        val importOperation = linkedProjectSettings(gradleSettings, workspaceRoot).importOperation()
         val importCompletion = try {
-            val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
-                this.gradleJvm = gradleJvm.projectSettingsSelector()
+            when (importOperation) {
+                is InstalledGradleImportOperation.AwaitLinked -> {
+                    importOperation.settings.gradleJvm = gradleJvm.projectSettingsSelector()
+                    importObserver.completion
+                }
+                InstalledGradleImportOperation.LinkUnlinked -> {
+                    val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
+                        this.gradleJvm = gradleJvm.projectSettingsSelector()
+                    }
+                    ExternalSystemUtil.linkExternalProject(settings, specification)
+                    imported
+                }
             }
-            ExternalSystemUtil.linkExternalProject(settings, specification)
-            imported
         } catch (_: RuntimeException) {
             return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
         }
@@ -224,25 +240,25 @@ object InstalledIntellijWorkspace {
 
 
     /**
-     * Proof transition: `Project + Path -> GradleLinkState`.
+     * Proof transition: `GradleSettings + Path -> InstalledGradleLinkPresence`.
      *
      * Establishes whether the exact normalized root already has one linked Gradle settings
-     * authority. [GradleLinkState.Unlinked] is the closed absent state. Raw platform settings
-     * remain inside the Gradle import boundary.
+     * authority. [InstalledGradleLinkPresence.Unlinked] is the closed absent state. Raw platform
+     * settings remain inside the Gradle import boundary.
      */
     private fun linkedProjectSettings(
         gradleSettings: GradleSettings,
         workspaceRoot: Path,
-    ): GradleLinkState {
+    ): InstalledGradleLinkPresence {
         gradleSettings.linkedProjectsSettings.forEach { settings ->
             if (
                 settings.externalProjectPath?.let(Path::of)?.toAbsolutePath()?.normalize() ==
                 workspaceRoot
             ) {
-                return GradleLinkState.Linked
+                return InstalledGradleLinkPresence.Linked(settings)
             }
         }
-        return GradleLinkState.Unlinked
+        return InstalledGradleLinkPresence.Unlinked
     }
 
     private fun await(future: CompletableFuture<Void>): FutureCompletion = try {
@@ -322,10 +338,35 @@ private fun InstalledGradleModelCaptureFailure.workspaceFailure(): InstalledInte
             InstalledIntellijWorkspaceFailure.MODEL_STATE_IDENTITY_REJECTED
     }
 
-private sealed interface GradleLinkState {
-    data object Linked : GradleLinkState
-    data object Unlinked : GradleLinkState
+internal sealed interface InstalledGradleLinkPresence {
+    data class Linked internal constructor(
+        internal val settings: GradleProjectSettings,
+    ) : InstalledGradleLinkPresence
+
+    data object Unlinked : InstalledGradleLinkPresence
 }
+
+internal sealed interface InstalledGradleImportOperation {
+    data class AwaitLinked internal constructor(
+        internal val settings: GradleProjectSettings,
+    ) : InstalledGradleImportOperation
+
+    data object LinkUnlinked : InstalledGradleImportOperation
+}
+
+/**
+ * Proof transition: `InstalledGradleLinkPresence -> InstalledGradleImportOperation`.
+ *
+ * Establishes the only valid import operation for the exact workspace: linked settings retain the
+ * project-open sync authority, while absence permits a new link. The exhaustive input has no
+ * expected failure. Raw Gradle settings extraction is permitted only at the import boundary.
+ */
+internal fun InstalledGradleLinkPresence.importOperation(): InstalledGradleImportOperation =
+    when (this) {
+        is InstalledGradleLinkPresence.Linked ->
+            InstalledGradleImportOperation.AwaitLinked(settings)
+        InstalledGradleLinkPresence.Unlinked -> InstalledGradleImportOperation.LinkUnlinked
+    }
 
 private enum class FutureCompletion {
     COMPLETED,

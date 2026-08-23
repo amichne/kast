@@ -65,7 +65,7 @@ internal fun projectTopologySymbol(
     declaration: KtNamedDeclaration,
 ): TopologySymbolProjection {
     val projection = when (val result = analyze(declaration) {
-        declaration.symbol.topologyProjection()
+        declaration.symbol.topologyProjection(file)
     }) {
         is TopologyCompilerProjectionResult.Projected -> result.projection
         TopologyCompilerProjectionResult.Unsupported -> return TopologySymbolProjection.Unsupported
@@ -102,14 +102,16 @@ internal fun projectTopologySymbol(
 }
 
 /**
- * Proof transition: `KaSymbol -> TopologyK2IdentityProjection`.
+ * Proof transition: `(KaSymbol, TopologySourceFile) -> TopologyK2IdentityProjection`.
  *
  * Projected establishes one refined detached [CompilerSymbolIdentity]. Unsupported and Rejected
  * close unaddressable and invalid compiler identities. Raw K2 identity extraction remains inside
  * the current analysis session.
  */
-internal fun KaSymbol.topologyIdentityProjection(): TopologyK2IdentityProjection {
-    val projection = when (val result = topologyProjection()) {
+internal fun KaSymbol.topologyIdentityProjection(
+    file: TopologySourceFile,
+): TopologyK2IdentityProjection {
+    val projection = when (val result = topologyProjection(file)) {
         is TopologyCompilerProjectionResult.Projected -> result.projection
         TopologyCompilerProjectionResult.Unsupported -> return TopologyK2IdentityProjection.Unsupported
     }
@@ -120,20 +122,40 @@ internal fun KaSymbol.topologyIdentityProjection(): TopologyK2IdentityProjection
 }
 
 /**
- * Proof transition: `KtNamedDeclaration -> TopologyOverrideProjection`.
+ * Proof transition: `(KaSymbol, TopologyProjectionRegistry) ->
+ * TopologyK2IdentityProjection`.
+ *
+ * Projected establishes one source-scoped compiler identity owned by the exact admitted candidate
+ * generation. Unsupported closes library, synthetic, missing, and outside-generation symbols;
+ * Rejected closes invalid detached identities. Raw K2 and PSI extraction remains inside the
+ * current analysis session.
+ */
+internal fun KaSymbol.topologyIdentityProjection(
+    registry: TopologyProjectionRegistry,
+): TopologyK2IdentityProjection = when (val source = topologySourceFile(registry)) {
+    is TopologyK2SourceFileProjection.Found -> topologyIdentityProjection(source.file)
+    TopologyK2SourceFileProjection.Unsupported -> TopologyK2IdentityProjection.Unsupported
+}
+
+/**
+ * Proof transition: `(KtNamedDeclaration, TopologyProjectionRegistry) ->
+ * TopologyOverrideProjection`.
  *
  * Projected establishes the canonical refined K2 identities directly overridden by this
  * declaration. Rejected closes an invalid K2 identity. Raw override symbols remain inside the
  * current analysis session.
  */
-internal fun KtNamedDeclaration.directOverrideTopologyIdentities(): TopologyOverrideProjection =
+internal fun KtNamedDeclaration.directOverrideTopologyIdentities(
+    registry: TopologyProjectionRegistry,
+): TopologyOverrideProjection =
     analyze(this) {
         val identities = linkedSetOf<CompilerSymbolIdentity>()
         for (overridden in (symbol as? KaCallableSymbol)?.directlyOverriddenSymbols.orEmpty()) {
-            when (val projection = overridden.topologyIdentityProjection()) {
+            when (val projection = overridden.topologyIdentityProjection(registry)) {
                 is TopologyK2IdentityProjection.Projected -> identities += projection.identity
                 TopologyK2IdentityProjection.Unsupported -> Unit
-                TopologyK2IdentityProjection.Rejected -> return@analyze TopologyOverrideProjection.Rejected
+                TopologyK2IdentityProjection.Rejected ->
+                    return@analyze TopologyOverrideProjection.Rejected
             }
         }
         TopologyOverrideProjection.Projected(identities.sortedBy(CompilerSymbolIdentity::value))
@@ -153,16 +175,23 @@ private sealed interface TopologyCompilerProjectionResult {
     data object Unsupported : TopologyCompilerProjectionResult
 }
 
-private fun KaSymbol.topologyProjection(): TopologyCompilerProjectionResult = when (this) {
+private fun KaSymbol.topologyProjection(
+    file: TopologySourceFile,
+): TopologyCompilerProjectionResult = when (this) {
     is KaConstructorSymbol -> {
         val owner = containingClassId?.asSingleFqName()?.asString()
                     ?: return TopologyCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.CONSTRUCTOR, "$owner.<init>", functionIdentity("$owner.<init>"))
+        projected(
+            CompilerSymbolKind.CONSTRUCTOR,
+            "$owner.<init>",
+            functionIdentity("$owner.<init>"),
+            file,
+        )
     }
     is KaFunctionSymbol -> {
         val callable = callableId?.asSingleFqName()?.asString()
                        ?: return TopologyCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.FUNCTION, callable, functionIdentity(callable))
+        projected(CompilerSymbolKind.FUNCTION, callable, functionIdentity(callable), file)
     }
     is KaKotlinPropertySymbol -> {
         val callable = callableId?.asSingleFqName()?.asString()
@@ -170,18 +199,30 @@ private fun KaSymbol.topologyProjection(): TopologyCompilerProjectionResult = wh
         projected(
             CompilerSymbolKind.PROPERTY,
             callable,
-            "property|$callable|${returnType.toString().canonicalCompilerType()}",
+            buildString {
+                append("property|").append(callable).append('|')
+                append(
+                    receiverParameter?.returnType?.toString()?.canonicalCompilerType() ?: "-",
+                ).append('|')
+                contextReceivers.forEachIndexed { index, receiver ->
+                    if (index > 0) append(',')
+                    append(receiver.type.toString().canonicalCompilerType())
+                }
+                append('|')
+                append(returnType.toString().canonicalCompilerType())
+            },
+            file,
         )
     }
     is KaTypeAliasSymbol -> {
         val name = classId?.asSingleFqName()?.asString()
                    ?: return TopologyCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.TYPE_ALIAS, name, "typealias|$name")
+        projected(CompilerSymbolKind.TYPE_ALIAS, name, "typealias|$name", file)
     }
     is KaClassLikeSymbol -> {
         val name = classId?.asSingleFqName()?.asString()
                    ?: return TopologyCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.CLASSLIKE, name, "classlike|$name")
+        projected(CompilerSymbolKind.CLASSLIKE, name, "classlike|$name", file)
     }
     else -> TopologyCompilerProjectionResult.Unsupported
 }
@@ -200,8 +241,40 @@ private fun projected(
     kind: CompilerSymbolKind,
     qualifiedIdentity: String,
     identity: String,
+    file: TopologySourceFile,
 ): TopologyCompilerProjectionResult = TopologyCompilerProjectionResult.Projected(
-    TopologyCompilerProjection(kind, qualifiedIdentity, identity),
+    TopologyCompilerProjection(
+        kind,
+        qualifiedIdentity,
+        "$identity|file|${file.path.value}",
+    ),
 )
+
+private sealed interface TopologyK2SourceFileProjection {
+    data class Found(
+        val file: TopologySourceFile,
+    ) : TopologyK2SourceFileProjection
+
+    data object Unsupported : TopologyK2SourceFileProjection
+}
+
+/**
+ * Proof transition: `(KaSymbol, TopologyProjectionRegistry) ->
+ * TopologyK2SourceFileProjection`.
+ *
+ * Found establishes the exact admitted content-identified source file owning this live compiler
+ * symbol. Unsupported closes library, synthetic, missing, and outside-generation PSI. Raw K2,
+ * PSI, and paths remain inside the request-local analysis boundary.
+ */
+private fun KaSymbol.topologySourceFile(
+    registry: TopologyProjectionRegistry,
+): TopologyK2SourceFileProjection {
+    val virtualFile = psi?.containingFile?.virtualFile
+                      ?: return TopologyK2SourceFileProjection.Unsupported
+    return when (val lookup = registry.fileAt(Path.of(virtualFile.path))) {
+        is TopologyRegistryFileLookup.Found -> TopologyK2SourceFileProjection.Found(lookup.file)
+        TopologyRegistryFileLookup.Unavailable -> TopologyK2SourceFileProjection.Unsupported
+    }
+}
 
 private fun String.canonicalCompilerType(): String = filterNot(Char::isWhitespace)

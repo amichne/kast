@@ -10,6 +10,11 @@ module scan, repository-root walk, startup hook, or read-triggered work.
   and `.kts` files, requires one exact Gradle source-set owner, and deduplicates paths.
 - Each extraction call consumes one admitted candidate and returns only detached compiler symbols,
   compiler-confirmed intersymbol edges, and a terminal `Complete` or typed failure.
+- One exact content-identified candidate generation may share one detached projection registry;
+  changed candidate evidence invalidates reuse, and each terminal extraction reloads only its
+  requested file.
+- Compiler identities are source-scoped and include callable receiver types where Kotlin overload
+  identity requires them.
 - Live `Project`, VFS, PSI, search, and K2 values remain inside explicit adapter calls.
 - Local declarations and intrafunctional dataflow are outside the topology model.
 

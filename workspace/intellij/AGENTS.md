@@ -8,8 +8,9 @@ aggregate backend.
 
 - Live `Project`, VFS, and External System objects remain inside adapter calls.
 - Gradle import and recursive VFS refresh are explicit transition effects, never ordinary reads.
-- Installed bootstrap awaits the requested Gradle refresh, reapplies the admitted project JVM,
-  and requires a continuous smart, unindexed-scanner-idle interval before capturing identity.
+- Installed bootstrap observes the project-open Gradle import when the exact root is already
+  linked, initiates a link only when it is unlinked, reapplies the admitted project JVM, and
+  requires a continuous smart, unindexed-scanner-idle interval before capturing identity.
 - The adapter consumes only workspace contracts and retains no live object across calls.
 - No duplicate refresh/import implementation or fallback may remain in the legacy host.
 

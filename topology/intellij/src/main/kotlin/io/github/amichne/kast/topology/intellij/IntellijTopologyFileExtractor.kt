@@ -25,21 +25,24 @@ import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtReferenceExpression
+import org.jetbrains.kotlin.psi.KtSuperTypeCallEntry
 import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
 import org.jetbrains.kotlin.psi.KtTypeReference
 import java.nio.file.Path
 
 /** Public native K2 boundary for one exact topology candidate. */
 class IntellijTopologyFileExtractor {
+    private val registries = TopologyProjectionRegistryCache()
+
     /**
      * Proof transition: `(Project, PublishedWorkspace, TopologyExtractionRequest) ->
      * TopologyFileExtraction`.
      *
      * Complete output establishes detached compiler symbols and repository-internal edges for the
-     * exact admitted file. All candidate PSI is loaded only to resolve cross-file targets; only the
-     * requested file receives terminal output. [TopologyExtractionFailure] is the closed expected
-     * failure. Cancellation propagates and live Project, VFS, PSI, and K2 values never leave the
-     * read action.
+     * exact admitted file. Candidate PSI is projected once per exact content generation; only the
+     * requested file is reloaded and receives terminal output. [TopologyExtractionFailure] is the
+     * closed expected failure. Cancellation propagates and live Project, VFS, PSI, and K2 values
+     * never leave the read action.
      */
     suspend fun extract(
         project: Project,
@@ -74,28 +77,36 @@ class IntellijTopologyFileExtractor {
         project: Project,
         request: TopologyExtractionRequest,
     ): TopologyFileExtraction {
-        val loaded = request.candidates.files.map { file ->
-            when (val lookup = load(project, file)) {
-                is TopologyFileLoad.Loaded -> lookup.file
-                TopologyFileLoad.Unavailable ->
-                    return failed(TopologyExtractionFailure.FILE_UNAVAILABLE)
+        val registryKey = TopologyProjectionRegistryKey.from(request.candidates)
+        val registry = when (
+            val resolution = registries.resolve(registryKey) {
+                buildRegistry(project, request, registryKey)
             }
+        ) {
+            is TopologyProjectionRegistryResolution.Ready -> resolution.registry
+            is TopologyProjectionRegistryResolution.Rejected -> return failed(resolution.failure)
         }
-        val projected = loaded.flatMap { source ->
-            source.declarations.mapNotNull { declaration ->
-                when (val symbol = projectTopologySymbol(source.file, declaration)) {
-                    is TopologySymbolProjection.Projected -> declaration to symbol.symbol
-                    TopologySymbolProjection.Unsupported -> null
-                    TopologySymbolProjection.Rejected ->
+        val requested = when (val lookup = load(project, request.file)) {
+            is TopologyFileLoad.Loaded -> lookup.file
+            TopologyFileLoad.Unavailable ->
+                return failed(TopologyExtractionFailure.FILE_UNAVAILABLE)
+        }
+        val symbolByDeclaration = buildMap {
+            requested.declarations.forEach { declaration ->
+                when (
+                    val lookup = registry.symbolAt(
+                        requested.file,
+                        declaration.textRange.startOffset,
+                        declaration.textRange.endOffset,
+                    )
+                ) {
+                    is TopologyRegistrySymbolLookup.Found -> put(declaration, lookup.symbol)
+                    TopologyRegistrySymbolLookup.Unavailable -> Unit
+                    TopologyRegistrySymbolLookup.Rejected ->
                         return failed(TopologyExtractionFailure.FACT_REJECTED)
                 }
             }
         }
-        val symbolByDeclaration = projected.toMap()
-        val symbolByIdentity = projected.map { it.second }
-            .associateBy { it.evidence.compilerIdentity }
-        val requested = loaded.singleOrNull { it.file == request.file }
-                        ?: return failed(TopologyExtractionFailure.FILE_UNAVAILABLE)
         val requestedSymbols = requested.declarations.mapNotNull(symbolByDeclaration::get)
             .distinct()
             .sorted()
@@ -107,20 +118,30 @@ class IntellijTopologyFileExtractor {
                     is OwningTopologySymbol.Found -> owner.symbol
                     OwningTopologySymbol.Unresolved -> return@forEach
                 }
-                val targetIdentity = when (val resolved = reference.topologyTarget()) {
+                val targetIdentity = when (val resolved = reference.topologyTarget(registry)) {
                     is TopologyReferenceTarget.Found -> resolved.identity
                     TopologyReferenceTarget.Unresolved -> return@forEach
                     TopologyReferenceTarget.Rejected ->
                         return failed(TopologyExtractionFailure.FACT_REJECTED)
                 }
-                val target = symbolByIdentity[targetIdentity] ?: return@forEach
+                val target = when (val lookup = registry.symbol(targetIdentity)) {
+                    is TopologyRegistrySymbolLookup.Found -> lookup.symbol
+                    TopologyRegistrySymbolLookup.Unavailable -> return@forEach
+                    TopologyRegistrySymbolLookup.Rejected ->
+                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                }
                 val kind = reference.edgeKind()
+                val occurrence = when (val refined = reference.topologyOccurrence()) {
+                    is TopologyReferenceOccurrence.Admitted -> refined.range
+                    TopologyReferenceOccurrence.Rejected ->
+                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                }
                 val edge = TopologyEdge.fromBoundary(
                     kind,
                     source,
                     target,
-                    reference.textRange.startOffset,
-                    reference.textRange.endOffset,
+                    occurrence.startOffset,
+                    occurrence.endOffset,
                 )
                 when (edge) {
                     is Refinement.Refined -> edges += edge.value
@@ -131,14 +152,19 @@ class IntellijTopologyFileExtractor {
         requested.declarations.forEach { declaration ->
             val source = symbolByDeclaration[declaration] ?: return@forEach
             val overrides = when (val projectedOverrides =
-                declaration.directOverrideTopologyIdentities()
+                declaration.directOverrideTopologyIdentities(registry)
             ) {
                 is TopologyOverrideProjection.Projected -> projectedOverrides.identities
                 TopologyOverrideProjection.Rejected ->
                     return failed(TopologyExtractionFailure.FACT_REJECTED)
             }
             overrides.forEach { targetIdentity ->
-                val target = symbolByIdentity[targetIdentity] ?: return@forEach
+                val target = when (val lookup = registry.symbol(targetIdentity)) {
+                    is TopologyRegistrySymbolLookup.Found -> lookup.symbol
+                    TopologyRegistrySymbolLookup.Unavailable -> return@forEach
+                    TopologyRegistrySymbolLookup.Rejected ->
+                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                }
                 val range = declaration.nameIdentifier?.textRange ?: declaration.textRange
                 when (val edge = TopologyEdge.fromBoundary(
                     TopologyEdgeKind.OVERRIDE,
@@ -163,6 +189,44 @@ class IntellijTopologyFileExtractor {
             is Refinement.Refined -> TopologyFileExtraction.Complete(complete.value)
             is Refinement.Rejected -> failed(TopologyExtractionFailure.FACT_REJECTED)
         }
+    }
+
+    /**
+     * Proof transition: `(Project, TopologyExtractionRequest,
+     * TopologyProjectionRegistryKey) -> TopologyProjectionRegistryResolution`.
+     *
+     * Ready establishes one detached symbol registry covering the exact content-identified
+     * candidate generation. Rejected preserves [TopologyExtractionFailure] for unavailable PSI or
+     * an inadmissible detached fact. Live Project, PSI, and K2 values remain inside this read
+     * action; only detached symbols enter the registry cache.
+     */
+    private fun buildRegistry(
+        project: Project,
+        request: TopologyExtractionRequest,
+        key: TopologyProjectionRegistryKey,
+    ): TopologyProjectionRegistryResolution {
+        val symbols = mutableListOf<TopologySymbol>()
+        request.candidates.files.forEach { file ->
+            val loaded = when (val lookup = load(project, file)) {
+                is TopologyFileLoad.Loaded -> lookup.file
+                TopologyFileLoad.Unavailable -> return TopologyProjectionRegistryResolution.Rejected(
+                    TopologyExtractionFailure.FILE_UNAVAILABLE,
+                )
+            }
+            loaded.declarations.forEach { declaration ->
+                when (val projection = projectTopologySymbol(loaded.file, declaration)) {
+                    is TopologySymbolProjection.Projected -> symbols += projection.symbol
+                    TopologySymbolProjection.Unsupported -> Unit
+                    TopologySymbolProjection.Rejected ->
+                        return TopologyProjectionRegistryResolution.Rejected(
+                            TopologyExtractionFailure.FACT_REJECTED,
+                        )
+                }
+            }
+        }
+        return TopologyProjectionRegistryResolution.Ready(
+            TopologyProjectionRegistry.from(key, symbols),
+        )
     }
 
     /**
@@ -201,17 +265,21 @@ private sealed interface TopologyReferenceTarget {
 }
 
 /**
- * Proof transition: `KtReferenceExpression -> TopologyReferenceTarget`.
+ * Proof transition: `(KtReferenceExpression, TopologyProjectionRegistry) ->
+ * TopologyReferenceTarget`.
  *
- * Found establishes one refined detached compiler identity; unresolved and rejected targets stay
- * closed. Raw reference resolution remains inside the request-local K2 analysis session.
+ * Found establishes one source-scoped refined compiler identity owned by the exact candidate
+ * generation; unresolved and rejected targets stay closed. Raw reference resolution remains
+ * inside the request-local K2 analysis session.
  */
-private fun KtReferenceExpression.topologyTarget(): TopologyReferenceTarget {
+private fun KtReferenceExpression.topologyTarget(
+    registry: TopologyProjectionRegistry,
+): TopologyReferenceTarget {
     for (native in references.filterIsInstance<KtReference>()) {
         when (val projection = analyze(native.element) {
             val symbol = native.resolveToSymbol()
                          ?: return@analyze TopologyK2IdentityProjection.Unsupported
-            symbol.topologyIdentityProjection()
+            symbol.topologyIdentityProjection(registry)
         }) {
             is TopologyK2IdentityProjection.Projected ->
                 return TopologyReferenceTarget.Found(projection.identity)
@@ -260,6 +328,27 @@ private fun KtReferenceExpression.edgeKind(): TopologyEdgeKind {
         return TopologyEdgeKind.TYPE_USE
     }
     return TopologyEdgeKind.REFERENCE
+}
+
+/**
+ * Proof transition: `KtReferenceExpression -> TopologyReferenceOccurrence`.
+ *
+ * Admitted establishes a non-empty direct or enclosing super-type call source range. Rejected
+ * closes synthetic references with no physical source anchor. Raw PSI remains inside the
+ * request-local IntelliJ extraction boundary.
+ */
+private fun KtReferenceExpression.topologyOccurrence(): TopologyReferenceOccurrence {
+    val enclosing = PsiTreeUtil.getParentOfType(
+        this,
+        KtSuperTypeCallEntry::class.java,
+        false,
+    )
+    val enclosingRange = if (enclosing == null) {
+        EnclosingSuperTypeCallRange.Unavailable
+    } else {
+        EnclosingSuperTypeCallRange.Observed(enclosing.textRange)
+    }
+    return TopologyReferenceOccurrence.refine(textRange, enclosingRange)
 }
 
 private fun failed(failure: TopologyExtractionFailure): TopologyFileExtraction.Failed =
