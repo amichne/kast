@@ -1,9 +1,11 @@
 package kast
 
+import java.io.File
 import java.security.MessageDigest
 import org.gradle.api.tasks.Exec
 import support.pr633.VerifyPr633StackTask
 import support.pr633.WritePr633GateEvidenceTask
+import support.tasks.WriteProcessOutputTask
 
 val pr633ProgramFile = layout.projectDirectory.file("gradle/pr633/kast-pr633-program.json")
 val pr633PathPolicyFile = layout.projectDirectory.file(
@@ -23,10 +25,10 @@ val pr633GitHead = providers.exec {
 val pr633EventFile = layout.file(
     providers.gradleProperty("pr633EventFile")
         .orElse(providers.environmentVariable("GITHUB_EVENT_PATH"))
-        .map(::file),
+        .map(::File),
 )
 val cleanupMergedEvidenceFile = layout.file(
-    providers.gradleProperty("pr633CleanupMergedEvidence").map(::file),
+    providers.gradleProperty("pr633CleanupMergedEvidence").map(::File),
 )
 val cleanupPullRequest = 635
 val cleanupMergeSha = "5400847a6d07ecb1060b575b6073a9535b31bc13"
@@ -118,20 +120,20 @@ val stagedOperationRegistry = layout.buildDirectory.file(
 )
 val installedSchemaFile = layout.buildDirectory.file("reports/pr633/checks/installed-schema.json")
 
-val captureInstalledSchema = tasks.register<Exec>("captureInstalledSchema") {
+val captureInstalledSchema = tasks.register<WriteProcessOutputTask>("captureInstalledSchema") {
     group = "verification"
     dependsOn("stageInstalledProduct")
     val executable = layout.buildDirectory.file("installed-product/bin/kast")
-    inputs.file(executable)
-    outputs.file(installedSchemaFile)
-    doFirst {
-        val output = installedSchemaFile.get().asFile
-        output.parentFile.mkdirs()
-        standardOutput = output.outputStream()
-        commandLine(executable.get().asFile.absolutePath, "--schema")
-        environment("KAST_RUNTIME_ARCHIVE", "")
-        environment("KAST_RUNTIME_STORE", layout.buildDirectory.dir("pr633-no-runtime").get().asFile)
-    }
+    executableFile.set(executable)
+    arguments.set(listOf("--schema"))
+    environmentVariables.set(
+        mapOf(
+            "KAST_RUNTIME_ARCHIVE" to "",
+            "KAST_RUNTIME_STORE" to layout.buildDirectory.dir("pr633-no-runtime")
+                .get().asFile.absolutePath,
+        ),
+    )
+    outputFile.set(installedSchemaFile)
 }
 
 val verifyOperationRegistryAuthority = tasks.register<Exec>("verifyOperationRegistryAuthority") {

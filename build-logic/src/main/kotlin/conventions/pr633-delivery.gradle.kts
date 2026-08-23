@@ -1,5 +1,6 @@
 package kast
 
+import java.io.File
 import org.gradle.api.tasks.Exec
 import support.pr633.WritePr633GateEvidenceTask
 
@@ -12,6 +13,9 @@ val deliveryGitHead = providers.exec {
 val topologyContractEvidence = tasks.named<WritePr633GateEvidenceTask>(
     "topologyContractAcceptance",
 )
+val allSubprojectTests = subprojects
+    .filter { subproject -> subproject.childProjects.isEmpty() }
+    .map { subproject -> "${subproject.path}:test" }
 
 fun registerPr633Exec(name: String, vararg command: String) = tasks.register<Exec>(name) {
     group = "verification"
@@ -84,7 +88,7 @@ val pr633MergeCandidateAcceptance = tasks.register<WritePr633GateEvidenceTask>(
         pr633AuthorityAcceptance,
         "topologyAcceptance",
         "runtimeDeliveryMvpAcceptance",
-        "test",
+        allSubprojectTests,
         "verifyKastModuleGraph",
         "verifyForbiddenEffects",
         "verifyNoLegacyArchitecture",
@@ -115,7 +119,7 @@ val pr633MergeCandidateAcceptance = tasks.register<WritePr633GateEvidenceTask>(
 }
 
 val exactHeadCiEvidenceFile = layout.file(
-    providers.gradleProperty("pr633ExactHeadCiEvidence").map(::file),
+    providers.gradleProperty("pr633ExactHeadCiEvidence").map(::File),
 )
 tasks.register<WritePr633GateEvidenceTask>("pr633ExactHeadCiAcceptance") {
     group = "verification"

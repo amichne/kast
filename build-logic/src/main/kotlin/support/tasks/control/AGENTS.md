@@ -8,6 +8,8 @@ tasks alone write generated metadata files.
   byte-for-byte and renders only runtime/package metadata.
 - WriteJavaProcessOutputTask captures deterministic JVM standard output
   atomically and must not interpret product-domain values.
+- WriteProcessOutputTask captures one declared executable's standard output atomically without
+  storing Gradle script closures in the execution task.
 - WriteProtocolSchemaVersionsTask and WriteSourceIndexSchemaVersionTask emit checked version
   metadata from declared Gradle inputs.
 

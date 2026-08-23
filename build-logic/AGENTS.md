@@ -43,6 +43,8 @@ the consuming projects.
   resolves the application jar.
 - `WriteJavaProcessOutputTask` atomically captures a typed JVM projection as one generated build
   resource without moving filesystem authority into product contract modules.
+- `WriteProcessOutputTask` atomically captures a declared executable projection while keeping
+  process configuration compatible with Gradle's configuration cache.
 - `VerifyClasspathLayoutTask` proves class ownership, required entries,
   descriptor placement, and the absence of forbidden fat jars. Keep semantic
   class-entry checks stronger than filename conventions.
