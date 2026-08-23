@@ -26,7 +26,7 @@ class VerifiedMutationModuleBoundaryTest {
 
     @Test
     fun `terminal verifier policy preserves the materialized boundary`() {
-        val verifier = canonical().targetModules.getValue(ModuleId.CHANGE_VERIFY)
+        val verifier = canonical().modules.getValue(ModuleId.CHANGE_VERIFY)
 
         assertEquals(ModuleRole.SERVICE, verifier.role)
         assertEquals(exactDependencies, verifier.allowedProjectDependencies)

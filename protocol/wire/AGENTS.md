@@ -21,4 +21,4 @@ table for the canonical public operation set.
 
 1. Run `./gradlew :protocol:wire:test --tests '*OperationWireContractTest'`.
 2. Run `./gradlew :protocol:registry:test :protocol:wire:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

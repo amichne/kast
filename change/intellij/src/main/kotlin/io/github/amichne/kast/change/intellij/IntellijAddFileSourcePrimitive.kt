@@ -1,5 +1,6 @@
 package io.github.amichne.kast.change.intellij
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -10,9 +11,11 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.VirtualFileEvent
-import com.intellij.openapi.vfs.VirtualFileListener
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.change.apply.AppliedSourceWrite
@@ -120,17 +123,15 @@ internal class IntellijAddFileSourcePrimitive(
         }
         val changedPaths = ConcurrentHashMap.newKeySet<String>()
         val lifetime = Disposer.newDisposable("kast-clean-slate-add-file")
-        VirtualFileManager.getInstance().addVirtualFileListener(
-            object : VirtualFileListener {
-                override fun fileCreated(event: VirtualFileEvent) {
-                    changedPaths += event.file.path
-                }
-
-                override fun contentsChanged(event: VirtualFileEvent) {
-                    changedPaths += event.file.path
+        ApplicationManager.getApplication().messageBus.connect(lifetime).subscribe(
+            VirtualFileManager.VFS_CHANGES,
+            object : BulkFileListener {
+                override fun after(events: List<VFileEvent>) {
+                    events.asSequence()
+                        .filter { it is VFileCreateEvent || it is VFileContentChangeEvent }
+                        .mapTo(changedPaths) { it.path }
                 }
             },
-            lifetime,
         )
         return try {
             val input = IntellijAddFileInput(
@@ -219,7 +220,7 @@ internal class IntellijAddFileSourcePrimitive(
         if (DumbService.getInstance(project).isDumb) {
             Refinement.Rejected(SourceWriteFailure.DUMB_MODE)
         } else {
-            ReadAction.compute<Refinement<IntellijAddFilePreparation, SourceWriteFailure>, RuntimeException> {
+            ReadAction.computeBlocking<Refinement<IntellijAddFilePreparation, SourceWriteFailure>, RuntimeException> {
                 prepareRead(authority)
             }
         }

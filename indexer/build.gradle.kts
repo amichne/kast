@@ -205,8 +205,20 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
     allowedPluginDescriptorJarPrefixes.set(listOf("indexer-"))
 }
 
+val testIndexerLauncherIsolation by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Proves that each exact endpoint owns isolated IntelliJ process paths."
+    val launcher = layout.projectDirectory.file("src/main/scripts/kast-indexer")
+    val testScript = layout.projectDirectory.file(
+        "src/test/scripts/test-kast-indexer-isolation.sh",
+    )
+    inputs.file(launcher)
+    inputs.file(testScript)
+    commandLine("bash", testScript, launcher)
+}
+
 tasks.named("check") {
-    dependsOn(verifyPortableDistLayout)
+    dependsOn(verifyPortableDistLayout, testIndexerLauncherIsolation)
 }
 
 tasks.named<Zip>("portableDistZip") {

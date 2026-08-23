@@ -19,4 +19,4 @@ index access, transport, native selector issuance, or mutation.
 
 1. Run `./gradlew :symbol:service:test --tests '*SymbolDiscoveryServiceTest' --tests '*SymbolExactServiceTest'`.
 2. Run `./gradlew :symbol:contract:test :symbol:service:test`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

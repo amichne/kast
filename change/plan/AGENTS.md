@@ -27,4 +27,4 @@ AddDeclaration and KCS-019 extends the same `ChangePlan` surface one intent at a
 1. Run `./gradlew :change:plan:test --tests '*MutationTargetAdmissionTest'`.
 2. Run `./gradlew :change:plan:test --tests '*AddDeclarationPlanTest'`.
 3. Run `./gradlew :change:plan:test`.
-4. Run `./gradlew verifyKastArchitecture --configuration-cache` when module policy changes.
+4. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects` when module policy changes.

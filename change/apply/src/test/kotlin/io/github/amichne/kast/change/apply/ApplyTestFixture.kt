@@ -64,10 +64,12 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
@@ -268,8 +270,11 @@ internal class ApplyTestFixture {
         )
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(workspace.readLease, scope),
-            SymbolNameDiscoveryKind.SYMBOL,
-            SymbolDiscoveryPattern.parse("service").refined(),
+            SymbolDiscoveryTarget.Name(
+                SymbolNameDiscoveryKind.SYMBOL,
+                SymbolDiscoveryPattern.parse("service").refined(),
+                SymbolDiscoveryMatch.FUZZY,
+            ),
             SymbolDiscoveryBudget(resourceBudget(), SymbolDiscoveryByteLimit.parse(10_000L).refined()),
         )
         val candidate = SymbolDiscoveryCandidate.fromBoundary(

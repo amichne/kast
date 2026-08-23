@@ -32,6 +32,7 @@ enum class SourceRangeDocumentFailure {
 }
 
 /** One non-empty, half-open source range. */
+@ConsistentCopyVisibility
 data class SourceRangeDocument private constructor(
     val startInclusive: ProtocolOffset,
     val endExclusive: ProtocolOffset,

@@ -54,8 +54,8 @@ class RelationModuleBoundaryTest {
         val forbiddenDependencies = setOf(
             ModuleId.TRAVERSAL_CONTRACT,
             ModuleId.TRAVERSAL_SERVICE,
-            ModuleId.WORKSPACE_MUTATION_CONTRACT,
-            ModuleId.WORKSPACE_MUTATION_SERVICE,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_PLAN,
             ModuleId.EVIDENCE_SQLITE,
         )
         val forbiddenEffects = setOf(

@@ -19,21 +19,20 @@ codex plugin add kast@kast --json
 ```
 
 Start a new Codex thread after installation. The active Kast CLI must expose
-both native repository surfaces:
+the typed semantic command surface:
 
 ```console
-kast agent repository --help
-kast agent graph --help
+kast --help
+kast symbol --help
 ```
 
-Use `kast agent repository` for bounded natural-language identity, path,
-impact, architecture, and context questions. Use `kast agent graph` for
-persisted compiler-backed topology.
+Use the scoped workspace, symbol, relation, traversal, diagnostic, and change
+commands for compiler-backed evidence.
 
 ## Validation
 
 ```console
 codex plugin marketplace list
 codex plugin list
-kast agent --help
+kast --help
 ```

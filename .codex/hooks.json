@@ -1,11 +1,29 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .github/scripts/agents_md_turn_refresh.py start --repo .",
+            "timeout": 10,
+            "statusMessage": "Starting AGENTS.md turn tracking"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "bash .github/scripts/test-repository-shape-contract.sh && python3 .github/scripts/check-repository-shape.py --root .",
+            "command": "python3 .github/scripts/agents_md_turn_refresh.py stop --repo .",
+            "timeout": 30,
+            "statusMessage": "Reviewing affected AGENTS.md files"
+          },
+          {
+            "type": "command",
+            "command": "python3 .github/scripts/check-repository-shape.py --root .",
             "timeout": 60,
             "statusMessage": "Checking repository shape"
           }

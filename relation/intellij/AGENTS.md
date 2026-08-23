@@ -23,4 +23,4 @@ workspace transitions, derived graph construction, or mutation.
 2. Inspect changed Kotlin files and resolve K2 symbols through the exact-worktree IDEA MCP.
 3. Build changed Kotlin files through IDEA.
 4. Run `./gradlew :relation:intellij:test`.
-5. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+5. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

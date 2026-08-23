@@ -132,20 +132,12 @@ sealed interface ArchitectureViolation {
 
     data class RetiredModulePresent(val module: ModuleId) : ArchitectureViolation
 
-    data class UnbaselinedLegacyViolation(
-        val violation: LegacyViolationKey,
+    data class UnapprovedProjectDependency(
+        val dependency: ProjectDependencyObservation,
     ) : ArchitectureViolation
 
-    data class ObsoleteLegacyAllowance(
-        val allowance: LegacyAllowance,
-    ) : ArchitectureViolation
-
-    data class ObsoleteLegacyMigration(
-        val migration: ValidatedLegacyMigrationEdge.Active,
-    ) : ArchitectureViolation
-
-    data class ObsoleteLegacyImplementationBridge(
-        val bridge: ValidatedLegacyImplementationBridge.Active,
+    data class ForbiddenEffectUse(
+        val observation: EffectObservation,
     ) : ArchitectureViolation
 
     data class ForbiddenExportedProjectDependency(
@@ -170,17 +162,7 @@ sealed interface ArchitectureViolation {
 }
 
 sealed interface ArchitectureAdmission {
-    data class Accepted(
-        val retainedLegacyAllowances: Set<LegacyAllowance>,
-        val retainedLegacyMigrations: Map<
-            ProjectDependencyObservation,
-            ValidatedLegacyMigrationEdge.Active,
-            >,
-        val retainedLegacyImplementationBridges: Map<
-            ProjectDependencyObservation,
-            ValidatedLegacyImplementationBridge.Active,
-            >,
-    ) : ArchitectureAdmission
+    data object Accepted : ArchitectureAdmission
 
     data class Rejected(val violations: Set<ArchitectureViolation>) : ArchitectureAdmission
 
@@ -189,9 +171,7 @@ sealed interface ArchitectureAdmission {
          * Proof transition: `(ValidatedArchitecturePolicy, ObservedArchitecture) -> ArchitectureAdmission`.
          *
          * Establishes exact active-module presence, planned-module absence, approved direct edges,
-         * permitted effects, equality between observed legacy effects and their allowances, and
-         * equality between observed temporary dependencies and active validated migrations or
-         * implementation bridges.
+         * permitted effects, exported dependency direction, and exact role conventions.
          * [Rejected] is the closed expected failure. Raw Gradle paths and class-file references may
          * be extracted only before constructing [ObservedArchitecture].
          */
@@ -210,41 +190,16 @@ sealed interface ArchitectureAdmission {
                     else -> null
                 }
             }
-            val observedTemporaryDependencies = observation.projectDependencies
+            val unapprovedDependencies = observation.projectDependencies
                 .filterNot { edge ->
                     edge.dependency in policy.modules.getValue(edge.consumer).allowedProjectDependencies
                 }
-                .toSet()
-            val activeMigrations = policy.legacyMigrationEdges.values
-                .filterIsInstance<ValidatedLegacyMigrationEdge.Active>()
-                .associateBy(ValidatedLegacyMigrationEdge.Active::dependency)
-            val activeImplementationBridges = policy.legacyImplementationBridges
-            val approvedTemporaryDependencies = activeMigrations.keys + activeImplementationBridges.keys
-            val observedLegacyViolations = buildSet {
-                observedTemporaryDependencies
-                    .filterNot(approvedTemporaryDependencies::contains)
-                    .mapTo(this, LegacyViolationKey::UnapprovedProjectDependency)
-                observation.effects
-                    .filterNot { effect ->
-                        effect.effect in policy.modules.getValue(effect.module).allowedEffects
-                    }
-                    .mapTo(this, LegacyViolationKey::ForbiddenEffectUse)
-            }
-            val allowancesByViolation = policy.legacyAllowances.associateBy(LegacyAllowance::violation)
-            val unbaselined = observedLegacyViolations
-                .filterNot(allowancesByViolation::containsKey)
-                .map(ArchitectureViolation::UnbaselinedLegacyViolation)
-            val obsolete = policy.legacyAllowances
-                .filterNot { it.violation in observedLegacyViolations }
-                .map(ArchitectureViolation::ObsoleteLegacyAllowance)
-            val obsoleteMigrations = activeMigrations
-                .filterKeys { it !in observedTemporaryDependencies }
-                .values
-                .map(ArchitectureViolation::ObsoleteLegacyMigration)
-            val obsoleteImplementationBridges = activeImplementationBridges
-                .filterKeys { it !in observedTemporaryDependencies }
-                .values
-                .map(ArchitectureViolation::ObsoleteLegacyImplementationBridge)
+                .map(ArchitectureViolation::UnapprovedProjectDependency)
+            val forbiddenEffects = observation.effects
+                .filterNot { effect ->
+                    effect.effect in policy.modules.getValue(effect.module).allowedEffects
+                }
+                .map(ArchitectureViolation::ForbiddenEffectUse)
             val forbiddenExports = observation.exportedProjectDependencies.mapNotNull { edge ->
                 val consumer = policy.modules.getValue(edge.consumer)
                 val dependency = policy.modules.getValue(edge.dependency)
@@ -292,12 +247,11 @@ sealed interface ArchitectureAdmission {
                     }
             }
             val violations = (
-                lifecycleViolations + unbaselined + obsolete + obsoleteMigrations +
-                obsoleteImplementationBridges +
-                forbiddenExports + roleConventionViolations
-                             ).toSet()
+                lifecycleViolations + unapprovedDependencies + forbiddenEffects +
+                    forbiddenExports + roleConventionViolations
+                ).toSet()
             return if (violations.isEmpty()) {
-                Accepted(policy.legacyAllowances, activeMigrations, activeImplementationBridges)
+                Accepted
             } else {
                 Rejected(violations)
             }

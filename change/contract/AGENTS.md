@@ -47,5 +47,5 @@ or source effect.
 
 1. Run `./gradlew :change:contract:test --tests '*PlannedAddDeclarationTest'`.
 2. Run `./gradlew :change:contract:test`.
-3. Run `./gradlew :change:plan:spi:test :change:plan:intellij:test`.
-4. Run `./gradlew verifyKastArchitecture --configuration-cache`.
+3. Run `./gradlew :change:plan:test :change:intellij:test`.
+4. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.

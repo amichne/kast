@@ -24,4 +24,4 @@
 
 1. Run `./gradlew :runtime:server:test --tests '*RuntimeServerContractTest'`.
 2. Run `./gradlew :runtime:server:test verifyKastModuleGraph`.
-3. Run `./gradlew verifyKastArchitecture --configuration-cache` after architecture admission.
+3. Run `./gradlew verifyKastModuleGraph verifyForbiddenEffects` after architecture admission.

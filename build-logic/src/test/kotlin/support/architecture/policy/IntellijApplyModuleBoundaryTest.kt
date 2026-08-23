@@ -43,7 +43,7 @@ class IntellijApplyModuleBoundaryTest {
 
     @Test
     fun `terminal IntelliJ apply policy preserves the same restricted authority`() {
-        val target = canonical().targetModules
+        val target = canonical().modules
 
         assertEquals(
             setOf(ModuleId.CHANGE_CONTRACT, ModuleId.CHANGE_RECOVERY, ModuleId.EVIDENCE_CONTRACT),
