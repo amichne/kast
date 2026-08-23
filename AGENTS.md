@@ -200,12 +200,15 @@ The repo-local Codex hook snapshots the Git worktree at `UserPromptSubmit` and
 checks it at `Stop`. It reviews directories changed during the turn and their
 ancestors in reverse breadth-first order, with changed leaves before parents.
 
-- Create a missing local `AGENTS.md` when the reviewed directory still owns
-  files or child directories.
+- Create a missing local `AGENTS.md` only when the reviewed directory directly
+  owns files. A directory that only groups child directories inherits its
+  nearest ancestor guide and does not need a placeholder guide.
 - Update an existing guide only when the turn changed a durable local fact.
 - When an existing guide remains correct, record `unchanged` with the exact
   command emitted by the hook instead of manufacturing a documentation edit.
-- Remove `AGENTS.md` when it is the directory's only remaining entry.
+- Remove generated inheritance-only guides from directories with no directly
+  owned files. Preserve a substantive guide when it defines a durable boundary
+  for child owners.
 - Do not bypass a pending guide operation. The hook's empty operation list is
   the mechanical completion evidence for this review.
 

@@ -18,6 +18,49 @@ SCAFFOLD_SPEC.loader.exec_module(SCAFFOLD_MODULE)
 
 
 class AgentsMdTurnRefreshTest(unittest.TestCase):
+    def test_skips_wrapper_directory_without_direct_files(self) -> None:
+        with repository_fixture() as repository:
+            write(repository / "AGENTS.md", "# Repository\n")
+            write(repository / "service" / "api" / "Api.kt", "old\n")
+            commit_all(repository)
+
+            run_hook(repository, "start")
+            write(repository / "service" / "api" / "Api.kt", "new\n")
+
+            result = run_hook(repository, "stop", expected_status=1)
+            guides = [item["guide"] for item in json.loads(result.stdout)["operations"]]
+            self.assertEqual(guides, ["service/api/AGENTS.md", "AGENTS.md"])
+
+    def test_requires_removing_generated_wrapper_after_last_direct_file_is_deleted(self) -> None:
+        with repository_fixture() as repository:
+            write(repository / "AGENTS.md", "# Repository\n")
+            write(
+                repository / "wrapper" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("wrapper/AGENTS.md"),
+                    PurePosixPath("AGENTS.md"),
+                ),
+            )
+            write(repository / "wrapper" / "Owned.kt", "old\n")
+            write(repository / "wrapper" / "child" / "Child.kt", "content\n")
+            commit_all(repository)
+
+            run_hook(repository, "start")
+            (repository / "wrapper" / "Owned.kt").unlink()
+
+            result = run_hook(repository, "stop", expected_status=1)
+            observed = [
+                (item["guide"], item["requiredOutcome"])
+                for item in json.loads(result.stdout)["operations"]
+            ]
+            self.assertEqual(
+                observed,
+                [
+                    ("wrapper/AGENTS.md", "remove"),
+                    ("AGENTS.md", "update-or-unchanged"),
+                ],
+            )
+
     def test_reverse_breadth_first_agents_work_queue(self) -> None:
         with repository_fixture() as repository:
             write(repository / "AGENTS.md", "# Repository\n")
@@ -132,6 +175,56 @@ class AgentsMdTurnRefreshTest(unittest.TestCase):
 
 
 class ScaffoldAgentsMdTurnGuidesTest(unittest.TestCase):
+    def test_prune_targets_only_generated_guides_without_direct_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = Path(temporary_directory)
+            write(repository / "AGENTS.md", "# Repository\n")
+            write(
+                repository / "wrapper" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("wrapper/AGENTS.md"),
+                    PurePosixPath("AGENTS.md"),
+                ),
+            )
+            write(repository / "wrapper" / "child" / "File.kt", "content\n")
+            write(repository / "substantive" / "AGENTS.md", "# Substantive\n")
+            write(repository / "substantive" / "child" / "File.kt", "content\n")
+            extended = SCAFFOLD_MODULE.render(
+                PurePosixPath("extended/AGENTS.md"),
+                PurePosixPath("AGENTS.md"),
+            )
+            write(
+                repository / "extended" / "AGENTS.md",
+                extended + "\n## Durable child boundary\n\n- Preserve this rule.\n",
+            )
+            write(repository / "extended" / "child" / "File.kt", "content\n")
+            write(
+                repository / "orphan" / "child" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("orphan/child/AGENTS.md"),
+                    PurePosixPath("orphan/AGENTS.md"),
+                ),
+            )
+            write(repository / "orphan" / "child" / "nested" / "File.kt", "content\n")
+            write(
+                repository / "leaf" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("leaf/AGENTS.md"),
+                    PurePosixPath("AGENTS.md"),
+                ),
+            )
+            write(repository / "leaf" / "File.kt", "content\n")
+
+            targets = SCAFFOLD_MODULE.empty_owner_guides(repository)
+
+            self.assertEqual(
+                targets,
+                [
+                    PurePosixPath("orphan/child/AGENTS.md"),
+                    PurePosixPath("wrapper/AGENTS.md"),
+                ],
+            )
+
     def test_nearest_available_parent_is_selected(self) -> None:
         available = {
             PurePosixPath("AGENTS.md"),

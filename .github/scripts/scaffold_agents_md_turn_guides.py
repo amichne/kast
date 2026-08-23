@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create minimal inheritance guides required by the current AGENTS.md turn queue."""
+"""Manage minimal inheritance guides for the current AGENTS.md policy."""
 
 from __future__ import annotations
 
@@ -10,9 +10,6 @@ import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
-
-SCAFFOLD_MARKER = "Add local rules only when this directory gains a distinct durable boundary."
-
 
 class ScaffoldFailure(RuntimeError):
     """Finite failure at the scaffold process boundary."""
@@ -95,6 +92,45 @@ def render(guide: PurePosixPath, owner: PurePosixPath) -> str:
     )
 
 
+def is_generated_inheritance_guide(root: Path, guide: Path) -> bool:
+    relative_guide = PurePosixPath(guide.relative_to(root).as_posix())
+    if relative_guide == PurePosixPath("AGENTS.md"):
+        return False
+    content = guide.read_text(encoding="utf-8")
+    for owner_directory in relative_guide.parent.parents:
+        owner = owner_directory / "AGENTS.md"
+        if content == render(relative_guide, owner):
+            return True
+    return False
+
+
+def empty_owner_guides(root: Path) -> list[PurePosixPath]:
+    targets: list[PurePosixPath] = []
+    for guide in root.rglob("AGENTS.md"):
+        if any(part in {".agent-turn", ".git"} for part in guide.parts):
+            continue
+        if not is_generated_inheritance_guide(root, guide):
+            continue
+        owned_entries = [
+            entry
+            for entry in guide.parent.iterdir()
+            if entry.name != "AGENTS.md" and (entry.is_symlink() or not entry.is_dir())
+        ]
+        if not owned_entries:
+            targets.append(PurePosixPath(guide.relative_to(root).as_posix()))
+    return sorted(targets, key=lambda path: path.as_posix())
+
+
+def prune_empty_owner_guides(root: Path, write: bool) -> int:
+    targets = empty_owner_guides(root)
+    for guide in targets:
+        if write:
+            (root / guide).unlink()
+        else:
+            print(guide.as_posix())
+    return len(targets)
+
+
 def scaffold(root: Path, write: bool, refresh: bool) -> int:
     operations = load_operations(root)
     creates = {
@@ -110,7 +146,7 @@ def scaffold(root: Path, write: bool, refresh: bool) -> int:
     generated = {
         PurePosixPath(path.relative_to(root).as_posix())
         for path in existing_paths
-        if SCAFFOLD_MARKER in path.read_text(encoding="utf-8")
+        if is_generated_inheritance_guide(root, path)
     }
     owners = {
         PurePosixPath(path.relative_to(root).as_posix())
@@ -134,15 +170,23 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--refresh", action="store_true")
+    parser.add_argument("--prune-empty-owners", action="store_true")
     args = parser.parse_args()
     try:
         root = args.repo.resolve()
-        count = scaffold(root, args.write, args.refresh)
+        if args.prune_empty_owners:
+            count = prune_empty_owner_guides(root, args.write)
+        else:
+            count = scaffold(root, args.write, args.refresh)
     except (OSError, ScaffoldFailure) as error:
         print(f"guide scaffold failed: {error}", file=sys.stderr)
         return 1
-    action = "created" if args.write else "pending"
-    print(f"AGENTS.md scaffold {action}: {count}")
+    if args.prune_empty_owners:
+        action = "removed" if args.write else "pending"
+        print(f"AGENTS.md empty-owner prune {action}: {count}")
+    else:
+        action = "created" if args.write else "pending"
+        print(f"AGENTS.md scaffold {action}: {count}")
     return 0
 
 
