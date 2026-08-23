@@ -153,6 +153,16 @@ libraries to the isolated process. It is not a semantic backend and its open
 or closed foreground state is irrelevant. Do not control a foreground IDE to
 repair Kast. Resolve the typed indexer blocker instead.
 
+## Public documentation topology
+
+`zensical.toml` is the public site and navigation authority. Authored reader
+content, generated reference boundaries, LikeC4 sources, and focused checks
+live under `docs/`; follow `docs/AGENTS.md` for that ownership map.
+
+Build the publishable artifact with `python3 docs/build_public_site.py`. The
+script invokes Zensical against staged reader assets so repository guidance
+and authored diagram sources do not enter the ignored `site/` output.
+
 ## Gradle topology
 
 `settings.gradle.kts` is the project-membership authority. The main build has

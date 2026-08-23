@@ -1,0 +1,158 @@
+model {
+  caller = person "Engineer or coding agent" {
+    #public
+    description "Asks one bounded repository question and consumes its typed outcome."
+  }
+
+  jetbrains = platform "Supported JetBrains installation" {
+    #external
+    description "Supplies matched IntelliJ and Kotlin libraries without becoming a foreground project authority."
+  }
+
+  compiler = platform "IntelliJ PSI and Kotlin K2" {
+    #external #identity
+    description "Provides request-local symbol identity, relationships, types, and diagnostics."
+  }
+
+  kast = boundary "Kast" {
+    #public
+    description "One exact-root command and semantic evidence boundary."
+
+    cli = boundary "kast CLI" {
+      #public
+      description "Refines local arguments and exchanges one JSON document per request."
+    }
+
+    acquisition = service "Managed runtime acquisition" {
+      description "Verifies and reuses the matching semantic runtime artifact."
+    }
+
+    indexer = runtime "Exact-root indexer" {
+      #identity
+      description "Owns one isolated imported workspace and its semantic generation."
+    }
+
+    composition = authority "Runtime composition" {
+      #identity
+      description "Proves exactly one implementation for all eleven canonical operations."
+    }
+
+    operations = service "Operation services" {
+      #discovery
+      description "Runs bounded workspace, symbol, relation, traversal, diagnostic, and change workflows."
+    }
+
+    adapters = authority "Compiler and write adapters" {
+      #identity #effect
+      description "Keeps PSI, K2, filesystem, and physical effects inside explicit boundaries."
+    }
+
+    evidence = datastore "Workspace evidence" {
+      #evidence
+      description "Publishes generation and recovery evidence through the sole SQLite adapter."
+    }
+  }
+
+  source = boundary "Source ownership" {
+    description "The inward dependency map behind the runtime boundary."
+
+    kernel = module "kernel" {
+      #evidence
+      description "Host-neutral refinement, outcome, and evidence primitives."
+      style {
+        color green
+      }
+    }
+    distribution = module "distribution" {
+      description "Runtime identity plus the sole acquisition and store adapter."
+    }
+    protocol = module "protocol" {
+      #identity
+      description "Canonical operations, registry metadata, and wire bindings."
+      style {
+        color indigo
+      }
+    }
+    workspace = module "workspace" {
+      description "Published-workspace identity and readiness transitions."
+    }
+    symbol = module "symbol" {
+      #identity
+      description "Candidate discovery, exact resolution, and description."
+    }
+    relation = module "relation" {
+      description "One-hop compiler-grounded relation evidence."
+    }
+    traversal = module "traversal" {
+      description "Deterministic bounded graph traversal."
+    }
+    diagnostic = module "diagnostic" {
+      description "Generation-bound compiler diagnostics."
+    }
+    change = module "change" {
+      #effect
+      description "Plan, apply, verify, and recovery transitions."
+      style {
+        color amber
+      }
+    }
+    evidence = module "evidence" {
+      #evidence
+      description "Publication and recovery contracts plus SQLite persistence."
+      style {
+        color green
+      }
+    }
+    runtime = module "runtime" {
+      description "Contract-only dispatch and the complete implementation graph."
+      style {
+        color secondary
+      }
+    }
+    cli = module "cli" {
+      #public
+      description "Command parsing, lifecycle, runtime admission, and result projection."
+      style {
+        color primary
+      }
+    }
+    indexer = module "indexer" {
+      description "Isolated host for one constructed runtime composition."
+      style {
+        color secondary
+      }
+    }
+  }
+
+  caller -[request]-> kast.cli "runs one command"
+  kast.cli -[request]-> kast.acquisition "requests the matching runtime"
+  kast.acquisition -[request]-> kast.indexer "starts or reuses the exact root"
+  jetbrains -[supply]-> kast.indexer "supplies platform libraries"
+  kast.indexer -[admit]-> kast.composition "constructs the implementation graph"
+  kast.composition -[admit]-> kast.operations "admits one canonical operation"
+  kast.operations -[inspect]-> kast.adapters "requests bounded semantic work"
+  kast.adapters -[inspect]-> compiler "uses request-local compiler authority"
+  kast.adapters -[prove]-> kast.evidence "publishes admitted evidence or recovery state"
+  kast.evidence -[prove]-> kast.cli "returns complete or qualified evidence"
+
+  source.cli -[depend]-> source.distribution "acquires runtime"
+  source.cli -[depend]-> source.protocol "uses operation and wire contracts"
+  source.indexer -[depend]-> source.runtime "hosts composition"
+  source.runtime -[depend]-> source.protocol "dispatches canonical operations"
+  source.runtime -[depend]-> source.workspace "binds workspace services"
+  source.runtime -[depend]-> source.symbol "binds symbol services"
+  source.runtime -[depend]-> source.relation "binds relation services"
+  source.runtime -[depend]-> source.traversal "binds traversal services"
+  source.runtime -[depend]-> source.diagnostic "binds diagnostic services"
+  source.runtime -[depend]-> source.change "binds change services"
+  source.runtime -[depend]-> source.evidence "binds persistence"
+  source.workspace -[depend]-> source.kernel "preserves evidence types"
+  source.symbol -[depend]-> source.kernel "preserves evidence types"
+  source.relation -[depend]-> source.kernel "preserves evidence types"
+  source.traversal -[depend]-> source.kernel "preserves evidence types"
+  source.diagnostic -[depend]-> source.kernel "preserves evidence types"
+  source.change -[depend]-> source.evidence "publishes and recovers"
+  source.change -[depend]-> source.kernel "preserves proof transitions"
+  source.evidence -[depend]-> source.kernel "stores host-neutral evidence"
+  source.protocol -[depend]-> source.kernel "binds operation identities"
+}
