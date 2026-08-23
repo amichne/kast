@@ -257,7 +257,7 @@ def check_architecture() -> None:
     require(report["stats"]["totalErrors"] == 0, "LikeC4 diagnostics are not empty")
     print("public-docs: LikeC4 sources are valid with zero diagnostics")
 
-    print("public-docs: architecture payload and generated wrapper contract are current")
+    print("public-docs: architecture compute model and generated wrapper contract are current")
 
 
 def main() -> None:

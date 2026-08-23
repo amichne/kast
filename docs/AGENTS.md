@@ -25,9 +25,10 @@ module graph before the reader understands the runtime flow.
   python3 docs/tooling/likec4/generate_bundle.py
   ```
 
-  The generator records the exact npm lockfile fingerprint. Its check mode
-  compares the embedded architecture payload byte-for-byte and validates the
-  generated module wrapper separately because third-party minification is not
+  The generator records the exact npm lockfile and compute-model fingerprints.
+  Its check mode compares every non-layout model field with LikeC4's own
+  compute-only JSON export and validates the complete layouted module wrapper
+  separately because layout geometry and third-party minification are not
   byte-stable across supported hosts.
 
 - Keep authored pages focused on a reader decision or outcome. The generated
