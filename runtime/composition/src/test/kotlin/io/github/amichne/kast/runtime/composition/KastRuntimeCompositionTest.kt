@@ -69,6 +69,10 @@ import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
@@ -88,6 +92,14 @@ import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
 import io.github.amichne.kast.traversal.contract.TraversalOperations
+import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
+import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
+import io.github.amichne.kast.topology.contract.TopologyBuildOperations
+import io.github.amichne.kast.topology.contract.TopologyPublicationResult
+import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
+import io.github.amichne.kast.topology.contract.TopologySnapshotEligibility
+import io.github.amichne.kast.topology.contract.TopologySnapshotStore
+import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
@@ -111,6 +123,7 @@ class KastRuntimeCompositionTest {
             listOf(
                 "WorkspaceRuntimePorts",
                 "SemanticRuntimePorts",
+                "TopologyRuntimePorts",
                 "ChangeRuntimePorts",
                 "KastOperationHandlerFactory",
             ),
@@ -124,12 +137,14 @@ class KastRuntimeCompositionTest {
         val composition = KastRuntimeComposition.create(
             workspacePorts(),
             semanticPorts(),
+            topologyPorts(),
             changePorts(),
             handlers,
         ).created()
         val operations = composition.operations
 
         assertSame(operations.workspaceInspect, handlers.observed.getValue(CanonicalOperation.WORKSPACE_INSPECT))
+        assertSame(operations.topologyBuild, handlers.observed.getValue(CanonicalOperation.TOPOLOGY_BUILD))
         assertSame(operations.symbolDiscover, handlers.observed.getValue(CanonicalOperation.SYMBOL_DISCOVER))
         assertSame(operations.symbolResolve, handlers.observed.getValue(CanonicalOperation.SYMBOL_RESOLVE))
         assertSame(operations.symbolDescribe, handlers.observed.getValue(CanonicalOperation.SYMBOL_DESCRIBE))
@@ -164,6 +179,13 @@ class KastRuntimeCompositionTest {
                 CanonicalOperation.WORKSPACE_INSPECT,
                 operations,
                 WorkspaceInspectRejection.RUNTIME_BLOCKED,
+            )
+
+        override fun topologyBuild(operations: TopologyBuildOperations) =
+            record<TopologyBuildRequest, TopologyBuildResult, TopologyBuildQualification, TopologyBuildRejection>(
+                CanonicalOperation.TOPOLOGY_BUILD,
+                operations,
+                TopologyBuildRejection.WORKSPACE_NOT_READY,
             )
 
         override fun symbolDiscover(operations: SymbolDiscoveryOperations) =
@@ -297,6 +319,12 @@ class KastRuntimeCompositionTest {
             diagnostic = DiagnosticCompilerPort { error("not executed") },
         )
 
+        fun topologyPorts(): TopologyRuntimePorts = TopologyRuntimePorts(
+            candidates = { error("not executed") },
+            extractor = { error("not executed") },
+            snapshots = UnusedTopologySnapshotStore,
+        )
+
         fun changePorts(): ChangeRuntimePorts = ChangeRuntimePorts(
             recoveryEvidence = UnusedRecoveryEvidenceStore,
             sourceObserver = AddDeclarationSourceObserver { error("not executed") },
@@ -306,6 +334,17 @@ class KastRuntimeCompositionTest {
             verificationObserver = ChangeVerificationObserver { error("not executed") },
         )
     }
+}
+
+private object UnusedTopologySnapshotStore : TopologySnapshotStore {
+    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility =
+        error("not executed")
+
+    override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult =
+        error("not executed")
+
+    override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead =
+        error("not executed")
 }
 
 private object UnusedRecoveryEvidenceStore : MutationRecoveryEvidenceStore {

@@ -9,6 +9,7 @@ import io.github.amichne.kast.cli.command.SemanticKastCommand
 import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 
 internal fun workspaceCommandGroup(
     preparers: CanonicalCliRequestPreparers,
@@ -19,6 +20,31 @@ internal fun workspaceCommandGroup(
             .subcommands(inspect),
         listOf(inspect),
     )
+}
+
+internal fun topologyCommandGroup(
+    preparers: CanonicalCliRequestPreparers,
+): CommandFamily {
+    val build = TopologyBuildCommand(preparers)
+    return CommandFamily(
+        KastCommandGroup("topology", "Build the durable generation-bound repository topology.")
+            .subcommands(build),
+        listOf(build),
+    )
+}
+
+private class TopologyBuildCommand(
+    preparers: CanonicalCliRequestPreparers,
+) : SemanticKastCommand<TopologyBuildRequest>(
+    name = "build",
+    operation = CanonicalOperation.TOPOLOGY_BUILD,
+    schemaUsage = "topology build",
+    preparer = preparers.topologyBuild,
+) {
+    override fun help(context: Context): String =
+        "Explicitly extract and publish complete topology for the current workspace generation."
+
+    override fun resolveAction(): CliActionResolution = prepare(TopologyBuildRequest)
 }
 
 private class WorkspaceInspectCommand(

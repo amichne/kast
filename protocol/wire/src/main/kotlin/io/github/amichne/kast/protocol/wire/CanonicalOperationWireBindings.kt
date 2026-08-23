@@ -2,7 +2,7 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 
-/** Sole generated serializer binding catalog for the eleven production operation definitions. */
+/** Sole generated serializer binding catalog for the twelve production operation definitions. */
 object CanonicalOperationWireBindings {
     val workspaceInspect = OperationWireBinding(
         CanonicalOperationDefinitions.workspaceInspect,
@@ -11,6 +11,15 @@ object CanonicalOperationWireBindings {
             CanonicalReadSerializers.workspaceInspectResult,
             CanonicalReadSerializers.workspaceInspectQualification,
             CanonicalReadSerializers.workspaceInspectRejection,
+        ),
+    )
+    val topologyBuild = OperationWireBinding(
+        CanonicalOperationDefinitions.topologyBuild,
+        GeneratedOperationSerializers(
+            CanonicalTopologySerializers.request,
+            CanonicalTopologySerializers.result,
+            CanonicalTopologySerializers.qualification,
+            CanonicalTopologySerializers.rejection,
         ),
     )
     val symbolDiscover = OperationWireBinding(
@@ -108,6 +117,7 @@ object CanonicalOperationWireBindings {
         val construction = OperationWireTable.create(
             listOf(
                 workspaceInspect,
+                topologyBuild,
                 symbolDiscover,
                 symbolResolve,
                 symbolDescribe,

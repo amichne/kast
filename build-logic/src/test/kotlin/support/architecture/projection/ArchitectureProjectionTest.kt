@@ -24,7 +24,7 @@ class ArchitectureProjectionTest {
 
         assertEquals(first, second)
         assertEquals(1, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
-        assertEquals(32, root.getValue("modules").jsonArray.size)
+        assertEquals(36, root.getValue("modules").jsonArray.size)
         assertEquals(setOf("schemaVersion", "modules"), root.keys)
         assertTrue(first.endsWith("\n"))
     }

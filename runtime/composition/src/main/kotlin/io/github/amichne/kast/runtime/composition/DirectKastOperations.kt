@@ -19,6 +19,7 @@ import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
+import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 
 /** The four closed intent planners consumed by the single public `change.plan` operation. */
@@ -40,10 +41,11 @@ fun interface ChangeRecoveryOperations {
     fun recover(binding: MutationPlanBinding): AddDeclarationRecoveryOutcome
 }
 
-/** Exact nominal target service association for the eleven public operations. */
+/** Exact nominal target service association for the twelve public operations. */
 @ConsistentCopyVisibility
 data class DirectKastOperations internal constructor(
     val workspaceInspect: WorkspaceInspectionOperations,
+    val topologyBuild: TopologyBuildOperations,
     val symbolDiscover: SymbolDiscoveryOperations,
     val symbolResolve: SymbolExactOperations,
     val symbolDescribe: SymbolExactOperations,
@@ -68,6 +70,7 @@ data class DirectKastOperations internal constructor(
          */
         fun assemble(
             workspace: WorkspaceInspectionOperations,
+            topology: TopologyBuildOperations,
             symbolDiscovery: SymbolDiscoveryOperations,
             symbolExact: SymbolExactOperations,
             relation: RelationOperations,
@@ -79,6 +82,7 @@ data class DirectKastOperations internal constructor(
             changeRollback: AddDeclarationRollbackPort,
         ): DirectKastOperations = DirectKastOperations(
             workspaceInspect = workspace,
+            topologyBuild = topology,
             symbolDiscover = symbolDiscovery,
             symbolResolve = symbolExact,
             symbolDescribe = symbolExact,

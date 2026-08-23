@@ -19,6 +19,7 @@ enum class OperationLane {
 enum class OperationEffect {
     NONE,
     INTELLIJ_READ,
+    INTELLIJ_READ_AND_PERSISTENCE_WRITE,
     INTELLIJ_WRITE,
     FILESYSTEM_WRITE,
     PERSISTENCE_WRITE,

@@ -177,7 +177,10 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.SERVICE,
             inwardRoles,
             safeReadCosts,
-            allowedEffects = setOf(ForbiddenEffect.WORKSPACE_TRANSITION),
+            allowedEffects = setOf(
+                ForbiddenEffect.WORKSPACE_TRANSITION,
+                ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY,
+            ),
         )
         ModuleRole.INTELLIJ_READ_ADAPTER -> boundary(
             role,
@@ -217,7 +220,10 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.SQLITE,
             inwardRoles,
             safeReadCosts,
-            allowedEffects = setOf(ForbiddenEffect.JDBC),
+            allowedEffects = setOf(
+                ForbiddenEffect.JDBC,
+                ForbiddenEffect.TOPOLOGY_PUBLICATION,
+            ),
         )
         ModuleRole.WORKSPACE_ADAPTER -> boundary(
             role,

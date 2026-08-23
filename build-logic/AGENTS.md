@@ -46,6 +46,8 @@ the consuming projects.
   versioned extraction atomically.
 - Add every direct project dependency to the typed architecture policy in the
   same change. Regenerate the checked-in projection from that policy.
+- Exclusive-effect validation keeps topology-build authority in `:topology:build` and topology
+  publication in `:evidence:sqlite`; effect scanning proves their concrete bytecode ownership.
 - Publishing configuration must reject missing or blank artifact metadata and
   preserve explicit local, snapshot, release, and GitHub target behavior.
 

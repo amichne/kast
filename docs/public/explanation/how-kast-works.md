@@ -20,7 +20,7 @@ semantic runtime is a digest-verified release artifact stored separately from
 the small control command.
 
 Before the indexer reports readiness, runtime composition proves that all
-eleven canonical operations have one implementation. A request is then
+twelve canonical operations have one implementation. A request is then
 admitted by operation identity, capability, effect, scope, cost, and
 completeness policy before it can reach compiler or write adapters.
 
@@ -53,6 +53,10 @@ separate `change.verify` operation establishes the terminal semantic result.
 Published workspace and recovery evidence use one SQLite adapter. Runtime
 services depend on typed contracts, while the physical store, compiler, and
 filesystem remain outside the pure workflow.
+
+Repository topology is also explicit: `topology.build` is the only operation
+that can turn complete K2 coverage into a SQLite snapshot. Multi-hop traversal
+reads an eligible snapshot and cannot trigger compiler work as a fallback.
 
 ## Isolation is part of the result
 

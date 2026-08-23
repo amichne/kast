@@ -12,7 +12,7 @@ shared by the registry, wire transport, runtime server, and CLI.
 
 ## Contract invariants
 
-- `CanonicalOperation` contains exactly the eleven public operations from the clean-slate plan.
+- `CanonicalOperation` contains exactly the twelve public operations from the clean-slate plan.
 - Operation request, result, qualification, and rejection values retain distinct marker types.
 - Every type binding includes all four Kotlin types and one refined schema identity.
 - Unknown operation identity and invalid schema identity remain closed failures.

@@ -71,6 +71,17 @@ private class EffectClassVisitor(
     ) {
         classInternalName = name
         val caller = JvmMember(JvmClassName(classInternalName), JvmMemberName("<class>"), JvmDescriptor(""))
+        if (
+            access and Opcodes.ACC_INTERFACE == 0 &&
+            interfaces.orEmpty().any { it in TOPOLOGY_PUBLISHER_INTERFACES }
+        ) {
+            effects += EffectObservation(
+                module.id,
+                ForbiddenEffect.TOPOLOGY_PUBLICATION,
+                caller,
+                typeMember(interfaces.orEmpty().first { it in TOPOLOGY_PUBLISHER_INTERFACES }),
+            )
+        }
         superName?.let { record(caller, typeMember(it)) }
         interfaces.orEmpty().forEach { record(caller, typeMember(it)) }
     }
@@ -259,6 +270,9 @@ private object EffectRules {
         ) {
             add(ForbiddenEffect.ANALYSIS_BACKEND)
         }
+        if (owner == "io/github/amichne/kast/topology/build/TopologyBuildAuthority") {
+            add(ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY)
+        }
     }
 
     private fun JvmMember.isSourceMutationSurface(): Boolean = owner.internalName.let { callerOwner ->
@@ -311,6 +325,11 @@ private object EffectRules {
         (owner == "com/intellij/execution/process/ProcessHandler" &&
          name in setOf("destroyProcess", "detachProcess", "killProcess"))
 }
+
+private val TOPOLOGY_PUBLISHER_INTERFACES = setOf(
+    "io/github/amichne/kast/topology/contract/TopologySnapshotPublisher",
+    "io/github/amichne/kast/topology/contract/TopologySnapshotStore",
+)
 
 private fun Type.referencedInternalNames(): Set<String> = when (sort) {
     Type.OBJECT -> setOf(internalName)

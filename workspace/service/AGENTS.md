@@ -8,6 +8,8 @@ It has no live IDE, filesystem, Gradle, database, transport, or aggregate-backen
 - Signals invalidate and conflate; one active cycle settles, refreshes, captures, reconciles,
   verifies, and publishes through narrow ports.
 - New events withdraw readiness without waiting and prevent an older candidate from publishing.
+- The coordinator is the current-lease guard: it invokes a guarded effect only while the exact
+  ready publication still carries the requested semantic lease.
 - Publication is one begin, prepare, commit-or-discard protocol through `:evidence:contract`.
 - Cancellation escapes; finite retry and blocker outcomes retain pending work.
 - Resource admission brackets only expensive initiation; semantic readiness waits and operation

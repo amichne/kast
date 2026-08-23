@@ -68,6 +68,11 @@ import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
@@ -162,6 +167,13 @@ class CanonicalOperationWireBindingsTest {
             DiagnosticCheckResult(texts("warning:unused")),
             DiagnosticCheckQualification.RESULT_LIMIT,
             DiagnosticCheckRejection.SCOPE_REJECTED,
+        )
+        assertRoundTrips(
+            CanonicalOperationWireBindings.topologyBuild,
+            TopologyBuildRequest,
+            TopologyBuildResult(TopologyBuildStatus.PUBLISHED, text("abc123")),
+            TopologyBuildQualification.PROGRESS_UNAVAILABLE,
+            TopologyBuildRejection.EXTRACTION_FAILED,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.changePlan,

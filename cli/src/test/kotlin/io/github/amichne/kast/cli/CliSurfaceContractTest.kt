@@ -15,7 +15,7 @@ import java.nio.file.Path
 
 class CliSurfaceContractTest {
     @Test
-    fun `public syntax is exact over all eleven canonical operations`() {
+    fun `public syntax is exact over all twelve canonical operations`() {
         val surface = commandGraphFactory().surface
 
         assertEquals(CanonicalOperation.entries, surface.semanticCommands.map { it.operation })
