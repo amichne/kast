@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition.protocol
+package io.github.amichne.kast.runtime.composition.protocol.graph
 
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome

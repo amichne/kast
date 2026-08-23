@@ -44,11 +44,11 @@ import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeRecove
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalChangeVerifyHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalDiagnosticCheckHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalRelationReadHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDescribeHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolResolveHandler
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalTraversalRunHandler
+import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalRelationReadHandler
+import io.github.amichne.kast.runtime.composition.protocol.graph.CanonicalTraversalRunHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalWorkspaceInspectHandler
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmission
 import io.github.amichne.kast.runtime.composition.protocol.ChangePlanAdmissionOperations

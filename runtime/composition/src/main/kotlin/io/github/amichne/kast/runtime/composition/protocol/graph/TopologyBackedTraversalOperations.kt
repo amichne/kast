@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition
+package io.github.amichne.kast.runtime.composition.protocol.graph
 
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompiler
 import io.github.amichne.kast.relation.contract.RelationReadRejection

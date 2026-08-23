@@ -9,6 +9,7 @@ import io.github.amichne.kast.change.verify.VerifiedMutationService
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.relation.service.RelationService
+import io.github.amichne.kast.runtime.composition.protocol.graph.TopologyBackedTraversalOperations
 import io.github.amichne.kast.runtime.server.RuntimeServer
 import io.github.amichne.kast.runtime.server.RuntimeServerConstruction
 import io.github.amichne.kast.runtime.server.RuntimeServerConstructionFailure
