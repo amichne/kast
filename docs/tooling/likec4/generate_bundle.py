@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -38,6 +39,17 @@ def provenance(lock_sha256: str, model_sha256: str) -> bytes:
         f"// kast-likec4-lock-sha256:{lock_sha256}\n"
         f"// kast-likec4-model-sha256:{model_sha256}\n"
     ).encode()
+
+
+def provenance_parts(bundle: bytes, lock_sha256: str) -> tuple[bytes, bytes]:
+    first_end = bundle.find(b"\n") + 1
+    second_end = bundle.find(b"\n", first_end) + 1
+    require(first_end > 0 and second_end > first_end, "committed LikeC4 provenance is incomplete")
+    require(
+        bundle[:first_end] == f"// kast-likec4-lock-sha256:{lock_sha256}\n".encode(),
+        "committed LikeC4 bundle has stale or missing lockfile provenance",
+    )
+    return bundle[first_end:second_end], bundle[second_end:]
 
 
 def install_tooling() -> Path:
@@ -142,6 +154,51 @@ def semantic_model(model: object) -> object:
     return semantic
 
 
+def value_summary(value: object) -> str:
+    rendered = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return rendered if len(rendered) <= 240 else rendered[:237] + "..."
+
+
+def model_differences(committed: object, generated: object, path: str = "$") -> list[str]:
+    if type(committed) is not type(generated):
+        return [f"{path}: committed {type(committed).__name__}, generated {type(generated).__name__}"]
+    if isinstance(committed, dict):
+        differences: list[str] = []
+        committed_keys = set(committed)
+        generated_keys = set(generated)
+        for key in sorted(committed_keys - generated_keys):
+            differences.append(f"{path}.{key}: committed-only field")
+        for key in sorted(generated_keys - committed_keys):
+            differences.append(f"{path}.{key}: generated-only field")
+        for key in sorted(committed_keys & generated_keys):
+            differences.extend(model_differences(committed[key], generated[key], f"{path}.{key}"))
+        return differences
+    if isinstance(committed, list):
+        differences = []
+        if len(committed) != len(generated):
+            differences.append(f"{path}: committed length {len(committed)}, generated length {len(generated)}")
+        for index, (committed_item, generated_item) in enumerate(zip(committed, generated)):
+            differences.extend(model_differences(committed_item, generated_item, f"{path}[{index}]"))
+        return differences
+    if committed != generated:
+        return [
+            f"{path}: committed {value_summary(committed)}, generated {value_summary(generated)}"
+        ]
+    return []
+
+
+def require_same_semantics(committed: object, generated: object) -> None:
+    differences = model_differences(committed, generated)
+    if not differences:
+        return
+    print("LikeC4 architecture semantic mismatch:", file=sys.stderr)
+    for difference in differences[:50]:
+        print(difference, file=sys.stderr)
+    if len(differences) > 50:
+        print(f"... {len(differences) - 50} additional differences", file=sys.stderr)
+    raise SystemExit("committed LikeC4 bundle does not encode the current architecture semantics")
+
+
 def write_atomically(target: Path, content: bytes) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
@@ -202,16 +259,16 @@ def main() -> None:
     if arguments.check:
         require(output.is_file(), f"committed LikeC4 bundle is missing: {output}")
         committed = output.read_bytes()
-        require(
-            committed.startswith(expected_provenance),
-            "committed LikeC4 bundle has stale or missing lockfile or model provenance",
-        )
-        committed_wrapper = committed[len(expected_provenance) :]
+        model_provenance, committed_wrapper = provenance_parts(committed, lock_sha256)
         verify_wrapper(committed_wrapper, "committed LikeC4 bundle")
+        committed_semantic = semantic_model(canonical_bundle_model(output))
+        committed_semantic_sha256 = hashlib.sha256(canonical_bytes(committed_semantic)).hexdigest()
         require(
-            semantic_model(canonical_bundle_model(output)) == semantic,
-            "committed LikeC4 bundle does not encode the current architecture semantics",
+            model_provenance
+            == f"// kast-likec4-model-sha256:{committed_semantic_sha256}\n".encode(),
+            "committed LikeC4 bundle has stale or missing self-bound model provenance",
         )
+        require_same_semantics(committed_semantic, semantic)
     else:
         write_atomically(output, expected_provenance + generated)
 
