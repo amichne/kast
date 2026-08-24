@@ -147,6 +147,40 @@ class VerifyPr633ProgramTest(unittest.TestCase):
         with self.assertRaises(verifier.VerificationFailure):
             verifier.validate_schema(obsolete, schema, schema)
 
+    def test_lifecycle_schema_requires_closed_process_reuse_proof(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        schema = json.loads(
+            (root / "gradle/pr633/schemas/topology-installed-lifecycle.schema.json").read_text(
+                encoding="utf-8",
+            )
+        )
+        process_reuse_schema = schema["$defs"]["processReuse"]
+        valid = {
+            "firstCallerPid": 101,
+            "laterCallerPid": 101,
+            "samePidAcrossCallers": True,
+        }
+
+        self.assertIn("processReuse", schema["required"])
+        self.assertEqual(
+            {"$ref": "#/$defs/processReuse"},
+            schema["properties"]["processReuse"],
+        )
+        verifier.validate_schema(valid, process_reuse_schema, schema)
+
+        invalid_documents = [
+            {key: value for key, value in valid.items() if key != "laterCallerPid"},
+            {**valid, "firstCallerPid": "101"},
+            {**valid, "firstCallerPid": 0},
+            {**valid, "laterCallerPid": -1},
+            {**valid, "samePidAcrossCallers": False},
+            {**valid, "undeclared": True},
+        ]
+        for document in invalid_documents:
+            with self.subTest(document=document):
+                with self.assertRaises(verifier.VerificationFailure):
+                    verifier.validate_schema(document, process_reuse_schema, schema)
+
     def test_program_rejects_dangling_repository_source(self) -> None:
         root = Path(__file__).resolve().parents[3]
         program = json.loads((root / "gradle/pr633/kast-pr633-program.json").read_text())

@@ -75,6 +75,8 @@ def validate_schema(value: Any, schema: dict[str, Any], root: dict[str, Any], pa
         require(value == schema["const"], f"{path} differs from schema constant")
     if "enum" in schema:
         require(value in schema["enum"], f"{path} is outside the closed schema enum")
+    if isinstance(value, int) and not isinstance(value, bool) and "minimum" in schema:
+        require(value >= schema["minimum"], f"{path} is below the schema minimum")
     if isinstance(value, str):
         require(len(value) >= schema.get("minLength", 0), f"{path} is too short")
         if "pattern" in schema:

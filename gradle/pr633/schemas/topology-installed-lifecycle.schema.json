@@ -15,6 +15,7 @@
     "selectors",
     "firstBuild",
     "secondBuild",
+    "processReuse",
     "restart",
     "mutation",
     "rebuild",
@@ -38,6 +39,7 @@
     "selectors": { "$ref": "#/$defs/selectors" },
     "firstBuild": { "$ref": "#/$defs/build" },
     "secondBuild": { "$ref": "#/$defs/build" },
+    "processReuse": { "$ref": "#/$defs/processReuse" },
     "restart": { "$ref": "#/$defs/restart" },
     "mutation": { "$ref": "#/$defs/mutation" },
     "rebuild": { "$ref": "#/$defs/rebuild" },
@@ -109,6 +111,16 @@
         "status": { "enum": ["published", "reused"] },
         "generation": { "type": "string", "minLength": 1 },
         "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "processReuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["firstCallerPid", "laterCallerPid", "samePidAcrossCallers"],
+      "properties": {
+        "firstCallerPid": { "type": "integer", "minimum": 1 },
+        "laterCallerPid": { "type": "integer", "minimum": 1 },
+        "samePidAcrossCallers": { "const": true }
       }
     },
     "restart": {
