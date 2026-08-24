@@ -45,6 +45,8 @@ module graph before the reader understands the runtime flow.
 - Build the publishable artifact with `python3 docs/build_public_site.py`. The
   script stages reader assets before invoking Zensical so local `AGENTS.md`
   files and authored LikeC4 sources do not become public routes or assets.
+- `.github/workflows/docs.yml` runs the content contract and the same public
+  site builder before it uploads `site/` for GitHub Pages.
 - Use current canonical operation names. Do not claim runtime data flow,
   completeness, or safe mutation beyond the evidence returned by the relevant
   operation.

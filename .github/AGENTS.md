@@ -13,6 +13,9 @@ Do not add a second build, packaging, installation, or release authority.
 Release and documentation automation are introduced only by their owning
 clean-slate delivery tasks.
 
+`workflows/docs.yml` owns the public-site build and GitHub Pages deployment. It
+must publish only the artifact produced by `docs/build_public_site.py`.
+
 ## Hook and script ownership
 
 - Keep workflow policy in `workflows/`, executable repository checks in

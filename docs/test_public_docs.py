@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "docs/public"
 README = ROOT / "README.md"
 LIKEC4_TOOLING = ROOT / "docs/tooling/likec4"
+DOCS_WORKFLOW = ROOT / ".github/workflows/docs.yml"
 INSTALL_COMMAND = (
     "curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash"
 )
@@ -151,6 +152,29 @@ def check_config() -> None:
     require(top_labels == EXPECTED_TOP_NAV, f"unexpected top navigation: {top_labels}")
     destinations = nav_paths(nav)
     require(destinations == list(PAGES), f"navigation and page contract differ: {destinations}")
+
+
+def check_deployment() -> None:
+    require(DOCS_WORKFLOW.is_file(), "documentation workflow is missing")
+    workflow = DOCS_WORKFLOW.read_text()
+    required = (
+        "name: Documentation",
+        "pull_request:",
+        "push:",
+        "workflow_dispatch:",
+        "python3 docs/test_public_docs.py",
+        "python3 docs/build_public_site.py",
+        "actions/upload-pages-artifact@v5",
+        "actions/deploy-pages@v5",
+        "path: site",
+        "pages: write",
+        "id-token: write",
+        "name: github-pages",
+    )
+    for token in required:
+        require(token in workflow, f"documentation workflow is missing {token}")
+    requirements = (ROOT / "requirements-docs.txt").read_text().splitlines()
+    require(requirements == ["zensical==0.0.51"], "docs requirements are not exact")
 
 
 def check_pages() -> None:
@@ -363,6 +387,7 @@ def check_architecture() -> None:
 
 
 def main() -> None:
+    check_deployment()
     check_config()
     check_pages()
     check_styles()

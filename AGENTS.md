@@ -176,6 +176,9 @@ Build the publishable artifact with `python3 docs/build_public_site.py`. The
 script invokes Zensical against staged reader assets so repository guidance
 and authored diagram sources do not enter the ignored `site/` output.
 
+`.github/workflows/docs.yml` is the GitHub Pages publication authority. It
+deploys only the `site/` artifact produced by the public-site builder.
+
 `install.sh` is the public release-install boundary. Preserve its host,
 checksum, archive, and managed-link checks when changing its presentation. Run
 `bash packaging/test-public-installer.sh` after changing its output.
