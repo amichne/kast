@@ -104,6 +104,7 @@ object CanonicalOperationDefinitions {
         OperationCost.PHYSICAL_EFFECT,
         OperationScope.WORKSPACE,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        schema = schema("kast.topology.build.v2"),
     )
 
     val symbolDiscover = definition(
@@ -286,6 +287,7 @@ object CanonicalOperationDefinitions {
         cost: OperationCost,
         scope: OperationScope,
         completeness: CompletenessPolicy,
+        schema: SchemaIdentity = schema("kast.${operation.id.value}.v1"),
     ): OperationDefinition<Request, Result, Capability, Qualification, Rejection> =
         OperationDefinition(
             operation = operation,
@@ -294,7 +296,7 @@ object CanonicalOperationDefinitions {
                 resultType = resultType,
                 qualificationType = qualificationType,
                 rejectionType = rejectionType,
-                schema = schema("kast.${operation.id.value}.v1"),
+                schema = schema,
             ),
             requiredCapability = capability(operation),
             capabilityType = capabilityType,

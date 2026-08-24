@@ -44,6 +44,7 @@ class io/github/amichne/kast/topology/contract/TopologyGenerationCoverageFailure
 class io/github/amichne/kast/topology/contract/TopologyGenerationDigest access=public,final super=java/lang/Object interfaces= permits=
 class io/github/amichne/kast/topology/contract/TopologyGenerationDigest$Companion access=public,static,final super=java/lang/Object interfaces= permits=
 class io/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure access=public,final,enum signature=Ljava/lang/Enum<Lio/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure;>; super=java/lang/Enum interfaces= permits=
+class io/github/amichne/kast/topology/contract/TopologyNodeIdentity access=public,final super=java/lang/Object interfaces= permits=
 class io/github/amichne/kast/topology/contract/TopologyPublicationFailure access=public,final,enum signature=Ljava/lang/Enum<Lio/github/amichne/kast/topology/contract/TopologyPublicationFailure;>; super=java/lang/Enum interfaces= permits=
 class io/github/amichne/kast/topology/contract/TopologyPublicationResult access=public,interface,abstract super=java/lang/Object interfaces= permits=io/github/amichne/kast/topology/contract/TopologyPublicationResult$Published,io/github/amichne/kast/topology/contract/TopologyPublicationResult$Rejected,io/github/amichne/kast/topology/contract/TopologyPublicationResult$Unchanged
 class io/github/amichne/kast/topology/contract/TopologyPublicationResult$Published access=public,static,final super=java/lang/Object interfaces=io/github/amichne/kast/topology/contract/TopologyPublicationResult permits=
@@ -110,6 +111,7 @@ field io/github/amichne/kast/topology/contract/TopologyExtractionFailure#FACT_RE
 field io/github/amichne/kast/topology/contract/TopologyExtractionFailure#FILE_UNAVAILABLE:Lio/github/amichne/kast/topology/contract/TopologyExtractionFailure; access=public,static,final,enum
 field io/github/amichne/kast/topology/contract/TopologyExtractionFailure#NOT_KOTLIN_PSI:Lio/github/amichne/kast/topology/contract/TopologyExtractionFailure; access=public,static,final,enum
 field io/github/amichne/kast/topology/contract/TopologyExtractionFailure#PROJECT_UNAVAILABLE:Lio/github/amichne/kast/topology/contract/TopologyExtractionFailure; access=public,static,final,enum
+field io/github/amichne/kast/topology/contract/TopologyExtractionFailure#SOURCE_CONTENT_MOVED:Lio/github/amichne/kast/topology/contract/TopologyExtractionFailure; access=public,static,final,enum
 field io/github/amichne/kast/topology/contract/TopologyExtractionRequestFailure#FILE_NOT_ADMITTED:Lio/github/amichne/kast/topology/contract/TopologyExtractionRequestFailure; access=public,static,final,enum
 field io/github/amichne/kast/topology/contract/TopologyGenerationDigest#Companion:Lio/github/amichne/kast/topology/contract/TopologyGenerationDigest$Companion; access=public,static,final
 field io/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure#INVALID_FORMAT:Lio/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure; access=public,static,final,enum
@@ -330,6 +332,16 @@ method io/github/amichne/kast/topology/contract/TopologyGenerationDigest$Compani
 method io/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure#getEntries()Lkotlin/enums/EnumEntries; access=public,static signature=()Lkotlin/enums/EnumEntries<Lio/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure;>;
 method io/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure#valueOf(Ljava/lang/String;)Lio/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure; access=public,static
 method io/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure#values()[Lio/github/amichne/kast/topology/contract/TopologyGenerationDigestFailure; access=public,static
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#component1-8eui1yg()Ljava/lang/String; access=public,final
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#component2-Pu-X0-o()Ljava/lang/String; access=public,final
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#component3()Lio/github/amichne/kast/symbol/contract/ExactDeclarationTextRange; access=public,final
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#copy-_JnP0zg$io_github_amichne_topology_topology_contract(Ljava/lang/String;Ljava/lang/String;Lio/github/amichne/kast/symbol/contract/ExactDeclarationTextRange;)Lio/github/amichne/kast/topology/contract/TopologyNodeIdentity; access=public,final
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#equals(Ljava/lang/Object;)Z access=public
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#getCompilerIdentity-8eui1yg()Ljava/lang/String; access=public,final
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#getFile-Pu-X0-o()Ljava/lang/String; access=public,final
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#getRange()Lio/github/amichne/kast/symbol/contract/ExactDeclarationTextRange; access=public,final
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#hashCode()I access=public
+method io/github/amichne/kast/topology/contract/TopologyNodeIdentity#toString()Ljava/lang/String; access=public
 method io/github/amichne/kast/topology/contract/TopologyPublicationFailure#getEntries()Lkotlin/enums/EnumEntries; access=public,static signature=()Lkotlin/enums/EnumEntries<Lio/github/amichne/kast/topology/contract/TopologyPublicationFailure;>;
 method io/github/amichne/kast/topology/contract/TopologyPublicationFailure#valueOf(Ljava/lang/String;)Lio/github/amichne/kast/topology/contract/TopologyPublicationFailure; access=public,static
 method io/github/amichne/kast/topology/contract/TopologyPublicationFailure#values()[Lio/github/amichne/kast/topology/contract/TopologyPublicationFailure; access=public,static
@@ -455,6 +467,7 @@ method io/github/amichne/kast/topology/contract/TopologySymbol#component2()Lio/g
 method io/github/amichne/kast/topology/contract/TopologySymbol#equals(Ljava/lang/Object;)Z access=public
 method io/github/amichne/kast/topology/contract/TopologySymbol#getEvidence()Lio/github/amichne/kast/symbol/contract/CompilerGroundedSymbolEvidence; access=public,final
 method io/github/amichne/kast/topology/contract/TopologySymbol#getFile()Lio/github/amichne/kast/topology/contract/TopologySourceFile; access=public,final
+method io/github/amichne/kast/topology/contract/TopologySymbol#getNodeIdentity()Lio/github/amichne/kast/topology/contract/TopologyNodeIdentity; access=public,final
 method io/github/amichne/kast/topology/contract/TopologySymbol#hashCode()I access=public
 method io/github/amichne/kast/topology/contract/TopologySymbol#toString()Ljava/lang/String; access=public
 method io/github/amichne/kast/topology/contract/TopologySymbol$Companion#admit(Lio/github/amichne/kast/topology/contract/TopologySourceFile;Lio/github/amichne/kast/symbol/contract/CompilerGroundedSymbolEvidence;)Lio/github/amichne/kast/kernel/Refinement; access=public,final signature=(Lio/github/amichne/kast/topology/contract/TopologySourceFile;Lio/github/amichne/kast/symbol/contract/CompilerGroundedSymbolEvidence;)Lio/github/amichne/kast/kernel/Refinement<Lio/github/amichne/kast/topology/contract/TopologySymbol;Lio/github/amichne/kast/topology/contract/TopologySymbolFailure;>;

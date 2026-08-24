@@ -1,9 +1,5 @@
 package support.architecture.projection
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -20,12 +16,14 @@ class ArchitectureProjectionTest {
 
         val first = ArchitectureProjection.render(architecture)
         val second = ArchitectureProjection.render(architecture)
-        val root = Json.parseToJsonElement(first).jsonObject
+        val root = architectureProjectionJson.decodeFromString(
+            ArchitectureProjectionDocument.serializer(),
+            first,
+        )
 
         assertEquals(first, second)
-        assertEquals(1, root.getValue("schemaVersion").jsonPrimitive.content.toInt())
-        assertEquals(36, root.getValue("modules").jsonArray.size)
-        assertEquals(setOf("schemaVersion", "modules"), root.keys)
+        assertEquals(1, root.schemaVersion)
+        assertEquals(36, root.modules.size)
         assertTrue(first.endsWith("\n"))
     }
 
@@ -34,16 +32,14 @@ class ArchitectureProjectionTest {
         val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
         ).architecture
-        val root = Json.parseToJsonElement(ArchitectureProjection.render(architecture)).jsonObject
-        val module = root.getValue("modules").jsonArray
-            .single { item ->
-                item.jsonObject.getValue("projectPath").jsonPrimitive.content == ":symbol:intellij"
-            }
-            .jsonObject
+        val root = architectureProjectionJson.decodeFromString(
+            ArchitectureProjectionDocument.serializer(),
+            ArchitectureProjection.render(architecture),
+        )
+        val module = root.modules.single { item -> item.projectPath == ":symbol:intellij" }
 
-        assertEquals("BOUNDED_READ", module.getValue("cost").jsonPrimitive.content)
-        val convention = module.getValue("roleConvention").jsonObject
-        assertEquals("REQUIRED", convention.getValue("kind").jsonPrimitive.content)
-        assertEquals("kast.role.intellij-read", convention.getValue("pluginId").jsonPrimitive.content)
+        assertEquals("BOUNDED_READ", module.cost)
+        val convention = assertInstanceOf<ModuleRoleConventionDocument.Required>(module.roleConvention)
+        assertEquals("kast.role.intellij-read", convention.pluginId)
     }
 }

@@ -4,6 +4,7 @@ import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
 import support.tasks.VerifyControlDistributionTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
+import support.tasks.registerGeneratedBuildLogicSerializationVerification
 
 plugins {
     base
@@ -40,6 +41,8 @@ subprojects {
     group = rootProject.group
     version = rootProject.version
 }
+
+registerGeneratedBuildLogicSerializationVerification()
 
 tasks.register("stageIndexerDist") {
     group = "distribution"

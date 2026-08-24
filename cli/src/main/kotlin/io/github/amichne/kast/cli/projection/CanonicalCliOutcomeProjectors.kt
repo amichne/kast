@@ -28,11 +28,7 @@ import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
-import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
-import io.github.amichne.kast.protocol.contract.SymbolDocument
-import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
@@ -45,231 +41,112 @@ import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
-import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
-import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
-import io.github.amichne.kast.protocol.contract.TopologyBuildResult
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.Serializable
 
 internal val workspaceInspectCliProjector = CliOutcomeProjector<
     WorkspaceInspectResult,
     WorkspaceInspectQualification,
     WorkspaceInspectRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.WORKSPACE_INSPECT, outcome) { result ->
-        fields(
-            "canonicalRoot" to JsonPrimitive(result.canonicalRoot.value),
-            "state" to JsonPrimitive(result.state.documentValue()),
-        )
-    }
-}
-
-internal val topologyBuildCliProjector = CliOutcomeProjector<
-    TopologyBuildResult,
-    TopologyBuildQualification,
-    TopologyBuildRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.TOPOLOGY_BUILD, outcome) { result ->
-        fields(
-            "snapshotStatus" to JsonPrimitive(result.status.documentValue()),
-            "generation" to JsonPrimitive(result.generation.value),
-            "digest" to JsonPrimitive(result.digest.value),
-        )
-    }
-}
+    > { outcome -> CanonicalReadCliDocuments.projectWorkspace(outcome) }
 
 internal val symbolDiscoverCliProjector = CliOutcomeProjector<
     SymbolDiscoverResult,
     SymbolDiscoverQualification,
     SymbolDiscoverRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.SYMBOL_DISCOVER, outcome) { result ->
-        fields("items" to JsonArray(result.items.values.map { it.cliJson() }))
-    }
-}
+    > { outcome -> CanonicalSymbolCliDocuments.projectDiscovery(outcome) }
 
 internal val symbolResolveCliProjector = CliOutcomeProjector<
     SymbolResolveResult,
     SymbolResolveQualification,
     SymbolResolveRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.SYMBOL_RESOLVE, outcome) { result ->
-        fields("exactSelector" to JsonPrimitive(result.exactSelector.value))
-    }
-}
+    > { outcome -> CanonicalSymbolCliDocuments.projectResolution(outcome) }
 
 internal val symbolDescribeCliProjector = CliOutcomeProjector<
     SymbolDescribeResult,
     SymbolDescribeQualification,
     SymbolDescribeRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.SYMBOL_DESCRIBE, outcome) { result ->
-        fields("symbol" to result.symbol.cliJson())
-    }
-}
+    > { outcome -> CanonicalSymbolCliDocuments.projectDescription(outcome) }
 
 internal val relationReadCliProjector = CliOutcomeProjector<
     RelationReadResult,
     RelationReadQualification,
     RelationReadRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.RELATION_READ, outcome) { result ->
-        fields("targets" to JsonArray(result.targets.values.map { it.cliJson() }))
-    }
-}
+    > { outcome -> CanonicalReadCliDocuments.projectRelation(outcome) }
 
 internal val traversalRunCliProjector = CliOutcomeProjector<
     TraversalRunResult,
     TraversalRunQualification,
     TraversalRunRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.TRAVERSAL_RUN, outcome) { result ->
-        fields("reached" to JsonArray(result.reached.values.map { it.cliJson() }))
-    }
-}
+    > { outcome -> CanonicalReadCliDocuments.projectTraversal(outcome) }
 
 internal val diagnosticCheckCliProjector = CliOutcomeProjector<
     DiagnosticCheckResult,
     DiagnosticCheckQualification,
     DiagnosticCheckRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.DIAGNOSTIC_CHECK, outcome) { result ->
-        fields("diagnostics" to result.diagnostics.values.jsonTexts())
-    }
-}
+    > { outcome -> CanonicalReadCliDocuments.projectDiagnostics(outcome) }
 
 internal val changePlanCliProjector = CliOutcomeProjector<
     ChangePlanResult,
     ChangePlanQualification,
     ChangePlanRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.CHANGE_PLAN, outcome) { result ->
-        fields("planIdentity" to JsonPrimitive(result.planIdentity.value))
-    }
-}
+    > { outcome -> CanonicalChangeCliDocuments.projectPlan(outcome) }
 
 internal val changeApplyCliProjector = CliOutcomeProjector<
     ChangeApplyResult,
     ChangeApplyQualification,
     ChangeApplyRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.CHANGE_APPLY, outcome) { result ->
-        fields("applicationIdentity" to JsonPrimitive(result.applicationIdentity.value))
-    }
-}
+    > { outcome -> CanonicalChangeCliDocuments.projectApplication(outcome) }
 
 internal val changeVerifyCliProjector = CliOutcomeProjector<
     ChangeVerifyResult,
     ChangeVerifyQualification,
     ChangeVerifyRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.CHANGE_VERIFY, outcome) { result ->
-        fields("receiptIdentity" to JsonPrimitive(result.receiptIdentity.value))
-    }
-}
+    > { outcome -> CanonicalChangeCliDocuments.projectVerification(outcome) }
 
 internal val changeRecoverCliProjector = CliOutcomeProjector<
     ChangeRecoverResult,
     ChangeRecoverQualification,
     ChangeRecoverRejection,
-    > { outcome ->
-    projectOutcome(CanonicalOperation.CHANGE_RECOVER, outcome) { result ->
-        fields("state" to JsonPrimitive(result.state.documentValue()))
-    }
-}
+    > { outcome -> CanonicalChangeCliDocuments.projectRecovery(outcome) }
 
-private fun <
+internal fun <
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    > projectOutcome(
-    operation: CanonicalOperation,
+    > projectClosedOutcome(
     outcome: OperationOutcome<Result, Qualification, Rejection>,
-    payload: (Result) -> JsonObject,
-): ProjectedCliOutcome {
-    val status = when (outcome) {
-        is OperationOutcome.Complete -> "complete"
-        is OperationOutcome.Qualified -> "qualified"
-        is OperationOutcome.Rejected -> "rejected"
-    }
-    val document = CliJsonDocument.from(
-        buildJsonObject {
-            put("operation", operation.id.value)
-            put("status", status)
-            when (outcome) {
-                is OperationOutcome.Complete -> payload(outcome.evidence.payload).copyInto(this)
-                is OperationOutcome.Qualified -> {
-                    payload(outcome.evidence.payload).copyInto(this)
-                    put("qualification", outcome.qualification.toString().documentValue())
-                }
-                is OperationOutcome.Rejected -> put(
-                    "reason",
-                    outcome.reason.toString().documentValue(),
-                )
-            }
-        },
+    complete: (Result) -> CliJsonDocument,
+    qualified: (Result, Qualification) -> CliJsonDocument,
+    rejected: (Rejection) -> CliJsonDocument,
+): ProjectedCliOutcome = when (outcome) {
+    is OperationOutcome.Complete -> ProjectedCliOutcome.Complete(
+        complete(outcome.evidence.payload),
     )
-    return when (outcome) {
-        is OperationOutcome.Complete -> ProjectedCliOutcome.Complete(document)
-        is OperationOutcome.Qualified -> ProjectedCliOutcome.Qualified(document)
-        is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(document)
-    }
-}
-
-private fun fields(vararg values: Pair<String, JsonElement>): JsonObject = JsonObject(values.toMap())
-
-private fun List<io.github.amichne.kast.protocol.contract.ProtocolText>.jsonTexts(): JsonArray =
-    JsonArray(map { JsonPrimitive(it.value) })
-
-private fun SymbolDiscoveryDocument.cliJson(): JsonObject = when (this) {
-    is SymbolDiscoveryDocument.File -> buildJsonObject {
-        put("type", "file")
-        put("name", name.value)
-        put("file", file.value)
-    }
-    is SymbolDiscoveryDocument.Declaration -> buildJsonObject {
-        put("type", "declaration")
-        put("candidateSelector", candidateSelector.value)
-        put("kind", kind.documentValue())
-        put("name", name.value)
-        put("file", file.value)
-        put("offset", offset.value)
-    }
-    is SymbolDiscoveryDocument.TextMatch -> buildJsonObject {
-        put("type", "text-match")
-        put("query", query.value)
-        put("file", file.value)
-        put("range", range.cliJson())
-    }
-}
-
-private fun SymbolDocument.cliJson(): JsonObject = buildJsonObject {
-    put("selector", selector.value)
-    put("kind", kind.documentValue())
-    put("name", name.value)
-    put(
-        "qualifiedIdentity",
-        when (val identity = qualifiedIdentity) {
-            is SymbolQualifiedIdentityDocument.Available -> JsonPrimitive(identity.value.value)
-            SymbolQualifiedIdentityDocument.Unavailable -> JsonNull
-        },
+    is OperationOutcome.Qualified -> ProjectedCliOutcome.Qualified(
+        qualified(outcome.evidence.payload, outcome.qualification),
     )
-    put("file", file.value)
-    put("range", range.cliJson())
+    is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(rejected(outcome.reason))
 }
 
-private fun SourceRangeDocument.cliJson(): JsonObject = buildJsonObject {
-    put("startInclusive", startInclusive.value)
-    put("endExclusive", endExclusive.value)
-}
+@Serializable
+private data class RejectedCliDocument(
+    val operation: String,
+    val status: String,
+    val reason: String,
+)
 
-private fun JsonObject.copyInto(target: kotlinx.serialization.json.JsonObjectBuilder) {
-    forEach(target::put)
-}
+private val rejectedDocumentFactory =
+    CliJsonDocument.generated(RejectedCliDocument.serializer())
 
-private fun Any.documentValue(): String = toString().lowercase().replace('_', '-')
+internal fun canonicalRejectedDocument(
+    operation: CanonicalOperation,
+    reason: String,
+): CliJsonDocument = rejectedDocumentFactory.create(
+    RejectedCliDocument(
+        operation = operation.id.value,
+        status = "rejected",
+        reason = reason,
+    ),
+)
+
+internal fun Enum<*>.cliName(): String = name.lowercase().replace('_', '-')

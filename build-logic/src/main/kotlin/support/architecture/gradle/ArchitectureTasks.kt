@@ -1,5 +1,7 @@
 package support.architecture.gradle
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
@@ -196,10 +198,16 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
     ) {
         val target = reportFile.get().asFile.toPath()
         Files.createDirectories(target.parent)
-        val renderedFindings = findings.joinToString(",") { it.renderJson() }
         Files.writeString(
             target,
-            "{\"schemaVersion\":1,\"status\":\"$status\",\"findings\":[$renderedFindings]}\n",
+            architectureReportJson.encodeToString(
+                ArchitectureReportDocument.serializer(),
+                ArchitectureReportDocument(
+                    schemaVersion = 1,
+                    status = status,
+                    findings = findings,
+                ),
+            ) + "\n",
         )
     }
 
@@ -294,26 +302,33 @@ private fun renderScanFailure(failure: BytecodeScanFailure): ArchitectureReportF
     )
 }
 
+@Serializable
+private data class ArchitectureReportDocument(
+    val schemaVersion: Int,
+    val status: String,
+    val findings: List<ArchitectureReportFinding>,
+)
+
+@Serializable
 private data class ArchitectureReportFinding(
     val code: String,
     val message: String,
     val attributes: Map<String, String>,
-) {
-    fun renderJson(): String {
-        val renderedAttributes = attributes.entries.sortedBy(Map.Entry<String, String>::key)
-            .joinToString(",") { (key, value) -> "\"${key.reportEscape()}\":\"${value.reportEscape()}\"" }
-        return "{\"code\":\"${code.reportEscape()}\",\"message\":\"${message.reportEscape()}\"," +
-               "\"attributes\":{$renderedAttributes}}"
-    }
-}
+)
 
 private fun finding(
     code: String,
     message: String,
     vararg attributes: Pair<String, String>,
-): ArchitectureReportFinding = ArchitectureReportFinding(code, message, mapOf(*attributes))
+): ArchitectureReportFinding = ArchitectureReportFinding(
+    code = code,
+    message = message,
+    attributes = mapOf(*attributes).toSortedMap(),
+)
 
-private fun String.reportEscape(): String = replace("\\", "\\\\")
-    .replace("\"", "\\\"")
-    .replace("\n", "\\n")
-    .replace("\r", "\\r")
+private val architectureReportJson = Json {
+    encodeDefaults = true
+    explicitNulls = true
+    ignoreUnknownKeys = false
+    isLenient = false
+}

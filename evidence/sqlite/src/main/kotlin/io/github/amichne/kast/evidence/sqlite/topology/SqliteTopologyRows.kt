@@ -5,7 +5,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
@@ -16,6 +15,7 @@ import io.github.amichne.kast.topology.contract.TopologyGenerationDigest
 import io.github.amichne.kast.topology.contract.TopologySnapshotContent
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
 import io.github.amichne.kast.topology.contract.TopologySnapshotManifest
+import io.github.amichne.kast.topology.contract.TopologySnapshotReadFailure
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
@@ -62,6 +62,29 @@ internal value class SqliteTopologySnapshotId private constructor(val value: Lon
     }
 }
 
+internal enum class SqliteTopologySymbolIdFailure {
+    NON_POSITIVE,
+}
+
+@JvmInline
+internal value class SqliteTopologySymbolId private constructor(val value: Long) {
+    companion object {
+        /**
+         * Proof transition: `Long -> Refinement<SqliteTopologySymbolId,
+         * SqliteTopologySymbolIdFailure>`.
+         *
+         * Establishes one positive location-bearing topology symbol row identity. The closed
+         * expected failure is [SqliteTopologySymbolIdFailure]. Raw row IDs may enter only from
+         * JDBC inside this adapter.
+         */
+        internal fun restore(
+            raw: Long,
+        ): Refinement<SqliteTopologySymbolId, SqliteTopologySymbolIdFailure> =
+            if (raw > 0L) Refinement.Refined(SqliteTopologySymbolId(raw))
+            else Refinement.Rejected(SqliteTopologySymbolIdFailure.NON_POSITIVE)
+    }
+}
+
 private data class SqlitePublishedTopologySnapshot(
     override val identity: TopologyWorkspaceIdentity,
     override val manifest: TopologySnapshotManifest,
@@ -72,7 +95,7 @@ internal fun Connection.findExactTopologySnapshot(
 ): SqliteTopologySnapshotLookup = prepareStatement(
     """SELECT snapshot_id, workspace_root, generation, source_state, digest,
               file_count, symbol_count, edge_count
-       FROM topology_snapshot
+       FROM topology_snapshot_v2
        WHERE workspace_root = ? AND generation = ? AND source_state = ?""",
 ).use { statement ->
     statement.setString(1, identity.lease.workspaceRoot.value)
@@ -86,7 +109,7 @@ internal fun Connection.findLatestTopologySnapshot(
 ): SqliteTopologySnapshotLookup = prepareStatement(
     """SELECT snapshot_id, workspace_root, generation, source_state, digest,
               file_count, symbol_count, edge_count
-       FROM topology_snapshot WHERE workspace_root = ?
+       FROM topology_snapshot_v2 WHERE workspace_root = ?
        ORDER BY snapshot_id DESC LIMIT 1""",
 ).use { statement ->
     statement.setString(1, root.value)
@@ -98,7 +121,7 @@ internal fun Connection.insertTopologySnapshot(
 ): SqliteTopologySnapshotRecord {
     val manifest = TopologySnapshotManifest.from(generation)
     prepareStatement(
-        """INSERT INTO topology_snapshot(
+        """INSERT INTO topology_snapshot_v2(
                workspace_root, generation, source_state, digest,
                file_count, symbol_count, edge_count
            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -124,76 +147,23 @@ internal fun Connection.insertTopologySnapshot(
     )
 }
 
-internal fun Connection.insertTopologyContent(
-    snapshotId: SqliteTopologySnapshotId,
-    generation: CompleteTopologyGeneration,
-) {
-    generation.files.forEach { complete -> insertFile(snapshotId, complete.file) }
-    generation.symbols.forEach { symbol -> insertSymbol(snapshotId, symbol) }
-    generation.edges.forEach { edge -> insertEdge(snapshotId, edge) }
-}
-
-private fun Connection.insertFile(snapshotId: SqliteTopologySnapshotId, file: TopologySourceFile) {
-    prepareStatement(
-        """INSERT INTO topology_file(
-               snapshot_id, path, content_hash, module_name, build_root, project_path,
-               source_set, source_root, provenance
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-    ).use { statement ->
-        statement.setLong(1, snapshotId.value)
-        statement.setString(2, file.path.value)
-        statement.setString(3, file.contentHash.value)
-        statement.setString(4, file.sourceRoot.owner.module.value)
-        statement.setString(5, file.sourceRoot.owner.project.buildRoot.value)
-        statement.setString(6, file.sourceRoot.owner.project.projectPath.value)
-        statement.setString(7, file.sourceRoot.owner.sourceSet.value)
-        statement.setString(8, file.sourceRoot.location.value)
-        statement.setString(9, file.sourceRoot.provenance.sqliteName())
-        if (statement.executeUpdate() != 1) corrupt("topology file insert changed no row")
-    }
-}
-
-private fun Connection.insertSymbol(
-    snapshotId: SqliteTopologySnapshotId,
-    symbol: TopologySymbol,
-) {
-    prepareStatement(
-        """INSERT INTO topology_symbol(
-               snapshot_id, compiler_identity, file_path, start_offset, end_offset,
-               symbol_name, qualified_identity, symbol_kind
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-    ).use { statement ->
-        statement.setLong(1, snapshotId.value)
-        statement.setString(2, symbol.evidence.compilerIdentity.value)
-        statement.setString(3, symbol.file.path.value)
-        statement.setInt(4, symbol.evidence.range.startInclusive)
-        statement.setInt(5, symbol.evidence.range.endExclusive)
-        statement.setString(6, symbol.evidence.name.value)
-        statement.setString(7, symbol.evidence.qualifiedIdentity.sqliteValue())
-        statement.setString(8, symbol.evidence.kind.name)
-        if (statement.executeUpdate() != 1) corrupt("topology symbol insert changed no row")
-    }
-}
-
-private fun Connection.insertEdge(snapshotId: SqliteTopologySnapshotId, edge: TopologyEdge) {
-    prepareStatement(
-        """INSERT INTO topology_edge(
-               snapshot_id, edge_kind, source_identity, target_identity,
-               occurrence_file_path, start_offset, end_offset
-           ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
-    ).use { statement ->
-        statement.setLong(1, snapshotId.value)
-        statement.setString(2, edge.kind.name)
-        statement.setString(3, edge.source.evidence.compilerIdentity.value)
-        statement.setString(4, edge.target.evidence.compilerIdentity.value)
-        statement.setString(5, edge.source.file.path.value)
-        statement.setInt(6, edge.occurrence.startInclusive)
-        statement.setInt(7, edge.occurrence.endExclusive)
-        if (statement.executeUpdate() != 1) corrupt("topology edge insert changed no row")
-    }
-}
-
+/**
+ * Proof transition: `(Connection, PublishedTopologySnapshot) -> TopologySnapshotContentRead`.
+ *
+ * Reconstructs and re-admits every persisted file, symbol, edge, manifest count, and digest for
+ * the exact snapshot. [TopologySnapshotReadFailure.CORRUPT_SNAPSHOT] closes every malformed or
+ * inconsistent row; SQL availability failures remain for the owning store boundary to classify.
+ * Raw JDBC values do not leave this SQLite adapter.
+ */
 internal fun Connection.readTopologyContent(
+    snapshot: PublishedTopologySnapshot,
+): TopologySnapshotContentRead = try {
+    reconstructTopologyContent(snapshot)
+} catch (_: SqliteTopologyCorruption) {
+    TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT)
+}
+
+private fun Connection.reconstructTopologyContent(
     snapshot: PublishedTopologySnapshot,
 ): TopologySnapshotContentRead {
     val record = when (val lookup = findExactTopologySnapshot(snapshot.identity)) {
@@ -224,7 +194,7 @@ private fun Connection.readFiles(
 ): Map<WorkspaceSourcePath, TopologySourceFile> = prepareStatement(
     """SELECT path, content_hash, module_name, build_root, project_path,
               source_set, source_root, provenance
-       FROM topology_file WHERE snapshot_id = ? ORDER BY path""",
+       FROM topology_file_v2 WHERE snapshot_id = ? ORDER BY path""",
 ).use { statement ->
     statement.setLong(1, record.snapshotId.value)
     statement.executeQuery().use { rows ->
@@ -261,10 +231,11 @@ private fun Connection.readFiles(
 private fun Connection.readSymbols(
     record: SqliteTopologySnapshotRecord,
     files: Map<WorkspaceSourcePath, TopologySourceFile>,
-): Map<CompilerSymbolIdentity, TopologySymbol> = prepareStatement(
-    """SELECT compiler_identity, file_path, start_offset, end_offset, symbol_name,
+): Map<SqliteTopologySymbolId, TopologySymbol> = prepareStatement(
+    """SELECT symbol_id, compiler_identity, file_path, start_offset, end_offset, symbol_name,
               qualified_identity, symbol_kind
-       FROM topology_symbol WHERE snapshot_id = ? ORDER BY compiler_identity""",
+       FROM topology_symbol_v2 WHERE snapshot_id = ?
+       ORDER BY compiler_identity, file_path, start_offset, end_offset""",
 ).use { statement ->
     statement.setLong(1, record.snapshotId.value)
     statement.executeQuery().use { rows ->
@@ -293,7 +264,9 @@ private fun Connection.readSymbols(
                     compilerIdentity,
                 ).refined("compiler evidence")
                 put(
-                    compilerIdentity,
+                    SqliteTopologySymbolId.restore(
+                        rows.getLong("symbol_id"),
+                    ).refined("symbol identity"),
                     TopologySymbol.admit(file, evidence).refined("topology symbol"),
                 )
             }
@@ -303,23 +276,23 @@ private fun Connection.readSymbols(
 
 private fun Connection.readEdges(
     record: SqliteTopologySnapshotRecord,
-    symbols: Map<CompilerSymbolIdentity, TopologySymbol>,
+    symbols: Map<SqliteTopologySymbolId, TopologySymbol>,
 ): List<TopologyEdge> = prepareStatement(
-    """SELECT edge_kind, source_identity, target_identity, occurrence_file_path,
+    """SELECT edge_kind, source_symbol_id, target_symbol_id, occurrence_file_path,
               start_offset, end_offset
-       FROM topology_edge WHERE snapshot_id = ?
-       ORDER BY edge_kind, source_identity, target_identity, occurrence_file_path,
+       FROM topology_edge_v2 WHERE snapshot_id = ?
+       ORDER BY edge_kind, source_symbol_id, target_symbol_id, occurrence_file_path,
                 start_offset, end_offset""",
 ).use { statement ->
     statement.setLong(1, record.snapshotId.value)
     statement.executeQuery().use { rows ->
         buildList {
             while (rows.next()) {
-                val sourceIdentity = CompilerSymbolIdentity.parse(
-                    rows.getString("source_identity"),
+                val sourceIdentity = SqliteTopologySymbolId.restore(
+                    rows.getLong("source_symbol_id"),
                 ).refined("edge source identity")
-                val targetIdentity = CompilerSymbolIdentity.parse(
-                    rows.getString("target_identity"),
+                val targetIdentity = SqliteTopologySymbolId.restore(
+                    rows.getLong("target_symbol_id"),
                 ).refined("edge target identity")
                 val source = symbols[sourceIdentity]
                              ?: corrupt("edge source absent")
@@ -369,22 +342,11 @@ private fun ResultSet.snapshotLookup(): SqliteTopologySnapshotLookup =
     if (next()) SqliteTopologySnapshotLookup.Found(snapshot())
     else SqliteTopologySnapshotLookup.Absent
 
-private fun SourceRootProvenance.sqliteName(): String = when (this) {
-    SourceRootProvenance.Authored -> "AUTHORED"
-    SourceRootProvenance.Generated -> "GENERATED"
-    is SourceRootProvenance.Unknown -> "UNKNOWN_EXCLUDED"
-}
-
 private fun String.sourceRootProvenance(): SourceRootProvenance = when (this) {
     "AUTHORED" -> SourceRootProvenance.Authored
     "GENERATED" -> SourceRootProvenance.Generated
     "UNKNOWN_EXCLUDED" -> SourceRootProvenance.Unknown(ProvenanceFailure.ExcludedFromSourceModel)
     else -> corrupt("unknown source provenance")
-}
-
-private fun ExactDeclarationQualifiedIdentity.sqliteValue(): String? = when (this) {
-    is ExactDeclarationQualifiedIdentity.Available -> value
-    ExactDeclarationQualifiedIdentity.Unavailable -> null
 }
 
 private inline fun <reified Value : Enum<Value>> enumValue(raw: String): Value = try {

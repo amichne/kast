@@ -185,7 +185,7 @@ class KastRuntimeCompositionTest {
             record<TopologyBuildRequest, TopologyBuildResult, TopologyBuildQualification, TopologyBuildRejection>(
                 CanonicalOperation.TOPOLOGY_BUILD,
                 operations,
-                TopologyBuildRejection.WORKSPACE_NOT_READY,
+                TopologyBuildRejection.WorkspaceNotReady,
             )
 
         override fun symbolDiscover(operations: SymbolDiscoveryOperations) =

@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
+import io.github.amichne.kast.topology.contract.TopologyBuildFailure
 import io.github.amichne.kast.topology.contract.TopologyBuildResult
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
@@ -32,8 +33,6 @@ import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
-import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
@@ -81,6 +80,30 @@ class TopologyBuildServiceTest {
     }
 
     @Test
+    fun `moved workspace prevents exact durable snapshot reuse`() = runTest {
+        val fixture = fixture()
+        val snapshot = fixture.snapshot()
+        val enumerationCalls = AtomicInteger()
+        val service = TopologyBuildService.create(
+            ready(fixture.workspace),
+            MovedGuard,
+            TopologyCandidateEnumerator {
+                enumerationCalls.incrementAndGet()
+                fixture.enumeration
+            },
+            TopologyFileExtractor { TopologyFileExtraction.Complete(fixture.complete) },
+            FixedSnapshots(
+                TopologySnapshotEligibility.Eligible(snapshot),
+                AtomicInteger(),
+                snapshot,
+            ),
+        )
+
+        assertEquals(TopologyBuildResult.WorkspaceMoved, service.build())
+        assertEquals(0, enumerationCalls.get())
+    }
+
+    @Test
     fun `unchanged files rebind stale snapshot to current lease without K2 extraction`() = runTest {
         val prior = fixture()
         val priorSnapshot = prior.snapshot()
@@ -90,7 +113,7 @@ class TopologyBuildServiceTest {
         ).refined()
         val currentWorkspace = workspace(
             prior.complete.file.sourceRoot,
-            "restarted-workspace-state",
+            "workspace-state",
             8,
         )
         val currentFile = TopologySourceFile.admit(
@@ -268,6 +291,54 @@ class TopologyBuildServiceTest {
         assertEquals(1, publicationCalls.get())
     }
 
+    @Test
+    fun `source evidence moving after extraction makes publication unreachable`() = runTest {
+        val fixture = fixture()
+        val movedFile = TopologySourceFile.admit(
+            fixture.workspace,
+            fixture.complete.file.sourceRoot,
+            fixture.complete.file.path,
+            WorkspaceSourceContentHash.parse("b".repeat(64)).refined(),
+        ).refined()
+        val movedCandidates = TopologyCandidateSet.admit(
+            fixture.workspace,
+            listOf(movedFile),
+        ).refined()
+        val enumerationCalls = AtomicInteger()
+        val publicationCalls = AtomicInteger()
+        val service = TopologyBuildService.create(
+            ready(fixture.workspace),
+            CurrentGuard(fixture.workspace.readLease),
+            TopologyCandidateEnumerator {
+                if (enumerationCalls.incrementAndGet() == 1) {
+                    fixture.enumeration
+                } else {
+                    TopologyCandidateEnumeration.Complete(movedCandidates)
+                }
+            },
+            TopologyFileExtractor { TopologyFileExtraction.Complete(fixture.complete) },
+            FixedSnapshots(
+                TopologySnapshotEligibility.Unavailable,
+                publicationCalls,
+                fixture.snapshot(),
+            ),
+        )
+
+        val result = service.build()
+
+        assertEquals(
+            TopologyBuildResult.Rejected(
+                TopologyBuildFailure.Extraction(
+                    fixture.complete.file.path,
+                    TopologyExtractionFailure.SOURCE_CONTENT_MOVED,
+                ),
+            ),
+            result,
+        )
+        assertEquals(2, enumerationCalls.get())
+        assertEquals(0, publicationCalls.get())
+    }
+
     private fun fixture(): Fixture {
         val sourceRoot = sourceRoot()
         val workspace = workspace(sourceRoot)
@@ -320,71 +391,8 @@ class TopologyBuildServiceTest {
         ),
     ).refined()
 
-    private fun ready(workspace: PublishedWorkspace): WorkspaceInspectionOperations =
-        WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) }
-
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error(failure.toString())
     }
-}
-
-private data class Fixture(
-    val workspace: PublishedWorkspace,
-    val enumeration: TopologyCandidateEnumeration.Complete,
-    val complete: CompleteTopologyFile,
-    val generation: CompleteTopologyGeneration,
-) {
-    fun snapshot(): PublishedTopologySnapshot = TestSnapshot(
-        generation.identity,
-        TopologySnapshotManifest.from(generation),
-    )
-}
-
-private data class TestSnapshot(
-    override val identity: TopologyWorkspaceIdentity,
-    override val manifest: TopologySnapshotManifest,
-) : PublishedTopologySnapshot
-
-private class FixedSnapshots(
-    private val eligibility: TopologySnapshotEligibility,
-    private val publicationCalls: AtomicInteger,
-    private val snapshot: PublishedTopologySnapshot,
-) : TopologySnapshotStore {
-    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility =
-        eligibility
-
-    override fun read(
-        snapshot: PublishedTopologySnapshot,
-    ): io.github.amichne.kast.topology.contract.TopologySnapshotContentRead =
-        io.github.amichne.kast.topology.contract.TopologySnapshotContentRead.Rejected(
-            io.github.amichne.kast.topology.contract.TopologySnapshotReadFailure.STORAGE_UNAVAILABLE,
-        )
-
-    override fun publish(
-        generation: CompleteTopologyGeneration,
-    ): TopologyPublicationResult {
-        publicationCalls.incrementAndGet()
-        return TopologyPublicationResult.Published(snapshot)
-    }
-}
-
-private class CurrentGuard(
-    private val current: SemanticReadLease,
-) : SemanticReadLeaseGuard {
-    override fun <Value> whileCurrent(
-        expected: SemanticReadLease,
-        operation: () -> Value,
-    ): SemanticReadLeaseUse<Value> = if (expected == current) {
-        SemanticReadLeaseUse.Completed(operation())
-    } else {
-        SemanticReadLeaseUse.Moved
-    }
-}
-
-private data object MovedGuard : SemanticReadLeaseGuard {
-    override fun <Value> whileCurrent(
-        expected: SemanticReadLease,
-        operation: () -> Value,
-    ): SemanticReadLeaseUse<Value> = SemanticReadLeaseUse.Moved
 }

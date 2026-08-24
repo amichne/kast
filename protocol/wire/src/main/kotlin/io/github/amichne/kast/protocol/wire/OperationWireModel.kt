@@ -10,19 +10,18 @@ import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SchemaIdentityFailure
-import kotlinx.serialization.KSerializer
 
-/** Generated serializers whose type parameters exactly match one operation definition. */
-data class GeneratedOperationSerializers<
+/** Generated structured codecs whose type parameters exactly match one operation definition. */
+internal data class GeneratedOperationSerializers<
     Request : OperationRequest,
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
     >(
-    val request: KSerializer<Request>,
-    val result: KSerializer<Result>,
-    val qualification: KSerializer<Qualification>,
-    val rejection: KSerializer<Rejection>,
+    val request: WireValueCodec<Request>,
+    val result: WireValueCodec<Result>,
+    val qualification: WireValueCodec<Qualification>,
+    val rejection: WireValueCodec<Rejection>,
 )
 
 sealed interface WireEncoding {

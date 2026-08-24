@@ -4,7 +4,6 @@ import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
-import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanQualification
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -17,179 +16,90 @@ import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
 import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
-import io.github.amichne.kast.protocol.contract.OperationRequest
-import io.github.amichne.kast.protocol.contract.OperationResult
-import io.github.amichne.kast.protocol.contract.ProtocolText
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
-
 internal object CanonicalChangeSerializers {
-    val changePlanRequest = jsonContractSerializer<ChangePlanRequest>(
-        "kast.change.plan.request.v1",
-        encode = { JsonObject(mapOf("intent" to encodeIntent(it.intent))) },
-        decode = {
-            val value = it.objectWithFields("intent")
-            ChangePlanRequest(decodeIntent(value.getValue("intent")))
-        },
-    )
-    val changePlanResult = textResultSerializer(
-        "kast.change.plan.result.v1",
-        "planIdentity",
-        ChangePlanResult::planIdentity,
-        ::ChangePlanResult,
-    )
-    val changePlanQualification =
-        canonicalEnumSerializer<ChangePlanQualification>("kast.change.plan.qualification.v1")
-    val changePlanRejection =
-        canonicalEnumSerializer<ChangePlanRejection>("kast.change.plan.rejection.v1")
+    private val factory = GeneratedWireCodecFactory(wireJson)
 
-    val changeApplyRequest = textRequestSerializer(
-        "kast.change.apply.request.v1",
-        "planIdentity",
-        ChangeApplyRequest::planIdentity,
-        ::ChangeApplyRequest,
+    val changePlanRequest = factory.create(
+        ChangePlanRequestDocument.serializer(),
+        ChangePlanRequest::toSerializableDocument,
+        ChangePlanRequestDocument::toContract,
     )
-    val changeApplyResult = textResultSerializer(
-        "kast.change.apply.result.v1",
-        "applicationIdentity",
-        ChangeApplyResult::applicationIdentity,
-        ::ChangeApplyResult,
+    val changePlanResult = factory.create(
+        ChangePlanResultDocument.serializer(),
+        ChangePlanResult::toSerializableDocument,
+        ChangePlanResultDocument::toContract,
     )
-    val changeApplyQualification =
-        canonicalEnumSerializer<ChangeApplyQualification>("kast.change.apply.qualification.v1")
-    val changeApplyRejection =
-        canonicalEnumSerializer<ChangeApplyRejection>("kast.change.apply.rejection.v1")
+    val changePlanQualification = factory.create(
+        ChangePlanQualificationDocument.serializer(),
+        ChangePlanQualification::toSerializableDocument,
+        ChangePlanQualificationDocument::toContract,
+    )
+    val changePlanRejection = factory.create(
+        ChangePlanRejectionDocument.serializer(),
+        ChangePlanRejection::toSerializableDocument,
+        ChangePlanRejectionDocument::toContract,
+    )
 
-    val changeVerifyRequest = textRequestSerializer(
-        "kast.change.verify.request.v1",
-        "applicationIdentity",
-        ChangeVerifyRequest::applicationIdentity,
-        ::ChangeVerifyRequest,
+    val changeApplyRequest = factory.create(
+        ChangeApplyRequestDocument.serializer(),
+        ChangeApplyRequest::toSerializableDocument,
+        ChangeApplyRequestDocument::toContract,
     )
-    val changeVerifyResult = textResultSerializer(
-        "kast.change.verify.result.v1",
-        "receiptIdentity",
-        ChangeVerifyResult::receiptIdentity,
-        ::ChangeVerifyResult,
+    val changeApplyResult = factory.create(
+        ChangeApplyResultDocument.serializer(),
+        ChangeApplyResult::toSerializableDocument,
+        ChangeApplyResultDocument::toContract,
     )
-    val changeVerifyQualification =
-        canonicalEnumSerializer<ChangeVerifyQualification>("kast.change.verify.qualification.v1")
-    val changeVerifyRejection =
-        canonicalEnumSerializer<ChangeVerifyRejection>("kast.change.verify.rejection.v1")
+    val changeApplyQualification = factory.create(
+        ChangeApplyQualificationDocument.serializer(),
+        ChangeApplyQualification::toSerializableDocument,
+        ChangeApplyQualificationDocument::toContract,
+    )
+    val changeApplyRejection = factory.create(
+        ChangeApplyRejectionDocument.serializer(),
+        ChangeApplyRejection::toSerializableDocument,
+        ChangeApplyRejectionDocument::toContract,
+    )
 
-    val changeRecoverRequest = textRequestSerializer(
-        "kast.change.recover.request.v1",
-        "planIdentity",
-        ChangeRecoverRequest::planIdentity,
-        ::ChangeRecoverRequest,
+    val changeVerifyRequest = factory.create(
+        ChangeVerifyRequestDocument.serializer(),
+        ChangeVerifyRequest::toSerializableDocument,
+        ChangeVerifyRequestDocument::toContract,
     )
-    val changeRecoverResult = jsonContractSerializer<ChangeRecoverResult>(
-        "kast.change.recover.result.v1",
-        encode = { JsonObject(mapOf("state" to kotlinx.serialization.json.JsonPrimitive(it.state.name.lowercase()))) },
-        decode = {
-            val value = it.objectWithFields("state").getValue("state").stringValue()
-            try {
-                ChangeRecoverResult(enumValueOf(value.uppercase()))
-            } catch (_: IllegalArgumentException) {
-                throw SerializationException("Invalid recovery state")
-            }
-        },
+    val changeVerifyResult = factory.create(
+        ChangeVerifyResultDocument.serializer(),
+        ChangeVerifyResult::toSerializableDocument,
+        ChangeVerifyResultDocument::toContract,
     )
-    val changeRecoverQualification =
-        canonicalEnumSerializer<ChangeRecoverQualification>("kast.change.recover.qualification.v1")
-    val changeRecoverRejection =
-        canonicalEnumSerializer<ChangeRecoverRejection>("kast.change.recover.rejection.v1")
+    val changeVerifyQualification = factory.create(
+        ChangeVerifyQualificationDocument.serializer(),
+        ChangeVerifyQualification::toSerializableDocument,
+        ChangeVerifyQualificationDocument::toContract,
+    )
+    val changeVerifyRejection = factory.create(
+        ChangeVerifyRejectionDocument.serializer(),
+        ChangeVerifyRejection::toSerializableDocument,
+        ChangeVerifyRejectionDocument::toContract,
+    )
+
+    val changeRecoverRequest = factory.create(
+        ChangeRecoverRequestDocument.serializer(),
+        ChangeRecoverRequest::toSerializableDocument,
+        ChangeRecoverRequestDocument::toContract,
+    )
+    val changeRecoverResult = factory.create(
+        ChangeRecoverResultDocument.serializer(),
+        ChangeRecoverResult::toSerializableDocument,
+        ChangeRecoverResultDocument::toContract,
+    )
+    val changeRecoverQualification = factory.create(
+        ChangeRecoverQualificationDocument.serializer(),
+        ChangeRecoverQualification::toSerializableDocument,
+        ChangeRecoverQualificationDocument::toContract,
+    )
+    val changeRecoverRejection = factory.create(
+        ChangeRecoverRejectionDocument.serializer(),
+        ChangeRecoverRejection::toSerializableDocument,
+        ChangeRecoverRejectionDocument::toContract,
+    )
 }
-
-private fun encodeIntent(intent: ChangeIntentDocument) = buildJsonObject {
-    when (intent) {
-        is ChangeIntentDocument.AddFile -> {
-            put("kind", "add-file")
-            put("relativePath", intent.relativePath.asJson())
-            put("content", intent.content.asJson())
-        }
-        is ChangeIntentDocument.AddDeclaration -> {
-            put("kind", "add-declaration")
-            put("exactTarget", intent.exactTarget.asJson())
-            put("declaration", intent.declaration.asJson())
-        }
-        is ChangeIntentDocument.ReplaceDeclaration -> {
-            put("kind", "replace-declaration")
-            put("exactTarget", intent.exactTarget.asJson())
-            put("replacement", intent.replacement.asJson())
-        }
-        is ChangeIntentDocument.RenameSymbol -> {
-            put("kind", "rename-symbol")
-            put("exactTarget", intent.exactTarget.asJson())
-            put("newName", intent.newName.asJson())
-        }
-    }
-}
-
-/**
- * Proof transition: `JsonElement -> ChangeIntentDocument`.
- *
- * Establishes exactly one of the four closed intent variants and its refined fields. Invalid
- * input maps through the serializer to closed [WireFailure.InvalidPayload]. Raw intent fields may
- * be extracted only here.
- */
-private fun decodeIntent(element: kotlinx.serialization.json.JsonElement): ChangeIntentDocument {
-    val kindObject = try {
-        element.jsonObject
-    } catch (_: IllegalArgumentException) {
-        throw SerializationException("Invalid change intent")
-    }
-    val kind = kindObject["kind"]?.stringValue()
-               ?: throw SerializationException("Missing change intent kind")
-    return when (kind) {
-        "add-file" -> kindObject.objectWithFields("kind", "relativePath", "content").let {
-            ChangeIntentDocument.AddFile(it.protocolText("relativePath"), it.protocolText("content"))
-        }
-        "add-declaration" ->
-            kindObject.objectWithFields("kind", "exactTarget", "declaration").let {
-                ChangeIntentDocument.AddDeclaration(
-                    it.protocolText("exactTarget"),
-                    it.protocolText("declaration"),
-                )
-            }
-        "replace-declaration" ->
-            kindObject.objectWithFields("kind", "exactTarget", "replacement").let {
-                ChangeIntentDocument.ReplaceDeclaration(
-                    it.protocolText("exactTarget"),
-                    it.protocolText("replacement"),
-                )
-            }
-        "rename-symbol" -> kindObject.objectWithFields("kind", "exactTarget", "newName").let {
-            ChangeIntentDocument.RenameSymbol(
-                it.protocolText("exactTarget"),
-                it.protocolText("newName"),
-            )
-        }
-        else -> throw SerializationException("Unknown change intent kind")
-    }
-}
-
-private fun <Request : OperationRequest> textRequestSerializer(
-    serialName: String,
-    field: String,
-    extract: (Request) -> ProtocolText,
-    construct: (ProtocolText) -> Request,
-) = jsonContractSerializer(
-    serialName,
-    encode = { value -> JsonObject(mapOf(field to extract(value).asJson())) },
-    decode = { element -> construct(element.objectWithFields(field).protocolText(field)) },
-)
-
-private fun <Result : OperationResult> textResultSerializer(
-    serialName: String,
-    field: String,
-    extract: (Result) -> ProtocolText,
-    construct: (ProtocolText) -> Result,
-) = jsonContractSerializer(
-    serialName,
-    encode = { value -> JsonObject(mapOf(field to extract(value).asJson())) },
-    decode = { element -> construct(element.objectWithFields(field).protocolText(field)) },
-)

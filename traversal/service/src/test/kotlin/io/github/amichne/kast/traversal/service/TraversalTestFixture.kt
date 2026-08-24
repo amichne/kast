@@ -71,6 +71,7 @@ internal class TraversalTestFixture {
     fun selector(
         name: String,
         offset: Int,
+        compilerIdentity: String = "function|sample.$name|-|||-|0",
     ): SymbolSelector {
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(lease, scope),
@@ -115,7 +116,7 @@ internal class TraversalTestFixture {
             name,
             "sample.$name",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.$name|-|||-|0").refined(),
+            CompilerSymbolIdentity.parse(compilerIdentity).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

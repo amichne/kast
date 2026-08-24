@@ -110,7 +110,7 @@ class TopologyGraphServiceTest {
             CompleteTopologyFile.admit(
                 file,
                 listOf(symbols.getValue(name)),
-                edges.filter { it.source == symbols.getValue(name) },
+                edges.filter { it.source == symbols.getValue(name) }.sorted(),
             ).refined()
         }
         val generation = CompleteTopologyGeneration.admit(

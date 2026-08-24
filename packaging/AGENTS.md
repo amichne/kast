@@ -7,8 +7,8 @@ published Kast distributions through their public boundaries.
 - Compare the installed schema with the generated registry artifact exactly;
   do not duplicate operation-ID lists or count-only assertions.
 - The topology lifecycle must prove missing evidence before the first build,
-  publication and exact reuse, restart reuse without a build, mutation,
-  fresh-selector prerequisite rejection, explicit rebuild, and new evidence.
+  publication and exact reuse by one PID across successive public callers, restart reuse without a
+  build, mutation, fresh-selector prerequisite rejection, explicit rebuild, and new evidence.
 - Keep runtime payload checks separate from workspace and SQLite evidence; a
   semantic journey must not download or extract the runtime again.
 - Python support stays standard-library-only and each executable check reports

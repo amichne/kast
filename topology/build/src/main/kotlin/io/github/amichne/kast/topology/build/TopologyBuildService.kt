@@ -9,6 +9,8 @@ import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildResult
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
+import io.github.amichne.kast.topology.contract.TopologyCandidateSet
+import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.contract.TopologyPublicationResult
@@ -21,43 +23,98 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLeaseGuard
 import io.github.amichne.kast.workspace.contract.SemanticReadLeaseUse
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
-import java.util.concurrent.atomic.AtomicReference
+import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 
 /** Private capability whose construction and use exist only inside `:topology:build`. */
 private class TopologyBuildAuthority {
-    private val retained = AtomicReference<RetainedTopologySnapshot>(
-        RetainedTopologySnapshot.Unavailable,
-    )
-
     suspend fun execute(operation: suspend () -> TopologyBuildResult): TopologyBuildResult =
         operation()
+}
 
-    /**
-     * Proof transition: `TopologyWorkspaceIdentity -> RetainedTopologySnapshot`.
-     *
-     * Exact establishes an already-published snapshot for the requested identity; Unavailable is
-     * the closed absence state. The retained publication proof never leaves this private build
-     * authority.
-     */
-    fun recall(identity: TopologyWorkspaceIdentity): RetainedTopologySnapshot =
-        when (val current = retained.get()) {
-            is RetainedTopologySnapshot.Exact -> if (current.snapshot.identity == identity) {
-                current
-            } else {
-                RetainedTopologySnapshot.Unavailable
-            }
-            RetainedTopologySnapshot.Unavailable -> RetainedTopologySnapshot.Unavailable
+private class ExactDurableTopologySnapshot private constructor(
+    val snapshot: PublishedTopologySnapshot,
+) {
+    companion object {
+        /**
+         * Proof transition: `(TopologyWorkspaceIdentity, PublishedTopologySnapshot) ->
+         * Refinement<ExactDurableTopologySnapshot,
+         * TopologyBuildFailure.SnapshotContractViolation>`.
+         *
+         * Establishes that the durable eligibility adapter returned the exact requested workspace
+         * identity. The closed expected failure is
+         * [TopologyBuildFailure.SnapshotContractViolation]. Raw adapter output is consumed only at
+         * this durable reuse boundary.
+         */
+        fun validate(
+            identity: TopologyWorkspaceIdentity,
+            snapshot: PublishedTopologySnapshot,
+        ): Refinement<
+            ExactDurableTopologySnapshot,
+            TopologyBuildFailure.SnapshotContractViolation,
+        > = if (snapshot.identity == identity) {
+            Refinement.Refined(ExactDurableTopologySnapshot(snapshot))
+        } else {
+            Refinement.Rejected(TopologyBuildFailure.SnapshotContractViolation)
         }
-
-    /** Preserves one exact publication proof for a later build with the same identity. */
-    fun retain(snapshot: PublishedTopologySnapshot) {
-        retained.set(RetainedTopologySnapshot.Exact(snapshot))
     }
 }
 
-private sealed interface RetainedTopologySnapshot {
-    data object Unavailable : RetainedTopologySnapshot
-    data class Exact(val snapshot: PublishedTopologySnapshot) : RetainedTopologySnapshot
+private sealed interface TopologyGenerationRevalidationFailure {
+    data class SourceEvidenceMoved(
+        val path: WorkspaceSourcePath,
+    ) : TopologyGenerationRevalidationFailure
+    data object WorkspaceMismatch : TopologyGenerationRevalidationFailure
+    data object GenerationMismatch : TopologyGenerationRevalidationFailure
+}
+
+private class RevalidatedTopologyGeneration private constructor(
+    val generation: CompleteTopologyGeneration,
+) {
+    companion object {
+        /**
+         * Proof transition: `(TopologyCandidateSet, TopologyCandidateSet,
+         * CompleteTopologyGeneration) -> Refinement<RevalidatedTopologyGeneration,
+         * TopologyGenerationRevalidationFailure>`.
+         *
+         * Establishes that the exact candidate paths, ownership, and content hashes did not move
+         * during extraction and that the generation covers that stable evidence. The closed
+         * expected failure is [TopologyGenerationRevalidationFailure]. Fresh physical evidence
+         * may enter only through the injected candidate enumerator.
+         */
+        fun validate(
+            original: TopologyCandidateSet,
+            observed: TopologyCandidateSet,
+            generation: CompleteTopologyGeneration,
+        ): Refinement<
+            RevalidatedTopologyGeneration,
+            TopologyGenerationRevalidationFailure,
+        > {
+            if (original.workspace != observed.workspace) {
+                return Refinement.Rejected(
+                    TopologyGenerationRevalidationFailure.WorkspaceMismatch,
+                )
+            }
+            val originalFiles = original.files.associateBy { it.path }
+            val observedFiles = observed.files.associateBy { it.path }
+            val movedPath = (originalFiles.keys + observedFiles.keys)
+                .sortedBy(WorkspaceSourcePath::value)
+                .firstOrNull { originalFiles[it] != observedFiles[it] }
+            if (movedPath != null) {
+                return Refinement.Rejected(
+                    TopologyGenerationRevalidationFailure.SourceEvidenceMoved(movedPath),
+                )
+            }
+            if (
+                generation.identity != original.workspace ||
+                generation.files.map(CompleteTopologyFile::file) != original.files
+            ) {
+                return Refinement.Rejected(
+                    TopologyGenerationRevalidationFailure.GenerationMismatch,
+                )
+            }
+            return Refinement.Refined(RevalidatedTopologyGeneration(generation))
+        }
+    }
 }
 
 /** Explicit coordinator that alone can turn terminal K2 coverage into publication. */
@@ -82,19 +139,25 @@ class TopologyBuildService private constructor(
                 -> return rejected(TopologyBuildFailure.WorkspaceNotReady)
         }
         val identity = TopologyWorkspaceIdentity.from(workspace)
-        when (val retained = authority.recall(identity)) {
-            is RetainedTopologySnapshot.Exact ->
-                return TopologyBuildResult.Reused(retained.snapshot)
-            RetainedTopologySnapshot.Unavailable -> Unit
+        val eligibility = when (
+            val guarded = leaseGuard.whileCurrent(workspace.readLease) {
+                snapshots.eligible(identity)
+            }
+        ) {
+            SemanticReadLeaseUse.Moved -> return TopologyBuildResult.WorkspaceMoved
+            is SemanticReadLeaseUse.Completed -> guarded.value
         }
-        val prior = when (val existing = snapshots.eligible(identity)) {
-            is TopologySnapshotEligibility.Eligible ->
-                return if (existing.snapshot.identity == identity) {
-                    authority.retain(existing.snapshot)
-                    TopologyBuildResult.Reused(existing.snapshot)
-                } else {
-                    rejected(TopologyBuildFailure.SnapshotContractViolation)
+        val prior = when (val existing = eligibility) {
+            is TopologySnapshotEligibility.Eligible -> {
+                val durable = when (val validation = ExactDurableTopologySnapshot.validate(
+                    identity,
+                    existing.snapshot,
+                )) {
+                    is Refinement.Refined -> validation.value
+                    is Refinement.Rejected -> return rejected(validation.failure)
                 }
+                return TopologyBuildResult.Reused(durable.snapshot)
+            }
             is TopologySnapshotEligibility.Rejected ->
                 return rejected(TopologyBuildFailure.SnapshotRead(existing.failure))
             is TopologySnapshotEligibility.Stale ->
@@ -121,10 +184,11 @@ class TopologyBuildService private constructor(
                 ) {
                     is TopologyGenerationReuse.Rebound -> return publishCompleteGeneration(
                         workspace,
+                        candidateSet,
                         reuse.generation,
                         TopologyPublicationMode.REBOUND,
                     )
-                    is TopologyGenerationReuse.Rejected ->
+                    TopologyGenerationReuse.Rejected ->
                         return rejected(TopologyBuildFailure.SnapshotContractViolation)
                     TopologyGenerationReuse.SourceChanged -> Unit
                 }
@@ -139,12 +203,7 @@ class TopologyBuildService private constructor(
                     return rejected(TopologyBuildFailure.ExtractionContractViolation)
             }
             when (val extraction = extractor.extract(request)) {
-                is TopologyFileExtraction.Complete -> {
-                    if (extraction.file.file != file) {
-                        return rejected(TopologyBuildFailure.ExtractionContractViolation)
-                    }
-                    completed += extraction.file
-                }
+                is TopologyFileExtraction.Complete -> completed += extraction.file
                 is TopologyFileExtraction.Failed -> return rejected(
                     TopologyBuildFailure.Extraction(file.path, extraction.failure),
                 )
@@ -164,6 +223,7 @@ class TopologyBuildService private constructor(
         }
         return publishCompleteGeneration(
             workspace,
+            candidateSet,
             generation,
             TopologyPublicationMode.EXTRACTED,
         )
@@ -171,31 +231,56 @@ class TopologyBuildService private constructor(
 
     private fun publishCompleteGeneration(
         workspace: PublishedWorkspace,
+        originalCandidates: TopologyCandidateSet,
         generation: CompleteTopologyGeneration,
         mode: TopologyPublicationMode,
-    ): TopologyBuildResult = when (
-        val guarded = leaseGuard.whileCurrent(workspace.readLease) {
-            snapshots.publish(generation)
+    ): TopologyBuildResult {
+        val observedCandidates = when (val enumeration = candidates.enumerate(workspace)) {
+            is TopologyCandidateEnumeration.Complete -> enumeration.candidates
+            is TopologyCandidateEnumeration.Rejected ->
+                return rejected(TopologyBuildFailure.Enumeration(enumeration.failure))
         }
-    ) {
-        SemanticReadLeaseUse.Moved -> TopologyBuildResult.WorkspaceMoved
-        is SemanticReadLeaseUse.Completed -> when (val publication = guarded.value) {
-            is TopologyPublicationResult.Published -> {
-                authority.retain(publication.snapshot)
-                when (mode) {
-                    TopologyPublicationMode.EXTRACTED ->
-                        TopologyBuildResult.Published(publication.snapshot)
-                    TopologyPublicationMode.REBOUND ->
-                        TopologyBuildResult.Reused(publication.snapshot)
-                }
-            }
-            is TopologyPublicationResult.Unchanged -> {
-                authority.retain(publication.snapshot)
-                TopologyBuildResult.Reused(publication.snapshot)
-            }
-            is TopologyPublicationResult.Rejected -> rejected(
-                TopologyBuildFailure.Publication(publication.failure),
+        val stableGeneration = when (
+            val validation = RevalidatedTopologyGeneration.validate(
+                originalCandidates,
+                observedCandidates,
+                generation,
             )
+        ) {
+            is Refinement.Refined -> validation.value
+            is Refinement.Rejected -> return when (val failure = validation.failure) {
+                is TopologyGenerationRevalidationFailure.SourceEvidenceMoved -> rejected(
+                    TopologyBuildFailure.Extraction(
+                        failure.path,
+                        TopologyExtractionFailure.SOURCE_CONTENT_MOVED,
+                    ),
+                )
+                TopologyGenerationRevalidationFailure.WorkspaceMismatch,
+                TopologyGenerationRevalidationFailure.GenerationMismatch ->
+                    rejected(TopologyBuildFailure.ExtractionContractViolation)
+            }
+        }
+        return when (
+            val guarded = leaseGuard.whileCurrent(workspace.readLease) {
+                snapshots.publish(stableGeneration.generation)
+            }
+        ) {
+            SemanticReadLeaseUse.Moved -> TopologyBuildResult.WorkspaceMoved
+            is SemanticReadLeaseUse.Completed -> when (val publication = guarded.value) {
+                is TopologyPublicationResult.Published -> {
+                    when (mode) {
+                        TopologyPublicationMode.EXTRACTED ->
+                            TopologyBuildResult.Published(publication.snapshot)
+                        TopologyPublicationMode.REBOUND ->
+                            TopologyBuildResult.Reused(publication.snapshot)
+                    }
+                }
+                is TopologyPublicationResult.Unchanged ->
+                    TopologyBuildResult.Reused(publication.snapshot)
+                is TopologyPublicationResult.Rejected -> rejected(
+                    TopologyBuildFailure.Publication(publication.failure),
+                )
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package io.github.amichne.kast.topology.intellij
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
+import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerationFailure
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleSourceRootEvidence
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
@@ -14,10 +15,18 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
+import java.io.UncheckedIOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Spliterator
+import java.util.Spliterators
+import java.util.concurrent.CancellationException
+import java.util.stream.Stream
+import java.util.stream.StreamSupport
 
 class AdmittedSourceRootEnumeratorTest {
     @TempDir
@@ -70,10 +79,53 @@ class AdmittedSourceRootEnumeratorTest {
         )
     }
 
+    @Test
+    fun `lazy traversal failure is closed source content data`() {
+        Files.createDirectories(tempDir.resolve("src/main/kotlin"))
+        val workspace = workspace(sourceRoot("root.main", ":", "src/main/kotlin"))
+        val enumerator = AdmittedSourceRootEnumerator { root -> lazyFailureAfter(root) }
+
+        val result = assertInstanceOf(
+            TopologyCandidateEnumeration.Rejected::class.java,
+            enumerator.enumerate(workspace),
+        )
+
+        assertEquals(TopologyCandidateEnumerationFailure.SOURCE_CONTENT_UNAVAILABLE, result.failure)
+    }
+
+    @Test
+    fun `cancellation from source traversal propagates`() {
+        Files.createDirectories(tempDir.resolve("src/main/kotlin"))
+        val workspace = workspace(sourceRoot("root.main", ":", "src/main/kotlin"))
+        val enumerator = AdmittedSourceRootEnumerator { _ ->
+            throw CancellationException("injected cancellation")
+        }
+
+        assertThrows(CancellationException::class.java) { enumerator.enumerate(workspace) }
+    }
+
     private fun write(relative: String, content: String) {
         val file = tempDir.resolve(relative)
         Files.createDirectories(file.parent)
         Files.writeString(file, content)
+    }
+
+    private fun lazyFailureAfter(first: Path): Stream<Path> {
+        val paths = object : Iterator<Path> {
+            private var emitted = false
+
+            override fun hasNext(): Boolean = if (emitted) {
+                throw UncheckedIOException(IOException("injected lazy traversal failure"))
+            } else {
+                true
+            }
+
+            override fun next(): Path = first.also { emitted = true }
+        }
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(paths, Spliterator.ORDERED),
+            false,
+        )
     }
 
     private fun workspace(vararg roots: SourceRoot): PublishedWorkspace {

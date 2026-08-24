@@ -148,6 +148,7 @@ class IndexerExecutable private constructor(
 /** Exact process command derived only from admitted executable, root, and endpoint values. */
 class IndexerLaunchCommand private constructor(
     internal val arguments: List<String>,
+    internal val processSession: MacOsRuntimeProcessSession,
 ) {
     companion object {
         /**
@@ -156,7 +157,7 @@ class IndexerLaunchCommand private constructor(
          *
          * Establishes the installed indexer's exact root and UDS launch arguments. Construction
          * fails closed if the endpoint belongs to another root. Raw arguments may be extracted
-         * only by [JdkRuntimeProcessStarter].
+         * only by [MacOsRuntimeProcessSession].
          */
         fun create(
             executable: IndexerExecutable,
@@ -165,12 +166,13 @@ class IndexerLaunchCommand private constructor(
         ): IndexerLaunchCommandConstruction = if (endpoint.root == root) {
             IndexerLaunchCommandConstruction.Created(
                 IndexerLaunchCommand(
-                    listOf(
+                    arguments = listOf(
                         executable.path.toString(),
                         "--workspace-root=${root.path}",
                         "--socket-path=${endpoint.socketPath}",
                         "--runtime-id=${endpoint.runtimeId.value}",
                     ),
+                    processSession = MacOsRuntimeProcessSession.from(endpoint),
                 ),
             )
         } else {
@@ -187,32 +189,6 @@ sealed interface IndexerLaunchCommandConstruction {
     data class Rejected(
         val failure: RuntimeEndpointFailure,
     ) : IndexerLaunchCommandConstruction
-}
-
-fun interface RuntimeProcessStarter {
-    /** Executes only an already admitted [IndexerLaunchCommand]. */
-    fun start(command: IndexerLaunchCommand): RuntimeProcessStart
-}
-
-sealed interface RuntimeProcessStart {
-    data object Started : RuntimeProcessStart
-
-    data object Rejected : RuntimeProcessStart
-}
-
-/** Sole process-effect adapter for an admitted indexer launch command. */
-object JdkRuntimeProcessStarter : RuntimeProcessStarter {
-    override fun start(command: IndexerLaunchCommand): RuntimeProcessStart = try {
-        ProcessBuilder(command.arguments)
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-            .redirectError(ProcessBuilder.Redirect.DISCARD)
-            .start()
-        RuntimeProcessStart.Started
-    } catch (_: IOException) {
-        RuntimeProcessStart.Rejected
-    } catch (_: SecurityException) {
-        RuntimeProcessStart.Rejected
-    }
 }
 
 fun interface RuntimeEndpointProbe {
@@ -268,6 +244,8 @@ enum class RuntimeAdmissionFailure {
     LAYOUT_INVALID,
     RUNTIME_INCOMPATIBLE,
     PROCESS_START_FAILED,
+    SESSION_ENDED_BEFORE_READY,
+    PROCESS_OBSERVATION_FAILED,
     ENDPOINT_UNAVAILABLE,
     RUNTIME_IDENTITY_MISMATCH,
     INTERRUPTED,
@@ -295,7 +273,7 @@ private enum class RuntimeStartupBound(
 private const val RUNTIME_PROBE_INTERVAL_MILLIS = 100L
 
 /** Starts only the admitted indexer artifact with explicit exact-root and socket arguments. */
-class ExactRootProcessRuntimeDemander(
+internal class ExactRootProcessRuntimeDemander(
     private val executable: IndexerExecutable,
     private val processStarter: RuntimeProcessStarter = JdkRuntimeProcessStarter,
     private val endpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
@@ -319,12 +297,30 @@ class ExactRootProcessRuntimeDemander(
                     RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE,
                 )
         }
-        if (processStarter.start(command) is RuntimeProcessStart.Rejected) {
-            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.PROCESS_START_FAILED)
+        val session = when (val start = processStarter.start(command)) {
+            is RuntimeProcessStart.Accepted -> start.session
+            RuntimeProcessStart.Interrupted -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.INTERRUPTED,
+            )
+            RuntimeProcessStart.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.PROCESS_START_FAILED,
+            )
         }
         repeat(RuntimeStartupBound.ENTERPRISE_ACCEPTED.probeAttempts) {
             if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
                 return RuntimeAdmission.Ready(endpoint)
+            }
+            when (session.observe()) {
+                LaunchdServiceObservation.Present -> Unit
+                LaunchdServiceObservation.Absent -> return RuntimeAdmission.Rejected(
+                    RuntimeAdmissionFailure.SESSION_ENDED_BEFORE_READY,
+                )
+                LaunchdServiceObservation.Rejected -> return RuntimeAdmission.Rejected(
+                    RuntimeAdmissionFailure.PROCESS_OBSERVATION_FAILED,
+                )
+                LaunchdServiceObservation.Interrupted -> return RuntimeAdmission.Rejected(
+                    RuntimeAdmissionFailure.INTERRUPTED,
+                )
             }
             try {
                 Thread.sleep(RUNTIME_PROBE_INTERVAL_MILLIS)

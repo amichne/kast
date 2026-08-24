@@ -2,12 +2,15 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
+import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
+import io.github.amichne.kast.cli.command.CliCommandGraphFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifestAdmission
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeFailure
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeSource
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeSourceSelection
 import io.github.amichne.kast.distribution.managed.ManagedSemanticRuntimeProvider
@@ -15,13 +18,6 @@ import io.github.amichne.kast.distribution.managed.RuntimeStore
 import io.github.amichne.kast.distribution.managed.RuntimeStoreAdmission
 import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
 import io.github.amichne.kast.distribution.managed.SemanticRuntimeResolution
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import java.io.IOException
 import java.net.URISyntaxException
 import java.nio.file.Files
@@ -32,147 +28,255 @@ private const val RUNTIME_DIRECTORY_ENVIRONMENT = "KAST_RUNTIME_DIRECTORY"
 private const val RUNTIME_ARCHIVE_ENVIRONMENT = "KAST_RUNTIME_ARCHIVE"
 private const val RUNTIME_STORE_ENVIRONMENT = "KAST_RUNTIME_STORE"
 
+private sealed interface InstalledCompositionFailure : KastCliCompositionFailure {
+    data class ControlProductRejected(
+        val failure: InstalledKastControlProductFailure,
+    ) : InstalledCompositionFailure
+
+    data class ResourceUnavailable(
+        val resource: InstalledControlResource,
+    ) : InstalledCompositionFailure
+
+    data class RuntimeManifestRejected(
+        val failure: SemanticRuntimeFailure,
+    ) : InstalledCompositionFailure
+
+    data class CommandGraphRejected(
+        val failures: Set<CliCommandGraphFailure>,
+    ) : InstalledCompositionFailure
+
+    data class RuntimeDirectoryRejected(
+        val failure: InstalledRuntimeDirectoryFailure,
+    ) : InstalledCompositionFailure
+
+    data class SchemaRejected(
+        val failure: InstalledSchemaFailure,
+    ) : InstalledCompositionFailure
+
+    data class LocalMetadataRejected(
+        val failure: CliLocalMetadataFailure,
+    ) : InstalledCompositionFailure
+}
+
 /** The sole service-loaded composition for an installed Kotlin `kast` executable. */
-class InstalledKastCliComposition : KastCliComposition {
-    override fun create(): KastCli {
-        val installation = InstalledKastControlProduct.discover()
-        val manifest = installation.runtimeManifest()
+internal class InstalledKastCliComposition : KastCliComposition {
+    /**
+     * Proof transition: `installed process environment -> KastCliCompositionConstruction`.
+     *
+     * Establishes one complete CLI graph with an admitted control product, runtime manifest,
+     * command surface, runtime directory, and local metadata. [InstalledCompositionFailure] is
+     * the closed expected failure. Filesystem and environment extraction remain in this installed
+     * composition boundary.
+     */
+    override fun create(): KastCliCompositionConstruction {
+        val installation = when (val admission = InstalledKastControlProduct.discover()) {
+            is InstalledKastControlProductAdmission.Admitted -> admission.product
+            is InstalledKastControlProductAdmission.Rejected ->
+                return KastCliCompositionConstruction.Rejected(
+                    InstalledCompositionFailure.ControlProductRejected(admission.failure),
+                )
+        }
+        val manifestResource = when (
+            val resource = installation.readResource(InstalledControlResource.SEMANTIC_RUNTIME)
+        ) {
+            is InstalledControlResourceRead.Read -> resource.value
+            is InstalledControlResourceRead.Rejected ->
+                return KastCliCompositionConstruction.Rejected(
+                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
+                )
+        }
+        val manifest = when (val admission = SemanticRuntimeManifest.admit(manifestResource)) {
+            is SemanticRuntimeManifestAdmission.Admitted -> admission.manifest
+            is SemanticRuntimeManifestAdmission.Rejected ->
+                return KastCliCompositionConstruction.Rejected(
+                    InstalledCompositionFailure.RuntimeManifestRejected(admission.failure),
+                )
+        }
         val commandGraphFactory = when (
             val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
         ) {
             is CliCommandGraphConstruction.Created -> construction.factory
-            is CliCommandGraphConstruction.Rejected -> error(
-                "canonical CLI command graph is incomplete: ${construction.failures}",
-            )
+            is CliCommandGraphConstruction.Rejected ->
+                return KastCliCompositionConstruction.Rejected(
+                    InstalledCompositionFailure.CommandGraphRejected(construction.failures),
+                )
         }
-        val runtimeDirectory = when (val admitted = InstalledRuntimeDirectory.admit()) {
-            is InstalledRuntimeDirectoryAdmission.Admitted -> admitted.directory
-            is InstalledRuntimeDirectoryAdmission.Rejected -> error(
-                "installed runtime directory is unavailable: ${admitted.failure}",
-            )
+        val runtimeDirectory = when (val admission = InstalledRuntimeDirectory.admit()) {
+            is InstalledRuntimeDirectoryAdmission.Admitted -> admission.directory
+            is InstalledRuntimeDirectoryAdmission.Rejected ->
+                return KastCliCompositionConstruction.Rejected(
+                    InstalledCompositionFailure.RuntimeDirectoryRejected(admission.failure),
+                )
         }
-        return KastCli(
-            commandGraphFactory,
-            FilesystemCanonicalRootDiscovery,
-            Sha256RuntimeEndpointLocator(runtimeDirectory.path, manifest.runtimeId),
-            ManagedExactRootRuntimeDemander(
-                manifest,
-                InstalledSemanticRuntimeResolver(::resolveInstalledRuntime),
+        val localMetadata = when (
+            val construction = installation.localMetadata(manifest, commandGraphFactory.surface)
+        ) {
+            is InstalledLocalMetadataConstruction.Constructed -> construction.metadata
+            is InstalledLocalMetadataConstruction.Rejected ->
+                return KastCliCompositionConstruction.Rejected(construction.failure)
+        }
+        return KastCliCompositionConstruction.Created(
+            KastCli(
+                commandGraphFactory,
+                FilesystemCanonicalRootDiscovery,
+                Sha256RuntimeEndpointLocator(runtimeDirectory.path, manifest.runtimeId),
+                ManagedExactRootRuntimeDemander(
+                    manifest,
+                    InstalledSemanticRuntimeResolver(::resolveInstalledRuntime),
+                ),
+                UnixDomainWireClient(),
+                localMetadata,
             ),
-            UnixDomainWireClient(),
-            installation.localMetadata(manifest, commandGraphFactory.surface),
         )
     }
+}
+
+private enum class InstalledKastControlProductFailure {
+    CODE_SOURCE_UNAVAILABLE,
+    CODE_SOURCE_INVALID,
+    LIBRARY_DIRECTORY_INVALID,
+    PRODUCT_ROOT_UNAVAILABLE,
+    RESOURCE_DIRECTORY_UNAVAILABLE,
+}
+
+private sealed interface InstalledKastControlProductAdmission {
+    data class Admitted(
+        val product: InstalledKastControlProduct,
+    ) : InstalledKastControlProductAdmission
+
+    data class Rejected(
+        val failure: InstalledKastControlProductFailure,
+    ) : InstalledKastControlProductAdmission
+}
+
+private enum class InstalledControlResource(val fileName: String) {
+    OPERATION_REGISTRY("operation-registry.json"),
+    WIRE_SCHEMA("wire-schema.json"),
+    SEMANTIC_RUNTIME("semantic-runtime.json"),
+}
+
+private sealed interface InstalledControlResourceRead {
+    data class Read(val value: String) : InstalledControlResourceRead
+    data class Rejected(val resource: InstalledControlResource) : InstalledControlResourceRead
+}
+
+private sealed interface InstalledLocalMetadataConstruction {
+    data class Constructed(val metadata: CliLocalMetadata) : InstalledLocalMetadataConstruction
+    data class Rejected(
+        val failure: InstalledCompositionFailure,
+    ) : InstalledLocalMetadataConstruction
 }
 
 /** One control installation proven by the CLI jar and exact `share/kast` resources. */
 private class InstalledKastControlProduct private constructor(
     private val root: Path,
 ) {
-    fun runtimeManifest(): SemanticRuntimeManifest {
-        val raw = readResource("semantic-runtime.json")
-        return when (val admitted = SemanticRuntimeManifest.admit(raw)) {
-            is SemanticRuntimeManifestAdmission.Admitted -> admitted.manifest
-            is SemanticRuntimeManifestAdmission.Rejected -> error(
-                "embedded semantic runtime manifest is invalid: ${admitted.failure.reason}",
-            )
-        }
-    }
-
+    /**
+     * Proof transition: `SemanticRuntimeManifest + CliCommandSurface ->
+     * InstalledLocalMetadataConstruction`.
+     *
+     * Establishes readable schema resources and admitted local metadata while preserving any
+     * [InstalledCompositionFailure]. Raw installed resource text remains inside this adapter.
+     */
     fun localMetadata(
         manifest: SemanticRuntimeManifest,
         commandSurface: CliCommandSurface,
-    ): CliLocalMetadata {
-        val schema = installedSchema(
-            readResource("operation-registry.json"),
-            readResource("wire-schema.json"),
+    ): InstalledLocalMetadataConstruction {
+        val operationRegistry = when (val resource = readResource(InstalledControlResource.OPERATION_REGISTRY)) {
+            is InstalledControlResourceRead.Read -> resource.value
+            is InstalledControlResourceRead.Rejected ->
+                return InstalledLocalMetadataConstruction.Rejected(
+                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
+                )
+        }
+        val wireSchema = when (val resource = readResource(InstalledControlResource.WIRE_SCHEMA)) {
+            is InstalledControlResourceRead.Read -> resource.value
+            is InstalledControlResourceRead.Rejected ->
+                return InstalledLocalMetadataConstruction.Rejected(
+                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
+                )
+        }
+        val schema = when (val construction = installedSchema(
+            operationRegistry,
+            wireSchema,
             manifest.canonicalJson.value,
             commandSurface,
-        )
+        )) {
+            is InstalledSchemaConstruction.Constructed -> construction.document
+            is InstalledSchemaConstruction.Rejected ->
+                return InstalledLocalMetadataConstruction.Rejected(
+                    InstalledCompositionFailure.SchemaRejected(construction.failure),
+                )
+        }
         return when (
-            val admitted = CliLocalMetadata.admit(
+            val admission = CliLocalMetadata.admit(
                 manifest.productVersion.value,
                 manifest.runtimeId.value,
                 schema,
             )
         ) {
-            is CliLocalMetadataAdmission.Admitted -> admitted.metadata
-            is CliLocalMetadataAdmission.Rejected -> error(
-                "installed CLI metadata is invalid: ${admitted.failure}",
+            is CliLocalMetadataAdmission.Admitted ->
+                InstalledLocalMetadataConstruction.Constructed(admission.metadata)
+            is CliLocalMetadataAdmission.Rejected -> InstalledLocalMetadataConstruction.Rejected(
+                InstalledCompositionFailure.LocalMetadataRejected(admission.failure),
             )
         }
     }
 
-    private fun readResource(name: String): String = try {
-        Files.readString(root.resolve("share/kast/$name"))
-    } catch (failure: IOException) {
-        throw IllegalStateException("installed control resource is unavailable: $name", failure)
+    /**
+     * Proof transition: `InstalledControlResource -> InstalledControlResourceRead`.
+     *
+     * Establishes readable installed resource text. The finite rejected variant retains the exact
+     * resource identity. Filesystem reads remain inside this installed-control boundary.
+     */
+    fun readResource(resource: InstalledControlResource): InstalledControlResourceRead = try {
+        InstalledControlResourceRead.Read(
+            Files.readString(root.resolve("share/kast/${resource.fileName}")),
+        )
+    } catch (_: IOException) {
+        InstalledControlResourceRead.Rejected(resource)
     }
 
     companion object {
         /**
          * Proof transition: `InstalledKastCliComposition code source ->
-         * InstalledKastControlProduct`.
+         * InstalledKastControlProductAdmission`.
          *
          * Establishes that the provider was loaded from the installation's `lib` directory and
-         * owns one sibling `share/kast` resource directory. Unexpected layouts fail the closed
-         * bootstrap boundary. Raw URI and paths remain inside this installed-control adapter.
+         * owns one sibling `share/kast` resource directory. [InstalledKastControlProductFailure]
+         * is the closed expected failure. Raw URI and paths remain inside this adapter.
          */
-        fun discover(): InstalledKastControlProduct {
+        fun discover(): InstalledKastControlProductAdmission {
             val codeSource = try {
                 Path.of(
                     InstalledKastCliComposition::class.java.protectionDomain.codeSource.location
                         .toURI(),
                 ).toRealPath()
-            } catch (failure: IOException) {
-                throw IllegalStateException("installed CLI code source is unavailable", failure)
-            } catch (failure: URISyntaxException) {
-                throw IllegalStateException("installed CLI code source is invalid", failure)
+            } catch (_: IOException) {
+                return InstalledKastControlProductAdmission.Rejected(
+                    InstalledKastControlProductFailure.CODE_SOURCE_UNAVAILABLE,
+                )
+            } catch (_: URISyntaxException) {
+                return InstalledKastControlProductAdmission.Rejected(
+                    InstalledKastControlProductFailure.CODE_SOURCE_INVALID,
+                )
             }
-            val libraryDirectory = codeSource.parent
-                                       ?.takeIf { it.fileName.toString() == "lib" }
-                                   ?: error("installed CLI must be loaded from its lib directory")
+            val libraryDirectory = codeSource.parent?.takeIf { it.fileName.toString() == "lib" }
+                ?: return InstalledKastControlProductAdmission.Rejected(
+                    InstalledKastControlProductFailure.LIBRARY_DIRECTORY_INVALID,
+                )
             val root = libraryDirectory.parent
-                       ?: error("installed CLI lib directory has no product root")
-            check(Files.isDirectory(root.resolve("share/kast"))) {
-                "installed CLI has no share/kast resources"
+                ?: return InstalledKastControlProductAdmission.Rejected(
+                    InstalledKastControlProductFailure.PRODUCT_ROOT_UNAVAILABLE,
+                )
+            if (!Files.isDirectory(root.resolve("share/kast"))) {
+                return InstalledKastControlProductAdmission.Rejected(
+                    InstalledKastControlProductFailure.RESOURCE_DIRECTORY_UNAVAILABLE,
+                )
             }
-            return InstalledKastControlProduct(root)
+            return InstalledKastControlProductAdmission.Admitted(InstalledKastControlProduct(root))
         }
     }
-}
-
-private fun installedSchema(
-    operationRegistry: String,
-    wireSchema: String,
-    runtimeManifest: String,
-    commandSurface: CliCommandSurface,
-): String {
-    val json = Json { explicitNulls = false }
-    fun objectResource(raw: String): JsonObject =
-        json.parseToJsonElement(raw) as? JsonObject
-        ?: error("control schema resource is not an object")
-
-    val projection = buildJsonObject {
-        put("localFlags", JsonArray(commandSurface.localFlags.map(::JsonPrimitive)))
-        put(
-            "lifecycleCommands",
-            JsonArray(commandSurface.lifecycleCommands.map { JsonPrimitive(it.command) }),
-        )
-        put("commands", buildJsonArray {
-            commandSurface.semanticCommands.forEach { command ->
-                add(JsonPrimitive(command.usage))
-            }
-        })
-    }
-    val schema = buildJsonObject {
-        put("schemaVersion", 1)
-        put("operationRegistry", objectResource(operationRegistry))
-        put("wireSchema", objectResource(wireSchema))
-        put("cliProjection", projection)
-        put("semanticRuntime", objectResource(runtimeManifest))
-    }
-    return json.encodeToString(JsonObject.serializer(), schema)
 }
 
 /** Performs source selection and store admission only after semantic demand. */

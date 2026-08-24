@@ -69,10 +69,12 @@ import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
+import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
@@ -199,10 +201,13 @@ class CanonicalOperationWireBindingsTest {
             TopologyBuildResult(
                 TopologyBuildStatus.PUBLISHED,
                 EvidenceGeneration.parse(17).refinedValue(),
-                text("abc123"),
+                TopologyBuildDigest.parse("a".repeat(64)).refinedValue(),
             ),
             TopologyBuildQualification.PROGRESS_UNAVAILABLE,
-            TopologyBuildRejection.EXTRACTION_FAILED,
+            TopologyBuildRejection.ExtractionFailed(
+                text("topology/intellij/src/main/kotlin/TopologyK2Projection.kt"),
+                TopologyExtractionRejection.SOURCE_CONTENT_MOVED,
+            ),
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.changePlan,

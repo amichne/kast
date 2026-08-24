@@ -84,6 +84,29 @@ class CliSurfaceContractTest {
         assertEquals("{\"schemaVersion\":1}", schema.document.value)
     }
 
+    @Test
+    fun `open schema admission remains object shaped and finite on malformed input`() {
+        assertEquals(
+            CliOpenJsonObjectAdmission.Rejected(CliOpenJsonObjectFailure.NOT_AN_OBJECT),
+            CliOpenJsonObject.parse("[]"),
+        )
+        assertEquals(
+            CliOpenJsonObjectAdmission.Rejected(CliOpenJsonObjectFailure.MALFORMED),
+            CliOpenJsonObject.parse("{broken"),
+        )
+        val admitted = CliOpenJsonObject.parse("{\"future\":{\"value\":null}}")
+            as CliOpenJsonObjectAdmission.Admitted
+        assertEquals("{\"future\":{\"value\":null}}", admitted.value.document().value)
+    }
+
+    @Test
+    fun `text admission rejects blank process output as finite data`() {
+        assertEquals(
+            CliTextDocumentAdmission.Rejected(CliTextDocumentFailure.BLANK),
+            CliTextDocument.admit("  "),
+        )
+    }
+
     private fun commandGraphFactory(): CliCommandGraphFactory = when (
         val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
     ) {

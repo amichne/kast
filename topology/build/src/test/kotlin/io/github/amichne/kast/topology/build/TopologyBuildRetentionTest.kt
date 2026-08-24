@@ -37,13 +37,68 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 class TopologyBuildRetentionTest {
     @Test
-    fun `successful publication is retained for an exact repeat build`() = runTest {
+    fun `extractor foreign evidence reaches typed coverage rejection`() = runTest {
+        val fixture = retentionFixture()
+        val candidate = fixture.complete.file
+        val completed = TopologySourceFile.admit(
+            fixture.workspace,
+            candidate.sourceRoot,
+            candidate.path,
+            WorkspaceSourceContentHash.parse("b".repeat(64)).retentionRefined(),
+        ).retentionRefined()
+        val foreignCompletion = CompleteTopologyFile.admit(
+            completed,
+            emptyList(),
+            emptyList(),
+        ).retentionRefined()
+        val publicationCalls = AtomicInteger()
+        val service = TopologyBuildService.create(
+            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(fixture.workspace) },
+            RetentionCurrentGuard(fixture.workspace.readLease),
+            TopologyCandidateEnumerator {
+                TopologyCandidateEnumeration.Complete(fixture.candidates)
+            },
+            TopologyFileExtractor { TopologyFileExtraction.Complete(foreignCompletion) },
+            object : TopologySnapshotStore {
+                override fun eligible(identity: TopologyWorkspaceIdentity) =
+                    TopologySnapshotEligibility.Unavailable
+
+                override fun read(snapshot: PublishedTopologySnapshot) =
+                    TopologySnapshotContentRead.Rejected(
+                        TopologySnapshotReadFailure.STORAGE_UNAVAILABLE,
+                    )
+
+                override fun publish(generation: CompleteTopologyGeneration):
+                    TopologyPublicationResult {
+                    publicationCalls.incrementAndGet()
+                    return TopologyPublicationResult.Published(fixture.snapshot)
+                }
+            },
+        )
+
+        val rejected = assertInstanceOf(
+            TopologyBuildResult.Rejected::class.java,
+            service.build(),
+        )
+        val coverage = assertInstanceOf(
+            io.github.amichne.kast.topology.contract.TopologyBuildFailure.Coverage::class.java,
+            rejected.failure,
+        )
+        val mismatch = coverage.failure.candidateEvidenceMismatches.single()
+        assertEquals(candidate, mismatch.candidate)
+        assertEquals(completed, mismatch.completed)
+        assertEquals(0, publicationCalls.get())
+    }
+
+    @Test
+    fun `retained publication still requires durable eligibility on an exact repeat`() = runTest {
         val fixture = retentionFixture()
         val eligibilityCalls = AtomicInteger()
         val enumerationCalls = AtomicInteger()
@@ -83,11 +138,11 @@ class TopologyBuildRetentionTest {
         val second = service.build()
 
         assertEquals(TopologyBuildResult.Published(fixture.snapshot), first)
-        assertEquals(TopologyBuildResult.Reused(fixture.snapshot), second)
-        assertEquals(1, eligibilityCalls.get())
-        assertEquals(1, enumerationCalls.get())
-        assertEquals(1, extractionCalls.get())
-        assertEquals(1, publicationCalls.get())
+        assertEquals(TopologyBuildResult.Published(fixture.snapshot), second)
+        assertEquals(2, eligibilityCalls.get())
+        assertEquals(4, enumerationCalls.get())
+        assertEquals(2, extractionCalls.get())
+        assertEquals(2, publicationCalls.get())
     }
 
     @Test

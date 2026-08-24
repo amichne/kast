@@ -6,9 +6,24 @@ import java.util.ServiceLoader
 import kotlin.system.exitProcess
 
 /** Runtime composition seam; exactly one installed provider must supply the completed CLI graph. */
-fun interface KastCliComposition {
-    fun create(): KastCli
+internal fun interface KastCliComposition {
+    /**
+     * Proof transition: `installed process environment -> KastCliCompositionConstruction`.
+     *
+     * Establishes either one completed CLI graph or [KastCliCompositionFailure] as finite data.
+     * Raw installation effects remain owned by the service-loaded provider.
+     */
+    fun create(): KastCliCompositionConstruction
 }
+
+internal sealed interface KastCliCompositionConstruction {
+    data class Created(val cli: KastCli) : KastCliCompositionConstruction
+    data class Rejected(
+        val failure: KastCliCompositionFailure,
+    ) : KastCliCompositionConstruction
+}
+
+internal sealed interface KastCliCompositionFailure
 
 private sealed interface CliBootstrap {
     data class Ready(
@@ -20,10 +35,13 @@ private sealed interface CliBootstrap {
     ) : CliBootstrap
 }
 
-private enum class CliBootstrapFailure {
-    COMPOSITION_MISSING,
-    COMPOSITION_AMBIGUOUS,
-    COMPOSITION_INVALID,
+private sealed interface CliBootstrapFailure {
+    data object CompositionMissing : CliBootstrapFailure
+    data object CompositionAmbiguous : CliBootstrapFailure
+    data object CompositionInvalid : CliBootstrapFailure
+    data class CompositionRejected(
+        val failure: KastCliCompositionFailure,
+    ) : CliBootstrapFailure
 }
 
 /** Process entrypoint for the single Kotlin `kast` executable. */
@@ -32,7 +50,7 @@ fun main(args: Array<String>) {
         is CliBootstrap.Ready -> bootstrap.cli.execute(args.toList(), Path.of("").toAbsolutePath())
         is CliBootstrap.Rejected -> boundaryExit(
             CliBoundaryExitStatus.BOOTSTRAP,
-            bootstrap.failure.name.lowercase(),
+            bootstrap.failure.outputReason(),
         )
     }
     when (exit) {
@@ -55,15 +73,28 @@ private fun loadComposition(): CliBootstrap {
     val compositions = try {
         ServiceLoader.load(KastCliComposition::class.java).toList()
     } catch (_: ServiceConfigurationError) {
-        return CliBootstrap.Rejected(CliBootstrapFailure.COMPOSITION_INVALID)
+        return CliBootstrap.Rejected(CliBootstrapFailure.CompositionInvalid)
     }
     return when (compositions.size) {
-        0 -> CliBootstrap.Rejected(CliBootstrapFailure.COMPOSITION_MISSING)
+        0 -> CliBootstrap.Rejected(CliBootstrapFailure.CompositionMissing)
         1 -> try {
-            CliBootstrap.Ready(compositions.single().create())
+            when (val construction = compositions.single().create()) {
+                is KastCliCompositionConstruction.Created -> CliBootstrap.Ready(construction.cli)
+                is KastCliCompositionConstruction.Rejected -> CliBootstrap.Rejected(
+                    CliBootstrapFailure.CompositionRejected(construction.failure),
+                )
+            }
         } catch (_: RuntimeException) {
-            CliBootstrap.Rejected(CliBootstrapFailure.COMPOSITION_INVALID)
+            CliBootstrap.Rejected(CliBootstrapFailure.CompositionInvalid)
         }
-        else -> CliBootstrap.Rejected(CliBootstrapFailure.COMPOSITION_AMBIGUOUS)
+        else -> CliBootstrap.Rejected(CliBootstrapFailure.CompositionAmbiguous)
     }
+}
+
+private fun CliBootstrapFailure.outputReason(): String = when (this) {
+    CliBootstrapFailure.CompositionMissing -> "composition_missing"
+    CliBootstrapFailure.CompositionAmbiguous -> "composition_ambiguous"
+    CliBootstrapFailure.CompositionInvalid,
+    is CliBootstrapFailure.CompositionRejected,
+        -> "composition_invalid"
 }

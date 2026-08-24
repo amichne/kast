@@ -13,8 +13,12 @@ module scan, repository-root walk, startup hook, or read-triggered work.
 - One exact content-identified candidate generation may share one detached projection registry;
   changed candidate evidence invalidates reuse, and each terminal extraction reloads only its
   requested file.
-- Compiler identities are source-scoped and include callable receiver types where Kotlin overload
-  identity requires them.
+- Extraction reads the live VFS bytes, including committed document state, and requires their hash
+  to equal the admitted candidate before PSI or K2 work. A mismatch rejects as
+  `SOURCE_CONTENT_MOVED`.
+- Compiler identities remain canonical across symbol, relation, and topology adapters. Exact file
+  and range evidence belongs to `TopologySymbol` and the topology persistence node key; it must
+  not be appended to `CompilerSymbolIdentity`.
 - Live `Project`, VFS, PSI, search, and K2 values remain inside explicit adapter calls.
 - Local declarations and intrafunctional dataflow are outside the topology model.
 

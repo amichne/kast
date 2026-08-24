@@ -15,7 +15,7 @@ the consuming projects.
   selection.
 - `support/tasks` owns IDEA distribution extraction, test-tag selection,
   runtime library synchronization, classpath layout proof, indexer-version
-  generation, and wrapper scripts.
+  generation, generated-serialization source guards, and wrapper scripts.
 - `support/pr633` owns reusable exact-head, bytecode, API, and gate-evidence task types.
 - `support/architecture` owns the typed clean-slate module graph, effect policy,
   and checked-in architecture projection.
@@ -48,6 +48,9 @@ the consuming projects.
 - `VerifyClasspathLayoutTask` proves class ownership, required entries,
   descriptor placement, and the absence of forbidden fat jars. Keep semantic
   class-entry checks stronger than filename conventions.
+- `VerifyGeneratedSerializationSourcesTask` and `verifyGeneratedBuildLogicSerialization` reject
+  hand-written JSON assembly at configured closed schemas. Treat this fast source guard as a
+  complement to compiler and round-trip proof, not as a replacement for either.
 - `ExtractIdeaDistributionTask` rejects zip-slip paths and replaces a
   versioned extraction atomically.
 - Add every direct project dependency to the typed architecture policy in the

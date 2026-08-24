@@ -26,6 +26,9 @@ nominal association between each canonical operation and its direct target servi
 - A binding factory result is admitted only when its canonical operation matches the nominal slot.
 - Runtime-server construction remains closed data; missing, duplicate, or mismatched bindings
   cannot produce a runnable composition.
+- Candidate and exact selector token payloads are dedicated `@Serializable` documents decoded to
+  closed typed admissions. `verifyGeneratedSelectorSerialization` rejects element builders,
+  field-walking adapters, maps, and hand-written serializers in that fixed schema boundary.
 
 ## Verification ladder
 

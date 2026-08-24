@@ -1,7 +1,6 @@
 package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
@@ -12,19 +11,23 @@ import java.nio.file.Path
 
 /** Exact content-identified candidate generation authorized to share detached projections. */
 internal data class TopologyProjectionRegistryKey internal constructor(
-    val workspace: TopologyWorkspaceIdentity,
-    val files: List<TopologySourceFile>,
+    val candidates: TopologyCandidateSet,
 ) {
+    val workspace: TopologyWorkspaceIdentity = candidates.workspace
+    val files: List<TopologySourceFile> = candidates.files
+
     companion object {
         /**
          * Proof transition: `TopologyCandidateSet -> TopologyProjectionRegistryKey`.
          *
-         * Preserves the exact workspace identity, canonical file ownership, and content hashes
-         * that authorize reuse of detached compiler projections. Raw candidate extraction remains
-         * at the admitted-root enumerator boundary.
+         * Preserves the exact candidate-set capability whose workspace identity, canonical file
+         * ownership, and content hashes authorize reuse of detached compiler projections. Key
+         * comparison is constant-time capability identity; a separately enumerated set must earn
+         * a new registry. Raw candidate extraction remains at the admitted-root enumerator
+         * boundary.
          */
         fun from(candidates: TopologyCandidateSet): TopologyProjectionRegistryKey =
-            TopologyProjectionRegistryKey(candidates.workspace, candidates.files.toList())
+            TopologyProjectionRegistryKey(candidates)
     }
 }
 
@@ -32,7 +35,6 @@ internal data class TopologyProjectionRegistryKey internal constructor(
 internal class TopologyProjectionRegistry private constructor(
     val key: TopologyProjectionRegistryKey,
     private val symbolsByLocation: Map<TopologyDeclarationLocation, TopologySymbol>,
-    private val symbolsByIdentity: Map<CompilerSymbolIdentity, TopologySymbol>,
     private val filesByAbsolutePath: Map<Path, TopologySourceFile>,
 ) {
     /**
@@ -58,13 +60,6 @@ internal class TopologyProjectionRegistry private constructor(
         else TopologyRegistrySymbolLookup.Found(symbol)
     }
 
-    /** Returns the detached repository symbol carrying one already-refined compiler identity. */
-    fun symbol(identity: CompilerSymbolIdentity): TopologyRegistrySymbolLookup {
-        val symbol = symbolsByIdentity[identity]
-        return if (symbol == null) TopologyRegistrySymbolLookup.Unavailable
-        else TopologyRegistrySymbolLookup.Found(symbol)
-    }
-
     /**
      * Proof transition: `Path -> TopologyRegistryFileLookup`.
      *
@@ -79,26 +74,49 @@ internal class TopologyProjectionRegistry private constructor(
     }
 
     companion object {
+        /**
+         * Proof transition: `(TopologyProjectionRegistryKey, List<TopologySymbol>) ->
+         * Refinement<TopologyProjectionRegistry, TopologyProjectionRegistryFailure>`.
+         *
+         * Establishes exact declaration-location and absolute-file lookup capabilities for one
+         * candidate-set identity without overwriting symbols at a duplicate declaration location.
+         * [TopologyProjectionRegistryFailure] is the closed expected failure. Raw path extraction
+         * remains inside this IntelliJ adapter.
+         */
         fun from(
             key: TopologyProjectionRegistryKey,
             symbols: List<TopologySymbol>,
-        ): TopologyProjectionRegistry = TopologyProjectionRegistry(
-            key,
-            symbols.associateBy { symbol ->
+        ): Refinement<TopologyProjectionRegistry, TopologyProjectionRegistryFailure> {
+            if (symbols.any { it.file !in key.files }) {
+                return Refinement.Rejected(
+                    TopologyProjectionRegistryFailure.SYMBOL_OUTSIDE_CANDIDATE_SET,
+                )
+            }
+            val symbolGroups = symbols.groupBy { symbol ->
                 TopologyDeclarationLocation(symbol.file, symbol.evidence.range)
-            },
-            symbols.associateBy { symbol -> symbol.evidence.compilerIdentity },
-            key.files.associateBy { file ->
-                Path.of(key.workspace.lease.workspaceRoot.value)
-                    .resolve(file.path.value)
-                    .toAbsolutePath()
-                    .normalize()
-            },
-        )
+            }
+            if (symbolGroups.any { it.value.size > 1 }) {
+                return Refinement.Rejected(
+                    TopologyProjectionRegistryFailure.DUPLICATE_DECLARATION_LOCATION,
+                )
+            }
+            return Refinement.Refined(
+                TopologyProjectionRegistry(
+                    key,
+                    symbolGroups.mapValues { it.value.single() },
+                    filesByAbsolutePath(key),
+                ),
+            )
+        }
 
         internal fun empty(key: TopologyProjectionRegistryKey): TopologyProjectionRegistry =
-            from(key, emptyList())
+            TopologyProjectionRegistry(key, emptyMap(), filesByAbsolutePath(key))
     }
+}
+
+internal enum class TopologyProjectionRegistryFailure {
+    SYMBOL_OUTSIDE_CANDIDATE_SET,
+    DUPLICATE_DECLARATION_LOCATION,
 }
 
 internal sealed interface TopologyRegistrySymbolLookup {
@@ -159,6 +177,15 @@ private data class TopologyDeclarationLocation(
     val file: TopologySourceFile,
     val range: ExactDeclarationTextRange,
 )
+
+private fun filesByAbsolutePath(
+    key: TopologyProjectionRegistryKey,
+): Map<Path, TopologySourceFile> = key.files.associateBy { file ->
+    Path.of(key.workspace.lease.workspaceRoot.value)
+        .resolve(file.path.value)
+        .toAbsolutePath()
+        .normalize()
+}
 
 private sealed interface TopologyProjectionRegistryState {
     data object Empty : TopologyProjectionRegistryState

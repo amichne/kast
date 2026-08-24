@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.composition
+package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -8,12 +8,6 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.relation.contract.RelationEndpoint
-import io.github.amichne.kast.runtime.composition.protocol.CandidateSelectorIssuance
-import io.github.amichne.kast.runtime.composition.protocol.CandidateSelectorLookup
-import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
-import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorIssuance
-import io.github.amichne.kast.runtime.composition.protocol.ExactSelectorLookup
-import io.github.amichne.kast.runtime.composition.protocol.RelationEndpointIssuance
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind

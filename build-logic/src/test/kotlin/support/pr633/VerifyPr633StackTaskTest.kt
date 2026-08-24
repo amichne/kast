@@ -3,10 +3,8 @@ package support.pr633
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import org.gradle.api.tasks.UntrackedTask
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
@@ -18,6 +16,38 @@ import org.junit.jupiter.api.io.TempDir
 class VerifyPr633StackTaskTest {
     @TempDir
     lateinit var repository: Path
+
+    @Test
+    fun `missing required tasks field is rejected by generated decoding`() {
+        val incomplete = pr633AuthorityJson.encodeToString(
+            Pr633ProgramWithoutTasksDocument.serializer(),
+            Pr633ProgramWithoutTasksDocument(
+                schemaVersion = 2,
+                programId = PROGRAM_ID,
+                gates = emptyList(),
+            ),
+        )
+
+        assertThrows<SerializationException> {
+            pr633AuthorityJson.decodeFromString(Pr633ProgramDocument.serializer(), incomplete)
+        }
+    }
+
+    @Test
+    fun `missing required gates field is rejected by generated decoding`() {
+        val incomplete = pr633AuthorityJson.encodeToString(
+            Pr633ProgramWithoutGatesDocument.serializer(),
+            Pr633ProgramWithoutGatesDocument(
+                schemaVersion = 2,
+                programId = PROGRAM_ID,
+                tasks = emptyList(),
+            ),
+        )
+
+        assertThrows<SerializationException> {
+            pr633AuthorityJson.decodeFromString(Pr633ProgramDocument.serializer(), incomplete)
+        }
+    }
 
     @Test
     fun `refined repository locations cannot be reconstructed from raw strings`() {
@@ -237,17 +267,29 @@ class VerifyPr633StackTaskTest {
         val head = git("rev-parse", "HEAD")
         val event = write(
             "event.json",
-            """{"number":633,"pull_request":{"base":{"ref":"main"},"head":{"sha":"$head"}}}""",
+            pr633AuthorityJson.encodeToString(
+                Pr633EventDocument.serializer(),
+                Pr633EventDocument(
+                    number = 633,
+                    pullRequest = Pr633EventDocument.PullRequestDocument(
+                        base = Pr633EventDocument.BaseDocument("main"),
+                        head = Pr633EventDocument.HeadDocument(head),
+                    ),
+                ),
+            ),
         )
         val programFile = write("program.json", program)
         val policy = write(
             "policy.json",
-            buildJsonObject {
-                put("programId", PROGRAM_ID)
-                put("forbiddenPrefixes", buildJsonArray {
-                    forbiddenPrefixes.forEach { add(JsonPrimitive(it)) }
-                })
-            }.toString(),
+            pr633AuthorityJson.encodeToString(
+                Pr633PathPolicyDocument.serializer(),
+                Pr633PathPolicyDocument(
+                    schemaVersion = 1,
+                    programId = PROGRAM_ID,
+                    policy = "Test-only forbidden-prefix authority.",
+                    forbiddenPrefixes = forbiddenPrefixes,
+                ),
+            ),
         )
         val project = ProjectBuilder.builder().withProjectDir(repository.toFile()).build()
         return project.tasks.register("verifyStackUnderTest", VerifyPr633StackTask::class.java).get().apply {
@@ -276,29 +318,21 @@ class VerifyPr633StackTaskTest {
         }
     }
 
-    private fun program(scopes: Map<String, List<String>> = emptyMap()): String = buildJsonObject {
-        put("programId", PROGRAM_ID)
-        put(
-            "tasks",
-            buildJsonArray {
-                REQUIRED_TASK_IDS.forEach { taskId ->
-                    add(
-                        buildJsonObject {
-                            put("id", taskId)
-                            put(
-                                "allowedWrites",
-                                buildJsonArray {
-                                    scopes.getOrElse(taskId, ::emptyList).forEach {
-                                        add(JsonPrimitive(it))
-                                    }
-                                },
-                            )
-                        },
+    private fun program(scopes: Map<String, List<String>> = emptyMap()): String =
+        pr633AuthorityJson.encodeToString(
+            Pr633ProgramDocument.serializer(),
+            Pr633ProgramDocument(
+                schemaVersion = 2,
+                programId = PROGRAM_ID,
+                tasks = REQUIRED_TASK_IDS.map { taskId ->
+                    Pr633ProgramDocument.TaskDocument(
+                        id = taskId,
+                        allowedWrites = scopes.getOrElse(taskId, ::emptyList),
                     )
-                }
-            },
+                },
+                gates = emptyList(),
+            ),
         )
-    }.toString()
 
     private fun initializeRepository() {
         git("init", "--initial-branch=main")
@@ -333,3 +367,17 @@ class VerifyPr633StackTaskTest {
         val REQUIRED_TASK_IDS = (1..7).map { index -> "KTP633-0${index}0" }
     }
 }
+
+@Serializable
+private data class Pr633ProgramWithoutTasksDocument(
+    val schemaVersion: Int,
+    val programId: String,
+    val gates: List<Pr633ProgramDocument.GateDocument>,
+)
+
+@Serializable
+private data class Pr633ProgramWithoutGatesDocument(
+    val schemaVersion: Int,
+    val programId: String,
+    val tasks: List<Pr633ProgramDocument.TaskDocument>,
+)

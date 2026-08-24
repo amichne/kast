@@ -1,8 +1,11 @@
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import support.tasks.GenerateControlMetadataTask
+import support.tasks.SemanticRuntimeDocument
+import support.tasks.controlMetadataJson
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -34,7 +37,7 @@ class GenerateControlMetadataTaskTest {
             this.runtimeDirectory.set(runtimeDirectory.toFile())
             this.licenseFile.set(license.toFile())
             this.operationRegistryFile.set(registry.toFile())
-            productVersion.set("1.0.0")
+            productVersion.set("1.0.\"quoted\\build")
             ideaBuild.set("262")
             kotlinPluginBuild.set("2.3.10")
             runtimeBaseUrl.set("https://example.test/runtime")
@@ -47,6 +50,11 @@ class GenerateControlMetadataTaskTest {
             Files.readAllBytes(registry),
             Files.readAllBytes(output.resolve("operation-registry.json")),
         )
+        val runtime = controlMetadataJson.decodeFromString(
+            SemanticRuntimeDocument.serializer(),
+            Files.readString(output.resolve("semantic-runtime.json")),
+        )
+        assertEquals("1.0.\"quoted\\build", runtime.productVersion)
     }
 
     private fun write(relative: String, content: String): Path =

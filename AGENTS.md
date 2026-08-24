@@ -53,6 +53,32 @@ Agents must inspect and validate `red-proof.out` and `green-proof.out`. These
 captured outputs are the arbiters of truth; summaries, uncaptured commands, and
 verbal completion claims cannot replace them.
 
+## Local Kast dogfooding
+
+Keep the local Kast installation close to the code under development.
+Do not reinstall on every turn or after every small edit.
+Refresh after switching branches, when you cannot establish the installed build's provenance,
+or at a meaningful commit boundary.
+
+After a commit that changes Kast behavior, install the newest Kast built from the current commit.
+Run these commands from the canonical workspace root:
+
+```shell
+./gradlew installLocal
+kast --version
+kast start
+```
+
+Exercise the committed behavior through the newly installed public `kast` command.
+Use its semantic operations to inspect affected Kotlin code while the
+installation remains current.
+For each validation, record the observed result with the commit's proof in the current task's green proof.
+Gradle tests and staged distributions do not replace this installed-product observation.
+
+If dogfooding finds a defect, fix it in a prompt follow-up commit. Then
+reinstall and repeat the installed-product check. Do not leave a known
+installed-product regression for unrelated later work.
+
 ## Kotlin proof-carrying validation transitions
 
 Apply this section to every changed production Kotlin source file with zero
@@ -102,6 +128,18 @@ Example:
  */
 fun requireRepositorySnapshotDatabase(path: Path): RepositorySnapshotDatabase
 ```
+
+## Kotlin serialization boundaries
+
+- Represent every known JSON schema with a dedicated `@Serializable` document and use the
+  Kotlin serialization plugin's generated `serializer()` factory. Do not assemble, parse, or
+  project a closed schema through maps, `JsonObject`, element builders, field lookups, or a
+  hand-written `KSerializer`.
+- Own one configured `Json` instance at each serialization boundary. Reserve `JsonElement` and
+  map-shaped content for genuinely open schema slots, then refine that content into the matching
+  generated document before it enters the system.
+- Return decoding, refinement, and document-mapping failures as closed typed data. Do not turn an
+  expected malformed payload into an exception, null, sentinel, or manufactured success.
 
 ## macOS indexer pathway
 

@@ -9,6 +9,7 @@ enum class TopologySnapshotContentFailure {
     DUPLICATE_FILE,
     DUPLICATE_SYMBOL,
     MISSING_EDGE_TARGET,
+    EDGE_ENDPOINT_MISMATCH,
     MANIFEST_MISMATCH,
 }
 
@@ -25,8 +26,9 @@ class TopologySnapshotContent private constructor(
          * Proof transition: `(PublishedTopologySnapshot, List<CompleteTopologyFile>) ->
          * Refinement<TopologySnapshotContent, Set<TopologySnapshotContentFailure>>`.
          *
-         * Re-establishes one workspace identity, unique files and symbols, closed edge targets,
-         * exact manifest counts, and byte-for-byte digest equality for persisted content.
+         * Re-establishes one workspace identity, unique files and exact location-bearing symbols,
+         * closed exact edge targets, exact manifest counts, and byte-for-byte digest equality for
+         * persisted content. Compiler identity may repeat at distinct exact locations.
          * [TopologySnapshotContentFailure] is the closed expected failure. Reconstructed rows may
          * enter only from the topology SQLite adapter.
          */
@@ -43,16 +45,21 @@ class TopologySnapshotContent private constructor(
                 failures += TopologySnapshotContentFailure.DUPLICATE_FILE
             }
             val symbols = ordered.flatMap(CompleteTopologyFile::symbols)
-            if (symbols.map { it.evidence.compilerIdentity.value }.distinct().size != symbols.size) {
+            if (symbols.map(TopologySymbol::nodeIdentity).distinct().size != symbols.size) {
                 failures += TopologySnapshotContentFailure.DUPLICATE_SYMBOL
             }
-            val identities = symbols.mapTo(hashSetOf()) { it.evidence.compilerIdentity.value }
-            if (ordered.flatMap(CompleteTopologyFile::edges).any { edge ->
-                    edge.source.evidence.compilerIdentity.value !in identities ||
-                        edge.target.evidence.compilerIdentity.value !in identities
+            val exactIdentities = symbols.mapTo(hashSetOf(), TopologySymbol::nodeIdentity)
+            val exactSymbols = symbols.toHashSet()
+            val edgeEndpoints = ordered.flatMap(CompleteTopologyFile::edges)
+                .flatMap { edge -> listOf(edge.source, edge.target) }
+            if (edgeEndpoints.any { it.nodeIdentity !in exactIdentities }) {
+                failures += TopologySnapshotContentFailure.MISSING_EDGE_TARGET
+            }
+            if (edgeEndpoints.any { endpoint ->
+                    endpoint.nodeIdentity in exactIdentities && endpoint !in exactSymbols
                 }
             ) {
-                failures += TopologySnapshotContentFailure.MISSING_EDGE_TARGET
+                failures += TopologySnapshotContentFailure.EDGE_ENDPOINT_MISMATCH
             }
             val projection = topologyCanonicalProjection(snapshot.identity, ordered)
             val digest = MessageDigest.getInstance("SHA-256")
@@ -89,5 +96,12 @@ sealed interface TopologySnapshotContentRead {
 
 /** Side-effect-free detached content read from one already published snapshot. */
 fun interface TopologySnapshotContentReader {
+    /**
+     * Proof transition: `PublishedTopologySnapshot -> TopologySnapshotContentRead`.
+     *
+     * Loaded re-establishes exact persisted content, manifest cardinalities, and digest identity.
+     * Rejected carries the closed [TopologySnapshotReadFailure]. Raw storage values may enter only
+     * through the concrete persistence adapter behind this boundary.
+     */
     fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead
 }

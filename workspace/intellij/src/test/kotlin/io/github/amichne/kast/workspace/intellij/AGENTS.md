@@ -1,10 +1,11 @@
-# `workspace/intellij/src/test/kotlin/io/github/amichne/kast/workspace/intellij` guide
+# Workspace IntelliJ adapter tests
 
-This directory owns test sources and fixtures under
-`workspace/intellij/src/test/kotlin/io/github/amichne/kast/workspace/intellij`. Follow [the nearest
-owner guide](../../../../../../../../../AGENTS.md) for boundaries, invariants, and verification.
+This package owns adapter tests for import observation, module materialization, JVM selection, and
+workspace reconciliation. Gradle source-root provenance tests have their narrower child owner.
 
-## Local scope
+- Use detached project-model fixtures where possible and the matched IntelliJ test runtime where
+  platform services are required.
+- Assert closed readiness/import failures and exact module/source-root evidence; do not repair a
+  foreground IDE project in tests.
 
-- Keep changes within the parent guide's ownership.
-- Add local rules only when this directory gains a distinct durable boundary.
+Run `./gradlew :workspace:intellij:test`.

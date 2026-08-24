@@ -39,7 +39,6 @@ import java.sql.DriverManager
 class SqliteTopologySnapshotStoreTest {
     @TempDir
     lateinit var tempDir: Path
-
     @Test
     fun `exact symbols and edges survive store restart`() {
         val generation = generation(workspace("state-a", 7), "a", "b")
@@ -70,6 +69,49 @@ class SqliteTopologySnapshotStoreTest {
             generation.edges.map(TopologyEdge::canonicalProjection),
             content.edges.map(TopologyEdge::canonicalProjection),
         )
+    }
+
+    @Test
+    fun `location-distinct symbols with one compiler identity survive store restart`() {
+        val workspace = workspace("state-a", 7)
+        val root = workspace.sourceRoots.single()
+        val sourceFile = sourceFile(workspace, root, "src/main/kotlin/Source.kt", "a")
+        val targetFile = sourceFile(workspace, root, "src/main/kotlin/Target.kt", "b")
+        val source = symbol(sourceFile, "shared", "sample.Shared", 0, 12)
+        val target = symbol(targetFile, "shared", "sample.Shared", 20, 32)
+        val edge = TopologyEdge.fromBoundary(
+            TopologyEdgeKind.CALL,
+            source,
+            target,
+            6,
+            12,
+        ).refined()
+        val generation = CompleteTopologyGeneration.admit(
+            workspace,
+            listOf(sourceFile, targetFile),
+            listOf(
+                CompleteTopologyFile.admit(sourceFile, listOf(source), listOf(edge)).refined(),
+                CompleteTopologyFile.admit(targetFile, listOf(target), emptyList()).refined(),
+            ),
+        ).refined()
+        val path = databasePath("duplicate-identity")
+        val published = assertInstanceOf(
+            TopologyPublicationResult.Published::class.java,
+            store(path).publish(generation),
+        ).snapshot
+
+        val content = assertInstanceOf(
+            TopologySnapshotContentRead.Loaded::class.java,
+            store(path).read(published),
+        ).content
+
+        assertEquals(2, content.symbols.size)
+        assertEquals(
+            listOf("src/main/kotlin/Source.kt", "src/main/kotlin/Target.kt"),
+            content.symbols.map { it.file.path.value },
+        )
+        assertEquals("src/main/kotlin/Source.kt", content.edges.single().source.file.path.value)
+        assertEquals("src/main/kotlin/Target.kt", content.edges.single().target.file.path.value)
     }
 
     @Test
@@ -141,7 +183,7 @@ class SqliteTopologySnapshotStoreTest {
         )
         DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
             connection.createStatement().use { statement ->
-                statement.executeUpdate("UPDATE topology_symbol SET symbol_name = 'tampered'")
+                statement.executeUpdate("UPDATE topology_symbol_v2 SET symbol_name = 'tampered'")
             }
         }
 
@@ -154,12 +196,32 @@ class SqliteTopologySnapshotStoreTest {
     }
 
     @Test
+    fun `row reconstruction returns typed corruption instead of throwing`() {
+        val generation = generation(workspace("state-a", 7), "a", "b")
+        val path = databasePath("typed-corruption")
+        val published = assertInstanceOf(
+            TopologyPublicationResult.Published::class.java,
+            store(path).publish(generation),
+        ).snapshot
+        mutate(path, "UPDATE topology_symbol_v2 SET symbol_name = ''")
+
+        val reconstruction = DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
+            connection.readTopologyContent(published)
+        }
+
+        assertEquals(
+            TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT),
+            reconstruction,
+        )
+    }
+
+    @Test
     fun `corrupted stale content is rejected before stale evidence is returned`() {
         val generation = generation(workspace("state-a", 7), "a", "b")
         val path = databasePath("corrupt-stale")
         val store = store(path)
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
-        mutate(path, "DELETE FROM topology_edge")
+        mutate(path, "DELETE FROM topology_edge_v2")
 
         assertCorrupt(store.eligible(TopologyWorkspaceIdentity.from(workspace("state-b", 8))))
     }
@@ -170,7 +232,7 @@ class SqliteTopologySnapshotStoreTest {
         val path = databasePath("missing-edge")
         val store = store(path)
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
-        mutate(path, "DELETE FROM topology_edge")
+        mutate(path, "DELETE FROM topology_edge_v2")
 
         assertCorrupt(store.eligible(generation.identity))
     }
@@ -181,7 +243,7 @@ class SqliteTopologySnapshotStoreTest {
         val path = databasePath("dangling-edge")
         val store = store(path)
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
-        mutate(path, "UPDATE topology_edge SET target_identity = 'class|missing.Target'")
+        mutate(path, "UPDATE topology_edge_v2 SET target_symbol_id = 9223372036854775807")
 
         assertCorrupt(store.eligible(generation.identity))
     }
@@ -194,7 +256,7 @@ class SqliteTopologySnapshotStoreTest {
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
         mutate(
             path,
-            "UPDATE topology_edge SET occurrence_file_path = 'src/main/kotlin/Target.kt'",
+            "UPDATE topology_edge_v2 SET occurrence_file_path = 'src/main/kotlin/Target.kt'",
         )
 
         assertCorrupt(store.eligible(generation.identity))

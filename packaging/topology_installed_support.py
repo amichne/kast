@@ -187,6 +187,30 @@ def topology_build(kast: InstalledKast) -> dict[str, Any]:
     return kast.semantic("topology.build", "topology", "build")
 
 
+def active_indexer_pid(kast: InstalledKast) -> int:
+    completed = subprocess.run(
+        ["/bin/ps", "-ax", "-o", "pid=,command="],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    require(completed.returncode == 0, f"could not inspect installed indexer: {completed.stderr}")
+    workspace_argument = f"--workspace-root={kast.workspace}"
+    matches = []
+    for line in completed.stdout.splitlines():
+        fields = line.strip().split(maxsplit=1)
+        if len(fields) != 2:
+            continue
+        if (
+            "io.github.amichne.kast.indexer.KastIndexerMainKt" in fields[1]
+            and workspace_argument in fields[1]
+        ):
+            matches.append(int(fields[0]))
+    require(len(matches) == 1, f"expected one exact installed indexer, found {matches}")
+    return matches[0]
+
+
 def require_build_identity(document: dict[str, Any], status: str) -> tuple[str, str]:
     expect_status(document, "complete")
     require(document.get("snapshotStatus") == status, f"expected snapshotStatus {status}: {document}")
@@ -253,6 +277,11 @@ def verify_document(report: dict[str, Any], registry: dict[str, Any]) -> None:
     restart = report.get("restart")
     require(isinstance(restart, dict) and restart.get("semanticResultEqual") is True, "restart result differs")
     require(restart.get("topologyBuildInvokedBetweenStopAndTraversal") is False, "restart rebuilt topology")
+    process_reuse = report.get("processReuse")
+    require(
+        isinstance(process_reuse, dict) and process_reuse.get("samePidAcrossCallers") is True,
+        "successive public callers did not reuse one indexer process",
+    )
     selectors = report.get("selectors")
     require(isinstance(selectors, dict), "selector proof missing")
     require(selectors.get("oldSelectorRejection") == "selector-stale", "old selector was not stale")

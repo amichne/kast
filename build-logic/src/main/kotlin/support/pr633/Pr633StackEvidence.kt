@@ -3,9 +3,6 @@ package support.pr633
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.charset.CharacterCodingException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.gradle.process.ExecOperations
 
 internal sealed interface StackVerificationResult<out T> {
@@ -162,14 +159,14 @@ internal class Pr633Event private constructor(
          * permitted only inside this event boundary.
          */
         fun parse(raw: String): StackVerificationResult<Pr633Event> = try {
-            val root = Json.parseToJsonElement(raw).jsonObject
-            val pullRequest = root.getValue("pull_request").jsonObject
-            val number = root.getValue("number").jsonPrimitive.content.toInt()
-            val base = pullRequest.getValue("base").jsonObject.getValue("ref").jsonPrimitive.content
-            val rawHead = pullRequest.getValue("head").jsonObject.getValue("sha").jsonPrimitive.content
-            when (val head = GitSha.parse(rawHead, GitShaSource.EVENT_HEAD)) {
+            val document = pr633AuthorityJson.decodeFromString(Pr633EventDocument.serializer(), raw)
+            when (val head = GitSha.parse(document.pullRequest.head.sha, GitShaSource.EVENT_HEAD)) {
                 is StackVerificationResult.Proven -> StackVerificationResult.Proven(
-                    Pr633Event(number, base, head.value),
+                    Pr633Event(
+                        document.number,
+                        document.pullRequest.base.ref,
+                        head.value,
+                    ),
                 )
                 is StackVerificationResult.Rejected -> head
             }

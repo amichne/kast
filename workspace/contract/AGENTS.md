@@ -32,7 +32,8 @@ physical effects.
 - A guarded effect returns `Completed` only for the exact current ready lease; absence, lifecycle
   movement, root mismatch, or generation change returns `Moved` without invoking the effect.
 - Every clean-slate source root is workspace-contained, preserves exact model ownership, and
-  carries Authored, Generated, or a finite reason for Unknown provenance.
+  carries Authored, Generated, or a finite reason for Unknown provenance. Platform-invalid raw
+  path text is rejected before a `SourceRoot` can be constructed.
 - Resource policy admits only validated positive limits, bounded percentages, and non-negative
   counts. Ordinary reads are not an expensive-work kind and cannot consume an initiation slot.
 - Heap, EDT, capacity, queue, timeout, interruption, and initiation failure remain distinct typed

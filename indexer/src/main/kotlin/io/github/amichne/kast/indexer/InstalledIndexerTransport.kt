@@ -10,7 +10,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CompletableFuture
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -23,14 +23,85 @@ enum class IndexerTransportFailure {
     ENDPOINT_DESCRIPTOR_UNAVAILABLE,
 }
 
-sealed interface IndexerTransportPreparation {
+sealed interface IndexerEndpointPreparation {
     data class Prepared(
-        val transport: InstalledIndexerTransport,
-    ) : IndexerTransportPreparation
+        val endpoint: PreparedIndexerEndpoint,
+    ) : IndexerEndpointPreparation
 
     data class Rejected(
         val failure: IndexerTransportFailure,
-    ) : IndexerTransportPreparation
+    ) : IndexerEndpointPreparation
+}
+
+/** Canonical runtime state and exact marker paths proven absent, but not yet published as ready. */
+class PreparedIndexerEndpoint private constructor(
+    internal val options: IndexerLaunchOptions,
+    val stateDirectory: Path,
+) {
+    companion object {
+        /**
+         * Proof transition: `IndexerLaunchOptions -> IndexerEndpointPreparation`.
+         *
+         * A prepared endpoint establishes a canonical, non-symlinked state directory plus absent
+         * exact socket and descriptor markers. It owns no bound socket and cannot advertise
+         * readiness. [IndexerTransportFailure] is the closed expected failure. Raw paths leave
+         * only for filesystem state preparation and installed runtime construction.
+         */
+        fun prepare(options: IndexerLaunchOptions): IndexerEndpointPreparation {
+            val socketPath = options.socketPath
+            val socketParent = socketPath.parent
+                ?: return IndexerEndpointPreparation.Rejected(
+                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
+                )
+            val canonicalStateParent = try {
+                Files.createDirectories(socketParent)
+                socketParent.toRealPath()
+            } catch (_: IOException) {
+                return IndexerEndpointPreparation.Rejected(
+                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
+                )
+            } catch (_: SecurityException) {
+                return IndexerEndpointPreparation.Rejected(
+                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
+                )
+            }
+            // Keep the AF_UNIX address exactly as admitted. Only runtime-owned state uses the
+            // physical parent; macOS aliases can lengthen a canonical address past its limit.
+            val statePath = canonicalStateParent.resolve("${socketPath.fileName}.state")
+            val stateDirectory = when (val preparation = prepareStateDirectory(statePath)) {
+                is StateDirectoryPreparation.Prepared -> preparation.path
+                StateDirectoryPreparation.Rejected -> return IndexerEndpointPreparation.Rejected(
+                    IndexerTransportFailure.STATE_DIRECTORY_UNAVAILABLE,
+                )
+            }
+            when (admitSocketPath(socketPath)) {
+                SocketPathAdmission.Available -> Unit
+                SocketPathAdmission.Occupied -> return IndexerEndpointPreparation.Rejected(
+                    IndexerTransportFailure.SOCKET_PATH_OCCUPIED,
+                )
+            }
+            when (retireEndpointDescriptor(socketPath.endpointDescriptorPath())) {
+                EndpointDescriptorRetirement.Retired -> Unit
+                EndpointDescriptorRetirement.Rejected ->
+                    return IndexerEndpointPreparation.Rejected(
+                        IndexerTransportFailure.ENDPOINT_DESCRIPTOR_UNAVAILABLE,
+                    )
+            }
+            return IndexerEndpointPreparation.Prepared(
+                PreparedIndexerEndpoint(options, stateDirectory),
+            )
+        }
+    }
+}
+
+sealed interface IndexerTransportActivation {
+    data class Activated(
+        val transport: InstalledIndexerTransport,
+    ) : IndexerTransportActivation
+
+    data class Rejected(
+        val failure: IndexerTransportFailure,
+    ) : IndexerTransportActivation
 }
 
 enum class IndexerConnectionFailure {
@@ -48,33 +119,30 @@ sealed interface IndexerConnectionHandling {
     ) : IndexerConnectionHandling
 }
 
-/** Bound exact-root socket and canonical runtime-owned state directory. */
+/** Bound exact-root ready transport carrying its already-created runtime host. */
 class InstalledIndexerTransport private constructor(
     private val server: ServerSocketChannel,
     private val socketPath: Path,
     private val descriptorPath: Path,
-    val stateDirectory: Path,
+    private val host: KastIndexerHost,
 ) : AutoCloseable {
     /**
-     * Proof transition: `KastIndexerHost + one accepted socket -> IndexerConnectionHandling`.
+     * Proof transition: `one accepted socket -> IndexerConnectionHandling`.
      *
-     * Establishes zero or more bounded request/response exchanges until clean connection closure.
-     * [IndexerConnectionFailure] is the closed expected failure. Raw documents may cross only the
-     * frame codec and [KastIndexerHost].
+     * Establishes zero or more bounded request/response exchanges through the host captured at
+     * activation. [IndexerConnectionFailure] is the closed expected failure. Raw documents may
+     * cross only the frame codec and [KastIndexerHost].
      */
-    fun serveNext(host: KastIndexerHost): IndexerConnectionHandling {
+    fun serveNext(): IndexerConnectionHandling {
         val channel = try {
             server.accept()
         } catch (_: IOException) {
             return IndexerConnectionHandling.Rejected(IndexerConnectionFailure.ACCEPT_FAILED)
         }
-        return channel.use { connection -> serveFrames(connection, host) }
+        return channel.use(::serveFrames)
     }
 
-    private fun serveFrames(
-        connection: SocketChannel,
-        host: KastIndexerHost,
-    ): IndexerConnectionHandling {
+    private fun serveFrames(connection: SocketChannel): IndexerConnectionHandling {
         while (true) {
             val request = when (val frame = IndexerWireFrameCodec.read(connection)) {
                 is IndexerFrameRead.Received -> frame.document
@@ -99,8 +167,8 @@ class InstalledIndexerTransport private constructor(
         }
     }
 
-    fun serve(host: KastIndexerHost): Nothing {
-        while (true) serveNext(host)
+    fun serve(): Nothing {
+        while (true) serveNext()
     }
 
     override fun close() {
@@ -114,42 +182,21 @@ class InstalledIndexerTransport private constructor(
 
     companion object {
         /**
-         * Proof transition: `IndexerLaunchOptions -> IndexerTransportPreparation`.
+         * Proof transition: `PreparedIndexerEndpoint + KastIndexerHost -> IndexerTransportActivation`.
          *
-         * Establishes a bound Unix-domain server and a canonical, non-symlinked state directory
-         * derived only from the admitted socket. [IndexerTransportFailure] is the closed expected
-         * failure. Raw paths may leave only for JDK socket and filesystem effects.
+         * Activation establishes a bound socket and atomically published descriptor whose
+         * captured host already owns a created runtime dispatch. [IndexerTransportFailure] closes
+         * races, bind failures, and descriptor publication failure. Raw paths leave only at the
+         * JDK socket and filesystem boundaries.
          */
-        fun prepare(options: IndexerLaunchOptions): IndexerTransportPreparation {
-            val socketPath = options.socketPath
-            val socketParent = socketPath.parent
-                               ?: return IndexerTransportPreparation.Rejected(
-                                   IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
-                               )
-            val canonicalStateParent = try {
-                Files.createDirectories(socketParent)
-                socketParent.toRealPath()
-            } catch (_: IOException) {
-                return IndexerTransportPreparation.Rejected(
-                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
-                )
-            } catch (_: SecurityException) {
-                return IndexerTransportPreparation.Rejected(
-                    IndexerTransportFailure.SOCKET_PARENT_UNAVAILABLE,
-                )
-            }
-            // Keep the AF_UNIX address exactly as admitted. Only runtime-owned state uses the
-            // physical parent; macOS aliases can lengthen a canonical socket address past its limit.
-            val statePath = canonicalStateParent.resolve("${socketPath.fileName}.state")
-            val stateDirectory = when (val preparation = prepareStateDirectory(statePath)) {
-                is StateDirectoryPreparation.Prepared -> preparation.path
-                StateDirectoryPreparation.Rejected -> return IndexerTransportPreparation.Rejected(
-                    IndexerTransportFailure.STATE_DIRECTORY_UNAVAILABLE,
-                )
-            }
+        fun activate(
+            prepared: PreparedIndexerEndpoint,
+            host: KastIndexerHost,
+        ): IndexerTransportActivation {
+            val socketPath = prepared.options.socketPath
             when (admitSocketPath(socketPath)) {
                 SocketPathAdmission.Available -> Unit
-                SocketPathAdmission.Occupied -> return IndexerTransportPreparation.Rejected(
+                SocketPathAdmission.Occupied -> return IndexerTransportActivation.Rejected(
                     IndexerTransportFailure.SOCKET_PATH_OCCUPIED,
                 )
             }
@@ -158,19 +205,21 @@ class InstalledIndexerTransport private constructor(
                     bind(UnixDomainSocketAddress.of(socketPath))
                 }
             } catch (_: IOException) {
-                return IndexerTransportPreparation.Rejected(
+                return IndexerTransportActivation.Rejected(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             } catch (_: UnsupportedOperationException) {
-                return IndexerTransportPreparation.Rejected(
+                return IndexerTransportActivation.Rejected(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             } catch (_: SecurityException) {
-                return IndexerTransportPreparation.Rejected(
+                return IndexerTransportActivation.Rejected(
                     IndexerTransportFailure.SOCKET_BIND_FAILED,
                 )
             }
-            val descriptorPath = when (val publication = publishEndpointDescriptor(options)) {
+            val descriptor = when (
+                val publication = publishEndpointDescriptor(prepared.options)
+            ) {
                 is EndpointDescriptorPublication.Published -> publication.path
                 EndpointDescriptorPublication.Rejected -> {
                     try {
@@ -178,13 +227,13 @@ class InstalledIndexerTransport private constructor(
                     } finally {
                         deleteOwnedSocket(socketPath)
                     }
-                    return IndexerTransportPreparation.Rejected(
+                    return IndexerTransportActivation.Rejected(
                         IndexerTransportFailure.ENDPOINT_DESCRIPTOR_UNAVAILABLE,
                     )
                 }
             }
-            return IndexerTransportPreparation.Prepared(
-                InstalledIndexerTransport(server, socketPath, descriptorPath, stateDirectory),
+            return IndexerTransportActivation.Activated(
+                InstalledIndexerTransport(server, socketPath, descriptor, host),
             )
         }
     }
@@ -192,7 +241,6 @@ class InstalledIndexerTransport private constructor(
 
 private sealed interface SocketPathAdmission {
     data object Available : SocketPathAdmission
-
     data object Occupied : SocketPathAdmission
 }
 
@@ -201,13 +249,7 @@ private sealed interface StateDirectoryPreparation {
     data object Rejected : StateDirectoryPreparation
 }
 
-/**
- * Proof transition: `Path -> StateDirectoryPreparation`.
- *
- * Establishes one physically canonical, non-symlinked owned state directory.
- * [StateDirectoryPreparation.Rejected] is the closed expected failure. The raw path may leave only
- * for filesystem creation and installed runtime construction.
- */
+/** Refines a path into one physically canonical, non-symlinked owned state directory. */
 private fun prepareStateDirectory(path: Path): StateDirectoryPreparation = try {
     if (Files.isSymbolicLink(path)) return StateDirectoryPreparation.Rejected
     Files.createDirectories(path)
@@ -223,13 +265,7 @@ private fun prepareStateDirectory(path: Path): StateDirectoryPreparation = try {
     StateDirectoryPreparation.Rejected
 }
 
-/**
- * Proof transition: `Path -> SocketPathAdmission`.
- *
- * Establishes that the exact socket path is absent after rejecting active and non-socket entries
- * and removing only an unreachable socket entry. [SocketPathAdmission.Occupied] is the closed
- * expected failure. The raw path may leave only for JDK socket and filesystem effects.
- */
+/** Refines an exact socket path into absent or occupied without deleting non-socket entries. */
 private fun admitSocketPath(path: Path): SocketPathAdmission {
     val attributes = try {
         Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
@@ -240,10 +276,7 @@ private fun admitSocketPath(path: Path): SocketPathAdmission {
     } catch (_: SecurityException) {
         return SocketPathAdmission.Occupied
     }
-    if (
-        !attributes.isOther ||
-        socketReachability(path) is SocketReachability.Reachable
-    ) {
+    if (!attributes.isOther || socketReachability(path) is SocketReachability.Reachable) {
         return SocketPathAdmission.Occupied
     }
     return try {
@@ -261,13 +294,7 @@ private sealed interface SocketReachability {
     data object Unreachable : SocketReachability
 }
 
-/**
- * Proof transition: `Path -> SocketReachability`.
- *
- * Establishes one closed connection observation for a pre-existing Unix socket.
- * [SocketReachability.Unreachable] closes failed connection observations. The raw path may leave
- * only for the JDK Unix-domain connection boundary.
- */
+/** Observes one closed connection state for a pre-existing Unix socket. */
 private fun socketReachability(path: Path): SocketReachability = try {
     SocketChannel.open(StandardProtocolFamily.UNIX).use { socket ->
         socket.connect(UnixDomainSocketAddress.of(path))
@@ -295,18 +322,15 @@ private fun deleteOwnedSocket(path: Path) {
 }
 
 private fun awaitDispatch(block: suspend () -> KastRuntimeDispatch): KastRuntimeDispatch {
-    val completion = CountDownLatch(1)
-    var completionResult: Result<KastRuntimeDispatch>? = null
+    val completion = CompletableFuture<KastRuntimeDispatch>()
     block.startCoroutine(
         object : Continuation<KastRuntimeDispatch> {
             override val context = EmptyCoroutineContext
 
             override fun resumeWith(result: Result<KastRuntimeDispatch>) {
-                completionResult = result
-                completion.countDown()
+                result.fold(completion::complete, completion::completeExceptionally)
             }
         },
     )
-    completion.await()
-    return checkNotNull(completionResult).getOrThrow()
+    return completion.join()
 }

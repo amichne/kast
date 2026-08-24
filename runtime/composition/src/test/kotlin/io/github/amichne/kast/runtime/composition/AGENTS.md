@@ -1,8 +1,14 @@
-# `runtime/composition/src/test/kotlin/io/github/amichne/kast/runtime/composition` guide
+# Runtime composition test guide
 
-This directory owns test sources and fixtures under `runtime/composition/src/test/kotlin/io/github/amichne/kast/runtime/composition`. Follow [the nearest owner guide](../../../../../../../../../AGENTS.md) for boundaries, invariants, and verification.
+This directory owns composition-level proof that the installed runtime assembly wires every
+required target capability and preserves its cross-module contracts.
 
-## Local scope
+## Ownership
 
-- Keep changes within the parent guide's ownership.
-- Add local rules only when this directory gains a distinct durable boundary.
+- Root tests cover assembly, installed adapters, and cross-capability behavior.
+- `protocol/` owns protocol-authority durability and structured public projection tests.
+- `installed/` and `fixtures/` own their existing installed-runtime and fixture boundaries.
+
+## Verification
+
+Run `./gradlew :runtime:composition:test`; use the exact moved test class first for focused proof.

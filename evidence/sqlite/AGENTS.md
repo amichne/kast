@@ -15,7 +15,12 @@ reconciliation, indexing, semantic admission, or source mutation.
   complete pre-write image, applied write set, terminal state, and tamper-evident plan binding.
 - JDBC and the recovery schema remain confined to this module.
 - Topology publication admits only complete generation values, commits manifest and content in one
-  transaction, and re-admits exact content before granting reuse or read eligibility.
+  transaction, and re-admits exact content before granting reuse or read eligibility. Malformed
+  persisted topology values, including platform-invalid paths, are corrupt-snapshot data rather
+  than storage availability failures.
+- Topology v2 gives every symbol a positive snapshot-local row identity derived from compiler
+  identity plus exact file and range evidence. Edges reference those exact rows, so declarations
+  with equal compiler identities are not collapsed across locations.
 
 ## Verification
 

@@ -20,6 +20,63 @@ dependencies {
     implementation(project(":protocol:wire"))
 }
 
+val closedCliDocumentSources = files(
+    layout.projectDirectory.file(
+        "src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt",
+    ),
+    layout.projectDirectory.file(
+        "src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt",
+    ),
+    layout.projectDirectory.file(
+        "src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledSchemaDocuments.kt",
+    ),
+    fileTree("src/main/kotlin/io/github/amichne/kast/cli/projection") {
+        include("*.kt")
+        exclude("CliLocalMetadata.kt")
+    },
+)
+
+val verifyGeneratedCliSerialization =
+    tasks.register<support.tasks.VerifyGeneratedSerializationSourcesTask>(
+        "verifyGeneratedCliSerialization",
+    ) {
+        group = "verification"
+        description = "Rejects hand-written JSON structure for closed CLI documents."
+        sourceFiles.from(closedCliDocumentSources)
+        forbiddenTokens.set(
+            listOf(
+                "KSerializer",
+                "kotlinx.serialization.json.JsonArray",
+                "kotlinx.serialization.json.JsonElement",
+                "kotlinx.serialization.json.JsonObject",
+                "kotlinx.serialization.json.JsonPrimitive",
+                "JsonArray(",
+                "Json {",
+                "Json(",
+                "JsonObject(",
+                "JsonPrimitive(",
+                "MapSerializer",
+                "buildJsonArray",
+                "buildJsonObject",
+                "jsonPrimitive",
+                "mapOf(",
+                ".put(",
+                "encodeToString(",
+            ),
+        )
+        generatedAdapterNamePrefixes.set(
+            listOf("Canonical", "Topology", "CliBoundary", "Installed"),
+        )
+        generatedAdapterNameSuffixes.set(
+            listOf("Projectors.kt", "CliProjector.kt", "Documents.kt"),
+        )
+        requiredGeneratedAdapterTokens.set(
+            listOf("CliJsonDocument.generated", ".serializer()"),
+        )
+        reportingRoot.set(layout.projectDirectory)
+        reportFile.set(layout.buildDirectory.file("reports/generated-cli-serialization.txt"))
+    }
+
 tasks.named<Test>("test") {
     useJUnitPlatform {
         excludeTags("native")
@@ -39,4 +96,5 @@ val nativeTest by tasks.registering(Test::class) {
 
 tasks.named("check") {
     dependsOn(nativeTest)
+    dependsOn(verifyGeneratedCliSerialization)
 }

@@ -144,34 +144,37 @@ class OperationWireContractTest {
 
     private fun canonicalBindings(): List<
         OperationWireBinding<TestRequest, TestResult, TestQualification, TestRejection>,
-        > = CanonicalOperation.entries.map { operation ->
-        val definition = OperationDefinition(
-            operation = operation,
-            types = OperationTypeBinding(
-                requestType = TestRequest::class,
-                resultType = TestResult::class,
-                qualificationType = TestQualification::class,
-                rejectionType = TestRejection::class,
-                schema = schemaIdentity("kast.${operation.id.value}.v1"),
-            ),
-            requiredCapability = capabilityId("semantic.read"),
-            capabilityType = TestCapability::class,
-            lane = OperationLane.INDEX_LOOKUP,
-            effect = OperationEffect.INTELLIJ_READ,
-            cost = OperationCost.BOUNDED_READ,
-            scope = OperationScope.SYMBOL,
-            budget = resourceBudget(),
-            completeness = CompletenessPolicy.QUALIFIED_ALLOWED,
-        )
-        OperationWireBinding(
-            definition = definition,
-            serializers = GeneratedOperationSerializers(
-                request = TestRequest.serializer(),
-                result = TestResult.serializer(),
-                qualification = TestQualification.serializer(),
-                rejection = TestRejection.serializer(),
-            ),
-        )
+        > {
+        val factory = GeneratedWireCodecFactory(wireJson)
+        return CanonicalOperation.entries.map { operation ->
+            val definition = OperationDefinition(
+                operation = operation,
+                types = OperationTypeBinding(
+                    requestType = TestRequest::class,
+                    resultType = TestResult::class,
+                    qualificationType = TestQualification::class,
+                    rejectionType = TestRejection::class,
+                    schema = schemaIdentity("kast.${operation.id.value}.v1"),
+                ),
+                requiredCapability = capabilityId("semantic.read"),
+                capabilityType = TestCapability::class,
+                lane = OperationLane.INDEX_LOOKUP,
+                effect = OperationEffect.INTELLIJ_READ,
+                cost = OperationCost.BOUNDED_READ,
+                scope = OperationScope.SYMBOL,
+                budget = resourceBudget(),
+                completeness = CompletenessPolicy.QUALIFIED_ALLOWED,
+            )
+            OperationWireBinding(
+                definition = definition,
+                serializers = GeneratedOperationSerializers(
+                    request = factory.create(TestRequest.serializer()),
+                    result = factory.create(TestResult.serializer()),
+                    qualification = factory.create(TestQualification.serializer()),
+                    rejection = factory.create(TestRejection.serializer()),
+                ),
+            )
+        }
     }
 
     private fun resourceBudget(): ResourceBudget = ResourceBudget(

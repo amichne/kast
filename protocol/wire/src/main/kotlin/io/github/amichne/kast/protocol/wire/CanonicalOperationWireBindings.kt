@@ -2,24 +2,25 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.OperationRegistryArtifact
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.Serializable
+
+@Serializable
+private data class OperationRegistryDocument(
+    val schemaVersion: Int,
+    val operationIds: List<String>,
+)
 
 /** Sole generated serializer binding catalog for the twelve production operation definitions. */
 object CanonicalOperationWireBindings {
-    val operationRegistryDocument: String = buildJsonObject {
-        put("schemaVersion", 1)
-        put(
-            "operationIds",
-            JsonArray(
-                OperationRegistryArtifact.from(CanonicalOperationDefinitions.registry)
-                    .operationIds
-                    .map { JsonPrimitive(it.value) },
-            ),
+    val operationRegistryDocument: String = wireJson.encodeToString(
+        OperationRegistryDocument.serializer(),
+        OperationRegistryDocument(
+            schemaVersion = 1,
+            operationIds = OperationRegistryArtifact.from(CanonicalOperationDefinitions.registry)
+                .operationIds
+                .map { it.value },
         )
-    }.toString() + "\n"
+    ) + "\n"
 
     /** Prints the generated registry document for the Gradle-owned resource boundary. */
     @JvmStatic

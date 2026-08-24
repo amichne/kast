@@ -8,6 +8,7 @@ import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /**
@@ -25,8 +26,10 @@ fun installedIntellijTopologyExtractor(
     val adapter = IntellijTopologyFileExtractor()
     return TopologyFileExtractor { request ->
         val project = when (val lookup = exactProject(root)) {
-            is ExactTopologyProjectLookup.Found -> lookup.project
-            ExactTopologyProjectLookup.Unavailable -> return@TopologyFileExtractor unavailable()
+            is ExactTopologyProjectResolution.Found -> lookup.project
+            is ExactTopologyProjectResolution.Rejected -> return@TopologyFileExtractor failed(
+                lookup.failure,
+            )
         }
         val current = when (val state = workspaces.inspect()) {
             is WorkspaceRuntimeState.Ready -> state.workspace
@@ -41,26 +44,62 @@ fun installedIntellijTopologyExtractor(
     }
 }
 
-private sealed interface ExactTopologyProjectLookup {
-    data class Found(val project: Project) : ExactTopologyProjectLookup
-    data object Unavailable : ExactTopologyProjectLookup
+/** Closed exact-root selection from live IntelliJ project metadata. */
+internal sealed interface ExactTopologyProjectResolution {
+    data class Found(val project: Project) : ExactTopologyProjectResolution
+
+    data class Rejected(
+        val failure: TopologyExtractionFailure,
+    ) : ExactTopologyProjectResolution
 }
 
 /**
- * Proof transition: `CanonicalWorkspaceRoot -> ExactTopologyProjectLookup`.
+ * Proof transition: `CanonicalWorkspaceRoot -> ExactTopologyProjectResolution`.
  *
- * Found establishes the only live IntelliJ project for the canonical root. Unavailable is the
- * closed absence or ambiguity state. Raw platform projects are observed only at this adapter.
+ * Found establishes the only live IntelliJ project for the canonical root. Rejected closes absent,
+ * ambiguous, and malformed platform project metadata. Raw platform projects are observed only at
+ * this adapter.
  */
-private fun exactProject(root: CanonicalWorkspaceRoot): ExactTopologyProjectLookup {
-    val matches = ProjectManager.getInstance().openProjects.filter { project ->
-        !project.isDisposed && project.basePath?.let(Path::of)?.toAbsolutePath()?.normalize()
-            ?.toString() == root.value
+private fun exactProject(root: CanonicalWorkspaceRoot): ExactTopologyProjectResolution =
+    resolveExactTopologyProject(root, ProjectManager.getInstance().openProjects.asIterable())
+
+/**
+ * Proof transition: `(CanonicalWorkspaceRoot, Iterable<Project>) ->
+ * ExactTopologyProjectResolution`.
+ *
+ * [ExactTopologyProjectResolution.Found] establishes exactly one live IntelliJ project whose
+ * well-formed normalized absolute base path equals the canonical workspace root.
+ * [ExactTopologyProjectResolution.Rejected] closes missing, ambiguous, malformed, and inaccessible
+ * platform paths as [TopologyExtractionFailure.PROJECT_UNAVAILABLE]. Raw `Project.basePath` text
+ * may enter only from installed IntelliJ project discovery.
+ */
+internal fun resolveExactTopologyProject(
+    root: CanonicalWorkspaceRoot,
+    projects: Iterable<Project>,
+): ExactTopologyProjectResolution {
+    val matches = mutableListOf<Project>()
+    for (project in projects) {
+        if (project.isDisposed) continue
+        val rawPath = project.basePath ?: continue
+        val path = try {
+            Path.of(rawPath).toAbsolutePath().normalize()
+        } catch (_: InvalidPathException) {
+            return projectUnavailable()
+        } catch (_: SecurityException) {
+            return projectUnavailable()
+        }
+        if (path.toString() == root.value) matches += project
     }
-    return if (matches.size == 1) ExactTopologyProjectLookup.Found(matches.single())
-    else ExactTopologyProjectLookup.Unavailable
+    return if (matches.size == 1) ExactTopologyProjectResolution.Found(matches.single())
+    else projectUnavailable()
 }
+
+private fun projectUnavailable(): ExactTopologyProjectResolution.Rejected =
+    ExactTopologyProjectResolution.Rejected(TopologyExtractionFailure.PROJECT_UNAVAILABLE)
 
 private fun unavailable(): TopologyFileExtraction = TopologyFileExtraction.Failed(
     TopologyExtractionFailure.PROJECT_UNAVAILABLE,
 )
+
+private fun failed(failure: TopologyExtractionFailure): TopologyFileExtraction =
+    TopologyFileExtraction.Failed(failure)

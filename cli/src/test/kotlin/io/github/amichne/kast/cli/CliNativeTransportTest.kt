@@ -20,6 +20,7 @@ import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -33,6 +34,48 @@ import java.util.concurrent.TimeUnit
 
 @Tag("native")
 class CliNativeTransportTest {
+    @Test
+    fun `terminal startup rejection returns generated runtime boundary without wire exchange`(
+        @TempDir temporary: Path,
+    ) {
+        val root = Files.createDirectories(temporary.resolve("repo"))
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val canonicalRoot = FilesystemCanonicalRootDiscovery.discover(root).discoveredRoot()
+        val runtimeId = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}").refinedValue()
+        val endpoint = RuntimeEndpoint.at(
+            canonicalRoot,
+            runtimeId,
+            temporary.resolve("runtime.sock"),
+        ).resolvedEndpoint()
+        var wireInvoked = false
+        val cli = KastCli(
+            commandGraphFactory = commandGraphFactory(),
+            rootDiscovery = FilesystemCanonicalRootDiscovery,
+            endpointLocator = RuntimeEndpointLocator {
+                RuntimeEndpointResolution.Resolved(endpoint)
+            },
+            runtimeDemander = RuntimeDemander { _, _ ->
+                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SESSION_ENDED_BEFORE_READY)
+            },
+            wireClient = WireClient { _, _ ->
+                wireInvoked = true
+                error("wire exchange must not run")
+            },
+            localMetadata = testLocalMetadata(),
+        )
+
+        val exit = cli.execute(listOf("workspace", "inspect"), root)
+
+        val rejected = assertInstanceOf(CliExit.BoundaryRejected::class.java, exit)
+        assertEquals(CliBoundaryExitStatus.RUNTIME, rejected.status)
+        assertEquals(
+            "{\"status\":\"rejected\",\"boundary\":\"runtime\"," +
+                "\"reason\":\"session-ended-before-ready\"}",
+            rejected.document.value,
+        )
+        assertEquals(false, wireInvoked)
+    }
+
     @Test
     fun `workspace inspect traverses exact root UDS and typed wire`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo"))

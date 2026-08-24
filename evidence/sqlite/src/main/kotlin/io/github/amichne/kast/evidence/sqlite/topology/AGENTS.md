@@ -1,8 +1,17 @@
-# `evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/topology` guide
+# SQLite topology persistence guide
 
-This directory owns production sources under `evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/topology`. Follow [the nearest owner guide](../../../../../../../../../../AGENTS.md) for boundaries, invariants, and verification.
+This package owns the topology v2 tables, atomic content writer, row admission, snapshot store, and
+snapshot-backed relation compiler.
 
-## Local scope
+## Local invariants
 
-- Keep changes within the parent guide's ownership.
-- Add local rules only when this directory gains a distinct durable boundary.
+- Persist symbols under positive snapshot-local row IDs and bind edge endpoints to those IDs.
+  Declarations may share a compiler identity only when their exact file/range identities differ.
+- Write the manifest, files, symbols, and edges in one transaction and admit the same complete
+  counts and digest before reuse or traversal.
+- Re-admit exact paths, ranges, row references, counts, and digests on read. Map malformed topology
+  rows to `CORRUPT_SNAPSHOT`; do not expose a partial graph.
+
+## Focused verification
+
+Run `./gradlew :evidence:sqlite:test`.

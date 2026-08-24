@@ -62,7 +62,7 @@ def verify_invariant_enforcers(program: dict[str, Any], root: Path) -> None:
     source_paths = [
         root / "build.gradle.kts", root / "build-logic/src/main/kotlin/conventions/pr633-stack.gradle.kts",
         root / "build-logic/src/main/kotlin/conventions/pr633-topology.gradle.kts", root / "build-logic/src/main/kotlin/conventions/pr633-delivery.gradle.kts",
-        root / "build-logic/src/main/kotlin/support/pr633/WritePr633GateEvidenceTask.kt",
+        root / "build-logic/src/main/kotlin/support/pr633/Pr633GateEvidenceSerialization.kt",
     ]
     sources = "\n".join(path.read_text(encoding="utf-8") for path in source_paths)
     registered = set(re.findall(r'tasks\.register(?:<[^>]+>)?\s*\(\s*"([^"]+)"', sources))

@@ -11,6 +11,7 @@ import com.github.ajalt.clikt.parsers.CommandLineParser
 import com.github.ajalt.clikt.output.PlaintextHelpFormatter
 import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliTextDocument
+import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
@@ -352,7 +353,20 @@ internal class CommandFamily(
 )
 
 private fun KastCommand.formatted(failure: CliktError): CliTextDocument =
-    CliTextDocument.admitted(getFormattedHelp(failure) ?: "command rejected")
+    (getFormattedHelp(failure) ?: "").renderedHelpDocument()
 
 private fun KastCommand.helpDiagnostic(): CliTextDocument =
-    CliTextDocument.admitted(getFormattedHelp() ?: "command rejected")
+    (getFormattedHelp() ?: "").renderedHelpDocument()
+
+/**
+ * Proof transition: `String -> CliTextDocument` at the Clikt rendering boundary.
+ *
+ * Establishes non-blank diagnostic text. Blank renderer output deterministically selects the
+ * trusted command-rejection document, so this outer adapter has no remaining expected failure.
+ */
+private fun String.renderedHelpDocument(): CliTextDocument = when (
+    val admission = CliTextDocument.admit(this)
+) {
+    is CliTextDocumentAdmission.Admitted -> admission.document
+    is CliTextDocumentAdmission.Rejected -> CliTextDocument.commandRejected
+}

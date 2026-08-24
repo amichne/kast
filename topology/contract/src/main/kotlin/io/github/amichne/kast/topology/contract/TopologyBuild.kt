@@ -14,6 +14,8 @@ class TopologyCandidateSet private constructor(
     val workspace: TopologyWorkspaceIdentity,
     val files: List<TopologySourceFile>,
 ) {
+    private val exactFiles: Set<TopologySourceFile> = files.toSet()
+
     companion object {
         /**
          * Proof transition: `(PublishedWorkspace, List<TopologySourceFile>) ->
@@ -53,7 +55,7 @@ class TopologyCandidateSet private constructor(
     fun extractionRequest(
         file: TopologySourceFile,
     ): Refinement<TopologyExtractionRequest, TopologyExtractionRequestFailure> =
-        if (files.binarySearch(file) >= 0) {
+        if (file in exactFiles) {
             Refinement.Refined(TopologyExtractionRequest(this, file))
         } else {
             Refinement.Rejected(TopologyExtractionRequestFailure.FILE_NOT_ADMITTED)
@@ -103,6 +105,7 @@ fun interface TopologyCandidateEnumerator {
 enum class TopologyExtractionFailure {
     PROJECT_UNAVAILABLE,
     FILE_UNAVAILABLE,
+    SOURCE_CONTENT_MOVED,
     NOT_KOTLIN_PSI,
     COMPILER_UNAVAILABLE,
     FACT_REJECTED,

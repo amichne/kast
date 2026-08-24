@@ -1,7 +1,6 @@
 package io.github.amichne.kast.topology.build
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
@@ -11,15 +10,6 @@ import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 
-internal enum class TopologyGenerationReuseFailure {
-    WORKSPACE_ROOT_MISMATCH,
-    CANDIDATE_IDENTITY_MISMATCH,
-    SYMBOL_REBIND_REJECTED,
-    EDGE_REBIND_REJECTED,
-    FILE_COMPLETION_REJECTED,
-    GENERATION_REJECTED,
-}
-
 internal sealed interface TopologyGenerationReuse {
     data class Rebound(
         val generation: CompleteTopologyGeneration,
@@ -27,9 +17,7 @@ internal sealed interface TopologyGenerationReuse {
 
     data object SourceChanged : TopologyGenerationReuse
 
-    data class Rejected(
-        val failure: TopologyGenerationReuseFailure,
-    ) : TopologyGenerationReuse
+    data object Rejected : TopologyGenerationReuse
 }
 
 /**
@@ -38,8 +26,9 @@ internal sealed interface TopologyGenerationReuse {
  *
  * Rebound establishes that every current candidate has byte- and source-root-identical terminal
  * facts in the prior admitted snapshot, with all symbols and edges rebound to the current lease.
- * SourceChanged closes ordinary staleness. [TopologyGenerationReuseFailure] closes malformed
- * proof transitions. Raw compiler facts are never accepted by this transition.
+ * SourceChanged closes ordinary staleness. [TopologyGenerationReuse.Rejected] closes a malformed
+ * proof transition without manufacturing detail that the public snapshot contract cannot consume.
+ * Raw compiler facts are never accepted by this transition.
  */
 internal fun rebindUnchangedTopologyGeneration(
     workspace: PublishedWorkspace,
@@ -48,10 +37,13 @@ internal fun rebindUnchangedTopologyGeneration(
 ): TopologyGenerationReuse {
     val currentIdentity = TopologyWorkspaceIdentity.from(workspace)
     if (prior.snapshot.identity.lease.workspaceRoot != currentIdentity.lease.workspaceRoot) {
-        return rejected(TopologyGenerationReuseFailure.WORKSPACE_ROOT_MISMATCH)
+        return TopologyGenerationReuse.Rejected
+    }
+    if (prior.snapshot.identity.sourceState != currentIdentity.sourceState) {
+        return TopologyGenerationReuse.SourceChanged
     }
     if (candidates.workspace != currentIdentity) {
-        return rejected(TopologyGenerationReuseFailure.CANDIDATE_IDENTITY_MISMATCH)
+        return TopologyGenerationReuse.Rejected
     }
     val currentFiles = candidates.files.associateBy { it.path }
     val priorFiles = prior.files.associateBy { it.file.path }
@@ -62,22 +54,22 @@ internal fun rebindUnchangedTopologyGeneration(
     ) {
         return TopologyGenerationReuse.SourceChanged
     }
-    val symbols = mutableMapOf<CompilerSymbolIdentity, TopologySymbol>()
+    val symbols = mutableMapOf<TopologySymbol, TopologySymbol>()
     for (symbol in prior.symbols) {
         val currentFile = currentFiles.getValue(symbol.file.path)
         val rebound = when (val admitted = TopologySymbol.admit(currentFile, symbol.evidence)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected ->
-                return rejected(TopologyGenerationReuseFailure.SYMBOL_REBIND_REJECTED)
+                return TopologyGenerationReuse.Rejected
         }
-        symbols[rebound.evidence.compilerIdentity] = rebound
+        symbols[symbol] = rebound
     }
     val edges = mutableListOf<TopologyEdge>()
     for (edge in prior.edges) {
-        val source = symbols[edge.source.evidence.compilerIdentity]
-                     ?: return rejected(TopologyGenerationReuseFailure.EDGE_REBIND_REJECTED)
-        val target = symbols[edge.target.evidence.compilerIdentity]
-                     ?: return rejected(TopologyGenerationReuseFailure.EDGE_REBIND_REJECTED)
+        val source = symbols[edge.source]
+                     ?: return TopologyGenerationReuse.Rejected
+        val target = symbols[edge.target]
+                     ?: return TopologyGenerationReuse.Rejected
         when (val rebound = TopologyEdge.fromBoundary(
             edge.kind,
             source,
@@ -87,7 +79,7 @@ internal fun rebindUnchangedTopologyGeneration(
         )) {
             is Refinement.Refined -> edges += rebound.value
             is Refinement.Rejected ->
-                return rejected(TopologyGenerationReuseFailure.EDGE_REBIND_REJECTED)
+                return TopologyGenerationReuse.Rejected
         }
     }
     val completed = mutableListOf<CompleteTopologyFile>()
@@ -99,7 +91,7 @@ internal fun rebindUnchangedTopologyGeneration(
         )) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected ->
-                return rejected(TopologyGenerationReuseFailure.FILE_COMPLETION_REJECTED)
+                return TopologyGenerationReuse.Rejected
         }
         completed += completion
     }
@@ -110,10 +102,6 @@ internal fun rebindUnchangedTopologyGeneration(
     )) {
         is Refinement.Refined -> TopologyGenerationReuse.Rebound(generation.value)
         is Refinement.Rejected ->
-            rejected(TopologyGenerationReuseFailure.GENERATION_REJECTED)
+            TopologyGenerationReuse.Rejected
     }
 }
-
-private fun rejected(
-    failure: TopologyGenerationReuseFailure,
-): TopologyGenerationReuse.Rejected = TopologyGenerationReuse.Rejected(failure)

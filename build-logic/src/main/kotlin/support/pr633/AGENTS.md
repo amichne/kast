@@ -10,6 +10,13 @@ Stack admission derives its allow-list from the program task scopes. It permits 
 `AGENTS.md` only when the program grants ancestor-guide authority and the guide covers another
 admitted non-guide path; the separate path policy remains a deny-list only.
 
+`Pr633GateEvidenceSerialization.kt` owns the generated `@Serializable` documents, configured JSON
+boundaries, and deterministic gate-evidence writer for program/event authorities, external
+evidence, gate evidence, and stack reports. Only fact and dependency-evidence slots remain
+map-shaped because their keys are deliberately program-defined. `Pr633ProgramDocument` requires
+explicit `tasks` and `gates`; omission is a generated-decoder failure and never manufactures an
+empty collection.
+
 Git-reading gates resolve mutable refs to typed SHAs, execute against that exact range, and remain
 untracked by Gradle so repository-state proof cannot be reused as up-to-date. Internal Kotlin class
 claims use strict compiler metadata visibility plus exact source and compiled identity; JVM access

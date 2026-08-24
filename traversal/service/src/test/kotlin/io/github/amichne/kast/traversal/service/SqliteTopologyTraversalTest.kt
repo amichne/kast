@@ -73,6 +73,32 @@ class SqliteTopologyTraversalTest {
         )
     }
 
+    @Test
+    fun `exact selector location distinguishes duplicate compiler identities`() {
+        val traversalFixture = TraversalTestFixture()
+        val sharedIdentity = "function|sample.shared|-|||0"
+        val a = traversalFixture.selector("a", 10, sharedIdentity)
+        val b = traversalFixture.selector("b", 20, sharedIdentity)
+        val c = traversalFixture.selector("c", 30)
+        val workspace = workspace(traversalFixture, sourceRoot())
+        val generation = generation(workspace, listOf(a, b, c))
+        val database = tempDir.resolve("duplicate-identity-topology.sqlite")
+        val snapshot = assertInstanceOf(
+            TopologyPublicationResult.Published::class.java,
+            store(database).publish(generation),
+        ).snapshot
+
+        val current = WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) }
+        val reopened = store(database)
+        val relations = RelationService(current, SqliteTopologyRelationCompiler(snapshot, reopened))
+        val result = assertInstanceOf(
+            TraversalResult.Complete::class.java,
+            runSuspend { traversalOperations(relations).run(traversalFixture.plan(a)) },
+        )
+
+        assertEquals(listOf("b", "c"), result.page.records.map { it.related.name.value })
+    }
+
     private fun generation(
         workspace: PublishedWorkspace,
         selectors: List<SymbolSelector>,

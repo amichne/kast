@@ -1,9 +1,5 @@
 package io.github.amichne.kast.cli
 
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-
 enum class RuntimeLifecycleState { RUNNING, STOPPED, STALE }
 
 sealed interface RuntimeProcessTermination {
@@ -292,79 +288,3 @@ internal class InactiveRuntimeEndpoint private constructor(
         }
     }
 }
-
-private object JdkRuntimeProcessAuthority : RuntimeProcessAuthority {
-    override fun observe(endpoint: RuntimeEndpoint): RuntimeProcessObservation {
-        val exactArguments = setOf(
-            "--workspace-root=${endpoint.root.path}",
-            "--socket-path=${endpoint.socketPath}",
-            "--runtime-id=${endpoint.runtimeId.value}",
-        )
-        val current = ProcessHandle.current()
-        val currentUser = current.info().user().orElse(null)
-            ?: return RuntimeProcessObservation.Ambiguous
-        val matches = mutableListOf<ProcessHandle>()
-        var inaccessibleIndexer = false
-        try {
-            ProcessHandle.allProcesses().use { processes ->
-                processes.forEach { process ->
-                    if (process.pid() == current.pid()) return@forEach
-                    val info = process.info()
-                    val arguments = info.arguments().orElse(null)
-                    val commandLine = info.commandLine().orElse("")
-                    val isIndexer = arguments?.contains(INDEXER_MAIN_CLASS) == true ||
-                        commandLine.contains(INDEXER_MAIN_CLASS)
-                    if (!isIndexer) return@forEach
-                    val user = info.user().orElse(null)
-                    if (user == null || arguments == null) {
-                        inaccessibleIndexer = true
-                    } else if (user == currentUser && exactArguments.all(arguments::contains)) {
-                        matches += process
-                    }
-                }
-            }
-        } catch (_: SecurityException) {
-            return RuntimeProcessObservation.Ambiguous
-        }
-        if (inaccessibleIndexer) return RuntimeProcessObservation.Ambiguous
-        return when (matches.size) {
-            0 -> RuntimeProcessObservation.Absent
-            1 -> RuntimeProcessObservation.Owned(JdkRuntimeOwnedProcess(matches.single()))
-            else -> RuntimeProcessObservation.Ambiguous
-        }
-    }
-}
-
-private class JdkRuntimeOwnedProcess(
-    private val process: ProcessHandle,
-) : RuntimeOwnedProcess {
-    override fun terminate(): RuntimeProcessTermination {
-        if (!process.isAlive) return RuntimeProcessTermination.Terminated
-        return try {
-            if (!process.destroy() && process.isAlive) {
-                return RuntimeProcessTermination.Rejected
-            }
-            try {
-                process.onExit().get(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            } catch (_: TimeoutException) {
-                if (!process.destroyForcibly() && process.isAlive) {
-                    return RuntimeProcessTermination.Rejected
-                }
-                process.onExit().get(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            }
-            RuntimeProcessTermination.Terminated
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-            RuntimeProcessTermination.Interrupted
-        } catch (_: ExecutionException) {
-            RuntimeProcessTermination.Rejected
-        } catch (_: TimeoutException) {
-            RuntimeProcessTermination.Rejected
-        } catch (_: SecurityException) {
-            RuntimeProcessTermination.Rejected
-        }
-    }
-}
-
-private const val PROCESS_STOP_TIMEOUT_SECONDS = 10L
-private const val INDEXER_MAIN_CLASS = "io.github.amichne.kast.indexer.KastIndexerMainKt"

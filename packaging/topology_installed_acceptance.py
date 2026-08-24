@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from topology_installed_support import AcceptanceFailure
+from topology_installed_support import active_indexer_pid
 from topology_installed_support import InstalledKast
 from topology_installed_support import discover_selector
 from topology_installed_support import expect_rejection
@@ -73,6 +74,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     require(schema.get("operationRegistry") == registry, "installed schema registry differs")
     inspected = kast.semantic("workspace.inspect", "workspace", "inspect")
     require(inspected.get("status") in {"complete", "qualified"}, str(inspected))
+    first_caller_pid = active_indexer_pid(kast)
 
     class_selector_g0 = discover_selector(kast, "Greeter", "Greeter")
     greeting_selector_g0 = discover_selector(kast, "greeting", "greeting")
@@ -95,6 +97,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     reused_generation, reused_digest = require_build_identity(topology_build(kast), "reused")
     require(reused_generation == generation_g0, "reused build changed generation")
     require(reused_digest == digest_d0, "reused build changed digest")
+    later_caller_pid = active_indexer_pid(kast)
+    require(later_caller_pid == first_caller_pid, "successive public callers replaced the indexer")
 
     traversal_before = traversal_callers(kast, greeting_selector_g0)
     normalized_before = normalize_traversal(traversal_before)
@@ -186,6 +190,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "status": "reused",
             "generation": reused_generation,
             "digest": "sha256:" + reused_digest,
+        },
+        "processReuse": {
+            "firstCallerPid": first_caller_pid,
+            "laterCallerPid": later_caller_pid,
+            "samePidAcrossCallers": later_caller_pid == first_caller_pid,
         },
         "restart": {
             "traversalBeforeSha256": sha256_text(normalized_before),

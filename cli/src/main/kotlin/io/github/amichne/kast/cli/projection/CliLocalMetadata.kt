@@ -1,15 +1,21 @@
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.cli.CliOpenJsonObject
+import io.github.amichne.kast.cli.CliOpenJsonObjectAdmission
 import io.github.amichne.kast.cli.CliProcessOutput
 import io.github.amichne.kast.cli.CliTextDocument
+import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.CliLocalCommand
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 
 private val RUNTIME_ID_PATTERN = Regex("sha256:[0-9a-f]{64}")
 
-enum class CliLocalMetadataFailure { PRODUCT_VERSION_INVALID, RUNTIME_ID_INVALID, SCHEMA_INVALID }
+enum class CliLocalMetadataFailure {
+    PRODUCT_VERSION_INVALID,
+    RUNTIME_ID_INVALID,
+    SCHEMA_INVALID,
+    VERSION_DOCUMENT_INVALID,
+}
 
 sealed interface CliLocalMetadataAdmission {
     data class Admitted(val metadata: CliLocalMetadata) : CliLocalMetadataAdmission
@@ -40,29 +46,83 @@ class CliLocalMetadata private constructor(
             runtimeIdentity: String,
             schema: String,
         ): CliLocalMetadataAdmission {
-            if (productVersion.isBlank()) {
-                return CliLocalMetadataAdmission.Rejected(
-                    CliLocalMetadataFailure.PRODUCT_VERSION_INVALID,
+            val version = when (val admission = versionDocument(productVersion, runtimeIdentity)) {
+                is CliLocalVersionAdmission.Admitted -> admission.document
+                is CliLocalVersionAdmission.Rejected -> return CliLocalMetadataAdmission.Rejected(
+                    admission.failure,
                 )
             }
-            if (!RUNTIME_ID_PATTERN.matches(runtimeIdentity)) {
-                return CliLocalMetadataAdmission.Rejected(
-                    CliLocalMetadataFailure.RUNTIME_ID_INVALID,
+            val schemaObject = when (val admission = CliOpenJsonObject.parse(schema)) {
+                is CliOpenJsonObjectAdmission.Admitted -> admission.value
+                is CliOpenJsonObjectAdmission.Rejected -> return CliLocalMetadataAdmission.Rejected(
+                    CliLocalMetadataFailure.SCHEMA_INVALID,
                 )
             }
-            val schemaObject = try {
-                Json.parseToJsonElement(schema) as? JsonObject
-            } catch (_: RuntimeException) {
-                null
-            } ?: return CliLocalMetadataAdmission.Rejected(CliLocalMetadataFailure.SCHEMA_INVALID)
             return CliLocalMetadataAdmission.Admitted(
-                CliLocalMetadata(
-                    CliTextDocument.admitted(
-                        "kast $productVersion (semantic runtime $runtimeIdentity)",
-                    ),
-                    CliJsonDocument.from(schemaObject),
-                ),
+                CliLocalMetadata(version, schemaObject.document()),
             )
         }
+
+        /**
+         * Proof transition: `String + String + CliJsonDocument -> CliLocalMetadataAdmission`.
+         *
+         * Preserves a generated schema document while establishing the product and runtime
+         * identities. [CliLocalMetadataFailure] is the closed expected failure. Raw identities
+         * may leave only at installed metadata composition.
+         */
+        internal fun admit(
+            productVersion: String,
+            runtimeIdentity: String,
+            schema: CliJsonDocument,
+        ): CliLocalMetadataAdmission = when (
+            val admission = versionDocument(productVersion, runtimeIdentity)
+        ) {
+            is CliLocalVersionAdmission.Admitted -> CliLocalMetadataAdmission.Admitted(
+                CliLocalMetadata(admission.document, schema),
+            )
+            is CliLocalVersionAdmission.Rejected -> CliLocalMetadataAdmission.Rejected(
+                admission.failure,
+            )
+        }
+
+        /**
+         * Proof transition: `String + String -> CliLocalVersionAdmission`.
+         *
+         * Establishes a non-blank product version and canonical runtime identity in one admitted
+         * text document. [CliLocalMetadataFailure] is the closed expected failure. Raw identity
+         * text is retained only in the returned process document.
+         */
+        private fun versionDocument(
+            productVersion: String,
+            runtimeIdentity: String,
+        ): CliLocalVersionAdmission = when {
+            productVersion.isBlank() -> CliLocalVersionAdmission.Rejected(
+                CliLocalMetadataFailure.PRODUCT_VERSION_INVALID,
+            )
+            !RUNTIME_ID_PATTERN.matches(runtimeIdentity) -> CliLocalVersionAdmission.Rejected(
+                CliLocalMetadataFailure.RUNTIME_ID_INVALID,
+            )
+            else -> when (
+                val admission = CliTextDocument.admit(
+                    "kast $productVersion (semantic runtime $runtimeIdentity)",
+                )
+            ) {
+                is CliTextDocumentAdmission.Admitted ->
+                    CliLocalVersionAdmission.Admitted(admission.document)
+                is CliTextDocumentAdmission.Rejected -> CliLocalVersionAdmission.Rejected(
+                    CliLocalMetadataFailure.VERSION_DOCUMENT_INVALID,
+                )
+            }
+        }
     }
+}
+
+private sealed interface CliLocalVersionAdmission {
+    data class Admitted(
+        val document: CliTextDocument,
+    ) : CliLocalVersionAdmission
+
+    data class Rejected(
+        val failure: CliLocalMetadataFailure,
+    ) : CliLocalVersionAdmission
 }

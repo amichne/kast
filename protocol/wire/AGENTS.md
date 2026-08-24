@@ -11,6 +11,14 @@ table for the canonical public operation set.
 - Wire code transports typed contracts; it does not dispatch operations or gain capabilities.
 - The generated `operation-registry.json` projection is encoded here from the registry's typed
   artifact; Gradle owns filesystem output and installed metadata copies those bytes unchanged.
+- Every closed request, result, qualification, rejection, and generated metadata schema uses a
+  dedicated `@Serializable` wire document and the Kotlin plugin's generated `serializer()`
+  factory. Do not assemble or parse known schemas through `JsonObject`, maps, JSON builders, field
+  lookups, or hand-written `KSerializer` implementations. `JsonElement` is reserved for the open
+  envelope slot before the matching generated document refines it.
+- `wireJson` is the sole configured JSON format. Reuse it through `GeneratedWireCodecFactory` and
+  declare schema-specific sealed discriminators with `@JsonClassDiscriminator`; do not construct a
+  serializer-family `Json` instance.
 
 ## Contract invariants
 

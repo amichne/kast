@@ -93,26 +93,42 @@ internal class CanonicalProtocolAuthority {
                     CandidateSelectorIssuanceFailure.NON_DECLARATION_CANDIDATE,
                 )
             }
-            issued += CanonicalSelectorCodec.encodeCandidate(selection)
+            when (val encoded = CanonicalSelectorCodec.encodeCandidate(selection)) {
+                is CanonicalSelectorEncoding.Encoded -> issued += encoded.token
+                is CanonicalSelectorEncoding.Rejected ->
+                    return CandidateSelectorIssuance.Rejected(
+                        CandidateSelectorIssuanceFailure.TOKEN_REJECTED,
+                    )
+            }
         }
         return CandidateSelectorIssuance.Issued(issued)
     }
 
     /** Restores candidate authority from token facts without process-local retained state. */
-    fun candidate(selector: ProtocolText): CandidateSelectorLookup =
-        CanonicalSelectorCodec.decodeCandidate(selector)
-            ?.let(CandidateSelectorLookup::Found)
-        ?: CandidateSelectorLookup.Missing
+    fun candidate(selector: ProtocolText): CandidateSelectorLookup = when (
+        val decoded = CanonicalSelectorCodec.decodeCandidate(selector)
+    ) {
+        is CanonicalSelectorDecoding.Decoded -> CandidateSelectorLookup.Found(decoded.value)
+        is CanonicalSelectorDecoding.Rejected -> CandidateSelectorLookup.Missing
+    }
 
     /** Issues one self-describing exact selector token. */
-    fun issueExact(selector: SymbolSelector): ExactSelectorIssuance =
-        ExactSelectorIssuance.Issued(CanonicalSelectorCodec.encodeExact(selector))
+    fun issueExact(selector: SymbolSelector): ExactSelectorIssuance = when (
+        val encoded = CanonicalSelectorCodec.encodeExact(selector)
+    ) {
+        is CanonicalSelectorEncoding.Encoded -> ExactSelectorIssuance.Issued(encoded.token)
+        is CanonicalSelectorEncoding.Rejected -> ExactSelectorIssuance.Rejected(
+            ExactSelectorIssuanceFailure.TOKEN_REJECTED,
+        )
+    }
 
     /** Restores exact selector authority and verifies its deterministic fingerprint. */
-    fun exact(selector: ProtocolText): ExactSelectorLookup =
-        CanonicalSelectorCodec.decodeExact(selector)
-            ?.let(ExactSelectorLookup::Found)
-        ?: ExactSelectorLookup.Missing
+    fun exact(selector: ProtocolText): ExactSelectorLookup = when (
+        val decoded = CanonicalSelectorCodec.decodeExact(selector)
+    ) {
+        is CanonicalSelectorDecoding.Decoded -> ExactSelectorLookup.Found(decoded.value)
+        is CanonicalSelectorDecoding.Rejected -> ExactSelectorLookup.Missing
+    }
 
     /**
      * Converts every compiler-grounded relation endpoint into the same exact selector family used

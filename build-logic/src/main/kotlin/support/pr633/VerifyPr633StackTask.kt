@@ -1,12 +1,6 @@
 package support.pr633
 
 import javax.inject.Inject
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -106,22 +100,19 @@ abstract class VerifyPr633StackTask @Inject constructor(
 
         val output = reportFile.get().asFile
         output.parentFile.mkdirs()
-        val report = buildJsonObject {
-            put("schemaVersion", 1)
-            put("pullRequest", identity.pullRequest)
-            put("baseRef", identity.baseRef)
-            put("headSha", ancestry.headSha.value)
-            put("mainRef", ancestry.mainRef)
-            put("mainSha", ancestry.mainSha.value)
-            put(
-                "changedPaths",
-                buildJsonArray {
-                    admittedPaths.sortedValues().forEach { path -> add(JsonPrimitive(path)) }
-                },
-            )
-            put("status", "passed")
-        }
-        output.writeText(Json { prettyPrint = true }.encodeToString(JsonObject.serializer(), report) + "\n")
+        val report = StackVerificationReportDocument(
+            schemaVersion = 1,
+            pullRequest = identity.pullRequest,
+            baseRef = identity.baseRef,
+            headSha = ancestry.headSha.value,
+            mainRef = ancestry.mainRef,
+            mainSha = ancestry.mainSha.value,
+            changedPaths = admittedPaths.sortedValues(),
+            status = Pr633EvidenceStatus.PASSED,
+        )
+        output.writeText(
+            pr633EvidenceJson.encodeToString(StackVerificationReportDocument.serializer(), report) + "\n",
+        )
     }
 
     /**
@@ -230,14 +221,14 @@ abstract class VerifyPr633GitDiffTask @Inject constructor(
         val verified = verifyAdmittedRange().atGradleBoundary()
         val output = reportFile.get().asFile
         output.parentFile.mkdirs()
-        val report = buildJsonObject {
-            put("schemaVersion", 1)
-            put("mainSha", verified.mainSha.value)
-            put("headSha", verified.headSha.value)
-            put("status", "passed")
-        }
+        val report = GitDiffVerificationReportDocument(
+            schemaVersion = 1,
+            mainSha = verified.mainSha.value,
+            headSha = verified.headSha.value,
+            status = Pr633EvidenceStatus.PASSED,
+        )
         output.writeText(
-            Json { prettyPrint = true }.encodeToString(JsonObject.serializer(), report) + "\n",
+            pr633EvidenceJson.encodeToString(GitDiffVerificationReportDocument.serializer(), report) + "\n",
         )
     }
 

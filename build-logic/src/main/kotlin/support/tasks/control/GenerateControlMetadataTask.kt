@@ -1,5 +1,7 @@
 package support.tasks
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -71,12 +73,42 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         ).joinToString("\n")
         val runtimeId = sha256(identityMaterial.toByteArray(StandardCharsets.UTF_8))
         val baseUrl = runtimeBaseUrl.get().trimEnd('/')
-        val manifest =
-            "{\"schemaVersion\":1,\"runtimeId\":\"$runtimeId\",\"productVersion\":\"${productVersion.get()}\",\"platform\":\"macos\",\"architecture\":\"aarch64\",\"ideaBuild\":\"${ideaBuild.get()}\",\"kotlinPluginBuild\":\"${kotlinPluginBuild.get()}\",\"kastPluginSha256\":\"$pluginDigest\",\"wireSchemaId\":\"$wireSchemaId\",\"archive\":{\"fileName\":\"${archive.name}\",\"url\":\"$baseUrl/${archive.name}\",\"sha256\":\"$archiveDigest\",\"bytes\":${archive.length()}},\"layout\":{\"executable\":\"kast-indexer\",\"requiredEntries\":[\"kast-indexer\",\"runtime-libs/\",\"idea-home/product-info.json\",\"idea-home/plugins/kast-indexer/\"],\"executableEntries\":[\"kast-indexer\"]}}"
-        output.resolve("semantic-runtime.json").writeText(manifest)
+        val manifest = SemanticRuntimeDocument(
+            schemaVersion = 1,
+            runtimeId = runtimeId,
+            productVersion = productVersion.get(),
+            platform = "macos",
+            architecture = "aarch64",
+            ideaBuild = ideaBuild.get(),
+            kotlinPluginBuild = kotlinPluginBuild.get(),
+            kastPluginSha256 = pluginDigest,
+            wireSchemaId = wireSchemaId,
+            archive = SemanticRuntimeArchiveDocument(
+                fileName = archive.name,
+                url = "$baseUrl/${archive.name}",
+                sha256 = archiveDigest,
+                bytes = archive.length(),
+            ),
+            layout = SemanticRuntimeLayoutDocument(
+                executable = "kast-indexer",
+                requiredEntries = listOf(
+                    "kast-indexer",
+                    "runtime-libs/",
+                    "idea-home/product-info.json",
+                    "idea-home/plugins/kast-indexer/",
+                ),
+                executableEntries = listOf("kast-indexer"),
+            ),
+        )
+        output.resolve("semantic-runtime.json").writeText(
+            controlMetadataJson.encodeToString(SemanticRuntimeDocument.serializer(), manifest),
+        )
         operationRegistryFile.get().asFile.copyTo(output.resolve("operation-registry.json"))
         output.resolve("wire-schema.json").writeText(
-            "{\"schemaVersion\":1,\"wireSchemaId\":\"$wireSchemaId\"}",
+            controlMetadataJson.encodeToString(
+                WireSchemaDocument.serializer(),
+                WireSchemaDocument(schemaVersion = 1, wireSchemaId = wireSchemaId),
+            ),
         )
         licenseFile.get().asFile.copyTo(output.resolve("licenses/LICENSE"))
     }
@@ -84,4 +116,47 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
     private fun sha256(bytes: ByteArray): String = "sha256:" + HexFormat.of().formatHex(
         MessageDigest.getInstance("SHA-256").digest(bytes),
     )
+}
+
+@Serializable
+internal data class SemanticRuntimeDocument(
+    val schemaVersion: Int,
+    val runtimeId: String,
+    val productVersion: String,
+    val platform: String,
+    val architecture: String,
+    val ideaBuild: String,
+    val kotlinPluginBuild: String,
+    val kastPluginSha256: String,
+    val wireSchemaId: String,
+    val archive: SemanticRuntimeArchiveDocument,
+    val layout: SemanticRuntimeLayoutDocument,
+)
+
+@Serializable
+internal data class SemanticRuntimeArchiveDocument(
+    val fileName: String,
+    val url: String,
+    val sha256: String,
+    val bytes: Long,
+)
+
+@Serializable
+internal data class SemanticRuntimeLayoutDocument(
+    val executable: String,
+    val requiredEntries: List<String>,
+    val executableEntries: List<String>,
+)
+
+@Serializable
+internal data class WireSchemaDocument(
+    val schemaVersion: Int,
+    val wireSchemaId: String,
+)
+
+internal val controlMetadataJson = Json {
+    encodeDefaults = true
+    explicitNulls = true
+    ignoreUnknownKeys = false
+    isLenient = false
 }

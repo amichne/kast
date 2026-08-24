@@ -1,7 +1,6 @@
 package io.github.amichne.kast.topology.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import java.nio.charset.StandardCharsets
@@ -10,6 +9,7 @@ import java.security.MessageDigest
 enum class CompleteTopologyFileFailure {
     SYMBOL_FILE_MISMATCH,
     EDGE_SOURCE_FILE_MISMATCH,
+    DUPLICATE_SYMBOL_IDENTITY,
     NON_DETERMINISTIC_SYMBOLS,
     NON_DETERMINISTIC_EDGES,
 }
@@ -41,6 +41,9 @@ class CompleteTopologyFile private constructor(
             if (edges.any { it.source.file != file }) {
                 failures += CompleteTopologyFileFailure.EDGE_SOURCE_FILE_MISMATCH
             }
+            if (symbols.map(TopologySymbol::nodeIdentity).distinct().size != symbols.size) {
+                failures += CompleteTopologyFileFailure.DUPLICATE_SYMBOL_IDENTITY
+            }
             if (symbols != symbols.distinct().sorted()) {
                 failures += CompleteTopologyFileFailure.NON_DETERMINISTIC_SYMBOLS
             }
@@ -62,9 +65,51 @@ data class TopologyGenerationCoverageFailure(
     val duplicateCandidates: Set<WorkspaceSourcePath>,
     val duplicateCompletions: Set<WorkspaceSourcePath>,
     val workspaceMismatches: Set<WorkspaceSourcePath>,
-    val duplicateSymbols: Set<CompilerSymbolIdentity>,
-    val missingEdgeTargets: Set<CompilerSymbolIdentity>,
+    val candidateEvidenceMismatches: Set<TopologyCandidateEvidenceMismatch>,
+    val duplicateSymbols: Set<TopologyNodeIdentity>,
+    val missingEdgeTargets: Set<TopologyNodeIdentity>,
+    val mismatchedEdgeEndpoints: Set<TopologySymbol>,
 )
+
+/** Two same-path topology files whose retained ownership or content evidence differs. */
+@ConsistentCopyVisibility
+data class TopologyCandidateEvidenceMismatch private constructor(
+    val candidate: TopologySourceFile,
+    val completed: TopologySourceFile,
+) {
+    companion object {
+        /**
+         * Proof transition: `(TopologySourceFile, TopologySourceFile) ->
+         * TopologyCandidateEvidenceComparison`.
+         *
+         * A mismatched result establishes one same-path, non-equal candidate/completion pair while
+         * retaining both exact workspace, source-root, path, and content-hash values. Exact and
+         * different-path inputs remain distinct closed states. Completed compiler evidence may
+         * enter only at complete-generation admission.
+         */
+        internal fun compare(
+            candidate: TopologySourceFile,
+            completed: TopologySourceFile,
+        ): TopologyCandidateEvidenceComparison = when {
+            candidate.path != completed.path -> TopologyCandidateEvidenceComparison.DifferentPath
+            candidate == completed -> TopologyCandidateEvidenceComparison.Exact
+            else -> TopologyCandidateEvidenceComparison.Mismatched(
+                TopologyCandidateEvidenceMismatch(
+                    candidate,
+                    completed,
+                ),
+            )
+        }
+    }
+}
+
+internal sealed interface TopologyCandidateEvidenceComparison {
+    data object Exact : TopologyCandidateEvidenceComparison
+    data object DifferentPath : TopologyCandidateEvidenceComparison
+    data class Mismatched(
+        val evidence: TopologyCandidateEvidenceMismatch,
+    ) : TopologyCandidateEvidenceComparison
+}
 
 /** Lowercase SHA-256 over the canonical complete topology projection. */
 @JvmInline
@@ -112,10 +157,11 @@ class CompleteTopologyGeneration private constructor(
          * List<CompleteTopologyFile>) -> Refinement<CompleteTopologyGeneration,
          * TopologyGenerationCoverageFailure>`.
          *
-         * Establishes exact candidate-to-terminal coverage, one workspace identity, globally
-         * unique compiler symbols, closed edge targets, canonical ordering, and a deterministic
-         * generation digest. [TopologyGenerationCoverageFailure] retains every finite coverage
-         * mismatch. Only the explicit topology build coordinator may call this transition.
+         * Establishes exact candidate-to-terminal coverage, one workspace identity,
+         * location-distinct topology symbols, closed exact edge targets, canonical ordering, and
+         * a deterministic generation digest. Compiler identity may repeat at distinct exact
+         * locations. [TopologyGenerationCoverageFailure] retains every finite coverage mismatch.
+         * Only the explicit topology build coordinator may call this transition.
          */
         fun admit(
             workspace: PublishedWorkspace,
@@ -134,36 +180,61 @@ class CompleteTopologyGeneration private constructor(
                 candidates.filter { it.workspace != identity }.map { it.path } +
                     completed.filter { it.file.workspace != identity }.map { it.file.path }
                 ).toSet()
-            val symbolGroups = ordered.flatMap(CompleteTopologyFile::symbols)
-                .groupBy { it.evidence.compilerIdentity }
-            val duplicateSymbols = symbolGroups.filterValues { symbols ->
-                symbols.map(TopologySymbol::canonicalProjection).distinct().size > 1
-            }.keys
-            val knownSymbols: Set<CompilerSymbolIdentity> = symbolGroups.keys
-            val missingEdgeTargets = ordered.flatMap(CompleteTopologyFile::edges)
-                .flatMap { edge ->
-                    listOf(
-                        edge.source.evidence.compilerIdentity,
-                        edge.target.evidence.compilerIdentity,
-                    )
+            val candidateEvidenceMismatches = buildSet {
+                candidatePaths.intersect(completedPaths).forEach { path ->
+                    val candidate = candidateGroups.getValue(path).singleOrNull()
+                        ?: return@forEach
+                    val completedFile = completedGroups.getValue(path).singleOrNull()?.file
+                        ?: return@forEach
+                    when (val comparison = TopologyCandidateEvidenceMismatch.compare(
+                        candidate,
+                        completedFile,
+                    )) {
+                        TopologyCandidateEvidenceComparison.DifferentPath,
+                        TopologyCandidateEvidenceComparison.Exact,
+                            -> Unit
+                        is TopologyCandidateEvidenceComparison.Mismatched ->
+                            add(comparison.evidence)
+                    }
                 }
-                .filterNot(knownSymbols::contains)
-                .toSet()
+            }
+            val symbols = ordered.flatMap(CompleteTopologyFile::symbols)
+            val duplicateSymbols = symbols.groupBy(TopologySymbol::nodeIdentity)
+                .filterValues { it.size > 1 }
+                .keys
+                .toCollection(linkedSetOf())
+            val knownIdentities = symbols.mapTo(hashSetOf(), TopologySymbol::nodeIdentity)
+            val knownSymbols = symbols.toHashSet()
+            val edgeEndpoints = ordered.flatMap(CompleteTopologyFile::edges)
+                .flatMap { edge -> listOf(edge.source, edge.target) }
+            val missingEdgeTargets = edgeEndpoints
+                .map(TopologySymbol::nodeIdentity)
+                .filterNot(knownIdentities::contains)
+                .toCollection(linkedSetOf())
+            val mismatchedEdgeEndpoints = edgeEndpoints
+                .filter { endpoint ->
+                    endpoint.nodeIdentity in knownIdentities && endpoint !in knownSymbols
+                }
+                .toCollection(linkedSetOf())
             val failure = TopologyGenerationCoverageFailure(
                 missing = candidatePaths - completedPaths,
                 unexpected = completedPaths - candidatePaths,
                 duplicateCandidates = duplicateCandidates,
                 duplicateCompletions = duplicateCompletions,
                 workspaceMismatches = workspaceMismatches,
+                candidateEvidenceMismatches = candidateEvidenceMismatches,
                 duplicateSymbols = duplicateSymbols,
                 missingEdgeTargets = missingEdgeTargets,
+                mismatchedEdgeEndpoints = mismatchedEdgeEndpoints,
             )
             if (
                 failure.missing.isNotEmpty() || failure.unexpected.isNotEmpty() ||
                 failure.duplicateCandidates.isNotEmpty() ||
                 failure.duplicateCompletions.isNotEmpty() ||
                 failure.workspaceMismatches.isNotEmpty() ||
-                failure.duplicateSymbols.isNotEmpty() || failure.missingEdgeTargets.isNotEmpty()
+                failure.candidateEvidenceMismatches.isNotEmpty() ||
+                failure.duplicateSymbols.isNotEmpty() || failure.missingEdgeTargets.isNotEmpty() ||
+                failure.mismatchedEdgeEndpoints.isNotEmpty()
             ) {
                 return Refinement.Rejected(failure)
             }

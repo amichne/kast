@@ -1,274 +1,270 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.DetachedVirtualFileUrl
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
-import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
-import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
-import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.symbol.contract.SymbolSelectorFingerprint
-import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
+import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets
-import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Base64
 
+internal enum class CanonicalSelectorEncodingFailure {
+    NON_DECLARATION_CANDIDATE,
+    UNSUPPORTED_SCOPE,
+    TOKEN_REJECTED,
+}
+
+internal sealed interface CanonicalSelectorEncoding {
+    data class Encoded(val token: ProtocolText) : CanonicalSelectorEncoding
+    data class Rejected(
+        val failure: CanonicalSelectorEncodingFailure,
+    ) : CanonicalSelectorEncoding
+}
+
+internal enum class CanonicalSelectorDecodingFailure {
+    INVALID_TOKEN_STRUCTURE,
+    INVALID_PAYLOAD_ENCODING,
+    PAYLOAD_DIGEST_MISMATCH,
+    MALFORMED_DOCUMENT,
+    INVALID_DOCUMENT,
+}
+
+internal sealed interface CanonicalSelectorDecoding<out Value> {
+    data class Decoded<Value>(val value: Value) : CanonicalSelectorDecoding<Value>
+    data class Rejected(
+        val failure: CanonicalSelectorDecodingFailure,
+    ) : CanonicalSelectorDecoding<Nothing>
+}
+
+private val selectorJson = Json {
+    encodeDefaults = false
+    explicitNulls = true
+    ignoreUnknownKeys = false
+    isLenient = false
+}
+
 internal object CanonicalSelectorCodec {
-    fun encodeCandidate(selection: SymbolDiscoverySelection): ProtocolText = token(
-        CANDIDATE_PREFIX,
-        buildJsonObject {
-            putLeaseAndScope(selection.lease, selection.scope)
-            put("kind", selection.candidate.kind.name)
-            put("name", selection.candidate.name.value)
-            putFile(selection.candidate.location.file)
-            val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
-            put("offset", location.offset.value)
-        },
-    )
-
-    fun decodeCandidate(document: ProtocolText): SymbolDiscoverySelection? {
-        val value = parseToken(document, CANDIDATE_PREFIX) ?: return null
-        val lease = value.lease() ?: return null
-        val scope = value.scope(lease.workspaceRoot) ?: return null
-        val kind = value.enum<SymbolDiscoveryKind>("kind") ?: return null
-        if (kind == SymbolDiscoveryKind.FILE || kind == SymbolDiscoveryKind.TEXT) return null
-        val name = value.string("name") ?: return null
-        val file = value.file(lease.workspaceRoot) ?: return null
-        val offset = value.int("offset") ?: return null
-        val candidate = SymbolDiscoveryCandidate.fromBoundary(
-            kind,
-            name,
-            lease,
-            file.nativePath(),
-            file.urlValue(),
-            offset,
-        ).refinedOrNull() ?: return null
-        return SymbolDiscoverySelection.restore(lease, scope, candidate).refinedOrNull()
-    }
-
-    fun encodeExact(selector: SymbolSelector): ProtocolText = token(
-        EXACT_PREFIX,
-        buildJsonObject {
-            putLeaseAndScope(selector.lease, selector.scope)
-            putFile(selector.file)
-            put("start", selector.range.startInclusive)
-            put("end", selector.range.endExclusive)
-            put("name", selector.name.value)
-            when (val identity = selector.qualifiedIdentity) {
-                is ExactDeclarationQualifiedIdentity.Available ->
-                    put("qualifiedIdentity", identity.value)
-                ExactDeclarationQualifiedIdentity.Unavailable ->
-                    put("qualifiedIdentity", JsonNull)
-            }
-            put("kind", selector.kind.name)
-            put("compilerIdentity", selector.compilerIdentity.value)
-            put("fingerprint", selector.fingerprint.value)
-        },
-    )
-
-    fun decodeExact(document: ProtocolText): SymbolSelector? {
-        val value = parseToken(document, EXACT_PREFIX) ?: return null
-        val lease = value.lease() ?: return null
-        val scope = value.scope(lease.workspaceRoot) ?: return null
-        val file = value.file(lease.workspaceRoot) ?: return null
-        val start = value.int("start") ?: return null
-        val end = value.int("end") ?: return null
-        val name = value.string("name") ?: return null
-        val qualified = value.nullableString("qualifiedIdentity") ?: return null
-        val kind = value.enum<CompilerSymbolKind>("kind") ?: return null
-        val compilerIdentity = CompilerSymbolIdentity.parse(
-            value.string("compilerIdentity") ?: return null,
-        ).refinedOrNull() ?: return null
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            file,
-            start,
-            end,
-            name,
-            qualified.value,
-            kind,
-            compilerIdentity,
-        ).refinedOrNull() ?: return null
-        val fingerprint = SymbolSelectorFingerprint.parse(
-            value.string("fingerprint") ?: return null,
-        ).refinedOrNull() ?: return null
-        return SymbolSelector.restore(lease, scope, evidence, fingerprint).refinedOrNull()
-    }
-}
-
-private fun token(prefix: String, value: JsonObject): ProtocolText {
-    val payload = value.toString().toByteArray(StandardCharsets.UTF_8)
-    val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-    val digest = sha256(payload)
-    return ProtocolText.parse("$prefix:$VERSION:$encoded:$digest").refinedOrError()
-}
-
-private fun parseToken(document: ProtocolText, prefix: String): JsonObject? {
-    val parts = document.value.split(':')
-    if (parts.size != 4 || parts[0] != prefix || parts[1] != VERSION) return null
-    val payload = runCatching { Base64.getUrlDecoder().decode(parts[2]) }.getOrNull() ?: return null
-    if (sha256(payload) != parts[3]) return null
-    return runCatching {
-        Json.parseToJsonElement(payload.toString(StandardCharsets.UTF_8)).jsonObject
-    }.getOrNull()
-}
-
-private fun kotlinx.serialization.json.JsonObjectBuilder.putLeaseAndScope(
-    lease: SemanticReadLease,
-    scope: SymbolSearchScope,
-) {
-    put("root", lease.workspaceRoot.value)
-    put("generation", lease.generation.value)
-    put("sourceKinds", scope.sourceKinds.name)
-    put("generatedSources", scope.generatedSources.name)
-    when (scope) {
-        is SymbolSearchScope.ExactFile -> {
-            put("scope", "exact-file")
-            put("scopeFile", scope.file.value)
+    /**
+     * Proof transition: `SymbolDiscoverySelection -> CanonicalSelectorEncoding`.
+     *
+     * [CanonicalSelectorEncoding.Encoded] establishes a digest-bound candidate document produced
+     * by the generated `CandidateSelectorDocument.serializer()` factory.
+     * [CanonicalSelectorEncodingFailure] closes non-declaration candidates, unsupported scopes,
+     * and public-text admission failure. Raw document text leaves only at the protocol-token edge.
+     */
+    fun encodeCandidate(selection: SymbolDiscoverySelection): CanonicalSelectorEncoding {
+        val location = when (val candidateLocation = selection.candidate.location) {
+            is SymbolDiscoveryCandidateLocation.Declaration -> candidateLocation
+            else -> return CanonicalSelectorEncoding.Rejected(
+                CanonicalSelectorEncodingFailure.NON_DECLARATION_CANDIDATE,
+            )
         }
-        is SymbolSearchScope.Workspace -> {
-            put("scope", "workspace")
-            put("libraries", scope.libraries.name)
+        val scope = when (val projection = selection.scope.selectorDocumentProjection()) {
+            is SelectorScopeDocumentProjection.Projected -> projection
+            SelectorScopeDocumentProjection.Rejected -> return CanonicalSelectorEncoding.Rejected(
+                CanonicalSelectorEncodingFailure.UNSUPPORTED_SCOPE,
+            )
         }
-        else -> error("Public selector tokens support exact-file and workspace scopes only")
-    }
-}
-
-private fun kotlinx.serialization.json.JsonObjectBuilder.putFile(
-    file: SymbolDiscoveryFileIdentity,
-) {
-    when (file) {
-        is SymbolDiscoveryFileIdentity.Workspace -> {
-            put("fileType", "workspace")
-            put("file", file.path.value)
-        }
-        is SymbolDiscoveryFileIdentity.External -> {
-            put("fileType", "external")
-            put("file", file.url.value)
-        }
-    }
-}
-
-private fun JsonObject.lease(): SemanticReadLease? {
-    val rootPath = path("root") ?: return null
-    val root = CanonicalWorkspaceRoot.fromCanonicalPath(rootPath).refinedOrNull() ?: return null
-    val generation = EvidenceGeneration.parse(long("generation") ?: return null).refinedOrNull()
-        ?: return null
-    return SemanticReadLease(root, generation)
-}
-
-private fun JsonObject.scope(root: CanonicalWorkspaceRoot): SymbolSearchScope? {
-    val sourceKinds = enum<SymbolSourceKindPolicy>("sourceKinds") ?: return null
-    val generated = enum<SymbolGeneratedSourcePolicy>("generatedSources") ?: return null
-    return when (string("scope")) {
-        "workspace" -> SymbolSearchScope.Workspace(
-            sourceKinds,
-            generated,
-            enum<SymbolLibraryPolicy>("libraries") ?: return null,
+        val file = selection.candidate.location.file.selectorDocumentProjection()
+        val document = CandidateSelectorDocument(
+            root = selection.lease.workspaceRoot.value,
+            generation = selection.lease.generation.value,
+            sourceKinds = selection.scope.sourceKinds.name,
+            generatedSources = selection.scope.generatedSources.name,
+            scope = scope.kind,
+            scopeFile = scope.file,
+            libraries = scope.libraries,
+            kind = selection.candidate.kind.name,
+            name = selection.candidate.name.value,
+            fileType = file.kind,
+            file = file.value,
+            offset = location.offset.value,
         )
-        "exact-file" -> {
-            val filePath = path("scopeFile") ?: return null
-            val file = CanonicalWorkspaceFilePath.fromCanonicalPath(
-                root,
-                filePath,
-            ).refinedOrNull() ?: return null
-            SymbolSearchScope.ExactFile(file, sourceKinds, generated)
+        return encodeToken(
+            CANDIDATE_PREFIX,
+            selectorJson.encodeToString(CandidateSelectorDocument.serializer(), document),
+        )
+    }
+
+    /**
+     * Proof transition: `ProtocolText -> CanonicalSelectorDecoding<SymbolDiscoverySelection>`.
+     *
+     * A decoded value establishes token structure, digest, generated-schema decoding, and all
+     * lease, scope, file, candidate, and selection invariants. [CanonicalSelectorDecodingFailure]
+     * is the closed expected failure. Raw token text is extracted only by this decoder boundary.
+     */
+    fun decodeCandidate(
+        token: ProtocolText,
+    ): CanonicalSelectorDecoding<SymbolDiscoverySelection> {
+        val payload = when (val admission = parseToken(token, CANDIDATE_PREFIX)) {
+            is SelectorTokenPayloadAdmission.Admitted -> admission.payload
+            is SelectorTokenPayloadAdmission.Rejected -> return admission.failure.rejected()
         }
-        else -> null
+        val document = try {
+            selectorJson.decodeFromString(CandidateSelectorDocument.serializer(), payload)
+        } catch (_: SerializationException) {
+            return CanonicalSelectorDecoding.Rejected(
+                CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT,
+            )
+        } catch (_: IllegalArgumentException) {
+            return CanonicalSelectorDecoding.Rejected(
+                CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT,
+            )
+        }
+        return document.admitCandidateSelection().asDecoding()
+    }
+
+    /**
+     * Proof transition: `SymbolSelector -> CanonicalSelectorEncoding`.
+     *
+     * An encoded token establishes a digest-bound exact-selector document produced by the
+     * generated `ExactSelectorDocument.serializer()` factory. [CanonicalSelectorEncodingFailure]
+     * closes unsupported scopes and public-text admission failure. Raw document text leaves only
+     * at the token edge.
+     */
+    fun encodeExact(selector: SymbolSelector): CanonicalSelectorEncoding {
+        val scope = when (val projection = selector.scope.selectorDocumentProjection()) {
+            is SelectorScopeDocumentProjection.Projected -> projection
+            SelectorScopeDocumentProjection.Rejected -> return CanonicalSelectorEncoding.Rejected(
+                CanonicalSelectorEncodingFailure.UNSUPPORTED_SCOPE,
+            )
+        }
+        val file = selector.file.selectorDocumentProjection()
+        val document = ExactSelectorDocument(
+            root = selector.lease.workspaceRoot.value,
+            generation = selector.lease.generation.value,
+            sourceKinds = selector.scope.sourceKinds.name,
+            generatedSources = selector.scope.generatedSources.name,
+            scope = scope.kind,
+            scopeFile = scope.file,
+            libraries = scope.libraries,
+            fileType = file.kind,
+            file = file.value,
+            start = selector.range.startInclusive,
+            end = selector.range.endExclusive,
+            name = selector.name.value,
+            qualifiedIdentity = when (val identity = selector.qualifiedIdentity) {
+                is ExactDeclarationQualifiedIdentity.Available -> identity.value
+                ExactDeclarationQualifiedIdentity.Unavailable -> null
+            },
+            kind = selector.kind.name,
+            compilerIdentity = selector.compilerIdentity.value,
+            fingerprint = selector.fingerprint.value,
+        )
+        return encodeToken(
+            EXACT_PREFIX,
+            selectorJson.encodeToString(ExactSelectorDocument.serializer(), document),
+        )
+    }
+
+    /**
+     * Proof transition: `ProtocolText -> CanonicalSelectorDecoding<SymbolSelector>`.
+     *
+     * A decoded value establishes token structure, digest, generated-schema decoding, and all
+     * exact compiler-evidence and fingerprint invariants. [CanonicalSelectorDecodingFailure] is
+     * the closed expected failure. Raw token text is extracted only by this decoder boundary.
+     */
+    fun decodeExact(token: ProtocolText): CanonicalSelectorDecoding<SymbolSelector> {
+        val payload = when (val admission = parseToken(token, EXACT_PREFIX)) {
+            is SelectorTokenPayloadAdmission.Admitted -> admission.payload
+            is SelectorTokenPayloadAdmission.Rejected -> return admission.failure.rejected()
+        }
+        val document = try {
+            selectorJson.decodeFromString(ExactSelectorDocument.serializer(), payload)
+        } catch (_: SerializationException) {
+            return CanonicalSelectorDecoding.Rejected(
+                CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT,
+            )
+        } catch (_: IllegalArgumentException) {
+            return CanonicalSelectorDecoding.Rejected(
+                CanonicalSelectorDecodingFailure.MALFORMED_DOCUMENT,
+            )
+        }
+        return document.admitExactSelector().asDecoding()
     }
 }
 
-private fun JsonObject.file(root: CanonicalWorkspaceRoot): SymbolDiscoveryFileIdentity? =
-    when (string("fileType")) {
-        "workspace" -> {
-            val filePath = path("file") ?: return null
-            val workspacePath = CanonicalWorkspaceFilePath.fromCanonicalPath(
-                root,
-                filePath,
-            ).refinedOrNull() ?: return null
-            SymbolDiscoveryFileIdentity.Workspace(workspacePath)
-        }
-        "external" -> {
-            val url = DetachedVirtualFileUrl.parse(string("file") ?: return null).refinedOrNull()
-                ?: return null
-            SymbolDiscoveryFileIdentity.External(url)
-        }
-        else -> null
-    }
+private sealed interface SelectorTokenPayloadAdmission {
+    data class Admitted(val payload: String) : SelectorTokenPayloadAdmission
+    data class Rejected(
+        val failure: CanonicalSelectorDecodingFailure,
+    ) : SelectorTokenPayloadAdmission
+}
 
-private data class NullableString(val value: String?)
-
-private fun JsonObject.nullableString(name: String): NullableString? {
-    val element = this[name] ?: return null
-    return if (element === JsonNull) NullableString(null) else {
-        val primitive = runCatching { element.jsonPrimitive }.getOrNull() ?: return null
-        if (!primitive.isString) return null
-        NullableString(primitive.content)
+/** Encodes one generated JSON document as a digest-bound, bounded public protocol token. */
+private fun encodeToken(prefix: String, document: String): CanonicalSelectorEncoding {
+    val payload = document.toByteArray(StandardCharsets.UTF_8)
+    val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+    val raw = "$prefix:$TOKEN_VERSION:$encoded:${sha256(payload)}"
+    return when (val admitted = ProtocolText.parse(raw)) {
+        is Refinement.Refined -> CanonicalSelectorEncoding.Encoded(admitted.value)
+        is Refinement.Rejected -> CanonicalSelectorEncoding.Rejected(
+            CanonicalSelectorEncodingFailure.TOKEN_REJECTED,
+        )
     }
 }
 
-private fun JsonObject.string(name: String): String? {
-    val primitive = runCatching { getValue(name).jsonPrimitive }.getOrNull() ?: return null
-    return primitive.takeIf { it.isString }?.content
+/**
+ * Proof transition: `ProtocolText + expected prefix -> SelectorTokenPayloadAdmission`.
+ *
+ * Admission proves the token family, version, base64url encoding, SHA-256 digest, and strict UTF-8
+ * payload. [CanonicalSelectorDecodingFailure] closes each expected rejection. Raw bytes leave only
+ * at strict UTF-8 decoding for the generated serializer boundary.
+ */
+private fun parseToken(
+    document: ProtocolText,
+    prefix: String,
+): SelectorTokenPayloadAdmission {
+    val parts = document.value.split(':')
+    if (parts.size != TOKEN_PART_COUNT || parts[0] != prefix || parts[1] != TOKEN_VERSION) {
+        return SelectorTokenPayloadAdmission.Rejected(
+            CanonicalSelectorDecodingFailure.INVALID_TOKEN_STRUCTURE,
+        )
+    }
+    val payload = try {
+        Base64.getUrlDecoder().decode(parts[2])
+    } catch (_: IllegalArgumentException) {
+        return SelectorTokenPayloadAdmission.Rejected(
+            CanonicalSelectorDecodingFailure.INVALID_PAYLOAD_ENCODING,
+        )
+    }
+    if (sha256(payload) != parts[3]) {
+        return SelectorTokenPayloadAdmission.Rejected(
+            CanonicalSelectorDecodingFailure.PAYLOAD_DIGEST_MISMATCH,
+        )
+    }
+    val decoded = try {
+        payload.decodeToString(throwOnInvalidSequence = true)
+    } catch (_: CharacterCodingException) {
+        return SelectorTokenPayloadAdmission.Rejected(
+            CanonicalSelectorDecodingFailure.INVALID_PAYLOAD_ENCODING,
+        )
+    }
+    return SelectorTokenPayloadAdmission.Admitted(decoded)
 }
 
-private fun JsonObject.path(name: String): Path? =
-    runCatching { Path.of(string(name) ?: return null) }.getOrNull()
-
-private fun JsonObject.int(name: String): Int? =
-    runCatching { getValue(name).jsonPrimitive.content.toInt() }.getOrNull()
-
-private fun JsonObject.long(name: String): Long? =
-    runCatching { getValue(name).jsonPrimitive.content.toLong() }.getOrNull()
-
-private inline fun <reified Value : Enum<Value>> JsonObject.enum(name: String): Value? =
-    runCatching { enumValueOf<Value>(string(name) ?: return null) }.getOrNull()
-
-private fun SymbolDiscoveryFileIdentity.nativePath(): Path? = when (this) {
-    is SymbolDiscoveryFileIdentity.Workspace -> Path.of(path.value)
-    is SymbolDiscoveryFileIdentity.External -> null
+private fun <Value> SelectorDocumentAdmission<Value>.asDecoding():
+    CanonicalSelectorDecoding<Value> = when (this) {
+    is SelectorDocumentAdmission.Admitted -> CanonicalSelectorDecoding.Decoded(value)
+    SelectorDocumentAdmission.Rejected -> CanonicalSelectorDecoding.Rejected(
+        CanonicalSelectorDecodingFailure.INVALID_DOCUMENT,
+    )
 }
 
-private fun SymbolDiscoveryFileIdentity.urlValue(): String = when (this) {
-    is SymbolDiscoveryFileIdentity.Workspace -> Path.of(path.value).toUri().toString()
-    is SymbolDiscoveryFileIdentity.External -> url.value
-}
+private fun CanonicalSelectorDecodingFailure.rejected(): CanonicalSelectorDecoding.Rejected =
+    CanonicalSelectorDecoding.Rejected(this)
 
 private fun sha256(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
         (byte.toInt() and 0xff).toString(16).padStart(2, '0')
     }
 
-private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> null
-}
-
-private fun <Value, Failure> Refinement<Value, Failure>.refinedOrError(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("Canonical selector token is bounded and non-blank")
-}
-
 private const val CANDIDATE_PREFIX = "candidate"
 private const val EXACT_PREFIX = "exact"
-private const val VERSION = "v1"
+private const val TOKEN_VERSION = "v1"
+private const val TOKEN_PART_COUNT = 4

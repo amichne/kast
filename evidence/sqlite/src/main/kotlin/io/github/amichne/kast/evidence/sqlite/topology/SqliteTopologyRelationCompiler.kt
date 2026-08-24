@@ -7,6 +7,7 @@ import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationEndpointRevalidationFailure
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
@@ -55,19 +56,25 @@ class SqliteTopologyRelationCompiler(
                 RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
             )
         }
-        val subjects = content.symbols.filter {
-            it.evidence.compilerIdentity == request.subject.compilerIdentity
-        }
+        val subjects = content.symbols.asSequence()
+            .filter { it.evidence.compilerIdentity == request.subject.compilerIdentity }
+            .mapNotNull { candidate ->
+                when (val validation = RevalidatedTopologySubject.validate(
+                    request.subject,
+                    candidate,
+                )) {
+                    is Refinement.Refined -> validation.value
+                    is Refinement.Rejected -> null
+                }
+            }
+            .toList()
         val subject = if (subjects.size == 1) subjects.single()
         else return RelationCompilation.Rejected(RelationCompilerRejection.STALE_SELECTOR)
-        if (RevalidatedRelationEndpoint.validate(request.subject, subject.evidence) is Refinement.Rejected) {
-            return RelationCompilation.Rejected(RelationCompilerRejection.STALE_SELECTOR)
-        }
         if (!subject.inside(request.subject.scope)) {
             return RelationCompilation.Rejected(RelationCompilerRejection.OUTSIDE_SCOPE)
         }
         val facts = content.edges.asSequence()
-            .filter { it.matches(request.meaning, subject) }
+            .filter { subject.matches(request.meaning, it) }
             .filter { it.source.inside(request.subject.scope) && it.target.inside(request.subject.scope) }
             .map { edge -> edge.toRelationFact(request) }
             .toList()
@@ -183,6 +190,41 @@ class SqliteTopologyRelationCompiler(
     private fun contractRejected(): RelationCompilation = RelationCompilation.Rejected(
         RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION,
     )
+}
+
+/** Exact topology symbol carrying its retained relation-endpoint revalidation proof. */
+private class RevalidatedTopologySubject private constructor(
+    @Suppress("unused")
+    private val proof: RevalidatedRelationEndpoint,
+    private val symbol: TopologySymbol,
+) {
+    fun inside(scope: SymbolSearchScope): Boolean = symbol.inside(scope)
+
+    fun matches(meaning: RelationMeaning, edge: TopologyEdge): Boolean =
+        edge.matches(meaning, symbol)
+
+    companion object {
+        /**
+         * Proof transition: `(RelationEndpoint, TopologySymbol) -> Refinement<
+         * RevalidatedTopologySubject, RelationEndpointRevalidationFailure>`.
+         *
+         * Establishes that the retained topology symbol is exactly the requested endpoint and
+         * keeps that proof attached while relation edges are selected. The closed expected
+         * failure is [RelationEndpointRevalidationFailure]. Raw topology-symbol extraction is
+         * confined to this SQLite relation adapter.
+         */
+        fun validate(
+            endpoint: RelationEndpoint,
+            symbol: TopologySymbol,
+        ): Refinement<RevalidatedTopologySubject, RelationEndpointRevalidationFailure> = when (
+            val validation = RevalidatedRelationEndpoint.validate(endpoint, symbol.evidence)
+        ) {
+            is Refinement.Refined -> Refinement.Refined(
+                RevalidatedTopologySubject(validation.value, symbol),
+            )
+            is Refinement.Rejected -> Refinement.Rejected(validation.failure)
+        }
+    }
 }
 
 private sealed interface RelationPageBoundary {

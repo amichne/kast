@@ -11,12 +11,26 @@ enum class TopologySymbolFailure {
     FILE_MISMATCH,
 }
 
+/** Stable topology-local node identity for one compiler declaration at one exact location. */
+@ConsistentCopyVisibility
+data class TopologyNodeIdentity internal constructor(
+    val compilerIdentity: io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity,
+    val file: WorkspaceSourcePath,
+    val range: ExactDeclarationTextRange,
+)
+
 /** One detached K2-grounded declaration owned by an admitted topology file. */
 @ConsistentCopyVisibility
 data class TopologySymbol private constructor(
     val file: TopologySourceFile,
     val evidence: CompilerGroundedSymbolEvidence,
 ) : Comparable<TopologySymbol> {
+    val nodeIdentity: TopologyNodeIdentity = TopologyNodeIdentity(
+        evidence.compilerIdentity,
+        file.path,
+        evidence.range,
+    )
+
     override fun compareTo(other: TopologySymbol): Int = SYMBOL_ORDER.compare(this, other)
 
     fun canonicalProjection(): String = buildString {
@@ -55,10 +69,18 @@ data class TopologySymbol private constructor(
         }
 
         private val SYMBOL_ORDER = compareBy<TopologySymbol>(
-            { it.evidence.compilerIdentity.value },
-            { it.file.path.value },
-            { it.evidence.range.startInclusive },
-            { it.evidence.range.endExclusive },
+            { it.nodeIdentity.compilerIdentity.value },
+            { it.nodeIdentity.file.value },
+            { it.nodeIdentity.range.startInclusive },
+            { it.nodeIdentity.range.endExclusive },
+            { it.file.workspace.lease.workspaceRoot.value },
+            { it.file.workspace.lease.generation.value },
+            { it.file.workspace.sourceState.value },
+            { it.file.canonicalProjection() },
+            { it.evidence.file.stableValue },
+            { it.evidence.name.value },
+            { it.evidence.qualifiedIdentity.canonicalName() },
+            { it.evidence.kind.name },
         )
     }
 }
@@ -90,8 +112,8 @@ data class TopologyEdge private constructor(
 
     fun canonicalProjection(): String = buildString {
         appendTopologyField(kind.name)
-        appendTopologyField(source.evidence.compilerIdentity.value)
-        appendTopologyField(target.evidence.compilerIdentity.value)
+        appendTopologyField(source.canonicalProjection())
+        appendTopologyField(target.canonicalProjection())
         appendTopologyField(source.file.path.value)
         appendTopologyField(occurrence.startInclusive.toString())
         appendTopologyField(occurrence.endExclusive.toString())
@@ -166,14 +188,7 @@ data class TopologyEdge private constructor(
             return Refinement.Refined(TopologyEdge(kind, source, target, range))
         }
 
-        private val EDGE_ORDER = compareBy<TopologyEdge>(
-            { it.kind.ordinal },
-            { it.source.evidence.compilerIdentity.value },
-            { it.target.evidence.compilerIdentity.value },
-            { it.source.file.path.value },
-            { it.occurrence.startInclusive },
-            { it.occurrence.endExclusive },
-        )
+        private val EDGE_ORDER = compareBy(TopologyEdge::canonicalProjection)
     }
 }
 

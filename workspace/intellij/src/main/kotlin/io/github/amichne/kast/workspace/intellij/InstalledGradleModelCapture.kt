@@ -1,12 +1,7 @@
 package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo
-import com.intellij.openapi.externalSystem.model.ProjectKeys
-import com.intellij.openapi.externalSystem.model.project.ContentRootData
-import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceType
-import com.intellij.openapi.externalSystem.model.project.ModuleData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -16,12 +11,10 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
+import io.github.amichne.kast.workspace.intellij.provenance.InstalledGradleSourceRootCapture
+import io.github.amichne.kast.workspace.intellij.provenance.sourceRootBoundaries
 import org.jetbrains.plugins.gradle.util.GradleConstants
-import org.jetbrains.plugins.gradle.util.gradlePathOrNull
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -115,8 +108,18 @@ internal fun captureInstalledGradleModel(
                 InstalledGradleModelCaptureFailure.EXTERNAL_PROJECT_INCOMPLETE,
             )
         }
-        val boundaries = projects.flatMap { info -> info.sourceRootBoundaries() }
-            .distinct()
+        val capturedBoundaries = mutableListOf<WorkspaceSourceRootBoundary>()
+        for (info in projects) {
+            when (val captured = info.sourceRootBoundaries()) {
+                is InstalledGradleSourceRootCapture.Captured ->
+                    capturedBoundaries += captured.boundaries
+                is InstalledGradleSourceRootCapture.Rejected ->
+                    return@model Refinement.Rejected(
+                        InstalledGradleModelCaptureFailure.SOURCE_ROOTS_UNAVAILABLE,
+                    )
+            }
+        }
+        val boundaries = capturedBoundaries.distinct()
             .sortedWith(compareBy({ it.sourceRoot.toString() }, { it.ideaModuleName }))
         if (boundaries.isEmpty()) {
             return@model Refinement.Rejected(
@@ -327,61 +330,3 @@ private fun ExternalProjectInfo.isComplete(): Boolean =
         lastSuccessfulImportTimestamp > 0 &&
         lastSuccessfulImportTimestamp >= lastImportTimestamp
     } == true
-
-private fun ExternalProjectInfo.sourceRootBoundaries(): List<WorkspaceSourceRootBoundary> {
-    val structure = externalProjectStructure ?: return emptyList()
-    val boundaries = mutableListOf<WorkspaceSourceRootBoundary>()
-    structure.visit { node ->
-        val sourceSet = node.data as? GradleSourceSetData ?: return@visit
-        boundaries += sourceSet.sourceRootBoundaries(node)
-    }
-    return boundaries
-}
-
-private fun GradleSourceSetData.sourceRootBoundaries(
-    node: DataNode<*>,
-): List<WorkspaceSourceRootBoundary> {
-    val projectPath = (node.parent?.data as? ModuleData)?.gradlePathOrNull
-                      ?: return emptyList()
-    val sourceSetName = externalName.substringAfterLast(':')
-    val buildRoot = Path.of(linkedExternalProjectPath).toAbsolutePath().normalize()
-    val boundaries = mutableListOf<WorkspaceSourceRootBoundary>()
-    node.visit { child ->
-        if (child.key != ProjectKeys.CONTENT_ROOT) return@visit
-        val content = child.data as? ContentRootData ?: return@visit
-        ExternalSystemSourceType.entries.forEach { type ->
-            val kind = type.sourceKind() ?: return@forEach
-            content.getPaths(type).forEach { sourceRoot ->
-                boundaries += WorkspaceSourceRootBoundary(
-                    internalName,
-                    buildRoot,
-                    projectPath,
-                    sourceSetName,
-                    Path.of(sourceRoot.path).toAbsolutePath().normalize(),
-                    kind,
-                    if (type.isGenerated) {
-                        WorkspaceSourceRootProvenance.GENERATED
-                    } else {
-                        WorkspaceSourceRootProvenance.AUTHORED
-                    },
-                )
-            }
-        }
-    }
-    return boundaries
-}
-
-private fun ExternalSystemSourceType.sourceKind(): WorkspaceSourceRootKind? = when (this) {
-    ExternalSystemSourceType.SOURCE,
-    ExternalSystemSourceType.SOURCE_GENERATED,
-        -> WorkspaceSourceRootKind.PRODUCTION
-    ExternalSystemSourceType.TEST,
-    ExternalSystemSourceType.TEST_GENERATED,
-        -> WorkspaceSourceRootKind.TEST
-    ExternalSystemSourceType.EXCLUDED,
-    ExternalSystemSourceType.RESOURCE,
-    ExternalSystemSourceType.TEST_RESOURCE,
-    ExternalSystemSourceType.RESOURCE_GENERATED,
-    ExternalSystemSourceType.TEST_RESOURCE_GENERATED,
-        -> null
-}

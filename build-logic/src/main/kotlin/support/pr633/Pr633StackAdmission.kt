@@ -1,10 +1,5 @@
 package support.pr633
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-
 internal class RepositoryPath private constructor(
     normalized: NormalizedRepositoryLocation,
 ) {
@@ -255,50 +250,44 @@ internal class ChangedPathAdmissionPolicy private constructor(
             raw: RawPathAdmissionAuthorities,
         ): StackVerificationResult<ChangedPathAdmissionPolicy> {
             val program = try {
-                Json.parseToJsonElement(raw.program).jsonObject
+                pr633AuthorityJson.decodeFromString(Pr633ProgramDocument.serializer(), raw.program)
             } catch (failure: RuntimeException) {
                 return StackVerificationResult.Rejected(
                     StackVerificationFailure.MalformedProgram(failure.toString()),
                 )
             }
             val policy = try {
-                Json.parseToJsonElement(raw.pathPolicy).jsonObject
+                pr633AuthorityJson.decodeFromString(Pr633PathPolicyDocument.serializer(), raw.pathPolicy)
             } catch (failure: RuntimeException) {
                 return StackVerificationResult.Rejected(
                     StackVerificationFailure.MalformedPathPolicy(failure.toString()),
                 )
             }
-            val programId: String
-            val scopedTasks: List<Pair<String, List<String>>>
-            try {
-                programId = program.getValue("programId").jsonPrimitive.content
-                scopedTasks = program.getValue("tasks").jsonArray.map { element ->
-                    val task = element.jsonObject
-                    task.getValue("id").jsonPrimitive.content to task
-                }.filter { (id) -> id in REQUIRED_SCOPED_TASK_IDS }.map { (id, task) ->
-                    id to
-                        task.getValue("allowedWrites").jsonArray.map { it.jsonPrimitive.content }
-                }
-            } catch (failure: RuntimeException) {
+            if (program.schemaVersion != 2) {
                 return StackVerificationResult.Rejected(
-                    StackVerificationFailure.MalformedProgram(failure.toString()),
+                    StackVerificationFailure.MalformedProgram(
+                        "Unsupported schema version ${program.schemaVersion}",
+                    ),
                 )
             }
-            val policyProgramId: String
-            val forbiddenValues: List<String>
-            try {
-                policyProgramId = policy.getValue("programId").jsonPrimitive.content
-                forbiddenValues = policy.getValue("forbiddenPrefixes").jsonArray.map {
-                    it.jsonPrimitive.content
-                }
-            } catch (failure: RuntimeException) {
+            if (policy.schemaVersion != 1) {
                 return StackVerificationResult.Rejected(
-                    StackVerificationFailure.MalformedPathPolicy(failure.toString()),
+                    StackVerificationFailure.MalformedPathPolicy(
+                        "Unsupported schema version ${policy.schemaVersion}",
+                    ),
                 )
             }
-            if (programId != policyProgramId) {
+            val scopedTasks = program.tasks.filter { task ->
+                task.id in REQUIRED_SCOPED_TASK_IDS
+            }.map { task ->
+                task.id to task.allowedWrites
+            }
+            if (program.programId != policy.programId) {
                 return StackVerificationResult.Rejected(
-                    StackVerificationFailure.ProgramPolicyMismatch(programId, policyProgramId),
+                    StackVerificationFailure.ProgramPolicyMismatch(
+                        program.programId,
+                        policy.programId,
+                    ),
                 )
             }
             val observedIds = scopedTasks.map(Pair<String, List<String>>::first)
@@ -346,7 +335,7 @@ internal class ChangedPathAdmissionPolicy private constructor(
                 }
             }
             val forbidden = linkedSetOf<RepositoryPrefix>()
-            forbiddenValues.forEach { value ->
+            policy.forbiddenPrefixes.forEach { value ->
                 when (val parsed = RepositoryPrefix.parse(value)) {
                     is RepositoryLocationResult.Parsed -> forbidden += parsed.value
                     is RepositoryLocationResult.Rejected -> return StackVerificationResult.Rejected(

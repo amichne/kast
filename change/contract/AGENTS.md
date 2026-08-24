@@ -25,7 +25,9 @@ or source effect.
   identity, owner and scope, exact content, authored provenance, and writability. Its output carries
   exact recovery material but no write capability, and every rejection is fixed to `NOT_BEGUN`.
 - Plan identity is the SHA-256 of canonical serialized identity material. Decode rejects malformed,
-  non-canonical, or tampered bytes.
+  non-canonical, or tampered bytes. Fixed plan documents use compiler-generated serialization
+  factories explicitly; hand-written JSON structure is reserved for detached, schema-agnostic
+  legacy compiler evidence.
 - No plan retains a path handle, file handle, PSI value, document, callback, or mutation capability.
 - Editable-target admission retains one published root/generation/state, exact symbol selector,
   exact content identity, unique Gradle owner, and authored source-root provenance. The returned

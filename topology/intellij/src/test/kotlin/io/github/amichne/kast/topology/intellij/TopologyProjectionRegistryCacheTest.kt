@@ -2,8 +2,13 @@ package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
 import io.github.amichne.kast.topology.contract.TopologySourceFile
+import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleSourceRootEvidence
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
@@ -16,10 +21,12 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicInteger
 
 class TopologyProjectionRegistryCacheTest {
@@ -70,6 +77,42 @@ class TopologyProjectionRegistryCacheTest {
         assertEquals(2, builds.get())
     }
 
+    @Test
+    fun `live source bytes must retain enumerated content identity`() {
+        val original = "fun original() = Unit".toByteArray()
+        val file = candidates(sha256(original)).files.single()
+
+        assertInstanceOf(
+            Refinement.Refined::class.java,
+            LiveTopologySourceContent.validate(file, original),
+        )
+        val moved = assertInstanceOf(
+            Refinement.Rejected::class.java,
+            LiveTopologySourceContent.validate(file, "fun changed() = Unit".toByteArray()),
+        )
+
+        assertEquals(TopologySourceContentFailure.CONTENT_MOVED, moved.failure)
+    }
+
+    @Test
+    fun `duplicate declaration locations cannot enter a projection registry`() {
+        val candidates = candidates("a".repeat(64))
+        val file = candidates.files.single()
+        val key = TopologyProjectionRegistryKey.from(candidates)
+        val first = symbol(file, "function|sample.first|-|||0")
+        val second = symbol(file, "function|sample.second|-|||0")
+
+        val rejected = assertInstanceOf(
+            Refinement.Rejected::class.java,
+            TopologyProjectionRegistry.from(key, listOf(first, second)),
+        )
+
+        assertEquals(
+            TopologyProjectionRegistryFailure.DUPLICATE_DECLARATION_LOCATION,
+            rejected.failure,
+        )
+    }
+
     private fun candidates(contentHash: String): TopologyCandidateSet {
         val root = SourceRoot.admit(
             GradleSourceRootEvidence(
@@ -89,6 +132,31 @@ class TopologyProjectionRegistryCacheTest {
             WorkspaceSourceContentHash.parse(contentHash).refined(),
         ).refined()
         return TopologyCandidateSet.admit(workspace, listOf(file)).refined()
+    }
+
+    private fun sha256(content: ByteArray): String = MessageDigest.getInstance("SHA-256")
+        .digest(content)
+        .joinToString("") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+
+    private fun symbol(file: TopologySourceFile, compilerIdentity: String): TopologySymbol {
+        val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
+        val fileIdentity = SymbolDiscoveryFileIdentity.fromBoundary(
+            file.workspace.lease.workspaceRoot,
+            absolute,
+            absolute.toUri().toString(),
+        ).refined()
+        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
+            fileIdentity,
+            0,
+            7,
+            "example",
+            "sample.example",
+            CompilerSymbolKind.FUNCTION,
+            CompilerSymbolIdentity.parse(compilerIdentity).refined(),
+        ).refined()
+        return TopologySymbol.admit(file, evidence).refined()
     }
 
     private fun workspace(root: SourceRoot): PublishedWorkspace {

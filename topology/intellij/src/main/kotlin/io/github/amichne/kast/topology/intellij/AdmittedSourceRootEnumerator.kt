@@ -11,10 +11,22 @@ import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import java.io.IOException
+import java.io.UncheckedIOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.util.stream.Stream
+
+/** Filesystem effect that opens one lazy, closeable walk below an admitted source root. */
+internal fun interface TopologySourceTreeWalker {
+    @Throws(IOException::class)
+    fun walk(root: Path): Stream<Path>
+}
+
+private data object InstalledTopologySourceTreeWalker : TopologySourceTreeWalker {
+    override fun walk(root: Path): Stream<Path> = Files.walk(root)
+}
 
 /**
  * Physical candidate enumerator whose only search authorities are published source roots.
@@ -22,7 +34,11 @@ import java.security.MessageDigest
  * It never receives a Gradle model, module index, repository scanner, import trigger, or project
  * root walk capability. Each content digest is detached before admission.
  */
-class AdmittedSourceRootEnumerator : TopologyCandidateEnumerator {
+class AdmittedSourceRootEnumerator internal constructor(
+    private val sourceTreeWalker: TopologySourceTreeWalker,
+) : TopologyCandidateEnumerator {
+    constructor() : this(InstalledTopologySourceTreeWalker)
+
     /**
      * Proof transition: `PublishedWorkspace -> TopologyCandidateEnumeration`.
      *
@@ -46,7 +62,7 @@ class AdmittedSourceRootEnumerator : TopologyCandidateEnumerator {
                 if (!Files.isDirectory(physicalRoot, LinkOption.NOFOLLOW_LINKS)) {
                     return rejected(TopologyCandidateEnumerationFailure.SOURCE_ROOT_UNAVAILABLE)
                 }
-                Files.walk(physicalRoot).use { paths ->
+                sourceTreeWalker.walk(physicalRoot).use { paths ->
                     paths.filter { path ->
                         Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && path.isKotlinSource()
                     }.forEach { path ->
@@ -59,6 +75,8 @@ class AdmittedSourceRootEnumerator : TopologyCandidateEnumerator {
                 }
             }
         } catch (_: IOException) {
+            return rejected(TopologyCandidateEnumerationFailure.SOURCE_CONTENT_UNAVAILABLE)
+        } catch (_: UncheckedIOException) {
             return rejected(TopologyCandidateEnumerationFailure.SOURCE_CONTENT_UNAVAILABLE)
         } catch (_: SecurityException) {
             return rejected(TopologyCandidateEnumerationFailure.SOURCE_CONTENT_UNAVAILABLE)

@@ -135,6 +135,13 @@ class SqliteTopologySnapshotStore private constructor(
             }
             val inserted = connection.insertTopologySnapshot(generation)
             connection.insertTopologyContent(inserted.snapshotId, generation)
+            when (connection.readTopologyContent(inserted.snapshot)) {
+                is TopologySnapshotContentRead.Loaded -> Unit
+                is TopologySnapshotContentRead.Rejected -> {
+                    connection.rollback()
+                    return rejectedPublication(TopologyPublicationFailure.CORRUPT_SNAPSHOT)
+                }
+            }
             faultInjector.observe(SqliteTopologyFaultPoint.BEFORE_COMMIT)
             connection.commit()
             TopologyPublicationResult.Published(inserted.snapshot)

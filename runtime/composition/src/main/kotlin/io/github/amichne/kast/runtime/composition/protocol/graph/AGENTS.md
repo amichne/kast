@@ -13,6 +13,8 @@ result projection, and the snapshot-only traversal router used by public
   protocol projection here does not change its backend.
 - Protocol handlers preserve exact selectors, explicit budgets, completeness,
   and typed rejection data.
+- Topology coverage projection retains structured candidate, completed-file, and contradictory
+  endpoint evidence. Projection failure is a distinct public rejection, not an extraction error.
 
 ## Verification
 
