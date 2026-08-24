@@ -2,6 +2,7 @@ package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
@@ -69,6 +70,13 @@ sealed interface AddDeclarationPlannedEdit {
         val anchor: ExactDeclarationTextRange,
         val declaration: AddDeclarationSourceText,
     ) : AddDeclarationPlannedEdit
+
+    @ConsistentCopyVisibility
+    data class InsertIntoClassBody internal constructor(
+        val file: SymbolDiscoveryFileIdentity.Workspace,
+        val anchor: ExactDeclarationTextRange,
+        val declaration: AddDeclarationSourceText,
+    ) : AddDeclarationPlannedEdit
 }
 
 /**
@@ -88,8 +96,9 @@ class AddDeclarationChangePlan private constructor(
 ) : ChangePlan {
     override val intent: ChangeIntent = ChangeIntent.AddDeclaration(
         target,
-        plannedEdits.single().let { edit ->
-            (edit as AddDeclarationPlannedEdit.InsertAfterDeclaration).declaration
+        when (val edit = plannedEdits.single()) {
+            is AddDeclarationPlannedEdit.InsertAfterDeclaration -> edit.declaration
+            is AddDeclarationPlannedEdit.InsertIntoClassBody -> edit.declaration
         },
         expectedSemanticDelta,
     )
@@ -103,10 +112,12 @@ class AddDeclarationChangePlan private constructor(
             target.sourceRoot,
             PlannedSourcePrecondition.Existing(sourceSnapshot.content),
             listOf(
-                SourceTextMutation.InsertAfterDeclaration(
-                    target.range,
-                    (plannedEdits.single() as AddDeclarationPlannedEdit.InsertAfterDeclaration).declaration,
-                ),
+                when (val edit = plannedEdits.single()) {
+                    is AddDeclarationPlannedEdit.InsertAfterDeclaration ->
+                        SourceTextMutation.InsertAfterDeclaration(edit.anchor, edit.declaration)
+                    is AddDeclarationPlannedEdit.InsertIntoClassBody ->
+                        SourceTextMutation.InsertIntoClassBody(edit.anchor, edit.declaration)
+                },
             ),
         ),
     )
@@ -127,11 +138,19 @@ class AddDeclarationChangePlan private constructor(
             val verification = AddDeclarationVerificationContract.forGeneration(
                 input.target.lease.generation,
             )
-            val edit = AddDeclarationPlannedEdit.InsertAfterDeclaration(
-                input.target.file,
-                input.target.range,
-                input.declaration,
-            )
+            val edit = if (input.target.selector.kind == CompilerSymbolKind.CLASSLIKE) {
+                AddDeclarationPlannedEdit.InsertIntoClassBody(
+                    input.target.file,
+                    input.target.range,
+                    input.declaration,
+                )
+            } else {
+                AddDeclarationPlannedEdit.InsertAfterDeclaration(
+                    input.target.file,
+                    input.target.range,
+                    input.declaration,
+                )
+            }
             val canonical = buildString {
                 appendTarget(input.target)
                 appendPlanningField(input.declaration.value)

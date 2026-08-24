@@ -1,0 +1,1 @@
+{"schemaVersion":1,"programId":"kast-pr633-durable-topology","policy":"The program task scopes are the sole allow-list authority. This policy supplies only independent forbidden product prefixes.","forbiddenPrefixes":["analysis-api/","analysis-server/","cli-rs/","index-store/","release/","site/"]}

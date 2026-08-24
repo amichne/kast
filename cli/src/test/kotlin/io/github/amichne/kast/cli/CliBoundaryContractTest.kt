@@ -9,7 +9,7 @@ import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import kotlinx.serialization.json.put
+import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -19,9 +19,10 @@ import java.nio.file.Path
 
 class CliBoundaryContractTest {
     @Test
-    fun `exactly eleven public command projections parse to canonical operations`() {
+    fun `exactly twelve public command projections parse to canonical operations`() {
         val commands = mapOf(
             listOf("workspace", "inspect") to CanonicalOperation.WORKSPACE_INSPECT,
+            listOf("topology", "build") to CanonicalOperation.TOPOLOGY_BUILD,
             listOf("symbol", "discover", "--query", "Example", "--limit", "10") to
                 CanonicalOperation.SYMBOL_DISCOVER,
             listOf("symbol", "resolve", "--candidate", "candidate") to
@@ -100,11 +101,8 @@ class CliBoundaryContractTest {
     @Test
     fun `semantic rejection is data and exits successfully`() {
         val rejected = CliExit.OperationRejected(
-            CliJsonDocument.from(
-                kotlinx.serialization.json.buildJsonObject {
-                    put("status", "rejected")
-                    put("reason", "selector-stale")
-                },
+            CliJsonDocument.generated(TestRejectedCliDocument.serializer()).create(
+                TestRejectedCliDocument("rejected", "selector-stale"),
             ),
         )
 
@@ -176,3 +174,9 @@ class CliBoundaryContractTest {
         is Refinement.Rejected -> error("Expected refined value, got $failure")
     }
 }
+
+@Serializable
+private data class TestRejectedCliDocument(
+    val status: String,
+    val reason: String,
+)

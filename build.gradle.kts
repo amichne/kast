@@ -4,10 +4,14 @@ import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
 import support.tasks.VerifyControlDistributionTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
+import support.tasks.registerGeneratedBuildLogicSerializationVerification
 
 plugins {
     base
     id("kast.architecture")
+    id("kast.pr633-stack")
+    id("kast.pr633-topology")
+    id("kast.pr633-delivery")
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
@@ -37,6 +41,8 @@ subprojects {
     group = rootProject.group
     version = rootProject.version
 }
+
+registerGeneratedBuildLogicSerializationVerification()
 
 tasks.register("stageIndexerDist") {
     group = "distribution"
@@ -75,13 +81,17 @@ tasks.register("assembleKastSemanticRuntimeDist") {
 }
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
+val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
+    "generated/operation-registry/operation-registry.json",
+)
 val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask::class) {
     group = "distribution"
     description = "Generates the exact runtime manifest and public schema resources."
-    dependsOn(semanticRuntimeArchive)
+    dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry")
     runtimeArchive.set(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
     runtimeDirectory.set(semanticRuntimeStage)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
+    operationRegistryFile.set(generatedOperationRegistry)
     productVersion.set(project.version.toString())
     ideaBuild.set(libs.versions.idea.platform.build)
     kotlinPluginBuild.set(libs.versions.kotlin)
@@ -274,6 +284,11 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
+    inputs.file(layout.projectDirectory.file("packaging/topology_installed_acceptance.py"))
+    inputs.file(layout.projectDirectory.file("packaging/topology_installed_support.py"))
+    outputs.file(
+        layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"),
+    )
     outputs.upToDateWhen { false }
     environment(
         "KAST_INSTALLED_PRODUCT",
@@ -287,14 +302,19 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
         "KAST_CONTROL_ARCHIVE",
         assembleKastControlDist.get().archiveFile.get().asFile.absolutePath,
     )
+    environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
+    environment(
+        "KAST_INSTALLED_REPORT_DIRECTORY",
+        layout.buildDirectory.dir("reports/installed-product").get().asFile.absolutePath,
+    )
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
 
 tasks.register<Exec>("enterpriseAcceptance") {
     group = "verification"
     description = "Proves the installed product against enterprise-scale and failure bounds."
-    mustRunAfter(installedProductTest)
     dependsOn(
+        installedProductTest,
         stageInstalledProduct,
         semanticRuntimeArchive,
         ":change:recovery:test",
@@ -327,4 +347,54 @@ tasks.register<Exec>("enterpriseAcceptance") {
         "--runtime-archive",
         semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
+}
+
+val buildLogicTests = gradle.includedBuild("build-logic").task(":test")
+val topologyAcceptanceChecks: Map<String, List<Any>> = mapOf(
+    "topologyEnumerationAcceptance" to listOf(":topology:intellij:test"),
+    "topologyCoverageAcceptance" to listOf(
+        ":topology:contract:test",
+        ":topology:build:test",
+        ":protocol:registry:test",
+        ":protocol:wire:test",
+        ":cli:test",
+    ),
+    "topologyFailureAtomicityAcceptance" to listOf(
+        ":topology:build:test",
+        ":evidence:sqlite:test",
+    ),
+    "topologyRestartAcceptance" to listOf(":evidence:sqlite:test"),
+    "topologyReuseAcceptance" to listOf(":topology:build:test", ":evidence:sqlite:test"),
+    "topologyStalenessAcceptance" to listOf(
+        ":topology:build:test",
+        ":workspace:intellij:test",
+        ":evidence:sqlite:test",
+    ),
+    "topologyRebuildRollbackAcceptance" to listOf(":evidence:sqlite:test"),
+    "topologyGraphReadAcceptance" to listOf(
+        ":topology:service:test",
+        ":traversal:service:test",
+        ":runtime:composition:test",
+    ),
+    "topologyDeterminismAcceptance" to listOf(":topology:service:test", ":evidence:sqlite:test"),
+    "verifyTopologyAuthority" to listOf(
+        buildLogicTests,
+        "verifyKastModuleGraph",
+        "verifyForbiddenEffects",
+    ),
+    "topologyScaleAcceptance" to listOf("enterpriseAcceptance"),
+)
+
+topologyAcceptanceChecks.forEach { (name, dependencies) ->
+    tasks.register(name) {
+        group = "verification"
+        description = "Runs the $name proof ring."
+        dependsOn(dependencies)
+    }
+}
+
+tasks.register("topologyAcceptance") {
+    group = "verification"
+    description = "Proves the explicit generation-bound topology snapshot contract."
+    dependsOn(topologyAcceptanceChecks.keys)
 }

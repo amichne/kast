@@ -12,8 +12,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
 internal val wireJson = Json {
+    classDiscriminator = "type"
     encodeDefaults = true
-    explicitNulls = false
+    explicitNulls = true
+    ignoreUnknownKeys = false
 }
 
 /**

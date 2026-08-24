@@ -25,6 +25,12 @@ flowchart LR
 Start from one closed intent. The supported intents add a file, add a
 declaration, replace a declaration, or rename a symbol.
 
+Planning never constructs required repository evidence implicitly. Run
+`kast topology build` first. If the durable snapshot is missing or stale,
+`change.plan` rejects with `TOPOLOGY_BUILD_REQUIRED`. If its required bounded
+traversal cannot complete, planning rejects with
+`REQUIRED_TRAVERSAL_INCOMPLETE`; it does not turn partial evidence into a plan.
+
 ```console
 kast change plan \
   --intent add-declaration \

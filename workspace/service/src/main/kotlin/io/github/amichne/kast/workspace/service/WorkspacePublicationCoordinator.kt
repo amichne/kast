@@ -8,6 +8,8 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationPreparation
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadLeaseGuard
+import io.github.amichne.kast.workspace.contract.SemanticReadLeaseUse
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateReconciliation
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
@@ -28,13 +30,25 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSignal
 class WorkspacePublicationCoordinator(
     private val reconciliation: WorkspaceReconciliationPort,
     private val publication: WorkspacePublicationTransaction,
-) : WorkspaceInspectionOperations, WorkspaceInvalidationSink {
+) : WorkspaceInspectionOperations, WorkspaceInvalidationSink, SemanticReadLeaseGuard {
     private val lock = Any()
     private val pendingSignals = linkedSetOf(WorkspaceSignal.InitialProjectModel)
     private var observedRevision = WorkspaceEventRevision.initial()
     private var runtimeState: WorkspaceRuntimeState = WorkspaceRuntimeState.Starting
 
     override fun inspect(): WorkspaceRuntimeState = synchronized(lock) { runtimeState }
+
+    override fun <Value> whileCurrent(
+        expected: SemanticReadLease,
+        operation: () -> Value,
+    ): SemanticReadLeaseUse<Value> = synchronized(lock) {
+        val current = (runtimeState as? WorkspaceRuntimeState.Ready)?.workspace?.readLease
+        if (current == expected) {
+            SemanticReadLeaseUse.Completed(operation())
+        } else {
+            SemanticReadLeaseUse.Moved
+        }
+    }
 
     override fun observe(signal: WorkspaceSignal) {
         synchronized(lock) {

@@ -121,14 +121,16 @@ internal class IntellijDiagnosticCompilerQuery {
             return
         }
         try {
-            val diagnostics = analyze(kotlinFile) {
+            val projections = analyze(kotlinFile) {
                 kotlinFile.collectDiagnostics(
                     KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS,
-                )
+                ).map { diagnostic ->
+                    projectDiagnostic(scope, file, diagnostic)
+                }
             }
             val detached = mutableListOf<io.github.amichne.kast.diagnostic.contract.DiagnosticFact>()
-            diagnostics.forEach { diagnostic ->
-                when (val projection = projectDiagnostic(scope, file, diagnostic)) {
+            projections.forEach { projection ->
+                when (projection) {
                     is IntellijDiagnosticProjection.Projected -> detached += projection.facts
                     IntellijDiagnosticProjection.Rejected -> {
                         collector.recordLimitation(

@@ -24,8 +24,7 @@ import io.github.amichne.kast.protocol.registry.OperationDefinition
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.OperationLane
 import io.github.amichne.kast.protocol.registry.OperationScope
-import io.github.amichne.kast.protocol.wire.GeneratedOperationSerializers
-import io.github.amichne.kast.protocol.wire.OperationWireBinding
+import io.github.amichne.kast.protocol.wire.GeneratedOperationWireBindingFactory
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.WireFailure
@@ -117,14 +116,12 @@ class RuntimeServerContractTest {
     private fun canonicalBindings(): List<
         TypedOperationBinding<TestRequest, TestResult, TestQualification, TestRejection>,
         > = CanonicalOperation.entries.map { operation ->
-        val wireBinding = OperationWireBinding(
+        val wireBinding = GeneratedOperationWireBindingFactory.create(
             definition = definition(operation),
-            serializers = GeneratedOperationSerializers(
-                request = TestRequest.serializer(),
-                result = TestResult.serializer(),
-                qualification = TestQualification.serializer(),
-                rejection = TestRejection.serializer(),
-            ),
+            request = TestRequest.serializer(),
+            result = TestResult.serializer(),
+            qualification = TestQualification.serializer(),
+            rejection = TestRejection.serializer(),
         )
         TypedOperationBinding(
             wireBinding = wireBinding,

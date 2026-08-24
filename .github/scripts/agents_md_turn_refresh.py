@@ -15,6 +15,8 @@ from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from scaffold_agents_md_turn_guides import is_generated_inheritance_guide
+
 
 STATE_VERSION = 1
 IGNORED_PARTS = frozenset({".agent-turn", ".git"})
@@ -209,11 +211,23 @@ def operation_for(
         raise RepositoryFailure(f"affected directory is a symlink: {directory.as_posix()}")
     guide = absolute / "AGENTS.md"
     other_entries = [entry for entry in absolute.iterdir() if entry.name != "AGENTS.md"]
-    if guide.is_file() and not other_entries and directory != PurePosixPath("."):
+    owned_entries = [
+        entry for entry in other_entries if entry.is_symlink() or not entry.is_dir()
+    ]
+    generated_without_owned_files = (
+        guide.is_file()
+        and not owned_entries
+        and is_generated_inheritance_guide(repository.root, guide)
+    )
+    if (
+        guide.is_file()
+        and directory != PurePosixPath(".")
+        and (not other_entries or generated_without_owned_files)
+    ):
         outcome = RequiredOutcome.REMOVE
     elif guide.is_file():
         outcome = RequiredOutcome.UPDATE_OR_UNCHANGED
-    elif other_entries:
+    elif owned_entries:
         outcome = RequiredOutcome.CREATE
     else:
         return None

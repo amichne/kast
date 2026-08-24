@@ -78,6 +78,7 @@ import java.nio.file.Path
 
 internal class AddDeclarationPlanFixture(
     private val declarationEndExclusive: Int = 17,
+    private val symbolKind: CompilerSymbolKind = CompilerSymbolKind.FUNCTION,
 ) {
     private val workspaceRoot = CanonicalWorkspaceRoot
         .fromCanonicalPath(Path.of("/workspace"))
@@ -283,9 +284,9 @@ internal class AddDeclarationPlanFixture(
             location.offset.value,
             declarationEndExclusive,
             "service",
-            "sample.Service.service",
-            CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.Service.service").refined(),
+            if (symbolKind == CompilerSymbolKind.CLASSLIKE) "sample.Service" else "sample.Service.service",
+            symbolKind,
+            CompilerSymbolIdentity.parse("${symbolKind.name}|sample.Service.service").refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

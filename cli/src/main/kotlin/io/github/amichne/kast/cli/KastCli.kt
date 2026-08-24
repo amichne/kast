@@ -6,11 +6,7 @@ import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
-import io.github.amichne.kast.cli.command.outputReason
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
@@ -210,30 +206,8 @@ class KastCli(
         state: RuntimeLifecycleState,
         removed: Set<RuntimeEndpointArtifact>,
     ): CliExit = CliExit.Complete(
-        CliJsonDocument.from(
-            buildJsonObject {
-                put("command", command.command)
-                put("status", "complete")
-                put("runtime", state.name.lowercase())
-                put("root", endpoint.root.path.toString())
-                put("runtimeId", endpoint.runtimeId.value)
-                put(
-                    "removed",
-                    JsonArray(
-                        removed.map { artifact -> artifact.lifecycleOutputName() }
-                            .sorted()
-                            .map(::JsonPrimitive),
-                    ),
-                )
-            },
-        ),
+        CliBoundaryDocuments.lifecycleComplete(command, endpoint, state, removed),
     )
-
-    /** Projects a lifecycle artifact to its stable JSON-boundary name. */
-    private fun RuntimeEndpointArtifact.lifecycleOutputName(): String = when (this) {
-        is RuntimeEndpointMarker -> name.lowercase()
-        RuntimePersistentState -> "state"
-    }
 
     private fun projectionFailure(failure: CliProjectionFailure): CliExit = when (failure) {
         is CliProjectionFailure.RequestEncodingFailed -> boundaryExit(
@@ -306,13 +280,7 @@ internal fun boundaryExit(
 ): CliExit.BoundaryRejected =
     CliExit.BoundaryRejected(
         status,
-        CliJsonDocument.from(
-            buildJsonObject {
-                put("status", "rejected")
-                put("boundary", status.name.lowercase())
-                put("reason", reason)
-            },
-        ),
+        CliBoundaryDocuments.boundaryRejected(status, reason),
     )
 
 private fun usageExit(
@@ -320,12 +288,5 @@ private fun usageExit(
     diagnostic: CliTextDocument,
 ): CliExit.BoundaryRejected = CliExit.BoundaryRejected(
     CliBoundaryExitStatus.USAGE,
-    CliJsonDocument.from(
-        buildJsonObject {
-            put("status", "rejected")
-            put("boundary", "usage")
-            put("reason", failure.outputReason())
-            put("diagnostic", diagnostic.value)
-        },
-    ),
+    CliBoundaryDocuments.usageRejected(failure, diagnostic),
 )

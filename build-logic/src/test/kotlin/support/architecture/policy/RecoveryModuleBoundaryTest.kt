@@ -31,11 +31,13 @@ class RecoveryModuleBoundaryTest {
             ForbiddenEffect.INTELLIJ_PLATFORM,
             ForbiddenEffect.INTELLIJ_WRITE,
             ForbiddenEffect.WORKSPACE_TRANSITION,
+            ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY,
+            ForbiddenEffect.TOPOLOGY_PUBLICATION,
         )
 
         assertTrue(recovery.allowedEffects.intersect(forbidden).isEmpty())
         assertEquals(
-            setOf(ForbiddenEffect.JDBC),
+            setOf(ForbiddenEffect.JDBC, ForbiddenEffect.TOPOLOGY_PUBLICATION),
             architecture.modules.getValue(ModuleId.EVIDENCE_SQLITE).allowedEffects,
         )
     }

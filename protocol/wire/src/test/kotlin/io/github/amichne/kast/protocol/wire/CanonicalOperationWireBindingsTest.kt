@@ -68,11 +68,19 @@ import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
+import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult
+import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
+import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
+import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -82,6 +90,30 @@ class CanonicalOperationWireBindingsTest {
         assertEquals(
             CanonicalOperation.entries,
             CanonicalOperationWireBindings.table.bindings.map { it.operation },
+        )
+    }
+
+    @Test
+    fun `generated registry document preserves the typed definition order`() {
+        val operationIds = CanonicalOperationDefinitions.registry.definitions.joinToString(",") {
+            "\"${it.id.value}\""
+        }
+
+        assertEquals(
+            "{\"schemaVersion\":1,\"operationIds\":[$operationIds]}\n",
+            CanonicalOperationWireBindings.operationRegistryDocument,
+        )
+    }
+
+    @Test
+    fun `every traversal and change prerequisite rejection round trips`() {
+        assertRejections(
+            CanonicalOperationWireBindings.traversalRun,
+            TraversalRunRejection.entries,
+        )
+        assertRejections(
+            CanonicalOperationWireBindings.changePlan,
+            ChangePlanRejection.entries,
         )
     }
 
@@ -162,6 +194,20 @@ class CanonicalOperationWireBindingsTest {
             DiagnosticCheckResult(texts("warning:unused")),
             DiagnosticCheckQualification.RESULT_LIMIT,
             DiagnosticCheckRejection.SCOPE_REJECTED,
+        )
+        assertRoundTrips(
+            CanonicalOperationWireBindings.topologyBuild,
+            TopologyBuildRequest,
+            TopologyBuildResult(
+                TopologyBuildStatus.PUBLISHED,
+                EvidenceGeneration.parse(17).refinedValue(),
+                TopologyBuildDigest.parse("a".repeat(64)).refinedValue(),
+            ),
+            TopologyBuildQualification.PROGRESS_UNAVAILABLE,
+            TopologyBuildRejection.ExtractionFailed(
+                text("topology/intellij/src/main/kotlin/TopologyK2Projection.kt"),
+                TopologyExtractionRejection.SOURCE_CONTENT_MOVED,
+            ),
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.changePlan,
@@ -277,6 +323,22 @@ class CanonicalOperationWireBindingsTest {
             OperationOutcome.Qualified(evidence, qualification),
             OperationOutcome.Rejected(rejection),
         ).forEach { outcome ->
+            val document = binding.encodeOutcome(outcome).encodedDocument()
+            assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(document))
+        }
+    }
+
+    private fun <
+        Request : OperationRequest,
+        Result : OperationResult,
+        Qualification : OperationQualification,
+        Rejection : OperationRejection,
+        > assertRejections(
+        binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
+        rejections: Iterable<Rejection>,
+    ) {
+        rejections.forEach { rejection ->
+            val outcome = OperationOutcome.Rejected(rejection)
             val document = binding.encodeOutcome(outcome).encodedDocument()
             assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(document))
         }

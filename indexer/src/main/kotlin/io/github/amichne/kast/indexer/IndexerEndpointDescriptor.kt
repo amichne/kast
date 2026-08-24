@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexer
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.AtomicMoveNotSupportedException
@@ -10,12 +12,34 @@ import java.nio.file.StandardCopyOption
 private const val ENDPOINT_SCHEMA = "kast.runtime.endpoint.v1"
 private const val ENDPOINT_FRAMING = "length-prefixed-json-v1"
 
+private val endpointJson = Json {
+    encodeDefaults = true
+    explicitNulls = true
+    ignoreUnknownKeys = false
+    isLenient = false
+}
+
+/** Fixed installed endpoint schema encoded by its compiler-generated serializer. */
+@Serializable
+internal data class IndexerEndpointDescriptorDocument(
+    val schema: String,
+    val canonicalRoot: String,
+    val runtimeId: String,
+    val socketPath: String,
+    val framing: String,
+)
+
 internal sealed interface EndpointDescriptorPublication {
     data class Published(
         val path: Path,
     ) : EndpointDescriptorPublication
 
     data object Rejected : EndpointDescriptorPublication
+}
+
+internal sealed interface EndpointDescriptorRetirement {
+    data object Retired : EndpointDescriptorRetirement
+    data object Rejected : EndpointDescriptorRetirement
 }
 
 /**
@@ -66,54 +90,37 @@ internal fun publishEndpointDescriptor(
 internal fun Path.endpointDescriptorPath(): Path =
     resolveSibling("${fileName}.endpoint.json")
 
+/**
+ * Proof transition: `Path -> EndpointDescriptorRetirement`.
+ *
+ * [EndpointDescriptorRetirement.Retired] establishes absence of the exact stale descriptor before
+ * a new runtime construction attempt. [EndpointDescriptorRetirement.Rejected] closes inaccessible
+ * filesystem state. The raw path leaves only at the filesystem boundary.
+ */
+internal fun retireEndpointDescriptor(path: Path): EndpointDescriptorRetirement = try {
+    Files.deleteIfExists(path)
+    EndpointDescriptorRetirement.Retired
+} catch (_: IOException) {
+    EndpointDescriptorRetirement.Rejected
+} catch (_: SecurityException) {
+    EndpointDescriptorRetirement.Rejected
+}
+
 internal fun deleteEndpointDescriptor(path: Path) {
     deleteDescriptorFile(path)
 }
 
-private fun IndexerLaunchOptions.endpointDescriptorDocument(): String = buildString {
-    append('{')
-    appendJsonField("schema", ENDPOINT_SCHEMA)
-    append(',')
-    appendJsonField("canonicalRoot", workspaceRoot.toString())
-    append(',')
-    appendJsonField("runtimeId", runtimeId.value)
-    append(',')
-    appendJsonField("socketPath", socketPath.toString())
-    append(',')
-    appendJsonField("framing", ENDPOINT_FRAMING)
-    append('}')
-}
-
-private fun StringBuilder.appendJsonField(
-    name: String,
-    value: String,
-) {
-    append('"')
-    append(name)
-    append("\":\"")
-    append(value.jsonEscaped())
-    append('"')
-}
-
-private fun String.jsonEscaped(): String = buildString(length) {
-    this@jsonEscaped.forEach { character ->
-        when (character) {
-            '"' -> append("\\\"")
-            '\\' -> append("\\\\")
-            '\b' -> append("\\b")
-            '\u000C' -> append("\\f")
-            '\n' -> append("\\n")
-            '\r' -> append("\\r")
-            '\t' -> append("\\t")
-            else -> if (character.code < 0x20) {
-                append("\\u")
-                append(character.code.toString(16).padStart(4, '0'))
-            } else {
-                append(character)
-            }
-        }
-    }
-}
+private fun IndexerLaunchOptions.endpointDescriptorDocument(): String =
+    endpointJson.encodeToString(
+        IndexerEndpointDescriptorDocument.serializer(),
+        IndexerEndpointDescriptorDocument(
+            schema = ENDPOINT_SCHEMA,
+            canonicalRoot = workspaceRoot.toString(),
+            runtimeId = runtimeId.value,
+            socketPath = socketPath.toString(),
+            framing = ENDPOINT_FRAMING,
+        ),
+    )
 
 private fun deleteDescriptorFile(path: Path) {
     try {

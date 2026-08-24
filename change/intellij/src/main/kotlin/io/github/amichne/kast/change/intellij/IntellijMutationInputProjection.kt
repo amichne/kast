@@ -33,6 +33,11 @@ internal fun MutationAuthority.toIntellijInput(): Refinement<
                 mutation.anchor.endExclusive,
                 "\n\n${mutation.declaration.value}",
             )
+            is SourceTextMutation.InsertIntoClassBody -> IntellijTextMutation(
+                mutation.anchor.endExclusive - 1,
+                mutation.anchor.endExclusive - 1,
+                "\n    ${mutation.declaration.value}\n",
+            )
             is SourceTextMutation.Replace -> IntellijTextMutation(
                 mutation.range.startInclusive,
                 mutation.range.endExclusive,

@@ -24,6 +24,8 @@ durable, and only then issues `MutationAuthority` to an injected source writer.
   exact postimage carried by `MutationAuthority`.
 - ReplaceDeclaration authority is issued only when the exact planned declaration preimage still
   occupies its compiler-grounded range; its derived postimage preserves all unrelated source.
+- Class-body AddDeclaration admits the target's exact closing brace as its insertion boundary and
+  derives a member postimage without exposing a generic offset edit.
 - Applied source state becomes `AppliedUnverified`; this module cannot construct verified success.
 - Any post-durability write fault resolves through exact rollback or `RecoveryRequired`.
 

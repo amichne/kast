@@ -34,6 +34,8 @@ cost, scope, finite resource budget, and completeness policy.
 - A stronger prerequisite is only blocker data; the registry never executes it.
 - Request, result, qualification, and rejection values use marker contracts rather than `Any`
   maps or primitive protocols.
+- `OperationRegistryArtifact` is the typed operation-ID projection consumed by `:protocol:wire`;
+  this module does not encode JSON or write generated files.
 
 ## Verification ladder
 

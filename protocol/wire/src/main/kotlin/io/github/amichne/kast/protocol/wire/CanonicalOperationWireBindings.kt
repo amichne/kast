@@ -1,9 +1,34 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
+import io.github.amichne.kast.protocol.registry.OperationRegistryArtifact
+import kotlinx.serialization.Serializable
 
-/** Sole generated serializer binding catalog for the eleven production operation definitions. */
+@Serializable
+private data class OperationRegistryDocument(
+    val schemaVersion: Int,
+    val operationIds: List<String>,
+)
+
+/** Sole generated serializer binding catalog for the twelve production operation definitions. */
 object CanonicalOperationWireBindings {
+    val operationRegistryDocument: String = wireJson.encodeToString(
+        OperationRegistryDocument.serializer(),
+        OperationRegistryDocument(
+            schemaVersion = 1,
+            operationIds = OperationRegistryArtifact.from(CanonicalOperationDefinitions.registry)
+                .operationIds
+                .map { it.value },
+        )
+    ) + "\n"
+
+    /** Prints the generated registry document for the Gradle-owned resource boundary. */
+    @JvmStatic
+    fun main(arguments: Array<String>) {
+        require(arguments.isEmpty()) { "operation registry projection accepts no arguments" }
+        print(operationRegistryDocument)
+    }
+
     val workspaceInspect = OperationWireBinding(
         CanonicalOperationDefinitions.workspaceInspect,
         GeneratedOperationSerializers(
@@ -11,6 +36,15 @@ object CanonicalOperationWireBindings {
             CanonicalReadSerializers.workspaceInspectResult,
             CanonicalReadSerializers.workspaceInspectQualification,
             CanonicalReadSerializers.workspaceInspectRejection,
+        ),
+    )
+    val topologyBuild = OperationWireBinding(
+        CanonicalOperationDefinitions.topologyBuild,
+        GeneratedOperationSerializers(
+            CanonicalTopologySerializers.request,
+            CanonicalTopologySerializers.result,
+            CanonicalTopologySerializers.qualification,
+            CanonicalTopologySerializers.rejection,
         ),
     )
     val symbolDiscover = OperationWireBinding(
@@ -108,6 +142,7 @@ object CanonicalOperationWireBindings {
         val construction = OperationWireTable.create(
             listOf(
                 workspaceInspect,
+                topologyBuild,
                 symbolDiscover,
                 symbolResolve,
                 symbolDescribe,

@@ -1,7 +1,7 @@
 import org.gradle.jvm.tasks.Jar
 
 plugins {
-    id("kast.runtime-app")
+    id("kast.runtime-serialization-app")
     id("kast.role.indexer-host")
 }
 
@@ -52,6 +52,11 @@ val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
     exclude("**/plugins/**")
 }
 
+val ideaCompileLibs = ideaLibs.filter { library ->
+    !library.name.startsWith("intellij.libraries.kotlinx.serialization") &&
+        library.name != "intellij.libraries.ktor.utils.jar"
+}
+
 val packagedIdeaHomeEntries = listOf(
     "build.txt",
     "product-info.json",
@@ -83,10 +88,49 @@ dependencies {
     indexerIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
     }
-    compileOnly(ideaLibs)
+    compileOnly(ideaCompileLibs)
     indexerLauncherRuntime(ideaLibs)
     indexerPluginRuntime(project(":runtime:composition"))
-    testImplementation(ideaLibs)
+    testImplementation(ideaCompileLibs)
+    testRuntimeOnly(ideaLibs)
+}
+
+val verifyGeneratedIndexerSerialization =
+    tasks.register<support.tasks.VerifyGeneratedSerializationSourcesTask>(
+        "verifyGeneratedIndexerSerialization",
+    ) {
+        group = "verification"
+        description = "Rejects hand-written JSON structure for closed indexer documents."
+        sourceFiles.from(
+            layout.projectDirectory.file(
+                "src/main/kotlin/io/github/amichne/kast/indexer/IndexerEndpointDescriptor.kt",
+            ),
+        )
+        forbiddenTokens.set(
+            listOf(
+                "JsonElement",
+                "JsonObject",
+                "JsonPrimitive",
+                "KSerializer",
+                "MapSerializer",
+                "appendJsonField",
+                "buildJsonObject",
+                "jsonEscaped",
+                "mapOf(",
+                "parseToJsonElement",
+            ),
+        )
+        generatedAdapterNamePrefixes.set(listOf("IndexerEndpoint"))
+        generatedAdapterNameSuffixes.set(listOf("Descriptor.kt"))
+        requiredGeneratedAdapterTokens.set(
+            listOf("@Serializable", "IndexerEndpointDescriptorDocument.serializer()"),
+        )
+        reportingRoot.set(layout.projectDirectory)
+        reportFile.set(layout.buildDirectory.file("reports/generated-indexer-serialization.txt"))
+    }
+
+tasks.named("check") {
+    dependsOn(verifyGeneratedIndexerSerialization)
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -153,7 +197,13 @@ val indexerPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/indexer/KastIndexerApplicationStarter.class",
     "io/github/amichne/kast/indexer/InstalledIndexerTransport.class",
     "io/github/amichne/kast/runtime/composition/InstalledKastRuntime.class",
+    "io/github/amichne/kast/workspace/intellij/provenance/GradleSourceRootProducerEvidence.class",
+    "io/github/amichne/kast/workspace/intellij/provenance/GradleSourceRootProducerModel.class",
+    "io/github/amichne/kast/workspace/intellij/provenance/GradleSourceRootProducerModelBuilder.class",
+    "io/github/amichne/kast/workspace/intellij/provenance/GradleSourceRootProducerModelEntry.class",
+    "META-INF/services/org.jetbrains.plugins.gradle.tooling.ModelBuilderService",
     "io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.class",
+    "io/github/amichne/kast/workspace/intellij/provenance/KastGradleSourceRootProvenanceResolver.class",
     "io/github/amichne/kast/symbol/intellij/InstalledIntellijSymbolPorts.class",
     "io/github/amichne/kast/change/intellij/InstalledIntellijChangePorts.class",
     "io/github/amichne/kast/evidence/sqlite/SqliteWorkspacePublicationDatabase.class",

@@ -40,23 +40,34 @@ class KastIndexerApplicationStarter : ApplicationStarter {
                 InstalledIndexerStartupFailure.Launch(admission.failures),
             )
         }
-        val transport = when (val preparation = InstalledIndexerTransport.prepare(options)) {
-            is IndexerTransportPreparation.Prepared -> preparation.transport
-            is IndexerTransportPreparation.Rejected -> reject(
+        val endpoint = when (val preparation = PreparedIndexerEndpoint.prepare(options)) {
+            is IndexerEndpointPreparation.Prepared -> preparation.endpoint
+            is IndexerEndpointPreparation.Rejected -> reject(
                 InstalledIndexerStartupFailure.Transport(preparation.failure),
             )
         }
+        val dispatch = when (val runtime = InstalledKastRuntime.create(
+            options.workspaceRoot,
+            endpoint.stateDirectory,
+        )) {
+            is InstalledKastRuntimeConstruction.Created -> runtime.dispatch
+            is InstalledKastRuntimeConstruction.Rejected -> reject(
+                InstalledIndexerStartupFailure.Runtime(runtime.failures),
+            )
+        }
+        val transport = when (
+            val activation = InstalledIndexerTransport.activate(
+                endpoint,
+                KastIndexerHost(dispatch),
+            )
+        ) {
+            is IndexerTransportActivation.Activated -> activation.transport
+            is IndexerTransportActivation.Rejected -> reject(
+                InstalledIndexerStartupFailure.Transport(activation.failure),
+            )
+        }
         transport.use { installedTransport ->
-            val dispatch = when (val runtime = InstalledKastRuntime.create(
-                options.workspaceRoot,
-                installedTransport.stateDirectory,
-            )) {
-                is InstalledKastRuntimeConstruction.Created -> runtime.dispatch
-                is InstalledKastRuntimeConstruction.Rejected -> reject(
-                    InstalledIndexerStartupFailure.Runtime(runtime.failures),
-                )
-            }
-            installedTransport.serve(KastIndexerHost(dispatch))
+            installedTransport.serve()
         }
     }
 }

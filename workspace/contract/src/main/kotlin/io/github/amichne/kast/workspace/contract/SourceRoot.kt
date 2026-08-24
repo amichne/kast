@@ -1,6 +1,8 @@
 package io.github.amichne.kast.workspace.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.InvalidPathException
+import java.nio.file.Path
 
 /** Closed Gradle-model reasons that prevent authored/generated provenance proof. */
 sealed interface ProvenanceFailure {
@@ -133,11 +135,16 @@ data class SourceRoot internal constructor(
             raw: String,
             failure: SourceRootAdmissionFailure,
         ): Refinement<String, SourceRootAdmissionFailure> {
+            val path = try {
+                Path.of(raw)
+            } catch (_: InvalidPathException) {
+                return Refinement.Rejected(failure)
+            }
             val segments = raw.split('/')
             return if (
                 raw == "." ||
                 raw.isNotEmpty() &&
-                !raw.startsWith('/') &&
+                !path.isAbsolute &&
                 segments.none { it.isEmpty() || it == "." || it == ".." }
             ) {
                 Refinement.Refined(raw)

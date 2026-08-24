@@ -64,4 +64,5 @@ dependencies {
     testImplementation(ideaLibs)
     testImplementation(gradlePluginLibs)
     testImplementation(javaPluginLibs)
+    testImplementation(catalog.findLibrary("gradle-tooling-api").get())
 }

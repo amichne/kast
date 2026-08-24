@@ -6,13 +6,13 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import tempfile
 import tomllib
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "docs/public"
+LIKEC4_TOOLING = ROOT / "docs/tooling/likec4"
 
 PAGES = {
     "index.md": [
@@ -50,6 +50,7 @@ PAGES = {
     "questions/code-connections.md": [
         "# How is this code connected?",
         "kast relation read",
+        "kast topology build",
         "kast traversal run",
         "explicit limits",
     ],
@@ -86,7 +87,7 @@ PAGES = {
         '<kast-view view-id="module-ownership"',
         '<details class="kast-architecture-details"',
         "foreground IDE",
-        "eleven canonical operations",
+        "twelve canonical operations",
     ],
 }
 
@@ -223,11 +224,17 @@ def check_architecture() -> None:
     require("view module-ownership" in views, "module-ownership view is missing")
     require("navigateTo" not in views, "architecture source still defines dialog navigation")
 
+    subprocess.run(
+        ["python3", "docs/tooling/likec4/generate_bundle.py", "--check"],
+        cwd=ROOT,
+        check=True,
+    )
+    likec4 = LIKEC4_TOOLING / "node_modules/.bin/likec4"
+    require(likec4.is_file(), "locked LikeC4 executable is missing")
+
     validation = subprocess.run(
         [
-            "npx",
-            "--yes",
-            "likec4@1.59.2",
+            str(likec4),
             "validate",
             "--json",
             "--no-layout",
@@ -250,27 +257,7 @@ def check_architecture() -> None:
     require(report["stats"]["totalErrors"] == 0, "LikeC4 diagnostics are not empty")
     print("public-docs: LikeC4 sources are valid with zero diagnostics")
 
-    with tempfile.TemporaryDirectory(prefix="kast-likec4-check.") as temporary:
-        generated = Path(temporary) / "likec4-views.mjs"
-        subprocess.run(
-            [
-                "npx",
-                "--yes",
-                "likec4@1.59.2",
-                "gen",
-                "webcomponent",
-                "--outfile",
-                str(generated),
-                "--webcomponent-prefix",
-                "kast",
-                str(architecture),
-            ],
-            cwd=ROOT,
-            check=True,
-        )
-        checked_in = architecture / "likec4-views.mjs"
-        require(checked_in.read_bytes() == generated.read_bytes(), "LikeC4 bundle is stale")
-    print("public-docs: architecture bundle is current")
+    print("public-docs: architecture semantics and generated wrapper contract are current")
 
 
 def main() -> None:

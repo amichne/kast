@@ -1,7 +1,13 @@
 package io.github.amichne.kast.traversal.service
 
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.relation.contract.RelationBatch
+import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReadResult
@@ -39,14 +45,17 @@ class TraversalService internal constructor(
                 TraversalWorkAvailability.Exhausted -> return complete(plan, accounting)
                 is TraversalWorkAvailability.Ready -> available
             }
-            when (val admission = readAdmission(plan, work.entry, accounting)) {
-                TraversalReadAdmission.Admitted -> Unit
+            val readBudget = when (val admission = readAdmission(plan, work.entry, accounting)) {
+                is TraversalReadAdmission.Admitted -> admission.budget
                 is TraversalReadAdmission.Limited -> return qualified(
                     plan,
                     state,
                     accounting,
                     admission.limitation,
                     emptySet(),
+                )
+                TraversalReadAdmission.Rejected -> return TraversalResult.Rejected(
+                    TraversalRejection.TraversalContractViolation,
                 )
             }
 
@@ -55,7 +64,7 @@ class TraversalService internal constructor(
                 node = entry.node,
                 meaning = plan.meaning,
                 scope = plan.scope,
-                budget = plan.budget.oneHop,
+                budget = readBudget,
                 position = work.position,
             )
             val read = when (val outcome = reader.read(request)) {
@@ -174,31 +183,73 @@ class TraversalService internal constructor(
      * Proof transition: `(TraversalPlan, TraversalFrontierEntry, TraversalAccounting) ->
      * TraversalReadAdmission`.
      *
-     * Establishes either explicit authority for one configured bounded read or one closed
-     * aggregate limitation before effects occur. Raw counters remain inside the pure engine.
+     * Establishes either attenuated authority bounded by both the configured one-hop ceiling and
+     * the exact remaining aggregate capacity, or one closed aggregate limitation before effects
+     * occur. [TraversalReadAdmission.Rejected] closes impossible internal refinement failure. Raw
+     * counters remain inside the pure engine.
      */
     private fun readAdmission(
         plan: TraversalPlan,
         next: TraversalFrontierEntry,
         accounting: TraversalAccounting,
-    ): TraversalReadAdmission = when {
+    ): TraversalReadAdmission {
+        val remainingRecords = plan.budget.records.value - accounting.records.size
+        val remainingBytes = plan.budget.returnedBytes.value - accounting.encodedBytes
+        val remainingWork = plan.budget.workUnits.value - accounting.examinedWorkUnits
+        val remainingTime = plan.budget.elapsedTime.value - accounting.elapsedMillis
+        return when {
         next.depth.value >= plan.budget.depth.value ->
             TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
         accounting.expandedFrontier >= plan.budget.frontier.value ->
             TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)
-        plan.budget.records.value - accounting.records.size <
-        plan.budget.oneHop.resources.resultLimit.value ->
+        remainingRecords <= 0 ->
             TraversalReadAdmission.Limited(TraversalLimitation.RECORD_LIMIT_REACHED)
-        plan.budget.returnedBytes.value - accounting.encodedBytes <
-        plan.budget.oneHop.returnedBytes.value ->
+        remainingBytes <= 0L ->
             TraversalReadAdmission.Limited(TraversalLimitation.BYTE_LIMIT_REACHED)
-        plan.budget.workUnits.value - accounting.examinedWorkUnits <
-        plan.budget.oneHop.resources.workUnitLimit.value ->
+        remainingWork <= 0L ->
             TraversalReadAdmission.Limited(TraversalLimitation.WORK_LIMIT_REACHED)
-        plan.budget.elapsedTime.value - accounting.elapsedMillis <
-        plan.budget.oneHop.resources.elapsedTimeLimit.value ->
+        remainingTime <= 0L ->
             TraversalReadAdmission.Limited(TraversalLimitation.TIME_LIMIT_REACHED)
-        else -> TraversalReadAdmission.Admitted
+        else -> attenuatedBudget(
+            plan.budget.oneHop,
+            remainingRecords,
+            remainingBytes,
+            remainingWork,
+            remainingTime,
+        )
+        }
+    }
+
+    /**
+     * Proof transition: `(RelationBudget, positive remaining aggregate capacity) ->
+     * TraversalReadAdmission`.
+     *
+     * Establishes a one-hop budget that cannot exceed either its configured ceiling or the
+     * traversal capacity still available. [TraversalReadAdmission.Rejected] is the closed
+     * internal refinement failure. Raw remaining counters may be extracted only here.
+     */
+    private fun attenuatedBudget(
+        ceiling: RelationBudget,
+        remainingRecords: Int,
+        remainingBytes: Long,
+        remainingWork: Long,
+        remainingTime: Long,
+    ): TraversalReadAdmission {
+        val records = ResultLimit.parse(
+            minOf(ceiling.resources.resultLimit.value, remainingRecords),
+        ).refinedOrNull() ?: return TraversalReadAdmission.Rejected
+        val bytes = RelationByteLimit.parse(
+            minOf(ceiling.returnedBytes.value, remainingBytes),
+        ).refinedOrNull() ?: return TraversalReadAdmission.Rejected
+        val work = WorkUnitLimit.parse(
+            minOf(ceiling.resources.workUnitLimit.value, remainingWork),
+        ).refinedOrNull() ?: return TraversalReadAdmission.Rejected
+        val time = ElapsedTimeLimitMillis.parse(
+            minOf(ceiling.resources.elapsedTimeLimit.value, remainingTime),
+        ).refinedOrNull() ?: return TraversalReadAdmission.Rejected
+        return TraversalReadAdmission.Admitted(
+            RelationBudget(ResourceBudget(records, work, time), bytes),
+        )
     }
 
     /**
@@ -296,4 +347,9 @@ class TraversalService internal constructor(
                 TraversalResult.Rejected(TraversalRejection.TraversalContractViolation)
         }
     }
+}
+
+private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? = when (this) {
+    is Refinement.Refined -> value
+    is Refinement.Rejected -> null
 }

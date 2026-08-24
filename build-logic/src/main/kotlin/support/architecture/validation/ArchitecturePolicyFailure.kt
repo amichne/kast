@@ -37,4 +37,10 @@ sealed interface ArchitecturePolicyFailure {
     ) : ArchitecturePolicyFailure
 
     data class ModuleDependencyCycle(val members: Set<ModuleId>) : ArchitecturePolicyFailure
+
+    data class InvalidExclusiveEffectOwners(
+        val effect: ForbiddenEffect,
+        val expected: Set<ModuleId>,
+        val observed: Set<ModuleId>,
+    ) : ArchitecturePolicyFailure
 }

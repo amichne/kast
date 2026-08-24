@@ -52,7 +52,20 @@ if [[ -z "${socket_path}" ]]; then
   echo "kast-indexer: socket-path argument is required" >&2
   exit 1
 fi
-idea_instance_root="${socket_path}.state/idea"
+idea_state_root="${socket_path}.state"
+if [[ -L "${idea_state_root}" || \
+  ( -e "${idea_state_root}" && ! -d "${idea_state_root}" ) ]]; then
+  echo "kast-indexer: endpoint state root is not a directory: ${idea_state_root}" >&2
+  exit 1
+fi
+if ! mkdir -p "${idea_state_root}"; then
+  echo "kast-indexer: endpoint state root is unavailable: ${idea_state_root}" >&2
+  exit 1
+fi
+if ! idea_instance_root="$(mktemp -d "${idea_state_root}/idea.XXXXXX")"; then
+  echo "kast-indexer: process-local IDEA state is unavailable" >&2
+  exit 1
+fi
 
 java_exec="${JAVA_HOME:+${JAVA_HOME}/bin/java}"
 java_exec="${java_exec:-java}"

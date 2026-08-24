@@ -21,6 +21,8 @@ import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelR
 import io.github.amichne.kast.runtime.composition.platform.projectInstalledGradleModel
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
+import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
@@ -65,6 +67,9 @@ class InstalledRuntimeAssemblyTest {
             InstalledRuntimeAssemblyInputs(
                 workspaceModel = { read },
                 semantic = unusedSemanticPorts(),
+                topologyExtractor = { TopologyFileExtraction.Failed(
+                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                ) },
                 change = unusedChangePhysicalPorts(),
             ),
         )
@@ -96,6 +101,9 @@ class InstalledRuntimeAssemblyTest {
             InstalledRuntimeAssemblyInputs(
                 workspaceModel = { changedRead },
                 semantic = unusedSemanticPorts(),
+                topologyExtractor = { TopologyFileExtraction.Failed(
+                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                ) },
                 change = unusedChangePhysicalPorts(),
             ),
         )

@@ -48,3 +48,27 @@ data class SemanticReadLease(
     val workspaceRoot: CanonicalWorkspaceRoot,
     val generation: EvidenceGeneration,
 )
+
+/** Closed result of attempting an effect while one semantic lease remains current. */
+sealed interface SemanticReadLeaseUse<out Value> {
+    data class Completed<Value>(
+        val value: Value,
+    ) : SemanticReadLeaseUse<Value>
+
+    data object Moved : SemanticReadLeaseUse<Nothing>
+}
+
+/** Guard that serializes one effect with workspace invalidation for an exact read lease. */
+interface SemanticReadLeaseGuard {
+    /**
+     * Proof transition: `(SemanticReadLease, () -> Value) -> SemanticReadLeaseUse<Value>`.
+     *
+     * A completed result establishes that [operation] ran while the exact canonical root and
+     * evidence generation remained the coordinator's current ready publication. [Moved] proves
+     * the operation did not run. Raw lifecycle state remains inside the workspace coordinator.
+     */
+    fun <Value> whileCurrent(
+        expected: SemanticReadLease,
+        operation: () -> Value,
+    ): SemanticReadLeaseUse<Value>
+}

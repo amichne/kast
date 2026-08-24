@@ -15,17 +15,24 @@ module graph before the reader understands the runtime flow.
 ## Source and generated boundaries
 
 - Author human-facing pages under `public/`.
-- Generate `public/reference/cli.md` with
+- Generate `public/reference/cli.md` from the typed operation-registry artifact with
+  `./gradlew :protocol:wire:generateOperationRegistry` followed by
   `python3 docs/generate_cli_reference.py`. Do not edit that page by hand.
 - Edit the LikeC4 contract in `public/architecture/{specification,model,views}.c4`.
 - Generate `public/architecture/likec4-views.mjs` with:
 
   ```shell
-  npx --yes likec4@1.59.2 gen webcomponent \
-    --outfile docs/public/architecture/likec4-views.mjs \
-    --webcomponent-prefix kast \
-    docs/public/architecture
+  python3 docs/tooling/likec4/generate_bundle.py
   ```
+
+  The generator records the exact npm lockfile and semantic-model fingerprints.
+  Its check mode compares every authored model field with LikeC4's own
+  compute-only JSON export and validates the complete layouted module wrapper
+  separately. Tool-owned view hashes, workspace-derived relationship IDs,
+  layout geometry, and third-party minification are required generated
+  structure but are not byte-stable across supported hosts. Relationship
+  semantics remain exact after re-keying each relationship from its complete
+  content.
 
 - Keep authored pages focused on a reader decision or outcome. The generated
   CLI page is the only command reference. `kast --schema` remains the
@@ -42,9 +49,11 @@ module graph before the reader understands the runtime flow.
 Run these checks after changing this directory:
 
 ```shell
+./gradlew :protocol:wire:generateOperationRegistry
 python3 docs/generate_cli_reference.py --check
+python3 docs/tooling/likec4/generate_bundle.py --check
 python3 docs/test_public_docs.py
-npx --yes likec4@1.59.2 validate --json --no-layout \
+docs/tooling/likec4/node_modules/.bin/likec4 validate --json --no-layout \
   --file docs/public/architecture/specification.c4 \
   --file docs/public/architecture/model.c4 \
   --file docs/public/architecture/views.c4 \

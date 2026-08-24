@@ -13,6 +13,15 @@
 ## Contract invariants
 
 - The host consumes only the composition-owned dispatch capability.
+- Endpoint preparation may create only canonical persistent state and retire stale exact markers.
+  Bind the socket and publish its generated endpoint descriptor only after runtime composition
+  succeeds, and capture that created dispatch in the activated transport. Socket reachability must
+  therefore prove a dispatch-capable runtime, never an in-progress startup.
+- Each indexer process receives endpoint-local IntelliJ config, system, and log directories;
+  durable workspace evidence remains in the endpoint's SQLite siblings across process restarts.
+- The packaged plugin descriptor registers both the indexer application starter and the workspace
+  adapter's Gradle project-resolve extension; required-entry verification must keep the resolver,
+  Tooling model, and producer-evidence types in the installed plugin archive.
 - Raw request documents enter at one outer host frame and immediately refine to the closed
   composition dispatch result.
 - No aggregate backend or duplicate semantic authority exists in this module.

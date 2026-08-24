@@ -53,27 +53,44 @@ run_launcher() {
 }
 
 capture_a="${fixture}/capture-a"
+capture_a_restart="${fixture}/capture-a-restart"
 capture_b="${fixture}/capture-b"
+state_a="${socket_a}.state"
+mkdir -p "${state_a}/idea/config"
+printf '%s\n' 'stale-module-cache' >"${state_a}/idea/config/stale-module-cache"
+printf '%s\n' 'durable-topology' >"${state_a}/topology.sqlite"
 run_launcher "${socket_a}" "${capture_a}"
+run_launcher "${socket_a}" "${capture_a_restart}"
 run_launcher "${socket_b}" "${capture_b}"
 
-python3 - "${capture_a}" "${capture_b}" "${socket_a}" "${socket_b}" <<'PY'
+[[ "$(<"${state_a}/topology.sqlite")" == "durable-topology" ]] || {
+  echo "indexer-launcher-isolation-test: startup changed durable endpoint state" >&2
+  exit 1
+}
+
+python3 - \
+  "${capture_a}" \
+  "${capture_a_restart}" \
+  "${capture_b}" \
+  "${socket_a}" \
+  "${socket_b}" <<'PY'
 from pathlib import Path
 import sys
 
-captures = [Path(sys.argv[1]), Path(sys.argv[2])]
-sockets = [sys.argv[3], sys.argv[4]]
+captures = [Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])]
+sockets = [sys.argv[4], sys.argv[4], sys.argv[5]]
 properties = ("config", "system", "plugins", "log")
 observed = []
 
-for capture, socket in zip(captures, sockets, strict=True):
+for capture, raw_socket in zip(captures, sockets, strict=True):
+    socket = str(Path(raw_socket))
     arguments = capture.read_bytes().split(b"\0")
     decoded = [argument.decode() for argument in arguments if argument]
-    expected_root = f"{socket}.state/idea"
     current = {}
     for name in properties:
-        expected = f"-Didea.{name}.path={expected_root}/{name}"
-        if expected not in decoded:
+        prefix = f"-Didea.{name}.path="
+        matches = [argument for argument in decoded if argument.startswith(prefix)]
+        if len(matches) != 1:
             if name == "config":
                 print(
                     "indexer-launcher-isolation-test: missing endpoint-scoped idea.config.path",
@@ -85,7 +102,22 @@ for capture, socket in zip(captures, sockets, strict=True):
                     file=sys.stderr,
                 )
             raise SystemExit(1)
-        current[name] = expected
+        current[name] = matches[0].removeprefix(prefix)
+    roots = {str(Path(path).parent) for path in current.values()}
+    if len(roots) != 1:
+        print(
+            "indexer-launcher-isolation-test: one process uses multiple IntelliJ roots",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    root = roots.pop()
+    if not root.startswith(f"{socket}.state/idea."):
+        print(
+            "indexer-launcher-isolation-test: IntelliJ root is not process-scoped: "
+            f"{root}, expected prefix {socket}.state/idea.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     if "-Didea.paths.selector=KastIndexer" in decoded:
         print(
             "indexer-launcher-isolation-test: shared KastIndexer selector remains",
@@ -93,7 +125,7 @@ for capture, socket in zip(captures, sockets, strict=True):
         )
         raise SystemExit(1)
     for required in (
-        f"--socket-path={socket}",
+        f"--socket-path={raw_socket}",
         "io.github.amichne.kast.indexer.KastIndexerMainKt",
     ):
         if required not in decoded:
@@ -105,6 +137,12 @@ for capture, socket in zip(captures, sockets, strict=True):
     observed.append(current)
 
 if observed[0] == observed[1]:
+    print(
+        "indexer-launcher-isolation-test: restart reused process-local IntelliJ paths",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if observed[0] == observed[2]:
     print(
         "indexer-launcher-isolation-test: distinct endpoints share IntelliJ paths",
         file=sys.stderr,

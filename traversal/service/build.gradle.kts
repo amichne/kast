@@ -12,4 +12,7 @@ base {
 dependencies {
     implementation(project(":relation:contract"))
     implementation(project(":traversal:contract"))
+    testImplementation(project(":evidence:sqlite"))
+    testImplementation(project(":relation:service"))
+    testImplementation(project(":topology:contract"))
 }

@@ -1,5 +1,8 @@
 # Gradle and Kotlin build state
 **/build/
+!/topology/build/
+!/topology/build/**
+/topology/build/build/
 .gradle/
 /.kotlin/
 .intellijPlatform/
@@ -34,6 +37,7 @@ __pycache__/
 # Documentation build output
 /.zensical-build-*.toml
 /zensical-stage-*/
+node_modules/
 
 # Agent-local state
 .agent-workflows/

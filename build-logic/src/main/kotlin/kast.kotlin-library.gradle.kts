@@ -18,6 +18,9 @@ java {
 
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        freeCompilerArgs.add("-Xconsistent-data-class-copy-visibility")
+    }
 }
 
 tasks.withType<Test>().configureEach {

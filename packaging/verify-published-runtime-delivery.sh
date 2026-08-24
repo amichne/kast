@@ -109,12 +109,15 @@ KAST_RUNTIME_STORE="${metadata_store}" "${kast}" --help >/dev/null
 KAST_RUNTIME_STORE="${metadata_store}" "${kast}" --version >/dev/null
 schema_json="$(KAST_RUNTIME_STORE="${metadata_store}" "${kast}" --schema)"
 [[ ! -e "${metadata_store}" ]] || fail "local metadata touched the runtime store"
-python3 - "${schema_json}" "${release_url}/${runtime_name}" <<'PY'
+python3 - "${schema_json}" "${release_url}/${runtime_name}" \
+  "${control_root}/share/kast/operation-registry.json" <<'PY'
 import json
+from pathlib import Path
 import sys
 
 document = json.loads(sys.argv[1])
-assert len(document["operationRegistry"]["operationIds"]) == 11, document
+expected_registry = json.loads(Path(sys.argv[3]).read_text())
+assert document["operationRegistry"] == expected_registry, document
 assert document["semanticRuntime"]["archive"]["url"] == sys.argv[2], document
 assert document["semanticRuntime"]["runtimeId"].startswith("sha256:"), document
 PY

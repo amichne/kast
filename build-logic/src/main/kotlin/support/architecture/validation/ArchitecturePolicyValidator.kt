@@ -66,11 +66,21 @@ object ArchitecturePolicyValidator {
                 }
             }
         }
+        val exclusiveEffectFailures = EXCLUSIVE_EFFECT_OWNERS.mapNotNull { (effect, expected) ->
+            val observed = definition.modules.filter { effect in it.allowedEffects }
+                .mapTo(linkedSetOf(), ModulePolicy::id)
+            if (observed == expected) null else ArchitecturePolicyFailure.InvalidExclusiveEffectOwners(
+                effect,
+                expected,
+                observed,
+            )
+        }
         val failures = buildList {
             addAll(duplicateModules)
             addAll(missingDependencies)
             addAll(moduleFailures)
             addAll(compositionFailures)
+            addAll(exclusiveEffectFailures)
             moduleSort.cycle?.let { add(ArchitecturePolicyFailure.ModuleDependencyCycle(it)) }
         }
         return if (failures.isEmpty()) {
@@ -79,6 +89,11 @@ object ArchitecturePolicyValidator {
             ArchitecturePolicyValidation.Invalid(failures)
         }
     }
+
+    private val EXCLUSIVE_EFFECT_OWNERS = mapOf(
+        ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to setOf(ModuleId.TOPOLOGY_BUILD),
+        ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_SQLITE),
+    )
 
     private fun <T> topologicalOrder(
         nodes: Set<T>,

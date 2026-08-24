@@ -252,6 +252,8 @@ data class TraversalCompleteCoverage internal constructor(
 
 sealed interface TraversalRejection {
     data class OneHopRejected(val reason: RelationReadRejection) : TraversalRejection
+    data object RequiredEvidenceUnavailable : TraversalRejection
+    data object RequiredEvidenceStale : TraversalRejection
     data object ReaderContractViolation : TraversalRejection
     data object TraversalContractViolation : TraversalRejection
 }

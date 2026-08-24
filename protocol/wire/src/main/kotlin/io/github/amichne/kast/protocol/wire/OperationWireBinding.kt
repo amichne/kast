@@ -16,13 +16,47 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 
+/** Public construction boundary for bindings backed only by compiler-generated serializers. */
+object GeneratedOperationWireBindingFactory {
+    private val codecFactory = GeneratedWireCodecFactory(wireJson)
+
+    /**
+     * Proof transition: `OperationDefinition + four generated KSerializer values ->
+     * OperationWireBinding`.
+     *
+     * Establishes one binding whose request, result, qualification, and rejection documents all
+     * cross the shared wire JSON boundary through the supplied compiler-generated factories. Raw
+     * JSON elements remain private to the resulting codecs.
+     */
+    fun <
+        Request : OperationRequest,
+        Result : OperationResult,
+        Qualification : OperationQualification,
+        Rejection : OperationRejection,
+        > create(
+        definition: OperationDefinition<Request, Result, *, Qualification, Rejection>,
+        request: KSerializer<Request>,
+        result: KSerializer<Result>,
+        qualification: KSerializer<Qualification>,
+        rejection: KSerializer<Rejection>,
+    ): OperationWireBinding<Request, Result, Qualification, Rejection> = OperationWireBinding(
+        definition,
+        GeneratedOperationSerializers(
+            request = codecFactory.create(request),
+            result = codecFactory.create(result),
+            qualification = codecFactory.create(qualification),
+            rejection = codecFactory.create(rejection),
+        ),
+    )
+}
+
 /** A typed operation definition paired with generated serializers for every wire value. */
 class OperationWireBinding<
     Request : OperationRequest,
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    >(
+    > internal constructor(
     val definition: OperationDefinition<Request, Result, *, Qualification, Rejection>,
     private val serializers: GeneratedOperationSerializers<Request, Result, Qualification, Rejection>,
 ) {
@@ -33,7 +67,7 @@ class OperationWireBinding<
         get() = definition.schema
 
     fun encodeRequest(request: Request): WireEncoding = when (
-        val encoded = encodeValue(serializers.request, request, WireValueRole.REQUEST)
+        val encoded = serializers.request.encode(request, WireValueRole.REQUEST)
     ) {
         is WireValueEncoding.Encoded -> encodeEnvelope(WireBodyDocument.Request(encoded.value))
         is WireValueEncoding.Rejected -> WireEncoding.Rejected(encoded.failure)
@@ -53,7 +87,7 @@ class OperationWireBinding<
             is BindingIdentityAdmission.Rejected ->
                 return WireDecoding.Rejected(admission.failure)
         }
-        return decodeValue(serializers.request, request.value, WireValueRole.REQUEST)
+        return serializers.request.decode(request.value, WireValueRole.REQUEST)
     }
 
     fun encodeOutcome(
@@ -108,7 +142,9 @@ class OperationWireBinding<
         if (mismatch is EvidenceOperationAdmission.Rejected) {
             return WireEncoding.Rejected(mismatch.failure)
         }
-        return when (val result = encodeValue(serializers.result, evidence.payload, WireValueRole.RESULT)) {
+        return when (
+            val result = serializers.result.encode(evidence.payload, WireValueRole.RESULT)
+        ) {
             is WireValueEncoding.Encoded -> encodeEnvelope(
                 WireBodyDocument.Complete(evidence.generation.value, result.value),
             )
@@ -125,14 +161,13 @@ class OperationWireBinding<
             return WireEncoding.Rejected(mismatch.failure)
         }
         val result = when (
-            val encoded = encodeValue(serializers.result, evidence.payload, WireValueRole.RESULT)
+            val encoded = serializers.result.encode(evidence.payload, WireValueRole.RESULT)
         ) {
             is WireValueEncoding.Encoded -> encoded.value
             is WireValueEncoding.Rejected -> return WireEncoding.Rejected(encoded.failure)
         }
         return when (
-            val encoded = encodeValue(
-                serializers.qualification,
+            val encoded = serializers.qualification.encode(
                 qualification,
                 WireValueRole.QUALIFICATION,
             )
@@ -145,7 +180,7 @@ class OperationWireBinding<
     }
 
     private fun encodeRejected(rejection: Rejection): WireEncoding = when (
-        val encoded = encodeValue(serializers.rejection, rejection, WireValueRole.REJECTION)
+        val encoded = serializers.rejection.encode(rejection, WireValueRole.REJECTION)
     ) {
         is WireValueEncoding.Encoded -> encodeEnvelope(WireBodyDocument.Rejected(encoded.value))
         is WireValueEncoding.Rejected -> WireEncoding.Rejected(encoded.failure)
@@ -168,8 +203,7 @@ class OperationWireBinding<
             is WireDecoding.Rejected -> return decoded
         }
         return when (
-            val qualification = decodeValue(
-                serializers.qualification,
+            val qualification = serializers.qualification.decode(
                 body.qualification,
                 WireValueRole.QUALIFICATION,
             )
@@ -184,7 +218,7 @@ class OperationWireBinding<
     private fun decodeRejected(
         body: WireBodyDocument.Rejected,
     ): WireDecoding<OperationOutcome<Result, Qualification, Rejection>> = when (
-        val rejection = decodeValue(serializers.rejection, body.rejection, WireValueRole.REJECTION)
+        val rejection = serializers.rejection.decode(body.rejection, WireValueRole.REJECTION)
     ) {
         is WireDecoding.Decoded ->
             WireDecoding.Decoded(OperationOutcome.Rejected(rejection.value))
@@ -208,7 +242,7 @@ class OperationWireBinding<
                 WireFailure.InvalidEvidenceGeneration(refined.failure),
             )
         }
-        return when (val result = decodeValue(serializers.result, rawResult, WireValueRole.RESULT)) {
+        return when (val result = serializers.result.decode(rawResult, WireValueRole.RESULT)) {
             is WireDecoding.Decoded -> WireDecoding.Decoded(
                 EvidenceEnvelope(operation.id, generation, result.value),
             )
@@ -263,42 +297,6 @@ class OperationWireBinding<
             )
         }
     }
-}
-
-private fun <Value> encodeValue(
-    serializer: KSerializer<Value>,
-    value: Value,
-    role: WireValueRole,
-): WireValueEncoding = try {
-    WireValueEncoding.Encoded(wireJson.encodeToJsonElement(serializer, value))
-} catch (_: SerializationException) {
-    WireValueEncoding.Rejected(WireFailure.PayloadEncodingFailed(role))
-}
-
-/**
- * Proof transition: `JsonElement -> WireDecoding<Value>`.
- *
- * Establishes the generated serializer's exact value type. [WireFailure.InvalidPayload] is the
- * closed expected failure. Raw JSON remains inside the wire module.
- */
-private fun <Value> decodeValue(
-    serializer: KSerializer<Value>,
-    value: JsonElement,
-    role: WireValueRole,
-): WireDecoding<Value> = try {
-    WireDecoding.Decoded(wireJson.decodeFromJsonElement(serializer, value))
-} catch (_: SerializationException) {
-    WireDecoding.Rejected(WireFailure.InvalidPayload(role))
-}
-
-private sealed interface WireValueEncoding {
-    data class Encoded(
-        val value: JsonElement,
-    ) : WireValueEncoding
-
-    data class Rejected(
-        val failure: WireFailure,
-    ) : WireValueEncoding
 }
 
 private sealed interface BindingIdentityAdmission {

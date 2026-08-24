@@ -31,6 +31,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.traversal.contract.TraversalPlan
+import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
@@ -131,12 +132,14 @@ internal class InstalledChangePlanningAdmission(
         )) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejected(
-                ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED,
+                ChangePlanAdmissionFailure.INTENT_REJECTED,
             )
         }
-        val traversal = traversals.run(traversalPlan)
-        if (traversal !is TraversalResult.Complete) {
-            return rejected(ChangePlanAdmissionFailure.TRAVERSAL_RUN_REQUIRED)
+        val traversal = when (
+            val required = traversals.run(traversalPlan).requireCompleteChangePlanTraversal()
+        ) {
+            is Refinement.Refined -> required.value
+            is Refinement.Rejected -> return rejected(required.failure)
         }
         val diagnosticScope = when (val admitted = DiagnosticScope.fromCanonicalPaths(
             published.readLease,
@@ -162,6 +165,44 @@ internal class InstalledChangePlanningAdmission(
             ),
         )
     }
+}
+
+/**
+ * Proof transition: `TraversalResult ->
+ * Refinement<TraversalResult.Complete, ChangePlanAdmissionFailure>`.
+ *
+ * Establishes that required change-planning traversal evidence is complete. Qualified evidence
+ * remains the closed [ChangePlanAdmissionFailure.REQUIRED_TRAVERSAL_INCOMPLETE] failure, while
+ * every traversal rejection retains its exact admission failure. The complete result may be
+ * unpacked only while constructing planning evidence at the installed change-planning boundary.
+ */
+internal fun TraversalResult.requireCompleteChangePlanTraversal(): Refinement<
+    TraversalResult.Complete,
+    ChangePlanAdmissionFailure,
+    > = when (this) {
+    is TraversalResult.Complete -> Refinement.Refined(this)
+    is TraversalResult.Qualified -> Refinement.Rejected(
+        ChangePlanAdmissionFailure.REQUIRED_TRAVERSAL_INCOMPLETE,
+    )
+    is TraversalResult.Rejected -> Refinement.Rejected(reason.admissionFailure())
+}
+
+private fun TraversalRejection.admissionFailure(): ChangePlanAdmissionFailure = when (this) {
+    TraversalRejection.RequiredEvidenceUnavailable,
+    TraversalRejection.RequiredEvidenceStale,
+        -> ChangePlanAdmissionFailure.TOPOLOGY_BUILD_REQUIRED
+    is TraversalRejection.OneHopRejected -> when (reason) {
+        io.github.amichne.kast.relation.contract.RelationReadRejection.WORKSPACE_NOT_READY ->
+            ChangePlanAdmissionFailure.WORKSPACE_NOT_READY
+        io.github.amichne.kast.relation.contract.RelationReadRejection.WORKSPACE_ROOT_MISMATCH,
+        io.github.amichne.kast.relation.contract.RelationReadRejection.STALE_GENERATION,
+        io.github.amichne.kast.relation.contract.RelationReadRejection.STALE_SELECTOR,
+            -> ChangePlanAdmissionFailure.SYMBOL_RESOLVE_REQUIRED
+        else -> ChangePlanAdmissionFailure.INTENT_REJECTED
+    }
+    TraversalRejection.ReaderContractViolation,
+    TraversalRejection.TraversalContractViolation,
+        -> ChangePlanAdmissionFailure.INTENT_REJECTED
 }
 
 private fun rejected(failure: ChangePlanAdmissionFailure): ChangePlanAdmission.Rejected =

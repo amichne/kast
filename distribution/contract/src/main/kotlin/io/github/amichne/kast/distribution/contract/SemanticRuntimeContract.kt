@@ -66,7 +66,7 @@ class SemanticRuntimeManifest internal constructor(
          */
         fun admit(rawJson: String): SemanticRuntimeManifestAdmission {
             val document = try {
-                json.decodeFromString<ManifestDocument>(rawJson)
+                json.decodeFromString(ManifestDocument.serializer(), rawJson)
             } catch (_: RuntimeException) {
                 return SemanticRuntimeManifestAdmission.Rejected(
                     SemanticRuntimeFailure.MANIFEST_INVALID,
@@ -242,8 +242,13 @@ private fun ManifestDocument.admit(json: Json): SemanticRuntimeManifestAdmission
         ).joinToString("\n"),
     )
     if (runtime != expectedRuntime) return invalidManifest()
-    val canonical = json.encodeToString(this)
-    if (canonical != json.encodeToString(json.decodeFromString<ManifestDocument>(canonical))) {
+    val canonical = json.encodeToString(ManifestDocument.serializer(), this)
+    if (
+        canonical != json.encodeToString(
+            ManifestDocument.serializer(),
+            json.decodeFromString(ManifestDocument.serializer(), canonical),
+        )
+    ) {
         return invalidManifest()
     }
     return SemanticRuntimeManifestAdmission.Admitted(

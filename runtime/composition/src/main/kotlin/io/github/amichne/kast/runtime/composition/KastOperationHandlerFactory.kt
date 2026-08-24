@@ -52,10 +52,15 @@ import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalOperations
+import io.github.amichne.kast.topology.contract.TopologyBuildOperations
+import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
+import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
+import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 
 /**
- * Operation-specific protocol projection boundary for the eleven target service associations.
+ * Operation-specific protocol projection boundary for the twelve target service associations.
  *
  * Implementations parse public boundary documents into the supplied strong service contracts and
  * project their closed results back to protocol outcomes. Canonical definitions, serializers, and
@@ -69,6 +74,15 @@ interface KastOperationHandlerFactory {
         WorkspaceInspectResult,
         WorkspaceInspectQualification,
         WorkspaceInspectRejection
+        >
+
+    fun topologyBuild(
+        operations: TopologyBuildOperations,
+    ): OperationHandler<
+        TopologyBuildRequest,
+        TopologyBuildResult,
+        TopologyBuildQualification,
+        TopologyBuildRejection
         >
 
     fun symbolDiscover(

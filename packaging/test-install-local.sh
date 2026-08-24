@@ -44,12 +44,15 @@ mv "${install_prefix}" "${relocated_prefix}"
 "${relocated_prefix}/bin/kast" --version >/dev/null
 schema_json="$("${relocated_prefix}/bin/kast" --schema)"
 
-python3 - "${schema_json}" <<'PY'
+python3 - "${schema_json}" \
+  "${relocated_prefix}/share/kast/control/share/kast/operation-registry.json" <<'PY'
 import json
+from pathlib import Path
 import sys
 
 document = json.loads(sys.argv[1])
-assert len(document["operationRegistry"]["operationIds"]) == 11, document
+expected_registry = json.loads(Path(sys.argv[2]).read_text())
+assert document["operationRegistry"] == expected_registry, document
 assert document["semanticRuntime"]["runtimeId"].startswith("sha256:"), document
 PY
 

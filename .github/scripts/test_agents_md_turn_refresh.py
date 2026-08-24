@@ -1,17 +1,66 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 HOOK = REPOSITORY_ROOT / ".github" / "scripts" / "agents_md_turn_refresh.py"
+SCAFFOLD = REPOSITORY_ROOT / ".github" / "scripts" / "scaffold_agents_md_turn_guides.py"
+SCAFFOLD_SPEC = importlib.util.spec_from_file_location("scaffold_agents_md_turn_guides", SCAFFOLD)
+assert SCAFFOLD_SPEC is not None and SCAFFOLD_SPEC.loader is not None
+SCAFFOLD_MODULE = importlib.util.module_from_spec(SCAFFOLD_SPEC)
+SCAFFOLD_SPEC.loader.exec_module(SCAFFOLD_MODULE)
 
 
 class AgentsMdTurnRefreshTest(unittest.TestCase):
+    def test_skips_wrapper_directory_without_direct_files(self) -> None:
+        with repository_fixture() as repository:
+            write(repository / "AGENTS.md", "# Repository\n")
+            write(repository / "service" / "api" / "Api.kt", "old\n")
+            commit_all(repository)
+
+            run_hook(repository, "start")
+            write(repository / "service" / "api" / "Api.kt", "new\n")
+
+            result = run_hook(repository, "stop", expected_status=1)
+            guides = [item["guide"] for item in json.loads(result.stdout)["operations"]]
+            self.assertEqual(guides, ["service/api/AGENTS.md", "AGENTS.md"])
+
+    def test_requires_removing_generated_wrapper_after_last_direct_file_is_deleted(self) -> None:
+        with repository_fixture() as repository:
+            write(repository / "AGENTS.md", "# Repository\n")
+            write(
+                repository / "wrapper" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("wrapper/AGENTS.md"),
+                    PurePosixPath("AGENTS.md"),
+                ),
+            )
+            write(repository / "wrapper" / "Owned.kt", "old\n")
+            write(repository / "wrapper" / "child" / "Child.kt", "content\n")
+            commit_all(repository)
+
+            run_hook(repository, "start")
+            (repository / "wrapper" / "Owned.kt").unlink()
+
+            result = run_hook(repository, "stop", expected_status=1)
+            observed = [
+                (item["guide"], item["requiredOutcome"])
+                for item in json.loads(result.stdout)["operations"]
+            ]
+            self.assertEqual(
+                observed,
+                [
+                    ("wrapper/AGENTS.md", "remove"),
+                    ("AGENTS.md", "update-or-unchanged"),
+                ],
+            )
+
     def test_reverse_breadth_first_agents_work_queue(self) -> None:
         with repository_fixture() as repository:
             write(repository / "AGENTS.md", "# Repository\n")
@@ -122,6 +171,90 @@ class AgentsMdTurnRefreshTest(unittest.TestCase):
         self.assertIn(
             "python3 .github/scripts/check-repository-shape.py --root .",
             stop_commands,
+        )
+
+
+class ScaffoldAgentsMdTurnGuidesTest(unittest.TestCase):
+    def test_prune_targets_only_generated_guides_without_direct_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = Path(temporary_directory)
+            write(repository / "AGENTS.md", "# Repository\n")
+            write(
+                repository / "wrapper" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("wrapper/AGENTS.md"),
+                    PurePosixPath("AGENTS.md"),
+                ),
+            )
+            write(repository / "wrapper" / "child" / "File.kt", "content\n")
+            write(repository / "substantive" / "AGENTS.md", "# Substantive\n")
+            write(repository / "substantive" / "child" / "File.kt", "content\n")
+            extended = SCAFFOLD_MODULE.render(
+                PurePosixPath("extended/AGENTS.md"),
+                PurePosixPath("AGENTS.md"),
+            )
+            write(
+                repository / "extended" / "AGENTS.md",
+                extended + "\n## Durable child boundary\n\n- Preserve this rule.\n",
+            )
+            write(repository / "extended" / "child" / "File.kt", "content\n")
+            write(
+                repository / "orphan" / "child" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("orphan/child/AGENTS.md"),
+                    PurePosixPath("orphan/AGENTS.md"),
+                ),
+            )
+            write(repository / "orphan" / "child" / "nested" / "File.kt", "content\n")
+            write(
+                repository / "leaf" / "AGENTS.md",
+                SCAFFOLD_MODULE.render(
+                    PurePosixPath("leaf/AGENTS.md"),
+                    PurePosixPath("AGENTS.md"),
+                ),
+            )
+            write(repository / "leaf" / "File.kt", "content\n")
+
+            targets = SCAFFOLD_MODULE.empty_owner_guides(repository)
+
+            self.assertEqual(
+                targets,
+                [
+                    PurePosixPath("orphan/child/AGENTS.md"),
+                    PurePosixPath("wrapper/AGENTS.md"),
+                ],
+            )
+
+    def test_nearest_available_parent_is_selected(self) -> None:
+        available = {
+            PurePosixPath("AGENTS.md"),
+            PurePosixPath("module/AGENTS.md"),
+            PurePosixPath("module/src/AGENTS.md"),
+        }
+
+        owner = SCAFFOLD_MODULE.nearest_owner_guide(
+            PurePosixPath("module/src/main/AGENTS.md"),
+            available,
+        )
+
+        self.assertEqual(owner, PurePosixPath("module/src/AGENTS.md"))
+
+    def test_render_uses_relative_owner_link_and_production_scope(self) -> None:
+        text = SCAFFOLD_MODULE.render(
+            PurePosixPath("module/src/main/AGENTS.md"),
+            PurePosixPath("module/AGENTS.md"),
+        )
+
+        self.assertIn("production sources", text)
+        self.assertIn("](../../AGENTS.md)", text)
+
+    def test_render_is_stable(self) -> None:
+        guide = PurePosixPath("module/src/test/AGENTS.md")
+        owner = PurePosixPath("module/AGENTS.md")
+
+        self.assertEqual(
+            SCAFFOLD_MODULE.render(guide, owner),
+            SCAFFOLD_MODULE.render(guide, owner),
         )
 
 

@@ -15,6 +15,8 @@ AddDeclaration and KCS-019 extends the same `ChangePlan` surface one intent at a
   diagnostic evidence fails closed before plan construction.
 - Plan identity is independent of evidence enumeration order, and this module owns no apply,
   journal, persistence, verification, or recovery effect.
+- AddDeclaration plans derive a typed class-body insertion for a classlike target and a typed
+  sibling insertion for other declaration targets.
 - RenameSymbol plans require one changed admitted identifier and a deterministic complete
   compiler-grounded occurrence set for the exact target.
 - AddFile plans require one authored source-root-owned Kotlin path and retain a whole-file

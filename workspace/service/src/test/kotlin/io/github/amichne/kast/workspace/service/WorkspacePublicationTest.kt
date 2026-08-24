@@ -15,6 +15,7 @@ import io.github.amichne.kast.workspace.contract.GradleSourceRootEvidence
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SemanticReadLeaseUse
 import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
@@ -31,8 +32,40 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
 
 class WorkspacePublicationTest {
+    @Test
+    fun `lease guard executes only while the exact publication remains current`() {
+        val first = candidate("/workspace", "first")
+        val coordinator = WorkspacePublicationCoordinator(
+            ScriptedWorkspaceReconciliationPort(first, first),
+            RecordingWorkspacePublicationTransaction(),
+        )
+        val published = assertInstanceOf(
+            WorkspacePublicationRun.Published::class.java,
+            coordinator.reconcile(),
+        ).workspace
+        val calls = AtomicInteger()
+
+        assertEquals(
+            SemanticReadLeaseUse.Completed(published.readLease),
+            coordinator.whileCurrent(published.readLease) {
+                calls.incrementAndGet()
+                published.readLease
+            },
+        )
+        coordinator.observe(WorkspaceSignal.Source)
+        assertEquals(
+            SemanticReadLeaseUse.Moved,
+            coordinator.whileCurrent(published.readLease) {
+                calls.incrementAndGet()
+                published.readLease
+            },
+        )
+        assertEquals(1, calls.get())
+    }
+
     @Test
     fun `resulting publication starts only from the exact current lease and advances generation`() {
         val first = candidate("/workspace", "first")

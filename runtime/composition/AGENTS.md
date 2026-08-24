@@ -15,11 +15,20 @@ nominal association between each canonical operation and its direct target servi
 
 ## Contract invariants
 
-- Exactly eleven nominal operation slots exist, in canonical order.
+- Exactly twelve nominal operation slots exist, in canonical order.
+- `topology.build` alone constructs repository topology. `traversal.run` consumes only an eligible
+  SQLite snapshot and never falls back to K2 extraction.
+- `protocol/graph` owns topology construction handling, relation and traversal projection, and the
+  snapshot-only public traversal router.
+- Installed change verification resolves both the original and added declarations in G1 and proves
+  the added declaration occupies the compiler-qualified container implied by the planned target.
 - Each slot receives its operation-specific target service boundary directly.
 - A binding factory result is admitted only when its canonical operation matches the nominal slot.
 - Runtime-server construction remains closed data; missing, duplicate, or mismatched bindings
   cannot produce a runnable composition.
+- Candidate and exact selector token payloads are dedicated `@Serializable` documents decoded to
+  closed typed admissions. `verifyGeneratedSelectorSerialization` rejects element builders,
+  field-walking adapters, maps, and hand-written serializers in that fixed schema boundary.
 
 ## Verification ladder
 

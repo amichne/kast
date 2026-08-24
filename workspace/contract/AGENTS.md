@@ -6,8 +6,8 @@ physical effects.
 
 ## Module map
 
-- `SemanticReadLease.kt` owns canonical-root evidence and the generation-bound semantic read
-  lease.
+- `SemanticReadLease.kt` owns canonical-root evidence, the generation-bound semantic read lease,
+  and the closed guard result for effects that require that lease to remain current.
 - `SourceRoot.kt` owns the clean-slate detached source-root proof, exact Gradle source-set
   ownership, and authored/generated/qualified-unknown provenance.
 - `WorkspaceSearchScopeModel.kt` owns the generation-bound source-root model compiled into native
@@ -29,8 +29,11 @@ physical effects.
 - A canonical workspace root is absolute and lexically normalized. The physical adapter that
   resolved symlinks and canonical identity is the only legitimate caller of its boundary parser.
 - A semantic read lease always carries both canonical root and published evidence generation.
+- A guarded effect returns `Completed` only for the exact current ready lease; absence, lifecycle
+  movement, root mismatch, or generation change returns `Moved` without invoking the effect.
 - Every clean-slate source root is workspace-contained, preserves exact model ownership, and
-  carries Authored, Generated, or a finite reason for Unknown provenance.
+  carries Authored, Generated, or a finite reason for Unknown provenance. Platform-invalid raw
+  path text is rejected before a `SourceRoot` can be constructed.
 - Resource policy admits only validated positive limits, bounded percentages, and non-negative
   counts. Ordinary reads are not an expensive-work kind and cannot consume an initiation slot.
 - Heap, EDT, capacity, queue, timeout, interruption, and initiation failure remain distinct typed

@@ -6,7 +6,10 @@ import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.AddDeclarationPlannedEdit
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningFailure
+import io.github.amichne.kast.change.contract.SourceTextMutation
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -40,6 +43,22 @@ class AddDeclarationPlanTest {
         assertEquals(2, first.evidence.relations.size)
         assertEquals(2, first.evidence.traversals.size)
         assertEquals(2, first.evidence.diagnostics.size)
+    }
+
+    @Test
+    fun `classlike target plans an insertion inside its body`() {
+        val plan = PureAddDeclarationPlanningService().plan(
+            AddDeclarationPlanFixture(symbolKind = CompilerSymbolKind.CLASSLIKE).request(),
+        ).planned()
+
+        assertInstanceOf(
+            AddDeclarationPlannedEdit.InsertIntoClassBody::class.java,
+            plan.plannedEdits.single(),
+        )
+        assertInstanceOf(
+            SourceTextMutation.InsertIntoClassBody::class.java,
+            plan.writes.entries.single().mutations.single(),
+        )
     }
 
     @Test
