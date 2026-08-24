@@ -26,8 +26,6 @@ from pr633.program_authority import (
 
 
 TASK_IDS = "001 002 010 020 030 040 050 060 070".split()
-OPERATION_IDS = """workspace.inspect topology.build symbol.discover symbol.resolve symbol.describe
-relation.read traversal.run diagnostic.check change.plan change.apply change.verify change.recover""".split()
 FORBIDDEN_FOLLOW_ON_OPERATION_IDS = """topology.path topology.condensation topology.quotient
 topology.cycles topology.scc topology.query""".split()
 CLEAN_SLATE_SEMANTICS = {
@@ -113,11 +111,21 @@ def repository_paths(root: Path) -> dict[str, Path]:
     return {
         "program": base / "kast-pr633-program.json", "program_schema": schemas / "kast-pr633-program.schema.json",
         "evidence_schema": schemas / "pr633-gate-evidence.schema.json", "lifecycle_schema": schemas / "topology-installed-lifecycle.schema.json",
-        "expected_registry": base / "operation-registry.expected.json", "path_policy": base / "policies/pr633-path-policy.json",
+        "path_policy": base / "policies/pr633-path-policy.json",
         "cleanup_policy": base / "policies/cleanup-path-policy.json", "clean_slate_plan": root / "kast-clean-slate-plan.md",
         "clean_slate_graph": root / "kast-clean-slate-task-graph.json", "clean_slate_graph_schema": schemas / "kast-clean-slate-task-graph.schema.json",
         "ci_workflow": root / ".github/workflows/ci.yml",
     }
+
+
+def program_operation_ids(program: dict[str, Any]) -> list[str]:
+    operation_sets = program.get("operationSets")
+    require(isinstance(operation_sets, dict), "program operationSets is not an object")
+    operation_ids = operation_sets.get("pr633")
+    require(isinstance(operation_ids, list) and operation_ids, "program pr633 operation set is not a non-empty array")
+    require(all(isinstance(value, str) and value for value in operation_ids), "program pr633 operation ID is invalid")
+    require(len(operation_ids) == len(set(operation_ids)), "program pr633 operation set contains duplicates")
+    return operation_ids
 
 
 def verify_artifact(root: Path) -> dict[str, Any]:
@@ -128,6 +136,8 @@ def verify_artifact(root: Path) -> dict[str, Any]:
     schema = load_json(paths["program_schema"])
     require(isinstance(program, dict) and isinstance(schema, dict), "program and schema must be objects")
     validate_schema(program, schema, schema)
+    operation_ids = program_operation_ids(program)
+    verify_topology_operation_ids(operation_ids)
     verify_repository_sources(program, root)
     verify_invariant_enforcers(program, root)
     verify_gate_check_bindings(program, root)
@@ -150,10 +160,7 @@ def verify_artifact(root: Path) -> dict[str, Any]:
     final_gate = program["finalCleanGate"]
     require(final_gate["aggregateGradleTask"] == "pr633MergeCandidateAcceptance", "wrong aggregate")
     require(final_gate["commands"] == ["packaging/pr633-final-gate.sh"], "final gate bypasses wrapper")
-    expected = load_json(paths["expected_registry"])
-    require(expected == {"schemaVersion": 1, "operationIds": OPERATION_IDS}, "registry authority differs")
-    require(len(set(OPERATION_IDS)) == len(OPERATION_IDS), "registry authority contains duplicates")
-    return {"status": "passed", "tasks": task_ids, "gates": gate_ids}
+    return {"status": "passed", "tasks": task_ids, "gates": gate_ids, "operationIds": operation_ids}
 
 
 def registry_document(path: Path, nested: bool = False) -> dict[str, Any]:
@@ -166,14 +173,16 @@ def registry_document(path: Path, nested: bool = False) -> dict[str, Any]:
 
 
 def verify_registry(args: argparse.Namespace) -> dict[str, Any]:
-    expected = registry_document(args.expected)
+    program = load_json(args.program)
+    require(isinstance(program, dict), f"program document is not an object: {args.program}")
+    operation_ids = program_operation_ids(program)
+    expected = {"schemaVersion": 1, "operationIds": operation_ids}
     generated = registry_document(args.generated)
     installed = registry_document(args.installed)
     schema = registry_document(args.schema, nested=True)
     require(expected == generated == installed == schema, "operation registry projections differ")
-    require(expected.get("operationIds") == OPERATION_IDS, "operation registry order or IDs differ")
     require(args.generated.read_bytes() == args.installed.read_bytes(), "installed registry is not byte-exact")
-    return {"status": "passed", "operationIds": OPERATION_IDS}
+    return {"status": "passed", "operationIds": operation_ids}
 
 
 def marked_plan_operations(plan: str) -> list[str]:
@@ -187,8 +196,8 @@ def marked_plan_operations(plan: str) -> list[str]:
     return [line.strip() for line in match.group(1).splitlines() if line.strip()]
 
 
-def verify_clean_slate_graph(graph: dict[str, Any]) -> None:
-    require(graph.get("operationIds") == OPERATION_IDS, "clean-slate graph operation set differs")
+def verify_clean_slate_graph(graph: dict[str, Any], operation_ids: list[str]) -> None:
+    require(graph.get("operationIds") == operation_ids, "clean-slate graph operation set differs")
     require(graph.get("semantics") == CLEAN_SLATE_SEMANTICS, "clean-slate semantics differ")
     tasks = graph.get("tasks")
     require(isinstance(tasks, list), "clean-slate tasks are not an array")
@@ -227,6 +236,7 @@ def verify_clean_slate_graph(graph: dict[str, Any]) -> None:
 
 def verify_authorities(root: Path) -> dict[str, Any]:
     artifact = verify_artifact(root)
+    operation_ids = artifact["operationIds"]
     paths = repository_paths(root)
     forbidden = ["traversal-run-required", "TopologyGraph.kt"]
     required = ["TOPOLOGY_BUILD_REQUIRED", "REQUIRED_TRAVERSAL_INCOMPLETE"]
@@ -251,32 +261,33 @@ def verify_authorities(root: Path) -> dict[str, Any]:
     require(isinstance(graph, dict), "clean-slate task graph is not an object")
     require(isinstance(graph_schema, dict), "clean-slate task graph schema is not an object")
     validate_schema(graph, graph_schema, graph_schema)
-    require(marked_plan_operations(plan) == OPERATION_IDS, "clean-slate plan operation set differs")
+    require(marked_plan_operations(plan) == operation_ids, "clean-slate plan operation set differs")
     require(
         all(operation_id not in plan for operation_id in FORBIDDEN_FOLLOW_ON_OPERATION_IDS),
         "clean-slate plan exposes a follow-on topology operation",
     )
     require(re.search(r"\b[0-9a-f]{40}\b", plan + graph_text) is None, "clean-slate authority embeds a Git SHA")
-    verify_clean_slate_graph(graph)
+    verify_clean_slate_graph(graph, operation_ids)
     safe_change = (root / "docs/public/questions/safe-change.md").read_text(encoding="utf-8")
     connections = (root / "docs/public/questions/code-connections.md").read_text(encoding="utf-8")
     cli = (root / "docs/public/reference/cli.md").read_text(encoding="utf-8")
     require(safe_change.index("kast topology build") < safe_change.index("kast change plan"), "safe-change order differs")
     require(all(term in connections for term in ["one-hop K2", "eligible SQLite snapshot"]), "connection authorities differ")
     cli_operations = re.findall(r"^\| `([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+)` \|", cli, re.MULTILINE)
-    require(cli_operations == OPERATION_IDS, f"generated CLI operation set differs: {cli_operations}")
+    require(cli_operations == operation_ids, f"generated CLI operation set differs: {cli_operations}")
     return {"status": "passed", "artifact": artifact["status"], "authorities": len(authority_paths)}
 
 
 def verify_operation_names(root: Path) -> dict[str, Any]:
     paths = repository_paths(root)
-    expected = load_json(paths["expected_registry"])
-    require(expected == {"schemaVersion": 1, "operationIds": OPERATION_IDS}, "registry authority differs")
+    program = load_json(paths["program"])
+    require(isinstance(program, dict), "program document is not an object")
+    operation_ids = program_operation_ids(program)
 
     canonical_path = root / "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt"
     canonical = canonical_path.read_text(encoding="utf-8")
     canonical_ids = re.findall(r'canonicalOperationId\("([^"]+)"\)', canonical)
-    require(canonical_ids == OPERATION_IDS, f"canonical operation enum differs: {canonical_ids}")
+    require(canonical_ids == operation_ids, f"canonical operation enum differs: {canonical_ids}")
     verify_topology_operation_ids(canonical_ids)
 
     production_roots = [
@@ -337,7 +348,7 @@ def parser() -> argparse.ArgumentParser:
     no_rust = commands.add_parser("no-rust-product")
     no_rust.add_argument("--root", type=Path, required=True)
     registry = commands.add_parser("registry")
-    for name in ("expected", "generated", "installed", "schema"):
+    for name in ("program", "generated", "installed", "schema"):
         registry.add_argument(f"--{name}", type=Path, required=True)
     ci = commands.add_parser("ci-artifact")
     ci.add_argument("--report", type=Path, required=True)

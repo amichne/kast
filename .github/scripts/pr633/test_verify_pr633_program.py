@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,6 +16,11 @@ import verify_pr633_program as verifier
 
 
 class VerifyPr633ProgramTest(unittest.TestCase):
+    def program_operation_ids(self) -> list[str]:
+        root = Path(__file__).resolve().parents[3]
+        program = json.loads((root / "gradle/pr633/kast-pr633-program.json").read_text())
+        return verifier.program_operation_ids(program)
+
     def clean_slate_graph(self) -> dict:
         root = Path(__file__).resolve().parents[3]
         return json.loads((root / "kast-clean-slate-task-graph.json").read_text(encoding="utf-8"))
@@ -32,6 +38,43 @@ class VerifyPr633ProgramTest(unittest.TestCase):
         self.assertNotIn(":protocol:registry:generateOperationRegistry", encoded)
         self.assertEqual(3, encoded.count(":protocol:wire:generateOperationRegistry"))
 
+    def test_registry_authority_is_derived_from_program(self) -> None:
+        verifier_path = Path(__file__).resolve().parents[1] / "verify_pr633_program.py"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            operation_ids = ["workspace.inspect", "topology.build"]
+            documents = {
+                "program.json": {"operationSets": {"pr633": operation_ids}},
+                "generated.json": {"schemaVersion": 1, "operationIds": operation_ids},
+                "installed.json": {"schemaVersion": 1, "operationIds": operation_ids},
+                "schema.json": {
+                    "operationRegistry": {"schemaVersion": 1, "operationIds": operation_ids},
+                },
+            }
+            for name, document in documents.items():
+                (root / name).write_text(json.dumps(document), encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(verifier_path),
+                    "registry",
+                    "--program",
+                    str(root / "program.json"),
+                    "--generated",
+                    str(root / "generated.json"),
+                    "--installed",
+                    str(root / "installed.json"),
+                    "--schema",
+                    str(root / "schema.json"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+
     def test_installed_authorities_include_clean_slate_topology_order(self) -> None:
         root = Path(__file__).resolve().parents[3]
 
@@ -41,7 +84,7 @@ class VerifyPr633ProgramTest(unittest.TestCase):
 
     def test_clean_slate_graph_rejects_dependency_and_semantic_drift(self) -> None:
         graph = self.clean_slate_graph()
-        verifier.verify_clean_slate_graph(graph)
+        verifier.verify_clean_slate_graph(graph, self.program_operation_ids())
 
         for task_id in ("KCS-012", "KCS-015", "KCS-021"):
             with self.subTest(task_id=task_id):
@@ -49,12 +92,12 @@ class VerifyPr633ProgramTest(unittest.TestCase):
                 task = next(item for item in changed["tasks"] if item["id"] == task_id)
                 task["dependsOn"].remove("KCS-023")
                 with self.assertRaises(verifier.VerificationFailure):
-                    verifier.verify_clean_slate_graph(changed)
+                    verifier.verify_clean_slate_graph(changed, self.program_operation_ids())
 
         changed = deepcopy(graph)
         changed["semantics"]["traversal.run"]["implicitBuild"] = True
         with self.assertRaises(verifier.VerificationFailure):
-            verifier.verify_clean_slate_graph(changed)
+            verifier.verify_clean_slate_graph(changed, self.program_operation_ids())
 
     def test_clean_slate_graph_rejects_dependency_drift_for_every_task(self) -> None:
         graph = self.clean_slate_graph()
@@ -67,7 +110,7 @@ class VerifyPr633ProgramTest(unittest.TestCase):
                 changed_task = next(item for item in changed["tasks"] if item["id"] == task["id"])
                 changed_task["dependsOn"] = changed_task["dependsOn"][1:]
                 with self.assertRaises(verifier.VerificationFailure):
-                    verifier.verify_clean_slate_graph(changed)
+                    verifier.verify_clean_slate_graph(changed, self.program_operation_ids())
 
     def test_clean_slate_graph_rejects_duplicate_unknown_and_cyclic_tasks(self) -> None:
         graph = self.clean_slate_graph()
@@ -75,25 +118,26 @@ class VerifyPr633ProgramTest(unittest.TestCase):
         duplicate = deepcopy(graph)
         duplicate["tasks"][1]["id"] = "KCS-001"
         with self.assertRaises(verifier.VerificationFailure):
-            verifier.verify_clean_slate_graph(duplicate)
+            verifier.verify_clean_slate_graph(duplicate, self.program_operation_ids())
 
         unknown = deepcopy(graph)
         unknown["tasks"][0]["dependsOn"] = ["KCS-999"]
         with self.assertRaises(verifier.VerificationFailure):
-            verifier.verify_clean_slate_graph(unknown)
+            verifier.verify_clean_slate_graph(unknown, self.program_operation_ids())
 
         cyclic = deepcopy(graph)
         cyclic["tasks"][0]["dependsOn"] = ["KCS-022"]
         with self.assertRaises(verifier.VerificationFailure):
-            verifier.verify_clean_slate_graph(cyclic)
+            verifier.verify_clean_slate_graph(cyclic, self.program_operation_ids())
 
     def test_marked_plan_operation_order_is_exact(self) -> None:
         root = Path(__file__).resolve().parents[3]
         plan = (root / "kast-clean-slate-plan.md").read_text(encoding="utf-8")
-        self.assertEqual(verifier.OPERATION_IDS, verifier.marked_plan_operations(plan))
+        operation_ids = self.program_operation_ids()
+        self.assertEqual(operation_ids, verifier.marked_plan_operations(plan))
 
         reordered = plan.replace("workspace.inspect\ntopology.build", "topology.build\nworkspace.inspect")
-        self.assertNotEqual(verifier.OPERATION_IDS, verifier.marked_plan_operations(reordered))
+        self.assertNotEqual(operation_ids, verifier.marked_plan_operations(reordered))
 
     def test_only_topology_build_is_admitted_in_pr633(self) -> None:
         verifier.verify_topology_operation_ids(["workspace.inspect", "topology.build"])

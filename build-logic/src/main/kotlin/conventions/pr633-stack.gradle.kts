@@ -14,9 +14,6 @@ val pr633PathPolicyFile = layout.projectDirectory.file(
 val cleanupPathPolicyFile = layout.projectDirectory.file(
     "gradle/pr633/policies/cleanup-path-policy.json",
 )
-val pr633ExpectedOperations = layout.projectDirectory.file(
-    "gradle/pr633/operation-registry.expected.json",
-)
 val pr633Verifier = layout.projectDirectory.file(".github/scripts/verify_pr633_program.py")
 val pr633GateDirectory = layout.buildDirectory.dir("reports/pr633/gates")
 val pr633GitHead = providers.exec {
@@ -145,7 +142,7 @@ val verifyOperationRegistryAuthority = tasks.register<Exec>("verifyOperationRegi
         captureInstalledSchema,
     )
     inputs.files(
-        pr633ExpectedOperations,
+        pr633ProgramFile,
         generatedOperationRegistry,
         stagedOperationRegistry,
         installedSchemaFile,
@@ -154,8 +151,8 @@ val verifyOperationRegistryAuthority = tasks.register<Exec>("verifyOperationRegi
         "python3",
         pr633Verifier.asFile.absolutePath,
         "registry",
-        "--expected",
-        pr633ExpectedOperations.asFile.absolutePath,
+        "--program",
+        pr633ProgramFile.asFile.absolutePath,
         "--generated",
         generatedOperationRegistry.get().asFile.absolutePath,
         "--installed",
