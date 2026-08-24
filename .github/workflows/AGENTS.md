@@ -7,6 +7,7 @@ for action versions, permissions, and CI constraints.
 
 - Keep required-check joins lightweight. Reuse existing build jobs for expensive verification.
 - Bind pull-request evidence to `github.event.pull_request.head.sha`, not a merge commit.
-- Keep documentation validation and Pages deployment in `docs.yml`. The build
-  job owns the `site/` artifact, and only the deploy job receives Pages write
-  permissions.
+- Run the release-flow contract in the repository-contract job so release-only
+  script drift cannot merge to main.
+- Run the isolated public-installer contract in pull-request CI and again
+  before a release build mutates or publishes release state.
