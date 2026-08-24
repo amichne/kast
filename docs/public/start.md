@@ -29,18 +29,15 @@ verifies its digest, and stores it for reuse.
 
 ## Install the control command
 
-Use the repository installer as the installation boundary. Download it first
-so you can inspect the exact script before it runs:
+Use the repository installer as the installation boundary:
 
 ```shell
-installer_file="$(mktemp)"
-curl --fail --location --silent --show-error \
-  https://raw.githubusercontent.com/amichne/kast/main/install.sh \
-  --output "$installer_file"
-
-less "$installer_file"
-bash "$installer_file"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 ```
+
+Read the
+[installer source](https://github.com/amichne/kast/blob/main/install.sh) before
+running the command if your environment requires script review.
 
 The installer validates the host and Java version, downloads the latest stable
 control archive and its SHA-256 record, rejects unsafe archive paths or

@@ -3,7 +3,8 @@
 ## Ownership
 
 This directory owns the Zensical source for `https://kast.michne.com`, its
-reader-facing content checks, publication boundary, and LikeC4 sources.
+reader-facing content checks, the root GitHub README contract, publication
+boundary, and LikeC4 sources.
 `zensical.toml` at the repository root is the site and navigation authority.
 
 The site has five reader routes: Start, Repository questions, Trust the
@@ -37,6 +38,10 @@ module graph before the reader understands the runtime flow.
 - Keep authored pages focused on a reader decision or outcome. The generated
   CLI page is the only command reference. `kast --schema` remains the
   machine-readable public authority.
+- Keep the root `README.md` as a concise GitHub entry point. Link to the
+  generated CLI reference for exhaustive lookup. `test_public_docs.py` checks
+  every README command path against that reference. It also keeps the README
+  and Start page on the same one-command public installer.
 - Build the publishable artifact with `python3 docs/build_public_site.py`. The
   script stages reader assets before invoking Zensical so local `AGENTS.md`
   files and authored LikeC4 sources do not become public routes or assets.

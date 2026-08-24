@@ -1,20 +1,16 @@
 views {
   dynamic view runtime-flow {
     title "One exact-root request"
-    description "From local command to compiler evidence, with acquisition, admission, and effects kept explicit."
+    description "From the Kotlin control executable through local RPC to request-local compiler evidence."
     autoLayout TopBottom 65 45
 
-    caller -> kast.cli "runs kast start or one semantic command"
-    kast.cli -> kast.acquisition "resolves the digest-verified runtime"
-    kast.acquisition -> kast.indexer "starts or reuses this canonical root"
-    jetbrains -> kast.indexer "supplies matched platform libraries"
-    kast.indexer -> kast.composition "constructs all twelve operations"
-    kast.composition -> kast.operations "admits bounded operations"
-    kast.operations -> kast.adapters "executes one bounded workflow"
+    caller -> kast.cli "runs a semantic command"
+    kast.cli -> kast.rpc "sends typed JSON"
+    kast.rpc -> kast.indexer "delivers a bounded frame"
+    kast.indexer -> kast.adapters "dispatches the admitted request"
     kast.adapters -> compiler "uses request-local PSI and K2"
-    kast.adapters -> kast.evidence "publishes neutral evidence"
-    kast.evidence -> kast.cli "returns complete or qualified evidence"
-    kast.cli -> caller "emits one JSON outcome"
+    kast.adapters -> kast.outcome "projects a host-neutral result"
+    kast.outcome -> caller "emits one JSON outcome"
   }
 
   dynamic view module-ownership {

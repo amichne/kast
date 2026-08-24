@@ -168,9 +168,17 @@ repair Kast. Resolve the typed indexer blocker instead.
 content, generated reference boundaries, LikeC4 sources, and focused checks
 live under `docs/`; follow `docs/AGENTS.md` for that ownership map.
 
+`README.md` is the concise GitHub entry point into that public documentation.
+`docs/test_public_docs.py` validates its reader path and checks its Kast command
+paths against the generated CLI reference.
+
 Build the publishable artifact with `python3 docs/build_public_site.py`. The
 script invokes Zensical against staged reader assets so repository guidance
 and authored diagram sources do not enter the ignored `site/` output.
+
+`install.sh` is the public release-install boundary. Preserve its host,
+checksum, archive, and managed-link checks when changing its presentation. Run
+`bash packaging/test-public-installer.sh` after changing its output.
 
 ## Gradle topology
 

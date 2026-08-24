@@ -5,14 +5,85 @@ IFS=$'\n\t'
 PROGRAM="kast-install"
 DEFAULT_REPOSITORY="amichne/kast"
 
+supports_color() {
+  [[ -z "${NO_COLOR:-}" ]] || return 1
+  [[ "${CLICOLOR_FORCE:-}" != "1" ]] || return 0
+  [[ -t 2 && "${TERM:-}" != "dumb" ]]
+}
+
+supports_unicode() {
+  [[ "${KAST_ASCII:-}" != "1" ]] || return 1
+  case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+    C|POSIX) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+colorize() {
+  local code="$1"
+  shift
+  if supports_color; then
+    printf '\033[%sm%s\033[0m' "$code" "$*"
+  else
+    printf '%s' "$*"
+  fi
+}
+
+ui_glyph() {
+  local kind="$1"
+  if supports_unicode; then
+    case "$kind" in
+      step) printf '◆' ;;
+      success) printf '✓' ;;
+      warning) printf '!' ;;
+      error) printf '×' ;;
+      *) printf '›' ;;
+    esac
+  else
+    case "$kind" in
+      step) printf '*' ;;
+      success) printf '+' ;;
+      warning) printf '!' ;;
+      error) printf 'x' ;;
+      *) printf '>' ;;
+    esac
+  fi
+}
+
+ui_line() {
+  local kind="$1"
+  local color="$2"
+  shift 2
+  printf '  %s %s\n' "$(colorize "$color" "$(ui_glyph "$kind")")" "$*" >&2
+}
+
+print_banner() {
+  printf '\n' >&2
+  if supports_unicode; then
+    printf '%s\n' "$(colorize '1;36' '    ██╗  ██╗ █████╗ ███████╗████████╗
+    ██║ ██╔╝██╔══██╗██╔════╝╚══██╔══╝
+    █████╔╝ ███████║███████╗   ██║
+    ██╔═██╗ ██╔══██║╚════██║   ██║
+    ██║  ██║██║  ██║███████║   ██║
+    ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝')" >&2
+  else
+    printf '  %s\n' "$(colorize '1;36' "$(ui_glyph step) KAST INSTALLER")" >&2
+  fi
+  printf '  %s\n\n' "$(colorize '2' 'Compiler-grounded Kotlin evidence from your terminal')" >&2
+}
+
 fail() {
-  printf '%s: %s\n' "$PROGRAM" "$*" >&2
+  ui_line error 31 "$PROGRAM: $*"
   exit 1
 }
 
 note() {
-  printf '%s: %s\n' "$PROGRAM" "$*" >&2
+  ui_line step 36 "$*"
 }
+
+success() { ui_line success 32 "$*"; }
+info() { ui_line info 2 "$*"; }
+warning() { ui_line warning 33 "$*"; }
 
 usage() {
   cat <<'USAGE'
@@ -207,6 +278,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+print_banner
+
 require_command curl
 require_command tar
 require_command shasum
@@ -331,11 +404,11 @@ ln -sfn "$install_root/current/bin/kast" "$command_link"
 
 verify_control_root "$target_root" "$version" "$temporary_root/runtime-store"
 
-note "installed Kast $version"
-note "command: $command_link"
-note "semantic runtime: acquired on first semantic command"
-note "runtime store: ${KAST_RUNTIME_STORE:-${HOME}/.cache/kast/semantic-runtimes}"
+success "installed Kast $version"
+info "command: $command_link"
+info "semantic runtime: acquired on first semantic command"
+info "runtime store: ${KAST_RUNTIME_STORE:-${HOME}/.cache/kast/semantic-runtimes}"
 case ":${PATH:-}:" in
   *":$bin_dir:"*) ;;
-  *) note "add $bin_dir to PATH" ;;
+  *) warning "add $bin_dir to PATH" ;;
 esac
