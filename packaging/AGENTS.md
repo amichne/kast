@@ -22,6 +22,8 @@ published Kast distributions through their public boundaries.
   install, purge-first, complete uninstall, path-safety, and idempotence flows.
 - `pr633-final-gate.sh` invokes only `pr633MergeCandidateAcceptance` and rejects tracked changes
   both before and after the clean-checkout GATE-060 run.
+- `test-public-installer.sh` exercises installer presentation and failure output
+  without downloading or installing a release.
 
 Run `./gradlew installedProductTest` after changing the installed journey and
 `bash packaging/test-install-local.sh` after changing local installation. Run

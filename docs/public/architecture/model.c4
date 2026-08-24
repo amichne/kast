@@ -18,9 +18,14 @@ model {
     #public
     description "One exact-root command and semantic evidence boundary."
 
-    cli = boundary "kast CLI" {
+    cli = boundary "Kotlin control executable" {
       #public
-      description "Refines local arguments and exchanges one JSON document per request."
+      description "Runs the Kotlin control executable and refines arguments into one canonical operation."
+    }
+
+    rpc = boundary "Local wire RPC" {
+      #identity
+      description "Exchanges one bounded JSON request and response frame with the exact-root indexer."
     }
 
     acquisition = service "Managed runtime acquisition" {
@@ -42,9 +47,14 @@ model {
       description "Runs bounded workspace, topology, symbol, relation, traversal, diagnostic, and change workflows."
     }
 
-    adapters = authority "Compiler and write adapters" {
+    adapters = authority "K2 and effect adapters" {
       #identity #effect
       description "Keeps PSI, K2, filesystem, and physical effects inside explicit boundaries."
+    }
+
+    outcome = authority "Typed outcome" {
+      #evidence
+      description "Projects compiler work into a complete, qualified, or rejected host-neutral document."
     }
 
     evidence = datastore "Workspace evidence" {
@@ -134,13 +144,17 @@ model {
   caller -[request]-> kast.cli "runs one command"
   kast.cli -[request]-> kast.acquisition "requests the matching runtime"
   kast.acquisition -[request]-> kast.indexer "starts or reuses the exact root"
+  kast.cli -[request]-> kast.rpc "sends a generated request document"
+  kast.rpc -[request]-> kast.indexer "delivers one bounded frame"
   jetbrains -[supply]-> kast.indexer "supplies platform libraries"
   kast.indexer -[admit]-> kast.composition "constructs the implementation graph"
   kast.composition -[admit]-> kast.operations "admits one canonical operation"
   kast.operations -[inspect]-> kast.adapters "requests bounded semantic work"
   kast.adapters -[inspect]-> compiler "uses request-local compiler authority"
+  kast.adapters -[prove]-> kast.outcome "projects host-neutral facts"
+  kast.outcome -[prove]-> kast.rpc "returns a closed response document"
+  kast.rpc -[prove]-> kast.cli "returns one response frame"
   kast.adapters -[prove]-> kast.evidence "publishes admitted evidence or recovery state"
-  kast.evidence -[prove]-> kast.cli "returns complete or qualified evidence"
 
   source.cli -[depend]-> source.distribution "acquires runtime"
   source.cli -[depend]-> source.protocol "uses operation and wire contracts"

@@ -30,17 +30,10 @@ release download.
 
 ## Install Kast
 
-Use the repository installer as the installation boundary. Download it first
-so you can inspect the exact script before it runs:
+Use the repository installer as the installation boundary:
 
 ```shell
-installer_file="$(mktemp)"
-curl --fail --location --silent --show-error \
-  https://raw.githubusercontent.com/amichne/kast/main/install.sh \
-  --output "$installer_file"
-
-less "$installer_file"
-bash "$installer_file"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 ```
 
 The installer validates the host and Java version and downloads the latest
