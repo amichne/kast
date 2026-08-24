@@ -19,15 +19,16 @@ indexer.
 
 <div class="kast-notice kast-tone-discovery" markdown>
 
-<strong class="kast-notice-title">One install, separate semantic runtime</strong>
+<strong class="kast-notice-title">One install, complete local release</strong>
 
-The downloaded control archive contains the `kast` command and its public
-contract. On first semantic demand, Kast acquires the matching runtime,
-verifies its digest, and stores it for reuse.
+The installer verifies both release payloads: the `kast` command and its exact
+semantic runtime. On first semantic demand, Kast realizes the already local
+runtime archive into its content-addressed store. It does not make another
+release download.
 
 </div>
 
-## Install the control command
+## Install Kast
 
 Use the repository installer as the installation boundary. Download it first
 so you can inspect the exact script before it runs:
@@ -42,16 +43,38 @@ less "$installer_file"
 bash "$installer_file"
 ```
 
-The installer validates the host and Java version, downloads the latest stable
-control archive and its SHA-256 record, rejects unsafe archive paths or
-unexpected contents, and smoke-tests local metadata commands before it moves
-the managed `kast` link. It does not download the semantic runtime.
+The installer validates the host and Java version and downloads the latest
+stable control and semantic-runtime archives with their SHA-256 records. It
+rejects unsafe archive paths or unexpected contents and matches the runtime
+archive to the control manifest. It smoke-tests local metadata before it moves
+the managed `kast` link.
 
 By default, the command link is `~/.local/bin/kast`. If that directory is not
 already on `PATH`, the installer reports the exact directory to add through
 your shell profile. The [latest release](https://github.com/amichne/kast/releases/latest)
 provides the verified control and semantic-runtime artifacts for manual
 inspection.
+
+## Recover from an older installation
+
+If a prior local, Homebrew, or release-managed installation conflicts with the
+current release, use the opt-in purge-first flow:
+
+```shell
+bash "$installer_file" install --purge-existing
+```
+
+The installer downloads and verifies the replacement before it removes Kast
+state. It then stops Kast indexers and launch services, removes current and
+historical commands, Homebrew installation, runtime state, configuration, and
+old Kast IDE plugins, and installs the complete release. It does not remove
+repositories or unrelated JetBrains state.
+
+To remove Kast without reinstalling it, run:
+
+```shell
+bash "$installer_file" uninstall
+```
 
 Confirm the process-local contract before starting a runtime:
 

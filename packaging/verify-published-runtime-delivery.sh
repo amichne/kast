@@ -29,18 +29,18 @@ done
 [[ "${repository}" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ||
   fail "repository must be owner/name"
 version="${release#v}"
-control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 runtime_name="kast-semantic-runtime-${version}-macos-aarch64.zip"
 release_url="https://github.com/${repository}/releases/download/${release}"
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-published-release.XXXXXX")"
-download_root="${temporary_root}/download"
-control_root="${temporary_root}/control"
+install_root="${temporary_root}/install"
+bin_root="${temporary_root}/bin"
+control_root="${install_root}/versions/${version}"
 runtime_root="${temporary_root}/runtime"
 fixture="${temporary_root}/workspace"
 endpoint_root="$(mktemp -d /tmp/kast-uds.XXXXXX)"
-mkdir -p "${download_root}" "${control_root}" "${runtime_root}" \
+mkdir -p "${temporary_root}/home" "${runtime_root}" \
   "${fixture}/src/main/kotlin/example"
 canonical_fixture="$(cd "${fixture}" && pwd -P)"
 
@@ -57,28 +57,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for asset in \
-  "${control_name}" \
-  "${control_name}.sha256" \
-  "${runtime_name}" \
-  "${runtime_name}.sha256"; do
-  curl \
-    --fail \
-    --location \
-    --retry 5 \
-    --retry-delay 2 \
-    --retry-all-errors \
-    --output "${download_root}/${asset}" \
-    "${release_url}/${asset}"
-done
-
-python3 "${repository_root}/.github/scripts/release/verify-assets.py" \
-  --directory "${download_root}" \
-  --release "${release}" \
-  --repository "${repository}"
-tar -xzf "${download_root}/${control_name}" -C "${control_root}"
-kast="${control_root}/bin/kast"
-[[ -x "${kast}" ]] || fail "downloaded control launcher is not executable"
+HOME="${temporary_root}/home" \
+KAST_INSTALL_ROOT="${install_root}" \
+KAST_BIN_DIR="${bin_root}" \
+KAST_RUNTIME_STORE="${runtime_root}/store" \
+KAST_RUNTIME_DIRECTORY="${endpoint_root}" \
+  bash "${repository_root}/install.sh" install \
+    --version "${version}" \
+    --repository "${repository}"
+kast="${bin_root}/kast"
+runtime_archive="${control_root}/share/kast/runtime/${runtime_name}"
+[[ -x "${kast}" ]] || fail "public installer did not create an executable command"
+[[ -f "${runtime_archive}" ]] ||
+  fail "public installer did not download the semantic runtime"
 
 cat >"${fixture}/settings.gradle.kts" <<'EOF'
 rootProject.name = "published-runtime-delivery"
@@ -97,6 +88,7 @@ package example
 
 class Greeter {
     fun greeting(): String = "hello"
+    fun firstCaller(): String = greeting()
 }
 EOF
 
@@ -122,6 +114,17 @@ assert document["semanticRuntime"]["archive"]["url"] == sys.argv[2], document
 assert document["semanticRuntime"]["runtimeId"].startswith("sha256:"), document
 PY
 
+python3 - "${control_root}/share/kast/semantic-runtime.json" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+document = json.loads(path.read_text())
+document["archive"]["url"] = "http://127.0.0.1:9/unavailable"
+path.write_text(json.dumps(document, separators=(",", ":")))
+PY
+
 workspace_json="$(cd "${fixture}" && "${kast}" workspace inspect)"
 python3 - "${workspace_json}" <<'PY'
 import json
@@ -141,105 +144,12 @@ runtime_snapshot_before="$(
   find "${KAST_RUNTIME_STORE}" -type f -exec stat -f '%N:%z:%m' {} + | sort
 )"
 
-python3 - "${control_root}/share/kast/semantic-runtime.json" <<'PY'
-import json
-from pathlib import Path
-import sys
+python3 "${repository_root}/packaging/topology_installed_acceptance.py" run \
+  --kast "${kast}" \
+  --workspace "${fixture}" \
+  --registry "${control_root}/share/kast/operation-registry.json" \
+  --report "${temporary_root}/topology-installed-product.json"
 
-path = Path(sys.argv[1])
-document = json.loads(path.read_text())
-document["archive"]["url"] = "http://127.0.0.1:9/unavailable"
-path.write_text(json.dumps(document, separators=(",", ":")))
-PY
-
-discover_json="$(
-  cd "${fixture}" && "${kast}" symbol discover --query Greeter --limit 1000
-)"
-candidate="$(python3 - "${discover_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "symbol.discover", document
-assert document["status"] in {"complete", "qualified"}, document
-declarations = [item for item in document["items"] if item["type"] == "declaration"]
-assert declarations, document
-print(declarations[0]["candidateSelector"])
-PY
-)"
-
-resolve_json="$(
-  cd "${fixture}" && "${kast}" symbol resolve --candidate "${candidate}"
-)"
-selector="$(python3 - "${resolve_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "symbol.resolve", document
-assert document["status"] == "complete", document
-print(document["exactSelector"])
-PY
-)"
-
-describe_json="$(
-  cd "${fixture}" && "${kast}" symbol describe --selector "${selector}"
-)"
-python3 - "${describe_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "symbol.describe", document
-assert document["status"] == "complete", document
-assert document["symbol"]["name"] == "Greeter", document
-PY
-
-plan_json="$(
-  cd "${fixture}" && "${kast}" change plan \
-    --intent add-declaration \
-    --target "${selector}" \
-    --declaration 'fun farewell(): String = "goodbye"'
-)"
-plan="$(python3 - "${plan_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "change.plan", document
-assert document["status"] == "complete", document
-print(document["planIdentity"])
-PY
-)"
-
-apply_json="$(cd "${fixture}" && "${kast}" change apply --plan "${plan}")"
-application="$(python3 - "${apply_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "change.apply", document
-assert document["status"] == "complete", document
-print(document["applicationIdentity"])
-PY
-)"
-
-verify_json="$(
-  cd "${fixture}" && "${kast}" change verify --application "${application}"
-)"
-python3 - "${verify_json}" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "change.verify", document
-assert document["status"] == "complete", document
-assert document["receiptIdentity"], document
-PY
-
-grep -F 'fun farewell(): String = "goodbye"' \
-  "${fixture}/src/main/kotlin/example/Greeter.kt" >/dev/null ||
-  fail "verified mutation did not reach the published fixture"
 runtime_snapshot_after="$(
   find "${KAST_RUNTIME_STORE}" -type f -exec stat -f '%N:%z:%m' {} + | sort
 )"

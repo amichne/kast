@@ -31,6 +31,12 @@ jobs:
       - name: Enforce repository shape
         run: python3 .github/scripts/check-repository-shape.py --root .
 
+      - name: Verify release flow
+        run: python3 .github/scripts/release/verify-release-contract.py --root .
+
+      - name: Verify installer recovery flow
+        run: bash packaging/test-installer.sh
+
   kotlin:
     name: Kotlin and runtime delivery
     runs-on: macos-15

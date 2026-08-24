@@ -43,6 +43,9 @@ jobs:
       - name: Verify release workflow contract
         run: python3 .github/scripts/release/verify-release-contract.py --root .
 
+      - name: Verify installer recovery flow
+        run: bash packaging/test-installer.sh
+
       - name: Build and verify release assets
         run: bash .github/scripts/release/build-assets.sh --version "$RELEASE_VERSION"
 
