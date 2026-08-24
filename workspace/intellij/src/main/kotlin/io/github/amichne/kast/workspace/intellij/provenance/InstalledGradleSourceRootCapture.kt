@@ -60,28 +60,46 @@ private sealed interface ImportedGradlePathCapture {
     ) : ImportedGradlePathCapture
 }
 
-/** Exact-path authority over Gradle producer evidence retained before IntelliJ projection. */
+/** Exact installed code-root identity used to consume producer evidence. */
+internal data class GradleSourceRootLookupIdentity(
+    val projectDirectory: Path,
+    val projectPath: String,
+    val sourceSetName: String,
+    val sourceRoot: Path,
+)
+
+/** Exact owner-and-path authority over producer evidence retained before IntelliJ projection. */
 internal class GradleSourceRootProvenanceAuthority private constructor(
     private val imports: List<GradleSourceRootProducerImport>,
 ) {
     /**
-     * Proof transition: `(Path, ExternalSystemSourceType) ->
+     * Proof transition: `(GradleSourceRootLookupIdentity, ExternalSystemSourceType) ->
      * GradleSourceRootProvenanceResolution`.
      *
-     * Establishes authored/generated provenance only from exact Gradle producer evidence or an
-     * explicit generated source type. Ordinary source types provide no authored proof. Missing or
-     * contradictory producer observations return the closed [GradleSourceRootProvenanceFailure].
-     * Raw source-type extraction is permitted only at the imported content-root boundary.
+     * Establishes authored/generated provenance only from code evidence matching the exact Gradle
+     * project directory, project path, source set, and source path, or from an explicit generated
+     * source type.
+     * Ordinary source types provide no authored proof. Missing or contradictory producer
+     * observations return the closed [GradleSourceRootProvenanceFailure]. Raw source-type
+     * extraction is permitted only at the imported content-root boundary.
      */
     fun resolve(
-        sourceRoot: Path,
+        lookup: GradleSourceRootLookupIdentity,
         sourceType: ExternalSystemSourceType,
     ): GradleSourceRootProvenanceResolution {
-        val exactRoot = sourceRoot.toAbsolutePath().normalize()
+        val exactProjectDirectory = lookup.projectDirectory.toAbsolutePath().normalize()
+        val exactSourceRoot = lookup.sourceRoot.toAbsolutePath().normalize()
         val producerProvenance = imports.asSequence()
             .filterIsInstance<GradleSourceRootProducerImport.Captured>()
             .flatMap { capture -> capture.entries.asSequence() }
-            .filter { evidence -> evidence.sourceRoot.toPath() == exactRoot }
+            .filter { evidence ->
+                val identity = evidence.identity
+                identity.role == GradleSourceRootProducerRole.CODE &&
+                    identity.projectDirectory.toPath() == exactProjectDirectory &&
+                    identity.projectPath == lookup.projectPath &&
+                    identity.sourceSetName == lookup.sourceSetName &&
+                    identity.sourceRoot.toPath() == exactSourceRoot
+            }
             .map(GradleSourceRootProducerEvidence::provenance)
             .toSet()
 
@@ -122,10 +140,11 @@ internal class GradleSourceRootProvenanceAuthority private constructor(
          * Proof transition: `Iterable<GradleSourceRootProducerImport> ->
          * GradleSourceRootProvenanceAuthority`.
          *
-         * Establishes an immutable exact-path authority over all captured Gradle module evidence.
-         * Rejected module captures remain present so an ordinary root without positive evidence
-         * cannot acquire authored provenance. Raw import nodes may be extracted only by
-         * [sourceRootBoundaries].
+         * Establishes an immutable exact project-directory/project-path/source-set/code-root
+         * authority over all
+         * captured Gradle module evidence. Rejected module captures remain present so an ordinary
+         * root without matching positive evidence cannot acquire authored provenance. Raw import
+         * nodes may be extracted only by [sourceRootBoundaries].
          */
         fun compile(
             imports: Iterable<GradleSourceRootProducerImport>,
@@ -194,7 +213,7 @@ private fun GradleSourceSetData.sourceRootBoundaries(
                           InstalledGradleSourceRootCaptureFailure.PROJECT_OWNERSHIP_UNAVAILABLE,
                       )
     val sourceSetName = externalName.substringAfterLast(':')
-    val buildRoot = when (
+    val projectDirectory = when (
         val path = captureImportedGradlePath(
             linkedExternalProjectPath,
             InstalledGradleSourceRootCaptureFailure.INVALID_LINKED_BUILD_ROOT,
@@ -238,14 +257,20 @@ private fun GradleSourceSetData.sourceRootBoundaries(
                         return InstalledGradleSourceRootCapture.Rejected(capture.failure)
                     }
                 }
-                val provenance = when (val resolved = authority.resolve(path, type)) {
+                val lookup = GradleSourceRootLookupIdentity(
+                    projectDirectory = projectDirectory,
+                    projectPath = projectPath,
+                    sourceSetName = sourceSetName,
+                    sourceRoot = path,
+                )
+                val provenance = when (val resolved = authority.resolve(lookup, type)) {
                     is GradleSourceRootProvenanceResolution.Proven -> resolved.provenance
                     is GradleSourceRootProvenanceResolution.Unknown ->
                         WorkspaceSourceRootProvenance.UNKNOWN
                 }
                 boundaries += WorkspaceSourceRootBoundary(
                     internalName,
-                    buildRoot,
+                    projectDirectory,
                     projectPath,
                     sourceSetName,
                     path,

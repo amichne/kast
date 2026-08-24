@@ -7,9 +7,13 @@ import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProd
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerModelBuilder
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerModelRead
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerProvenance
+import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerRole
+import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootLookupIdentity
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProvenanceAuthority
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProvenanceResolution
 import io.github.amichne.kast.workspace.intellij.provenance.captureGradleSourceRootProducerImport
+import org.gradle.tooling.BuildAction
+import org.gradle.tooling.BuildController
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.model.idea.IdeaProject
 import org.jetbrains.plugins.gradle.tooling.ModelBuilderService
@@ -50,7 +54,7 @@ class GradleProducerProvenanceImportTest {
 
     @Test
     fun `real Gradle IDEA model preserves producer provenance including Kotlin DSL roots`() {
-        val physicalProjectDirectory = projectDirectory.toRealPath()
+        val physicalProjectDirectory = projectDirectory.toRealPath().resolve("library")
         val authoredLookingGenerated = physicalProjectDirectory.resolve("src/producer-owned")
             .toAbsolutePath().normalize()
         val generatedLookingAuthored = physicalProjectDirectory.resolve("build/authored-source")
@@ -65,8 +69,20 @@ class GradleProducerProvenanceImportTest {
         )
 
         val models = loadGradleModels(unrelatedTaskMarker)
+        assertEquals(
+            setOf(":library"),
+            models.producerModel.entries.map { entry -> entry.projectPath }.toSet(),
+            "The targeted Tooling API model must belong to the child project",
+        )
+        assertEquals(
+            setOf(physicalProjectDirectory),
+            models.producerModel.entries
+                .map { entry -> entry.projectDirectory.toPath() }
+                .toSet(),
+            "The producer identity must use the child project directory",
+        )
         val imported = models.ideaProject.modules
-            .single { module -> module.name == "producer-provenance-fixture" }
+            .single { module -> module.gradleProject.path == ":library" }
             .let { module ->
                 captureGradleSourceRootProducerImport(
                     module,
@@ -78,20 +94,36 @@ class GradleProducerProvenanceImportTest {
 
         assertEquals(
             WorkspaceSourceRootProvenance.GENERATED,
-            authority.provenance(authoredLookingGenerated),
+            authority.provenance(authoredLookingGenerated, physicalProjectDirectory),
         )
         assertEquals(
             WorkspaceSourceRootProvenance.AUTHORED,
-            authority.provenance(generatedLookingAuthored),
+            authority.provenance(generatedLookingAuthored, physicalProjectDirectory),
         )
         assertEquals(
             WorkspaceSourceRootProvenance.AUTHORED,
-            authority.provenance(testFixturesRoot),
+            authority.provenance(
+                testFixturesRoot,
+                physicalProjectDirectory,
+                sourceSetName = "testFixtures",
+            ),
             "The producer model must retain test-fixture roots outside the standard IDEA model",
+        )
+        assertTrue(
+            models.producerModel.entries.any { entry ->
+                entry.role == GradleSourceRootProducerRole.RESOURCE
+            },
+            "The Gradle model must type resource roots before import filtering",
+        )
+        assertTrue(
+            capture.entries.all { evidence ->
+                evidence.identity.role == GradleSourceRootProducerRole.CODE
+            },
+            "Resource evidence must not enter the installed code-root authority",
         )
         val kotlinDslGenerated = capture.entries.filter { evidence ->
             evidence.provenance == GradleSourceRootProducerProvenance.GENERATED &&
-            evidence.sourceRoot.toPath() != authoredLookingGenerated
+            evidence.identity.sourceRoot.toPath() != authoredLookingGenerated
         }
         assertTrue(
             kotlinDslGenerated.isNotEmpty(),
@@ -100,7 +132,10 @@ class GradleProducerProvenanceImportTest {
         kotlinDslGenerated.forEach { evidence ->
             assertEquals(
                 WorkspaceSourceRootProvenance.GENERATED,
-                authority.provenance(evidence.sourceRoot.toPath()),
+                authority.provenance(
+                    evidence.identity.sourceRoot.toPath(),
+                    physicalProjectDirectory,
+                ),
             )
         }
     }
@@ -112,10 +147,12 @@ class GradleProducerProvenanceImportTest {
     ) {
         Files.writeString(
             projectDirectory.resolve("settings.gradle.kts"),
-            "rootProject.name = \"producer-provenance-fixture\"\n",
+            "rootProject.name = \"producer-provenance-fixture\"\ninclude(\"library\")\n",
         )
+        val fixtureProjectDirectory = projectDirectory.resolve("library")
+        Files.createDirectories(fixtureProjectDirectory)
         Files.writeString(
-            projectDirectory.resolve("build.gradle.kts"),
+            fixtureProjectDirectory.resolve("build.gradle.kts"),
             """
             plugins {
                 `kotlin-dsl`
@@ -156,7 +193,8 @@ class GradleProducerProvenanceImportTest {
             testFixturesRoot.resolve("fixture/TestFixture.java"),
             "package fixture; public final class TestFixture {}\n",
         )
-        val precompiledScript = projectDirectory.resolve("src/main/kotlin/fixture-conventions.gradle.kts")
+        val precompiledScript = fixtureProjectDirectory
+            .resolve("src/main/kotlin/fixture-conventions.gradle.kts")
         Files.createDirectories(precompiledScript.parent)
         Files.writeString(precompiledScript, "plugins { java }\n")
     }
@@ -215,7 +253,7 @@ class GradleProducerProvenanceImportTest {
                 }
             }
 
-            rootProject {
+            allprojects {
                 pluginManager.apply(KastProducerModelPlugin)
             }
             """.trimIndent(),
@@ -225,9 +263,11 @@ class GradleProducerProvenanceImportTest {
             .useGradleVersion("9.4.1")
         return connector.connect().use { connection ->
             val arguments = listOf("--init-script", initScript.toString())
-            val producerModel = connection.model(GradleSourceRootProducerModel::class.java)
+            val producerModel = connection.action(
+                LoadProjectProducerModel(":library"),
+            )
                 .withArguments(arguments)
-                .get()
+                .run()
             assertFalse(
                 Files.exists(unrelatedTaskMarker),
                 "Producer-model capture must not realize unrelated Gradle tasks",
@@ -243,13 +283,34 @@ class GradleProducerProvenanceImportTest {
 
     private fun GradleSourceRootProvenanceAuthority.provenance(
         path: Path,
+        physicalProjectDirectory: Path,
+        sourceSetName: String = "main",
     ): WorkspaceSourceRootProvenance =
         assertInstanceOf<GradleSourceRootProvenanceResolution.Proven>(
-            resolve(path, ExternalSystemSourceType.SOURCE),
+            resolve(
+                GradleSourceRootLookupIdentity(
+                    projectDirectory = physicalProjectDirectory,
+                    projectPath = ":library",
+                    sourceSetName = sourceSetName,
+                    sourceRoot = path,
+                ),
+                ExternalSystemSourceType.SOURCE,
+            ),
         ).provenance
 
     private data class ImportedGradleModels(
         val ideaProject: IdeaProject,
         val producerModel: GradleSourceRootProducerModel,
     )
+}
+
+private class LoadProjectProducerModel(
+    private val projectPath: String,
+) : BuildAction<GradleSourceRootProducerModel> {
+    override fun execute(controller: BuildController): GradleSourceRootProducerModel {
+        val project = controller.buildModel.projects.single { candidate ->
+            candidate.path == projectPath
+        }
+        return controller.getModel(project, GradleSourceRootProducerModel::class.java)
+    }
 }

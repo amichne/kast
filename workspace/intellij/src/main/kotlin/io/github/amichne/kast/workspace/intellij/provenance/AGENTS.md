@@ -6,6 +6,9 @@ prove whether each imported source root is authored or generated.
 ## Invariants
 
 - Provenance comes only from exact Gradle producer outputs or an explicit generated source type.
+- Producer identity contains the normalized project directory, Gradle project path, source-set name,
+  code/resource role, and source-root path. Installed code lookup must match that full identity;
+  resource-role or cross-owner evidence cannot authorize a code root.
 - Missing and conflicting producer evidence remain closed typed failures or `UNKNOWN` contract
   evidence; ordinary source types never manufacture authored provenance.
 - Gradle-side model values cross the Tooling API boundary as immutable typed documents.

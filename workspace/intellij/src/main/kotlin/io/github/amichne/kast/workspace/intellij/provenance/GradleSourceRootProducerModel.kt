@@ -14,7 +14,11 @@ interface GradleSourceRootProducerModel {
 
 /** One exact source directory classified by Gradle task-output ownership. */
 interface GradleSourceRootProducerModelEntry {
+    val projectDirectory: File
+    val projectPath: String
+    val sourceSetName: String
     val sourceRoot: File
+    val role: GradleSourceRootProducerRole
     val provenance: GradleSourceRootProducerProvenance
 }
 
@@ -25,17 +29,22 @@ data class DefaultGradleSourceRootProducerModel(
 
 /** Immutable producer entry returned across the Gradle Tooling API boundary. */
 data class DefaultGradleSourceRootProducerModelEntry(
+    override val projectDirectory: File,
+    override val projectPath: String,
+    override val sourceSetName: String,
     override val sourceRoot: File,
+    override val role: GradleSourceRootProducerRole,
     override val provenance: GradleSourceRootProducerProvenance,
 ) : GradleSourceRootProducerModelEntry, Serializable
 
 /**
  * Gradle-side builder for exact source-directory producer evidence.
  *
- * Source roots and their producer dependencies come from [SourceSetContainer]. A root is
+ * Source roots, roles, and producer dependencies come from [SourceSetContainer]. A root is
  * generated only when it is owned by an output of a task that Gradle records as a dependency of
- * the source-directory collection. The builder never scans the project's task container and
- * never inspects a path segment or directory name.
+ * the source-directory collection. Resource membership is retained as a closed role so it cannot
+ * authorize a code root. The builder never scans the project's task container and never inspects
+ * a path segment or directory name.
  */
 class GradleSourceRootProducerModelBuilder : ModelBuilderService {
     override fun canBuild(modelName: String): Boolean =
@@ -44,10 +53,11 @@ class GradleSourceRootProducerModelBuilder : ModelBuilderService {
     /**
      * Proof transition: `(String, Project) -> GradleSourceRootProducerModel`.
      *
-     * Establishes an exact absolute normalized source-root list whose generated classification is
-     * backed by the source-directory collection's Gradle task dependencies and those producers'
-     * declared outputs. Gradle-owned [File] values are normalized at this outer boundary; raw
-     * source sets, producer tasks, outputs, and paths do not leave it.
+     * Establishes an exact absolute normalized project directory and source roots with Gradle
+     * project, source-set, code/resource role, and producer-backed generated classification. The
+     * output retains the owner required for exact installed lookup. Gradle-owned [File] values are
+     * normalized at this outer boundary; raw source sets, producer tasks, outputs, and paths do
+     * not leave it.
      */
     override fun buildAll(
         _modelName: String,
@@ -56,8 +66,13 @@ class GradleSourceRootProducerModelBuilder : ModelBuilderService {
         val sourceSets = project.extensions.findByType(SourceSetContainer::class.java)
                          ?: return DefaultGradleSourceRootProducerModel(emptyList())
         val entries = mutableListOf<DefaultGradleSourceRootProducerModelEntry>()
+        val projectDirectory = project.projectDir.toPath().toAbsolutePath().normalize()
         for (sourceSet in sourceSets) {
             val sourceDirectories = sourceSet.allSource.sourceDirectories
+            val resourceRoots = sourceSet.resources.sourceDirectories.files
+                .asSequence()
+                .map { resource -> resource.toPath().toAbsolutePath().normalize() }
+                .toSet()
             val producerOutputRoots = sourceDirectories.buildDependencies
                 .getDependencies(null)
                 .asSequence()
@@ -68,7 +83,15 @@ class GradleSourceRootProducerModelBuilder : ModelBuilderService {
             for (sourceDirectory in sourceDirectories.files) {
                 val sourceRoot = sourceDirectory.toPath().toAbsolutePath().normalize()
                 entries += DefaultGradleSourceRootProducerModelEntry(
+                    projectDirectory = projectDirectory.toFile(),
+                    projectPath = project.path,
+                    sourceSetName = sourceSet.name,
                     sourceRoot = sourceRoot.toFile(),
+                    role = if (sourceRoot in resourceRoots) {
+                        GradleSourceRootProducerRole.RESOURCE
+                    } else {
+                        GradleSourceRootProducerRole.CODE
+                    },
                     provenance = if (
                         producerOutputRoots.any { output ->
                             sourceRoot == output || sourceRoot.startsWith(output)
@@ -84,7 +107,11 @@ class GradleSourceRootProducerModelBuilder : ModelBuilderService {
         return DefaultGradleSourceRootProducerModel(
             entries.distinct().sortedWith(
                 compareBy(
+                    { it.projectDirectory.path },
+                    { it.projectPath },
+                    { it.sourceSetName },
                     { it.sourceRoot.path },
+                    { it.role.name },
                     { it.provenance.name },
                 ),
             ),

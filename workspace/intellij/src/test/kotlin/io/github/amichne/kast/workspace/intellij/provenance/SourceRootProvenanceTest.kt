@@ -2,10 +2,14 @@ package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceType
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.intellij.provenance.GradleIdeaSourceRootEvidence
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerCaptureFailure
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerEvidence
+import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerIdentity
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerImport
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerProvenance
+import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProducerRole
+import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootLookupIdentity
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProvenanceAuthority
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProvenanceFailure
 import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProvenanceResolution
@@ -48,7 +52,7 @@ class SourceRootProvenanceTest {
     @Test
     fun `ordinary source without producer evidence remains unknown`() {
         val resolution = GradleSourceRootProvenanceAuthority.compile(emptyList()).resolve(
-            workspaceDirectory.resolve("src/main/kotlin"),
+            lookup(workspaceDirectory.resolve("src/main/kotlin")),
             ExternalSystemSourceType.SOURCE,
         )
 
@@ -56,6 +60,37 @@ class SourceRootProvenanceTest {
             GradleSourceRootProvenanceFailure.MISSING_PRODUCER_EVIDENCE,
             assertInstanceOf<GradleSourceRootProvenanceResolution.Unknown>(resolution).failure,
         )
+    }
+
+    @Test
+    fun `unrelated producer evidence cannot authorize a rejected source root`() {
+        val root = workspaceDirectory.resolve("shared/source").toAbsolutePath().normalize()
+        val authority = GradleSourceRootProvenanceAuthority.compile(
+            listOf(
+                GradleSourceRootProducerImport.Rejected(
+                    GradleSourceRootProducerCaptureFailure.PRODUCER_MODEL_UNAVAILABLE,
+                ),
+                GradleSourceRootProducerImport.Captured(
+                    listOf(
+                        producer(
+                            root,
+                            GradleSourceRootProducerProvenance.AUTHORED,
+                            role = GradleSourceRootProducerRole.RESOURCE,
+                        ),
+                        producer(
+                            root,
+                            GradleSourceRootProducerProvenance.AUTHORED,
+                            projectDirectory = workspaceDirectory.resolve("other-project"),
+                            projectPath = ":other",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val resolution = authority.resolve(lookup(root), ExternalSystemSourceType.SOURCE)
+
+        assertInstanceOf<GradleSourceRootProvenanceResolution.Unknown>(resolution)
     }
 
     @Test
@@ -68,7 +103,7 @@ class SourceRootProvenanceTest {
             ),
         )
 
-        val resolution = authority.resolve(root, ExternalSystemSourceType.SOURCE)
+        val resolution = authority.resolve(lookup(root), ExternalSystemSourceType.SOURCE)
 
         assertEquals(
             GradleSourceRootProvenanceFailure.CONFLICTING_PRODUCER_EVIDENCE,
@@ -82,20 +117,11 @@ class SourceRootProvenanceTest {
 
         val imported = combineGradleSourceRootProducerEvidence(
             ideaEntries = listOf(
-                GradleSourceRootProducerEvidence(
-                    root.toFile(),
-                    GradleSourceRootProducerProvenance.AUTHORED,
-                ),
+                idea(root, GradleSourceRootProducerProvenance.AUTHORED),
             ),
             producerEntries = listOf(
-                GradleSourceRootProducerEvidence(
-                    root.toFile(),
-                    GradleSourceRootProducerProvenance.AUTHORED,
-                ),
-                GradleSourceRootProducerEvidence(
-                    root.toFile(),
-                    GradleSourceRootProducerProvenance.GENERATED,
-                ),
+                producer(root, GradleSourceRootProducerProvenance.AUTHORED),
+                producer(root, GradleSourceRootProducerProvenance.GENERATED),
             ),
         )
 
@@ -111,20 +137,11 @@ class SourceRootProvenanceTest {
 
         val imported = combineGradleSourceRootProducerEvidence(
             ideaEntries = listOf(
-                GradleSourceRootProducerEvidence(
-                    root.toFile(),
-                    GradleSourceRootProducerProvenance.AUTHORED,
-                ),
-                GradleSourceRootProducerEvidence(
-                    root.toFile(),
-                    GradleSourceRootProducerProvenance.GENERATED,
-                ),
+                idea(root, GradleSourceRootProducerProvenance.AUTHORED),
+                idea(root, GradleSourceRootProducerProvenance.GENERATED),
             ),
             producerEntries = listOf(
-                GradleSourceRootProducerEvidence(
-                    root.toFile(),
-                    GradleSourceRootProducerProvenance.GENERATED,
-                ),
+                producer(root, GradleSourceRootProducerProvenance.GENERATED),
             ),
         )
 
@@ -142,19 +159,14 @@ class SourceRootProvenanceTest {
 
         val imported = combineGradleSourceRootProducerEvidence(
             ideaEntries = listOf(
-                GradleSourceRootProducerEvidence(
-                    mainRoot.toFile(),
-                    GradleSourceRootProducerProvenance.AUTHORED,
-                ),
+                idea(mainRoot, GradleSourceRootProducerProvenance.AUTHORED),
             ),
             producerEntries = listOf(
-                GradleSourceRootProducerEvidence(
-                    mainRoot.toFile(),
+                producer(mainRoot, GradleSourceRootProducerProvenance.AUTHORED),
+                producer(
+                    testFixturesRoot,
                     GradleSourceRootProducerProvenance.AUTHORED,
-                ),
-                GradleSourceRootProducerEvidence(
-                    testFixturesRoot.toFile(),
-                    GradleSourceRootProducerProvenance.AUTHORED,
+                    sourceSetName = "testFixtures",
                 ),
             ),
         )
@@ -163,7 +175,11 @@ class SourceRootProvenanceTest {
         assertEquals(
             WorkspaceSourceRootProvenance.AUTHORED,
             GradleSourceRootProvenanceAuthority.compile(listOf(capture))
-                .provenance(testFixturesRoot, ExternalSystemSourceType.TEST),
+                .provenance(
+                    testFixturesRoot,
+                    ExternalSystemSourceType.TEST,
+                    sourceSetName = "testFixtures",
+                ),
         )
     }
 
@@ -185,7 +201,10 @@ class SourceRootProvenanceTest {
             listOf(captured(root to GradleSourceRootProducerProvenance.AUTHORED)),
         )
 
-        val resolution = authority.resolve(root, ExternalSystemSourceType.SOURCE_GENERATED)
+        val resolution = authority.resolve(
+            lookup(root),
+            ExternalSystemSourceType.SOURCE_GENERATED,
+        )
 
         assertEquals(
             GradleSourceRootProvenanceFailure.CONFLICTING_PRODUCER_EVIDENCE,
@@ -197,15 +216,51 @@ class SourceRootProvenanceTest {
         vararg entries: Pair<Path, GradleSourceRootProducerProvenance>,
     ): GradleSourceRootProducerImport.Captured = GradleSourceRootProducerImport.Captured(
         entries.map { (path, provenance) ->
-            GradleSourceRootProducerEvidence(path.toFile(), provenance)
+            producer(path, provenance)
         },
+    )
+
+    private fun idea(
+        path: Path,
+        provenance: GradleSourceRootProducerProvenance,
+    ): GradleIdeaSourceRootEvidence = GradleIdeaSourceRootEvidence(path.toFile(), provenance)
+
+    private fun producer(
+        path: Path,
+        provenance: GradleSourceRootProducerProvenance,
+        projectDirectory: Path = workspaceDirectory,
+        projectPath: String = ":",
+        sourceSetName: String = "main",
+        role: GradleSourceRootProducerRole = GradleSourceRootProducerRole.CODE,
+    ): GradleSourceRootProducerEvidence = GradleSourceRootProducerEvidence(
+        identity = GradleSourceRootProducerIdentity(
+            projectDirectory = projectDirectory.toAbsolutePath().normalize().toFile(),
+            projectPath = projectPath,
+            sourceSetName = sourceSetName,
+            sourceRoot = path.toAbsolutePath().normalize().toFile(),
+            role = role,
+        ),
+        provenance = provenance,
+    )
+
+    private fun lookup(
+        path: Path,
+        projectDirectory: Path = workspaceDirectory,
+        projectPath: String = ":",
+        sourceSetName: String = "main",
+    ): GradleSourceRootLookupIdentity = GradleSourceRootLookupIdentity(
+        projectDirectory = projectDirectory.toAbsolutePath().normalize(),
+        projectPath = projectPath,
+        sourceSetName = sourceSetName,
+        sourceRoot = path.toAbsolutePath().normalize(),
     )
 
     private fun GradleSourceRootProvenanceAuthority.provenance(
         path: Path,
         sourceType: ExternalSystemSourceType,
+        sourceSetName: String = "main",
     ): WorkspaceSourceRootProvenance =
         assertInstanceOf<GradleSourceRootProvenanceResolution.Proven>(
-            resolve(path, sourceType),
+            resolve(lookup(path, sourceSetName = sourceSetName), sourceType),
         ).provenance
 }
