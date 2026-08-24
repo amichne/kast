@@ -9,6 +9,8 @@ prove whether each imported source root is authored or generated.
 - Missing and conflicting producer evidence remain closed typed failures or `UNKNOWN` contract
   evidence; ordinary source types never manufacture authored provenance.
 - Gradle-side model values cross the Tooling API boundary as immutable typed documents.
+- Producer-model entries remain authoritative when Gradle source sets are projected by IntelliJ
+  outside the standard IDEA model, including Java test-fixture roots.
 - The resolver extension retains producer evidence before IntelliJ content-root projection, and
   installed capture detaches all live external-system model values before returning.
 - The service provider, IntelliJ plugin registration, and packaged-class requirements must use

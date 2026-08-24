@@ -135,6 +135,39 @@ class SourceRootProvenanceTest {
     }
 
     @Test
+    fun `producer entries projected outside the standard IDEA model remain authoritative`() {
+        val mainRoot = workspaceDirectory.resolve("src/main/kotlin").toAbsolutePath().normalize()
+        val testFixturesRoot = workspaceDirectory.resolve("src/testFixtures/kotlin")
+            .toAbsolutePath().normalize()
+
+        val imported = combineGradleSourceRootProducerEvidence(
+            ideaEntries = listOf(
+                GradleSourceRootProducerEvidence(
+                    mainRoot.toFile(),
+                    GradleSourceRootProducerProvenance.AUTHORED,
+                ),
+            ),
+            producerEntries = listOf(
+                GradleSourceRootProducerEvidence(
+                    mainRoot.toFile(),
+                    GradleSourceRootProducerProvenance.AUTHORED,
+                ),
+                GradleSourceRootProducerEvidence(
+                    testFixturesRoot.toFile(),
+                    GradleSourceRootProducerProvenance.AUTHORED,
+                ),
+            ),
+        )
+        val capture = assertInstanceOf<GradleSourceRootProducerImport.Captured>(imported)
+
+        assertEquals(
+            WorkspaceSourceRootProvenance.AUTHORED,
+            GradleSourceRootProvenanceAuthority.compile(listOf(capture))
+                .provenance(testFixturesRoot, ExternalSystemSourceType.TEST),
+        )
+    }
+
+    @Test
     fun `explicit generated source type remains positive model authority`() {
         val root = workspaceDirectory.resolve("src/main/kotlin").toAbsolutePath().normalize()
 

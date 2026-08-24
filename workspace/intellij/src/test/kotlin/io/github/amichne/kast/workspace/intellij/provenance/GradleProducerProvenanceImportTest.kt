@@ -55,8 +55,14 @@ class GradleProducerProvenanceImportTest {
             .toAbsolutePath().normalize()
         val generatedLookingAuthored = physicalProjectDirectory.resolve("build/authored-source")
             .toAbsolutePath().normalize()
+        val testFixturesRoot = physicalProjectDirectory.resolve("src/testFixtures/java")
+            .toAbsolutePath().normalize()
         val unrelatedTaskMarker = physicalProjectDirectory.resolve("unrelated-task-configured")
-        createGradleFixture(authoredLookingGenerated, generatedLookingAuthored)
+        createGradleFixture(
+            authoredLookingGenerated,
+            generatedLookingAuthored,
+            testFixturesRoot,
+        )
 
         val models = loadGradleModels(unrelatedTaskMarker)
         val imported = models.ideaProject.modules
@@ -78,6 +84,11 @@ class GradleProducerProvenanceImportTest {
             WorkspaceSourceRootProvenance.AUTHORED,
             authority.provenance(generatedLookingAuthored),
         )
+        assertEquals(
+            WorkspaceSourceRootProvenance.AUTHORED,
+            authority.provenance(testFixturesRoot),
+            "The producer model must retain test-fixture roots outside the standard IDEA model",
+        )
         val kotlinDslGenerated = capture.entries.filter { evidence ->
             evidence.provenance == GradleSourceRootProducerProvenance.GENERATED &&
             evidence.sourceRoot.toPath() != authoredLookingGenerated
@@ -97,6 +108,7 @@ class GradleProducerProvenanceImportTest {
     private fun createGradleFixture(
         authoredLookingGenerated: Path,
         generatedLookingAuthored: Path,
+        testFixturesRoot: Path,
     ) {
         Files.writeString(
             projectDirectory.resolve("settings.gradle.kts"),
@@ -107,6 +119,7 @@ class GradleProducerProvenanceImportTest {
             """
             plugins {
                 `kotlin-dsl`
+                `java-test-fixtures`
                 idea
             }
 
@@ -137,6 +150,11 @@ class GradleProducerProvenanceImportTest {
         Files.writeString(
             generatedLookingAuthored.resolve("fixture/Authored.java"),
             "package fixture; public final class Authored {}\n",
+        )
+        Files.createDirectories(testFixturesRoot.resolve("fixture"))
+        Files.writeString(
+            testFixturesRoot.resolve("fixture/TestFixture.java"),
+            "package fixture; public final class TestFixture {}\n",
         )
         val precompiledScript = projectDirectory.resolve("src/main/kotlin/fixture-conventions.gradle.kts")
         Files.createDirectories(precompiledScript.parent)

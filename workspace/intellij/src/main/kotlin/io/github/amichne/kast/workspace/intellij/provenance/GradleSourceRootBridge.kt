@@ -100,8 +100,9 @@ class KastGradleSourceRootProvenanceResolver : AbstractProjectResolverExtension(
  *
  * [GradleSourceRootProducerImport.Captured] establishes an exact absolute normalized directory
  * plus Gradle task-output or [IdeaSourceDirectory.isGenerated] producer authority for every
- * production and test source directory in the standard IDEA Tooling model. The closed expected
- * failure is [GradleSourceRootProducerCaptureFailure]. Raw Tooling API objects and [File]
+ * production and test source directory in the complete producer model. Producer-only entries are
+ * retained for source sets that IntelliJ projects outside the standard IDEA model. The closed
+ * expected failure is [GradleSourceRootProducerCaptureFailure]. Raw Tooling API objects and [File]
  * extraction are permitted only at this resolver-extension boundary.
  */
 internal fun captureGradleSourceRootProducerImport(
@@ -148,10 +149,11 @@ internal fun captureGradleSourceRootProducerImport(
  * Iterable<GradleSourceRootProducerEvidence>) -> GradleSourceRootProducerImport`.
  *
  * Captured establishes one normalized exact-path provenance for each IDEA source directory after
- * combining the standard generated flag with the complete Gradle producer model. Conflicting
- * exact classifications, invalid paths, and missing model entries are the closed
- * [GradleSourceRootProducerCaptureFailure] outcomes. Raw [File] normalization is permitted only at
- * this imported-model boundary.
+ * combining the standard generated flag with the complete Gradle producer model. Producer entries
+ * absent from the standard IDEA model remain available for source roots that IntelliJ projects
+ * later, such as Gradle test fixtures. Conflicting exact classifications, invalid paths, and IDEA
+ * roots missing from the producer model are the closed [GradleSourceRootProducerCaptureFailure]
+ * outcomes. Raw [File] normalization is permitted only at this imported-model boundary.
  */
 internal fun combineGradleSourceRootProducerEvidence(
     ideaEntries: Iterable<GradleSourceRootProducerEvidence>,
@@ -181,12 +183,14 @@ internal fun combineGradleSourceRootProducerEvidence(
             GradleSourceRootProducerCaptureFailure.CONFLICTING_SOURCE_ROOT_EVIDENCE,
         )
     }
-    val entries = ideaByRoot.map { (sourceRoot, exactIdeaEntries) ->
-        val producer = producerByRoot[sourceRoot]
-            ?.singleOrNull()
-            ?: return GradleSourceRootProducerImport.Rejected(
-                GradleSourceRootProducerCaptureFailure.SOURCE_ROOT_EVIDENCE_MISSING,
-            )
+    if (ideaByRoot.keys.any { sourceRoot -> sourceRoot !in producerByRoot }) {
+        return GradleSourceRootProducerImport.Rejected(
+            GradleSourceRootProducerCaptureFailure.SOURCE_ROOT_EVIDENCE_MISSING,
+        )
+    }
+    val entries = producerByRoot.map { (sourceRoot, exactProducerEntries) ->
+        val producer = exactProducerEntries.single()
+        val exactIdeaEntries = ideaByRoot[sourceRoot].orEmpty()
         GradleSourceRootProducerEvidence(
             sourceRoot = sourceRoot,
             provenance = if (
