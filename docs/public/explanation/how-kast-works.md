@@ -12,7 +12,36 @@ interrupting that path.
 
 <script type="module" src="../../architecture/likec4-views.mjs"></script>
 <script src="../../javascripts/diagram.js"></script>
-<kast-view view-id="runtime-flow"></kast-view>
+
+<ol class="kast-request-flow" aria-label="One symbol request through Kast">
+  <li class="kast-flow-step kast-tone-discovery">
+    <span class="kast-flow-number">01</span>
+    <strong class="kast-flow-title">CLI call</strong>
+    <code>kast symbol describe</code>
+    <span>Parses one public command at the repository root.</span>
+  </li>
+  <li class="kast-flow-step kast-tone-identity">
+    <span class="kast-flow-number">02</span>
+    <strong class="kast-flow-title">Kotlin executable</strong>
+    <code>SymbolDescribeRequestDocument</code>
+    <span>Refines arguments into a typed request document.</span>
+  </li>
+  <li class="kast-flow-step kast-tone-discovery">
+    <span class="kast-flow-number">03</span>
+    <strong class="kast-flow-title">Local wire RPC</strong>
+    <code>Unix-domain socket</code>
+    <span>Sends one bounded JSON frame to the exact-root indexer.</span>
+  </li>
+  <li class="kast-flow-step kast-tone-evidence">
+    <span class="kast-flow-number">04</span>
+    <strong class="kast-flow-title">K2 adapter</strong>
+    <code>Request-local compiler state</code>
+    <span>Resolves the symbol and projects host-neutral evidence.</span>
+  </li>
+</ol>
+
+The result returns through the same local boundary as complete or qualified
+evidence, or as a typed rejection. Compiler objects stay inside the adapter.
 
 `kast start` resolves a supported JetBrains installation for matched platform
 libraries, then starts or reuses one indexer for the canonical root. The

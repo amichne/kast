@@ -1,0 +1,118 @@
+:root {
+  --kast-inline-code: #334155;
+}
+
+[data-md-color-scheme="slate"] {
+  --kast-inline-code: #e2e8f0;
+}
+
+.md-typeset :not(pre) > code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--kast-inline-code);
+  font-size: 0.92em;
+  font-weight: 600;
+}
+
+.md-typeset a > code {
+  color: inherit;
+}
+
+.md-typeset a:focus > code,
+.md-typeset a:hover > code {
+  background: transparent;
+}
+
+.md-typeset ol.kast-request-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.4rem;
+  margin-block: 1.5rem 1.25rem;
+  margin-inline: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.md-typeset .kast-flow-step {
+  --kast-tone: var(--kast-muted);
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem 0 0;
+  border-block-start: 0.12rem solid var(--kast-tone);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.md-typeset .kast-flow-step:not(:last-child)::after {
+  position: absolute;
+  top: 1.38rem;
+  right: -0.9rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-block-start: 1px solid var(--kast-muted);
+  border-inline-end: 1px solid var(--kast-muted);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.md-typeset .kast-flow-number {
+  display: block;
+  margin-bottom: 0.7rem;
+  color: var(--kast-tone);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.md-typeset .kast-flow-title {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: var(--md-typeset-color);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.md-typeset .kast-flow-step code,
+.md-typeset .kast-flow-step > span:last-child {
+  display: block;
+}
+
+.md-typeset .kast-flow-step code {
+  min-height: 2.8em;
+  margin-bottom: 0.4rem;
+  overflow-wrap: anywhere;
+  color: var(--kast-tone);
+  line-height: 1.4;
+}
+
+.md-typeset .kast-flow-step > span:last-child {
+  color: var(--kast-muted);
+}
+
+@media screen and (max-width: 44.984375em) {
+  .md-typeset ol.kast-request-flow {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .md-typeset .kast-flow-step {
+    padding: 0.15rem 0 0.35rem 1rem;
+    border-block-start: 0;
+    border-inline-start: 0.12rem solid var(--kast-tone);
+    font-size: 0.74rem;
+  }
+
+  .md-typeset .kast-flow-step:not(:last-child)::after {
+    display: none;
+  }
+
+  .md-typeset .kast-flow-number {
+    margin-bottom: 0.35rem;
+  }
+
+  .md-typeset .kast-flow-step code {
+    min-height: 0;
+  }
+}

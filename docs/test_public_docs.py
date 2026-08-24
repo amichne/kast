@@ -89,7 +89,7 @@ PAGES = {
         "# How Kast works",
         '<script type="module" src="../../architecture/likec4-views.mjs">',
         '<script src="../../javascripts/diagram.js">',
-        '<kast-view view-id="runtime-flow"',
+        '<ol class="kast-request-flow"',
         '<kast-view view-id="module-ownership"',
         '<details class="kast-architecture-details"',
         "foreground IDE",
@@ -310,10 +310,11 @@ def check_flat_declarations(css: str) -> None:
 
 
 def check_styles() -> None:
-    css = (PUBLIC / "stylesheets/extra.css").read_text()
+    css = "\n".join(path.read_text() for path in sorted((PUBLIC / "stylesheets").glob("*.css")))
     for selector in [
         ".kast-hero",
         ".kast-question-grid",
+        ".kast-request-flow",
         ".kast-boundary",
         ".kast-notice",
         ".kast-architecture-details",
