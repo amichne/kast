@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
@@ -105,12 +106,16 @@ internal fun projectTopologySymbol(
  * Proof transition: `KaSymbol -> TopologyK2IdentityProjection`.
  *
  * Projected establishes one exact location-bearing topology symbol with canonical compiler
- * identity. Unsupported and Rejected close unaddressable, outside-generation, and mismatched
- * compiler evidence. Raw K2 and PSI extraction remains inside the current analysis session.
+ * identity. Unsupported closes compiler-generated, unaddressable, and outside-generation
+ * symbols; Rejected closes mismatched explicit-source compiler evidence. Raw K2 and PSI
+ * extraction remains inside the current analysis session.
  */
 internal fun KaSymbol.topologyIdentityProjection(
     registry: TopologyProjectionRegistry,
 ): TopologyK2IdentityProjection {
+    if (origin != KaSymbolOrigin.SOURCE) {
+        return TopologyK2IdentityProjection.Unsupported
+    }
     val source = when (val located = topologySourceFile(registry)) {
         is TopologyK2SourceFileProjection.Found -> located.file
         TopologyK2SourceFileProjection.Unsupported ->
@@ -255,8 +260,9 @@ private sealed interface TopologyK2SourceFileProjection {
  * TopologyK2SourceFileProjection`.
  *
  * Found establishes the exact admitted content-identified source file owning this live compiler
- * symbol. Unsupported closes library, synthetic, missing, and outside-generation PSI. Raw K2,
- * PSI, and paths remain inside the request-local analysis boundary.
+ * symbol. Unsupported closes library, compiler-generated, synthetic, missing, and
+ * outside-generation PSI. Raw K2, PSI, and paths remain inside the request-local analysis
+ * boundary.
  */
 private fun KaSymbol.topologySourceFile(
     registry: TopologyProjectionRegistry,

@@ -19,6 +19,9 @@ module scan, repository-root walk, startup hook, or read-triggered work.
 - Compiler identities remain canonical across symbol, relation, and topology adapters. Exact file
   and range evidence belongs to `TopologySymbol` and the topology persistence node key; it must
   not be appended to `CompilerSymbolIdentity`.
+- Only explicit K2 `SOURCE` symbols may become topology nodes or targets. Compiler-generated and
+  synthetic members have no independently admitted source declaration and remain outside the
+  graph even when K2 exposes their owner's PSI.
 - Live `Project`, VFS, PSI, search, and K2 values remain inside explicit adapter calls.
 - Local declarations and intrafunctional dataflow are outside the topology model.
 
