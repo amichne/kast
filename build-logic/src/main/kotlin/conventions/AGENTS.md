@@ -10,6 +10,7 @@ boundaries and verification.
 - Keep repository-specific PR gate wiring in the `pr633-*` scripts and reusable task types under
   `support/pr633`.
 - Keep VFS-passive program wiring in `vfs-passive-delivery.gradle.kts` and its typed authority and
-  cache-compatible task types under `support/delivery`.
+  task types under `support/delivery`. The KVP-001 negative and green command names are public
+  delivery-program contracts; keep their registration derived from the canonical Kotlin program.
 - Feed PR 633 bytecode and ABI verifiers complete `main` source-set class outputs so Java and
   Kotlin implementations are governed by the same gate.
