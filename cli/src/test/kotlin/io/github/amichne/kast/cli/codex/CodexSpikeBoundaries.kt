@@ -20,6 +20,83 @@ import java.util.concurrent.TimeUnit
 
 private const val APP_SERVER_READ_TIMEOUT_SECONDS = 180L
 
+internal enum class CodexEvaluationRequestFailure {
+    REQUEST_UNREADABLE,
+    REQUEST_MALFORMED,
+    SCHEMA_VERSION_UNSUPPORTED,
+    WORKSPACE_UNAVAILABLE,
+    SYMBOL_QUERY_INVALID,
+    EXPECTED_CALLERS_INVALID,
+    MODEL_INVALID,
+}
+
+internal sealed interface CodexEvaluationRequestAdmission {
+    data class Admitted(
+        val root: Path,
+        val request: CodexAppServerEvaluationRequestDocument,
+    ) : CodexEvaluationRequestAdmission
+
+    data class Rejected(
+        val failure: CodexEvaluationRequestFailure,
+    ) : CodexEvaluationRequestAdmission
+}
+
+internal object CodexEvaluationRequestLoader {
+    private val requestJson = Json { explicitNulls = false }
+
+    fun load(path: Path): CodexEvaluationRequestAdmission {
+        val document = try {
+            requestJson.decodeFromString(
+                CodexAppServerEvaluationRequestDocument.serializer(),
+                Files.readString(path),
+            )
+        } catch (_: IOException) {
+            return rejected(CodexEvaluationRequestFailure.REQUEST_UNREADABLE)
+        } catch (_: SecurityException) {
+            return rejected(CodexEvaluationRequestFailure.REQUEST_UNREADABLE)
+        } catch (_: SerializationException) {
+            return rejected(CodexEvaluationRequestFailure.REQUEST_MALFORMED)
+        } catch (_: IllegalArgumentException) {
+            return rejected(CodexEvaluationRequestFailure.REQUEST_MALFORMED)
+        }
+        if (document.schemaVersion != 1) {
+            return rejected(CodexEvaluationRequestFailure.SCHEMA_VERSION_UNSUPPORTED)
+        }
+        val root = try {
+            Path.of(document.workspaceRoot).toRealPath()
+        } catch (_: IOException) {
+            return rejected(CodexEvaluationRequestFailure.WORKSPACE_UNAVAILABLE)
+        } catch (_: SecurityException) {
+            return rejected(CodexEvaluationRequestFailure.WORKSPACE_UNAVAILABLE)
+        } catch (_: IllegalArgumentException) {
+            return rejected(CodexEvaluationRequestFailure.WORKSPACE_UNAVAILABLE)
+        }
+        if (!Files.isDirectory(root)) {
+            return rejected(CodexEvaluationRequestFailure.WORKSPACE_UNAVAILABLE)
+        }
+        if (document.symbolQuery.isInvalidEvaluationText()) {
+            return rejected(CodexEvaluationRequestFailure.SYMBOL_QUERY_INVALID)
+        }
+        if (
+            document.expectedCallerNames.isEmpty() ||
+            document.expectedCallerNames.distinct().size != document.expectedCallerNames.size ||
+            document.expectedCallerNames.any(String::isInvalidEvaluationText)
+        ) {
+            return rejected(CodexEvaluationRequestFailure.EXPECTED_CALLERS_INVALID)
+        }
+        if (document.model?.isInvalidEvaluationText() == true) {
+            return rejected(CodexEvaluationRequestFailure.MODEL_INVALID)
+        }
+        return CodexEvaluationRequestAdmission.Admitted(root, document)
+    }
+
+    private fun rejected(failure: CodexEvaluationRequestFailure) =
+        CodexEvaluationRequestAdmission.Rejected(failure)
+}
+
+private fun String.isInvalidEvaluationText(): Boolean =
+    isBlank() || length > 256 || any(Char::isISOControl)
+
 internal sealed interface KastSpikeSessionOpening {
     data class Opened(val session: WireSession) : KastSpikeSessionOpening
     data class Rejected(val failure: KastSpikeBoundaryFailure) : KastSpikeSessionOpening
@@ -32,6 +109,7 @@ internal enum class KastSpikeBoundaryFailure {
     ENDPOINT_REJECTED,
     ENDPOINT_UNAVAILABLE,
     APP_SERVER_START_REJECTED,
+    MCP_CONFIGURATION_REJECTED,
     APP_SERVER_WRITE_REJECTED,
     APP_SERVER_READ_REJECTED,
     APP_SERVER_TIMEOUT,
@@ -167,7 +245,8 @@ internal class AppServerJsonlSession private constructor(
          *
          * A started dynamic-tools process proves the shell tool is disabled. A started CLI
          * comparison process proves the shell tool remains enabled. Both modes disable hooks,
-         * plugins, and MCP servers and bind their process directory to the canonical root.
+         * plugins, apps, app-backed MCP, and every enabled configured MCP server, and bind their
+         * process directory to the canonical root.
          * [KastSpikeBoundaryFailure] is the closed expected failure.
          */
         fun start(
@@ -176,28 +255,16 @@ internal class AppServerJsonlSession private constructor(
             protocolLog: Path,
             toolAccess: AppServerToolAccess,
         ): AppServerStart {
-            val command = buildList {
-                addAll(
-                    listOf(
-                        "codex",
-                        "app-server",
-                        "--disable",
-                        "hooks",
-                        "--disable",
-                        "plugins",
-                    ),
-                )
-                if (toolAccess == AppServerToolAccess.DYNAMIC_TOOLS_ONLY) {
-                    addAll(listOf("--disable", "shell_tool"))
-                }
-                addAll(
-                    listOf(
-                        "-c",
-                        "mcp_servers={}",
-                        "--stdio",
-                    ),
+            val isolation = when (val discovered = CodexMcpIsolationPolicy.discover(root)) {
+                is CodexMcpIsolation.Isolated -> discovered
+                CodexMcpIsolation.Rejected -> return AppServerStart.Rejected(
+                    KastSpikeBoundaryFailure.MCP_CONFIGURATION_REJECTED,
                 )
             }
+            val command = CodexAppServerLaunchCommand.create(
+                toolAccess,
+                isolation.enabledServerNames,
+            )
             val process = try {
                 ProcessBuilder(command)
                     .directory(root.toFile())

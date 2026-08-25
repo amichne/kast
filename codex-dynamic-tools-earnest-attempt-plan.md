@@ -10,6 +10,13 @@ a `go` decision. The final evidence is in the session-local task `004` artifacts
 is intentional: the transport and typed-tool experiment passed, while the stricter unassisted
 orchestration criterion did not.
 
+For a repeatable operator-facing run, use
+`integration-tests/codex-app-server-evaluation/evaluate.py` and its adjacent README. That path adds
+a versioned scenario request, a plan-only review, inherited-capability suppression, safe
+dynamic-only defaults, explicit authorization for the full-access comparison, and a retained
+evidence bundle. It remains pre-production evaluation infrastructure rather than a public Kast
+command.
+
 This plan records the smallest change used to give the existing Codex App Server `dynamicTools`
 spike a fair second run. The work stopped after terminal evidence was captured and did not turn the
 spike into production infrastructure.
@@ -289,7 +296,7 @@ Then refresh and exercise the installed product from the canonical repository ro
 ./gradlew installLocal
 kast --version
 kast start
-./gradlew :cli:codexDynamicToolsSpike
+./gradlew :cli:codexAppServerEvaluation
 ```
 
 Run the final repository check:

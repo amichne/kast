@@ -22,6 +22,7 @@ internal class CodexCliComparison(
     private val root: Path,
     private val evidencePath: Path,
     private val prompt: String,
+    private val requestedModel: String?,
 ) {
     private var rawModelTokens = 0L
     private var threadModelTokens = 0L
@@ -102,6 +103,7 @@ internal class CodexCliComparison(
                 ephemeral = true,
                 experimentalRawEvents = true,
                 dynamicTools = emptyList(),
+                model = requestedModel,
             ),
             ThreadStartParamsDocument.serializer(),
         )

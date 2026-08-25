@@ -2,7 +2,13 @@ package io.github.amichne.kast.cli.codex
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 @Serializable
 internal data class RpcRequestDocument(
@@ -66,6 +72,29 @@ internal enum class AppServerSandboxModeDocument {
     @SerialName("read-only") READ_ONLY,
     @SerialName("danger-full-access") DANGER_FULL_ACCESS,
 }
+
+@Serializable
+internal enum class CodexAppServerEvaluationModeDocument {
+    @SerialName("dynamic-only") DYNAMIC_ONLY,
+    @SerialName("comparison") COMPARISON,
+}
+
+@Serializable
+internal data class CodexAppServerEvaluationRequestDocument(
+    val schemaVersion: Int,
+    val mode: CodexAppServerEvaluationModeDocument,
+    val workspaceRoot: String,
+    val symbolQuery: String,
+    val expectedCallerNames: List<String>,
+    val model: String? = null,
+)
+
+@Serializable
+internal data class CodexAppServerEvaluationScenarioDocument(
+    val symbolQuery: String,
+    val expectedCallerNames: List<String>,
+    val requestedModel: String? = null,
+)
 
 @Serializable
 internal data class DynamicToolNamespaceDocument(
@@ -221,6 +250,8 @@ internal data class CodexDynamicToolsPathEvidenceDocument(
     val deferredDiscoveryObserved: Boolean,
     val fullDeferredSchemasPresentBeforeDiscovery: Boolean,
     val selectorRoundTripUnchanged: Boolean,
+    val inheritedMcpStartupObserved: Boolean,
+    val unexpectedToolCallObserved: Boolean,
     val commandExecutionObserved: Boolean,
     val kastProcessExecutionObserved: Boolean,
     val correctRelationResult: Boolean,
@@ -270,7 +301,22 @@ internal enum class CodexSpikeDecisionDocument {
 }
 
 @Serializable
+internal data class CodexAppServerDynamicEvaluationEvidenceDocument(
+    val schemaVersion: Int,
+    val mode: CodexAppServerEvaluationModeDocument,
+    val scenario: CodexAppServerEvaluationScenarioDocument,
+    val model: String,
+    val prompt: String,
+    val workingDirectory: String,
+    val dynamic: CodexDynamicToolsPathEvidenceDocument,
+    val decision: CodexSpikeDecisionDocument,
+)
+
+@Serializable
 internal data class CodexAppServerComparisonEvidenceDocument(
+    val schemaVersion: Int,
+    val mode: CodexAppServerEvaluationModeDocument,
+    val scenario: CodexAppServerEvaluationScenarioDocument,
     val model: String,
     val prompt: String,
     val workingDirectory: String,
@@ -278,3 +324,60 @@ internal data class CodexAppServerComparisonEvidenceDocument(
     val cliComparison: CodexCliComparisonEvidenceDocument,
     val decision: CodexSpikeDecisionDocument,
 )
+
+internal object CodexEvaluationEvidenceWriter {
+    private val json = Json { explicitNulls = false }
+
+    fun write(path: Path, evidence: CodexAppServerDynamicEvaluationEvidenceDocument) =
+        write(path, evidence, CodexAppServerDynamicEvaluationEvidenceDocument.serializer())
+
+    fun write(path: Path, evidence: CodexAppServerComparisonEvidenceDocument) =
+        write(path, evidence, CodexAppServerComparisonEvidenceDocument.serializer())
+
+    private fun <Document> write(
+        path: Path,
+        evidence: Document,
+        serializer: kotlinx.serialization.KSerializer<Document>,
+    ) {
+        Files.createDirectories(path.parent)
+        val partial = Files.createTempFile(path.parent, "codex-evaluation-", ".partial")
+        Files.writeString(partial, json.encodeToString(serializer, evidence))
+        try {
+            Files.move(
+                partial,
+                path,
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (_: IOException) {
+            Files.move(partial, path, StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+}
+
+internal fun CodexDynamicToolsPathEvidenceDocument.isGoAgainst(
+    comparison: CodexCliComparisonEvidenceDocument,
+): Boolean = isGo() &&
+    model == comparison.model &&
+    comparison.completed &&
+    comparison.kastCommandCount > 0 &&
+    (
+        correctiveInvocations < comparison.correctiveCommands ||
+            modelToolTurns < comparison.modelToolTurns
+        )
+
+internal fun CodexDynamicToolsPathEvidenceDocument.isGo(): Boolean = completed &&
+    toolSearchCalls == 1 &&
+    dynamicToolCalls == 2 &&
+    malformedInvocations == 0 &&
+    correctiveInvocations == 0 &&
+    deferredDiscoveryObserved &&
+    !fullDeferredSchemasPresentBeforeDiscovery &&
+    selectorRoundTripUnchanged &&
+    !inheritedMcpStartupObserved &&
+    !unexpectedToolCallObserved &&
+    !commandExecutionObserved &&
+    !kastProcessExecutionObserved &&
+    correctRelationResult &&
+    !relationRejected &&
+    finalAnswerNamesReturnedCallers

@@ -4,15 +4,12 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
-import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
 
 private const val INITIALIZE_REQUEST_ID = 1L
 private const val THREAD_START_REQUEST_ID = 2L
 private const val TURN_START_REQUEST_ID = 3L
-private const val EXPECTED_DIRECT_CALLER = "symbolDiscover"
 
 private val appServerJson = Json {
     explicitNulls = false
@@ -22,7 +19,9 @@ private val appServerJson = Json {
 internal class CodexAppServerSpike(
     private val root: Path,
     private val evidencePath: Path,
+    private val request: CodexAppServerEvaluationRequestDocument,
 ) {
+    private val prompt = CodexEvaluationWorkflowPrompt.forSymbol(request.symbolQuery)
     private var rawModelTokens = 0L
     private var threadModelTokens = 0L
     private var tokensBeforeFirstUsefulResult = 0L
@@ -30,12 +29,30 @@ internal class CodexAppServerSpike(
     private var toolSearchCalls = 0
     private var firstDynamicCallObserved = false
     private var discoveryBeforeDynamicCall = false
+    private var inheritedMcpStartupObserved = false
+    private var unexpectedToolCallObserved = false
     private var commandObserved = false
     private var kastProcessObserved = false
     private var finalAnswer = ""
 
-    fun run() {
-        val comparison = CodexCliComparison(root, evidencePath, CodexSpikeWorkflowPrompt.text).run()
+    fun run() = when (request.mode) {
+        CodexAppServerEvaluationModeDocument.DYNAMIC_ONLY -> {
+            val dynamic = runDynamic(request.model)
+            writeDynamicEvidence(dynamic)
+        }
+        CodexAppServerEvaluationModeDocument.COMPARISON -> {
+            val comparison = CodexCliComparison(
+                root,
+                evidencePath,
+                prompt,
+                request.model,
+            ).run()
+            val dynamic = runDynamic(comparison.model)
+            writeComparisonEvidence(dynamic, comparison)
+        }
+    }
+
+    private fun runDynamic(model: String?): CodexDynamicToolsPathEvidenceDocument {
         val kastSession = when (val opening = ExistingKastRuntimeConnection.open(root)) {
             is KastSpikeSessionOpening.Opened -> opening.session
             is KastSpikeSessionOpening.Rejected -> error("Kast session rejected: ${opening.failure}")
@@ -58,17 +75,16 @@ internal class CodexAppServerSpike(
             appServer.use { server ->
                 val adapter = CodexDynamicToolsAdapter(CanonicalWireKastReadOperations(wireSession))
                 initialize(server)
-                val started = startThread(server, comparison.model)
+                val started = startThread(server, model)
                 val turnId = startTurn(server, started.thread.id)
                 val modelCompleted = awaitCompletion(server, adapter, started.thread.id, turnId)
-                val dynamic = dynamicEvidence(
+                return dynamicEvidence(
                     server.command,
                     adapter,
                     started,
                     turnId,
                     modelCompleted,
                 )
-                writeEvidence(dynamic, comparison)
             }
         }
     }
@@ -93,7 +109,7 @@ internal class CodexAppServerSpike(
 
     private fun startThread(
         server: AppServerJsonlSession,
-        model: String,
+        model: String?,
     ): ThreadStartResultDocument {
         sendRequest(
             server,
@@ -123,7 +139,7 @@ internal class CodexAppServerSpike(
             "turn/start",
             TurnStartParamsDocument(
                 threadId,
-                listOf(TextUserInputDocument("text", CodexSpikeWorkflowPrompt.text, emptyList())),
+                listOf(TextUserInputDocument("text", prompt, emptyList())),
             ),
             TurnStartParamsDocument.serializer(),
         )
@@ -151,6 +167,7 @@ internal class CodexAppServerSpike(
                 "rawResponseItem/completed" -> observeRawItem(incoming)
                 "rawResponse/completed" -> observeRawResponse(incoming)
                 "thread/tokenUsage/updated" -> observeThreadTokenUsage(incoming)
+                "mcpServer/startupStatus/updated" -> inheritedMcpStartupObserved = true
                 "turn/completed" -> {
                     val completion = decodeParams<TurnCompletedParamsDocument>(incoming)
                     check(completion.threadId == threadId)
@@ -216,13 +233,14 @@ internal class CodexAppServerSpike(
             ObservedRawResponseItemDocument.serializer(),
             item,
         )
-        if (
-            observed.type == "tool_search_call" ||
+        when {
+            observed.type == "tool_search_call" -> toolSearchCalls += 1
             observed.type == "custom_tool_call" &&
-            observed.name == "exec" &&
-            observed.input?.contains("ALL_TOOLS") == true
-        ) {
-            toolSearchCalls += 1
+                observed.name == "exec" &&
+                observed.input?.contains("ALL_TOOLS") == true -> toolSearchCalls += 1
+            observed.type == "custom_tool_call" || observed.type.endsWith("_call") -> {
+                unexpectedToolCallObserved = true
+            }
         }
     }
 
@@ -247,7 +265,7 @@ internal class CodexAppServerSpike(
         val metrics = adapter.metrics()
         val definitions = CodexDynamicToolDefinitions.kastNamespace().tools
         val allDeferred = definitions.size == 2 && definitions.all { it.deferLoading }
-        val correctRelation = EXPECTED_DIRECT_CALLER in metrics.relationTargetNames &&
+        val correctRelation = request.expectedCallerNames.all(metrics.relationTargetNames::contains) &&
             metrics.relationQualificationNames.isEmpty() &&
             metrics.relationRejectionNames.isEmpty()
         return CodexDynamicToolsPathEvidenceDocument(
@@ -266,6 +284,8 @@ internal class CodexAppServerSpike(
             deferredDiscoveryObserved = discoveryBeforeDynamicCall,
             fullDeferredSchemasPresentBeforeDiscovery = !(allDeferred && discoveryBeforeDynamicCall),
             selectorRoundTripUnchanged = metrics.selectorRoundTripUnchanged,
+            inheritedMcpStartupObserved = inheritedMcpStartupObserved,
+            unexpectedToolCallObserved = unexpectedToolCallObserved,
             commandExecutionObserved = commandObserved,
             kastProcessExecutionObserved = kastProcessObserved,
             correctRelationResult = correctRelation,
@@ -280,13 +300,34 @@ internal class CodexAppServerSpike(
         )
     }
 
-    private fun writeEvidence(
+    private fun writeDynamicEvidence(dynamic: CodexDynamicToolsPathEvidenceDocument) {
+        val evidence = CodexAppServerDynamicEvaluationEvidenceDocument(
+            schemaVersion = 1,
+            mode = CodexAppServerEvaluationModeDocument.DYNAMIC_ONLY,
+            scenario = scenario(),
+            model = dynamic.model,
+            prompt = prompt,
+            workingDirectory = root.toString(),
+            dynamic = dynamic,
+            decision = if (dynamic.isGo()) {
+                CodexSpikeDecisionDocument.GO
+            } else {
+                CodexSpikeDecisionDocument.NO_GO
+            },
+        )
+        CodexEvaluationEvidenceWriter.write(evidencePath, evidence)
+    }
+
+    private fun writeComparisonEvidence(
         dynamic: CodexDynamicToolsPathEvidenceDocument,
         comparison: CodexCliComparisonEvidenceDocument,
     ) {
         val evidence = CodexAppServerComparisonEvidenceDocument(
+            schemaVersion = 1,
+            mode = CodexAppServerEvaluationModeDocument.COMPARISON,
+            scenario = scenario(),
             model = dynamic.model,
-            prompt = CodexSpikeWorkflowPrompt.text,
+            prompt = prompt,
             workingDirectory = root.toString(),
             dynamic = dynamic,
             cliComparison = comparison,
@@ -296,32 +337,23 @@ internal class CodexAppServerSpike(
                 CodexSpikeDecisionDocument.NO_GO
             },
         )
-        Files.createDirectories(evidencePath.parent)
-        val partial = Files.createTempFile(evidencePath.parent, "codex-spike-", ".partial")
-        Files.writeString(
-            partial,
-            appServerJson.encodeToString(
-                CodexAppServerComparisonEvidenceDocument.serializer(),
-                evidence,
-            ),
-        )
-        try {
-            Files.move(
-                partial,
-                evidencePath,
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING,
-            )
-        } catch (_: IOException) {
-            Files.move(partial, evidencePath, StandardCopyOption.REPLACE_EXISTING)
-        }
+        CodexEvaluationEvidenceWriter.write(evidencePath, evidence)
     }
+
+    private fun scenario() = CodexAppServerEvaluationScenarioDocument(
+        symbolQuery = request.symbolQuery,
+        expectedCallerNames = request.expectedCallerNames,
+        requestedModel = request.model,
+    )
 
     private fun awaitResult(server: AppServerJsonlSession, requestId: Long): JsonElement {
         while (true) {
             val incoming = when (val read = server.next(appServerJson)) {
                 is AppServerIncoming.Received -> read.document
                 is AppServerIncoming.Rejected -> error("app-server read rejected: ${read.failure}")
+            }
+            if (incoming.method == "mcpServer/startupStatus/updated") {
+                inheritedMcpStartupObserved = true
             }
             if (incoming.id?.toString() == requestId.toString() && incoming.method == null) {
                 check(incoming.error == null) { "app-server RPC error: ${incoming.error}" }
@@ -354,33 +386,4 @@ internal class CodexAppServerSpike(
     private fun send(server: AppServerJsonlSession, document: String) {
         check(server.send(document) == null) { "app-server write rejected" }
     }
-}
-
-private fun CodexDynamicToolsPathEvidenceDocument.isGoAgainst(
-    comparison: CodexCliComparisonEvidenceDocument,
-): Boolean = completed &&
-    model == comparison.model &&
-    toolSearchCalls == 1 &&
-    dynamicToolCalls == 2 &&
-    malformedInvocations == 0 &&
-    correctiveInvocations == 0 &&
-    deferredDiscoveryObserved &&
-    !fullDeferredSchemasPresentBeforeDiscovery &&
-    selectorRoundTripUnchanged &&
-    !commandExecutionObserved &&
-    !kastProcessExecutionObserved &&
-    correctRelationResult &&
-    !relationRejected &&
-    finalAnswerNamesReturnedCallers &&
-    comparison.completed &&
-    comparison.kastCommandCount > 0 &&
-    (
-        correctiveInvocations < comparison.correctiveCommands ||
-            modelToolTurns < comparison.modelToolTurns
-        )
-
-fun main(args: Array<String>) {
-    require(args.size == 1) { "expected evidence output path" }
-    val root = Path.of(".").toAbsolutePath().normalize()
-    CodexAppServerSpike(root, Path.of(args.single()).toAbsolutePath().normalize()).run()
 }

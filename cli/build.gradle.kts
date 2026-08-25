@@ -95,14 +95,20 @@ val nativeTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.named("test"))
 }
 
-val codexDynamicToolsSpike by tasks.registering(JavaExec::class) {
-    description = "Runs the disposable Codex app-server dynamic-tools spike."
+val codexEvaluationRequest = providers.gradleProperty("kastCodexEvaluationRequest")
+val codexEvaluationEvidence = providers.gradleProperty("kastCodexEvaluationEvidence")
+
+val codexAppServerEvaluation by tasks.registering(JavaExec::class) {
+    description = "Runs one configured Codex app-server dynamic-tools evaluation."
     group = "verification"
     classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.amichne.kast.cli.codex.CodexAppServerSpikeKt"
+    mainClass = "io.github.amichne.kast.cli.codex.CodexAppServerEvaluationKt"
     workingDir = rootProject.projectDir
     dependsOn(tasks.named("testClasses"))
-    args(providers.gradleProperty("kastCodexSpikeEvidence").get())
+    inputs.file(codexEvaluationRequest)
+    outputs.file(codexEvaluationEvidence)
+    outputs.upToDateWhen { false }
+    args(codexEvaluationRequest.get(), codexEvaluationEvidence.get())
 }
 
 tasks.named("check") {

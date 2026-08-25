@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "mode": "dynamic-only",
+  "workspaceRoot": "/absolute/path/to/approved/repository",
+  "symbolQuery": "EnterpriseService",
+  "expectedCallerNames": [
+    "createEnterpriseService"
+  ]
+}

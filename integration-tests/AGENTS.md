@@ -4,6 +4,11 @@ This directory owns installed-product acceptance against staged distributions an
 process boundaries. Tests here may create isolated temporary workspaces and runtime stores; they
 must not depend on developer checkout state or control a foreground IDE.
 
+`codex-app-server-evaluation/` separately owns the operator-invoked, pre-production enterprise
+evaluation for Codex dynamic tools. It may install the current checkout and target an explicitly
+approved external repository, but it must not become part of deterministic `enterpriseAcceptance`
+or CI because it requires Codex authentication and a live model turn.
+
 ## Invariants
 
 - Exercise only the staged public executable and its documented environment boundaries.
@@ -20,3 +25,5 @@ must not depend on developer checkout state or control a foreground IDE.
 1. Run `./gradlew enterpriseAcceptance` after enterprise fixture or topology lifecycle changes.
 2. Run the owning installed-product shell contract after CLI or distribution changes.
 3. Run `./gradlew build` after packaging changes.
+4. Run the focused Python tests and one retained dynamic-only evaluation after changing the Codex
+   App Server evaluation path.

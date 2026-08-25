@@ -1,22 +1,59 @@
 package io.github.amichne.kast.cli.codex
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CodexDynamicToolWorkflowTest {
     @Test
     fun `shared prompt explicitly permits one-search same-program chaining`() {
-        val prompt = CodexSpikeWorkflowPrompt.text
+        val prompt = CodexEvaluationWorkflowPrompt.forSymbol("EnterpriseService")
 
+        assertTrue(prompt.contains("EnterpriseService"))
         assertTrue(prompt.contains("ALL_TOOLS exactly once"))
         assertTrue(prompt.contains("one exec program"))
-        assertTrue(prompt.contains("retain its returned JSON"))
+        assertTrue(prompt.contains("retain that parsed Kast document"))
+        assertTrue(prompt.contains("const resolved = JSON.parse(await tools.kast__symbol_resolve"))
+        assertTrue(prompt.contains("const selector = resolved.body.result.symbol.selector"))
         assertTrue(prompt.contains("pass that exact selector"))
         assertTrue(prompt.contains("Do not call symbol_resolve again"))
-        assertTrue(prompt.contains("Do not inspect their wrappers"))
+        assertTrue(prompt.contains("Do not inspect their implementations"))
         assertTrue(prompt.contains("or use web, filesystem, shell, CLI, MCP, or another tool"))
         assertTrue(prompt.contains("{exactSelector:selector, relation:\"callers\"}"))
         assertTrue(prompt.contains("Otherwise, use the public kast CLI"))
+    }
+
+    @Test
+    fun `workflow prompt JSON quotes the configured symbol query`() {
+        val prompt = CodexEvaluationWorkflowPrompt.forSymbol("Enterprise\"Service")
+
+        assertTrue(prompt.contains("{query:\"Enterprise\\\"Service\"}"))
+        assertFalse(prompt.contains("{query:\"Enterprise\"Service\"}"))
+    }
+
+    @Test
+    fun `versioned request preserves safe mode and expected callers`() {
+        val document = CodexAppServerEvaluationRequestDocument(
+            schemaVersion = 1,
+            mode = CodexAppServerEvaluationModeDocument.DYNAMIC_ONLY,
+            workspaceRoot = "/enterprise/repository",
+            symbolQuery = "EnterpriseService",
+            expectedCallerNames = listOf("createEnterpriseService"),
+            model = "gpt-enterprise-test",
+        )
+
+        val encoded = Json.encodeToString(document)
+        val decoded = Json.decodeFromString(
+            CodexAppServerEvaluationRequestDocument.serializer(),
+            encoded,
+        )
+
+        assertEquals(document, decoded)
+        assertEquals(CodexAppServerEvaluationModeDocument.DYNAMIC_ONLY, decoded.mode)
     }
 
     @Test
@@ -31,4 +68,32 @@ class CodexDynamicToolWorkflowTest {
         assertTrue(descriptions.contains("retain"))
         assertTrue(descriptions.contains("without resolving again"))
     }
+
+    @Test
+    fun `App Server command suppresses every inherited capability source`() {
+        val command = CodexAppServerLaunchCommand.create(
+            AppServerToolAccess.DYNAMIC_TOOLS_ONLY,
+            listOf(
+                admittedMcpName("intellij-index"),
+                admittedMcpName("node_repl"),
+            ),
+        )
+
+        assertTrue(command.containsAll(listOf("--disable", "apps")))
+        assertTrue(command.containsAll(listOf("--disable", "enable_mcp_apps")))
+        assertTrue(command.containsAll(listOf("--disable", "shell_tool")))
+        assertTrue(command.contains("mcp_servers.intellij-index.enabled=false"))
+        assertTrue(command.contains("mcp_servers.node_repl.enabled=false"))
+        assertFalse(command.contains("mcp_servers={}"))
+        assertInstanceOf(
+            CodexMcpServerNameAdmission.Rejected::class.java,
+            CodexMcpServerName.admit("not\u00a0a\u00a0bare\u00a0key"),
+        )
+    }
+
+    private fun admittedMcpName(raw: String): CodexMcpServerName =
+        assertInstanceOf(
+            CodexMcpServerNameAdmission.Admitted::class.java,
+            CodexMcpServerName.admit(raw),
+        ).name
 }
