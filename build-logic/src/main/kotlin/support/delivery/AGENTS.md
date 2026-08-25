@@ -16,6 +16,8 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
   canonical JSON admission, and finite projection failures.
 - `tasks/projection/` owns the bounded KVP-005 generation, verification, negative-fixture, and proof
   report effects.
+- `model/DeliveryGateGraph.kt` owns KVP-006's exact gate-input, unique-output, and registered-task
+  bijection. `tasks/receipt/DeliveryGateGraphTasks.kt` owns its generated proof reports.
 - `tasks/DeliveryTaskBoundaries.kt` owns process-free Git observation, bounded source reads, SHA-256 observation, atomic writes, and Gradle failure rendering.
 - `tasks/ProgramAuthorityJsonBoundary.kt` owns generated serializers for closed authority documents.
 - `tasks/ProgramAuthorityTasks.kt` owns authority generation and GREEN verification. Generation
@@ -57,5 +59,6 @@ M0 delivery model writes belong under `model/`; focused tests remain under the d
 ./gradlew verifyKVP003CompletionReceipt
 ./gradlew verifyKVP004CompletionReceipt
 ./gradlew verifyKVP005CompletionReceipt
+./gradlew verifyKastVfsPassiveGateGraphNegative verifyKastVfsPassiveGateGraph
 scripts/verify_bundle.sh
 ```

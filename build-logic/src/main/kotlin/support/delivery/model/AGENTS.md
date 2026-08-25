@@ -17,5 +17,8 @@ Expected authority failure stays in closed sealed data. Raw strings may reappear
 documents, and closed admission result. Generic JSON traversal is restricted to applying those
 schema documents at the projection boundary.
 
+`DeliveryGateGraph.kt` owns the KVP-006 bijection between the 129 typed gates and program-derived
+Gradle receipt-task names, including exact predecessor inputs and unique receipt outputs.
+
 Run `DeliveryReceiptTest` plus the focused authority admission and generation tests named by the
 parent guide after changing these types.

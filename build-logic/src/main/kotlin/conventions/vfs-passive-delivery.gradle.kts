@@ -7,9 +7,13 @@ import support.delivery.DeterministicProgramProjection
 import support.delivery.ProjectionArtifactId
 import support.delivery.VerifyDeliveryProjectionsTask
 import support.delivery.VerifyDeliveryProjectionsNegativeTask
+import support.delivery.VerifyDeliveryGateGraphNegativeTask
+import support.delivery.VerifyDeliveryGateGraphTask
 import support.delivery.VerifyKastVfsPassiveAuthorityNegativeTask
 import support.delivery.VerifyKastVfsPassiveAuthorityTask
 import support.delivery.registerDeliveryReceiptProgression
+import support.delivery.GradleGateTaskNameRefinement
+import support.delivery.refineGradleGateTaskName
 
 plugins { base }
 
@@ -119,6 +123,9 @@ program.program.tasks.sortedBy { it.id }.filterNot {
     val greenReceipt = receiptDirectory.map {
         it.file("${node.green.gateId}-RECEIPT.receipt.json")
     }
+    val completionReceipt = receiptDirectory.map {
+        it.file("${node.id.value}-COMPLETE.receipt.json")
+    }
     tasks.register("record${node.id.value.replace("-", "")}RedReceipt") {
         group = "verification"
         dependsOn(node.red.command.removePrefix("./gradlew ").split(' '))
@@ -142,6 +149,40 @@ program.program.tasks.sortedBy { it.id }.filterNot {
         outputs.file(greenReceipt)
         doLast { error("Typed recorder required before writing ${greenReceipt.get().asFile}") }
     }
+    tasks.register("derive${node.id.value.replace("-", "")}Completion") {
+        group = "verification"
+        inputs.file(checkedInProgramProjectionFile)
+        inputs.file(checkedInRequirementTraceFile)
+        inputs.file(redReceipt)
+        inputs.file(greenReceipt)
+        node.dependencies.taskIds.forEach { dep ->
+            inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
+        }
+        outputs.file(completionReceipt)
+        doLast { error("Typed completion deriver required before writing ${completionReceipt.get().asFile}") }
+    }
+}
+
+private val registeredGateTaskNames = program.program.gates.map { gate ->
+    when (val refined = refineGradleGateTaskName(gate)) {
+        is GradleGateTaskNameRefinement.Refined -> refined.name.value
+        is GradleGateTaskNameRefinement.Rejected -> error(
+            "unsupported gate registration: ${refined.failure}",
+        )
+    }
+}.sorted()
+registeredGateTaskNames.forEach { tasks.named(it) }
+
+tasks.register<VerifyDeliveryGateGraphNegativeTask>("verifyKastVfsPassiveGateGraphNegative") {
+    group = "verification"
+    registeredTaskNames.set(registeredGateTaskNames)
+    reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-006-gradle-gates-negative.json"))
+}
+
+tasks.register<VerifyDeliveryGateGraphTask>("verifyKastVfsPassiveGateGraph") {
+    group = "verification"
+    registeredTaskNames.set(registeredGateTaskNames)
+    reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-006-gradle-gates.json"))
 }
 
 tasks.register("deriveKastVfsPassiveState") {

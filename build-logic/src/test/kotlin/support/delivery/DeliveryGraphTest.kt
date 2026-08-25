@@ -148,3 +148,33 @@ class DeliveryGraphTest {
 
     private fun expectedKvp003RejectedCases() = Kvp003RejectedCase.entries.toSet()
 }
+
+class DeliveryGateGraphTest {
+    private val program = KastVfsPassiveReusedIndexProgram.validated.program
+    private val registeredNames = program.gates.mapTo(mutableSetOf()) { gate ->
+        assertInstanceOf(
+            GradleGateTaskNameRefinement.Refined::class.java,
+            refineGradleGateTaskName(gate),
+        ).name.value
+    }
+
+    @Test fun `canonical gates and Gradle tasks admit bijectively`() {
+        val admitted = assertInstanceOf(
+            DeliveryGateGraphAdmission.Admitted::class.java,
+            admitDeliveryGateGraph(program, registeredNames),
+        ).graph
+
+        assertEquals(129, admitted.gates.size)
+        assertEquals(129, admitted.registeredTasks.size)
+        assertEquals(129, admitted.gates.map { it.outputReceiptId }.toSet().size)
+    }
+
+    @Test fun `missing registered gate task rejects as finite failure`() {
+        assertEquals(
+            DeliveryGateGraphAdmission.Rejected(
+                DeliveryGateGraphFailure.REGISTERED_TASK_MISSING,
+            ),
+            admitDeliveryGateGraph(program, registeredNames - registeredNames.sorted().first()),
+        )
+    }
+}
