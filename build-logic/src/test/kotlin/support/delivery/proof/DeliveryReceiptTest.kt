@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
-class DeliveryProofTest {
+internal class DeliveryProofTest {
     @Test
     fun `exact receipt refines to admitted proof`() {
         val expectation = expectation()
@@ -207,7 +207,7 @@ class DeliveryProofTest {
     }
 }
 
-class DeliveryProofNegativeTest {
+internal class DeliveryProofNegativeTest {
     @Test
     fun `every bound receipt mutation rejects with its exact finite failure`() {
         val proof = assertInstanceOf(

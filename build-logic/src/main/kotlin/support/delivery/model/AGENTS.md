@@ -21,5 +21,9 @@ schema documents at the projection boundary.
 `DeliveryGateGraph.kt` owns the KVP-006 bijection between the 129 typed gates and program-derived
 Gradle receipt-task names, including exact predecessor inputs and unique receipt outputs.
 
+`DeliveryState.kt` owns KVP-008's pure admitted-completion fold. It derives closed task and
+requirement states, the deterministic critical path, and an unconstructable terminal proof only for
+the complete one-head closure.
+
 Run `DeliveryProofNegativeTest` and `DeliveryProofTest` plus the focused authority admission and
 generation tests named by the parent guide after changing these types.
