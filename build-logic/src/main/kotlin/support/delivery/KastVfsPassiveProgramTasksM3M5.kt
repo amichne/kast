@@ -13,7 +13,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-026-RED", "./gradlew :cli:test --tests \"*IdeEndpointAdmissionNegativeTest\"", "Wrong root, build, schema, PID, runtime, capability, or unreachable endpoint is admitted."),
                 green = ProofCommand("KVP-026-GREEN", "./gradlew :cli:test --tests \"*IdeEndpointAdmissionTest\"", "Only one compatible exact-root endpoint yields dispatch capability."),
                 reviewBoundary = "CLI endpoint admission only.",
-                completionReceipt = CompletionReceiptContract("KVP-026-COMPLETE", setOf("KVP-026-RED", "KVP-026-GREEN"), setOf("KVP-007-COMPLETE", "KVP-013-COMPLETE", "KVP-024-COMPLETE"), "gradle/delivery/receipts/KVP-026-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-026-COMPLETE", setOf("KVP-026-RED", "KVP-026-GREEN"), setOf("KVP-007-COMPLETE", "KVP-013-COMPLETE", "KVP-024-COMPLETE"), "build/reports/delivery/receipts/KVP-026-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-008"), RequirementId("KVP-REQ-017"), RequirementId("KVP-REQ-018")), authorities = setOf(AuthorityId("CLI_ENDPOINT_ADMISSION")),
             ),
             TaskNode(
@@ -28,7 +28,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-027-RED", "./gradlew :cli:verifyNoDefaultRuntimeFallbackNegative", "Injected runtime acquisition or process start remains reachable."),
                 green = ProofCommand("KVP-027-GREEN", "./gradlew :cli:test :cli:verifyNoDefaultRuntimeFallback", "Missing plugin or endpoint rejects directly and zero fallback code is reachable."),
                 reviewBoundary = "Default composition only; explicit legacy fixtures may remain until release retirement.",
-                completionReceipt = CompletionReceiptContract("KVP-027-COMPLETE", setOf("KVP-027-RED", "KVP-027-GREEN"), setOf("KVP-026-COMPLETE"), "gradle/delivery/receipts/KVP-027-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-027-COMPLETE", setOf("KVP-027-RED", "KVP-027-GREEN"), setOf("KVP-026-COMPLETE"), "build/reports/delivery/receipts/KVP-027-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-006"), RequirementId("KVP-REQ-008"), RequirementId("KVP-REQ-018")), authorities = setOf(AuthorityId("CLI_ENDPOINT_ADMISSION")),
             ),
             TaskNode(
@@ -43,7 +43,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-028-RED", "./gradlew ideHostedWorkspaceInspectNegativeProof", "Inspect can repair missing state or report isolated host authority."),
                 green = ProofCommand("KVP-028-GREEN", "./gradlew ideHostedWorkspaceInspectAcceptance", "Inspect reports IDE_PROJECT host, exact root, capabilities, and current epoch without stronger work."),
                 reviewBoundary = "Only workspace.inspect routing.",
-                completionReceipt = CompletionReceiptContract("KVP-028-COMPLETE", setOf("KVP-028-RED", "KVP-028-GREEN"), setOf("KVP-023-COMPLETE", "KVP-026-COMPLETE"), "gradle/delivery/receipts/KVP-028-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-028-COMPLETE", setOf("KVP-028-RED", "KVP-028-GREEN"), setOf("KVP-023-COMPLETE", "KVP-026-COMPLETE"), "build/reports/delivery/receipts/KVP-028-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-005"), RequirementId("KVP-REQ-006"), RequirementId("KVP-REQ-009"), RequirementId("KVP-REQ-011")), authorities = setOf(AuthorityId("READ_RUNTIME")),
             ),
             TaskNode(
@@ -58,7 +58,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-029-RED", "./gradlew ideHostedSymbolDiscoverNegativeProof", "Collision, dumb transition, bound, cancellation, or movement can appear complete."),
                 green = ProofCommand("KVP-029-GREEN", "./gradlew ideHostedSymbolDiscoverAcceptance", "Native discovery is bounded, exact-scope, cancellable, detached, and VFS-passive."),
                 reviewBoundary = "Only symbol.discover routing.",
-                completionReceipt = CompletionReceiptContract("KVP-029-COMPLETE", setOf("KVP-029-RED", "KVP-029-GREEN"), setOf("KVP-021-COMPLETE", "KVP-023-COMPLETE", "KVP-028-COMPLETE"), "gradle/delivery/receipts/KVP-029-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-029-COMPLETE", setOf("KVP-029-RED", "KVP-029-GREEN"), setOf("KVP-021-COMPLETE", "KVP-023-COMPLETE", "KVP-028-COMPLETE"), "build/reports/delivery/receipts/KVP-029-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-005"), RequirementId("KVP-REQ-009"), RequirementId("KVP-REQ-011"), RequirementId("KVP-REQ-012"), RequirementId("KVP-REQ-013")), authorities = setOf(AuthorityId("SYMBOL_IDENTITY"), AuthorityId("READ_RUNTIME")),
             ),
             TaskNode(
@@ -73,7 +73,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-030-RED", "./gradlew ideHostedSymbolResolveNegativeProof", "Same-name or overload fixtures can misselect or stale candidates remain valid."),
                 green = ProofCommand("KVP-030-GREEN", "./gradlew ideHostedSymbolResolveAcceptance", "Every admitted candidate resolves to the same declaration or one closed failure."),
                 reviewBoundary = "Only symbol.resolve routing.",
-                completionReceipt = CompletionReceiptContract("KVP-030-COMPLETE", setOf("KVP-030-RED", "KVP-030-GREEN"), setOf("KVP-029-COMPLETE"), "gradle/delivery/receipts/KVP-030-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-030-COMPLETE", setOf("KVP-030-RED", "KVP-030-GREEN"), setOf("KVP-029-COMPLETE"), "build/reports/delivery/receipts/KVP-030-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-009"), RequirementId("KVP-REQ-010"), RequirementId("KVP-REQ-015")), authorities = setOf(AuthorityId("SYMBOL_IDENTITY"), AuthorityId("READ_RUNTIME")),
             ),
             TaskNode(
@@ -88,7 +88,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-031-RED", "./gradlew ideHostedSymbolDescribeNegativeProof", "Selector round-trip can change declaration or live PSI escapes."),
                 green = ProofCommand("KVP-031-GREEN", "./gradlew ideHostedSymbolDescribeAcceptance", "discover to resolve to describe preserves exact declaration and rejects movement."),
                 reviewBoundary = "Only symbol.describe routing.",
-                completionReceipt = CompletionReceiptContract("KVP-031-COMPLETE", setOf("KVP-031-RED", "KVP-031-GREEN"), setOf("KVP-030-COMPLETE"), "gradle/delivery/receipts/KVP-031-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-031-COMPLETE", setOf("KVP-031-RED", "KVP-031-GREEN"), setOf("KVP-030-COMPLETE"), "build/reports/delivery/receipts/KVP-031-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-009"), RequirementId("KVP-REQ-010"), RequirementId("KVP-REQ-012"), RequirementId("KVP-REQ-015")), authorities = setOf(AuthorityId("SYMBOL_IDENTITY"), AuthorityId("READ_RUNTIME")),
             ),
             TaskNode(
@@ -103,7 +103,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-032-RED", "./gradlew verifyVfsPassiveReadNegative", "Injected forbidden call or classpath edge is not rejected."),
                 green = ProofCommand("KVP-032-GREEN", "./gradlew verifyVfsPassiveRead verifyKastModuleGraph verifyForbiddenEffects", "The complete hosted read graph has no forbidden effect path."),
                 reviewBoundary = "Static policy and negative fixtures only.",
-                completionReceipt = CompletionReceiptContract("KVP-032-COMPLETE", setOf("KVP-032-RED", "KVP-032-GREEN"), setOf("KVP-009-COMPLETE", "KVP-023-COMPLETE", "KVP-027-COMPLETE", "KVP-031-COMPLETE"), "gradle/delivery/receipts/KVP-032-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-032-COMPLETE", setOf("KVP-032-RED", "KVP-032-GREEN"), setOf("KVP-009-COMPLETE", "KVP-023-COMPLETE", "KVP-027-COMPLETE", "KVP-031-COMPLETE"), "build/reports/delivery/receipts/KVP-032-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-006"), RequirementId("KVP-REQ-011"), RequirementId("KVP-REQ-014"), RequirementId("KVP-REQ-016"), RequirementId("KVP-REQ-027")), authorities = setOf(AuthorityId("DELIVERY_PROGRAM")),
             ),
             TaskNode(
@@ -118,7 +118,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-033-RED", "./gradlew ideHostedVfsSafetyNegativeProof", "Injected refresh, import, walk, blocking read, listener work, concurrent read, or stale acceptance is detected."),
                 green = ProofCommand("KVP-033-GREEN", "./gradlew ideHostedVfsSafetyAcceptance", "All prohibited counts are zero, concurrency is bounded, cancellations propagate, and stale results reject."),
                 reviewBoundary = "Dynamic safety fixtures and instrumentation only.",
-                completionReceipt = CompletionReceiptContract("KVP-033-COMPLETE", setOf("KVP-033-RED", "KVP-033-GREEN"), setOf("KVP-022-COMPLETE", "KVP-025-COMPLETE", "KVP-031-COMPLETE", "KVP-032-COMPLETE"), "gradle/delivery/receipts/KVP-033-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-033-COMPLETE", setOf("KVP-033-RED", "KVP-033-GREEN"), setOf("KVP-022-COMPLETE", "KVP-025-COMPLETE", "KVP-031-COMPLETE", "KVP-032-COMPLETE"), "build/reports/delivery/receipts/KVP-033-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-006"), RequirementId("KVP-REQ-011"), RequirementId("KVP-REQ-012"), RequirementId("KVP-REQ-013"), RequirementId("KVP-REQ-014"), RequirementId("KVP-REQ-015"), RequirementId("KVP-REQ-019"), RequirementId("KVP-REQ-027")), authorities = setOf(AuthorityId("INSTALLED_ACCEPTANCE")),
             ),
             TaskNode(
@@ -133,7 +133,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-034-RED", "./gradlew ideHostedInstalledNegativeProof", "Each injected second process, open, import, refresh, runtime read, misselection, or stale endpoint is detected."),
                 green = ProofCommand("KVP-034-GREEN", "./gradlew ideHostedInstalledExactReadAcceptance", "The installed journey proves the exact best-case reused-index path with direct counters."),
                 reviewBoundary = "Installed acceptance harness only.",
-                completionReceipt = CompletionReceiptContract("KVP-034-COMPLETE", setOf("KVP-034-RED", "KVP-034-GREEN"), setOf("KVP-027-COMPLETE", "KVP-031-COMPLETE", "KVP-033-COMPLETE"), "gradle/delivery/receipts/KVP-034-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-034-COMPLETE", setOf("KVP-034-RED", "KVP-034-GREEN"), setOf("KVP-027-COMPLETE", "KVP-031-COMPLETE", "KVP-033-COMPLETE"), "build/reports/delivery/receipts/KVP-034-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-005"), RequirementId("KVP-REQ-006"), RequirementId("KVP-REQ-008"), RequirementId("KVP-REQ-009"), RequirementId("KVP-REQ-010"), RequirementId("KVP-REQ-011"), RequirementId("KVP-REQ-012"), RequirementId("KVP-REQ-013"), RequirementId("KVP-REQ-014"), RequirementId("KVP-REQ-015"), RequirementId("KVP-REQ-017"), RequirementId("KVP-REQ-019"), RequirementId("KVP-REQ-020"), RequirementId("KVP-REQ-027")), authorities = setOf(AuthorityId("INSTALLED_ACCEPTANCE")),
             ),
             TaskNode(
@@ -148,7 +148,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-035-RED", "./gradlew verifyIdeHostedReleaseNegative", "Injected runtime asset, platform payload, version mismatch, or size excess is not rejected."),
                 green = ProofCommand("KVP-035-GREEN", "./gradlew assembleIdeHostedRelease verifyIdeHostedRelease", "Release contains exactly two matched assets and stays at or below 80 MiB."),
                 reviewBoundary = "Release assembly and validation only.",
-                completionReceipt = CompletionReceiptContract("KVP-035-COMPLETE", setOf("KVP-035-RED", "KVP-035-GREEN"), setOf("KVP-011-COMPLETE", "KVP-034-COMPLETE"), "gradle/delivery/receipts/KVP-035-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-035-COMPLETE", setOf("KVP-035-RED", "KVP-035-GREEN"), setOf("KVP-011-COMPLETE", "KVP-034-COMPLETE"), "build/reports/delivery/receipts/KVP-035-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-007"), RequirementId("KVP-REQ-021")), authorities = setOf(AuthorityId("DEFAULT_DISTRIBUTION")),
             ),
             TaskNode(
@@ -163,7 +163,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-036-RED", "./gradlew verifyNoDefaultIsolatedRuntimeNegative", "Any installer, manifest, release, CLI, or automatic runtime path remains reachable."),
                 green = ProofCommand("KVP-036-GREEN", "./gradlew verifyNoDefaultIsolatedRuntime verifyIdeHostedRelease", "Default installation and release have no isolated runtime authority or payload."),
                 reviewBoundary = "Default product path only; explicit non-default fixture may remain labeled and unreachable.",
-                completionReceipt = CompletionReceiptContract("KVP-036-COMPLETE", setOf("KVP-036-RED", "KVP-036-GREEN"), setOf("KVP-027-COMPLETE", "KVP-035-COMPLETE"), "gradle/delivery/receipts/KVP-036-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-036-COMPLETE", setOf("KVP-036-RED", "KVP-036-GREEN"), setOf("KVP-027-COMPLETE", "KVP-035-COMPLETE"), "build/reports/delivery/receipts/KVP-036-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-006"), RequirementId("KVP-REQ-007"), RequirementId("KVP-REQ-008"), RequirementId("KVP-REQ-021")), authorities = setOf(AuthorityId("DEFAULT_DISTRIBUTION")),
             ),
             TaskNode(
@@ -178,7 +178,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-037-RED", "./gradlew ideHostedFailureMatrixNegative", "One corruption or unsupported state escapes admission or reaches semantic dispatch."),
                 green = ProofCommand("KVP-037-GREEN", "./gradlew ideHostedFailureMatrixAcceptance", "Every state maps to one closed failure and all owned lifecycle artifacts retire safely."),
                 reviewBoundary = "Failure and corruption fixtures only.",
-                completionReceipt = CompletionReceiptContract("KVP-037-COMPLETE", setOf("KVP-037-RED", "KVP-037-GREEN"), setOf("KVP-025-COMPLETE", "KVP-026-COMPLETE", "KVP-027-COMPLETE", "KVP-031-COMPLETE", "KVP-036-COMPLETE"), "gradle/delivery/receipts/KVP-037-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-037-COMPLETE", setOf("KVP-037-RED", "KVP-037-GREEN"), setOf("KVP-025-COMPLETE", "KVP-026-COMPLETE", "KVP-027-COMPLETE", "KVP-031-COMPLETE", "KVP-036-COMPLETE"), "build/reports/delivery/receipts/KVP-037-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-008"), RequirementId("KVP-REQ-017"), RequirementId("KVP-REQ-018"), RequirementId("KVP-REQ-019"), RequirementId("KVP-REQ-020")), authorities = setOf(AuthorityId("INSTALLED_ACCEPTANCE")),
             ),
             TaskNode(
@@ -193,7 +193,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-038-RED", "./gradlew cleanCheckoutNegativeProof", "A changed untracked input or stale generated artifact can pass."),
                 green = ProofCommand("KVP-038-GREEN", "./gradlew ideHostedCleanCheckoutAcceptance", "A detached exact-head checkout regenerates identical projections and passes all required gates."),
                 reviewBoundary = "Clean-checkout harness only.",
-                completionReceipt = CompletionReceiptContract("KVP-038-COMPLETE", setOf("KVP-038-RED", "KVP-038-GREEN"), setOf("KVP-008-COMPLETE", "KVP-036-COMPLETE", "KVP-037-COMPLETE"), "gradle/delivery/receipts/KVP-038-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-038-COMPLETE", setOf("KVP-038-RED", "KVP-038-GREEN"), setOf("KVP-008-COMPLETE", "KVP-036-COMPLETE", "KVP-037-COMPLETE"), "build/reports/delivery/receipts/KVP-038-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-003"), RequirementId("KVP-REQ-004"), RequirementId("KVP-REQ-022"), RequirementId("KVP-REQ-026")), authorities = setOf(AuthorityId("PROOF_RECEIPT")),
             ),
             TaskNode(
@@ -208,7 +208,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-039-RED", "./gradlew exactHeadCiNegativeProof", "A receipt from a parent, merge commit, or changed command can satisfy the required check."),
                 green = ProofCommand("KVP-039-GREEN", "./gradlew verifyExactHeadCiContract", "Required CI joins only exact-head admitted receipts."),
                 reviewBoundary = "CI workflow and contract tests only.",
-                completionReceipt = CompletionReceiptContract("KVP-039-COMPLETE", setOf("KVP-039-RED", "KVP-039-GREEN"), setOf("KVP-038-COMPLETE"), "gradle/delivery/receipts/KVP-039-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-039-COMPLETE", setOf("KVP-039-RED", "KVP-039-GREEN"), setOf("KVP-038-COMPLETE"), "build/reports/delivery/receipts/KVP-039-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-004"), RequirementId("KVP-REQ-022"), RequirementId("KVP-REQ-023")), authorities = setOf(AuthorityId("PROOF_RECEIPT")),
             ),
             TaskNode(
@@ -223,13 +223,13 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-040-RED", "./gradlew finalReviewNegativeProof", "Injected forbidden path, stale receipt, or unsupported claim is not found."),
                 green = ProofCommand("KVP-040-GREEN", "./gradlew ideHostedFinalDiffReview", "Review covers the exact diff and emits a complete structured finding set."),
                 reviewBoundary = "Review outputs only; no implementation edits.",
-                completionReceipt = CompletionReceiptContract("KVP-040-COMPLETE", setOf("KVP-040-RED", "KVP-040-GREEN"), setOf("KVP-039-COMPLETE"), "gradle/delivery/receipts/KVP-040-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-040-COMPLETE", setOf("KVP-040-RED", "KVP-040-GREEN"), setOf("KVP-039-COMPLETE"), "build/reports/delivery/receipts/KVP-040-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-024")), authorities = setOf(AuthorityId("PROOF_RECEIPT")),
             ),
             TaskNode(
                 id = TaskId("KVP-041"), title = "Resolve every valid review finding and rerun affected gates", goal = "Apply only valid review corrections, record finding disposition, invalidate affected receipts, and rerun every dependent gate at the new exact head.", milestone = "M5",
                 dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-040"))),
-                allowedReads = listOf("build/reports/ide-hosted/final-review.json", "repository paths named by findings", "gradle/delivery/receipts"), allowedWrites = listOf("repository paths named by valid findings", "build/reports/ide-hosted/review-resolution.json", "gradle/delivery/receipts"),
+                allowedReads = listOf("build/reports/ide-hosted/final-review.json", "repository paths named by findings", "build/reports/delivery/receipts"), allowedWrites = listOf("repository paths named by valid findings", "build/reports/ide-hosted/review-resolution.json", "build/reports/delivery/receipts"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.040.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-004", "kind" to "requirement"), mapOf("id" to "KVP-REQ-024", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.041.proof", "PROOF_ARTIFACT", "build/reports/ide-hosted/KVP-041-review-resolution.json", "Every valid finding is resolved and all invalidated gates are rerun at one exact head.")),
                 publicInterface = "ReviewResolutionReceipt", internalImplementation = "Finding-to-edit-to-rerun trace with no unresolved valid finding.",
@@ -238,13 +238,13 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-041-RED", "./gradlew reviewResolutionNegativeProof", "An unresolved valid finding or stale dependent receipt can pass."),
                 green = ProofCommand("KVP-041-GREEN", "./gradlew ideHostedReviewResolution", "Every valid finding is resolved and all invalidated gates are rerun at one exact head."),
                 reviewBoundary = "Only paths required by valid findings and proof artifacts.",
-                completionReceipt = CompletionReceiptContract("KVP-041-COMPLETE", setOf("KVP-041-RED", "KVP-041-GREEN"), setOf("KVP-040-COMPLETE"), "gradle/delivery/receipts/KVP-041-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-041-COMPLETE", setOf("KVP-041-RED", "KVP-041-GREEN"), setOf("KVP-040-COMPLETE"), "build/reports/delivery/receipts/KVP-041-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-004"), RequirementId("KVP-REQ-024")), authorities = setOf(AuthorityId("PROOF_RECEIPT")),
             ),
             TaskNode(
                 id = TaskId("KVP-042"), title = "Revalidate every original requirement point by point", goal = "Map each requirement to implementation location, enforcement mechanism, verification command, admitted evidence, and PASS; reject missing, qualified, or unsupported claims.", milestone = "M5",
                 dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-001"), TaskId("KVP-041"))),
-                allowedReads = listOf("gradle/delivery/kast-vfs-passive-requirements.json", "gradle/delivery/receipts", "build/reports/ide-hosted", KastVfsPassiveReusedIndexProgram.persistedGoalSourcePath.value), allowedWrites = listOf("build/reports/ide-hosted/specification-revalidation.json", "docs/plans/kast-vfs-passive-revalidation.md"),
+                allowedReads = listOf("gradle/delivery/kast-vfs-passive-requirements.json", "build/reports/delivery/receipts", "build/reports/ide-hosted", KastVfsPassiveReusedIndexProgram.persistedGoalSourcePath.value), allowedWrites = listOf("build/reports/ide-hosted/specification-revalidation.json", "docs/plans/kast-vfs-passive-revalidation.md"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.001.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.041.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-001", "kind" to "requirement"), mapOf("id" to "KVP-REQ-002", "kind" to "requirement"), mapOf("id" to "KVP-REQ-003", "kind" to "requirement"), mapOf("id" to "KVP-REQ-004", "kind" to "requirement"), mapOf("id" to "KVP-REQ-005", "kind" to "requirement"), mapOf("id" to "KVP-REQ-006", "kind" to "requirement"), mapOf("id" to "KVP-REQ-007", "kind" to "requirement"), mapOf("id" to "KVP-REQ-008", "kind" to "requirement"), mapOf("id" to "KVP-REQ-009", "kind" to "requirement"), mapOf("id" to "KVP-REQ-010", "kind" to "requirement"), mapOf("id" to "KVP-REQ-011", "kind" to "requirement"), mapOf("id" to "KVP-REQ-012", "kind" to "requirement"), mapOf("id" to "KVP-REQ-013", "kind" to "requirement"), mapOf("id" to "KVP-REQ-014", "kind" to "requirement"), mapOf("id" to "KVP-REQ-015", "kind" to "requirement"), mapOf("id" to "KVP-REQ-016", "kind" to "requirement"), mapOf("id" to "KVP-REQ-017", "kind" to "requirement"), mapOf("id" to "KVP-REQ-018", "kind" to "requirement"), mapOf("id" to "KVP-REQ-019", "kind" to "requirement"), mapOf("id" to "KVP-REQ-020", "kind" to "requirement"), mapOf("id" to "KVP-REQ-021", "kind" to "requirement"), mapOf("id" to "KVP-REQ-022", "kind" to "requirement"), mapOf("id" to "KVP-REQ-023", "kind" to "requirement"), mapOf("id" to "KVP-REQ-024", "kind" to "requirement"), mapOf("id" to "KVP-REQ-025", "kind" to "requirement"), mapOf("id" to "KVP-REQ-026", "kind" to "requirement"), mapOf("id" to "KVP-REQ-027", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.042.proof", "PROOF_ARTIFACT", "build/reports/ide-hosted/KVP-042-revalidation.json", "Every original requirement has one exact-head PASS entry and evidence digest.")),
                 publicInterface = "RequirementRevalidationReceipt", internalImplementation = "Complete requirement-to-proof matrix over the exact final head.",
@@ -253,13 +253,13 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-042-RED", "./gradlew specificationRevalidationNegativeProof", "One omitted or qualified requirement can report success."),
                 green = ProofCommand("KVP-042-GREEN", "./gradlew ideHostedSpecificationRevalidation", "Every original requirement has one exact-head PASS entry and evidence digest."),
                 reviewBoundary = "Traceability and revalidation outputs only.",
-                completionReceipt = CompletionReceiptContract("KVP-042-COMPLETE", setOf("KVP-042-RED", "KVP-042-GREEN"), setOf("KVP-001-COMPLETE", "KVP-041-COMPLETE"), "gradle/delivery/receipts/KVP-042-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-042-COMPLETE", setOf("KVP-042-RED", "KVP-042-GREEN"), setOf("KVP-001-COMPLETE", "KVP-041-COMPLETE"), "build/reports/delivery/receipts/KVP-042-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-001"), RequirementId("KVP-REQ-002"), RequirementId("KVP-REQ-003"), RequirementId("KVP-REQ-004"), RequirementId("KVP-REQ-005"), RequirementId("KVP-REQ-006"), RequirementId("KVP-REQ-007"), RequirementId("KVP-REQ-008"), RequirementId("KVP-REQ-009"), RequirementId("KVP-REQ-010"), RequirementId("KVP-REQ-011"), RequirementId("KVP-REQ-012"), RequirementId("KVP-REQ-013"), RequirementId("KVP-REQ-014"), RequirementId("KVP-REQ-015"), RequirementId("KVP-REQ-016"), RequirementId("KVP-REQ-017"), RequirementId("KVP-REQ-018"), RequirementId("KVP-REQ-019"), RequirementId("KVP-REQ-020"), RequirementId("KVP-REQ-021"), RequirementId("KVP-REQ-022"), RequirementId("KVP-REQ-023"), RequirementId("KVP-REQ-024"), RequirementId("KVP-REQ-025"), RequirementId("KVP-REQ-026"), RequirementId("KVP-REQ-027")), authorities = setOf(AuthorityId("PROOF_RECEIPT")),
             ),
             TaskNode(
                 id = TaskId("KVP-043"), title = "Derive BestCaseVfsPassiveReusedIndex completion", goal = "Consume the full exact-head receipt closure and issue the sole terminal proof that Kast uses the existing IDE process, Project, VFS snapshot, native index, and exact selector path without second indexing or hidden repair.", milestone = "M5",
                 dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-008"), TaskId("KVP-034"), TaskId("KVP-036"), TaskId("KVP-037"), TaskId("KVP-038"), TaskId("KVP-039"), TaskId("KVP-041"), TaskId("KVP-042"))),
-                allowedReads = listOf("gradle/delivery/receipts", "build/reports/ide-hosted", "gradle/delivery/kast-vfs-passive-reused-index-program.json"), allowedWrites = listOf("build/reports/ide-hosted/best-case-vfs-passive-reused-index.receipt.json"),
+                allowedReads = listOf("build/reports/delivery/receipts", "build/reports/ide-hosted", "gradle/delivery/kast-vfs-passive-reused-index-program.json"), allowedWrites = listOf("build/reports/ide-hosted/best-case-vfs-passive-reused-index.receipt.json"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.008.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.034.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.036.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.037.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.038.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.039.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.041.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.042.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-004", "kind" to "requirement"), mapOf("id" to "KVP-REQ-020", "kind" to "requirement"), mapOf("id" to "KVP-REQ-023", "kind" to "requirement"), mapOf("id" to "KVP-REQ-024", "kind" to "requirement"), mapOf("id" to "KVP-REQ-025", "kind" to "requirement"), mapOf("id" to "KVP-REQ-026", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.043.proof", "PROOF_ARTIFACT", "build/reports/ide-hosted/KVP-043-terminal.json", "The exact terminal receipt derives only when every dependency, installed metric, review, and requirement proof passes at one head.")),
                 publicInterface = "BestCaseVfsPassiveReusedIndex", internalImplementation = "Derived terminal proof type; no constructor is exposed outside receipt admission.",
@@ -268,7 +268,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-043-RED", "./gradlew bestCaseVfsPassiveCompletionNegativeProof", "Any missing, stale, forged, qualified, or mismatched proof can derive completion."),
                 green = ProofCommand("KVP-043-GREEN", "./gradlew proveBestCaseVfsPassiveReusedIndex", "The exact terminal receipt derives only when every dependency, installed metric, review, and requirement proof passes at one head."),
                 reviewBoundary = "Terminal receipt only; no production edits.",
-                completionReceipt = CompletionReceiptContract("KVP-043-COMPLETE", setOf("KVP-043-RED", "KVP-043-GREEN"), setOf("KVP-008-COMPLETE", "KVP-034-COMPLETE", "KVP-036-COMPLETE", "KVP-037-COMPLETE", "KVP-038-COMPLETE", "KVP-039-COMPLETE", "KVP-041-COMPLETE", "KVP-042-COMPLETE"), "gradle/delivery/receipts/KVP-043-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-043-COMPLETE", setOf("KVP-043-RED", "KVP-043-GREEN"), setOf("KVP-008-COMPLETE", "KVP-034-COMPLETE", "KVP-036-COMPLETE", "KVP-037-COMPLETE", "KVP-038-COMPLETE", "KVP-039-COMPLETE", "KVP-041-COMPLETE", "KVP-042-COMPLETE"), "build/reports/delivery/receipts/KVP-043-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-004"), RequirementId("KVP-REQ-020"), RequirementId("KVP-REQ-023"), RequirementId("KVP-REQ-024"), RequirementId("KVP-REQ-025"), RequirementId("KVP-REQ-026")), authorities = setOf(AuthorityId("DELIVERY_PROGRAM"), AuthorityId("PROOF_RECEIPT"), AuthorityId("INSTALLED_ACCEPTANCE")),
             ),
 )

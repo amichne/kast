@@ -85,6 +85,16 @@ assert program["requirementFingerprint"] == "de2565f0efb71373758bcf89279f4dcc61f
 assert len(program["tasks"]) == 43
 assert len(program["gateGraph"]) == 129
 assert program["terminal"]["taskId"] == "KVP-043"
+for task in program["tasks"]:
+    expected_receipt_path = (
+        f"build/reports/delivery/receipts/{task['id']}-COMPLETE.receipt.json"
+    )
+    assert task["completionReceipt"]["outputPath"] == expected_receipt_path
+    assert all(
+        not path.startswith("gradle/delivery/receipts")
+        for path in task["allowedReads"] + task["allowedWrites"]
+    )
+assert not (root / "gradle/delivery/receipts").exists()
 assert program["terminal"]["derivedOnly"] is True
 assert all("status" not in task for task in program["tasks"])
 by_id = {t["id"]: t for t in program["tasks"]}

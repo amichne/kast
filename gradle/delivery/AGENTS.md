@@ -7,6 +7,8 @@ This directory owns the checked-in machine projections of the typed program in `
 - `authority-sources/` owns immutable, digest-identified source bytes admitted by KVP-001; follow
   its guide and preserve significant terminal newlines.
 - `schema/` owns the closed JSON Schema contracts.
-- `receipts/` owns admitted proof receipts; no receipt is completion state by itself.
+
+Live gate and task-completion receipts belong under `build/reports/delivery/receipts`. They bind the
+commit observed after checkout and must never be checked in.
 
 Do not edit either projection by hand. Regenerate both atomically with `./gradlew generateKastVfsPassiveProjection`, then verify without mutation with `./gradlew verifyKastVfsPassiveProjection` and `scripts/verify_bundle.sh`.

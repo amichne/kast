@@ -15,5 +15,7 @@ boundaries and verification.
   `verifyKastVfsPassiveAuthority` must depend on `generateKastVfsPassiveAuthority` so the GREEN
   command emits the authority ledger and contradiction projection before re-admitting their bytes
   and writing the verification report under `build/reports/delivery`.
+  Keep live gate and completion receipts under `build/reports/delivery/receipts`; a checked-in
+  receipt cannot bind the commit that contains its own bytes.
 - Feed PR 633 bytecode and ABI verifiers complete `main` source-set class outputs so Java and
   Kotlin implementations are governed by the same gate.

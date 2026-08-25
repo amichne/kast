@@ -26,7 +26,7 @@ val authorityContradictionFile = layout.projectDirectory.file(
 )
 val expectedProgramProjectionContent = canonicalJson(programProjection) + "\n"
 val expectedRequirementTraceContent = canonicalJson(program.requirementTraceProjection()) + "\n"
-val receiptDirectory = layout.projectDirectory.dir("gradle/delivery/receipts")
+val receiptDirectory = layout.buildDirectory.dir("reports/delivery/receipts")
 
 tasks.register<GenerateDeliveryProjectionsTask>("generateKastVfsPassiveProjection") {
     group = "verification"
@@ -93,16 +93,22 @@ tasks.register<VerifyKastVfsPassiveAuthorityTask>("verifyKastVfsPassiveAuthority
 }
 
 program.program.tasks.sortedBy { it.id }.forEach { node ->
-    val redReceipt = receiptDirectory.file("${node.red.gateId}-RECEIPT.receipt.json")
-    val greenReceipt = receiptDirectory.file("${node.green.gateId}-RECEIPT.receipt.json")
+    val redReceipt = receiptDirectory.map {
+        it.file("${node.red.gateId}-RECEIPT.receipt.json")
+    }
+    val greenReceipt = receiptDirectory.map {
+        it.file("${node.green.gateId}-RECEIPT.receipt.json")
+    }
     tasks.register("record${node.id.value.replace("-", "")}RedReceipt") {
         group = "verification"
         dependsOn(node.red.command.removePrefix("./gradlew ").split(' '))
         inputs.file(checkedInProgramProjectionFile)
         inputs.file(checkedInRequirementTraceFile)
-        node.dependencies.taskIds.forEach { dep -> inputs.file(receiptDirectory.file("${dep.value}-COMPLETE.receipt.json")) }
+        node.dependencies.taskIds.forEach { dep ->
+            inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
+        }
         outputs.file(redReceipt)
-        doLast { error("RecordGateReceiptTask must bind exact head, command, inputs, observations, artifacts, and dependency receipt digests before writing ${redReceipt.asFile}") }
+        doLast { error("RecordGateReceiptTask must bind exact head, command, inputs, observations, artifacts, and dependency receipt digests before writing ${redReceipt.get().asFile}") }
     }
     tasks.register("record${node.id.value.replace("-", "")}GreenReceipt") {
         group = "verification"
@@ -110,9 +116,11 @@ program.program.tasks.sortedBy { it.id }.forEach { node ->
         inputs.file(checkedInProgramProjectionFile)
         inputs.file(checkedInRequirementTraceFile)
         inputs.file(redReceipt)
-        node.dependencies.taskIds.forEach { dep -> inputs.file(receiptDirectory.file("${dep.value}-COMPLETE.receipt.json")) }
+        node.dependencies.taskIds.forEach { dep ->
+            inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
+        }
         outputs.file(greenReceipt)
-        doLast { error("RecordGateReceiptTask must verify all evidence before writing ${greenReceipt.asFile}") }
+        doLast { error("RecordGateReceiptTask must verify all evidence before writing ${greenReceipt.get().asFile}") }
     }
 }
 

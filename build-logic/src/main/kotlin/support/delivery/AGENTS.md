@@ -18,6 +18,10 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 - `tasks/ProgramAuthorityNegativeTask.kt` owns the deterministic KVP-001 RED fixtures.
 - `ProgramMain.kt` is the dependency-free projection entry point used by `scripts/verify_bundle.sh`.
 
+Gate and completion receipt paths are part of the typed program, but their live evidence belongs
+under `build/reports/delivery/receipts`. Never place receipt evidence in tracked projection paths:
+the receipt's bytes would change the exact head it claims to bind.
+
 Keep each Kotlin source below the repository shape limit. Preserve task order when moving task declarations between milestone files; program and requirement-trace fingerprints must remain derived from the typed authority.
 
 ## Focused proof
@@ -26,6 +30,7 @@ Keep each Kotlin source below the repository shape limit. Preserve task order wh
 ./gradlew -p build-logic test --tests support.delivery.KastVfsPassiveReusedIndexProgramTest
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityAdmissionTest
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityGenerationTest
+./gradlew -p build-logic test --tests support.delivery.ReceiptEvidenceLocationTest
 ./gradlew help --task generateKastVfsPassiveAuthority
 ./gradlew generateKastVfsPassiveProjection verifyKastVfsPassiveProjection
 ./gradlew verifyKastVfsPassiveAuthorityNegative

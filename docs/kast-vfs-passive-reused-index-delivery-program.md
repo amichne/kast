@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `b1d42978c899b65816c9172b6525a71ccbc4762e13c132ab1bc2c3ddf10247e4`
+**Program fingerprint:** `acb63855e6a32be383bc119f22ea9ee9572f4408e02cf098b999e7a152e88d2b`
 
 ## Terminal outcome
 
@@ -113,7 +113,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only authority and contradiction artifacts may change.
 
-**Completion receipt.** `KVP-001-COMPLETE` at `gradle/delivery/receipts/KVP-001-COMPLETE.receipt.json`. It consumes `KVP-001-RED`, `KVP-001-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-001-COMPLETE` at `build/reports/delivery/receipts/KVP-001-COMPLETE.receipt.json`. It consumes `KVP-001-RED`, `KVP-001-GREEN`, and all predecessor completion receipts.
 
 ### KVP-002: Define proof-preserving delivery types
 
@@ -143,7 +143,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** No Gradle task registration or product code changes.
 
-**Completion receipt.** `KVP-002-COMPLETE` at `gradle/delivery/receipts/KVP-002-COMPLETE.receipt.json`. It consumes `KVP-002-RED`, `KVP-002-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-002-COMPLETE` at `build/reports/delivery/receipts/KVP-002-COMPLETE.receipt.json`. It consumes `KVP-002-RED`, `KVP-002-GREEN`, and all predecessor completion receipts.
 
 ### KVP-003: Encode dependency, join, retirement, invalidation, and recovery edges
 
@@ -173,7 +173,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only graph semantics and fixtures may change.
 
-**Completion receipt.** `KVP-003-COMPLETE` at `gradle/delivery/receipts/KVP-003-COMPLETE.receipt.json`. It consumes `KVP-003-RED`, `KVP-003-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-003-COMPLETE` at `build/reports/delivery/receipts/KVP-003-COMPLETE.receipt.json`. It consumes `KVP-003-RED`, `KVP-003-GREEN`, and all predecessor completion receipts.
 
 ### KVP-004: Encode the canonical Kotlin delivery graph
 
@@ -203,7 +203,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** No generated JSON may be hand-edited as authority.
 
-**Completion receipt.** `KVP-004-COMPLETE` at `gradle/delivery/receipts/KVP-004-COMPLETE.receipt.json`. It consumes `KVP-004-RED`, `KVP-004-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-004-COMPLETE` at `build/reports/delivery/receipts/KVP-004-COMPLETE.receipt.json`. It consumes `KVP-004-RED`, `KVP-004-GREEN`, and all predecessor completion receipts.
 
 ### KVP-005: Generate deterministic projections and JSON Schemas
 
@@ -233,7 +233,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Generated projections and schemas only.
 
-**Completion receipt.** `KVP-005-COMPLETE` at `gradle/delivery/receipts/KVP-005-COMPLETE.receipt.json`. It consumes `KVP-005-RED`, `KVP-005-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-005-COMPLETE` at `build/reports/delivery/receipts/KVP-005-COMPLETE.receipt.json`. It consumes `KVP-005-RED`, `KVP-005-GREEN`, and all predecessor completion receipts.
 
 ### KVP-006: Register the Gradle delivery-program gate graph
 
@@ -263,7 +263,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Build policy and root plugin application only.
 
-**Completion receipt.** `KVP-006-COMPLETE` at `gradle/delivery/receipts/KVP-006-COMPLETE.receipt.json`. It consumes `KVP-006-RED`, `KVP-006-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-006-COMPLETE` at `build/reports/delivery/receipts/KVP-006-COMPLETE.receipt.json`. It consumes `KVP-006-RED`, `KVP-006-GREEN`, and all predecessor completion receipts.
 
 ### KVP-007: Bind and validate proof-carrying gate receipts
 
@@ -273,7 +273,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `gradle/delivery/schema/proof-receipt.schema.json`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryProof.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryProofTest.kt`, `gradle/delivery/receipts/README.md`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryProof.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryProofTest.kt`, `gradle/delivery/schema/proof-receipt.schema.json`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.006.proof`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-023`, `requirement:KVP-REQ-026`.
 
@@ -293,7 +293,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Receipt code, schema, and fixtures only.
 
-**Completion receipt.** `KVP-007-COMPLETE` at `gradle/delivery/receipts/KVP-007-COMPLETE.receipt.json`. It consumes `KVP-007-RED`, `KVP-007-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-007-COMPLETE` at `build/reports/delivery/receipts/KVP-007-COMPLETE.receipt.json`. It consumes `KVP-007-RED`, `KVP-007-GREEN`, and all predecessor completion receipts.
 
 ### KVP-008: Derive progression and terminal completion
 
@@ -301,7 +301,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-007`. Computed wave: `7`.
 
-**Allowed reads.** `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/receipts`.
+**Allowed reads.** `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `build/reports/delivery/receipts`.
 
 **Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryState.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryStateTest.kt`.
 
@@ -323,7 +323,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Progression model and reports only.
 
-**Completion receipt.** `KVP-008-COMPLETE` at `gradle/delivery/receipts/KVP-008-COMPLETE.receipt.json`. It consumes `KVP-008-RED`, `KVP-008-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-008-COMPLETE` at `build/reports/delivery/receipts/KVP-008-COMPLETE.receipt.json`. It consumes `KVP-008-RED`, `KVP-008-GREEN`, and all predecessor completion receipts.
 
 ### KVP-009: Enforce the IDE-read module and effect firewall
 
@@ -353,7 +353,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Architecture policy, module declarations, and negative fixtures only.
 
-**Completion receipt.** `KVP-009-COMPLETE` at `gradle/delivery/receipts/KVP-009-COMPLETE.receipt.json`. It consumes `KVP-009-RED`, `KVP-009-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-009-COMPLETE` at `build/reports/delivery/receipts/KVP-009-COMPLETE.receipt.json`. It consumes `KVP-009-RED`, `KVP-009-GREEN`, and all predecessor completion receipts.
 
 ### KVP-010: Split a standalone IntelliJ plugin module
 
@@ -383,7 +383,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only module split and packaging ownership.
 
-**Completion receipt.** `KVP-010-COMPLETE` at `gradle/delivery/receipts/KVP-010-COMPLETE.receipt.json`. It consumes `KVP-010-RED`, `KVP-010-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-010-COMPLETE` at `build/reports/delivery/receipts/KVP-010-COMPLETE.receipt.json`. It consumes `KVP-010-RED`, `KVP-010-GREEN`, and all predecessor completion receipts.
 
 ### KVP-011: Prove plugin layout and classpath closure
 
@@ -413,7 +413,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Layout verifier and plugin tests only.
 
-**Completion receipt.** `KVP-011-COMPLETE` at `gradle/delivery/receipts/KVP-011-COMPLETE.receipt.json`. It consumes `KVP-011-RED`, `KVP-011-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-011-COMPLETE` at `build/reports/delivery/receipts/KVP-011-COMPLETE.receipt.json`. It consumes `KVP-011-RED`, `KVP-011-GREEN`, and all predecessor completion receipts.
 
 ### KVP-012: Define IDE host compatibility identity
 
@@ -443,7 +443,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Compatibility contract and tests only.
 
-**Completion receipt.** `KVP-012-COMPLETE` at `gradle/delivery/receipts/KVP-012-COMPLETE.receipt.json`. It consumes `KVP-012-RED`, `KVP-012-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-012-COMPLETE` at `build/reports/delivery/receipts/KVP-012-COMPLETE.receipt.json`. It consumes `KVP-012-RED`, `KVP-012-GREEN`, and all predecessor completion receipts.
 
 ### KVP-013: Define the project endpoint descriptor schema
 
@@ -473,7 +473,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Endpoint contract, codec, and schema only.
 
-**Completion receipt.** `KVP-013-COMPLETE` at `gradle/delivery/receipts/KVP-013-COMPLETE.receipt.json`. It consumes `KVP-013-RED`, `KVP-013-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-013-COMPLETE` at `build/reports/delivery/receipts/KVP-013-COMPLETE.receipt.json`. It consumes `KVP-013-RED`, `KVP-013-GREEN`, and all predecessor completion receipts.
 
 ### KVP-014: Admit the existing open IntelliJ Project
 
@@ -503,7 +503,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** New read adapter and contract only; existing bootstrap remains untouched.
 
-**Completion receipt.** `KVP-014-COMPLETE` at `gradle/delivery/receipts/KVP-014-COMPLETE.receipt.json`. It consumes `KVP-014-RED`, `KVP-014-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-014-COMPLETE` at `build/reports/delivery/receipts/KVP-014-COMPLETE.receipt.json`. It consumes `KVP-014-RED`, `KVP-014-GREEN`, and all predecessor completion receipts.
 
 ### KVP-015: Characterize model and epoch signals
 
@@ -533,7 +533,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Characterization fixtures and ledger only.
 
-**Completion receipt.** `KVP-015-COMPLETE` at `gradle/delivery/receipts/KVP-015-COMPLETE.receipt.json`. It consumes `KVP-015-RED`, `KVP-015-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-015-COMPLETE` at `build/reports/delivery/receipts/KVP-015-COMPLETE.receipt.json`. It consumes `KVP-015-RED`, `KVP-015-GREEN`, and all predecessor completion receipts.
 
 ### KVP-016: Capture a detached existing-project model
 
@@ -563,7 +563,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Model capture only; no freshness policy or operation routing.
 
-**Completion receipt.** `KVP-016-COMPLETE` at `gradle/delivery/receipts/KVP-016-COMPLETE.receipt.json`. It consumes `KVP-016-RED`, `KVP-016-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-016-COMPLETE` at `build/reports/delivery/receipts/KVP-016-COMPLETE.receipt.json`. It consumes `KVP-016-RED`, `KVP-016-GREEN`, and all predecessor completion receipts.
 
 ### KVP-017: Define the project read epoch
 
@@ -593,7 +593,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Epoch contract and adapter only.
 
-**Completion receipt.** `KVP-017-COMPLETE` at `gradle/delivery/receipts/KVP-017-COMPLETE.receipt.json`. It consumes `KVP-017-RED`, `KVP-017-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-017-COMPLETE` at `build/reports/delivery/receipts/KVP-017-COMPLETE.receipt.json`. It consumes `KVP-017-RED`, `KVP-017-GREEN`, and all predecessor completion receipts.
 
 ### KVP-018: Remove source-tree hashing from the hosted read path
 
@@ -623,7 +623,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Hosted adapter and effect policy only; isolated fixture may retain old capture temporarily.
 
-**Completion receipt.** `KVP-018-COMPLETE` at `gradle/delivery/receipts/KVP-018-COMPLETE.receipt.json`. It consumes `KVP-018-RED`, `KVP-018-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-018-COMPLETE` at `build/reports/delivery/receipts/KVP-018-COMPLETE.receipt.json`. It consumes `KVP-018-RED`, `KVP-018-GREEN`, and all predecessor completion receipts.
 
 ### KVP-019: Issue a VFS-passive freshness capability
 
@@ -653,7 +653,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Freshness admission only.
 
-**Completion receipt.** `KVP-019-COMPLETE` at `gradle/delivery/receipts/KVP-019-COMPLETE.receipt.json`. It consumes `KVP-019-RED`, `KVP-019-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-019-COMPLETE` at `build/reports/delivery/receipts/KVP-019-COMPLETE.receipt.json`. It consumes `KVP-019-RED`, `KVP-019-GREEN`, and all predecessor completion receipts.
 
 ### KVP-020: Enforce single-flight project read admission
 
@@ -683,7 +683,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Admission state machine only.
 
-**Completion receipt.** `KVP-020-COMPLETE` at `gradle/delivery/receipts/KVP-020-COMPLETE.receipt.json`. It consumes `KVP-020-RED`, `KVP-020-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-020-COMPLETE` at `build/reports/delivery/receipts/KVP-020-COMPLETE.receipt.json`. It consumes `KVP-020-RED`, `KVP-020-GREEN`, and all predecessor completion receipts.
 
 ### KVP-021: Execute cancellable smart reads
 
@@ -713,7 +713,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Read executor only; no operation semantics.
 
-**Completion receipt.** `KVP-021-COMPLETE` at `gradle/delivery/receipts/KVP-021-COMPLETE.receipt.json`. It consumes `KVP-021-RED`, `KVP-021-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-021-COMPLETE` at `build/reports/delivery/receipts/KVP-021-COMPLETE.receipt.json`. It consumes `KVP-021-RED`, `KVP-021-GREEN`, and all predecessor completion receipts.
 
 ### KVP-022: Revalidate the epoch before accepting a result
 
@@ -743,7 +743,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Epoch revalidation only.
 
-**Completion receipt.** `KVP-022-COMPLETE` at `gradle/delivery/receipts/KVP-022-COMPLETE.receipt.json`. It consumes `KVP-022-RED`, `KVP-022-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-022-COMPLETE` at `build/reports/delivery/receipts/KVP-022-COMPLETE.receipt.json`. It consumes `KVP-022-RED`, `KVP-022-GREEN`, and all predecessor completion receipts.
 
 ### KVP-023: Assemble the physically read-only IDE runtime
 
@@ -773,7 +773,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** New read composition only.
 
-**Completion receipt.** `KVP-023-COMPLETE` at `gradle/delivery/receipts/KVP-023-COMPLETE.receipt.json`. It consumes `KVP-023-RED`, `KVP-023-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-023-COMPLETE` at `build/reports/delivery/receipts/KVP-023-COMPLETE.receipt.json`. It consumes `KVP-023-RED`, `KVP-023-GREEN`, and all predecessor completion receipts.
 
 ### KVP-024: Publish the exact-root project endpoint
 
@@ -803,7 +803,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Endpoint publication only.
 
-**Completion receipt.** `KVP-024-COMPLETE` at `gradle/delivery/receipts/KVP-024-COMPLETE.receipt.json`. It consumes `KVP-024-RED`, `KVP-024-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-024-COMPLETE` at `build/reports/delivery/receipts/KVP-024-COMPLETE.receipt.json`. It consumes `KVP-024-RED`, `KVP-024-GREEN`, and all predecessor completion receipts.
 
 ### KVP-025: Bind endpoint retirement to Project and plugin lifecycle
 
@@ -833,7 +833,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Lifecycle and cleanup only.
 
-**Completion receipt.** `KVP-025-COMPLETE` at `gradle/delivery/receipts/KVP-025-COMPLETE.receipt.json`. It consumes `KVP-025-RED`, `KVP-025-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-025-COMPLETE` at `build/reports/delivery/receipts/KVP-025-COMPLETE.receipt.json`. It consumes `KVP-025-RED`, `KVP-025-GREEN`, and all predecessor completion receipts.
 
 ### KVP-026: Admit the compatible exact-root IDE endpoint in the CLI
 
@@ -863,7 +863,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** CLI endpoint admission only.
 
-**Completion receipt.** `KVP-026-COMPLETE` at `gradle/delivery/receipts/KVP-026-COMPLETE.receipt.json`. It consumes `KVP-026-RED`, `KVP-026-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-026-COMPLETE` at `build/reports/delivery/receipts/KVP-026-COMPLETE.receipt.json`. It consumes `KVP-026-RED`, `KVP-026-GREEN`, and all predecessor completion receipts.
 
 ### KVP-027: Remove semantic runtime acquisition and process fallback from default demand
 
@@ -893,7 +893,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Default composition only; explicit legacy fixtures may remain until release retirement.
 
-**Completion receipt.** `KVP-027-COMPLETE` at `gradle/delivery/receipts/KVP-027-COMPLETE.receipt.json`. It consumes `KVP-027-RED`, `KVP-027-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-027-COMPLETE` at `build/reports/delivery/receipts/KVP-027-COMPLETE.receipt.json`. It consumes `KVP-027-RED`, `KVP-027-GREEN`, and all predecessor completion receipts.
 
 ### KVP-028: Route workspace.inspect through the reused Project
 
@@ -923,7 +923,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only workspace.inspect routing.
 
-**Completion receipt.** `KVP-028-COMPLETE` at `gradle/delivery/receipts/KVP-028-COMPLETE.receipt.json`. It consumes `KVP-028-RED`, `KVP-028-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-028-COMPLETE` at `build/reports/delivery/receipts/KVP-028-COMPLETE.receipt.json`. It consumes `KVP-028-RED`, `KVP-028-GREEN`, and all predecessor completion receipts.
 
 ### KVP-029: Route bounded symbol discovery through the reused index
 
@@ -953,7 +953,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only symbol.discover routing.
 
-**Completion receipt.** `KVP-029-COMPLETE` at `gradle/delivery/receipts/KVP-029-COMPLETE.receipt.json`. It consumes `KVP-029-RED`, `KVP-029-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-029-COMPLETE` at `build/reports/delivery/receipts/KVP-029-COMPLETE.receipt.json`. It consumes `KVP-029-RED`, `KVP-029-GREEN`, and all predecessor completion receipts.
 
 ### KVP-030: Route exact selector resolution
 
@@ -983,7 +983,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only symbol.resolve routing.
 
-**Completion receipt.** `KVP-030-COMPLETE` at `gradle/delivery/receipts/KVP-030-COMPLETE.receipt.json`. It consumes `KVP-030-RED`, `KVP-030-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-030-COMPLETE` at `build/reports/delivery/receipts/KVP-030-COMPLETE.receipt.json`. It consumes `KVP-030-RED`, `KVP-030-GREEN`, and all predecessor completion receipts.
 
 ### KVP-031: Route exact symbol description
 
@@ -1013,7 +1013,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only symbol.describe routing.
 
-**Completion receipt.** `KVP-031-COMPLETE` at `gradle/delivery/receipts/KVP-031-COMPLETE.receipt.json`. It consumes `KVP-031-RED`, `KVP-031-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-031-COMPLETE` at `build/reports/delivery/receipts/KVP-031-COMPLETE.receipt.json`. It consumes `KVP-031-RED`, `KVP-031-GREEN`, and all predecessor completion receipts.
 
 ### KVP-032: Enforce static VFS-passive safety
 
@@ -1043,7 +1043,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Static policy and negative fixtures only.
 
-**Completion receipt.** `KVP-032-COMPLETE` at `gradle/delivery/receipts/KVP-032-COMPLETE.receipt.json`. It consumes `KVP-032-RED`, `KVP-032-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-032-COMPLETE` at `build/reports/delivery/receipts/KVP-032-COMPLETE.receipt.json`. It consumes `KVP-032-RED`, `KVP-032-GREEN`, and all predecessor completion receipts.
 
 ### KVP-033: Prove dynamic VFS contention and movement safety
 
@@ -1073,7 +1073,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Dynamic safety fixtures and instrumentation only.
 
-**Completion receipt.** `KVP-033-COMPLETE` at `gradle/delivery/receipts/KVP-033-COMPLETE.receipt.json`. It consumes `KVP-033-RED`, `KVP-033-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-033-COMPLETE` at `build/reports/delivery/receipts/KVP-033-COMPLETE.receipt.json`. It consumes `KVP-033-RED`, `KVP-033-GREEN`, and all predecessor completion receipts.
 
 ### KVP-034: Prove the installed exact-read journey
 
@@ -1103,7 +1103,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Installed acceptance harness only.
 
-**Completion receipt.** `KVP-034-COMPLETE` at `gradle/delivery/receipts/KVP-034-COMPLETE.receipt.json`. It consumes `KVP-034-RED`, `KVP-034-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-034-COMPLETE` at `build/reports/delivery/receipts/KVP-034-COMPLETE.receipt.json`. It consumes `KVP-034-RED`, `KVP-034-GREEN`, and all predecessor completion receipts.
 
 ### KVP-035: Build the default control-plus-plugin release
 
@@ -1133,7 +1133,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Release assembly and validation only.
 
-**Completion receipt.** `KVP-035-COMPLETE` at `gradle/delivery/receipts/KVP-035-COMPLETE.receipt.json`. It consumes `KVP-035-RED`, `KVP-035-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-035-COMPLETE` at `build/reports/delivery/receipts/KVP-035-COMPLETE.receipt.json`. It consumes `KVP-035-RED`, `KVP-035-GREEN`, and all predecessor completion receipts.
 
 ### KVP-036: Remove the isolated runtime from the default product
 
@@ -1163,7 +1163,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Default product path only; explicit non-default fixture may remain labeled and unreachable.
 
-**Completion receipt.** `KVP-036-COMPLETE` at `gradle/delivery/receipts/KVP-036-COMPLETE.receipt.json`. It consumes `KVP-036-RED`, `KVP-036-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-036-COMPLETE` at `build/reports/delivery/receipts/KVP-036-COMPLETE.receipt.json`. It consumes `KVP-036-RED`, `KVP-036-GREEN`, and all predecessor completion receipts.
 
 ### KVP-037: Prove failure, corruption, and unsupported-operation behavior
 
@@ -1193,7 +1193,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Failure and corruption fixtures only.
 
-**Completion receipt.** `KVP-037-COMPLETE` at `gradle/delivery/receipts/KVP-037-COMPLETE.receipt.json`. It consumes `KVP-037-RED`, `KVP-037-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-037-COMPLETE` at `build/reports/delivery/receipts/KVP-037-COMPLETE.receipt.json`. It consumes `KVP-037-RED`, `KVP-037-GREEN`, and all predecessor completion receipts.
 
 ### KVP-038: Prove a detached clean checkout
 
@@ -1223,7 +1223,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Clean-checkout harness only.
 
-**Completion receipt.** `KVP-038-COMPLETE` at `gradle/delivery/receipts/KVP-038-COMPLETE.receipt.json`. It consumes `KVP-038-RED`, `KVP-038-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-038-COMPLETE` at `build/reports/delivery/receipts/KVP-038-COMPLETE.receipt.json`. It consumes `KVP-038-RED`, `KVP-038-GREEN`, and all predecessor completion receipts.
 
 ### KVP-039: Bind exact-head CI to the receipt closure
 
@@ -1253,7 +1253,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** CI workflow and contract tests only.
 
-**Completion receipt.** `KVP-039-COMPLETE` at `gradle/delivery/receipts/KVP-039-COMPLETE.receipt.json`. It consumes `KVP-039-RED`, `KVP-039-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-039-COMPLETE` at `build/reports/delivery/receipts/KVP-039-COMPLETE.receipt.json`. It consumes `KVP-039-RED`, `KVP-039-GREEN`, and all predecessor completion receipts.
 
 ### KVP-040: Perform an independent full-diff review
 
@@ -1283,7 +1283,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Review outputs only; no implementation edits.
 
-**Completion receipt.** `KVP-040-COMPLETE` at `gradle/delivery/receipts/KVP-040-COMPLETE.receipt.json`. It consumes `KVP-040-RED`, `KVP-040-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-040-COMPLETE` at `build/reports/delivery/receipts/KVP-040-COMPLETE.receipt.json`. It consumes `KVP-040-RED`, `KVP-040-GREEN`, and all predecessor completion receipts.
 
 ### KVP-041: Resolve every valid review finding and rerun affected gates
 
@@ -1291,9 +1291,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-040`. Computed wave: `34`.
 
-**Allowed reads.** `build/reports/ide-hosted/final-review.json`, `repository paths named by findings`, `gradle/delivery/receipts`.
+**Allowed reads.** `build/reports/ide-hosted/final-review.json`, `repository paths named by findings`, `build/reports/delivery/receipts`.
 
-**Allowed writes.** `repository paths named by valid findings`, `build/reports/ide-hosted/review-resolution.json`, `gradle/delivery/receipts`.
+**Allowed writes.** `repository paths named by valid findings`, `build/reports/ide-hosted/review-resolution.json`, `build/reports/delivery/receipts`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.040.proof`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-024`.
 
@@ -1313,7 +1313,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Only paths required by valid findings and proof artifacts.
 
-**Completion receipt.** `KVP-041-COMPLETE` at `gradle/delivery/receipts/KVP-041-COMPLETE.receipt.json`. It consumes `KVP-041-RED`, `KVP-041-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-041-COMPLETE` at `build/reports/delivery/receipts/KVP-041-COMPLETE.receipt.json`. It consumes `KVP-041-RED`, `KVP-041-GREEN`, and all predecessor completion receipts.
 
 ### KVP-042: Revalidate every original requirement point by point
 
@@ -1321,7 +1321,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-001`, `KVP-041`. Computed wave: `35`.
 
-**Allowed reads.** `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/receipts`, `build/reports/ide-hosted`, `gradle/delivery/authority-sources/persisted-goal.txt`.
+**Allowed reads.** `gradle/delivery/kast-vfs-passive-requirements.json`, `build/reports/delivery/receipts`, `build/reports/ide-hosted`, `gradle/delivery/authority-sources/persisted-goal.txt`.
 
 **Allowed writes.** `build/reports/ide-hosted/specification-revalidation.json`, `docs/plans/kast-vfs-passive-revalidation.md`.
 
@@ -1343,7 +1343,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Traceability and revalidation outputs only.
 
-**Completion receipt.** `KVP-042-COMPLETE` at `gradle/delivery/receipts/KVP-042-COMPLETE.receipt.json`. It consumes `KVP-042-RED`, `KVP-042-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-042-COMPLETE` at `build/reports/delivery/receipts/KVP-042-COMPLETE.receipt.json`. It consumes `KVP-042-RED`, `KVP-042-GREEN`, and all predecessor completion receipts.
 
 ### KVP-043: Derive BestCaseVfsPassiveReusedIndex completion
 
@@ -1351,7 +1351,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-008`, `KVP-034`, `KVP-036`, `KVP-037`, `KVP-038`, `KVP-039`, `KVP-041`, `KVP-042`. Computed wave: `36`.
 
-**Allowed reads.** `gradle/delivery/receipts`, `build/reports/ide-hosted`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`.
+**Allowed reads.** `build/reports/delivery/receipts`, `build/reports/ide-hosted`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`.
 
 **Allowed writes.** `build/reports/ide-hosted/best-case-vfs-passive-reused-index.receipt.json`.
 
@@ -1373,7 +1373,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Terminal receipt only; no production edits.
 
-**Completion receipt.** `KVP-043-COMPLETE` at `gradle/delivery/receipts/KVP-043-COMPLETE.receipt.json`. It consumes `KVP-043-RED`, `KVP-043-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-043-COMPLETE` at `build/reports/delivery/receipts/KVP-043-COMPLETE.receipt.json`. It consumes `KVP-043-RED`, `KVP-043-GREEN`, and all predecessor completion receipts.
 
 ## Installed acceptance metrics
 
