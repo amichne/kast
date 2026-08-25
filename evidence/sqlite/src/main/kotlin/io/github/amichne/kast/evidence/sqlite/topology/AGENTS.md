@@ -11,6 +11,8 @@ snapshot-backed relation compiler.
   counts and digest before reuse or traversal.
 - Re-admit exact paths, ranges, row references, counts, and digests on read. Map malformed topology
   rows to `CORRUPT_SNAPSHOT`; do not expose a partial graph.
+- Open `SqliteTopologyRelationCompiler` by reading and re-admitting one exact requested snapshot.
+  Retain that immutable content for all one-hop reads in the request instead of reopening SQLite.
 
 ## Focused verification
 

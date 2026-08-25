@@ -21,6 +21,9 @@ reconciliation, indexing, semantic admission, or source mutation.
 - Topology v2 gives every symbol a positive snapshot-local row identity derived from compiler
   identity plus exact file and range evidence. Edges reference those exact rows, so declarations
   with equal compiler identities are not collapsed across locations.
+- Public traversal opens one request-local relation compiler by re-admitting the exact topology
+  content once. Every frontier expansion reads the retained immutable content; no one-hop read may
+  reopen or reconstruct the physical snapshot.
 
 ## Verification
 

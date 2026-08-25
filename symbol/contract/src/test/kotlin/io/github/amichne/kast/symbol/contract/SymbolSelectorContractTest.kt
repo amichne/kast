@@ -17,6 +17,58 @@ import java.nio.file.Path
 
 class SymbolSelectorContractTest {
     @Test
+    fun `canonical signatures produce bounded deterministic compiler identities`() {
+        val longType = "sample.DeepType<${"kotlin.String,".repeat(500)}kotlin.Int>"
+        val signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = "sample.Service.call",
+            rawReceiverType = null,
+            rawContextReceiverTypes = emptyList(),
+            rawValueParameterTypes = listOf(longType),
+            rawTypeParameterCount = 0,
+        ).refined()
+        val same = CompilerSymbolIdentity.fromCanonicalSignature(signature)
+        val changed = CompilerSymbolIdentity.fromCanonicalSignature(
+            CanonicalCompilerSignature.function(
+                rawQualifiedIdentity = "sample.Service.call",
+                rawReceiverType = null,
+                rawContextReceiverTypes = emptyList(),
+                rawValueParameterTypes = listOf("kotlin.Long"),
+                rawTypeParameterCount = 0,
+            ).refined(),
+        )
+
+        assertEquals(same, CompilerSymbolIdentity.fromCanonicalSignature(signature))
+        assertNotEquals(same, changed)
+        assertEquals(94, same.value.length)
+        assertEquals(true, same.value.startsWith("canonical-signature-sha256-v1|"))
+        assertEquals(same, CompilerSymbolIdentity.parse(same.value).refined())
+    }
+
+    @Test
+    fun `canonical signatures reject invalid components`() {
+        assertEquals(
+            CanonicalCompilerSignatureFailure.INVALID_VALUE_PARAMETER_TYPE,
+            CanonicalCompilerSignature.function(
+                rawQualifiedIdentity = "sample.Service.call",
+                rawReceiverType = null,
+                rawContextReceiverTypes = emptyList(),
+                rawValueParameterTypes = listOf(" \n "),
+                rawTypeParameterCount = 0,
+            ).rejected(),
+        )
+        assertEquals(
+            CanonicalCompilerSignatureFailure.INVALID_TYPE_PARAMETER_COUNT,
+            CanonicalCompilerSignature.function(
+                rawQualifiedIdentity = "sample.Service.call",
+                rawReceiverType = null,
+                rawContextReceiverTypes = emptyList(),
+                rawValueParameterTypes = emptyList(),
+                rawTypeParameterCount = -1,
+            ).rejected(),
+        )
+    }
+
+    @Test
     fun `compiler identity parsing fails closed`() {
         assertEquals(
             CompilerSymbolIdentityFailure.BLANK,

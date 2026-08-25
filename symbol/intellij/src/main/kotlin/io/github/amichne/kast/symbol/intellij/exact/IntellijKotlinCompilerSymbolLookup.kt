@@ -6,9 +6,12 @@
 package io.github.amichne.kast.symbol.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
@@ -79,11 +82,6 @@ internal class IntellijKotlinCompilerSymbolLookup(
             is IntellijCompilerSymbolProjectionResult.Rejected ->
                 return rejected(result.reason)
         }
-        val identity = when (val parsed = CompilerSymbolIdentity.parse(projection.identity)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected ->
-                return rejected(IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE)
-        }
         return when (
             val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
                 file = key.file,
@@ -92,7 +90,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
                 rawName = declaration.name.orEmpty(),
                 rawQualifiedIdentity = projection.qualifiedIdentity,
                 kind = projection.kind,
-                compilerIdentity = identity,
+                compilerIdentity = projection.identity,
             )
         ) {
             is Refinement.Refined -> IntellijCompilerSymbolLookupResult.Found(evidence.value)
@@ -106,7 +104,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
 private data class IntellijCompilerSymbolProjection(
     val kind: CompilerSymbolKind,
     val qualifiedIdentity: String,
-    val identity: String,
+    val identity: CompilerSymbolIdentity,
 )
 
 private sealed interface IntellijCompilerSymbolProjectionResult {
@@ -122,8 +120,8 @@ private sealed interface IntellijCompilerSymbolProjectionResult {
 /**
  * Proof transition: `KaSymbol -> IntellijCompilerSymbolProjectionResult`.
  *
- * A projected result establishes a closed public kind plus bounded-input qualified and
- * overload-aware compiler identities. Rejection is the closed
+ * A projected result establishes a closed public kind plus versioned, fixed-size,
+ * canonical-signature compiler identity. Rejection is the closed
  * [IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE] state. Raw K2 values remain
  * inside the analysis-session receiver.
  */
@@ -132,79 +130,77 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
         is KaConstructorSymbol -> {
             val owner = containingClassId?.asSingleFqName()?.asString()
                         ?: return compilerProjectionRejected()
-            IntellijCompilerSymbolProjectionResult.Projected(
-                IntellijCompilerSymbolProjection(
-                    kind = CompilerSymbolKind.CONSTRUCTOR,
-                    qualifiedIdentity = "$owner.<init>",
-                    identity = functionIdentity("$owner.<init>"),
-                ),
+            projected(
+                CompilerSymbolKind.CONSTRUCTOR,
+                "$owner.<init>",
+                functionSignature("$owner.<init>"),
             )
         }
         is KaFunctionSymbol -> {
             val callable = callableId?.asSingleFqName()?.asString()
                            ?: return compilerProjectionRejected()
-            IntellijCompilerSymbolProjectionResult.Projected(
-                IntellijCompilerSymbolProjection(
-                    kind = CompilerSymbolKind.FUNCTION,
-                    qualifiedIdentity = callable,
-                    identity = functionIdentity(callable),
-                ),
+            projected(
+                CompilerSymbolKind.FUNCTION,
+                callable,
+                functionSignature(callable),
             )
         }
         is KaKotlinPropertySymbol -> {
             val callable = callableId?.asSingleFqName()?.asString()
                            ?: return compilerProjectionRejected()
-            IntellijCompilerSymbolProjectionResult.Projected(
-                IntellijCompilerSymbolProjection(
-                    kind = CompilerSymbolKind.PROPERTY,
-                    qualifiedIdentity = callable,
-                    identity = "property|$callable|${returnType.toString().canonicalCompilerType()}",
-                ),
+            projected(
+                CompilerSymbolKind.PROPERTY,
+                callable,
+                CanonicalCompilerSignature.property(callable, returnType.toString()),
             )
         }
         is KaTypeAliasSymbol -> {
             val className = classId?.asSingleFqName()?.asString()
                             ?: return compilerProjectionRejected()
-            IntellijCompilerSymbolProjectionResult.Projected(
-                IntellijCompilerSymbolProjection(
-                    kind = CompilerSymbolKind.TYPE_ALIAS,
-                    qualifiedIdentity = className,
-                    identity = "typealias|$className",
-                ),
+            projected(
+                CompilerSymbolKind.TYPE_ALIAS,
+                className,
+                CanonicalCompilerSignature.typeAlias(className),
             )
         }
         is KaClassLikeSymbol -> {
             val className = classId?.asSingleFqName()?.asString()
                             ?: return compilerProjectionRejected()
-            IntellijCompilerSymbolProjectionResult.Projected(
-                IntellijCompilerSymbolProjection(
-                    kind = CompilerSymbolKind.CLASSLIKE,
-                    qualifiedIdentity = className,
-                    identity = "classlike|$className",
-                ),
+            projected(
+                CompilerSymbolKind.CLASSLIKE,
+                className,
+                CanonicalCompilerSignature.classLike(className),
             )
         }
         else -> compilerProjectionRejected()
     }
 }
 
-private fun KaFunctionSymbol.functionIdentity(callable: String): String = buildString {
-    append("function|").append(callable).append('|')
-    append(receiverParameter?.returnType?.toString()?.canonicalCompilerType() ?: "-").append('|')
-    append(
-        contextReceivers.joinToString(",") { receiver ->
-            receiver.type.toString().canonicalCompilerType()
-        },
-    ).append('|')
-    append(
-        valueParameters.joinToString(",") { parameter ->
-            parameter.returnType.toString().canonicalCompilerType()
-        },
-    ).append('|')
-    append((this@functionIdentity as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0)
-}
+private fun KaFunctionSymbol.functionSignature(
+    callable: String,
+): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
+    CanonicalCompilerSignature.function(
+        rawQualifiedIdentity = callable,
+        rawReceiverType = receiverParameter?.returnType?.toString(),
+        rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+        rawValueParameterTypes = valueParameters.map { it.returnType.toString() },
+        rawTypeParameterCount = (this as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0,
+    )
 
-private fun String.canonicalCompilerType(): String = filterNot(Char::isWhitespace)
+private fun projected(
+    kind: CompilerSymbolKind,
+    qualifiedIdentity: String,
+    signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
+): IntellijCompilerSymbolProjectionResult = when (signature) {
+    is Refinement.Refined -> IntellijCompilerSymbolProjectionResult.Projected(
+        IntellijCompilerSymbolProjection(
+            kind,
+            qualifiedIdentity,
+            CompilerSymbolIdentity.fromCanonicalSignature(signature.value),
+        ),
+    )
+    is Refinement.Rejected -> compilerProjectionRejected()
+}
 
 private fun rejected(
     reason: IntellijSymbolSelectorRejection,

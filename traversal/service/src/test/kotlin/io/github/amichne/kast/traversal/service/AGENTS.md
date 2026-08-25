@@ -6,3 +6,5 @@ This directory owns test sources and fixtures under `traversal/service/src/test/
 
 - Keep changes within the parent guide's ownership.
 - Add local rules only when this directory gains a distinct durable boundary.
+- SQLite-backed multi-hop tests wrap the physical reader with a counter and require exactly one
+  snapshot-content read per traversal request.

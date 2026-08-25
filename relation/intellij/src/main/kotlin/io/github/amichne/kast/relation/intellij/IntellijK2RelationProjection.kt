@@ -14,7 +14,6 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -151,10 +150,6 @@ internal class IntellijK2RelationProjection(
             IntellijCompilerProjectionResult.Unsupported ->
                 return IntellijRelationDeclarationProjection.Unsupported
         }
-        val identity = when (val parsed = CompilerSymbolIdentity.parse(projection.identity)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return IntellijRelationDeclarationProjection.Unsupported
-        }
         val evidence = when (
             val refined = CompilerGroundedSymbolEvidence.fromBoundary(
                 detached,
@@ -163,7 +158,7 @@ internal class IntellijK2RelationProjection(
                 declaration.name.orEmpty(),
                 projection.qualifiedIdentity,
                 projection.kind,
-                identity,
+                projection.identity,
             )
         ) {
             is Refinement.Refined -> refined.value
@@ -186,7 +181,7 @@ internal class IntellijK2RelationProjection(
             IntellijCompilerProjectionResult.Unsupported ->
                 return IntellijK2TargetConfirmation.UNRESOLVED
         }
-        return if (identity == subject.compilerIdentity.value) {
+        return if (identity == subject.compilerIdentity) {
             IntellijK2TargetConfirmation.EXACT_SUBJECT
         } else {
             IntellijK2TargetConfirmation.DIFFERENT_SYMBOL

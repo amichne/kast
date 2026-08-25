@@ -1,6 +1,7 @@
 package io.github.amichne.kast.traversal.service
 
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompiler
+import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompilerOpening
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStore
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
 import io.github.amichne.kast.kernel.Refinement
@@ -11,9 +12,12 @@ import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
+import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
 import io.github.amichne.kast.topology.contract.TopologyEdge
 import io.github.amichne.kast.topology.contract.TopologyEdgeKind
 import io.github.amichne.kast.topology.contract.TopologyPublicationResult
+import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
+import io.github.amichne.kast.topology.contract.TopologySnapshotContentReader
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.traversal.contract.TraversalResult
@@ -59,8 +63,12 @@ class SqliteTopologyTraversalTest {
         ).snapshot
 
         val reopened = store(database)
+        val contentReads = CountingTopologySnapshotContentReader(reopened)
         val current = WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) }
-        val relations = RelationService(current, SqliteTopologyRelationCompiler(snapshot, reopened))
+        val relations = RelationService(
+            current,
+            topologyRelationCompiler(snapshot, contentReads),
+        )
         val result = assertInstanceOf(
             TraversalResult.Complete::class.java,
             runSuspend { traversalOperations(relations).run(traversalFixture.plan(a)) },
@@ -71,6 +79,7 @@ class SqliteTopologyTraversalTest {
             listOf("b", "c"),
             result.page.records.map { it.related.name.value },
         )
+        assertEquals(1, contentReads.count)
     }
 
     @Test
@@ -90,7 +99,7 @@ class SqliteTopologyTraversalTest {
 
         val current = WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) }
         val reopened = store(database)
-        val relations = RelationService(current, SqliteTopologyRelationCompiler(snapshot, reopened))
+        val relations = RelationService(current, topologyRelationCompiler(snapshot, reopened))
         val result = assertInstanceOf(
             TraversalResult.Complete::class.java,
             runSuspend { traversalOperations(relations).run(traversalFixture.plan(a)) },
@@ -200,6 +209,16 @@ class SqliteTopologyTraversalTest {
         }
     }
 
+    private fun topologyRelationCompiler(
+        snapshot: PublishedTopologySnapshot,
+        reader: TopologySnapshotContentReader,
+    ): SqliteTopologyRelationCompiler = when (
+        val opened = SqliteTopologyRelationCompiler.open(snapshot, reader)
+    ) {
+        is SqliteTopologyRelationCompilerOpening.Opened -> opened.compiler
+        is SqliteTopologyRelationCompilerOpening.Rejected -> error(opened.failure)
+    }
+
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var outcome: Result<Value>? = null
         block.startCoroutine(
@@ -211,5 +230,17 @@ class SqliteTopologyTraversalTest {
             },
         )
         return checkNotNull(outcome).getOrThrow()
+    }
+}
+
+private class CountingTopologySnapshotContentReader(
+    private val delegate: TopologySnapshotContentReader,
+) : TopologySnapshotContentReader {
+    var count: Int = 0
+        private set
+
+    override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead {
+        count += 1
+        return delegate.read(snapshot)
     }
 }

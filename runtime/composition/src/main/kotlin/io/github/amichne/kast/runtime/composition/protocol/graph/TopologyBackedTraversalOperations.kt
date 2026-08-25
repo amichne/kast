@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.composition.protocol.graph
 
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompiler
+import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompilerOpening
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentReader
@@ -48,10 +49,15 @@ internal class TopologyBackedTraversalOperations(
             is TopologySnapshotEligibility.Rejected,
                 -> return rejected(TraversalRejection.RequiredEvidenceUnavailable)
         }
-        val relations = RelationService(
-            workspaces,
-            SqliteTopologyRelationCompiler(snapshot, contentReader),
-        )
+        val compiler = when (val opened = SqliteTopologyRelationCompiler.open(
+            snapshot,
+            contentReader,
+        )) {
+            is SqliteTopologyRelationCompilerOpening.Opened -> opened.compiler
+            is SqliteTopologyRelationCompilerOpening.Rejected ->
+                return rejected(TraversalRejection.RequiredEvidenceUnavailable)
+        }
+        val relations = RelationService(workspaces, compiler)
         return when (val result = traversalOperations(relations).run(plan)) {
             is TraversalResult.Rejected -> when (val reason = result.reason) {
                 is TraversalRejection.OneHopRejected ->

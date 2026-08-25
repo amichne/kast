@@ -6,12 +6,15 @@
 package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.TopologySourceFile
 import io.github.amichne.kast.topology.contract.TopologySymbol
+import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
@@ -71,10 +74,6 @@ internal fun projectTopologySymbol(
         is TopologyCompilerProjectionResult.Projected -> result.projection
         TopologyCompilerProjectionResult.Unsupported -> return TopologySymbolProjection.Unsupported
     }
-    val compilerIdentity = when (val parsed = CompilerSymbolIdentity.parse(projection.identity)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return TopologySymbolProjection.Rejected
-    }
     val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
     val fileIdentity = when (val detached = SymbolDiscoveryFileIdentity.fromBoundary(
         file.workspace.lease.workspaceRoot,
@@ -91,7 +90,7 @@ internal fun projectTopologySymbol(
         declaration.name.orEmpty(),
         projection.qualifiedIdentity,
         projection.kind,
-        compilerIdentity,
+        projection.identity,
     )) {
         is Refinement.Refined -> detached.value
         is Refinement.Rejected -> return TopologySymbolProjection.Rejected
@@ -127,10 +126,6 @@ internal fun KaSymbol.topologyIdentityProjection(
         is TopologyCompilerProjectionResult.Projected -> result.projection
         TopologyCompilerProjectionResult.Unsupported -> return TopologyK2IdentityProjection.Unsupported
     }
-    val identity = when (val parsed = CompilerSymbolIdentity.parse(projection.identity)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return TopologyK2IdentityProjection.Rejected
-    }
     return when (
         val symbol = registry.symbolAt(
             source,
@@ -139,7 +134,7 @@ internal fun KaSymbol.topologyIdentityProjection(
         )
     ) {
         is TopologyRegistrySymbolLookup.Found -> if (
-            symbol.symbol.evidence.compilerIdentity == identity
+            symbol.symbol.evidence.compilerIdentity == projection.identity
         ) {
             TopologyK2IdentityProjection.Projected(symbol.symbol)
         } else {
@@ -177,7 +172,7 @@ internal fun KtNamedDeclaration.directOverrideTopologyIdentities(
 private data class TopologyCompilerProjection(
     val kind: CompilerSymbolKind,
     val qualifiedIdentity: String,
-    val identity: String,
+    val identity: CompilerSymbolIdentity,
 )
 
 private sealed interface TopologyCompilerProjectionResult {
@@ -195,13 +190,13 @@ private fun KaSymbol.topologyProjection(): TopologyCompilerProjectionResult = wh
         projected(
             CompilerSymbolKind.CONSTRUCTOR,
             "$owner.<init>",
-            functionIdentity("$owner.<init>"),
+            functionSignature("$owner.<init>"),
         )
     }
     is KaFunctionSymbol -> {
         val callable = callableId?.asSingleFqName()?.asString()
                        ?: return TopologyCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.FUNCTION, callable, functionIdentity(callable))
+        projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
     }
     is KaKotlinPropertySymbol -> {
         val callable = callableId?.asSingleFqName()?.asString()
@@ -209,43 +204,55 @@ private fun KaSymbol.topologyProjection(): TopologyCompilerProjectionResult = wh
         projected(
             CompilerSymbolKind.PROPERTY,
             callable,
-            "property|$callable|${returnType.toString().canonicalCompilerType()}",
+            CanonicalCompilerSignature.property(callable, returnType.toString()),
         )
     }
     is KaTypeAliasSymbol -> {
         val name = classId?.asSingleFqName()?.asString()
                    ?: return TopologyCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.TYPE_ALIAS, name, "typealias|$name")
+        projected(
+            CompilerSymbolKind.TYPE_ALIAS,
+            name,
+            CanonicalCompilerSignature.typeAlias(name),
+        )
     }
     is KaClassLikeSymbol -> {
         val name = classId?.asSingleFqName()?.asString()
                    ?: return TopologyCompilerProjectionResult.Unsupported
-        projected(CompilerSymbolKind.CLASSLIKE, name, "classlike|$name")
+        projected(
+            CompilerSymbolKind.CLASSLIKE,
+            name,
+            CanonicalCompilerSignature.classLike(name),
+        )
     }
     else -> TopologyCompilerProjectionResult.Unsupported
 }
 
-private fun KaFunctionSymbol.functionIdentity(callable: String): String = buildString {
-    append("function|").append(callable).append('|')
-    append(receiverParameter?.returnType?.toString()?.canonicalCompilerType() ?: "-").append('|')
-    append(contextReceivers.joinToString(",") { it.type.toString().canonicalCompilerType() })
-        .append('|')
-    append(valueParameters.joinToString(",") { it.returnType.toString().canonicalCompilerType() })
-        .append('|')
-    append((this@functionIdentity as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0)
-}
+private fun KaFunctionSymbol.functionSignature(
+    callable: String,
+): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
+    CanonicalCompilerSignature.function(
+        rawQualifiedIdentity = callable,
+        rawReceiverType = receiverParameter?.returnType?.toString(),
+        rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+        rawValueParameterTypes = valueParameters.map { it.returnType.toString() },
+        rawTypeParameterCount = (this as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0,
+    )
 
 private fun projected(
     kind: CompilerSymbolKind,
     qualifiedIdentity: String,
-    identity: String,
-): TopologyCompilerProjectionResult = TopologyCompilerProjectionResult.Projected(
-    TopologyCompilerProjection(
-        kind,
-        qualifiedIdentity,
-        identity,
-    ),
-)
+    signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
+): TopologyCompilerProjectionResult = when (signature) {
+    is Refinement.Refined -> TopologyCompilerProjectionResult.Projected(
+        TopologyCompilerProjection(
+            kind,
+            qualifiedIdentity,
+            CompilerSymbolIdentity.fromCanonicalSignature(signature.value),
+        ),
+    )
+    is Refinement.Rejected -> TopologyCompilerProjectionResult.Unsupported
+}
 
 private sealed interface TopologyK2SourceFileProjection {
     data class Found(
@@ -274,5 +281,3 @@ private fun KaSymbol.topologySourceFile(
         TopologyRegistryFileLookup.Unavailable -> TopologyK2SourceFileProjection.Unsupported
     }
 }
-
-private fun String.canonicalCompilerType(): String = filterNot(Char::isWhitespace)
