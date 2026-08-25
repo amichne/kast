@@ -10,6 +10,8 @@ cost, scope, finite resource budget, and completeness policy.
 - `OperationBlocker.kt` owns common closed reasons that prevent an operation from running.
 - `OperationDefinition.kt` binds typed operation metadata to generation-bound kernel outcomes.
 - `OperationRegistry.kt` owns closed immutable registry construction and lookup.
+- `CanonicalAgentToolDefinitions.kt` owns the two agent-facing read tools, their input models, and
+  their exact canonical operation compositions without importing an agent transport.
 
 ## Dependency boundary
 
@@ -36,6 +38,8 @@ cost, scope, finite resource budget, and completeness policy.
   maps or primitive protocols.
 - `OperationRegistryArtifact` is the typed operation-ID projection consumed by `:protocol:wire`;
   this module does not encode JSON or write generated files.
+- Agent tool models name only existing canonical operation definitions. Agent-specific JSON and
+  execution stay in outer adapters.
 
 ## Verification ladder
 

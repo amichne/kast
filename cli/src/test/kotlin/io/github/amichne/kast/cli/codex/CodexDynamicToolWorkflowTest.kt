@@ -1,7 +1,11 @@
 package io.github.amichne.kast.cli.codex
 
+import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -67,6 +71,51 @@ class CodexDynamicToolWorkflowTest {
         assertTrue(descriptions.contains("same exec program"))
         assertTrue(descriptions.contains("retain"))
         assertTrue(descriptions.contains("without resolving again"))
+    }
+
+    @Test
+    fun `deferred definitions project the canonical Kast agent tool models`() {
+        val namespace = CodexDynamicToolDefinitions.kastNamespace()
+        val definitions = CanonicalAgentToolDefinitions.all
+
+        assertEquals(definitions.map { it.name.value }, namespace.tools.map { it.name })
+        assertEquals(
+            definitions.map { it.description.value },
+            namespace.tools.map { it.description },
+        )
+
+        val symbolSchema = namespace.tools[0].inputSchema.jsonObject
+        assertEquals(
+            false,
+            symbolSchema.getValue("additionalProperties").jsonPrimitive.content.toBoolean(),
+        )
+        assertEquals(
+            "query",
+            symbolSchema.getValue("required").jsonArray.single().jsonPrimitive.content,
+        )
+        assertEquals(
+            1,
+            symbolSchema.getValue("properties").jsonObject
+                .getValue("query").jsonObject
+                .getValue("minLength").jsonPrimitive.content.toInt(),
+        )
+
+        val relationSchema = namespace.tools[1].inputSchema.jsonObject
+        assertEquals(
+            listOf(
+                "references",
+                "callers",
+                "callees",
+                "implementations",
+                "inheritors",
+                "overrides",
+                "type_uses",
+            ),
+            relationSchema.getValue("properties").jsonObject
+                .getValue("relation").jsonObject
+                .getValue("enum").jsonArray
+                .map { it.jsonPrimitive.content },
+        )
     }
 
     @Test

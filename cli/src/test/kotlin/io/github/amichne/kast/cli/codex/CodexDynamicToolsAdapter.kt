@@ -28,6 +28,7 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.SymbolResolveResult
+import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -35,8 +36,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
 private const val KAST_NAMESPACE = "kast"
-private const val SYMBOL_RESOLVE_TOOL = "symbol_resolve"
-private const val RELATION_READ_TOOL = "relation_read"
 private const val SPIKE_RESULT_LIMIT = 100
 
 private val boundaryJson = Json {
@@ -289,13 +288,14 @@ internal class CodexDynamicToolsAdapter(
 
     private enum class KastDynamicTool {
         SYMBOL_RESOLVE,
-        RELATION_READ;
+        RELATION_READ,
+        ;
 
         companion object {
             fun from(namespace: String?, tool: String): KastDynamicTool? = when {
                 namespace != KAST_NAMESPACE -> null
-                tool == SYMBOL_RESOLVE_TOOL -> SYMBOL_RESOLVE
-                tool == RELATION_READ_TOOL -> RELATION_READ
+                tool == CanonicalAgentToolDefinitions.symbolResolve.name.value -> SYMBOL_RESOLVE
+                tool == CanonicalAgentToolDefinitions.relationRead.name.value -> RELATION_READ
                 else -> null
             }
         }
