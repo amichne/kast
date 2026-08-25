@@ -22,7 +22,6 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtTypeReference
 import java.nio.file.Path
 
 /** Request-local K2-confirmed implementation of all seven closed one-hop relation meanings. */
@@ -43,22 +42,17 @@ internal class IntellijK2RelationSearch(
      */
     fun read(
         request: RelationRequest,
-        subject: KtNamedDeclaration,
+        plan: IntellijRelationPlan,
         collector: IntellijRelationCollector,
     ): IntellijRelationTermination {
         if (DumbService.isDumb(project)) {
             return incomplete(RelationLimitation.DUMB_MODE_TRANSITION)
         }
-        val state = SearchState(request, subject, collector)
-        return when (request.meaning) {
-            RelationMeaning.References -> state.references(ReferenceMeaning.ALL)
-            RelationMeaning.Callers -> state.references(ReferenceMeaning.CALL_ONLY)
-            RelationMeaning.TypeUses -> state.references(ReferenceMeaning.TYPE_ONLY)
-            RelationMeaning.Callees -> state.callees()
-            RelationMeaning.Implementations,
-            RelationMeaning.Inheritors,
-            RelationMeaning.Overrides,
-                -> state.definitions()
+        val state = SearchState(request, plan.subject, collector)
+        return when (plan) {
+            is IntellijRelationPlan.References -> state.references(plan)
+            is IntellijRelationPlan.Callees -> state.callees()
+            is IntellijRelationPlan.Definitions -> state.definitions(plan.relation)
         }
     }
 
@@ -70,7 +64,7 @@ internal class IntellijK2RelationSearch(
         private var skipRemaining = request.position.workOffset.value
         private val limitations = linkedSetOf<RelationLimitation>()
 
-        fun references(referenceMeaning: ReferenceMeaning): IntellijRelationTermination {
+        fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination {
             val terminal = ReferencesSearch.search(subject, scope.nativeScope, false)
                 .forEach(Processor { reference ->
                     cancellationCheck()
@@ -79,30 +73,38 @@ internal class IntellijK2RelationSearch(
                     if (kotlinReference == null) {
                         return@Processor incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
                     }
-                    when (projection.confirmTarget(kotlinReference, request.subject)) {
-                        IntellijK2TargetConfirmation.DIFFERENT_SYMBOL ->
-                            return@Processor incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
+                    val admitted = when (val admission = plan.admit(kotlinReference)) {
+                        IntellijRelationReferenceAdmission.Skipped -> return@Processor true
+                        is IntellijRelationReferenceAdmission.Admitted -> admission
+                    }
+                    when (projection.confirmTarget(admitted)) {
+                        IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> when (admitted) {
+                            is IntellijRelationReferenceAdmission.Admitted.ClassConstruction ->
+                                return@Processor true
+                            is IntellijRelationReferenceAdmission.Admitted.ExactSymbol ->
+                                return@Processor incompleteItem(
+                                    RelationLimitation.UNRESOLVED_TARGET,
+                                )
+                        }
                         IntellijK2TargetConfirmation.UNRESOLVED ->
                             return@Processor incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
                         IntellijK2TargetConfirmation.EXACT_SUBJECT -> Unit
                     }
-                    if (
-                        referenceMeaning.admits(reference.element) ==
-                        ReferenceAdmission.SKIPPED
-                    ) return@Processor true
-                    val owner = when (val containing = reference.element.nearestDeclaration()) {
-                        is ContainingDeclaration.Found -> containing.declaration
-                        ContainingDeclaration.Unsupported ->
+                    val related = when (
+                        val containing = reference.element.nearestSupportedDeclaration(projection)
+                    ) {
+                        is SupportedContainingDeclaration.Found -> containing.projection
+                        SupportedContainingDeclaration.Unsupported ->
                             return@Processor incompleteItem(
                                 RelationLimitation.UNSUPPORTED_ITEM,
                             )
                     }
-                    emit(owner, reference.element, reference.rangeInElement)
+                    emit(related, reference.element, reference.rangeInElement)
                 })
             return termination(ProviderTermination.from(terminal))
         }
 
-        fun definitions(): IntellijRelationTermination {
+        fun definitions(relation: IntellijDefinitionRelation): IntellijRelationTermination {
             val terminal = DefinitionsScopedSearch.search(subject, scope.nativeScope, false)
                 .forEach(Processor { definition ->
                     cancellationCheck()
@@ -111,7 +113,7 @@ internal class IntellijK2RelationSearch(
                                     ?: return@Processor incompleteItem(
                                         RelationLimitation.UNSUPPORTED_ITEM,
                                     )
-                    when (projection.confirmDefinition(subject, candidate, request.meaning)) {
+                    when (projection.confirmDefinition(subject, candidate, relation)) {
                         IntellijK2DefinitionConfirmation.DIFFERENT_RELATION -> true
                         IntellijK2DefinitionConfirmation.UNSUPPORTED ->
                             incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
@@ -169,20 +171,27 @@ internal class IntellijK2RelationSearch(
             related: KtNamedDeclaration,
             occurrenceElement: PsiElement,
             relativeRange: com.intellij.openapi.util.TextRange,
+        ): Boolean = when (val result = projection.project(related)) {
+            is IntellijRelationDeclarationProjection.Projected ->
+                emit(result, occurrenceElement, relativeRange)
+            IntellijRelationDeclarationProjection.Unsupported ->
+                incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+        }
+
+        private fun emit(
+            related: IntellijRelationDeclarationProjection.Projected,
+            occurrenceElement: PsiElement,
+            relativeRange: com.intellij.openapi.util.TextRange,
         ): Boolean {
-            val endpoint = when (val result = projection.project(related)) {
-                is IntellijRelationDeclarationProjection.Projected -> when (
-                    val resolved = RelationEndpoint.resolve(
-                        request.subject.lease,
-                        request.subject.scope,
-                        result.evidence,
-                    )
-                ) {
-                    is Refinement.Refined -> resolved.value
-                    is Refinement.Rejected ->
-                        return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
-                }
-                IntellijRelationDeclarationProjection.Unsupported ->
+            val endpoint = when (
+                val resolved = RelationEndpoint.resolve(
+                    request.subject.lease,
+                    request.subject.scope,
+                    related.evidence,
+                )
+            ) {
+                is Refinement.Refined -> resolved.value
+                is Refinement.Rejected ->
                     return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
             }
             val occurrenceFile = PsiUtilCore.getVirtualFile(occurrenceElement)
@@ -283,38 +292,17 @@ internal class IntellijK2RelationSearch(
     }
 }
 
-private enum class ReferenceMeaning {
-    ALL,
-    CALL_ONLY,
-    TYPE_ONLY,
-    ;
-
-    fun admits(element: PsiElement): ReferenceAdmission = when (this) {
-        ALL -> ReferenceAdmission.ADMITTED
-        CALL_ONLY -> when (
-            val call = PsiTreeUtil.getParentOfType(element, KtCallElement::class.java, false)
-        ) {
-            null -> ReferenceAdmission.SKIPPED
-            else -> if (call.calleeExpression?.textRange?.contains(element.textRange) == true) {
-                ReferenceAdmission.ADMITTED
-            } else {
-                ReferenceAdmission.SKIPPED
-            }
-        }
-        TYPE_ONLY -> if (
-            PsiTreeUtil.getParentOfType(element, KtTypeReference::class.java, false) != null
-        ) ReferenceAdmission.ADMITTED else ReferenceAdmission.SKIPPED
-    }
-}
-
-private enum class ReferenceAdmission {
-    ADMITTED,
-    SKIPPED,
-}
-
 private sealed interface ContainingDeclaration {
     data class Found(val declaration: KtNamedDeclaration) : ContainingDeclaration
     data object Unsupported : ContainingDeclaration
+}
+
+private sealed interface SupportedContainingDeclaration {
+    data class Found(
+        val projection: IntellijRelationDeclarationProjection.Projected,
+    ) : SupportedContainingDeclaration
+
+    data object Unsupported : SupportedContainingDeclaration
 }
 
 private sealed interface OccurrenceProvenance {
@@ -344,6 +332,24 @@ private fun PsiElement.nearestDeclaration(): ContainingDeclaration =
         .firstOrNull()
         ?.let(ContainingDeclaration::Found)
     ?: ContainingDeclaration.Unsupported
+
+/**
+ * Proof transition: `(PsiElement, IntellijK2RelationProjection) ->
+ * SupportedContainingDeclaration`.
+ *
+ * A found result carries the nearest containing named declaration that has already proved it can
+ * become a detached compiler-grounded relation endpoint. Unsupported local declarations are
+ * refined past instead of obscuring a supported enclosing caller. Live PSI remains request-local.
+ */
+private fun PsiElement.nearestSupportedDeclaration(
+    projection: IntellijK2RelationProjection,
+): SupportedContainingDeclaration = generateSequence(this as PsiElement?) { it.parent }
+    .filterIsInstance<KtNamedDeclaration>()
+    .map(projection::project)
+    .filterIsInstance<IntellijRelationDeclarationProjection.Projected>()
+    .firstOrNull()
+    ?.let(SupportedContainingDeclaration::Found)
+    ?: SupportedContainingDeclaration.Unsupported
 
 private fun KtCallElement.calleeReferences(): KotlinCallReferences {
     val references = calleeExpression?.references?.filterIsInstance<KtReference>().orEmpty()

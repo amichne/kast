@@ -135,9 +135,95 @@ class CodexDynamicToolsAdapterTest {
         assertFalse(adapter.metrics().selectorRoundTripUnchanged)
     }
 
+    @Test
+    fun `one repeated relation call is counted as one corrective invocation`() {
+        val selector = text("exact:v1:opaque-selector")
+        val adapter = CodexDynamicToolsAdapter(RecordingKastReads(selector, symbol(selector)))
+
+        adapter.call(
+            "kast",
+            "symbol_resolve",
+            json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
+        )
+        repeat(2) {
+            adapter.call(
+                "kast",
+                "relation_read",
+                json("""{"exactSelector":"${selector.value}","relation":"callers"}"""),
+            )
+        }
+
+        assertEquals(1, adapter.metrics().correctiveInvocations)
+    }
+
+    @Test
+    fun `rejected selector does not erase the produced selector proof`() {
+        val selector = text("exact:v1:opaque-selector")
+        val kast = RecordingKastReads(selector, symbol(selector))
+        val adapter = CodexDynamicToolsAdapter(kast)
+        adapter.call(
+            "kast",
+            "symbol_resolve",
+            json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
+        )
+
+        val rejected = adapter.call(
+            "kast",
+            "relation_read",
+            json("""{"exactSelector":"exact:v1:changed","relation":"callers"}"""),
+        )
+        val retried = adapter.call(
+            "kast",
+            "relation_read",
+            json("""{"exactSelector":"${selector.value}","relation":"callers"}"""),
+        )
+
+        assertEquals(
+            CodexDynamicToolCallResult.Rejected(CodexDynamicToolFailure.SELECTOR_NOT_REUSED),
+            rejected,
+        )
+        assertEquals(CodexDynamicToolCallResult.Succeeded(RELATION_JSON), retried)
+        assertEquals(0, adapter.metrics().correctiveInvocations)
+        assertTrue(adapter.metrics().selectorRoundTripUnchanged)
+        assertEquals(1, kast.calls.count { it == "relation" })
+    }
+
+    @Test
+    fun `qualified relation evidence is rejected without erasing selector proof`() {
+        val selector = text("exact:v1:opaque-selector")
+        val kast = RecordingKastReads(selector, symbol(selector), qualifiedRelation = true)
+        val adapter = CodexDynamicToolsAdapter(kast)
+        adapter.call(
+            "kast",
+            "symbol_resolve",
+            json("""{"query":"CanonicalSymbolDiscoverHandler"}"""),
+        )
+
+        val result = adapter.call(
+            "kast",
+            "relation_read",
+            json("""{"exactSelector":"${selector.value}","relation":"callers"}"""),
+        )
+
+        assertEquals(
+            CodexDynamicToolCallResult.Rejected(CodexDynamicToolFailure.KAST_OPERATION_REJECTED),
+            result,
+        )
+        assertEquals(listOf("COVERAGE_INCOMPLETE"), adapter.metrics().relationQualificationNames)
+        assertFalse(adapter.metrics().selectorRoundTripUnchanged)
+    }
+
+    @Test
+    fun `Kast CLI execution detection accepts shell quoting without matching source paths`() {
+        assertTrue("/bin/zsh -lc 'kast symbol discover --help'".invokesKastCli())
+        assertTrue("kast relation read --selector opaque".invokesKastCli())
+        assertFalse("sed -n '1p' cli/codex/kast/source.kt".invokesKastCli())
+    }
+
     private class RecordingKastReads(
         private val exactSelector: ProtocolText = text("exact:v1:unused"),
         private val exactSymbol: SymbolDocument = symbol(exactSelector),
+        private val qualifiedRelation: Boolean = false,
     ) : CanonicalKastReadOperations {
         val calls = mutableListOf<String>()
         var discoveryRequest: SymbolDiscoverRequest? = null
@@ -198,6 +284,20 @@ class CodexDynamicToolsAdapterTest {
             > {
             calls += "relation"
             relationRequest = request
+            if (qualifiedRelation) {
+                val result = RelationReadResult(
+                    BoundedProtocolList.create(emptyList<SymbolDocument>()).refined(),
+                )
+                return CanonicalKastReadAttempt.Read(
+                    CanonicalKastRead(
+                        OperationOutcome.Qualified(
+                            EvidenceEnvelope(CanonicalOperation.RELATION_READ.id, generation(), result),
+                            RelationReadQualification.COVERAGE_INCOMPLETE,
+                        ),
+                        RELATION_JSON,
+                    ),
+                )
+            }
             return read(
                 CanonicalOperation.RELATION_READ,
                 RelationReadResult(BoundedProtocolList.create(listOf(exactSymbol)).refined()),

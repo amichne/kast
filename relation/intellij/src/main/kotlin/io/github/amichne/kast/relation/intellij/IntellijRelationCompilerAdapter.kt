@@ -83,7 +83,7 @@ internal class IntellijRelationCompilerQuery(
                 val subject = when (
                     val lookup = projection.subject(scope, request.subject)
                 ) {
-                    is IntellijRelationSubjectLookup.Found -> lookup.declaration
+                    is IntellijRelationSubjectLookup.Found -> lookup
                     is IntellijRelationSubjectLookup.Rejected ->
                         return@readAction RelationCompilation.Rejected(
                             lookup.reason.compilerRejection(),
@@ -94,7 +94,7 @@ internal class IntellijRelationCompilerQuery(
                     project,
                     scope,
                     projection,
-                ).read(request, subject, collector)
+                ).read(request, subject.plan(request), collector)
                 collector.finish(termination)
             }
         } catch (cancelled: ProcessCanceledException) {

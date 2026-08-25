@@ -110,6 +110,11 @@ internal sealed interface AppServerIncoming {
     data class Rejected(val failure: KastSpikeBoundaryFailure) : AppServerIncoming
 }
 
+internal enum class AppServerToolAccess {
+    DYNAMIC_TOOLS_ONLY,
+    CLI_COMPARISON,
+}
+
 /** One direct JSONL process session with `codex app-server`; no shell is involved. */
 internal class AppServerJsonlSession private constructor(
     private val process: Process,
@@ -157,20 +162,42 @@ internal class AppServerJsonlSession private constructor(
     }
 
     companion object {
-        fun start(root: Path, stderrLog: Path, protocolLog: Path): AppServerStart {
-            val command = listOf(
-                "codex",
-                "app-server",
-                "--disable",
-                "hooks",
-                "--disable",
-                "plugins",
-                "--disable",
-                "shell_tool",
-                "-c",
-                "mcp_servers={}",
-                "--stdio",
-            )
+        /**
+         * Proof transition: `(Path, AppServerToolAccess) -> AppServerStart`.
+         *
+         * A started dynamic-tools process proves the shell tool is disabled. A started CLI
+         * comparison process proves the shell tool remains enabled. Both modes disable hooks,
+         * plugins, and MCP servers and bind their process directory to the canonical root.
+         * [KastSpikeBoundaryFailure] is the closed expected failure.
+         */
+        fun start(
+            root: Path,
+            stderrLog: Path,
+            protocolLog: Path,
+            toolAccess: AppServerToolAccess,
+        ): AppServerStart {
+            val command = buildList {
+                addAll(
+                    listOf(
+                        "codex",
+                        "app-server",
+                        "--disable",
+                        "hooks",
+                        "--disable",
+                        "plugins",
+                    ),
+                )
+                if (toolAccess == AppServerToolAccess.DYNAMIC_TOOLS_ONLY) {
+                    addAll(listOf("--disable", "shell_tool"))
+                }
+                addAll(
+                    listOf(
+                        "-c",
+                        "mcp_servers={}",
+                        "--stdio",
+                    ),
+                )
+            }
             val process = try {
                 ProcessBuilder(command)
                     .directory(root.toFile())

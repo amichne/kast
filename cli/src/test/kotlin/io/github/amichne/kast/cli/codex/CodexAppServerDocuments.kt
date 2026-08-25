@@ -54,11 +54,18 @@ internal data class InitializeCapabilitiesDocument(
 internal data class ThreadStartParamsDocument(
     val cwd: String,
     val approvalPolicy: String,
-    val sandbox: String,
+    val sandbox: AppServerSandboxModeDocument,
     val ephemeral: Boolean,
     val experimentalRawEvents: Boolean,
     val dynamicTools: List<DynamicToolNamespaceDocument>,
+    val model: String? = null,
 )
+
+@Serializable
+internal enum class AppServerSandboxModeDocument {
+    @SerialName("read-only") READ_ONLY,
+    @SerialName("danger-full-access") DANGER_FULL_ACCESS,
+}
 
 @Serializable
 internal data class DynamicToolNamespaceDocument(
@@ -80,6 +87,7 @@ internal data class DynamicToolFunctionDocument(
 @Serializable
 internal data class ThreadStartResultDocument(
     val thread: ThreadIdentityDocument,
+    val model: String,
 )
 
 @Serializable
@@ -91,6 +99,11 @@ internal data class ThreadIdentityDocument(
 internal data class TurnStartParamsDocument(
     val threadId: String,
     val input: List<TextUserInputDocument>,
+)
+
+@Serializable
+internal data class TurnStartResultIdentityDocument(
+    val turn: ThreadIdentityDocument,
 )
 
 @Serializable
@@ -131,9 +144,13 @@ internal data class ItemNotificationParamsDocument(
 
 @Serializable
 internal data class ObservedThreadItemDocument(
+    val id: String? = null,
     val type: String,
     val command: String? = null,
     val text: String? = null,
+    val status: String? = null,
+    val exitCode: Int? = null,
+    val aggregatedOutput: String? = null,
 )
 
 @Serializable
@@ -188,8 +205,9 @@ internal data class TurnCompletionDocument(
 )
 
 @Serializable
-internal data class CodexDynamicToolsEvidenceDocument(
+internal data class CodexDynamicToolsPathEvidenceDocument(
     val completed: Boolean,
+    val model: String,
     val threadId: String,
     val turnId: String,
     val appServerCommand: List<String>,
@@ -209,6 +227,54 @@ internal data class CodexDynamicToolsEvidenceDocument(
     val relationTargetNames: List<String>,
     val relationQualificationNames: List<String>,
     val relationRejectionNames: List<String>,
-    val equivalentCliInvocations: Int,
+    val relationRejected: Boolean,
+    val finalAnswerNamesReturnedCallers: Boolean,
     val finalAnswer: String,
+)
+
+@Serializable
+internal data class CodexCliComparisonEvidenceDocument(
+    val completed: Boolean,
+    val model: String,
+    val threadId: String,
+    val turnId: String,
+    val appServerCommand: List<String>,
+    val sandboxMode: AppServerSandboxModeDocument,
+    val modelTokensBeforeFirstUsefulKastResult: Long,
+    val modelResponseCompletions: Int,
+    val modelToolTurns: Int,
+    val kastCommandCount: Int,
+    val malformedCommands: Int,
+    val correctiveCommands: Int,
+    val relationTargetNames: List<String>,
+    val finalAnswerNamesReturnedCallers: Boolean,
+    val finalAnswer: String,
+)
+
+@Serializable
+internal data class ObservedKastCliOutputDocument(
+    val operation: String,
+    val status: String,
+    val targets: List<ObservedKastCliTargetDocument> = emptyList(),
+)
+
+@Serializable
+internal data class ObservedKastCliTargetDocument(
+    val name: String,
+)
+
+@Serializable
+internal enum class CodexSpikeDecisionDocument {
+    @SerialName("go") GO,
+    @SerialName("no-go") NO_GO,
+}
+
+@Serializable
+internal data class CodexAppServerComparisonEvidenceDocument(
+    val model: String,
+    val prompt: String,
+    val workingDirectory: String,
+    val dynamic: CodexDynamicToolsPathEvidenceDocument,
+    val cliComparison: CodexCliComparisonEvidenceDocument,
+    val decision: CodexSpikeDecisionDocument,
 )

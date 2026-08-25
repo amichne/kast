@@ -12,6 +12,12 @@ workspace transitions, derived graph construction, or mutation.
   endpoint or semantic relation.
 - Each closed meaning has an explicit K2 confirmation path. A generic kind/direction composition
   is prohibited.
+- For a classlike `Callers` subject, admit only call-shaped references that K2 resolves to a
+  constructor whose containing class ID equals the selected class symbol's class ID. Preserve the
+  selected class endpoint; do not equate constructor and class identities.
+- Attribute an admitted reference to its nearest compiler-projectable containing named
+  declaration. Refine past unsupported local declarations; qualify only when no supported owner or
+  K2 ownership proof exists.
 - Live `Project`, PSI, VFS, search-scope, query, and K2 session values remain request-local.
 - Apply result, byte, work, and elapsed bounds during enumeration. Every halt, unresolved item,
   unsupported shape, dumb-mode transition, or provider failure is qualified and resumable.

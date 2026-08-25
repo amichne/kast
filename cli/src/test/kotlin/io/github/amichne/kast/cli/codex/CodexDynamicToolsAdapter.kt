@@ -101,7 +101,7 @@ internal class CodexDynamicToolsAdapter(
     private val kast: CanonicalKastReadOperations,
 ) {
     private var selectorState: SelectorState = SelectorState.Absent
-    private val acceptedCalls = mutableListOf<KastDynamicTool>()
+    private var flow: DynamicToolFlow = DynamicToolFlow.AwaitingSymbolResolution
     private var callCount = 0
     private var malformedCount = 0
     private var correctiveCount = 0
@@ -125,20 +125,17 @@ internal class CodexDynamicToolsAdapter(
         callCount += 1
         val identity = KastDynamicTool.from(namespace, tool)
             ?: return rejected(CodexDynamicToolFailure.UNKNOWN_TOOL, malformed = true)
-        if (identity in acceptedCalls) {
+        if (!flow.expects(identity)) {
             correctiveCount += 1
         }
-        if (
-            identity == KastDynamicTool.RELATION_READ &&
-            acceptedCalls.lastOrNull() != KastDynamicTool.SYMBOL_RESOLVE
-        ) {
-            correctiveCount += 1
-        }
-        acceptedCalls += identity
-        return when (identity) {
+        val result = when (identity) {
             KastDynamicTool.SYMBOL_RESOLVE -> resolve(arguments)
             KastDynamicTool.RELATION_READ -> relation(arguments)
         }
+        if (result is CodexDynamicToolCallResult.Succeeded) {
+            flow = flow.complete(identity)
+        }
+        return result
     }
 
     fun metrics(): CodexDynamicToolMetrics = CodexDynamicToolMetrics(
@@ -217,7 +214,6 @@ internal class CodexDynamicToolsAdapter(
         val produced = selectorState as? SelectorState.Produced
             ?: return rejected(CodexDynamicToolFailure.SELECTOR_NOT_REUSED)
         if (selector != produced.selector) {
-            selectorState = SelectorState.Mismatched
             return rejected(CodexDynamicToolFailure.SELECTOR_NOT_REUSED)
         }
         val request = RelationReadRequest(
@@ -225,7 +221,6 @@ internal class CodexDynamicToolsAdapter(
             document.relation.toContract(),
             ProtocolCount.parse(SPIKE_RESULT_LIMIT).refinedValue(),
         )
-        selectorState = SelectorState.Reused(produced.selector)
         val relation = when (val attempt = kast.relation(request)) {
             is CanonicalKastReadAttempt.Read -> attempt.value
             is CanonicalKastReadAttempt.Rejected -> return rejected(
@@ -236,13 +231,14 @@ internal class CodexDynamicToolsAdapter(
             is OperationOutcome.Complete -> outcome.evidence.payload
             is OperationOutcome.Qualified -> {
                 relationQualificationNames = listOf(outcome.qualification.name)
-                outcome.evidence.payload
+                return rejected(CodexDynamicToolFailure.KAST_OPERATION_REJECTED)
             }
             is OperationOutcome.Rejected -> {
                 relationRejectionNames = listOf(outcome.reason.name)
                 return rejected(CodexDynamicToolFailure.KAST_OPERATION_REJECTED)
             }
         }
+        selectorState = SelectorState.Reused(produced.selector)
         relationTargetNames = result.targets.values.map { it.name.value }
         return CodexDynamicToolCallResult.Succeeded(relation.canonicalJson)
     }
@@ -270,7 +266,25 @@ internal class CodexDynamicToolsAdapter(
         data object Absent : SelectorState
         data class Produced(val selector: ProtocolText) : SelectorState
         data class Reused(val selector: ProtocolText) : SelectorState
-        data object Mismatched : SelectorState
+    }
+
+    private sealed interface DynamicToolFlow {
+        data object AwaitingSymbolResolution : DynamicToolFlow
+        data object AwaitingRelationRead : DynamicToolFlow
+        data object Completed : DynamicToolFlow
+
+        fun expects(tool: KastDynamicTool): Boolean = when (this) {
+            AwaitingSymbolResolution -> tool == KastDynamicTool.SYMBOL_RESOLVE
+            AwaitingRelationRead -> tool == KastDynamicTool.RELATION_READ
+            Completed -> false
+        }
+
+        fun complete(tool: KastDynamicTool): DynamicToolFlow = when {
+            this == AwaitingSymbolResolution && tool == KastDynamicTool.SYMBOL_RESOLVE ->
+                AwaitingRelationRead
+            this == AwaitingRelationRead && tool == KastDynamicTool.RELATION_READ -> Completed
+            else -> this
+        }
     }
 
     private enum class KastDynamicTool {

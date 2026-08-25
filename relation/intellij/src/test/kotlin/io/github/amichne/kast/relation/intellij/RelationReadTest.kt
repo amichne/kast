@@ -51,6 +51,38 @@ import java.nio.file.Path
 
 class RelationReadTest {
     @Test
+    fun `only classlike callers select constructor ownership confirmation`() {
+        assertEquals(
+            IntellijRelationPlanKind.ClassConstructionCallers,
+            IntellijRelationPlanKind.derive(
+                RelationMeaning.Callers,
+                CompilerSymbolKind.CLASSLIKE,
+            ),
+        )
+        assertEquals(
+            IntellijRelationPlanKind.ExactReferences(IntellijExactReferenceShape.CALL),
+            IntellijRelationPlanKind.derive(
+                RelationMeaning.Callers,
+                CompilerSymbolKind.FUNCTION,
+            ),
+        )
+        assertEquals(
+            IntellijRelationPlanKind.ExactReferences(IntellijExactReferenceShape.ANY),
+            IntellijRelationPlanKind.derive(
+                RelationMeaning.References,
+                CompilerSymbolKind.CLASSLIKE,
+            ),
+        )
+        assertEquals(
+            IntellijRelationPlanKind.ExactReferences(IntellijExactReferenceShape.TYPE),
+            IntellijRelationPlanKind.derive(
+                RelationMeaning.TypeUses,
+                CompilerSymbolKind.CLASSLIKE,
+            ),
+        )
+    }
+
+    @Test
     fun `resolved endpoint enters the next exact relation request without reconstruction`() {
         val initial = request(RelationMeaning.Callees)
         val related = assertInstanceOf(
@@ -232,4 +264,39 @@ class RelationReadTest {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error(failure.toString())
     }
+}
+
+internal class ClassConstructionCallerFixture(val marker: Int) {
+    constructor() : this(0)
+
+    fun member(): Int = marker
+
+    companion object {
+        operator fun invoke(marker: String): ClassConstructionCallerFixture =
+            ClassConstructionCallerFixture(marker.length)
+    }
+}
+
+internal class ClassConstructionCallerFixtureUses {
+    fun primaryConstructor(): ClassConstructionCallerFixture =
+        ClassConstructionCallerFixture(1)
+
+    fun secondaryConstructor(): ClassConstructionCallerFixture =
+        ClassConstructionCallerFixture()
+
+    fun typeOnly(value: ClassConstructionCallerFixture): ClassConstructionCallerFixture = value
+
+    fun member(value: ClassConstructionCallerFixture): Int = value.member()
+
+    fun callableReference(): (Int) -> ClassConstructionCallerFixture =
+        ::ClassConstructionCallerFixture
+
+    fun invokeFunction(): ClassConstructionCallerFixture =
+        ClassConstructionCallerFixture("not-a-constructor")
+}
+
+internal object ClassConstructionCallerCollisionScope {
+    class ClassConstructionCallerFixture
+
+    fun unrelatedSameName(): ClassConstructionCallerFixture = ClassConstructionCallerFixture()
 }

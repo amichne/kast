@@ -11,7 +11,6 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
-import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
@@ -19,6 +18,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -167,8 +167,25 @@ internal class IntellijK2RelationProjection(
         return IntellijRelationDeclarationProjection.Projected(declaration, evidence)
     }
 
-    /** Confirms through K2 that one Kotlin reference resolves to the exact request subject. */
+    /**
+     * Proof transition: `IntellijRelationReferenceAdmission.Admitted ->
+     * IntellijK2TargetConfirmation`.
+     *
+     * Exact-symbol admission preserves compiler identity equality. Class-construction admission
+     * establishes in one K2 analysis session that the call resolves to a constructor whose
+     * containing class ID equals the selected class symbol's class ID. Different and unproved
+     * targets remain finite non-admission states. Raw PSI and K2 symbols remain request-local.
+     */
     fun confirmTarget(
+        admitted: IntellijRelationReferenceAdmission.Admitted,
+    ): IntellijK2TargetConfirmation = when (admitted) {
+        is IntellijRelationReferenceAdmission.Admitted.ExactSymbol ->
+            confirmExactTarget(admitted.reference, admitted.endpoint)
+        is IntellijRelationReferenceAdmission.Admitted.ClassConstruction ->
+            confirmClassConstruction(admitted)
+    }
+
+    private fun confirmExactTarget(
         reference: KtReference,
         subject: RelationEndpoint,
     ): IntellijK2TargetConfirmation {
@@ -188,6 +205,24 @@ internal class IntellijK2RelationProjection(
         }
     }
 
+    private fun confirmClassConstruction(
+        admitted: IntellijRelationReferenceAdmission.Admitted.ClassConstruction,
+    ): IntellijK2TargetConfirmation = analyze(admitted.reference.element) {
+        val selectedClass = admitted.selectedClass.symbol as? KaClassSymbol
+                            ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
+        val selectedClassId = selectedClass.classId
+                              ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
+        val constructor = admitted.reference.resolveToSymbol() as? KaConstructorSymbol
+                          ?: return@analyze IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
+        val constructorOwner = constructor.containingClassId
+                               ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
+        if (constructorOwner == selectedClassId) {
+            IntellijK2TargetConfirmation.EXACT_SUBJECT
+        } else {
+            IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
+        }
+    }
+
     /**
      * Confirms the closed implementation, inheritance, or override meaning through K2 relation
      * APIs; index enumeration alone never admits a definition edge.
@@ -195,19 +230,19 @@ internal class IntellijK2RelationProjection(
     fun confirmDefinition(
         subject: KtNamedDeclaration,
         candidate: KtNamedDeclaration,
-        meaning: RelationMeaning,
+        relation: IntellijDefinitionRelation,
     ): IntellijK2DefinitionConfirmation = analyze(candidate) {
         val subjectSymbol = subject.symbol
         val candidateSymbol = candidate.symbol
-        when (meaning) {
-            RelationMeaning.Inheritors -> {
+        when (relation) {
+            IntellijDefinitionRelation.INHERITORS -> {
                 val parent = subjectSymbol as? KaClassSymbol
                              ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                 val child = candidateSymbol as? KaClassSymbol
                             ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                 if (child.isDirectSubClassOf(parent)) confirmed() else different()
             }
-            RelationMeaning.Overrides -> {
+            IntellijDefinitionRelation.OVERRIDES -> {
                 val parent = subjectSymbol as? KaCallableSymbol
                              ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                 val child = candidateSymbol as? KaCallableSymbol
@@ -222,7 +257,7 @@ internal class IntellijK2RelationProjection(
                     different()
                 }
             }
-            RelationMeaning.Implementations -> when {
+            IntellijDefinitionRelation.IMPLEMENTATIONS -> when {
                 subjectSymbol is KaClassSymbol && candidateSymbol is KaClassSymbol ->
                     if (
                         candidateSymbol.modality != KaSymbolModality.ABSTRACT &&
@@ -238,11 +273,6 @@ internal class IntellijK2RelationProjection(
                     ) confirmed() else different()
                 else -> IntellijK2DefinitionConfirmation.UNSUPPORTED
             }
-            RelationMeaning.References,
-            RelationMeaning.Callers,
-            RelationMeaning.Callees,
-            RelationMeaning.TypeUses,
-                -> IntellijK2DefinitionConfirmation.UNSUPPORTED
         }
     }
 
