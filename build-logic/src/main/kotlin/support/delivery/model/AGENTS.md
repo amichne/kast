@@ -3,7 +3,8 @@
 This directory owns pure Kotlin representations for the VFS-passive delivery program, KVP-001
 authority refinement, and proof-receipt admission.
 
-- `DeliveryProgramModel.kt` validates graph structure and derives deterministic program and requirement projections.
+- `DeliveryProgramModel.kt` owns checked delivery identities, closed refinement/outcome/progression
+  types, graph validation, and deterministic program and requirement projections.
 - `ProgramAuthorityModel.kt` refines raw configuration into expectations and admits complete exact-head authority documents.
 - `ProgramAuthorityGeneration.kt` derives source identity from declared SHA-256 evidence. It must not read files, inspect paths, start processes, or choose identity by candidate order.
 - `DeliveryReceipt.kt` owns receipt identities, expectations, documents, issuance, admission, and

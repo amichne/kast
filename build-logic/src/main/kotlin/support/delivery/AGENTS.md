@@ -22,6 +22,9 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.
+- `tasks/Kvp002ReceiptTasks.kt` owns the next typed progression step. It executes the two exact
+  included-build model gates without shell parsing, emits the generated type-proof report, admits
+  KVP-001, and derives the KVP-002 completion receipt.
 - `ProgramMain.kt` is the dependency-free projection entry point used by `scripts/verify_bundle.sh`.
 
 Gate and completion receipt paths are part of the typed program, but their live evidence belongs
@@ -44,5 +47,6 @@ M0 delivery model writes belong under `model/`; focused tests remain under the d
 ./gradlew generateKastVfsPassiveProjection verifyKastVfsPassiveProjection
 ./gradlew verifyKastVfsPassiveAuthorityNegative
 ./gradlew verifyKVP001CompletionReceipt
+./gradlew verifyKVP002CompletionReceipt
 scripts/verify_bundle.sh
 ```

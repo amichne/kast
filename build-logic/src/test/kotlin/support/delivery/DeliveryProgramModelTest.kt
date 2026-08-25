@@ -1,10 +1,5 @@
 package support.delivery
 
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -118,12 +113,28 @@ class DeliveryProgramModelTest {
                 .any { it.name == "status" },
         )
 
-        writeProofReport(
-            Kvp002TypeProofDocument(
-                taskId = taskId.value,
-                outcome = "COMPLETE",
-                provedTypeFamilies = provedTypeFamilies,
-            ),
+    }
+
+    @Test
+    fun `type proof report round trips through its generated serializer`() {
+        val derived = deriveKvp002TypeProof()
+        val proof = assertInstanceOf(Kvp002TypeProofResult.Complete::class.java, derived).proof
+
+        assertEquals(derived, decodeKvp002TypeProof(encodeKvp002TypeProof(proof)))
+    }
+
+    @Test
+    fun `type proof report rejects a changed type family`() {
+        val proof = assertInstanceOf(
+            Kvp002TypeProofResult.Complete::class.java,
+            deriveKvp002TypeProof(),
+        ).proof
+        val changed = encodeKvp002TypeProof(proof)
+            .replace("\"receipt\"", "\"manualStatus\"")
+
+        assertEquals(
+            Kvp002TypeProofResult.Rejected(Kvp002TypeProofFailure.TYPE_FAMILIES_MISMATCH),
+            decodeKvp002TypeProof(changed),
         )
     }
 
@@ -139,44 +150,4 @@ class DeliveryProgramModelTest {
             is Outcome.Rejected -> outcome.failure.name
         }
 
-    private fun writeProofReport(document: Kvp002TypeProofDocument) {
-        val workingDirectory = Path.of("").toAbsolutePath().normalize()
-        val repositoryRoot = if (Files.isDirectory(workingDirectory.resolve("gradle/delivery"))) {
-            workingDirectory
-        } else {
-            workingDirectory.parent
-        }
-        require(Files.isDirectory(repositoryRoot.resolve("gradle/delivery")))
-        val output = repositoryRoot.resolve("build/reports/delivery/KVP-002-types.json")
-        Files.createDirectories(output.parent)
-        Files.writeString(output, proofJson.encodeToString(Kvp002TypeProofDocument.serializer(), document) + "\n")
-    }
-
-    private companion object {
-        val proofJson = Json {
-            encodeDefaults = true
-            explicitNulls = false
-            prettyPrint = false
-        }
-        val provedTypeFamilies = listOf(
-            "identity",
-            "generation",
-            "dependency",
-            "authority",
-            "effect",
-            "cost",
-            "evidence",
-            "gate",
-            "receipt",
-            "progression",
-            "closedOutcome",
-        )
-    }
 }
-
-@Serializable
-private data class Kvp002TypeProofDocument(
-    val taskId: String,
-    val outcome: String,
-    val provedTypeFamilies: List<String>,
-)

@@ -239,7 +239,12 @@ internal data class Kvp001ReceiptContext(
         }
     }
 
-    private fun expectation(
+    /**
+     * Proof transition: configured gate fields -> `ProofReceiptExpectation`.
+     * Establishes every receipt identity and digest, including an explicitly selected task owner.
+     * Expected failure is [ProofReceiptFailure] rendered here; raw fields stay at this boundary.
+     */
+    fun expectation(
         receiptId: String,
         gateId: String,
         command: String,
@@ -247,6 +252,7 @@ internal data class Kvp001ReceiptContext(
         dependencies: Map<String, String>,
         observations: Map<String, String>,
         artifacts: Map<String, String>,
+        receiptTaskId: String = taskId,
     ): ProofReceiptExpectation = when (
         val parsed = ProofReceiptExpectation.parse(
             receiptId,
@@ -254,7 +260,7 @@ internal data class Kvp001ReceiptContext(
             exactHead,
             programFingerprint,
             requirementFingerprint,
-            taskId,
+            receiptTaskId,
             gateId,
             dependencies,
             inputDigest,
@@ -269,10 +275,10 @@ internal data class Kvp001ReceiptContext(
         }
     }
 
-    private fun artifactDigests(paths: List<String>): Map<String, String> =
+    fun artifactDigests(paths: List<String>): Map<String, String> =
         paths.sorted().associateWith { path -> sha256Bytes(readBytes(path)) }
 
-    private fun readText(path: String): String = readBytes(path).toString(Charsets.UTF_8)
+    fun readText(path: String): String = readBytes(path).toString(Charsets.UTF_8)
 
     private fun readBytes(path: String): ByteArray {
         val resolved = resolveBoundaryPath(path)

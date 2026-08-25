@@ -1,16 +1,21 @@
 package kast
 
 import support.delivery.DeriveKvp001CompletionReceiptTask
+import support.delivery.DeriveKvp002CompletionReceiptTask
 import support.delivery.GenerateDeliveryProjectionsTask
 import support.delivery.GenerateKastVfsPassiveAuthorityTask
 import support.delivery.KastVfsPassiveReusedIndexProgram
 import support.delivery.Kvp001ReceiptTaskBase
 import support.delivery.RecordKvp001GreenReceiptTask
 import support.delivery.RecordKvp001RedReceiptTask
+import support.delivery.Kvp002ReceiptTaskBase
+import support.delivery.RecordKvp002GreenReceiptTask
+import support.delivery.RecordKvp002RedReceiptTask
 import support.delivery.VerifyDeliveryProjectionsTask
 import support.delivery.VerifyKastVfsPassiveAuthorityNegativeTask
 import support.delivery.VerifyKastVfsPassiveAuthorityTask
 import support.delivery.VerifyKvp001CompletionReceiptTask
+import support.delivery.VerifyKvp002CompletionReceiptTask
 import support.delivery.canonicalJson
 import support.delivery.sha256
 
@@ -193,7 +198,95 @@ tasks.register<VerifyKvp001CompletionReceiptTask>("verifyKVP001CompletionReceipt
     completionReceiptFile.set(authorityCompletionReceipt)
 }
 
-program.program.tasks.sortedBy { it.id }.filterNot { it == authorityTask }.forEach { node ->
+val typeModelTask = program.program.tasks.single { it.id.value == "KVP-002" }
+val typeModelRedGate = program.program.gates.single { it.id == typeModelTask.red.gateId }
+val typeModelGreenGate = program.program.gates.single { it.id == typeModelTask.green.gateId }
+val typeModelCompletionGate = program.program.gates.single {
+    it.taskId == typeModelTask.id && it.kind.name == "TASK_COMPLETION"
+}
+val typeModelRedReceipt = receiptDirectory.map {
+    it.file("${typeModelRedGate.outputReceiptId}.receipt.json")
+}
+val typeModelGreenReceipt = receiptDirectory.map {
+    it.file("${typeModelGreenGate.outputReceiptId}.receipt.json")
+}
+val typeModelCompletionReceipt = layout.projectDirectory.file(
+    typeModelTask.completionReceipt.outputPath,
+)
+val typeModelProofReport = layout.projectDirectory.file(typeModelTask.outputs.single().path)
+val typeModelTaskInputDigest = sha256(canonicalJson(typeModelTask.inputs)).value
+val typeModelCompletionInputDigest = sha256(
+    canonicalJson(
+        mapOf(
+            "receiptId" to typeModelTask.completionReceipt.receiptId,
+            "requiredGateIds" to typeModelTask.completionReceipt.requiredGateIds.sorted(),
+            "requiredDependencyReceiptIds" to
+                typeModelTask.completionReceipt.dependencyReceiptIds.sorted(),
+        ),
+    ),
+).value
+
+fun Kvp002ReceiptTaskBase.configureTypeModelReceiptBoundary() {
+    configureAuthorityReceiptBoundary()
+    candidateTaskId.set(typeModelTask.id.value)
+    candidateRedGateId.set(typeModelRedGate.id)
+    candidateGreenGateId.set(typeModelGreenGate.id)
+    candidateCompletionGateId.set(typeModelCompletionGate.id)
+    candidateRedReceiptId.set(typeModelRedGate.outputReceiptId)
+    candidateGreenReceiptId.set(typeModelGreenGate.outputReceiptId)
+    candidateCompletionReceiptId.set(typeModelCompletionGate.outputReceiptId)
+    candidateRedCommand.set(typeModelRedGate.command)
+    candidateGreenCommand.set(typeModelGreenGate.command)
+    candidateCompletionCommand.set(typeModelCompletionGate.command)
+    candidateTaskInputDigest.set(typeModelTaskInputDigest)
+    candidateCompletionInputDigest.set(typeModelCompletionInputDigest)
+    proofReportPath.set(typeModelTask.outputs.single().path)
+    authorityRedReceiptFile.set(authorityRedReceipt)
+    authorityGreenReceiptFile.set(authorityGreenReceipt)
+    authorityCompletionReceiptFile.set(authorityCompletionReceipt)
+}
+
+val recordKvp002RedReceipt = tasks.register<RecordKvp002RedReceiptTask>(
+    "recordKVP002RedReceipt",
+) {
+    configureTypeModelReceiptBoundary()
+    dependsOn("verifyKVP001CompletionReceipt")
+    receiptFile.set(typeModelRedReceipt)
+}
+
+val recordKvp002GreenReceipt = tasks.register<RecordKvp002GreenReceiptTask>(
+    "recordKVP002GreenReceipt",
+) {
+    configureTypeModelReceiptBoundary()
+    dependsOn(recordKvp002RedReceipt)
+    redReceiptFile.set(typeModelRedReceipt)
+    proofReportFile.set(typeModelProofReport)
+    receiptFile.set(typeModelGreenReceipt)
+}
+
+val deriveKvp002Completion = tasks.register<DeriveKvp002CompletionReceiptTask>(
+    "deriveKVP002Completion",
+) {
+    configureTypeModelReceiptBoundary()
+    dependsOn(recordKvp002GreenReceipt)
+    redReceiptFile.set(typeModelRedReceipt)
+    greenReceiptFile.set(typeModelGreenReceipt)
+    proofReportFile.set(typeModelProofReport)
+    receiptFile.set(typeModelCompletionReceipt)
+}
+
+tasks.register<VerifyKvp002CompletionReceiptTask>("verifyKVP002CompletionReceipt") {
+    configureTypeModelReceiptBoundary()
+    dependsOn(deriveKvp002Completion)
+    redReceiptFile.set(typeModelRedReceipt)
+    greenReceiptFile.set(typeModelGreenReceipt)
+    proofReportFile.set(typeModelProofReport)
+    completionReceiptFile.set(typeModelCompletionReceipt)
+}
+
+program.program.tasks.sortedBy { it.id }.filterNot {
+    it == authorityTask || it == typeModelTask
+}.forEach { node ->
     val redReceipt = receiptDirectory.map {
         it.file("${node.red.gateId}-RECEIPT.receipt.json")
     }

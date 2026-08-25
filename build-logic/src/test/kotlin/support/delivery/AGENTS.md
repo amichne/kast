@@ -12,4 +12,6 @@ Run:
 ./gradlew -p build-logic test --tests support.delivery.ReceiptEvidenceLocationTest
 ./gradlew -p build-logic test --tests support.delivery.DeliveryReceiptTest
 ./gradlew -p build-logic test --tests support.delivery.DeliveryTaskOwnershipTest
+./gradlew -p build-logic test --tests support.delivery.DeliveryProgramModelNegativeTest
+./gradlew -p build-logic test --tests support.delivery.DeliveryProgramModelTest
 ```
