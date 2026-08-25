@@ -4,7 +4,7 @@ import org.gradle.api.Project
 import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.Provider
 
-private data class TaskReceiptRegistration(
+internal data class TaskReceiptRegistration(
     val task: TaskNode,
     val redGate: GateNode,
     val greenGate: GateNode,
@@ -17,7 +17,7 @@ private data class TaskReceiptRegistration(
     val completionInputDigest: String,
 )
 
-/** Registers exact-head typed receipt progression from KVP-001 through KVP-006. */
+/** Registers exact-head typed receipt progression from KVP-001 through KVP-007. */
 internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val validated = KastVfsPassiveReusedIndexProgram.validated
     val program = validated.program
@@ -57,6 +57,7 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val canonical = registration("KVP-004")
     val projection = registration("KVP-005")
     val gateGraph = registration("KVP-006")
+    val deliveryProof = registration("KVP-007")
     val authorityNegativeReportPath = "build/reports/delivery/KVP-001-authority-negative.json"
     val authorityVerificationReportPath =
         KastVfsPassiveReusedIndexProgram.authorityVerificationOutputPath.value
@@ -193,6 +194,27 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         projectionGreenReceiptFile.set(projection.greenReceipt)
         projectionProofReportFile.set(projection.proofReport)
         projectionCompletionReceiptFile.set(projection.completionReceipt)
+    }
+
+    fun Kvp007ReceiptTaskBase.configureDeliveryProof() {
+        configureGateGraph()
+        deliveryProofTaskId.set(deliveryProof.task.id.value)
+        deliveryProofRedGateId.set(deliveryProof.redGate.id)
+        deliveryProofGreenGateId.set(deliveryProof.greenGate.id)
+        deliveryProofCompletionGateId.set(deliveryProof.completionGate.id)
+        deliveryProofRedReceiptId.set(deliveryProof.redGate.outputReceiptId)
+        deliveryProofGreenReceiptId.set(deliveryProof.greenGate.outputReceiptId)
+        deliveryProofCompletionReceiptId.set(deliveryProof.completionGate.outputReceiptId)
+        deliveryProofRedCommand.set(deliveryProof.redGate.command)
+        deliveryProofGreenCommand.set(deliveryProof.greenGate.command)
+        deliveryProofCompletionCommand.set(deliveryProof.completionGate.command)
+        deliveryProofTaskInputDigest.set(deliveryProof.taskInputDigest)
+        deliveryProofCompletionInputDigest.set(deliveryProof.completionInputDigest)
+        deliveryProofReportPath.set(deliveryProof.task.outputs.single().path)
+        gateGraphRedReceiptFile.set(gateGraph.redReceipt)
+        gateGraphGreenReceiptFile.set(gateGraph.greenReceipt)
+        gateGraphProofReportFile.set(gateGraph.proofReport)
+        gateGraphCompletionReceiptFile.set(gateGraph.completionReceipt)
     }
 
     val recordAuthorityRed = tasks.register(
@@ -353,6 +375,7 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         proofReportFile.set(gateGraph.proofReport)
         completionReceiptFile.set(gateGraph.completionReceipt)
     }
+    registerKvp007ReceiptProgression(deliveryProof) { configureDeliveryProof() }
     return setOf(
         authority.task.id,
         typeModel.task.id,
@@ -360,5 +383,6 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         canonical.task.id,
         projection.task.id,
         gateGraph.task.id,
+        deliveryProof.task.id,
     )
 }
