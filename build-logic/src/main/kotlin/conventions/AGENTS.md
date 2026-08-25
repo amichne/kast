@@ -17,9 +17,9 @@ boundaries and verification.
   and writing the verification report under `build/reports/delivery`.
   Keep live gate and completion receipts under `build/reports/delivery/receipts`; a checked-in
   receipt cannot bind the commit that contains its own bytes.
-  KVP-001 through KVP-003 use dedicated typed record, derive, and verify tasks; keep their inputs
-  and task names derived from the canonical program instead of parsing its shell command strings.
-  KVP-002 and KVP-003 execute their fixed included-build test filters as argument vectors and own
-  their generated proof reports under `build/reports/delivery`.
+  KVP-001 through KVP-004 use dedicated typed record, derive, and verify tasks registered by the
+  receipt progression owner; keep inputs and task names derived from the canonical program instead
+  of parsing shell command strings. KVP-002 through KVP-004 execute fixed included-build filters as
+  argument vectors and own generated proof reports under `build/reports/delivery`.
 - Feed PR 633 bytecode and ABI verifiers complete `main` source-set class outputs so Java and
   Kotlin implementations are governed by the same gate.

@@ -1,10 +1,5 @@
 package support.delivery
 
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -68,41 +63,22 @@ class KastVfsPassiveReusedIndexProgramTest {
             admitted.program.requirements.map { it.id }.toSet(),
             admitted.program.tasks.flatMap { it.provesRequirements }.toSet(),
         )
-        writeProgramProof(admitted)
-    }
-
-    private fun writeProgramProof(admitted: ValidatedProgram) {
-        val workingDirectory = Path.of("").toAbsolutePath().normalize()
-        val root = if (Files.isDirectory(workingDirectory.resolve("gradle/delivery"))) {
-            workingDirectory
-        } else {
-            workingDirectory.parent
-        }
-        require(Files.isDirectory(root.resolve("gradle/delivery")))
-        val program = admitted.program
-        val document = CanonicalProgramProofDocument(
-            schemaVersion = 1,
-            taskId = "KVP-004",
-            outcome = "COMPLETE",
-            taskCount = program.tasks.size,
-            requirementCount = program.requirements.size,
-            moduleCount = program.modules.size,
-            authorityCount = program.authorities.size,
-            effectCount = program.effects.size,
-            processNodeCount = program.processNodes.size,
-            processTransitionCount = program.processTransitions.size,
-            gateCount = program.gates.size,
-            terminalTaskId = program.terminalTask.value,
-            taskOrder = admitted.order.map { it.value },
-            waveCount = admitted.waves.values.max() + 1,
+        val proof = assertInstanceOf(
+            Kvp004ProgramProofResult.Complete::class.java,
+            deriveKvp004ProgramProof(),
+        ).proof
+        val decoded = assertInstanceOf(
+            Kvp004ProgramProofResult.Complete::class.java,
+            decodeKvp004ProgramProof(encodeKvp004ProgramProof(proof)),
+        ).proof
+        assertEquals(admitted.order, decoded.program.order)
+        assertEquals(admitted.waves, decoded.program.waves)
+        val changed = encodeKvp004ProgramProof(proof)
+            .replace("\"terminalTaskId\": \"KVP-043\"", "\"terminalTaskId\": \"KVP-042\"")
+        assertEquals(
+            Kvp004ProgramProofResult.Rejected(Kvp004ProgramProofFailure.TERMINAL_MISMATCH),
+            decodeKvp004ProgramProof(changed),
         )
-        val output = root.resolve("build/reports/delivery/KVP-004-program.json")
-        Files.createDirectories(output.parent)
-        Files.writeString(output, programProofJson.encodeToString(document) + "\n")
-    }
-
-    private companion object {
-        val programProofJson = Json { prettyPrint = true }
     }
 }
 
@@ -165,21 +141,3 @@ class KastVfsPassiveProgramNegativeTest {
         )
     }
 }
-
-@Serializable
-private data class CanonicalProgramProofDocument(
-    val schemaVersion: Int,
-    val taskId: String,
-    val outcome: String,
-    val taskCount: Int,
-    val requirementCount: Int,
-    val moduleCount: Int,
-    val authorityCount: Int,
-    val effectCount: Int,
-    val processNodeCount: Int,
-    val processTransitionCount: Int,
-    val gateCount: Int,
-    val terminalTaskId: String,
-    val taskOrder: List<String>,
-    val waveCount: Int,
-)
