@@ -149,9 +149,9 @@ class ProgramAuthorityAdmissionTest {
     private companion object {
         const val BASE_REVISION = "78262728313c90bb847e73425dc1a76d704397db"
         const val EXACT_HEAD = "a844f297ffaf79c2a0af5b6b3ec8f9afeaee0a25"
-        const val PROGRAM_FINGERPRINT = "86c915662683889239eb238eab856259cc43e99403cd6e94c15f5bd6eda7c9e4"
-        const val REQUIREMENT_FINGERPRINT = "55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e"
+        const val PROGRAM_FINGERPRINT = "b1d42978c899b65816c9172b6525a71ccbc4762e13c132ab1bc2c3ddf10247e4"
+        const val REQUIREMENT_FINGERPRINT = "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
         const val SOURCE_DIGEST = "7827929f5b8e0bb4248d2135a7382834045c8158cec2a55c2a1933a7220a6b50"
-        const val SOURCE_PATH = "/mnt/data/pasted.txt"
+        const val SOURCE_PATH = "/authority/persisted-goal.txt"
     }
 }

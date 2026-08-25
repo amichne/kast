@@ -2,8 +2,8 @@
 
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
-**Delivery authority digest:** `55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e`
-**Program fingerprint:** `86c915662683889239eb238eab856259cc43e99403cd6e94c15f5bd6eda7c9e4`
+**Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
+**Program fingerprint:** `b1d42978c899b65816c9172b6525a71ccbc4762e13c132ab1bc2c3ddf10247e4`
 
 ## Terminal outcome
 
@@ -13,6 +13,7 @@ The terminal type has no public constructor. `KVP-043` derives it only from the 
 
 ## Corrections to prior plans
 
+- The originally pinned delivery-authority bytes (`55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e`) are unavailable. The active authority is the exact persisted user goal from the Kast conversation, including its terminal newline; its digest is `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`. These identities are intentionally distinct and the authority contradiction set records the replacement.
 - The old clean-slate plan and graph require exactly two runtime processes and packaged-indexer acceptance. This program supersedes that runtime assumption for the MVP.
 - The prior IntelliJ substrate program correctly identifies IntelliJ as the live index/PSI/VFS authority, but its machine projection is explicitly non-executable. This program makes the graph executable through Kotlin and Gradle.
 - The current repository already has a Kotlin architecture policy, generated JSON projection, and Gradle architecture gates. This program extends that authority instead of creating a parallel status system.
@@ -90,9 +91,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** None. Computed wave: `0`.
 
-**Allowed reads.** `settings.gradle.kts`, `build.gradle.kts`, `build-logic`, `indexer`, `cli`, `runtime`, `workspace`, `symbol`, `/mnt/data/pasted.txt`, `/mnt/data/kast-clean-slate-task-graph.json`, `/mnt/data/kast-clean-slate-plan.md`, `/mnt/data/kast-intellij-substrate-program.html`.
+**Allowed reads.** `settings.gradle.kts`, `build.gradle.kts`, `build-logic`, `indexer`, `cli`, `runtime`, `workspace`, `symbol`, `gradle/delivery/authority-sources/persisted-goal.txt`, `gradle/delivery/authority-sources/superseded-clean-slate-task-graph.json`, `gradle/delivery/authority-sources/superseded-clean-slate-plan.md`, `gradle/delivery/authority-sources/intellij-substrate-program.html`.
 
-**Allowed writes.** `gradle/delivery/kast-vfs-passive-authority.json`, `docs/plans/kast-vfs-passive-contradictions.md`.
+**Allowed writes.** `build/reports/delivery/KVP-001-authority-ledger.json`, `build/reports/delivery/KVP-001-contradictions.md`, `build/reports/delivery/KVP-001-authority.json`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `requirement:KVP-REQ-001`, `requirement:KVP-REQ-002`, `requirement:KVP-REQ-026`.
 
@@ -120,7 +121,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-001`. Computed wave: `1`.
 
-**Allowed reads.** `gradle/delivery/kast-vfs-passive-authority.json`, `build-logic/src/main/kotlin/support/architecture`.
+**Allowed reads.** `build/reports/delivery/KVP-001-authority-ledger.json`, `build-logic/src/main/kotlin/support/architecture`.
 
 **Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryProgramModel.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryProgramModelTest.kt`.
 
@@ -180,7 +181,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-002`, `KVP-003`. Computed wave: `3`.
 
-**Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `gradle/delivery/kast-vfs-passive-authority.json`.
+**Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/KVP-001-authority-ledger.json`.
 
 **Allowed writes.** `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt`, `build-logic/src/test/kotlin/support/delivery/KastVfsPassiveReusedIndexProgramTest.kt`.
 
@@ -1320,7 +1321,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-001`, `KVP-041`. Computed wave: `35`.
 
-**Allowed reads.** `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/receipts`, `build/reports/ide-hosted`, `/mnt/data/pasted.txt`.
+**Allowed reads.** `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/receipts`, `build/reports/ide-hosted`, `gradle/delivery/authority-sources/persisted-goal.txt`.
 
 **Allowed writes.** `build/reports/ide-hosted/specification-revalidation.json`, `docs/plans/kast-vfs-passive-revalidation.md`.
 

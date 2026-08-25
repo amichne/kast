@@ -11,7 +11,10 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 - `tasks/DeliveryProjectionTasks.kt` owns deterministic program and requirement projection tasks.
 - `tasks/DeliveryTaskBoundaries.kt` owns process-free Git observation, bounded source reads, SHA-256 observation, atomic writes, and Gradle failure rendering.
 - `tasks/ProgramAuthorityJsonBoundary.kt` owns generated serializers for closed authority documents.
-- `tasks/ProgramAuthorityTasks.kt` owns authority generation and GREEN verification. Generation writes only the authority ledger and contradiction projection; verification re-observes the head and source bytes before reporting success.
+- `tasks/ProgramAuthorityTasks.kt` owns authority generation and GREEN verification. Generation
+  writes only the authority ledger and contradiction projection under `build/reports/delivery`;
+  verification re-observes the head and source bytes before reporting success. These exact-head
+  artifacts are build evidence and must not be checked in.
 - `tasks/ProgramAuthorityNegativeTask.kt` owns the deterministic KVP-001 RED fixtures.
 - `ProgramMain.kt` is the dependency-free projection entry point used by `scripts/verify_bundle.sh`.
 

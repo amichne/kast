@@ -201,9 +201,9 @@ class ProgramAuthorityGenerationTest {
     private companion object {
         const val BASE_REVISION = "78262728313c90bb847e73425dc1a76d704397db"
         const val EXACT_HEAD = "68559ea2e693593686ab94c2c66b6a4399787af6"
-        const val PROGRAM_FINGERPRINT = "86c915662683889239eb238eab856259cc43e99403cd6e94c15f5bd6eda7c9e4"
-        const val REQUIREMENT_FINGERPRINT = "55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e"
-        const val DELIVERY_DIGEST = "55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e"
+        const val PROGRAM_FINGERPRINT = "b1d42978c899b65816c9172b6525a71ccbc4762e13c132ab1bc2c3ddf10247e4"
+        const val REQUIREMENT_FINGERPRINT = "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
+        const val DELIVERY_DIGEST = "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
         const val SUBSTRATE_DIGEST = "7827929f5b8e0bb4248d2135a7382834045c8158cec2a55c2a1933a7220a6b50"
         const val UNDECLARED_DIGEST = "a926effde75fa956c85e33180f77d0cdbdeaf1980ae37259eb2234b9e3ae200c"
         const val DELIVERY_PATH = "/authority/pasted.txt"

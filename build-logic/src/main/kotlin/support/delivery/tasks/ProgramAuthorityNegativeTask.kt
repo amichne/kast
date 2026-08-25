@@ -27,6 +27,9 @@ abstract class VerifyKastVfsPassiveAuthorityNegativeTask : DefaultTask() {
     @get:Input
     abstract val allowedReads: ListProperty<String>
 
+    @get:Input
+    abstract val candidatePaths: ListProperty<String>
+
     @get:OutputFile
     abstract val reportFile: RegularFileProperty
 
@@ -40,34 +43,33 @@ abstract class VerifyKastVfsPassiveAuthorityNegativeTask : DefaultTask() {
             sourceDigests.get(),
             allowedReads.get(),
         ).orReject("negative fixture expectation")
-        val absoluteReads = when (val selected = expectation.selectAbsoluteSourceCandidates()) {
-            is AbsoluteSourceCandidateSelection.Complete -> selected.candidates
-            is AbsoluteSourceCandidateSelection.Rejected -> {
+        val sourceCandidates = when (
+            val selected = expectation.selectDeclaredSourceCandidates(candidatePaths.get())
+        ) {
+            is DeclaredSourceCandidateSelection.Complete -> selected.candidates
+            is DeclaredSourceCandidateSelection.Rejected -> {
                 rejectAuthority("negative fixture", "MALFORMED_PATH:${selected.path.value}")
             }
         }
-        if (absoluteReads.size != expectation.sourceDigests.size) {
+        if (sourceCandidates.size != expectation.sourceDigests.size) {
             rejectAuthority("negative fixture", "source IDs cannot be paired with source candidates")
         }
-        val sourceDocuments = expectation.sourceDigests.entries.sortedBy { it.key.value }
-            .zip(absoluteReads)
-            .map { (source, path) ->
-                AuthoritySourceDocument(source.key.value, path.value, source.value.value)
+        val observations = sourceCandidates.sortedBy { it.value }
+            .zip(expectation.sourceDigests.values.sortedBy { it.value })
+            .associate { (path, digest) ->
+                path to AuthoritySourceObservation.Complete(digest)
             }
-        val exactDocument = ProgramAuthorityDocument(
-            1,
-            expectation.baseRevision.value,
-            expectation.exactHead.value,
-            expectation.programFingerprint.value,
-            expectation.requirementFingerprint.value,
-            sourceDocuments,
-            AuthorityContradiction.entries.toSet(),
-            ObsoleteAuthorityAssumption.entries.toSet(),
-            UnprovenAuthorityClaim.entries.toSet(),
-        )
-        val observations = sourceDocuments.associate {
-            AuthoritySourcePath(it.path) to
-                AuthoritySourceObservation.Complete(AuthorityArtifactDigest(it.sha256))
+        val exactDocument = when (
+            val generation = generateProgramAuthority(
+                expectation,
+                sourceCandidates,
+                observations::getValue,
+            )
+        ) {
+            is ProgramAuthorityGeneration.Complete -> generation.authority.document
+            is ProgramAuthorityGeneration.Rejected -> {
+                rejectAuthority("negative fixture generation", generation.failure.render())
+            }
         }
         fun admission(document: ProgramAuthorityDocument): ProgramAuthorityAdmission =
             admitProgramAuthority(encodeProgramAuthorityDocument(document), expectation) { path ->

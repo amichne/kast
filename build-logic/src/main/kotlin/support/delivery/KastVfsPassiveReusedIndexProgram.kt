@@ -2,8 +2,28 @@ package support.delivery
 
 object KastVfsPassiveReusedIndexProgram {
     const val TARGET_HEAD = "78262728313c90bb847e73425dc1a76d704397db"
-    val REQUIREMENT_FINGERPRINT =
+    val SUPERSEDED_REQUIREMENT_FINGERPRINT =
         Sha256("55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e")
+    val REQUIREMENT_FINGERPRINT =
+        Sha256("de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c")
+    internal val persistedGoalSourcePath =
+        AuthoritySourcePath("gradle/delivery/authority-sources/persisted-goal.txt")
+    internal val authoritySourceCandidates = listOf(
+        persistedGoalSourcePath,
+        AuthoritySourcePath(
+            "gradle/delivery/authority-sources/superseded-clean-slate-task-graph.json",
+        ),
+        AuthoritySourcePath(
+            "gradle/delivery/authority-sources/superseded-clean-slate-plan.md",
+        ),
+        AuthoritySourcePath("gradle/delivery/authority-sources/intellij-substrate-program.html"),
+    )
+    internal val authorityLedgerOutputPath =
+        AuthorityArtifactPath("build/reports/delivery/KVP-001-authority-ledger.json")
+    internal val authorityContradictionOutputPath =
+        AuthorityArtifactPath("build/reports/delivery/KVP-001-contradictions.md")
+    internal val authorityVerificationOutputPath =
+        AuthorityArtifactPath("build/reports/delivery/KVP-001-authority.json")
 
     val definition: DeliveryProgram = DeliveryProgram(
         schemaVersion = 1,
@@ -13,7 +33,7 @@ object KastVfsPassiveReusedIndexProgram {
         requirementFingerprint = REQUIREMENT_FINGERPRINT,
         sourceDigests = mapOf(
             "deliveryAuthority" to
-                Sha256("55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e"),
+                Sha256("de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"),
             "intellijSubstrateProgram" to
                 Sha256("7827929f5b8e0bb4248d2135a7382834045c8158cec2a55c2a1933a7220a6b50"),
             "supersededCleanSlateGraph" to

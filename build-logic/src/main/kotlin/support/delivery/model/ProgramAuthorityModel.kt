@@ -18,9 +18,13 @@ internal value class AuthoritySourcePath internal constructor(val value: String)
 @JvmInline
 internal value class AuthorityArtifactDigest internal constructor(val value: String)
 
+@JvmInline
+internal value class AuthorityArtifactPath internal constructor(val value: String)
+
 internal enum class AuthorityContradiction {
     PROGRAM_TARGET_IS_BASE_REVISION_NOT_SELF_HASHING_COMMIT,
-    ABSOLUTE_SOURCE_INPUTS_MUST_EXIST,
+    DECLARED_SOURCE_INPUTS_MUST_EXIST,
+    ORIGINAL_DELIVERY_AUTHORITY_BYTES_UNAVAILABLE,
     CHECKED_IN_RECEIPT_CANNOT_BIND_ITS_OWN_COMMIT,
     PROGRESSION_ENGINE_WAS_DECLARED_BUT_ABSENT,
     LEGACY_TWO_PROCESS_TERMINAL_CONFLICTS_WITH_IDE_HOSTED_TERMINAL,

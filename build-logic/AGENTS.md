@@ -64,8 +64,8 @@ the consuming projects.
   preserve explicit local, snapshot, release, and GitHub target behavior.
 - `kast.vfs-passive-delivery` verifies checked-in program projections without rewriting them. Its
   explicit projection-generation task replaces both projections atomically. The KVP-001 GREEN path
-  separately generates its authority and contradiction artifacts from digest-admitted source bytes
-  before verifying them.
+  separately generates exact-head authority, contradiction, and verification evidence under
+  `build/reports/delivery` from digest-admitted repository authority sources before verifying them.
 
 ## Verification ladder
 

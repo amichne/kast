@@ -13,6 +13,7 @@ boundaries and verification.
   task types under `support/delivery`. The KVP-001 negative and green command names are public
   delivery-program contracts; keep their registration derived from the canonical Kotlin program.
   `verifyKastVfsPassiveAuthority` must depend on `generateKastVfsPassiveAuthority` so the GREEN
-  command emits both allowed KVP-001 artifacts before re-admitting their bytes.
+  command emits the authority ledger and contradiction projection before re-admitting their bytes
+  and writing the verification report under `build/reports/delivery`.
 - Feed PR 633 bytecode and ABI verifiers complete `main` source-set class outputs so Java and
   Kotlin implementations are governed by the same gate.

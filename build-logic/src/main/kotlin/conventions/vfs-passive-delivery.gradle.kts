@@ -18,10 +18,12 @@ val checkedInProgramProjectionFile =
     layout.projectDirectory.file("gradle/delivery/kast-vfs-passive-reused-index-program.json")
 val checkedInRequirementTraceFile =
     layout.projectDirectory.file("gradle/delivery/kast-vfs-passive-requirements.json")
-val checkedInAuthorityFile =
-    layout.projectDirectory.file("gradle/delivery/kast-vfs-passive-authority.json")
-val checkedInContradictionFile =
-    layout.projectDirectory.file("docs/plans/kast-vfs-passive-contradictions.md")
+val authorityLedgerFile = layout.projectDirectory.file(
+    KastVfsPassiveReusedIndexProgram.authorityLedgerOutputPath.value,
+)
+val authorityContradictionFile = layout.projectDirectory.file(
+    KastVfsPassiveReusedIndexProgram.authorityContradictionOutputPath.value,
+)
 val expectedProgramProjectionContent = canonicalJson(programProjection) + "\n"
 val expectedRequirementTraceContent = canonicalJson(program.requirementTraceProjection()) + "\n"
 val receiptDirectory = layout.projectDirectory.dir("gradle/delivery/receipts")
@@ -51,6 +53,7 @@ tasks.register<VerifyKastVfsPassiveAuthorityNegativeTask>("verifyKastVfsPassiveA
     requirementFingerprint.set(program.program.requirementFingerprint.value)
     sourceDigests.set(program.program.sourceDigests.mapValues { it.value.value })
     allowedReads.set(authorityTask.allowedReads)
+    candidatePaths.set(KastVfsPassiveReusedIndexProgram.authoritySourceCandidates.map { it.value })
     reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-001-authority-negative.json"))
 }
 
@@ -64,22 +67,29 @@ val generateKastVfsPassiveAuthority =
         requirementFingerprint.set(program.program.requirementFingerprint.value)
         sourceDigests.set(program.program.sourceDigests.mapValues { it.value.value })
         allowedReads.set(authorityTask.allowedReads)
-        authorityFile.set(checkedInAuthorityFile)
-        contradictionFile.set(checkedInContradictionFile)
+        candidatePaths.set(
+            KastVfsPassiveReusedIndexProgram.authoritySourceCandidates.map { it.value },
+        )
+        authorityFile.set(authorityLedgerFile)
+        contradictionFile.set(authorityContradictionFile)
     }
 
 tasks.register<VerifyKastVfsPassiveAuthorityTask>("verifyKastVfsPassiveAuthority") {
     group = "verification"
     dependsOn(generateKastVfsPassiveAuthority)
     repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
-    authorityFilePath.set(checkedInAuthorityFile.asFile.absolutePath)
-    contradictionFilePath.set(checkedInContradictionFile.asFile.absolutePath)
+    authorityFilePath.set(authorityLedgerFile.asFile.absolutePath)
+    contradictionFilePath.set(authorityContradictionFile.asFile.absolutePath)
     baseRevision.set(program.program.targetHead)
     programFingerprint.set(expectedProgramFingerprint)
     requirementFingerprint.set(program.program.requirementFingerprint.value)
     sourceDigests.set(program.program.sourceDigests.mapValues { it.value.value })
     allowedReads.set(authorityTask.allowedReads)
-    reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-001-authority.json"))
+    reportFile.set(
+        layout.projectDirectory.file(
+            KastVfsPassiveReusedIndexProgram.authorityVerificationOutputPath.value,
+        ),
+    )
 }
 
 program.program.tasks.sortedBy { it.id }.forEach { node ->

@@ -81,7 +81,7 @@ root = pathlib.Path(__file__).resolve().parents[1]
 program_path = root / "gradle/delivery/kast-vfs-passive-reused-index-program.json"
 program = json.loads(program_path.read_text())
 assert program["targetHead"] == "78262728313c90bb847e73425dc1a76d704397db"
-assert program["requirementFingerprint"] == "55c85fff16fc94df8147da27791bbcd082cf55afef6e98fc5f9b061ab8d5162e"
+assert program["requirementFingerprint"] == "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
 assert len(program["tasks"]) == 43
 assert len(program["gateGraph"]) == 129
 assert program["terminal"]["taskId"] == "KVP-043"

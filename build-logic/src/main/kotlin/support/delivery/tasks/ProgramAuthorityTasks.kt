@@ -12,7 +12,7 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
 
-@UntrackedTask(because = "Observes live Git metadata and declared external authority artifacts")
+@UntrackedTask(because = "Observes live Git metadata and declared authority artifacts")
 abstract class GenerateKastVfsPassiveAuthorityTask : DefaultTask() {
     @get:Input
     abstract val repositoryRootPath: Property<String>
@@ -32,6 +32,9 @@ abstract class GenerateKastVfsPassiveAuthorityTask : DefaultTask() {
     @get:Input
     abstract val allowedReads: ListProperty<String>
 
+    @get:Input
+    abstract val candidatePaths: ListProperty<String>
+
     @get:OutputFile
     abstract val authorityFile: RegularFileProperty
 
@@ -50,9 +53,11 @@ abstract class GenerateKastVfsPassiveAuthorityTask : DefaultTask() {
             sourceDigests.get(),
             allowedReads.get(),
         ).orReject("configured authority expectation")
-        val candidates = when (val selected = expectation.selectAbsoluteSourceCandidates()) {
-            is AbsoluteSourceCandidateSelection.Complete -> selected.candidates
-            is AbsoluteSourceCandidateSelection.Rejected -> {
+        val candidates = when (
+            val selected = expectation.selectDeclaredSourceCandidates(candidatePaths.get())
+        ) {
+            is DeclaredSourceCandidateSelection.Complete -> selected.candidates
+            is DeclaredSourceCandidateSelection.Rejected -> {
                 rejectAuthority("authority source candidate", "MALFORMED_PATH:${selected.path.value}")
             }
         }
@@ -78,7 +83,7 @@ abstract class GenerateKastVfsPassiveAuthorityTask : DefaultTask() {
     }
 }
 
-@UntrackedTask(because = "Observes live Git metadata and declared external authority artifacts")
+@UntrackedTask(because = "Observes live Git metadata and declared authority artifacts")
 abstract class VerifyKastVfsPassiveAuthorityTask : DefaultTask() {
     @get:Input
     abstract val repositoryRootPath: Property<String>
@@ -232,33 +237,40 @@ internal fun ProgramAuthorityExpectationResult.orReject(
     is ProgramAuthorityExpectationResult.Rejected -> rejectAuthority(owner, failure.render())
 }
 
-internal sealed interface AbsoluteSourceCandidateSelection {
+internal sealed interface DeclaredSourceCandidateSelection {
     data class Complete(
         val candidates: List<AuthoritySourcePath>,
-    ) : AbsoluteSourceCandidateSelection
+    ) : DeclaredSourceCandidateSelection
 
     data class Rejected(
         val path: AuthoritySourcePath,
-    ) : AbsoluteSourceCandidateSelection
+    ) : DeclaredSourceCandidateSelection
 }
 
 /**
- * Proof transition: admitted allowed reads -> absolute source candidate paths.
+ * Proof transition: raw configured candidate paths plus admitted allowed reads -> declared source
+ * candidate paths.
  *
- * Establishes that every returned candidate has a host-valid absolute path. A malformed path
- * returns [AbsoluteSourceCandidateSelection.Rejected]. Raw path extraction stays at this Gradle
- * task boundary.
+ * Establishes that every returned candidate has host-valid path syntax. Admission against the
+ * allowed-read set and digest-derived identity remains in [generateProgramAuthority]. A malformed
+ * path returns [DeclaredSourceCandidateSelection.Rejected]. Raw path extraction stays at this
+ * Gradle task boundary.
  */
-internal fun ProgramAuthorityExpectation.selectAbsoluteSourceCandidates():
-    AbsoluteSourceCandidateSelection {
+internal fun ProgramAuthorityExpectation.selectDeclaredSourceCandidates(
+    rawCandidates: List<String>,
+): DeclaredSourceCandidateSelection {
     val candidates = mutableListOf<AuthoritySourcePath>()
-    for (sourcePath in allowedReads) {
+    for (rawCandidate in rawCandidates) {
+        val sourcePath = AuthoritySourcePath(rawCandidate)
         val path = try {
             Path.of(sourcePath.value)
         } catch (_: InvalidPathException) {
-            return AbsoluteSourceCandidateSelection.Rejected(sourcePath)
+            return DeclaredSourceCandidateSelection.Rejected(sourcePath)
         }
-        if (path.isAbsolute) candidates += sourcePath
+        if (path.toString().isEmpty()) {
+            return DeclaredSourceCandidateSelection.Rejected(sourcePath)
+        }
+        candidates += sourcePath
     }
-    return AbsoluteSourceCandidateSelection.Complete(candidates.sortedBy { it.value })
+    return DeclaredSourceCandidateSelection.Complete(candidates.sortedBy { it.value })
 }

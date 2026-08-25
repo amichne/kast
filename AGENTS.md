@@ -185,7 +185,10 @@ deploys only the `site/` artifact produced by the public-site builder.
 exact-head VFS-passive reused-index delivery program. The
 `kast.vfs-passive-delivery` plugin generates and verifies its program and
 requirement projections under `gradle/delivery`; verification must not rewrite
-checked-in artifacts. `scripts/verify_bundle.sh` is the dependency-free Kotlin,
+checked-in artifacts. `gradle/delivery/authority-sources` preserves the exact,
+digest-identified source bytes admitted by KVP-001; its live exact-head ledger,
+contradiction projection, and verification report belong under
+`build/reports/delivery`. `scripts/verify_bundle.sh` is the dependency-free Kotlin,
 projection, fingerprint, and schema boundary. The normative reader plan is
 `docs/kast-vfs-passive-reused-index-delivery-program.md`.
 

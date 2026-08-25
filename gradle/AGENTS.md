@@ -6,5 +6,5 @@ This directory owns files and child directories under `gradle`. Follow [the near
 
 - Keep changes within the parent guide's ownership.
 - Add local rules only when this directory gains a distinct durable boundary.
-- `delivery/` owns checked-in exact-head program, requirement, schema, and
-  receipt contracts; follow its guide and regenerate projections from Kotlin.
+- `delivery/` owns checked-in exact-head program, requirement, authority-source, schema, and receipt
+  contracts; follow its guide and regenerate projections from Kotlin.
