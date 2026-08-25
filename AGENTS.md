@@ -179,6 +179,16 @@ and authored diagram sources do not enter the ignored `site/` output.
 `.github/workflows/docs.yml` is the GitHub Pages publication authority. It
 deploys only the `site/` artifact produced by the public-site builder.
 
+## VFS-passive delivery authority
+
+`build-logic/src/main/kotlin/support/delivery` is the typed authority for the
+exact-head VFS-passive reused-index delivery program. The
+`kast.vfs-passive-delivery` plugin generates and verifies its program and
+requirement projections under `gradle/delivery`; verification must not rewrite
+checked-in artifacts. `scripts/verify_bundle.sh` is the dependency-free Kotlin,
+projection, fingerprint, and schema boundary. The normative reader plan is
+`docs/kast-vfs-passive-reused-index-delivery-program.md`.
+
 `install.sh` is the public release-install boundary. Preserve its host,
 checksum, archive, and managed-link checks when changing its presentation. Run
 `bash packaging/test-public-installer.sh` after changing its output.

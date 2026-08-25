@@ -6,6 +6,10 @@ This directory owns the Zensical source for `https://kast.michne.com`, its
 reader-facing content checks, the root GitHub README contract, publication
 boundary, and LikeC4 sources.
 `zensical.toml` at the repository root is the site and navigation authority.
+`kast-vfs-passive-reused-index-delivery-program.md` is the normative plan
+projected from the typed delivery authority. It is not a public-site route and
+must keep its exact target head and program fingerprint aligned with
+`gradle/delivery`.
 
 The site has five reader routes: Start, Repository questions, Trust the
 evidence, CLI reference, and How Kast works. Keep the landing page quiet and

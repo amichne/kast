@@ -12,10 +12,10 @@ plugins {
     id("kast.pr633-stack")
     id("kast.pr633-topology")
     id("kast.pr633-delivery")
+    id("kast.vfs-passive-delivery")
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
-
 group = providers.gradleProperty("GROUP").get()
 val gitDescribeVersion: Provider<String> = providers.exec {
     commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")

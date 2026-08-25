@@ -19,6 +19,8 @@ the consuming projects.
 - `support/pr633` owns reusable exact-head, bytecode, API, and gate-evidence task types.
 - `support/architecture` owns the typed clean-slate module graph, effect policy,
   and checked-in architecture projection.
+- `support/delivery` owns the exact-head VFS-passive delivery graph, derived
+  program and requirement projections, and cache-compatible projection tasks.
 - `src/test/kotlin` contains task and convention contract tests.
 
 ## Dependency boundary
@@ -59,6 +61,8 @@ the consuming projects.
   publication in `:evidence:sqlite`; effect scanning proves their concrete bytecode ownership.
 - Publishing configuration must reject missing or blank artifact metadata and
   preserve explicit local, snapshot, release, and GitHub target behavior.
+- `kast.vfs-passive-delivery` verifies checked-in projections without rewriting
+  them. Its explicit generation task replaces both projections atomically.
 
 ## Verification ladder
 

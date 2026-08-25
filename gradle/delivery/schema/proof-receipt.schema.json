@@ -1,0 +1,87 @@
+{
+  "$id": "https://kast.michne.com/schema/proof-receipt-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifactDigests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "baseRevision": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "commandDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "declaredInputDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "dependencyReceiptDigests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "exactHead": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "gateId": {
+      "type": "string"
+    },
+    "observedProofValues": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "programFingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "receiptDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "recordedAtUtc": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "requirementFingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "taskId": {
+      "pattern": "^KVP-[0-9]{3}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "programFingerprint",
+    "requirementFingerprint",
+    "exactHead",
+    "taskId",
+    "gateId",
+    "dependencyReceiptDigests",
+    "declaredInputDigest",
+    "commandDigest",
+    "observedProofValues",
+    "artifactDigests",
+    "recordedAtUtc",
+    "receiptDigest"
+  ],
+  "title": "Kast proof receipt",
+  "type": "object"
+}
