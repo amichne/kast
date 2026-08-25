@@ -17,7 +17,7 @@ private data class TaskReceiptRegistration(
     val completionInputDigest: String,
 )
 
-/** Registers exact-head typed receipt progression from KVP-001 through KVP-005. */
+/** Registers exact-head typed receipt progression from KVP-001 through KVP-006. */
 internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val validated = KastVfsPassiveReusedIndexProgram.validated
     val program = validated.program
@@ -56,6 +56,7 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val graph = registration("KVP-003")
     val canonical = registration("KVP-004")
     val projection = registration("KVP-005")
+    val gateGraph = registration("KVP-006")
     val authorityNegativeReportPath = "build/reports/delivery/KVP-001-authority-negative.json"
     val authorityVerificationReportPath =
         KastVfsPassiveReusedIndexProgram.authorityVerificationOutputPath.value
@@ -170,6 +171,28 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         programGreenReceiptFile.set(canonical.greenReceipt)
         programProofReportFile.set(canonical.proofReport)
         programCompletionReceiptFile.set(canonical.completionReceipt)
+    }
+
+    fun Kvp006ReceiptTaskBase.configureGateGraph() {
+        configureProjection()
+        gateGraphTaskId.set(gateGraph.task.id.value)
+        gateGraphRedGateId.set(gateGraph.redGate.id)
+        gateGraphGreenGateId.set(gateGraph.greenGate.id)
+        gateGraphCompletionGateId.set(gateGraph.completionGate.id)
+        gateGraphRedReceiptId.set(gateGraph.redGate.outputReceiptId)
+        gateGraphGreenReceiptId.set(gateGraph.greenGate.outputReceiptId)
+        gateGraphCompletionReceiptId.set(gateGraph.completionGate.outputReceiptId)
+        gateGraphRedCommand.set(gateGraph.redGate.command)
+        gateGraphGreenCommand.set(gateGraph.greenGate.command)
+        gateGraphCompletionCommand.set(gateGraph.completionGate.command)
+        gateGraphTaskInputDigest.set(gateGraph.taskInputDigest)
+        gateGraphCompletionInputDigest.set(gateGraph.completionInputDigest)
+        gateGraphNegativeReportPath.set("build/reports/delivery/KVP-006-gradle-gates-negative.json")
+        gateGraphProofReportPath.set(gateGraph.task.outputs.single().path)
+        projectionRedReceiptFile.set(projection.redReceipt)
+        projectionGreenReceiptFile.set(projection.greenReceipt)
+        projectionProofReportFile.set(projection.proofReport)
+        projectionCompletionReceiptFile.set(projection.completionReceipt)
     }
 
     val recordAuthorityRed = tasks.register(
@@ -295,11 +318,47 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         proofReportFile.set(projection.proofReport)
         completionReceiptFile.set(projection.completionReceipt)
     }
+
+    val recordGateGraphRed = tasks.register(
+        "recordKVP006RedReceipt",
+        RecordKvp006RedReceiptTask::class.java,
+    ) {
+        configureGateGraph()
+        dependsOn(
+            "verifyKVP003CompletionReceipt",
+            "verifyKVP005CompletionReceipt",
+            "verifyKastVfsPassiveGateGraphNegative",
+        )
+        receiptFile.set(gateGraph.redReceipt)
+    }
+    val recordGateGraphGreen = tasks.register(
+        "recordKVP006GreenReceipt",
+        RecordKvp006GreenReceiptTask::class.java,
+    ) {
+        configureGateGraph(); dependsOn(recordGateGraphRed, "verifyKastVfsPassiveGateGraph")
+        redReceiptFile.set(gateGraph.redReceipt); proofReportFile.set(gateGraph.proofReport)
+        receiptFile.set(gateGraph.greenReceipt)
+    }
+    val deriveGateGraph = tasks.register(
+        "deriveKVP006Completion",
+        DeriveKvp006CompletionReceiptTask::class.java,
+    ) {
+        configureGateGraph(); dependsOn(recordGateGraphGreen)
+        redReceiptFile.set(gateGraph.redReceipt); greenReceiptFile.set(gateGraph.greenReceipt)
+        proofReportFile.set(gateGraph.proofReport); receiptFile.set(gateGraph.completionReceipt)
+    }
+    tasks.register("verifyKVP006CompletionReceipt", VerifyKvp006CompletionReceiptTask::class.java) {
+        configureGateGraph(); dependsOn(deriveGateGraph)
+        redReceiptFile.set(gateGraph.redReceipt); greenReceiptFile.set(gateGraph.greenReceipt)
+        proofReportFile.set(gateGraph.proofReport)
+        completionReceiptFile.set(gateGraph.completionReceipt)
+    }
     return setOf(
         authority.task.id,
         typeModel.task.id,
         graph.task.id,
         canonical.task.id,
         projection.task.id,
+        gateGraph.task.id,
     )
 }

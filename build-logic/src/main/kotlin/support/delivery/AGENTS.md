@@ -17,7 +17,7 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 - `tasks/projection/` owns the bounded KVP-005 generation, verification, negative-fixture, and proof
   report effects.
 - `model/DeliveryGateGraph.kt` owns KVP-006's exact gate-input, unique-output, and registered-task
-  bijection. `tasks/receipt/DeliveryGateGraphTasks.kt` owns its generated proof reports.
+  bijection. `tasks/receipt/gate/` owns its generated proof reports and receipt progression.
 - `tasks/DeliveryTaskBoundaries.kt` owns process-free Git observation, bounded source reads, SHA-256 observation, atomic writes, and Gradle failure rendering.
 - `tasks/ProgramAuthorityJsonBoundary.kt` owns generated serializers for closed authority documents.
 - `tasks/ProgramAuthorityTasks.kt` owns authority generation and GREEN verification. Generation
@@ -29,7 +29,7 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.
-- `tasks/receipt/` owns typed post-authority progression. KVP-002 through KVP-005 execute their exact
+- `tasks/receipt/` owns typed post-authority progression. KVP-002 through KVP-006 execute their exact
   included-build gates without shell parsing, emit generated proof reports, admit the complete
   predecessor closure, and derive exact-head completion receipts.
 - `ProgramMain.kt` is the dependency-free projection entry point used by `scripts/verify_bundle.sh`.
@@ -59,6 +59,7 @@ M0 delivery model writes belong under `model/`; focused tests remain under the d
 ./gradlew verifyKVP003CompletionReceipt
 ./gradlew verifyKVP004CompletionReceipt
 ./gradlew verifyKVP005CompletionReceipt
+./gradlew verifyKVP006CompletionReceipt
 ./gradlew verifyKastVfsPassiveGateGraphNegative verifyKastVfsPassiveGateGraph
 scripts/verify_bundle.sh
 ```

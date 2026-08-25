@@ -13,8 +13,8 @@ This directory owns task-specific exact-head receipt progression after KVP-001.
   generated KVP-005 report, bind all five projected artifacts, admit KVP-004 completion, and derive
   KVP-005 completion.
 - `ReceiptProgressionRegistration.kt` is the Gradle registration authority for KVP-001 through
-  KVP-005; the convention script retains only projection, authority, and placeholder orchestration.
-- `DeliveryGateGraphTasks.kt` owns KVP-006's positive and negative structural reports over all 129
-  receipt tasks; it never executes those tasks while validating their registration.
+  KVP-006; the convention script retains only projection, authority, and placeholder orchestration.
+- `gate/` owns KVP-006's positive and negative structural reports over all 129 receipt tasks and its
+  exact-head receipt progression. Structural validation never executes the registered gate tasks.
 Keep gate commands fixed and argument-vector based. Every receipt write must be exact-head checked,
 atomically written, read back, and admitted before it can support a later task.

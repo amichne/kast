@@ -177,4 +177,18 @@ class DeliveryGateGraphTest {
             admitDeliveryGateGraph(program, registeredNames - registeredNames.sorted().first()),
         )
     }
+
+    @Test fun `receipt proof derives from the admitted canonical graph`() {
+        val proof = assertInstanceOf(
+            Kvp006GateGraphProofResult.Complete::class.java,
+            deriveKvp006GateGraphProof(),
+        ).proof
+
+        assertEquals(129, proof.gateCount)
+        assertEquals(43, proof.redGateCount)
+        assertEquals(43, proof.greenGateCount)
+        assertEquals(43, proof.completionGateCount)
+        assertEquals(129, proof.uniqueReceiptOutputCount)
+        assertEquals(registeredNames, proof.registeredTasks.map { it.value }.toSet())
+    }
 }
