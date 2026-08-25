@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
-class DeliveryReceiptTest {
+class DeliveryProofTest {
     @Test
     fun `exact receipt refines to admitted proof`() {
         val expectation = expectation()
@@ -204,5 +204,33 @@ class DeliveryReceiptTest {
         const val COMMAND_DIGEST = "1a147dad9103719637430979dce68bfe2d50fa6fe998e7a4ea44963e0732c369"
         const val ARTIFACT_PATH = "build/reports/delivery/KVP-001-authority-negative.json"
         const val ARTIFACT_DIGEST = "7dc43f4fbf0592686e75b5dc2bc1f42da96d5fe53a18817c6938065a2ecab727"
+    }
+}
+
+class DeliveryProofNegativeTest {
+    @Test
+    fun `every bound receipt mutation rejects with its exact finite failure`() {
+        val proof = assertInstanceOf(
+            DeliveryProofResult.Complete::class.java,
+            deriveDeliveryProof(),
+        ).proof
+
+        assertEquals(DeliveryProofInvalidation.entries.toSet(), proof.invalidations.keys)
+        assertEquals(
+            ProofReceiptFailure.RECEIPT_DIGEST_MISMATCH,
+            proof.invalidations.getValue(DeliveryProofInvalidation.FORGED_DIGEST),
+        )
+        assertEquals(
+            ProofReceiptFailure.EXACT_HEAD_MISMATCH,
+            proof.invalidations.getValue(DeliveryProofInvalidation.EXACT_HEAD),
+        )
+        assertEquals(
+            ProofReceiptFailure.DEPENDENCY_RECEIPTS_MISMATCH,
+            proof.invalidations.getValue(DeliveryProofInvalidation.DEPENDENCY_RECEIPT),
+        )
+        assertEquals(
+            ProofReceiptFailure.ARTIFACT_DIGESTS_MISMATCH,
+            proof.invalidations.getValue(DeliveryProofInvalidation.ARTIFACT),
+        )
     }
 }

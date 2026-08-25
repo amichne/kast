@@ -224,33 +224,171 @@ internal fun admitProofReceipt(
     document: ProofReceiptDocument,
     expectation: ProofReceiptExpectation,
 ): ProofReceiptAdmission {
-    val failure = when {
-        document.receiptId != expectation.receiptId -> ProofReceiptFailure.RECEIPT_ID_MISMATCH
-        document.baseRevision != expectation.baseRevision -> ProofReceiptFailure.BASE_REVISION_MISMATCH
-        document.exactHead != expectation.exactHead -> ProofReceiptFailure.EXACT_HEAD_MISMATCH
-        document.programFingerprint != expectation.programFingerprint -> ProofReceiptFailure.PROGRAM_FINGERPRINT_MISMATCH
-        document.requirementFingerprint != expectation.requirementFingerprint -> ProofReceiptFailure.REQUIREMENT_FINGERPRINT_MISMATCH
-        document.taskId != expectation.taskId -> ProofReceiptFailure.TASK_ID_MISMATCH
-        document.gateId != expectation.gateId -> ProofReceiptFailure.GATE_ID_MISMATCH
-        document.dependencyReceiptDigests != expectation.dependencyReceiptDigests -> ProofReceiptFailure.DEPENDENCY_RECEIPTS_MISMATCH
-        document.declaredInputDigest != expectation.declaredInputDigest -> ProofReceiptFailure.DECLARED_INPUT_DIGEST_MISMATCH
-        document.commandDigest != expectation.commandDigest -> ProofReceiptFailure.COMMAND_DIGEST_MISMATCH
-        document.observedProofValues != expectation.observedProofValues -> ProofReceiptFailure.OBSERVATION_MISMATCH
-        document.artifactDigests != expectation.artifactDigests -> ProofReceiptFailure.ARTIFACT_DIGESTS_MISMATCH
-        document.receiptDigest != document.derivedDigest() -> ProofReceiptFailure.RECEIPT_DIGEST_MISMATCH
-        else -> null
+    fun rejected(failure: ProofReceiptFailure) = ProofReceiptAdmission.Rejected(failure)
+    if (document.receiptId != expectation.receiptId) {
+        return rejected(ProofReceiptFailure.RECEIPT_ID_MISMATCH)
     }
-    return if (failure == null) {
-        ProofReceiptAdmission.Complete(
-            AdmittedProofReceipt(
-                document.receiptId,
-                document.receiptDigest,
-                document.exactHead,
-                document.taskId,
-                document.gateId,
+    if (document.baseRevision != expectation.baseRevision) {
+        return rejected(ProofReceiptFailure.BASE_REVISION_MISMATCH)
+    }
+    if (document.exactHead != expectation.exactHead) {
+        return rejected(ProofReceiptFailure.EXACT_HEAD_MISMATCH)
+    }
+    if (document.programFingerprint != expectation.programFingerprint) {
+        return rejected(ProofReceiptFailure.PROGRAM_FINGERPRINT_MISMATCH)
+    }
+    if (document.requirementFingerprint != expectation.requirementFingerprint) {
+        return rejected(ProofReceiptFailure.REQUIREMENT_FINGERPRINT_MISMATCH)
+    }
+    if (document.taskId != expectation.taskId) return rejected(ProofReceiptFailure.TASK_ID_MISMATCH)
+    if (document.gateId != expectation.gateId) return rejected(ProofReceiptFailure.GATE_ID_MISMATCH)
+    if (document.dependencyReceiptDigests != expectation.dependencyReceiptDigests) {
+        return rejected(ProofReceiptFailure.DEPENDENCY_RECEIPTS_MISMATCH)
+    }
+    if (document.declaredInputDigest != expectation.declaredInputDigest) {
+        return rejected(ProofReceiptFailure.DECLARED_INPUT_DIGEST_MISMATCH)
+    }
+    if (document.commandDigest != expectation.commandDigest) {
+        return rejected(ProofReceiptFailure.COMMAND_DIGEST_MISMATCH)
+    }
+    if (document.observedProofValues != expectation.observedProofValues) {
+        return rejected(ProofReceiptFailure.OBSERVATION_MISMATCH)
+    }
+    if (document.artifactDigests != expectation.artifactDigests) {
+        return rejected(ProofReceiptFailure.ARTIFACT_DIGESTS_MISMATCH)
+    }
+    if (document.receiptDigest != document.derivedDigest()) {
+        return rejected(ProofReceiptFailure.RECEIPT_DIGEST_MISMATCH)
+    }
+    return ProofReceiptAdmission.Complete(
+        AdmittedProofReceipt(
+            document.receiptId,
+            document.receiptDigest,
+            document.exactHead,
+            document.taskId,
+            document.gateId,
+        ),
+    )
+}
+
+internal enum class DeliveryProofInvalidation(val expectedFailure: ProofReceiptFailure) {
+    RECEIPT_ID(ProofReceiptFailure.RECEIPT_ID_MISMATCH),
+    BASE_REVISION(ProofReceiptFailure.BASE_REVISION_MISMATCH),
+    EXACT_HEAD(ProofReceiptFailure.EXACT_HEAD_MISMATCH),
+    PROGRAM_FINGERPRINT(ProofReceiptFailure.PROGRAM_FINGERPRINT_MISMATCH),
+    REQUIREMENT_FINGERPRINT(ProofReceiptFailure.REQUIREMENT_FINGERPRINT_MISMATCH),
+    TASK_ID(ProofReceiptFailure.TASK_ID_MISMATCH),
+    GATE_ID(ProofReceiptFailure.GATE_ID_MISMATCH),
+    DEPENDENCY_RECEIPT(ProofReceiptFailure.DEPENDENCY_RECEIPTS_MISMATCH),
+    DECLARED_INPUT(ProofReceiptFailure.DECLARED_INPUT_DIGEST_MISMATCH),
+    COMMAND(ProofReceiptFailure.COMMAND_DIGEST_MISMATCH),
+    OBSERVATION(ProofReceiptFailure.OBSERVATION_MISMATCH),
+    ARTIFACT(ProofReceiptFailure.ARTIFACT_DIGESTS_MISMATCH),
+    FORGED_DIGEST(ProofReceiptFailure.RECEIPT_DIGEST_MISMATCH),
+}
+
+internal enum class DeliveryProofDerivationFailure {
+    INVALID_FIXTURE,
+    INVALID_RECEIPT_ADMITTED,
+    INVALIDATION_MISMATCH,
+}
+
+@ConsistentCopyVisibility
+internal data class DeliveryProof internal constructor(
+    val invalidations: Map<DeliveryProofInvalidation, ProofReceiptFailure>,
+)
+
+internal sealed interface DeliveryProofResult {
+    data class Complete(val proof: DeliveryProof) : DeliveryProofResult
+    data class Rejected(val failure: DeliveryProofDerivationFailure) : DeliveryProofResult
+}
+
+/**
+ * Proof transition: canonical receipt fixture -> `DeliveryProofResult`.
+ *
+ * Establishes exact finite rejection for every bound identity, revision, fingerprint, dependency,
+ * input, command, observation, artifact, and payload digest. Each semantic mutation receives a
+ * recomputed digest, so successful proof cannot rely on corruption detection alone. Expected proof
+ * failure is finite [DeliveryProofDerivationFailure]; raw fixture values remain inside this proof.
+ */
+internal fun deriveDeliveryProof(): DeliveryProofResult {
+    val zeroDigest = "0".repeat(64)
+    val expectation = when (val result = ProofReceiptExpectation.parse(
+        "KVP-007-RED-RECEIPT",
+        "1".repeat(40),
+        "2".repeat(40),
+        "3".repeat(64),
+        "4".repeat(64),
+        "KVP-007",
+        "KVP-007-RED",
+        mapOf("KVP-006-COMPLETE" to "5".repeat(64)),
+        "6".repeat(64),
+        "7".repeat(64),
+        mapOf("outcome" to "COMPLETE"),
+        mapOf("build/reports/delivery/KVP-007-receipts.json" to "8".repeat(64)),
+    )) {
+        is ProofReceiptExpectationResult.Complete -> result.expectation
+        is ProofReceiptExpectationResult.Rejected -> {
+            return DeliveryProofResult.Rejected(DeliveryProofDerivationFailure.INVALID_FIXTURE)
+        }
+    }
+    val document = issueProofReceipt(expectation, Instant.parse("2026-08-25T00:00:00Z"))
+    val cases = linkedMapOf(
+        DeliveryProofInvalidation.RECEIPT_ID to
+            document.copy(receiptId = ProofReceiptId("KVP-008-RED-RECEIPT")),
+        DeliveryProofInvalidation.BASE_REVISION to
+            document.copy(baseRevision = AuthorityGitRevision("9".repeat(40))),
+        DeliveryProofInvalidation.EXACT_HEAD to
+            document.copy(exactHead = AuthorityGitRevision("9".repeat(40))),
+        DeliveryProofInvalidation.PROGRAM_FINGERPRINT to
+            document.copy(programFingerprint = ProgramFingerprint("9".repeat(64))),
+        DeliveryProofInvalidation.REQUIREMENT_FINGERPRINT to
+            document.copy(requirementFingerprint = RequirementFingerprint("9".repeat(64))),
+        DeliveryProofInvalidation.TASK_ID to document.copy(taskId = TaskId("KVP-008")),
+        DeliveryProofInvalidation.GATE_ID to
+            document.copy(gateId = ProofGateId("KVP-008-RED")),
+        DeliveryProofInvalidation.DEPENDENCY_RECEIPT to document.copy(
+            dependencyReceiptDigests = mapOf(
+                ProofReceiptId("KVP-006-COMPLETE") to ProofReceiptDigest("9".repeat(64)),
             ),
-        )
-    } else {
-        ProofReceiptAdmission.Rejected(failure)
+        ),
+        DeliveryProofInvalidation.DECLARED_INPUT to
+            document.copy(declaredInputDigest = DeclaredInputDigest("9".repeat(64))),
+        DeliveryProofInvalidation.COMMAND to
+            document.copy(commandDigest = ProofCommandDigest("9".repeat(64))),
+        DeliveryProofInvalidation.OBSERVATION to document.copy(
+            observedProofValues = mapOf(
+                ProofObservationName("outcome") to ProofObservationValue("QUALIFIED"),
+            ),
+        ),
+        DeliveryProofInvalidation.ARTIFACT to document.copy(
+            artifactDigests = mapOf(
+                ProofArtifactPath("build/reports/delivery/KVP-007-receipts.json") to
+                    AuthorityArtifactDigest("9".repeat(64)),
+            ),
+        ),
+        DeliveryProofInvalidation.FORGED_DIGEST to
+            document.copy(receiptDigest = ProofReceiptDigest(zeroDigest)),
+    )
+    val observed = mutableMapOf<DeliveryProofInvalidation, ProofReceiptFailure>()
+    for ((invalidation, changed) in cases) {
+        val candidate = if (invalidation == DeliveryProofInvalidation.FORGED_DIGEST) {
+            changed
+        } else {
+            changed.copy(receiptDigest = changed.derivedDigest())
+        }
+        val failure = when (val result = admitProofReceipt(candidate, expectation)) {
+            is ProofReceiptAdmission.Rejected -> result.failure
+            is ProofReceiptAdmission.Complete -> return DeliveryProofResult.Rejected(
+                DeliveryProofDerivationFailure.INVALID_RECEIPT_ADMITTED,
+            )
+        }
+        if (failure != invalidation.expectedFailure) {
+            return DeliveryProofResult.Rejected(
+                DeliveryProofDerivationFailure.INVALIDATION_MISMATCH,
+            )
+        }
+        observed[invalidation] = failure
     }
+    return DeliveryProofResult.Complete(DeliveryProof(observed))
 }
