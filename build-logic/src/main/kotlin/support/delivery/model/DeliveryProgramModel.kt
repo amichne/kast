@@ -4,29 +4,206 @@ import java.security.MessageDigest
 
 @DslMarker
 annotation class DeliveryProgramDsl
-@JvmInline value class ProgramId(val value: String)
-@JvmInline value class TaskId(val value: String) : Comparable<TaskId> { override fun compareTo(other: TaskId) = value.compareTo(other.value) }
-@JvmInline value class RequirementId(val value: String)
-@JvmInline value class ModuleId(val value: String)
-@JvmInline value class AuthorityId(val value: String)
-@JvmInline value class EffectId(val value: String)
-@JvmInline value class Sha256(val value: String)
 
-sealed interface Outcome<out T> {
-    data class Complete<T>(val value: T, val evidence: Evidence) : Outcome<T>
-    data class Qualified<T>(val value: T, val evidence: Evidence, val limitations: List<String>) : Outcome<T> { init { require(limitations.isNotEmpty()) } }
-    data class Rejected(val failure: String, val evidence: Evidence) : Outcome<Nothing>
+private val programIdPattern = Regex("[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
+private val taskIdPattern = Regex("KVP-[0-9]{3}")
+private val requirementIdPattern = Regex("KVP-REQ-[0-9]{3}")
+private val moduleIdPattern = Regex(":[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)*")
+private val classificationIdPattern = Regex("[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*")
+private val gateIdPattern = Regex("KVP-[0-9]{3}-(?:RED|GREEN|COMPLETE-GATE)")
+private val receiptIdPattern = Regex("KVP-[0-9]{3}-(?:RED-RECEIPT|GREEN-RECEIPT|COMPLETE)")
+private val exactRevisionPattern = Regex("[0-9a-f]{40}")
+private val sha256Pattern = Regex("[0-9a-f]{64}")
+
+sealed interface DeliveryFailure
+
+enum class DeliveryModelFailure : DeliveryFailure {
+    INVALID_PROGRAM_ID, INVALID_TASK_ID, INVALID_REQUIREMENT_ID,
+    INVALID_MODULE_ID, INVALID_AUTHORITY_ID, INVALID_EFFECT_ID,
+    INVALID_COST_ID, INVALID_GATE_ID, INVALID_RECEIPT_ID,
+    INVALID_GENERATION, INVALID_SHA256, EMPTY_EVIDENCE, EMPTY_LIMITATIONS,
 }
 
-data class Evidence(val kind: String, val digest: Sha256)
+sealed interface DeliveryRefinement<out T> {
+    data class Complete<T>(val value: T) : DeliveryRefinement<T>
+    data class Rejected(val failure: DeliveryModelFailure) : DeliveryRefinement<Nothing>
+}
+
+/** Proof transition: authored `String -> ProgramId`; establishes canonical identity; rejects invalid authoring; raw text exits only at projections. */
+@JvmInline value class ProgramId internal constructor(val value: String) { init { require(programIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> TaskId`; establishes `KVP-NNN`; expected raw failure uses [refineTaskId]; raw text exits only at boundaries. */
+@JvmInline value class TaskId internal constructor(val value: String) : Comparable<TaskId> {
+    init { require(taskIdPattern.matches(value)) }
+    override fun compareTo(other: TaskId) = value.compareTo(other.value)
+}
+/** Proof transition: authored `String -> RequirementId`; establishes `KVP-REQ-NNN`; rejects invalid authoring; raw text exits only at projections. */
+@JvmInline value class RequirementId internal constructor(val value: String) { init { require(requirementIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> ModuleId`; establishes a canonical Gradle path; rejects invalid authoring; raw text exits only at projections. */
+@JvmInline value class ModuleId internal constructor(val value: String) { init { require(moduleIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> AuthorityId`; establishes authority identity; expected raw failure uses [refineAuthorityId]; raw text exits only at projections. */
+@JvmInline value class AuthorityId internal constructor(val value: String) { init { require(classificationIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> EffectId`; establishes effect identity; expected raw failure uses [refineEffectId]; raw text exits only at projections. */
+@JvmInline value class EffectId internal constructor(val value: String) { init { require(classificationIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> CostId`; establishes cost identity; expected raw failure uses [refineCostId]; raw text exits only at projections. */
+@JvmInline value class CostId internal constructor(val value: String) { init { require(classificationIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> GateId`; establishes gate identity; expected raw failure uses [refineGateId]; raw text exits only at boundaries. */
+@JvmInline value class GateId internal constructor(val value: String) { init { require(gateIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> ReceiptId`; establishes receipt identity; expected raw failure uses [refineReceiptId]; raw text exits only at boundaries. */
+@JvmInline value class ReceiptId internal constructor(val value: String) { init { require(receiptIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> DeliveryGeneration`; establishes exact Git identity; expected raw failure uses [refineDeliveryGeneration]; raw text exits only at boundaries. */
+@JvmInline value class DeliveryGeneration internal constructor(val value: String) { init { require(exactRevisionPattern.matches(value)) } }
+/** Proof transition: checked or computed `String -> Sha256`; establishes lowercase SHA-256 identity; rejects invalid authoring; raw text exits only at boundaries. */
+@JvmInline value class Sha256 internal constructor(val value: String) { init { require(sha256Pattern.matches(value)) } }
+
+private inline fun <T> refine(
+    value: String,
+    failure: DeliveryModelFailure,
+    predicate: (String) -> Boolean,
+    complete: (String) -> T,
+): DeliveryRefinement<T> = if (predicate(value)) {
+    DeliveryRefinement.Complete(complete(value))
+} else {
+    DeliveryRefinement.Rejected(failure)
+}
+
+/**
+ * Proof transition: `String -> DeliveryRefinement<TaskId>`.
+ * Establishes the canonical `KVP-NNN` identity. Failure is finite [DeliveryModelFailure]; raw
+ * extraction is permitted only at program projection and Gradle configuration boundaries.
+ */
+fun refineTaskId(value: String): DeliveryRefinement<TaskId> =
+    refine(value, DeliveryModelFailure.INVALID_TASK_ID, taskIdPattern::matches, ::TaskId)
+
+/**
+ * Proof transition: `String -> DeliveryRefinement<DeliveryGeneration>`.
+ * Establishes one lowercase 40-hex Git revision. Failure is finite [DeliveryModelFailure]; raw
+ * extraction is permitted only at Git and projection boundaries.
+ */
+fun refineDeliveryGeneration(value: String): DeliveryRefinement<DeliveryGeneration> =
+    refine(value, DeliveryModelFailure.INVALID_GENERATION, exactRevisionPattern::matches, ::DeliveryGeneration)
+
+/**
+ * Proof transition: `String -> DeliveryRefinement<AuthorityId>`.
+ * Establishes a nonempty canonical authority classification. Failure is finite
+ * [DeliveryModelFailure]; raw extraction is permitted only at projection boundaries.
+ */
+fun refineAuthorityId(value: String): DeliveryRefinement<AuthorityId> =
+    refine(value, DeliveryModelFailure.INVALID_AUTHORITY_ID, classificationIdPattern::matches, ::AuthorityId)
+
+/**
+ * Proof transition: `String -> DeliveryRefinement<EffectId>`.
+ * Establishes a nonempty canonical effect classification. Failure is finite
+ * [DeliveryModelFailure]; raw extraction is permitted only at projection boundaries.
+ */
+fun refineEffectId(value: String): DeliveryRefinement<EffectId> =
+    refine(value, DeliveryModelFailure.INVALID_EFFECT_ID, classificationIdPattern::matches, ::EffectId)
+
+/**
+ * Proof transition: `String -> DeliveryRefinement<CostId>`.
+ * Establishes a nonempty canonical cost classification. Failure is finite [DeliveryModelFailure];
+ * raw extraction is permitted only at projection boundaries.
+ */
+fun refineCostId(value: String): DeliveryRefinement<CostId> =
+    refine(value, DeliveryModelFailure.INVALID_COST_ID, classificationIdPattern::matches, ::CostId)
+
+/**
+ * Proof transition: `String -> DeliveryRefinement<GateId>`.
+ * Establishes a task-bound RED, GREEN, or completion-gate identity. Failure is finite
+ * [DeliveryModelFailure]; raw extraction is permitted only at Gradle and projection boundaries.
+ */
+fun refineGateId(value: String): DeliveryRefinement<GateId> =
+    refine(value, DeliveryModelFailure.INVALID_GATE_ID, gateIdPattern::matches, ::GateId)
+
+/**
+ * Proof transition: `String -> DeliveryRefinement<ReceiptId>`.
+ * Establishes a task-bound gate or completion receipt identity. Failure is finite
+ * [DeliveryModelFailure]; raw extraction is permitted only at receipt and projection boundaries.
+ */
+fun refineReceiptId(value: String): DeliveryRefinement<ReceiptId> =
+    refine(value, DeliveryModelFailure.INVALID_RECEIPT_ID, receiptIdPattern::matches, ::ReceiptId)
+
+enum class EvidenceKind { DECLARED_INPUT, GATE_OBSERVATION, PROOF_ARTIFACT, PROOF_RECEIPT }
+
+data class Evidence(val kind: EvidenceKind, val digest: Sha256)
+
+class EvidenceSet private constructor(val values: List<Evidence>) {
+    companion object {
+        /**
+         * Proof transition: `List<Evidence> -> DeliveryRefinement<EvidenceSet>`.
+         * Establishes nonempty evidence while preserving every supplied proof. Failure is finite
+         * [DeliveryModelFailure]; raw list extraction is permitted only at projection boundaries.
+         */
+        fun refine(values: List<Evidence>): DeliveryRefinement<EvidenceSet> =
+            if (values.isEmpty()) {
+                DeliveryRefinement.Rejected(DeliveryModelFailure.EMPTY_EVIDENCE)
+            } else {
+                DeliveryRefinement.Complete(EvidenceSet(values.toList()))
+            }
+    }
+}
+
+class NonEmptyLimitations private constructor(val values: List<String>) {
+    companion object {
+        /**
+         * Proof transition: `List<String> -> DeliveryRefinement<NonEmptyLimitations>`.
+         * Establishes at least one nonblank qualification. Failure is finite
+         * [DeliveryModelFailure]; raw text extraction is permitted only at projection boundaries.
+         */
+        fun refine(values: List<String>): DeliveryRefinement<NonEmptyLimitations> =
+            if (values.isEmpty() || values.any(String::isBlank)) {
+                DeliveryRefinement.Rejected(DeliveryModelFailure.EMPTY_LIMITATIONS)
+            } else {
+                DeliveryRefinement.Complete(NonEmptyLimitations(values.toList()))
+            }
+    }
+}
+
+sealed interface Outcome<out T, out F : DeliveryFailure> {
+    data class Complete<T>(val value: T, val evidence: EvidenceSet) : Outcome<T, Nothing>
+    data class Qualified<T>(
+        val value: T,
+        val evidence: EvidenceSet,
+        val limitations: NonEmptyLimitations,
+    ) : Outcome<T, Nothing>
+    data class Rejected<F : DeliveryFailure>(
+        val failure: F,
+        val evidence: EvidenceSet,
+    ) : Outcome<Nothing, F>
+}
+
+sealed interface TaskProgression {
+    val taskId: TaskId
+
+    data class Blocked(
+        override val taskId: TaskId,
+        val missingReceipts: Set<ReceiptId>,
+    ) : TaskProgression { init { require(missingReceipts.isNotEmpty()) } }
+    data class Ready(override val taskId: TaskId) : TaskProgression
+    data class Invalid(
+        override val taskId: TaskId,
+        val failure: DeliveryModelFailure,
+    ) : TaskProgression
+    data class Proven(
+        override val taskId: TaskId,
+        val completionReceipt: ReceiptId,
+    ) : TaskProgression
+}
 
 enum class EdgeKind { REQUIRES_ALL, REQUIRES_ONE, JOINS_SELECTED_LANE, RETIRES, INVALIDATES, RECOVERS_TO }
 enum class GateKind { RED, GREEN, TASK_COMPLETION, ACCEPTANCE, REVIEW, REVALIDATION, TERMINAL }
 
 data class DependencyExpression(val kind: EdgeKind, val taskIds: Set<TaskId>)
 data class TaskOutput(val id: String, val kind: String, val path: String, val description: String)
-data class ProofCommand(val gateId: String, val command: String, val expectation: String)
-data class CompletionReceiptContract(val receiptId: String, val requiredGateIds: Set<String>, val dependencyReceiptIds: Set<String>, val outputPath: String)
+data class ProofCommand(val gateId: String, val command: String, val expectation: String) {
+    val identity = GateId(gateId)
+    init { require(command.isNotBlank() && expectation.isNotBlank()) }
+}
+data class CompletionReceiptContract(val receiptId: String, val requiredGateIds: Set<String>, val dependencyReceiptIds: Set<String>, val outputPath: String) {
+    val identity = ReceiptId(receiptId)
+    val requiredGates = requiredGateIds.mapTo(linkedSetOf(), ::GateId)
+    val dependencyReceipts = dependencyReceiptIds.mapTo(linkedSetOf(), ::ReceiptId)
+    init { require(outputPath.isNotBlank()) }
+}
 
 data class TaskNode(
     val id: TaskId,
@@ -49,7 +226,9 @@ data class TaskNode(
     val completionReceipt: CompletionReceiptContract,
     val provesRequirements: Set<RequirementId>,
     val authorities: Set<AuthorityId>,
-)
+) {
+    val costClassifications = costs.mapTo(linkedSetOf(), ::CostId)
+}
 
 data class ModuleBoundary(val id: ModuleId, val lifecycle: String, val role: String, val owns: List<String>, val dependencies: Set<ModuleId>, val authorities: Set<AuthorityId>, val effects: Set<EffectId>)
 data class AuthorityOwnership(val id: AuthorityId, val owner: ModuleId, val fact: String)
@@ -58,7 +237,11 @@ data class Requirement(val id: RequirementId, val statement: String)
 data class SpecialEdge(val kind: EdgeKind, val from: String, val target: String, val result: String?)
 data class ProcessNode(val id: String, val kind: String)
 data class ProcessTransition(val from: String, val to: String, val transition: String, val failure: String)
-data class GateNode(val id: String, val taskId: TaskId, val kind: GateKind, val command: String, val statement: String, val dependencyReceiptIds: Set<String>, val outputReceiptId: String)
+data class GateNode(val id: String, val taskId: TaskId, val kind: GateKind, val command: String, val statement: String, val dependencyReceiptIds: Set<String>, val outputReceiptId: String) {
+    val identity = GateId(id)
+    val dependencyReceipts = dependencyReceiptIds.mapTo(linkedSetOf(), ::ReceiptId)
+    val outputReceipt = ReceiptId(outputReceiptId)
+}
 data class MetricRequirement(val id: String, val predicate: String, val value: Any)
 
 data class DeliveryProgram(
@@ -80,6 +263,8 @@ data class DeliveryProgram(
     val installedMetrics: List<MetricRequirement>,
     val terminalTask: TaskId,
 ) {
+    val generation = DeliveryGeneration(targetHead)
+
     /**
      * Proof transition: `DeliveryProgram -> ValidatedProgram`.
      *
@@ -91,8 +276,7 @@ data class DeliveryProgram(
      */
     fun validate(): ValidatedProgram {
         require(schemaVersion == 1)
-        require(targetHead.matches(Regex("[0-9a-f]{40}")))
-        require(requirementFingerprint.value.matches(Regex("[0-9a-f]{64}")))
+        require(generation.value == targetHead)
         require(tasks.map { it.id }.toSet().size == tasks.size)
         require(requirements.map { it.id }.toSet().size == requirements.size)
         require(modules.map { it.id }.toSet().size == modules.size)
