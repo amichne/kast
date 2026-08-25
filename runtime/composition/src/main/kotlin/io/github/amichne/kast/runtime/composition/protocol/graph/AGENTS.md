@@ -8,7 +8,8 @@ result projection, and the snapshot-only traversal router used by public
 
 - Only `CanonicalTopologyBuildHandler` may invoke topology-build operations.
 - `TopologyBackedTraversalOperations` reads an eligible generation-bound SQLite
-  snapshot and never falls back to K2 extraction.
+  snapshot, opens one request-local relation compiler, and never falls back to K2 extraction or
+  reopens the snapshot for each frontier expansion.
 - One-hop `relation.read` retains the injected relation authority; moving its
   protocol projection here does not change its backend.
 - Protocol handlers preserve exact selectors, explicit budgets, completeness,

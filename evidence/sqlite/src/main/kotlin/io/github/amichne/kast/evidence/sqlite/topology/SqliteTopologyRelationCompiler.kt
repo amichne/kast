@@ -25,6 +25,7 @@ import io.github.amichne.kast.topology.contract.TopologyEdgeKind
 import io.github.amichne.kast.topology.contract.TopologySnapshotContent
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentReader
+import io.github.amichne.kast.topology.contract.TopologySnapshotReadFailure
 import io.github.amichne.kast.topology.contract.TopologySymbol
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import java.nio.charset.StandardCharsets
@@ -32,29 +33,55 @@ import java.nio.charset.StandardCharsets
 /**
  * SQLite implementation of the one-hop relation compiler used by public repository traversal.
  *
- * Proof transition: `(PublishedTopologySnapshot, TopologySnapshotContentReader) ->
- * RelationCompilerPort`.
+ * Proof transition: `(PublishedTopologySnapshot, TopologySnapshotContent) ->
+ * SqliteTopologyRelationCompiler`.
  *
- * The returned port can emit relation evidence only after the exact snapshot is re-admitted and
- * the request lease, selector, scope, edge meaning, pagination, and budgets are retained. It has
- * no K2, IntelliJ, Gradle, module-model, or filesystem capability.
+ * The returned capability retains one already re-admitted exact snapshot for all one-hop reads in
+ * one traversal request. Each read preserves the request lease, selector, scope, edge meaning,
+ * pagination, and budgets. It has no K2, IntelliJ, Gradle, module-model, or filesystem capability.
  */
-class SqliteTopologyRelationCompiler(
-    private val snapshot: PublishedTopologySnapshot,
-    private val reader: TopologySnapshotContentReader,
+class SqliteTopologyRelationCompiler private constructor(
+    private val content: TopologySnapshotContent,
 ) : RelationCompilerPort {
+    private val snapshot: PublishedTopologySnapshot = content.snapshot
+
+    companion object {
+        /**
+         * Proof transition: `(PublishedTopologySnapshot, TopologySnapshotContentReader) ->
+         * SqliteTopologyRelationCompilerOpening`.
+         *
+         * Establishes either one request-local compiler retaining re-admitted content for the
+         * exact published snapshot or the reader's closed [TopologySnapshotReadFailure]. Physical
+         * snapshot reads are permitted only in this opening transition; one-hop compilation may
+         * extract only from the retained [TopologySnapshotContent].
+         */
+        fun open(
+            snapshot: PublishedTopologySnapshot,
+            reader: TopologySnapshotContentReader,
+        ): SqliteTopologyRelationCompilerOpening = when (val loaded = reader.read(snapshot)) {
+            is TopologySnapshotContentRead.Loaded -> if (
+                loaded.content.snapshot.identity == snapshot.identity &&
+                loaded.content.snapshot.manifest == snapshot.manifest
+            ) {
+                SqliteTopologyRelationCompilerOpening.Opened(
+                    SqliteTopologyRelationCompiler(loaded.content),
+                )
+            } else {
+                SqliteTopologyRelationCompilerOpening.Rejected(
+                    TopologySnapshotReadFailure.CORRUPT_SNAPSHOT,
+                )
+            }
+            is TopologySnapshotContentRead.Rejected ->
+                SqliteTopologyRelationCompilerOpening.Rejected(loaded.failure)
+        }
+    }
+
     override suspend fun read(request: RelationRequest): RelationCompilation {
         if (request.subject.lease.workspaceRoot != snapshot.identity.lease.workspaceRoot) {
             return RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_ROOT_MISMATCH)
         }
         if (request.subject.lease.generation != snapshot.identity.lease.generation) {
             return RelationCompilation.Rejected(RelationCompilerRejection.GENERATION_MOVED)
-        }
-        val content = when (val loaded = reader.read(snapshot)) {
-            is TopologySnapshotContentRead.Loaded -> loaded.content
-            is TopologySnapshotContentRead.Rejected -> return RelationCompilation.Rejected(
-                RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
-            )
         }
         val subjects = content.symbols.asSequence()
             .filter { it.evidence.compilerIdentity == request.subject.compilerIdentity }
@@ -190,6 +217,16 @@ class SqliteTopologyRelationCompiler(
     private fun contractRejected(): RelationCompilation = RelationCompilation.Rejected(
         RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION,
     )
+}
+
+sealed interface SqliteTopologyRelationCompilerOpening {
+    data class Opened(
+        val compiler: SqliteTopologyRelationCompiler,
+    ) : SqliteTopologyRelationCompilerOpening
+
+    data class Rejected(
+        val failure: TopologySnapshotReadFailure,
+    ) : SqliteTopologyRelationCompilerOpening
 }
 
 /** Exact topology symbol carrying its retained relation-endpoint revalidation proof. */
