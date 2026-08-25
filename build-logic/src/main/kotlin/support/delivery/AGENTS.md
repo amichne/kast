@@ -8,6 +8,8 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 - `model/DeliveryProgramModel.kt` owns program validation, derived waves, the canonical program projection, and the requirement-trace projection.
 - `model/ProgramAuthorityModel.kt` owns parsed expectations and authority admission.
 - `model/ProgramAuthorityGeneration.kt` binds source IDs to paths only through exact declared digests and returns finite failures for incomplete or ambiguous evidence.
+- `model/DeliveryReceipt.kt` and `model/DeliveryReceiptRefinement.kt` own closed receipt identities,
+  failures, canonical payload digests, issuance, and admission.
 - `tasks/DeliveryProjectionTasks.kt` owns deterministic program and requirement projection tasks.
 - `tasks/DeliveryTaskBoundaries.kt` owns process-free Git observation, bounded source reads, SHA-256 observation, atomic writes, and Gradle failure rendering.
 - `tasks/ProgramAuthorityJsonBoundary.kt` owns generated serializers for closed authority documents.
@@ -16,6 +18,10 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
   verification re-observes the head and source bytes before reporting success. These exact-head
   artifacts are build evidence and must not be checked in.
 - `tasks/ProgramAuthorityNegativeTask.kt` owns the deterministic KVP-001 RED fixtures.
+- `tasks/DeliveryReceiptJsonBoundary.kt` owns the generated receipt serializer.
+- `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
+  bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
+  receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.
 - `ProgramMain.kt` is the dependency-free projection entry point used by `scripts/verify_bundle.sh`.
 
 Gate and completion receipt paths are part of the typed program, but their live evidence belongs
@@ -31,8 +37,10 @@ Keep each Kotlin source below the repository shape limit. Preserve task order wh
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityAdmissionTest
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityGenerationTest
 ./gradlew -p build-logic test --tests support.delivery.ReceiptEvidenceLocationTest
+./gradlew -p build-logic test --tests support.delivery.DeliveryReceiptTest
 ./gradlew help --task generateKastVfsPassiveAuthority
 ./gradlew generateKastVfsPassiveProjection verifyKastVfsPassiveProjection
 ./gradlew verifyKastVfsPassiveAuthorityNegative
+./gradlew verifyKVP001CompletionReceipt
 scripts/verify_bundle.sh
 ```

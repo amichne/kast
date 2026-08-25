@@ -56,6 +56,8 @@ def schema_errors(value, schema, root_schema, path="$"):
                 yield from schema_errors(item, item_schema, root_schema, f"{path}[{index}]")
 
     if isinstance(value, dict):
+        if len(value) < schema.get("minProperties", 0):
+            yield f"{path}: object has fewer than minProperties"
         properties = schema.get("properties", {})
         missing = set(schema.get("required", [])) - set(value)
         for name in sorted(missing):
@@ -119,5 +121,10 @@ requirements = json.loads(requirements_path.read_text())
 assert requirements["programFingerprint"] == fingerprint
 validate_document(program_path, root / "gradle/delivery/schema/delivery-program.schema.json")
 validate_document(requirements_path, root / "gradle/delivery/schema/requirement-trace.schema.json")
+receipt_paths = sorted(
+    (root / "build/reports/delivery/receipts").glob("*.receipt.json")
+)
+for receipt_path in receipt_paths:
+    validate_document(receipt_path, root / "gradle/delivery/schema/proof-receipt.schema.json")
 print(json.dumps({"valid": True, "programFingerprint": fingerprint, "tasks": len(by_id), "gates": len(program["gateGraph"]), "waves": program["waveCount"], "terminal": program["terminal"]["type"]}, indent=2))
-print("json-schema: valid")
+print(f"json-schema: valid ({len(receipt_paths)} live receipts)")

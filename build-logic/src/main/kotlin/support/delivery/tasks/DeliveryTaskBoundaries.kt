@@ -299,7 +299,7 @@ internal fun writeTextAtomically(target: Path, content: String) {
     }
 }
 
-private fun sha256Bytes(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
+internal fun sha256Bytes(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
     .digest(bytes)
     .joinToString("") { byte ->
         (byte.toInt() and 0xff).toString(16).padStart(2, '0')

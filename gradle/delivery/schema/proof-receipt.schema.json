@@ -12,10 +12,7 @@
     },
     "baseRevision": {
       "pattern": "^[0-9a-f]{40}$",
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": "string"
     },
     "commandDigest": {
       "pattern": "^[0-9a-f]{64}$",
@@ -37,10 +34,14 @@
       "type": "string"
     },
     "gateId": {
+      "pattern": "^KVP-[0-9]{3}-(RED|GREEN|COMPLETE-GATE)$",
       "type": "string"
     },
     "observedProofValues": {
-      "additionalProperties": true,
+      "additionalProperties": {
+        "type": "string"
+      },
+      "minProperties": 1,
       "type": "object"
     },
     "programFingerprint": {
@@ -49,6 +50,10 @@
     },
     "receiptDigest": {
       "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "receiptId": {
+      "pattern": "^KVP-[0-9]{3}-(RED-RECEIPT|GREEN-RECEIPT|COMPLETE)$",
       "type": "string"
     },
     "recordedAtUtc": {
@@ -69,6 +74,8 @@
   },
   "required": [
     "schemaVersion",
+    "receiptId",
+    "baseRevision",
     "programFingerprint",
     "requirementFingerprint",
     "exactHead",

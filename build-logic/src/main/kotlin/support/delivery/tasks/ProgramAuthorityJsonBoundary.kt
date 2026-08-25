@@ -167,3 +167,116 @@ private inline fun <reified E : Enum<E>> enumSetOrRejected(
     values.forEach { value -> parsed += entriesByName[value] ?: return EnumSetRefinement.Rejected }
     return EnumSetRefinement.Complete(parsed)
 }
+
+internal enum class AuthorityGateProofFailure {
+    MALFORMED_DOCUMENT,
+    GATE_ID_MISMATCH,
+    REJECTED_CASE_SET_MISMATCH,
+    BASE_REVISION_MISMATCH,
+    EXACT_HEAD_MISMATCH,
+    PROGRAM_FINGERPRINT_MISMATCH,
+    REQUIREMENT_FINGERPRINT_MISMATCH,
+    SOURCE_DIGESTS_MISMATCH,
+}
+
+internal sealed interface AuthorityGateProofObservation {
+    data class NegativeComplete(
+        val rejectedCases: Set<AuthorityNegativeCase>,
+    ) : AuthorityGateProofObservation
+
+    data class VerificationComplete(
+        val admittedSourceIds: Set<AuthoritySourceId>,
+    ) : AuthorityGateProofObservation
+
+    data class Rejected(val failure: AuthorityGateProofFailure) : AuthorityGateProofObservation
+}
+
+/**
+ * Proof transition: KVP-001 RED report JSON -> `AuthorityGateProofObservation.NegativeComplete`.
+ *
+ * Establishes the exact gate identity and exhaustive negative-case set. Expected malformed or
+ * mismatched evidence returns [AuthorityGateProofObservation.Rejected]. Raw JSON is retained only
+ * at this Gradle evidence boundary.
+ */
+internal fun observeAuthorityNegativeProof(
+    rawDocument: String,
+): AuthorityGateProofObservation {
+    val document = try {
+        authorityEvidenceJson.decodeFromString(
+            AuthorityNegativeProofDocument.serializer(),
+            rawDocument,
+        )
+    } catch (_: SerializationException) {
+        return AuthorityGateProofObservation.Rejected(
+            AuthorityGateProofFailure.MALFORMED_DOCUMENT,
+        )
+    }
+    if (document.schemaVersion != 1 || document.gateId != "KVP-001-RED") {
+        return AuthorityGateProofObservation.Rejected(
+            AuthorityGateProofFailure.GATE_ID_MISMATCH,
+        )
+    }
+    if (
+        document.rejectedCases.size != AuthorityNegativeCase.entries.size ||
+        document.rejectedCases.toSet() != AuthorityNegativeCase.entries.toSet()
+    ) {
+        return AuthorityGateProofObservation.Rejected(
+            AuthorityGateProofFailure.REJECTED_CASE_SET_MISMATCH,
+        )
+    }
+    return AuthorityGateProofObservation.NegativeComplete(
+        document.rejectedCases.toSet(),
+    )
+}
+
+/**
+ * Proof transition: KVP-001 GREEN report JSON plus admitted authority identities ->
+ * `AuthorityGateProofObservation.VerificationComplete`.
+ *
+ * Establishes the exact gate, revisions, fingerprints, and source-digest set. Expected malformed
+ * or mismatched evidence returns [AuthorityGateProofObservation.Rejected]. Raw JSON is retained
+ * only at this Gradle evidence boundary.
+ */
+internal fun observeAuthorityVerificationProof(
+    rawDocument: String,
+    baseRevision: String,
+    exactHead: String,
+    programFingerprint: String,
+    requirementFingerprint: String,
+    sourceDigests: Map<String, String>,
+): AuthorityGateProofObservation {
+    val document = try {
+        authorityEvidenceJson.decodeFromString(
+            AuthorityVerificationDocument.serializer(),
+            rawDocument,
+        )
+    } catch (_: SerializationException) {
+        return AuthorityGateProofObservation.Rejected(
+            AuthorityGateProofFailure.MALFORMED_DOCUMENT,
+        )
+    }
+    val failure = when {
+        document.schemaVersion != 1 || document.gateId != "KVP-001-GREEN" -> {
+            AuthorityGateProofFailure.GATE_ID_MISMATCH
+        }
+        document.baseRevision != baseRevision -> AuthorityGateProofFailure.BASE_REVISION_MISMATCH
+        document.exactHead != exactHead -> AuthorityGateProofFailure.EXACT_HEAD_MISMATCH
+        document.programFingerprint != programFingerprint -> {
+            AuthorityGateProofFailure.PROGRAM_FINGERPRINT_MISMATCH
+        }
+        document.requirementFingerprint != requirementFingerprint -> {
+            AuthorityGateProofFailure.REQUIREMENT_FINGERPRINT_MISMATCH
+        }
+        document.sourceDigests != sourceDigests -> {
+            AuthorityGateProofFailure.SOURCE_DIGESTS_MISMATCH
+        }
+        else -> null
+    }
+    return if (failure == null) {
+        AuthorityGateProofObservation.VerificationComplete(
+            document.sourceDigests.keys.mapTo(mutableSetOf(), ::AuthoritySourceId),
+        )
+    } else {
+        AuthorityGateProofObservation.Rejected(failure)
+    }
+}
