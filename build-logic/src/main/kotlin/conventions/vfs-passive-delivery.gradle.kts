@@ -2,6 +2,7 @@ package kast
 
 import support.delivery.DeriveKvp001CompletionReceiptTask
 import support.delivery.DeriveKvp002CompletionReceiptTask
+import support.delivery.DeriveKvp003CompletionReceiptTask
 import support.delivery.GenerateDeliveryProjectionsTask
 import support.delivery.GenerateKastVfsPassiveAuthorityTask
 import support.delivery.KastVfsPassiveReusedIndexProgram
@@ -9,13 +10,17 @@ import support.delivery.Kvp001ReceiptTaskBase
 import support.delivery.RecordKvp001GreenReceiptTask
 import support.delivery.RecordKvp001RedReceiptTask
 import support.delivery.Kvp002ReceiptTaskBase
+import support.delivery.Kvp003ReceiptTaskBase
 import support.delivery.RecordKvp002GreenReceiptTask
 import support.delivery.RecordKvp002RedReceiptTask
+import support.delivery.RecordKvp003GreenReceiptTask
+import support.delivery.RecordKvp003RedReceiptTask
 import support.delivery.VerifyDeliveryProjectionsTask
 import support.delivery.VerifyKastVfsPassiveAuthorityNegativeTask
 import support.delivery.VerifyKastVfsPassiveAuthorityTask
 import support.delivery.VerifyKvp001CompletionReceiptTask
 import support.delivery.VerifyKvp002CompletionReceiptTask
+import support.delivery.VerifyKvp003CompletionReceiptTask
 import support.delivery.canonicalJson
 import support.delivery.sha256
 
@@ -284,8 +289,66 @@ tasks.register<VerifyKvp002CompletionReceiptTask>("verifyKVP002CompletionReceipt
     completionReceiptFile.set(typeModelCompletionReceipt)
 }
 
+val graphTask = program.program.tasks.single { it.id.value == "KVP-003" }
+val graphRedGate = program.program.gates.single { it.id == graphTask.red.gateId }
+val graphGreenGate = program.program.gates.single { it.id == graphTask.green.gateId }
+val graphCompletionGate = program.program.gates.single {
+    it.taskId == graphTask.id && it.kind.name == "TASK_COMPLETION"
+}
+val graphRedReceipt = receiptDirectory.map { it.file("${graphRedGate.outputReceiptId}.receipt.json") }
+val graphGreenReceipt = receiptDirectory.map { it.file("${graphGreenGate.outputReceiptId}.receipt.json") }
+val graphCompletionReceipt = layout.projectDirectory.file(graphTask.completionReceipt.outputPath)
+val graphProofReport = layout.projectDirectory.file(graphTask.outputs.single().path)
+val expectedGraphTaskInputDigest = sha256(canonicalJson(graphTask.inputs)).value
+val expectedGraphCompletionInputDigest = sha256(canonicalJson(mapOf(
+    "receiptId" to graphTask.completionReceipt.receiptId,
+    "requiredGateIds" to graphTask.completionReceipt.requiredGateIds.sorted(),
+    "requiredDependencyReceiptIds" to graphTask.completionReceipt.dependencyReceiptIds.sorted(),
+))).value
+
+fun Kvp003ReceiptTaskBase.configureGraphReceiptBoundary() {
+    configureTypeModelReceiptBoundary()
+    graphTaskId.set(graphTask.id.value)
+    graphRedGateId.set(graphRedGate.id)
+    graphGreenGateId.set(graphGreenGate.id)
+    graphCompletionGateId.set(graphCompletionGate.id)
+    graphRedReceiptId.set(graphRedGate.outputReceiptId)
+    graphGreenReceiptId.set(graphGreenGate.outputReceiptId)
+    graphCompletionReceiptId.set(graphCompletionGate.outputReceiptId)
+    graphRedCommand.set(graphRedGate.command)
+    graphGreenCommand.set(graphGreenGate.command)
+    graphCompletionCommand.set(graphCompletionGate.command)
+    graphTaskInputDigest.set(expectedGraphTaskInputDigest)
+    graphCompletionInputDigest.set(expectedGraphCompletionInputDigest)
+    graphProofReportPath.set(graphTask.outputs.single().path)
+    predecessorRedReceiptFile.set(typeModelRedReceipt)
+    predecessorGreenReceiptFile.set(typeModelGreenReceipt)
+    predecessorProofReportFile.set(typeModelProofReport)
+    predecessorCompletionReceiptFile.set(typeModelCompletionReceipt)
+}
+
+val recordKvp003RedReceipt = tasks.register<RecordKvp003RedReceiptTask>("recordKVP003RedReceipt") {
+    configureGraphReceiptBoundary(); dependsOn("verifyKVP002CompletionReceipt")
+    receiptFile.set(graphRedReceipt)
+}
+val recordKvp003GreenReceipt = tasks.register<RecordKvp003GreenReceiptTask>("recordKVP003GreenReceipt") {
+    configureGraphReceiptBoundary(); dependsOn(recordKvp003RedReceipt)
+    redReceiptFile.set(graphRedReceipt); proofReportFile.set(graphProofReport)
+    receiptFile.set(graphGreenReceipt)
+}
+val deriveKvp003Completion = tasks.register<DeriveKvp003CompletionReceiptTask>("deriveKVP003Completion") {
+    configureGraphReceiptBoundary(); dependsOn(recordKvp003GreenReceipt)
+    redReceiptFile.set(graphRedReceipt); greenReceiptFile.set(graphGreenReceipt)
+    proofReportFile.set(graphProofReport); receiptFile.set(graphCompletionReceipt)
+}
+tasks.register<VerifyKvp003CompletionReceiptTask>("verifyKVP003CompletionReceipt") {
+    configureGraphReceiptBoundary(); dependsOn(deriveKvp003Completion)
+    redReceiptFile.set(graphRedReceipt); greenReceiptFile.set(graphGreenReceipt)
+    proofReportFile.set(graphProofReport); completionReceiptFile.set(graphCompletionReceipt)
+}
+
 program.program.tasks.sortedBy { it.id }.filterNot {
-    it == authorityTask || it == typeModelTask
+    it == authorityTask || it == typeModelTask || it == graphTask
 }.forEach { node ->
     val redReceipt = receiptDirectory.map {
         it.file("${node.red.gateId}-RECEIPT.receipt.json")
@@ -302,7 +365,7 @@ program.program.tasks.sortedBy { it.id }.filterNot {
             inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
         }
         outputs.file(redReceipt)
-        doLast { error("RecordGateReceiptTask must bind exact head, command, inputs, observations, artifacts, and dependency receipt digests before writing ${redReceipt.get().asFile}") }
+        doLast { error("Typed recorder required before writing ${redReceipt.get().asFile}") }
     }
     tasks.register("record${node.id.value.replace("-", "")}GreenReceipt") {
         group = "verification"
@@ -314,7 +377,7 @@ program.program.tasks.sortedBy { it.id }.filterNot {
             inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
         }
         outputs.file(greenReceipt)
-        doLast { error("RecordGateReceiptTask must verify all evidence before writing ${greenReceipt.get().asFile}") }
+        doLast { error("Typed recorder required before writing ${greenReceipt.get().asFile}") }
     }
 }
 

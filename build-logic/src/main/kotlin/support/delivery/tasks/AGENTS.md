@@ -11,7 +11,8 @@ This directory owns Gradle effects for the VFS-passive delivery program.
   `Kvp001ReceiptTaskSupport.kt` refines the authority reports and exact artifact bytes into receipt
   expectations. `Kvp001ReceiptTasks.kt` owns the root RED, GREEN, completion, and re-admission
   boundaries. Every write is followed by exact-head revalidation and read-back admission.
-- `Kvp002ReceiptTasks.kt` executes only the two fixed included-build model gates, owns the generated
-  KVP-002 type-proof report, and closes RED, GREEN, and completion over the admitted KVP-001 receipt.
+- `receipt/` owns typed post-authority progression. KVP-002 and KVP-003 execute only their fixed
+  included-build gates, own generated proof reports, and close each task over its admitted
+  predecessor receipt.
 
 Do not add network access, process start, repository walks, source substitution, fallback, VFS refresh, or writes outside declared Gradle outputs.

@@ -1,10 +1,5 @@
 package support.delivery
 
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -120,7 +115,26 @@ class DeliveryGraphTest {
         )
         assertEquals(3, graph.lifecycleEdges.size)
 
-        writeProofReport(graph)
+        val derived = assertInstanceOf(
+            Kvp003GraphProofResult.Complete::class.java,
+            deriveKvp003GraphProof(),
+        ).proof
+        val decoded = assertInstanceOf(
+            Kvp003GraphProofResult.Complete::class.java,
+            decodeKvp003GraphProof(encodeKvp003GraphProof(derived)),
+        ).proof
+        assertEquals(graph.order, decoded.graph.order)
+        assertEquals(graph.waves, decoded.graph.waves)
+        assertEquals(expectedKvp003RejectedCases(), decoded.rejectedCases)
+
+        val changed = encodeKvp003GraphProof(derived)
+            .replace("\"selectedLaneJoin\"", "\"flattened\"")
+        assertEquals(
+            Kvp003GraphProofResult.Rejected(
+                Kvp003GraphProofFailure.ORDERING_KINDS_MISMATCH,
+            ),
+            decodeKvp003GraphProof(changed),
+        )
     }
 
     private fun dependency(result: DeliveryDependencyResult): DeliveryDependency =
@@ -132,58 +146,5 @@ class DeliveryGraphTest {
     private fun complete(result: TypedGraphResult): TypedGraph =
         assertInstanceOf(TypedGraphResult.Complete::class.java, result).graph
 
-    private fun writeProofReport(graph: TypedGraph) {
-        val workingDirectory = Path.of("").toAbsolutePath().normalize()
-        val root = if (Files.isDirectory(workingDirectory.resolve("gradle/delivery"))) {
-            workingDirectory
-        } else {
-            workingDirectory.parent
-        }
-        require(Files.isDirectory(root.resolve("gradle/delivery")))
-        val output = root.resolve("build/reports/delivery/KVP-003-graph.json")
-        Files.createDirectories(output.parent)
-        Files.writeString(output, graphProofJson.encodeToString(DeliveryGraphProofDocument.serializer(), graph.toProof()) + "\n")
-    }
-
-    private fun TypedGraph.toProof() = DeliveryGraphProofDocument(
-        schemaVersion = 1,
-        taskId = "KVP-003",
-        outcome = "COMPLETE",
-        taskOrder = order.map { it.value },
-        waves = waves.entries.associate { it.key.value to it.value },
-        orderingKinds = tasks.values.map { it.dependency.projectionName() }.distinct().sorted(),
-        lifecycleKinds = lifecycleEdges.map { it.projectionName() }.distinct().sorted(),
-    )
-
-    private fun DeliveryDependency.projectionName(): String = when (this) {
-        DeliveryDependency.Root -> "root"
-        is DeliveryDependency.AllOf -> "allOf"
-        is DeliveryDependency.OneOf -> "oneOf"
-        is DeliveryDependency.SelectedLaneJoin -> "selectedLaneJoin"
-    }
-
-    private fun LifecycleEdge.projectionName(): String = when (this) {
-        is LifecycleEdge.Retirement -> "retirement"
-        is LifecycleEdge.Invalidation -> "invalidation"
-        is LifecycleEdge.Recovery -> "recovery"
-    }
-
-    private companion object {
-        val graphProofJson = Json {
-            encodeDefaults = true
-            explicitNulls = false
-            prettyPrint = false
-        }
-    }
+    private fun expectedKvp003RejectedCases() = Kvp003RejectedCase.entries.toSet()
 }
-
-@Serializable
-private data class DeliveryGraphProofDocument(
-    val schemaVersion: Int,
-    val taskId: String,
-    val outcome: String,
-    val taskOrder: List<String>,
-    val waves: Map<String, Int>,
-    val orderingKinds: List<String>,
-    val lifecycleKinds: List<String>,
-)
