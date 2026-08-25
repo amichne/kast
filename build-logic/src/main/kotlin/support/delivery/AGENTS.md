@@ -4,7 +4,9 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 
 ## Authorities
 
-- `KastVfsPassiveReusedIndexProgram` composes the canonical program from the foundation, milestone-task, and runtime-graph files.
+- `KastVfsPassiveReusedIndexProgram` composes and finitely admits the canonical program from the
+  foundation, milestone-task, and runtime-graph files. Admission proves complete contracts, closed
+  ownership/classification references, deterministic graph order and waves, and one terminal sink.
 - `model/DeliveryProgramModel.kt` owns program validation, derived waves, the canonical program projection, and the requirement-trace projection.
 - `model/ProgramAuthorityModel.kt` owns parsed expectations and authority admission.
 - `model/ProgramAuthorityGeneration.kt` binds source IDs to paths only through exact declared digests and returns finite failures for incomplete or ambiguous evidence.
@@ -38,6 +40,7 @@ M0 delivery model writes belong under `model/`; focused tests remain under the d
 
 ```shell
 ./gradlew -p build-logic test --tests support.delivery.KastVfsPassiveReusedIndexProgramTest
+./gradlew -p build-logic test --tests support.delivery.KastVfsPassiveProgramNegativeTest
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityAdmissionTest
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityGenerationTest
 ./gradlew -p build-logic test --tests support.delivery.ReceiptEvidenceLocationTest

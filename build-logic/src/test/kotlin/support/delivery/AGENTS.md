@@ -6,6 +6,7 @@ Run:
 
 ```shell
 ./gradlew -p build-logic test --tests support.delivery.KastVfsPassiveReusedIndexProgramTest
+./gradlew -p build-logic test --tests support.delivery.KastVfsPassiveProgramNegativeTest
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityAdmissionTest
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityGenerationTest
 ./gradlew -p build-logic test --tests support.delivery.RequirementAuthorityRecoveryTest
