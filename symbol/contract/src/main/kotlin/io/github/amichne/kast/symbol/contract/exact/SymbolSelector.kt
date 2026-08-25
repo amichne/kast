@@ -25,9 +25,10 @@ value class CompilerSymbolIdentity private constructor(
          * Proof transition: `String -> Refinement<CompilerSymbolIdentity,
          * CompilerSymbolIdentityFailure>`.
          *
-         * Establishes a non-blank, bounded compiler identity without control characters.
-         * [CompilerSymbolIdentityFailure] is the closed expected failure. Raw compiler rendering
-         * may enter only at the request-local native compiler adapter boundary.
+         * Establishes a non-blank, bounded serialized compiler identity without control
+         * characters. [CompilerSymbolIdentityFailure] is the closed expected failure. Native
+         * compiler adapters must canonicalize and hash raw compiler signatures before parsing
+         * their serialized identity.
          */
         fun parse(
             raw: String,

@@ -17,6 +17,8 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
   workspace/compiler rejection protocol for `symbol.discover`.
 - `SymbolSelector.kt` owns compiler-grounded exact selector issuance, revalidation, opaque
   fingerprints, and detached descriptions.
+- `CanonicalCompilerSignature.kt` owns versioned length-prefixed native compiler signatures and
+  deterministic fixed-size SHA-256 compiler identities.
 - `SymbolExactOperations.kt` owns the public `symbol.resolve` and `symbol.describe` requests,
   outcomes, compiler port, and closed rejection protocol.
 - `ExactDeclarationSelector.kt` owns batch-ordinal declaration selection, detached native
@@ -49,6 +51,8 @@ IntelliJ scopes, PSI, indexes, query execution, mutation authority, or transport
   compiler identity text, and the legacy declaration selector are not substitute authority.
 - Compiler identity is detached finite data. No Analysis API symbol, pointer, session, PSI, VFS,
   or native scope may enter this contract.
+- Native compiler adapters derive compiler identity only from `CanonicalCompilerSignature`; they
+  do not serialize raw compiler signatures directly into `CompilerSymbolIdentity`.
 - A native definition projector returns only `NativeDetachedDefinition`. It cannot return PSI,
   VFS, project, or search-scope objects.
 - Exact selectors retain file, range, name, qualified-identity state, runtime declaration type, and
