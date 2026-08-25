@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.JavaExec
 
 plugins {
     id("kast.runtime-serialization-app")
@@ -92,6 +93,22 @@ val nativeTest by tasks.registering(Test::class) {
         includeTags("native")
     }
     shouldRunAfter(tasks.named("test"))
+}
+
+val codexEvaluationRequest = providers.gradleProperty("kastCodexEvaluationRequest")
+val codexEvaluationEvidence = providers.gradleProperty("kastCodexEvaluationEvidence")
+
+val codexAppServerEvaluation by tasks.registering(JavaExec::class) {
+    description = "Runs one configured Codex app-server dynamic-tools evaluation."
+    group = "verification"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.amichne.kast.cli.codex.CodexAppServerEvaluationKt"
+    workingDir = rootProject.projectDir
+    dependsOn(tasks.named("testClasses"))
+    inputs.file(codexEvaluationRequest)
+    outputs.file(codexEvaluationEvidence)
+    outputs.upToDateWhen { false }
+    args(codexEvaluationRequest.get(), codexEvaluationEvidence.get())
 }
 
 tasks.named("check") {

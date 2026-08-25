@@ -8,4 +8,6 @@ detachment, and verification.
 
 - Keep IntelliJ, PSI, K2, VFS, and search-scope values inside one request-local read.
 - Derive detached endpoint identities from canonical compiler signatures before leaving K2.
+- Derive a typed request-local confirmation plan after exact subject revalidation. Classlike
+  callers use constructor-ownership confirmation; other references retain exact identity.
 - Preserve qualified completion whenever native enumeration cannot prove an exact terminal result.
