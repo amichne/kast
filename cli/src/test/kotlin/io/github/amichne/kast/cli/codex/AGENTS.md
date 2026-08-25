@@ -5,6 +5,8 @@ CLI test friend access to the canonical wire client, but it must not enter the i
 command graph or add a semantic implementation.
 
 - Keep exactly the `kast.symbol_resolve` and `kast.relation_read` dynamic tools.
+- Project their names, descriptions, input schemas, and canonical operation compositions from
+  `CanonicalAgentToolDefinitions`; do not add handwritten App Server schema strings.
 - Keep the shared comparison prompt capability-adaptive: inspect deferred Kast tools once, retain
   the resolve result, and chain its opaque selector into relation read in the same exec program;
   use the public CLI only when those dynamic tools are absent.

@@ -1,10 +1,19 @@
 package io.github.amichne.kast.cli.codex
 
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.registry.AgentToolDefinition
+import io.github.amichne.kast.protocol.registry.AgentToolInput
+import io.github.amichne.kast.protocol.registry.AgentToolRelationInput
+import io.github.amichne.kast.protocol.registry.AgentToolTextInput
+import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import java.io.IOException
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -163,7 +172,7 @@ internal object CodexEvaluationWorkflowPrompt {
 }
 
 internal object CodexDynamicToolDefinitions {
-    private val json = Json
+    private val json = Json { encodeDefaults = true }
 
     fun kastNamespace(): DynamicToolNamespaceDocument = DynamicToolNamespaceDocument(
         type = NAMESPACE_TYPE,
@@ -171,70 +180,91 @@ internal object CodexDynamicToolDefinitions {
         description =
             "Read-only exact Kotlin symbol discovery and relation evidence. The deferred tools " +
                 "can be awaited and chained in the same exec program without other tools.",
-        tools = listOf(
-            DynamicToolFunctionDocument(
-                type = FUNCTION_TYPE,
-                name = "symbol_resolve",
-                description =
-                    "Find one exact Kotlin symbol by source name and return canonical Kast " +
-                        "symbol.describe JSON; retain its returned JSON and opaque selector for " +
-                        "the next call in the same exec program.",
-                inputSchema = json.parseToJsonElement(SYMBOL_RESOLVE_SCHEMA),
-                deferLoading = true,
-            ),
-            DynamicToolFunctionDocument(
-                type = FUNCTION_TYPE,
-                name = "relation_read",
-                description =
-                    "Read one-hop Kast semantic relations from the exact selector returned by " +
-                        "symbol_resolve, passed as exactSelector, without resolving again.",
-                inputSchema = json.parseToJsonElement(RELATION_READ_SCHEMA),
-                deferLoading = true,
-            ),
-        ),
+        tools = CanonicalAgentToolDefinitions.all.map(::project),
     )
+
+    private fun project(definition: AgentToolDefinition): DynamicToolFunctionDocument =
+        DynamicToolFunctionDocument(
+            type = FUNCTION_TYPE,
+            name = definition.name.value,
+            description = definition.description.value,
+            inputSchema = definition.input.toCodexSchema(),
+            deferLoading = true,
+        )
+
+    private fun AgentToolInput.toCodexSchema(): JsonElement = when (this) {
+        is AgentToolInput.ExactSymbolName -> json.encodeToJsonElement(
+            ExactSymbolInputSchemaDocument.serializer(),
+            ExactSymbolInputSchemaDocument(
+                properties = ExactSymbolPropertiesDocument(query.toTextSchema()),
+                required = listOf(query.name.value),
+            ),
+        )
+        is AgentToolInput.ExactRelation -> json.encodeToJsonElement(
+            ExactRelationInputSchemaDocument.serializer(),
+            ExactRelationInputSchemaDocument(
+                properties = ExactRelationPropertiesDocument(
+                    exactSelector = exactSelector.toTextSchema(),
+                    relation = relation.toRelationSchema(),
+                ),
+                required = listOf(exactSelector.name.value, relation.name.value),
+            ),
+        )
+    }
+
+    private fun AgentToolTextInput.toTextSchema(): NonBlankTextSchemaDocument =
+        NonBlankTextSchemaDocument(description = description.value)
+
+    private fun AgentToolRelationInput.toRelationSchema(): RelationKindSchemaDocument =
+        RelationKindSchemaDocument(values = kinds.map { it.schemaValue() })
+
+    private fun RelationKindDocument.schemaValue(): String = when (this) {
+        RelationKindDocument.REFERENCES -> "references"
+        RelationKindDocument.CALLERS -> "callers"
+        RelationKindDocument.CALLEES -> "callees"
+        RelationKindDocument.IMPLEMENTATIONS -> "implementations"
+        RelationKindDocument.INHERITORS -> "inheritors"
+        RelationKindDocument.OVERRIDES -> "overrides"
+        RelationKindDocument.TYPE_USES -> "type_uses"
+    }
 }
 
-private val SYMBOL_RESOLVE_SCHEMA =
-    """
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "query": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Exact Kotlin source name to discover."
-        }
-      },
-      "required": ["query"]
-    }
-    """.trimIndent()
+@Serializable
+private data class ExactSymbolInputSchemaDocument(
+    val type: String = "object",
+    val additionalProperties: Boolean = false,
+    val properties: ExactSymbolPropertiesDocument,
+    val required: List<String>,
+)
 
-private val RELATION_READ_SCHEMA =
-    """
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "exactSelector": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Opaque symbol.selector returned by kast.symbol_resolve."
-        },
-        "relation": {
-          "type": "string",
-          "enum": [
-            "references",
-            "callers",
-            "callees",
-            "implementations",
-            "inheritors",
-            "overrides",
-            "type_uses"
-          ]
-        }
-      },
-      "required": ["exactSelector", "relation"]
-    }
-    """.trimIndent()
+@Serializable
+private data class ExactSymbolPropertiesDocument(
+    val query: NonBlankTextSchemaDocument,
+)
+
+@Serializable
+private data class ExactRelationInputSchemaDocument(
+    val type: String = "object",
+    val additionalProperties: Boolean = false,
+    val properties: ExactRelationPropertiesDocument,
+    val required: List<String>,
+)
+
+@Serializable
+private data class ExactRelationPropertiesDocument(
+    val exactSelector: NonBlankTextSchemaDocument,
+    val relation: RelationKindSchemaDocument,
+)
+
+@Serializable
+private data class NonBlankTextSchemaDocument(
+    val type: String = "string",
+    val minLength: Int = 1,
+    val description: String,
+)
+
+@Serializable
+private data class RelationKindSchemaDocument(
+    val type: String = "string",
+    @SerialName("enum") val values: List<String>,
+)
