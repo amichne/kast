@@ -97,6 +97,17 @@ class ProgramAuthorityAdmissionTest {
         )
     }
 
+    @Test
+    fun `boundary read rejects the first byte beyond its limit`(@TempDir root: Path) {
+        val source = root.resolve("authority.txt")
+        Files.writeString(source, "12345")
+
+        assertEquals(
+            BoundaryFileRead.Rejected(AuthoritySourceFailure.TOO_LARGE),
+            readBoundaryFile(source, 4),
+        )
+    }
+
     private fun fixture(): Fixture {
         val expectation = when (
             val parsed = ProgramAuthorityExpectation.parse(

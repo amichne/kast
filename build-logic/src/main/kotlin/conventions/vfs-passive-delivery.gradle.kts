@@ -1,6 +1,7 @@
 package kast
 
 import support.delivery.GenerateDeliveryProjectionsTask
+import support.delivery.GenerateKastVfsPassiveAuthorityTask
 import support.delivery.KastVfsPassiveReusedIndexProgram
 import support.delivery.VerifyKastVfsPassiveAuthorityNegativeTask
 import support.delivery.VerifyKastVfsPassiveAuthorityTask
@@ -17,6 +18,10 @@ val checkedInProgramProjectionFile =
     layout.projectDirectory.file("gradle/delivery/kast-vfs-passive-reused-index-program.json")
 val checkedInRequirementTraceFile =
     layout.projectDirectory.file("gradle/delivery/kast-vfs-passive-requirements.json")
+val checkedInAuthorityFile =
+    layout.projectDirectory.file("gradle/delivery/kast-vfs-passive-authority.json")
+val checkedInContradictionFile =
+    layout.projectDirectory.file("docs/plans/kast-vfs-passive-contradictions.md")
 val expectedProgramProjectionContent = canonicalJson(programProjection) + "\n"
 val expectedRequirementTraceContent = canonicalJson(program.requirementTraceProjection()) + "\n"
 val receiptDirectory = layout.projectDirectory.dir("gradle/delivery/receipts")
@@ -49,18 +54,26 @@ tasks.register<VerifyKastVfsPassiveAuthorityNegativeTask>("verifyKastVfsPassiveA
     reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-001-authority-negative.json"))
 }
 
+val generateKastVfsPassiveAuthority =
+    tasks.register<GenerateKastVfsPassiveAuthorityTask>("generateKastVfsPassiveAuthority") {
+        group = "verification"
+        dependsOn("verifyKastVfsPassiveProjection")
+        repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
+        baseRevision.set(program.program.targetHead)
+        programFingerprint.set(expectedProgramFingerprint)
+        requirementFingerprint.set(program.program.requirementFingerprint.value)
+        sourceDigests.set(program.program.sourceDigests.mapValues { it.value.value })
+        allowedReads.set(authorityTask.allowedReads)
+        authorityFile.set(checkedInAuthorityFile)
+        contradictionFile.set(checkedInContradictionFile)
+    }
+
 tasks.register<VerifyKastVfsPassiveAuthorityTask>("verifyKastVfsPassiveAuthority") {
     group = "verification"
-    dependsOn("verifyKastVfsPassiveProjection")
+    dependsOn(generateKastVfsPassiveAuthority)
     repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
-    authorityFilePath.set(
-        layout.projectDirectory.file("gradle/delivery/kast-vfs-passive-authority.json")
-            .asFile.absolutePath,
-    )
-    contradictionFilePath.set(
-        layout.projectDirectory.file("docs/plans/kast-vfs-passive-contradictions.md")
-            .asFile.absolutePath,
-    )
+    authorityFilePath.set(checkedInAuthorityFile.asFile.absolutePath)
+    contradictionFilePath.set(checkedInContradictionFile.asFile.absolutePath)
     baseRevision.set(program.program.targetHead)
     programFingerprint.set(expectedProgramFingerprint)
     requirementFingerprint.set(program.program.requirementFingerprint.value)

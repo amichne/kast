@@ -5,7 +5,9 @@ python3 "$root/scripts/verify_bundle.py"
 temporary="$(mktemp -d)"
 trap 'rm -rf -- "$temporary"' EXIT
 kotlinc \
-  "$root/build-logic/src/main/kotlin/support/delivery/DeliveryProgramModel.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/DeliveryProgramModel.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/ProgramAuthorityGeneration.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/ProgramAuthorityModel.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramFoundation.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt" \
