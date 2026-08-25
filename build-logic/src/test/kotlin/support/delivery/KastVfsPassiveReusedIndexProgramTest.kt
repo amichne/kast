@@ -179,4 +179,42 @@ class DeliveryProjectionTest {
             admitDeterministicProgramProjection(invalid, invalid),
         )
     }
+
+    @Test fun `generated proof report round-trips and tampering rejects`() {
+        val proof = assertInstanceOf(
+            Kvp005ProjectionProofResult.Complete::class.java,
+            deriveKvp005ProjectionProof(),
+        ).proof
+        val encoded = encodeKvp005ProjectionProof(proof)
+        assertInstanceOf(
+            Kvp005ProjectionProofResult.Complete::class.java,
+            decodeKvp005ProjectionProof(encoded),
+        )
+
+        val digest = proof.projection.artifactDigests.getValue(ProjectionArtifactId.PROGRAM).value
+        assertEquals(
+            Kvp005ProjectionProofResult.Rejected(
+                Kvp005ProjectionProofFailure.ARTIFACT_DIGEST_MISMATCH,
+            ),
+            decodeKvp005ProjectionProof(encoded.replace(digest, "0".repeat(64))),
+        )
+    }
+
+    @Test fun `negative projection cases refine to exact finite failures`() {
+        val proof = assertInstanceOf(
+            Kvp005ProjectionNegativeProofResult.Complete::class.java,
+            deriveKvp005ProjectionNegativeProof(),
+        ).proof
+
+        assertEquals(DeliveryProjectionNegativeCase.entries, proof.cases)
+        assertEquals(
+            listOf(
+                DeliveryProjectionFailure.NON_CANONICAL_JSON,
+                DeliveryProjectionFailure.NON_REPEATABLE_GENERATION,
+                DeliveryProjectionFailure.SCHEMA_VALIDATION_FAILED,
+                DeliveryProjectionFailure.STATUS_FIELD_PRESENT,
+            ),
+            proof.failures,
+        )
+    }
 }

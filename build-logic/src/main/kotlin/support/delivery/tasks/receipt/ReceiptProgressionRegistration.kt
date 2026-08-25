@@ -17,7 +17,7 @@ private data class TaskReceiptRegistration(
     val completionInputDigest: String,
 )
 
-/** Registers exact-head typed receipt progression from KVP-001 through KVP-004. */
+/** Registers exact-head typed receipt progression from KVP-001 through KVP-005. */
 internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val validated = KastVfsPassiveReusedIndexProgram.validated
     val program = validated.program
@@ -55,6 +55,7 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val typeModel = registration("KVP-002")
     val graph = registration("KVP-003")
     val canonical = registration("KVP-004")
+    val projection = registration("KVP-005")
     val authorityNegativeReportPath = "build/reports/delivery/KVP-001-authority-negative.json"
     val authorityVerificationReportPath =
         KastVfsPassiveReusedIndexProgram.authorityVerificationOutputPath.value
@@ -150,6 +151,27 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         graphCompletionReceiptFile.set(graph.completionReceipt)
     }
 
+    fun Kvp005ReceiptTaskBase.configureProjection() {
+        configureCanonicalProgram()
+        projectionTaskId.set(projection.task.id.value)
+        projectionRedGateId.set(projection.redGate.id)
+        projectionGreenGateId.set(projection.greenGate.id)
+        projectionCompletionGateId.set(projection.completionGate.id)
+        projectionRedReceiptId.set(projection.redGate.outputReceiptId)
+        projectionGreenReceiptId.set(projection.greenGate.outputReceiptId)
+        projectionCompletionReceiptId.set(projection.completionGate.outputReceiptId)
+        projectionRedCommand.set(projection.redGate.command)
+        projectionGreenCommand.set(projection.greenGate.command)
+        projectionCompletionCommand.set(projection.completionGate.command)
+        projectionTaskInputDigest.set(projection.taskInputDigest)
+        projectionCompletionInputDigest.set(projection.completionInputDigest)
+        projectionProofReportPath.set(projection.task.outputs.single().path)
+        programRedReceiptFile.set(canonical.redReceipt)
+        programGreenReceiptFile.set(canonical.greenReceipt)
+        programProofReportFile.set(canonical.proofReport)
+        programCompletionReceiptFile.set(canonical.completionReceipt)
+    }
+
     val recordAuthorityRed = tasks.register(
         "recordKVP001RedReceipt",
         RecordKvp001RedReceiptTask::class.java,
@@ -243,5 +265,41 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         redReceiptFile.set(canonical.redReceipt); greenReceiptFile.set(canonical.greenReceipt)
         proofReportFile.set(canonical.proofReport); completionReceiptFile.set(canonical.completionReceipt)
     }
-    return setOf(authority.task.id, typeModel.task.id, graph.task.id, canonical.task.id)
+
+    val recordProjectionRed = tasks.register(
+        "recordKVP005RedReceipt",
+        RecordKvp005RedReceiptTask::class.java,
+    ) {
+        configureProjection(); dependsOn("verifyKVP004CompletionReceipt")
+        receiptFile.set(projection.redReceipt)
+    }
+    val recordProjectionGreen = tasks.register(
+        "recordKVP005GreenReceipt",
+        RecordKvp005GreenReceiptTask::class.java,
+    ) {
+        configureProjection(); dependsOn(recordProjectionRed)
+        redReceiptFile.set(projection.redReceipt); proofReportFile.set(projection.proofReport)
+        receiptFile.set(projection.greenReceipt)
+    }
+    val deriveProjection = tasks.register(
+        "deriveKVP005Completion",
+        DeriveKvp005CompletionReceiptTask::class.java,
+    ) {
+        configureProjection(); dependsOn(recordProjectionGreen)
+        redReceiptFile.set(projection.redReceipt); greenReceiptFile.set(projection.greenReceipt)
+        proofReportFile.set(projection.proofReport); receiptFile.set(projection.completionReceipt)
+    }
+    tasks.register("verifyKVP005CompletionReceipt", VerifyKvp005CompletionReceiptTask::class.java) {
+        configureProjection(); dependsOn(deriveProjection)
+        redReceiptFile.set(projection.redReceipt); greenReceiptFile.set(projection.greenReceipt)
+        proofReportFile.set(projection.proofReport)
+        completionReceiptFile.set(projection.completionReceipt)
+    }
+    return setOf(
+        authority.task.id,
+        typeModel.task.id,
+        graph.task.id,
+        canonical.task.id,
+        projection.task.id,
+    )
 }

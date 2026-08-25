@@ -9,7 +9,10 @@ This directory owns task-specific exact-head receipt progression after KVP-001.
 - `Kvp004ReceiptTasks.kt` and its progression file execute the fixed canonical-program gates, own
   the generated KVP-004 proof report, preserve both direct predecessor completions, and derive
   KVP-004 completion.
+- `Kvp005ReceiptTasks.kt` and its progression file execute the fixed projection gates, decode the
+  generated KVP-005 report, bind all five projected artifacts, admit KVP-004 completion, and derive
+  KVP-005 completion.
 - `ReceiptProgressionRegistration.kt` is the Gradle registration authority for KVP-001 through
-  KVP-004; the convention script retains only projection, authority, and placeholder orchestration.
+  KVP-005; the convention script retains only projection, authority, and placeholder orchestration.
 Keep gate commands fixed and argument-vector based. Every receipt write must be exact-head checked,
 atomically written, read back, and admitted before it can support a later task.

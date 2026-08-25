@@ -82,19 +82,7 @@ abstract class VerifyDeliveryProjectionsTask : DefaultTask() {
         }
         writeTextAtomically(
             reportFile.get().asFile.toPath(),
-            encodeProjectionProof(
-                DeliveryProjectionProofDocument(
-                    artifactDigests = admitted.artifactDigests.entries.associate {
-                        it.key.repositoryPath to it.value.value
-                    },
-                    byteIdentical = true,
-                    generationCount = 2,
-                    outcome = DeliveryProjectionOutcome.COMPLETE,
-                    schemaValidArtifactCount = ProjectionArtifactId.entries.size,
-                    schemaVersion = 1,
-                    taskId = "KVP-005",
-                ),
-            ),
+            encodeKvp005ProjectionProof(Kvp005ProjectionProof(admitted)),
         )
     }
 }
