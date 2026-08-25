@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.JavaExec
 
 plugins {
     id("kast.runtime-serialization-app")
@@ -92,6 +93,16 @@ val nativeTest by tasks.registering(Test::class) {
         includeTags("native")
     }
     shouldRunAfter(tasks.named("test"))
+}
+
+val codexDynamicToolsSpike by tasks.registering(JavaExec::class) {
+    description = "Runs the disposable Codex app-server dynamic-tools spike."
+    group = "verification"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.amichne.kast.cli.codex.CodexAppServerSpikeKt"
+    workingDir = rootProject.projectDir
+    dependsOn(tasks.named("testClasses"))
+    args(providers.gradleProperty("kastCodexSpikeEvidence").get())
 }
 
 tasks.named("check") {
