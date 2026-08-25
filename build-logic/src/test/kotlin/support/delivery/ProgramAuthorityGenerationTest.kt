@@ -201,7 +201,7 @@ class ProgramAuthorityGenerationTest {
     private companion object {
         const val BASE_REVISION = "78262728313c90bb847e73425dc1a76d704397db"
         const val EXACT_HEAD = "68559ea2e693593686ab94c2c66b6a4399787af6"
-        const val PROGRAM_FINGERPRINT = "acb63855e6a32be383bc119f22ea9ee9572f4408e02cf098b999e7a152e88d2b"
+        const val PROGRAM_FINGERPRINT = "4e848e480c104cd13abcf57a691091b8204cf7c82f8ad0e893f94315e2fccced"
         const val REQUIREMENT_FINGERPRINT = "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
         const val DELIVERY_DIGEST = "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
         const val SUBSTRATE_DIGEST = "7827929f5b8e0bb4248d2135a7382834045c8158cec2a55c2a1933a7220a6b50"

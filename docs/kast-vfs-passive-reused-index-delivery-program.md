@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `acb63855e6a32be383bc119f22ea9ee9572f4408e02cf098b999e7a152e88d2b`
+**Program fingerprint:** `4e848e480c104cd13abcf57a691091b8204cf7c82f8ad0e893f94315e2fccced`
 
 ## Terminal outcome
 
@@ -121,9 +121,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-001`. Computed wave: `1`.
 
-**Allowed reads.** `build/reports/delivery/KVP-001-authority-ledger.json`, `build-logic/src/main/kotlin/support/architecture`.
+**Allowed reads.** `build/reports/delivery/KVP-001-authority-ledger.json`, `build-logic/src/main/kotlin/support/architecture`, `build-logic/src/main/kotlin/support/delivery/model/DeliveryProgramModel.kt`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryProgramModel.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryProgramModelTest.kt`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/model/DeliveryProgramModel.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryProgramModelTest.kt`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.001.proof`, `requirement:KVP-REQ-002`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-026`.
 
@@ -151,9 +151,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-002`. Computed wave: `2`.
 
-**Allowed reads.** `build-logic/src/main/kotlin/support/delivery/DeliveryProgramModel.kt`.
+**Allowed reads.** `build-logic/src/main/kotlin/support/delivery/model/DeliveryProgramModel.kt`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryGraph.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryGraphTest.kt`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/model/DeliveryGraph.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryGraphTest.kt`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.002.proof`, `requirement:KVP-REQ-002`, `requirement:KVP-REQ-003`, `requirement:KVP-REQ-026`.
 
@@ -273,7 +273,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `gradle/delivery/schema/proof-receipt.schema.json`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryProof.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryProofTest.kt`, `gradle/delivery/schema/proof-receipt.schema.json`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryReceiptTest.kt`, `gradle/delivery/schema/proof-receipt.schema.json`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.006.proof`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-023`, `requirement:KVP-REQ-026`.
 
@@ -303,7 +303,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Allowed reads.** `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `build/reports/delivery/receipts`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/DeliveryState.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryStateTest.kt`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/model/DeliveryState.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryStateTest.kt`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.007.proof`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-025`, `requirement:KVP-REQ-026`.
 

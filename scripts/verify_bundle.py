@@ -100,6 +100,19 @@ assert not (root / "gradle/delivery/receipts").exists()
 assert program["terminal"]["derivedOnly"] is True
 assert all("status" not in task for task in program["tasks"])
 by_id = {t["id"]: t for t in program["tasks"]}
+assert by_id["KVP-002"]["allowedWrites"][0] == (
+    "build-logic/src/main/kotlin/support/delivery/model/DeliveryProgramModel.kt"
+)
+assert by_id["KVP-003"]["allowedWrites"][0] == (
+    "build-logic/src/main/kotlin/support/delivery/model/DeliveryGraph.kt"
+)
+assert by_id["KVP-007"]["allowedWrites"][:2] == [
+    "build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt",
+    "build-logic/src/test/kotlin/support/delivery/DeliveryReceiptTest.kt",
+]
+assert by_id["KVP-008"]["allowedWrites"][0] == (
+    "build-logic/src/main/kotlin/support/delivery/model/DeliveryState.kt"
+)
 seen = set(); order=[]
 while len(order) < len(by_id):
     ready = sorted(i for i,t in by_id.items() if i not in seen and set(t["dependencyExpression"]["taskIds"]) <= seen)

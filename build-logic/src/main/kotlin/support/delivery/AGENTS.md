@@ -29,6 +29,7 @@ under `build/reports/delivery/receipts`. Never place receipt evidence in tracked
 the receipt's bytes would change the exact head it claims to bind.
 
 Keep each Kotlin source below the repository shape limit. Preserve task order when moving task declarations between milestone files; program and requirement-trace fingerprints must remain derived from the typed authority.
+M0 delivery model writes belong under `model/`; focused tests remain under the delivery test package.
 
 ## Focused proof
 
@@ -38,6 +39,7 @@ Keep each Kotlin source below the repository shape limit. Preserve task order wh
 ./gradlew -p build-logic test --tests support.delivery.ProgramAuthorityGenerationTest
 ./gradlew -p build-logic test --tests support.delivery.ReceiptEvidenceLocationTest
 ./gradlew -p build-logic test --tests support.delivery.DeliveryReceiptTest
+./gradlew -p build-logic test --tests support.delivery.DeliveryTaskOwnershipTest
 ./gradlew help --task generateKastVfsPassiveAuthority
 ./gradlew generateKastVfsPassiveProjection verifyKastVfsPassiveProjection
 ./gradlew verifyKastVfsPassiveAuthorityNegative
