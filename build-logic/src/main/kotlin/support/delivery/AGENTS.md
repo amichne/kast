@@ -12,7 +12,10 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
 - `model/ProgramAuthorityGeneration.kt` binds source IDs to paths only through exact declared digests and returns finite failures for incomplete or ambiguous evidence.
 - `model/DeliveryReceipt.kt` and `model/DeliveryReceiptRefinement.kt` own closed receipt identities,
   failures, canonical payload digests, issuance, and admission.
-- `tasks/DeliveryProjectionTasks.kt` owns deterministic program and requirement projection tasks.
+- `model/projection/` owns the KVP-005 five-artifact generation, generated schema documents,
+  canonical JSON admission, and finite projection failures.
+- `tasks/projection/` owns the bounded KVP-005 generation, verification, negative-fixture, and proof
+  report effects.
 - `tasks/DeliveryTaskBoundaries.kt` owns process-free Git observation, bounded source reads, SHA-256 observation, atomic writes, and Gradle failure rendering.
 - `tasks/ProgramAuthorityJsonBoundary.kt` owns generated serializers for closed authority documents.
 - `tasks/ProgramAuthorityTasks.kt` owns authority generation and GREEN verification. Generation

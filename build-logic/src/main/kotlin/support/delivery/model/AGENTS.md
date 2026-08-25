@@ -13,5 +13,9 @@ authority refinement, and proof-receipt admission.
 
 Expected authority failure stays in closed sealed data. Raw strings may reappear only in the Gradle task or JSON boundaries under `../tasks`.
 
+`projection/` owns the KVP-005 deterministic five-artifact bundle, dedicated generated JSON Schema
+documents, and closed admission result. Generic JSON traversal is restricted to applying those
+schema documents at the projection boundary.
+
 Run `DeliveryReceiptTest` plus the focused authority admission and generation tests named by the
 parent guide after changing these types.

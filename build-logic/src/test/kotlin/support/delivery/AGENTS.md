@@ -17,4 +17,5 @@ Run:
 ./gradlew -p build-logic test --tests support.delivery.DeliveryProgramModelTest
 ./gradlew -p build-logic test --tests support.delivery.DeliveryGraphNegativeTest
 ./gradlew -p build-logic test --tests support.delivery.DeliveryGraphTest
+./gradlew -p build-logic test --tests support.delivery.DeliveryProjectionTest
 ```

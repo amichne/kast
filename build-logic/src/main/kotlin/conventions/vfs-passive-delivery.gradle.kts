@@ -3,12 +3,13 @@ package kast
 import support.delivery.GenerateDeliveryProjectionsTask
 import support.delivery.GenerateKastVfsPassiveAuthorityTask
 import support.delivery.KastVfsPassiveReusedIndexProgram
+import support.delivery.DeterministicProgramProjection
+import support.delivery.ProjectionArtifactId
 import support.delivery.VerifyDeliveryProjectionsTask
+import support.delivery.VerifyDeliveryProjectionsNegativeTask
 import support.delivery.VerifyKastVfsPassiveAuthorityNegativeTask
 import support.delivery.VerifyKastVfsPassiveAuthorityTask
-import support.delivery.canonicalJson
 import support.delivery.registerDeliveryReceiptProgression
-import support.delivery.sha256
 
 plugins { base }
 
@@ -29,25 +30,36 @@ val authorityContradictionFile = layout.projectDirectory.file(
 val authorityNegativeReportPath = "build/reports/delivery/KVP-001-authority-negative.json"
 val authorityVerificationReportPath =
     KastVfsPassiveReusedIndexProgram.authorityVerificationOutputPath.value
-val expectedProgramProjectionContent = canonicalJson(programProjection) + "\n"
-val expectedRequirementTraceContent = canonicalJson(program.requirementTraceProjection()) + "\n"
 val receiptDirectory = layout.buildDirectory.dir("reports/delivery/receipts")
+private val firstProjectionGeneration = DeterministicProgramProjection.generate(program)
+private val secondProjectionGeneration = DeterministicProgramProjection.generate(program)
+private val projectionArtifactFiles = ProjectionArtifactId.entries.map {
+    layout.projectDirectory.file(it.repositoryPath)
+}
 
 tasks.register<GenerateDeliveryProjectionsTask>("generateKastVfsPassiveProjection") {
     group = "verification"
-    programProjection.set(expectedProgramProjectionContent)
-    programOutputFile.set(checkedInProgramProjectionFile)
-    requirementTraceProjection.set(expectedRequirementTraceContent)
-    requirementTraceOutputFile.set(checkedInRequirementTraceFile)
+    artifactContents.set(firstProjectionGeneration.contentsByPath())
+    artifactFiles.from(projectionArtifactFiles)
+    repositoryRoot.set(layout.projectDirectory)
 }
 
 tasks.register<VerifyDeliveryProjectionsTask>("verifyKastVfsPassiveProjection") {
     group = "verification"
     mustRunAfter("generateKastVfsPassiveProjection")
-    expectedProgramProjection.set(expectedProgramProjectionContent)
-    programProjectionFile.set(checkedInProgramProjectionFile)
-    expectedRequirementTraceProjection.set(expectedRequirementTraceContent)
-    requirementTraceProjectionFile.set(checkedInRequirementTraceFile)
+    firstGenerationContents.set(firstProjectionGeneration.contentsByPath())
+    secondGenerationContents.set(secondProjectionGeneration.contentsByPath())
+    artifactFiles.from(projectionArtifactFiles)
+    reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-005-projection.json"))
+    repositoryRoot.set(layout.projectDirectory)
+}
+
+tasks.register<VerifyDeliveryProjectionsNegativeTask>(
+    "verifyKastVfsPassiveProjectionNegative",
+) {
+    group = "verification"
+    canonicalGenerationContents.set(firstProjectionGeneration.contentsByPath())
+    reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-005-projection-negative.json"))
 }
 
 tasks.register<VerifyKastVfsPassiveAuthorityNegativeTask>("verifyKastVfsPassiveAuthorityNegative") {

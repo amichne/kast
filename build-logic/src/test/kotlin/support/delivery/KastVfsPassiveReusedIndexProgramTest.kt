@@ -141,3 +141,42 @@ class KastVfsPassiveProgramNegativeTest {
         )
     }
 }
+
+class DeliveryProjectionTest {
+    @Test fun `independent generations admit with five exact artifacts`() {
+        val first = DeterministicProgramProjection.generate(
+            KastVfsPassiveReusedIndexProgram.validated,
+        )
+        val second = DeterministicProgramProjection.generate(
+            KastVfsPassiveReusedIndexProgram.validated,
+        )
+
+        val admitted = assertInstanceOf(
+            DeliveryProjectionAdmission.Admitted::class.java,
+            admitDeterministicProgramProjection(first, second),
+        ).projection
+
+        assertEquals(ProjectionArtifactId.entries.toSet(), admitted.artifactDigests.keys)
+        assertEquals(first, admitted.generation)
+    }
+
+    @Test fun `schema-invalid program rejects as finite failure`() {
+        val canonical = DeterministicProgramProjection.generate(
+            KastVfsPassiveReusedIndexProgram.validated,
+        )
+        val invalid = canonical.replacing(
+            ProjectionArtifactId.PROGRAM,
+            canonical.program.replace(
+                KastVfsPassiveReusedIndexProgram.validated.program.targetHead,
+                "invalid",
+            ),
+        )
+
+        assertEquals(
+            DeliveryProjectionAdmission.Rejected(
+                DeliveryProjectionFailure.SCHEMA_VALIDATION_FAILED,
+            ),
+            admitDeterministicProgramProjection(invalid, invalid),
+        )
+    }
+}

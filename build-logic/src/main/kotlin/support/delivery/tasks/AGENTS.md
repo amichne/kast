@@ -2,7 +2,8 @@
 
 This directory owns Gradle effects for the VFS-passive delivery program.
 
-- Projection tasks write or verify the two deterministic program projections.
+- `projection/` writes or verifies the two deterministic data projections and three generated JSON
+  Schemas, and owns the in-memory KVP-005 negative fixtures.
 - `DeliveryTaskBoundaries.kt` is the sole owner of Git metadata reads, bounded authority-source reads, source hashing, and atomic text replacement.
 - `ProgramAuthorityJsonBoundary.kt` uses generated serializers for every closed JSON document.
 - Authority generation observes exact bytes before writing the ledger and contradiction projection. Authority verification re-observes Git HEAD and source bytes and fails closed on movement or mismatch.
