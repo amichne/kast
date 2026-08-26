@@ -192,27 +192,22 @@ private fun kvp023ReportMutations(canonical: String) = listOf(
 )
 
 private fun addRelationReadBinding(canonical: String): String {
-    val boundary = """    }
-  ],
-  "unsupportedOperations""".trimIndent()
-    val relation = """    },
-    {
-      "operation": "RELATION_READ",
-      "port": "SymbolResolveReadPort",
-      "effect": "INTELLIJ_READ",
-      "cost": "BOUNDED_READ"
-    }
-  ],
-  "unsupportedOperations""".trimIndent()
+    val boundary = "    }\n  ],\n  \"unsupportedOperations\""
+    val relation = "    },\n" +
+        "    {\n" +
+        "      \"operation\": \"RELATION_READ\",\n" +
+        "      \"port\": \"SymbolResolveReadPort\",\n" +
+        "      \"effect\": \"INTELLIJ_READ\",\n" +
+        "      \"cost\": \"BOUNDED_READ\"\n" +
+        "    }\n" +
+        "  ],\n" +
+        "  \"unsupportedOperations\""
     return canonical.replaceFirst(boundary, relation)
 }
 
 private fun addRuntimeCompositionDependency(canonical: String) = canonical.replaceFirst(
-    """    "WORKSPACE_INTELLIJ_READ"
-  ]""".trimIndent(),
-    """    "WORKSPACE_INTELLIJ_READ",
-    "RUNTIME_COMPOSITION"
-  ]""".trimIndent(),
+    "    \"WORKSPACE_INTELLIJ_READ\"\n  ]",
+    "    \"WORKSPACE_INTELLIJ_READ\",\n    \"RUNTIME_COMPOSITION\"\n  ]",
 )
 
 private fun kvp023GateMutations(
