@@ -1,7 +1,8 @@
 # KVP-009 firewall progression guide
 
-This directory owns KVP-009's exact-head receipt progression. Its `plugin/` child owns KVP-010,
-which directly refines the admitted firewall completion into standalone-plugin artifact evidence.
+This directory owns KVP-009's exact-head receipt progression. Its `plugin/` child owns KVP-010 and
+KVP-012, refining the firewall closure into standalone-plugin evidence and then combining that
+evidence with KVP-002 into exact host-compatibility evidence.
 
 - Execute only the two canonical firewall commands as fixed Gradle argument vectors.
 - Admit KVP-001 and KVP-006 completion directly before issuing either gate receipt.

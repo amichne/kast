@@ -2,7 +2,7 @@ package support.delivery
 
 import org.gradle.api.Project
 
-/** Registers exact-head typed receipt progression from KVP-001 through KVP-009. */
+/** Registers exact-head typed receipt progression for KVP-001 through KVP-010 and KVP-012. */
 internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val validated = KastVfsPassiveReusedIndexProgram.validated
     val program = validated.program
@@ -379,7 +379,7 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     registerKvp007ReceiptProgression(deliveryProof) { configureDeliveryProof() }
     registerKvp008ReceiptProgression(deliveryState) { configureDeliveryState() }
     registerKvp009ReceiptProgression(firewall) { configureFirewall() }
-    val standalonePlugin = registerKvp010ReceiptProgression(program, firewall) {
+    val pluginTasks = registerKvp012ReceiptProgression(program, typeModel, firewall) {
         configureFirewall()
     }
     return setOf(
@@ -392,6 +392,5 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         deliveryProof.task.id,
         deliveryState.task.id,
         firewall.task.id,
-        standalonePlugin.task.id,
-    )
+    ) + pluginTasks
 }
