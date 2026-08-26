@@ -165,7 +165,7 @@ def verify_kvp020_delivery(root, program, normative_plan):
         "mustRunAfter(verifySingleFlightReportNegative)",
         "dependsOn(verifySingleFlightReportNegative)",
     ))
-    for forbidden in ("api(project(", ":workspace:intellij-read", ":ide-plugin", "kotlinx"):
+    for forbidden in ("api(project(", ":ide-plugin"):
         assert forbidden not in module_build
 
     architecture = json.loads(
@@ -211,6 +211,8 @@ def verify_kvp020_delivery(root, program, normative_plan):
         "internal typealias ProjectReadSingleFlight = ProjectReadPermit.QueuedRequest.Controller",
     ))
     product_source = "\n".join((outcomes, permit, single_flight))
+    for forbidden in ("com.intellij", "workspace.intellij", "kotlinx"):
+        assert forbidden not in product_source
     assert re.search(r"\bfun\s+install\s*\(", product_source) is None
     require_markers(fixtures, (
         "ProjectReadSingleFlight::class.java.getDeclaredConstructor(",
@@ -330,11 +332,11 @@ def verify_kvp020_delivery(root, program, normative_plan):
     )
     require_markers(freshness_registration, (
         "): Set<TaskId>",
-        "val singleFlight = registerKvp020ReceiptProgression(",
+        "val singleFlightTasks = registerKvp020ReceiptProgression(",
         'taskReceiptRegistration(program, TaskId("KVP-014"))',
         "freshness,",
         "configureFreshness()",
-        "return setOf(freshness.task.id, singleFlight)",
+        "return setOf(freshness.task.id) + singleFlightTasks",
     ))
 
 
