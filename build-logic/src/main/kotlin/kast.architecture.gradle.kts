@@ -4,6 +4,8 @@ import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastArchitectureProjectionTask
 import support.architecture.gradle.VerifyKastArchitectureTask
+import support.architecture.gradle.VerifyKastVfsPassiveFirewallNegativeTask
+import support.architecture.gradle.VerifyKastVfsPassiveFirewallTask
 import support.architecture.gradle.VerifyNoLegacyArchitectureTask
 
 plugins {
@@ -39,6 +41,17 @@ val verifyForbiddenEffects = registerArchitectureVerification(
     "verifyForbiddenEffects",
     "Verifies compiled references against the sole clean-slate effect owners.",
 )
+tasks.register<VerifyKastVfsPassiveFirewallNegativeTask>(
+    "verifyKastVfsPassiveFirewallNegative",
+) {
+    group = "verification"
+    description = "Proves every fixed IDE-hosted read forbidden authority is rejected."
+}
+tasks.register<VerifyKastVfsPassiveFirewallTask>("verifyKastVfsPassiveFirewall") {
+    group = "verification"
+    description = "Proves the planned IDE-hosted read graph and writes its firewall report."
+    reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-009-firewall.json"))
+}
 val verifyNoLegacyArchitecture = tasks.register<VerifyNoLegacyArchitectureTask>(
     "verifyNoLegacyArchitecture",
 ) {

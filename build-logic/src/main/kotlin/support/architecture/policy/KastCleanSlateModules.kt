@@ -249,6 +249,26 @@ internal object KastCleanSlateModules {
             ModuleId.PROTOCOL_WIRE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
         ),
+        plannedIdeRead(
+            ModuleId.WORKSPACE_INTELLIJ_READ,
+            ModuleId.WORKSPACE_CONTRACT,
+        ),
+        plannedIdeRead(
+            ModuleId.RUNTIME_IDE_READ,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_REGISTRY,
+            ModuleId.PROTOCOL_WIRE,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
+            ModuleId.SYMBOL_CONTRACT,
+        ),
+        plannedIdeRead(
+            ModuleId.IDE_PLUGIN,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.RUNTIME_IDE_READ,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
+        ),
         runtimeComposition(),
         target(
             ModuleId.INDEXER,
@@ -283,6 +303,17 @@ internal object KastCleanSlateModules {
         allowedEffects = effects,
     )
 
+    private fun plannedIdeRead(
+        id: ModuleId,
+        vararg dependencies: ModuleId,
+    ): ModulePolicy = ModulePolicy(
+        id = id,
+        lifecycle = ModuleLifecycle.PLANNED,
+        role = ModuleRole.IDE_READ_ONLY,
+        allowedProjectDependencies = dependencies.toSet(),
+        allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
+    )
+
     private fun targetIds(): Set<ModuleId> = setOf(
         ModuleId.KERNEL,
         ModuleId.DISTRIBUTION_CONTRACT,
@@ -293,6 +324,7 @@ internal object KastCleanSlateModules {
         ModuleId.WORKSPACE_CONTRACT,
         ModuleId.WORKSPACE_SERVICE,
         ModuleId.WORKSPACE_INTELLIJ,
+        ModuleId.WORKSPACE_INTELLIJ_READ,
         ModuleId.SYMBOL_CONTRACT,
         ModuleId.SYMBOL_SERVICE,
         ModuleId.SYMBOL_INTELLIJ,
@@ -318,6 +350,8 @@ internal object KastCleanSlateModules {
         ModuleId.EVIDENCE_SQLITE,
         ModuleId.RUNTIME_SERVER,
         ModuleId.RUNTIME_COMPOSITION,
+        ModuleId.RUNTIME_IDE_READ,
+        ModuleId.IDE_PLUGIN,
         ModuleId.CLI,
         ModuleId.INDEXER,
     )

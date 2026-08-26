@@ -12,6 +12,7 @@ enum class ModuleRole {
     CONTRACT,
     SPI,
     SERVICE,
+    IDE_READ_ONLY,
     INTELLIJ_READ_ADAPTER,
     INTELLIJ_WRITE_ADAPTER,
     FILESYSTEM_WRITE_ADAPTER,
@@ -25,6 +26,7 @@ enum class ModuleRole {
 
 enum class ForbiddenEffect {
     INTELLIJ_PLATFORM,
+    PROJECT_OPEN,
     INTELLIJ_WRITE,
     FILESYSTEM_WRITE,
     SOURCE_FILESYSTEM_WRITE,
@@ -36,6 +38,9 @@ enum class ForbiddenEffect {
     GRAPH_BUILD,
     PROCESS_CONTROL,
     ANALYSIS_BACKEND,
+    MUTATION_AUTHORITY,
+    TOPOLOGY_AUTHORITY,
+    ISOLATED_RUNTIME,
     TOPOLOGY_BUILD_AUTHORITY,
     TOPOLOGY_PUBLICATION,
 }
@@ -50,6 +55,7 @@ enum class ModuleId(val projectPath: String) {
     WORKSPACE_CONTRACT(":workspace:contract"),
     WORKSPACE_SERVICE(":workspace:service"),
     WORKSPACE_INTELLIJ(":workspace:intellij"),
+    WORKSPACE_INTELLIJ_READ(":workspace:intellij-read"),
     SYMBOL_CONTRACT(":symbol:contract"),
     SYMBOL_SERVICE(":symbol:service"),
     SYMBOL_INTELLIJ(":symbol:intellij"),
@@ -75,6 +81,8 @@ enum class ModuleId(val projectPath: String) {
     EVIDENCE_SQLITE(":evidence:sqlite"),
     RUNTIME_SERVER(":runtime:server"),
     RUNTIME_COMPOSITION(":runtime:composition"),
+    RUNTIME_IDE_READ(":runtime:ide-read"),
+    IDE_PLUGIN(":ide-plugin"),
     CLI(":cli"),
     INDEXER(":indexer"),
 }

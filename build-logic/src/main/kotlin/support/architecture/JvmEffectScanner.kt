@@ -55,6 +55,19 @@ object JvmEffectScanner {
     }
 }
 
+internal object JvmEffectClassifier {
+    /**
+     * Proof transition: `(ValidatedModulePolicy, JvmMember, JvmMember) -> Set<ForbiddenEffect>`.
+     * Establishes the complete finite effect classification for one compiled JVM reference. The
+     * mapping is total and has no expected failure; raw ASM values remain outside this boundary.
+     */
+    fun classify(
+        module: ValidatedModulePolicy,
+        caller: JvmMember,
+        target: JvmMember,
+    ): Set<ForbiddenEffect> = EffectRules.classify(module.role, caller, target)
+}
+
 private class EffectClassVisitor(
     private val module: ValidatedModulePolicy,
     private val effects: MutableSet<EffectObservation>,
@@ -183,7 +196,7 @@ private class EffectClassVisitor(
         caller: JvmMember,
         target: JvmMember,
     ) {
-        EffectRules.classify(module.role, caller, target).forEach { effect ->
+        JvmEffectClassifier.classify(module, caller, target).forEach { effect ->
             effects += EffectObservation(module.id, effect, caller, target)
         }
     }
@@ -222,6 +235,9 @@ private object EffectRules {
         ) {
             add(ForbiddenEffect.INTELLIJ_PLATFORM)
         }
+        if (moduleRole == ModuleRole.IDE_READ_ONLY && isProjectOpenAuthority(owner, name)) {
+            add(ForbiddenEffect.PROJECT_OPEN)
+        }
         if (
             owner == "com/intellij/openapi/command/WriteCommandAction" ||
             (owner.startsWith("com/intellij/openapi/application/") && name.contains("writeAction", true)) ||
@@ -246,14 +262,14 @@ private object EffectRules {
             add(ForbiddenEffect.GRADLE_IMPORT)
         }
         if (
-            moduleRole == ModuleRole.INTELLIJ_READ_ADAPTER &&
+            moduleRole in INTELLIJ_READ_ROLES &&
             owner == "com/intellij/openapi/vfs/VfsUtil" &&
             name == "markDirtyAndRefresh"
         ) {
             add(ForbiddenEffect.RECURSIVE_VFS_REFRESH)
         }
         if (
-            moduleRole == ModuleRole.INTELLIJ_READ_ADAPTER &&
+            moduleRole in INTELLIJ_READ_ROLES &&
             isWorkspaceTransitionAuthority(owner, name)
         ) {
             add(ForbiddenEffect.WORKSPACE_TRANSITION)
@@ -269,6 +285,21 @@ private object EffectRules {
             owner == "io/github/amichne/kast/api/contract/CloseableAnalysisBackend"
         ) {
             add(ForbiddenEffect.ANALYSIS_BACKEND)
+        }
+        if (
+            moduleRole == ModuleRole.IDE_READ_ONLY &&
+            owner.startsWith("io/github/amichne/kast/change/")
+        ) {
+            add(ForbiddenEffect.MUTATION_AUTHORITY)
+        }
+        if (
+            moduleRole == ModuleRole.IDE_READ_ONLY &&
+            owner.startsWith("io/github/amichne/kast/topology/")
+        ) {
+            add(ForbiddenEffect.TOPOLOGY_AUTHORITY)
+        }
+        if (moduleRole == ModuleRole.IDE_READ_ONLY && isIsolatedRuntimeAuthority(owner)) {
+            add(ForbiddenEffect.ISOLATED_RUNTIME)
         }
         if (owner == "io/github/amichne/kast/topology/build/TopologyBuildAuthority") {
             add(ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY)
@@ -293,6 +324,20 @@ private object EffectRules {
             "org/jetbrains/plugins/gradle/settings/GradleSettings",
             "org/jetbrains/plugins/gradle/settings/GradleSystemSettings",
         ) && name.startsWith("set"))
+
+    private fun isProjectOpenAuthority(
+        owner: String,
+        name: String,
+    ): Boolean =
+        owner == "com/intellij/openapi/project/ex/ProjectManagerEx" && name == "openProject" ||
+        owner == "com/intellij/ide/impl/ProjectUtil" && name in setOf("openOrImport", "openProject") ||
+        owner == "com/intellij/ide/impl/OpenProjectTask"
+
+    private fun isIsolatedRuntimeAuthority(owner: String): Boolean =
+        owner.startsWith("io/github/amichne/kast/indexer/") ||
+        owner.startsWith("io/github/amichne/kast/cli/runtime/") ||
+        owner.startsWith("io/github/amichne/kast/distribution/managed/") ||
+        owner.startsWith("io/github/amichne/kast/runtime/composition/")
 
     private fun isGraphBuildAuthority(
         owner: String,
@@ -329,6 +374,11 @@ private object EffectRules {
 private val TOPOLOGY_PUBLISHER_INTERFACES = setOf(
     "io/github/amichne/kast/topology/contract/TopologySnapshotPublisher",
     "io/github/amichne/kast/topology/contract/TopologySnapshotStore",
+)
+
+private val INTELLIJ_READ_ROLES = setOf(
+    ModuleRole.IDE_READ_ONLY,
+    ModuleRole.INTELLIJ_READ_ADAPTER,
 )
 
 private fun Type.referencedInternalNames(): Set<String> = when (sort) {

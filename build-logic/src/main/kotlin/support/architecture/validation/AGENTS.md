@@ -1,8 +1,11 @@
-# `build-logic/src/main/kotlin/support/architecture/validation` guide
+# Architecture policy validation
 
-This directory owns production sources under `build-logic/src/main/kotlin/support/architecture/validation`. Follow [the nearest owner guide](../../../../../../AGENTS.md) for boundaries, invariants, and verification.
+This directory refines raw module policies into validated role, cost, dependency, convention, and
+effect boundaries.
 
 ## Local scope
 
-- Keep changes within the parent guide's ownership.
-- Add local rules only when this directory gains a distinct durable boundary.
+- `IDE_READ_ONLY` is bounded-read, uses `kast.role.ide-read-only`, admits inward and same-role
+  dependencies, and permits only `INTELLIJ_PLATFORM` reads.
+- Keep policy failures finite and exhaustive. Do not turn a forbidden edge or effect into a
+  warning or convenience exception.

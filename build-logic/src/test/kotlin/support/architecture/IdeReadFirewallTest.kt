@@ -1,0 +1,138 @@
+package support.architecture
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.io.TempDir
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
+import java.nio.file.Files
+import java.nio.file.Path
+
+class IdeReadFirewallTest {
+    @Test
+    fun `planned IDE read graph is physically narrow`() {
+        val proof = completeProof(canonical())
+
+        assertEquals(IdeReadFirewall.moduleIds, proof.modules.mapTo(mutableSetOf()) { it.id })
+        assertTrue(proof.modules.all { it.lifecycle == ModuleLifecycle.PLANNED })
+        assertTrue(proof.modules.all { it.role == ModuleRole.IDE_READ_ONLY })
+        assertTrue(proof.modules.all {
+            it.allowedEffects == setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
+        })
+        assertEquals(
+            setOf(ModuleId.WORKSPACE_CONTRACT),
+            proof.modules.single { it.id == ModuleId.WORKSPACE_INTELLIJ_READ }
+                .allowedProjectDependencies,
+        )
+        assertEquals(
+            setOf(
+                ModuleId.PROTOCOL_CONTRACT,
+                ModuleId.RUNTIME_IDE_READ,
+                ModuleId.WORKSPACE_INTELLIJ_READ,
+            ),
+            proof.modules.single { it.id == ModuleId.IDE_PLUGIN }.allowedProjectDependencies,
+        )
+    }
+
+    @Test
+    fun `compiled forbidden references derive every finite firewall effect`(@TempDir temporary: Path) {
+        val policy = canonical()
+        val module = policy.modules.getValue(ModuleId.IDE_PLUGIN)
+        val fixture = forbiddenReferenceFixture(temporary)
+
+        val scanned = assertInstanceOf<BytecodeScanOutcome.Scanned>(
+            JvmEffectScanner.scan(module, listOf(fixture)),
+        )
+
+        IdeReadForbiddenAuthority.entries.forEach { authority ->
+            assertTrue(
+                scanned.effects.any { it.effect == authority.requiredEffect },
+                authority.name,
+            )
+        }
+    }
+
+    @Test
+    fun `firewall rejects an allowed project open effect`() {
+        val policy = canonical()
+        val original = policy.modules.getValue(ModuleId.IDE_PLUGIN)
+        val leaked = ValidatedModulePolicy(
+            ModulePolicy(
+                original.id,
+                original.lifecycle,
+                original.role,
+                original.allowedProjectDependencies,
+                original.allowedEffects + ForbiddenEffect.PROJECT_OPEN,
+            ),
+            original.boundary,
+        )
+        val changed = ValidatedArchitecturePolicy(
+            policy.modules + (leaked.id to leaked),
+            policy.moduleOrder,
+        )
+
+        val rejected = assertInstanceOf<IdeReadFirewallResult.Rejected>(
+            IdeReadFirewall.derive(changed),
+        )
+
+        assertTrue(
+            IdeReadFirewallFailure.AllowedEffectsMismatch(
+                ModuleId.IDE_PLUGIN,
+                setOf(ForbiddenEffect.INTELLIJ_PLATFORM, ForbiddenEffect.PROJECT_OPEN),
+            ) in rejected.failures,
+        )
+        assertTrue(
+            IdeReadFirewallFailure.AuthorityAllowed(
+                ModuleId.IDE_PLUGIN,
+                IdeReadForbiddenAuthority.PROJECT_OPEN,
+                ForbiddenEffect.PROJECT_OPEN,
+            ) in rejected.failures,
+        )
+    }
+
+    private fun completeProof(policy: ValidatedArchitecturePolicy) =
+        assertInstanceOf<IdeReadFirewallResult.Complete>(IdeReadFirewall.derive(policy)).proof
+
+    private fun canonical(): ValidatedArchitecturePolicy =
+        assertInstanceOf<ArchitecturePolicyValidation.Valid>(
+            KastArchitecturePolicy.validate(),
+        ).architecture
+
+    private fun forbiddenReferenceFixture(temporary: Path): Path {
+        val bytecode = ClassWriter(0).apply {
+            visit(
+                Opcodes.V17,
+                Opcodes.ACC_PUBLIC,
+                "io/github/amichne/kast/ide/HostedReadFixture",
+                null,
+                "java/lang/Object",
+                null,
+            )
+            IdeReadForbiddenAuthority.entries.forEachIndexed { index, authority ->
+                visitMethod(
+                    Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+                    "authority$index",
+                    "()V",
+                    null,
+                    null,
+                ).apply {
+                    visitCode()
+                    visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        authority.target.owner.internalName,
+                        authority.target.name.value,
+                        authority.target.descriptor.value,
+                        false,
+                    )
+                    visitInsn(Opcodes.RETURN)
+                    visitMaxs(0, 0)
+                    visitEnd()
+                }
+            }
+            visitEnd()
+        }.toByteArray()
+        return temporary.resolve("HostedReadFixture.class").also { Files.write(it, bytecode) }
+    }
+}

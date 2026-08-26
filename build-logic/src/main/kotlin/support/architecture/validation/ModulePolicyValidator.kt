@@ -16,6 +16,7 @@ enum class ModuleRoleConvention(
     CONTRACT(ModuleRole.CONTRACT, "kast.role.contract"),
     SPI(ModuleRole.SPI, "kast.role.spi"),
     SERVICE(ModuleRole.SERVICE, "kast.role.service"),
+    IDE_READ_ONLY(ModuleRole.IDE_READ_ONLY, "kast.role.ide-read-only"),
     INTELLIJ_READ(ModuleRole.INTELLIJ_READ_ADAPTER, "kast.role.intellij-read"),
     INTELLIJ_WRITE(ModuleRole.INTELLIJ_WRITE_ADAPTER, "kast.role.intellij-write"),
     FILESYSTEM_WRITE(ModuleRole.FILESYSTEM_WRITE_ADAPTER, "kast.role.filesystem-write"),
@@ -181,6 +182,14 @@ private object ModuleRoleBoundaries {
                 ForbiddenEffect.WORKSPACE_TRANSITION,
                 ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY,
             ),
+        )
+        ModuleRole.IDE_READ_ONLY -> boundary(
+            role,
+            ModuleCost.BOUNDED_READ,
+            ModuleRoleConvention.IDE_READ_ONLY,
+            inwardRoles + ModuleRole.IDE_READ_ONLY,
+            safeReadCosts,
+            allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         )
         ModuleRole.INTELLIJ_READ_ADAPTER -> boundary(
             role,
