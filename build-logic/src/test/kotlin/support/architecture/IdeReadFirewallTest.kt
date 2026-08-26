@@ -54,7 +54,7 @@ class IdeReadFirewallTest {
 
         IdeReadForbiddenAuthority.entries.forEach { authority ->
             assertTrue(
-                scanned.effects.any { it.effect == authority.requiredEffect },
+                scanned.effects().any { it.effect == authority.requiredEffect },
                 authority.name,
             )
         }

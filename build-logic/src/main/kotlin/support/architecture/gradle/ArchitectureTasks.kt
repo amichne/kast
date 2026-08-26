@@ -39,7 +39,12 @@ abstract class GenerateKastArchitectureProjectionTask : DefaultTask() {
 
     @TaskAction
     fun generate() {
-        val architecture = canonicalPolicy()
+        val architecture = when (val policy = canonicalArchitecturePolicy()) {
+            is ArchitecturePolicyValidation.Valid -> policy.architecture
+            is ArchitecturePolicyValidation.Invalid -> throw GradleException(
+                "Canonical Kast repository architecture policy is invalid: ${policy.failures}",
+            )
+        }
         val target = projectionFile.get().asFile.toPath()
         Files.createDirectories(target.parent)
         Files.writeString(target, ArchitectureProjection.render(architecture))
@@ -88,7 +93,12 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     @TaskAction
     fun verify() {
-        val canonical = canonicalPolicy()
+        val canonical = when (val policy = canonicalArchitecturePolicy()) {
+            is ArchitecturePolicyValidation.Valid -> policy.architecture
+            is ArchitecturePolicyValidation.Invalid -> throw GradleException(
+                "Canonical Kast repository architecture policy is invalid: ${policy.failures}",
+            )
+        }
         verifyProjection(canonical)
         val policy = canonical
         val graph = when (
@@ -149,10 +159,10 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
             val module = policy.modules.values.single { it.id.projectPath == projectPath }
             val classFiles = directories.flatMap(::classFiles)
             when (val scan = JvmEffectScanner.scan(module, classFiles)) {
-                is BytecodeScanOutcome.Scanned -> scan.effects
+                is BytecodeScanOutcome.Scanned -> scan.effects()
                 is BytecodeScanOutcome.Failed -> fail(
                     "BYTECODE_SCAN_FAILED",
-                    scan.failures.map(::renderScanFailure),
+                    scan.failures().map(::renderScanFailure),
                 )
             }
         }
@@ -216,13 +226,14 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
     }
 }
 
-private fun canonicalPolicy(): ValidatedArchitecturePolicy = when (val policy = KastArchitecturePolicy.validate()) {
-    is ArchitecturePolicyValidation.Valid -> policy.architecture
-    is ArchitecturePolicyValidation.Invalid -> throw GradleException(
-        "Canonical Kast repository architecture policy is invalid:\n" +
-        policy.failures.joinToString("\n") { " - $it" },
-    )
-}
+/**
+ * Proof transition: canonical `ArchitecturePolicyDefinition -> ArchitecturePolicyValidation`.
+ *
+ * Returns either the complete validated graph or its finite policy failures. Rendering is
+ * permitted only in an owning Gradle task action.
+ */
+internal fun canonicalArchitecturePolicy(): ArchitecturePolicyValidation =
+    KastArchitecturePolicy.validate()
 
 private fun renderViolation(violation: ArchitectureViolation): ArchitectureReportFinding = when (violation) {
     is ArchitectureViolation.ActiveModuleMissing -> finding(
@@ -290,6 +301,11 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
 }
 
 private fun renderScanFailure(failure: BytecodeScanFailure): ArchitectureReportFinding = when (failure) {
+    is BytecodeScanFailure.InvalidClassIdentity -> finding(
+        "INVALID_CLASS_IDENTITY",
+        failure.relativeName,
+        "relativeName" to failure.relativeName,
+    )
     is BytecodeScanFailure.MalformedClass -> finding(
         "MALFORMED_CLASS",
         failure.path.toString(),

@@ -10,3 +10,7 @@ This directory owns executable proof for architecture policy, admission, and com
   the generated report codec preserves the closed proof and rejects tampering.
 - Keep negative fixtures synthetic and bounded; do not add forbidden production dependencies merely
   to make them compile.
+- `HostedReadPathPolicyTest.kt` binds the independent 120-authority contract, passive controls,
+  inventory rejection, and predecessor proof. `HostedReadProjectClasspathTest.kt` and
+  `HostedReadClasspathFixtures.kt` own exact project-artifact admission, archive failures,
+  immutable byte snapshots, and stronger-effect rejection.

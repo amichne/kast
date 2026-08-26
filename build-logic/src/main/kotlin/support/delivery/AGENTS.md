@@ -30,13 +30,14 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.
 - `tasks/receipt/` owns typed post-authority progression. KVP-002 through KVP-010 and KVP-012
-  through KVP-017 execute their exact included-build gates without shell parsing, emit generated
+  through KVP-018 execute their exact included-build gates without shell parsing, emit generated
   proof reports, admit the complete predecessor closure, and derive exact-head completion receipts.
   KVP-012 directly preserves KVP-002 and KVP-010; KVP-013 independently preserves KVP-005 and
   KVP-012; KVP-014 independently preserves KVP-009 and KVP-012; KVP-015 independently preserves
   KVP-014 and binds the supported-build epoch-signal ledger; KVP-016 preserves both KVP-014 and
   KVP-015 and binds the detached existing-Project model contract; KVP-017 independently preserves
-  KVP-015 and binds the source-bound live project-read epoch contract and report.
+  KVP-015 and binds the source-bound live project-read epoch contract and report; KVP-018 preserves
+  both sibling completions and re-observes the hosted class/runtime closure before report admission.
 - `ProgramMain.kt` is the dependency-free projection entry point used by `scripts/verify_bundle.sh`.
 - KVP-011 is a late M3 layout gate. It consumes the completed KVP-010 package split, KVP-025
   endpoint lifecycle, and KVP-031 four-operation read path before KVP-032 scans the complete hosted
@@ -79,6 +80,7 @@ M0 delivery model writes belong under `model/`; focused tests remain under the d
 ./gradlew verifyKVP015CompletionReceipt
 ./gradlew verifyKVP016CompletionReceipt
 ./gradlew verifyKVP017CompletionReceipt
+./gradlew verifyKVP018CompletionReceipt
 ./gradlew verifyKastVfsPassiveGateGraphNegative verifyKastVfsPassiveGateGraph
 scripts/verify_bundle.sh
 ```

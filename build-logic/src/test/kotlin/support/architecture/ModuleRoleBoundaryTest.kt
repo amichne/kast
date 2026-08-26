@@ -259,7 +259,7 @@ class ModuleRoleBoundaryTest {
                 ForbiddenEffect.PROCESS_CONTROL,
                 ForbiddenEffect.ANALYSIS_BACKEND,
             ),
-            scanned.effects.mapTo(mutableSetOf(), EffectObservation::effect),
+            scanned.effects().mapTo(mutableSetOf(), EffectObservation::effect),
         )
     }
 

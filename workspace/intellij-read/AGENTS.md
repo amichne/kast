@@ -40,6 +40,12 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
   Observation never refreshes, imports, traverses, hashes, schedules semantic work, or waits.
   KVP-019 owns later freshness policy; KVP-017 owns only observation and comparison.
 - Production compiles against the declared IDEA build 262 host and its bundled Kotlin/Gradle APIs.
+- KVP-018 recursively inventories every compiled main class, scans the same admitted bytes, and
+  admits only the exact runtime project closure `:kernel`, `:protocol:contract`, and
+  `:workspace:contract`. It also binds the resolved Kotlin/annotation runtime artifacts by exact
+  coordinate, name, and SHA-256 with a separate stronger-effect scan. Its report binds all-zero
+  effects and semantic KVP-016/KVP-017 receipt digests; no compiled-class allowlist may substitute
+  for the complete inventory.
 
 ## Focused proof
 
@@ -53,3 +59,5 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 8. Run `./gradlew :workspace:intellij-read:test --tests '*DetachedModelClassContractTest'`.
 9. Run `./gradlew :workspace:contract:test :workspace:intellij-read:test --tests '*ProjectReadEpochTest'`.
 10. Run `./gradlew :workspace:intellij-read:generateProjectReadEpochReport`.
+11. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalkNegative`.
+12. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalk`.

@@ -9,24 +9,64 @@ import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import java.io.IOException
+import java.nio.file.InvalidPathException
 import java.nio.file.Files
 import java.nio.file.Path
 
 sealed interface BytecodeScanFailure {
     data class UnreadableClass(val path: Path) : BytecodeScanFailure
 
+    data class InvalidClassIdentity(val relativeName: String) : BytecodeScanFailure
+
     data class MalformedClass(val path: Path) : BytecodeScanFailure
 }
 
-sealed interface BytecodeScanOutcome {
-    data class Scanned(val effects: Set<EffectObservation>) : BytecodeScanOutcome
+internal class HostedReadClassBytes private constructor(
+    val relativeName: String,
+    bytes: ByteArray,
+) {
+    private val snapshot: ByteArray = bytes.copyOf()
 
-    data class Failed(val failures: List<BytecodeScanFailure>) : BytecodeScanOutcome
+    internal fun <T> useBytes(block: (ByteArray) -> T): T = block(snapshot.copyOf())
+
+    internal companion object {
+        /**
+         * Proof transition: `(String, ByteArray) -> HostedReadClassBytes`.
+         *
+         * Captures an owner-confined immutable byte snapshot. The caller's mutable array is never
+         * retained, and byte extraction returns only a copy at the scanner or digest boundary.
+         */
+        fun capture(relativeName: String, bytes: ByteArray): HostedReadClassBytes =
+            HostedReadClassBytes(relativeName, bytes)
+    }
+}
+
+sealed interface BytecodeScanOutcome {
+    sealed interface Scanned : BytecodeScanOutcome {
+        fun effects(): Set<EffectObservation>
+    }
+
+    sealed interface Failed : BytecodeScanOutcome {
+        fun failures(): List<BytecodeScanFailure>
+    }
+}
+
+private class ScannedBytecodeOutcome(effects: Set<EffectObservation>) : BytecodeScanOutcome.Scanned {
+    private val snapshot = effects.toSet()
+
+    override fun effects(): Set<EffectObservation> = snapshot.toMutableSet()
+}
+
+private class FailedBytecodeScanOutcome(failures: List<BytecodeScanFailure>) :
+    BytecodeScanOutcome.Failed {
+    private val snapshot = failures.toList()
+
+    override fun failures(): List<BytecodeScanFailure> = snapshot.toMutableList()
 }
 
 object JvmEffectScanner {
     /**
-     * Proof transition: `(ValidatedModulePolicy, class-file paths) -> BytecodeScanOutcome.Scanned`.
+     * Proof transition: `(ValidatedModulePolicy, Iterable<Path>) -> BytecodeScanOutcome`.
      *
      * Establishes an exact set of JVM references governed by the validated module's role effect
      * profile. [BytecodeScanOutcome.Failed] is the closed expected failure for unreadable or
@@ -36,22 +76,61 @@ object JvmEffectScanner {
         module: ValidatedModulePolicy,
         classFiles: Iterable<Path>,
     ): BytecodeScanOutcome {
-        val effects = linkedSetOf<EffectObservation>()
         val failures = mutableListOf<BytecodeScanFailure>()
-        classFiles.sortedBy(Path::toString).forEach { classFile ->
-            val bytes = try {
-                Files.readAllBytes(classFile)
+        val classes = classFiles.sortedBy(Path::toString).mapNotNull { classFile ->
+            try {
+                HostedReadClassBytes.capture(classFile.toString(), Files.readAllBytes(classFile))
             } catch (_: IOException) {
                 failures += BytecodeScanFailure.UnreadableClass(classFile)
+                null
+            } catch (_: SecurityException) {
+                failures += BytecodeScanFailure.UnreadableClass(classFile)
+                null
+            }
+        }
+        if (failures.isNotEmpty()) return FailedBytecodeScanOutcome(failures)
+        return scanBytes(module, classes)
+    }
+
+    /**
+     * Proof transition: `(ValidatedModulePolicy, Iterable<HostedReadClassBytes>) ->
+     * BytecodeScanOutcome`.
+     *
+     * Establishes the finite JVM effects of the exact admitted bytes supplied by the caller, so
+     * inventory hashing and scanning can share one immutable observation. Malformed bytes remain
+     * closed [BytecodeScanFailure.MalformedClass] data. Raw ASM extraction is confined here.
+     */
+    internal fun scanBytes(
+        module: ValidatedModulePolicy,
+        classes: Iterable<HostedReadClassBytes>,
+    ): BytecodeScanOutcome {
+        val effects = linkedSetOf<EffectObservation>()
+        val failures = mutableListOf<BytecodeScanFailure>()
+        classes.sortedBy(HostedReadClassBytes::relativeName).forEach { artifact ->
+            val identity = try {
+                Path.of(artifact.relativeName)
+            } catch (_: InvalidPathException) {
+                failures += BytecodeScanFailure.InvalidClassIdentity(artifact.relativeName)
                 return@forEach
             }
             try {
-                ClassReader(bytes).accept(EffectClassVisitor(module, effects), ClassReader.SKIP_FRAMES)
+                artifact.useBytes { bytes ->
+                    ClassReader(bytes).accept(
+                        EffectClassVisitor(module, effects),
+                        ClassReader.SKIP_FRAMES,
+                    )
+                }
             } catch (_: IllegalArgumentException) {
-                failures += BytecodeScanFailure.MalformedClass(classFile)
+                failures += BytecodeScanFailure.MalformedClass(identity)
+            } catch (_: IndexOutOfBoundsException) {
+                failures += BytecodeScanFailure.MalformedClass(identity)
             }
         }
-        return if (failures.isEmpty()) BytecodeScanOutcome.Scanned(effects) else BytecodeScanOutcome.Failed(failures)
+        return if (failures.isEmpty()) {
+            ScannedBytecodeOutcome(effects)
+        } else {
+            FailedBytecodeScanOutcome(failures)
+        }
     }
 }
 
@@ -186,10 +265,8 @@ private class EffectClassVisitor(
         caller: JvmMember,
         descriptor: String,
     ) {
-        runCatching { Type.getType(descriptor) }
-            .getOrNull()
-            ?.referencedInternalNames()
-            ?.forEach { record(caller, typeMember(it)) }
+        Type.getType(descriptor).referencedInternalNames()
+            .forEach { record(caller, typeMember(it)) }
     }
 
     private fun record(
@@ -205,180 +282,9 @@ private class EffectClassVisitor(
         JvmMember.of(internalName, "<type>", "")
 }
 
-private object EffectRules {
-    private val filesystemMutators = setOf(
-        "copy",
-        "createDirectories",
-        "createDirectory",
-        "createFile",
-        "delete",
-        "deleteIfExists",
-        "move",
-        "newBufferedWriter",
-        "newOutputStream",
-        "write",
-        "writeString",
-    )
-    private val psiMutators = setOf("add", "addAfter", "addBefore", "delete", "deleteChildRange", "replace")
-
-    fun classify(
-        moduleRole: ModuleRole,
-        caller: JvmMember,
-        target: JvmMember,
-    ): Set<ForbiddenEffect> = buildSet {
-        val owner = target.owner.internalName
-        val name = target.name.value
-        if (
-            moduleRole != ModuleRole.LEGACY_HOST &&
-            (owner.startsWith("com/intellij/") ||
-             owner.startsWith("org/jetbrains/kotlin/analysis/api/"))
-        ) {
-            add(ForbiddenEffect.INTELLIJ_PLATFORM)
-        }
-        if (moduleRole == ModuleRole.IDE_READ_ONLY && isProjectOpenAuthority(owner, name)) {
-            add(ForbiddenEffect.PROJECT_OPEN)
-        }
-        if (
-            owner == "com/intellij/openapi/command/WriteCommandAction" ||
-            (owner.startsWith("com/intellij/openapi/application/") && name.contains("writeAction", true)) ||
-            (owner.startsWith("com/intellij/psi/") && name in psiMutators)
-        ) {
-            add(ForbiddenEffect.INTELLIJ_WRITE)
-        }
-        if (
-            (owner == "java/nio/file/Files" && name in filesystemMutators) ||
-            (owner.startsWith("kotlin/io/path/") && filesystemMutators.any(name::startsWith))
-        ) {
-            add(ForbiddenEffect.FILESYSTEM_WRITE)
-            if (caller.isSourceMutationSurface()) add(ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
-        }
-        if (owner.startsWith("java/sql/") || owner.startsWith("org/sqlite/")) {
-            add(ForbiddenEffect.JDBC)
-        }
-        if (moduleRole != ModuleRole.LEGACY_HOST && owner.startsWith("org/gradle/")) {
-            add(ForbiddenEffect.GRADLE_PLATFORM)
-        }
-        if (isGradleImportAuthority(owner, name)) {
-            add(ForbiddenEffect.GRADLE_IMPORT)
-        }
-        if (
-            moduleRole in INTELLIJ_READ_ROLES &&
-            owner == "com/intellij/openapi/vfs/VfsUtil" &&
-            name == "markDirtyAndRefresh"
-        ) {
-            add(ForbiddenEffect.RECURSIVE_VFS_REFRESH)
-        }
-        if (
-            moduleRole in INTELLIJ_READ_ROLES &&
-            isWorkspaceTransitionAuthority(owner, name)
-        ) {
-            add(ForbiddenEffect.WORKSPACE_TRANSITION)
-        }
-        if (moduleRole != ModuleRole.LEGACY_HOST && isGraphBuildAuthority(owner, name)) {
-            add(ForbiddenEffect.GRAPH_BUILD)
-        }
-        if (moduleRole != ModuleRole.LEGACY_HOST && isProcessControlAuthority(owner, name)) {
-            add(ForbiddenEffect.PROCESS_CONTROL)
-        }
-        if (
-            owner == "io/github/amichne/kast/api/contract/AnalysisBackend" ||
-            owner == "io/github/amichne/kast/api/contract/CloseableAnalysisBackend"
-        ) {
-            add(ForbiddenEffect.ANALYSIS_BACKEND)
-        }
-        if (
-            moduleRole == ModuleRole.IDE_READ_ONLY &&
-            owner.startsWith("io/github/amichne/kast/change/")
-        ) {
-            add(ForbiddenEffect.MUTATION_AUTHORITY)
-        }
-        if (
-            moduleRole == ModuleRole.IDE_READ_ONLY &&
-            owner.startsWith("io/github/amichne/kast/topology/")
-        ) {
-            add(ForbiddenEffect.TOPOLOGY_AUTHORITY)
-        }
-        if (moduleRole == ModuleRole.IDE_READ_ONLY && isIsolatedRuntimeAuthority(owner)) {
-            add(ForbiddenEffect.ISOLATED_RUNTIME)
-        }
-        if (owner == "io/github/amichne/kast/topology/build/TopologyBuildAuthority") {
-            add(ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY)
-        }
-    }
-
-    private fun JvmMember.isSourceMutationSurface(): Boolean = owner.internalName.let { callerOwner ->
-        callerOwner == "io/github/amichne/kast/api/io/LocalDiskFileOperations"
-    }
-
-    private fun isGradleImportAuthority(
-        owner: String,
-        name: String,
-    ): Boolean =
-        (owner == "com/intellij/openapi/externalSystem/util/ExternalSystemUtil" &&
-         name in setOf("linkExternalProject", "refreshProject")) ||
-        owner.startsWith("com/intellij/openapi/externalSystem/importing/") ||
-        owner.startsWith("org/jetbrains/plugins/gradle/service/project/open/") ||
-        (owner == "org/jetbrains/plugins/gradle/settings/GradleProjectSettings" &&
-         (name == "<init>" || name.startsWith("set"))) ||
-        (owner in setOf(
-            "org/jetbrains/plugins/gradle/settings/GradleSettings",
-            "org/jetbrains/plugins/gradle/settings/GradleSystemSettings",
-        ) && name.startsWith("set"))
-
-    private fun isProjectOpenAuthority(
-        owner: String,
-        name: String,
-    ): Boolean =
-        owner == "com/intellij/openapi/project/ex/ProjectManagerEx" && name == "openProject" ||
-        owner == "com/intellij/ide/impl/ProjectUtil" && name in setOf("openOrImport", "openProject") ||
-        owner == "com/intellij/ide/impl/OpenProjectTask"
-
-    private fun isIsolatedRuntimeAuthority(owner: String): Boolean =
-        owner.startsWith("io/github/amichne/kast/indexer/") ||
-        owner.startsWith("io/github/amichne/kast/cli/runtime/") ||
-        owner.startsWith("io/github/amichne/kast/distribution/managed/") ||
-        owner.startsWith("io/github/amichne/kast/runtime/composition/")
-
-    private fun isGraphBuildAuthority(
-        owner: String,
-        name: String,
-    ): Boolean =
-        (owner == "org/gradle/tooling/ProjectConnection" &&
-         name in setOf("action", "model", "newBuild")) ||
-        owner in setOf(
-            "org/gradle/tooling/BuildActionExecuter",
-            "org/gradle/tooling/BuildLauncher",
-            "org/gradle/tooling/ModelBuilder",
-        )
-
-    private fun isWorkspaceTransitionAuthority(
-        owner: String,
-        name: String,
-    ): Boolean =
-        owner.endsWith("/WorkspaceTransitionPort") && name !in setOf("<init>", "<type>") ||
-        owner.endsWith("/WorkspaceTransitionRequester") && name in setOf("reconcile", "mutate") ||
-        owner.endsWith("/WorkspaceTransitionIngress") && name in setOf("reconcile", "mutate")
-
-    private fun isProcessControlAuthority(
-        owner: String,
-        name: String,
-    ): Boolean =
-        owner == "java/lang/ProcessBuilder" ||
-        (owner == "java/lang/Runtime" && name == "exec") ||
-        (owner == "java/lang/Process" && name in setOf("destroy", "destroyForcibly")) ||
-        (owner == "java/lang/ProcessHandle" && name in setOf("destroy", "destroyForcibly")) ||
-        (owner == "com/intellij/execution/process/ProcessHandler" &&
-         name in setOf("destroyProcess", "detachProcess", "killProcess"))
-}
-
 private val TOPOLOGY_PUBLISHER_INTERFACES = setOf(
     "io/github/amichne/kast/topology/contract/TopologySnapshotPublisher",
     "io/github/amichne/kast/topology/contract/TopologySnapshotStore",
-)
-
-private val INTELLIJ_READ_ROLES = setOf(
-    ModuleRole.IDE_READ_ONLY,
-    ModuleRole.INTELLIJ_READ_ADAPTER,
 )
 
 private fun Type.referencedInternalNames(): Set<String> = when (sort) {

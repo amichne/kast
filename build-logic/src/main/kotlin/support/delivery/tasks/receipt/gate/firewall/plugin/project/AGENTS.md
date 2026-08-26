@@ -3,8 +3,8 @@
 This directory owns the deterministic KVP-014 report and typed exact-head receipt progression. Its
 `epoch/` owns KVP-015 signal characterization and directly re-admits this complete closure. Its
 `epoch/` also owns the sibling KVP-017 read-epoch closure and directly re-admits KVP-015 only.
-Its `model/` child independently owns KVP-016 detached-model capture and preserves both KVP-014
-and KVP-015.
+Its `model/` child independently owns KVP-016 detached-model capture and KVP-018 hosted-path proof;
+KVP-018 preserves both the KVP-016 and sibling KVP-017 completion closures.
 
 - The report is a closed generated-serialization document. Admission requires canonical bytes,
   the exact build-262 identities, the exact ready observation states, and zero for every forbidden

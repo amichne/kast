@@ -80,6 +80,15 @@ def validate_document(document_path, schema_path):
     errors = list(schema_errors(document, schema, schema))
     assert not errors, "\n".join(errors)
 
+def verify_task_plan(plan, task, next_task_id):
+    section = plan.split(f"### {task['id']}: {task['title']}\n", maxsplit=1)[1]
+    section = section.split(f"\n### {next_task_id}:", maxsplit=1)[0]
+    for label, field in (("Allowed reads", "allowedReads"), ("Allowed writes", "allowedWrites")):
+        expected = f"**{label}.** " + ", ".join(f"`{entry}`" for entry in task[field]) + "."
+        assert expected in section
+    assert f"**Review boundary.** {task['reviewBoundary']}" in section
+    return section
+
 root = pathlib.Path(__file__).resolve().parents[1]
 program_path = root / "gradle/delivery/kast-vfs-passive-reused-index-program.json"
 program = json.loads(program_path.read_text())
@@ -136,21 +145,7 @@ normative_plan = (
     root / "docs/kast-vfs-passive-reused-index-delivery-program.md"
 ).read_text()
 assert f"**Program fingerprint:** `{program['programFingerprint']}`" in normative_plan
-kvp_014_plan = normative_plan.split(
-    "### KVP-014: Admit the existing open IntelliJ Project\n",
-    maxsplit=1,
-)[1].split("\n### KVP-015:", maxsplit=1)[0]
-assert (
-    "**Allowed reads.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_014["allowedReads"])
-    + "."
-) in kvp_014_plan
-assert (
-    "**Allowed writes.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_014["allowedWrites"])
-    + "."
-) in kvp_014_plan
-assert f"**Review boundary.** {kvp_014['reviewBoundary']}" in kvp_014_plan
+kvp_014_plan = verify_task_plan(normative_plan, kvp_014, "KVP-015")
 kvp_015 = by_id["KVP-015"]
 assert kvp_015["dependencyExpression"]["taskIds"] == ["KVP-014"]
 assert set(kvp_015["forbiddenWork"]) == {
@@ -173,21 +168,7 @@ assert {
     "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/Kvp014ReceiptRegistration.kt",
     "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch",
 } <= set(kvp_015["allowedWrites"])
-kvp_015_plan = normative_plan.split(
-    "### KVP-015: Characterize model and epoch signals\n",
-    maxsplit=1,
-)[1].split("\n### KVP-016:", maxsplit=1)[0]
-assert (
-    "**Allowed reads.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_015["allowedReads"])
-    + "."
-) in kvp_015_plan
-assert (
-    "**Allowed writes.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_015["allowedWrites"])
-    + "."
-) in kvp_015_plan
-assert f"**Review boundary.** {kvp_015['reviewBoundary']}" in kvp_015_plan
+kvp_015_plan = verify_task_plan(normative_plan, kvp_015, "KVP-016")
 kvp_016 = by_id["KVP-016"]
 assert kvp_016["dependencyExpression"]["taskIds"] == ["KVP-014", "KVP-015"]
 assert kvp_016["authorities"] == ["OPEN_PROJECT"]
@@ -215,21 +196,7 @@ assert {
     "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt",
     "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model",
 } <= set(kvp_016["allowedWrites"])
-kvp_016_plan = normative_plan.split(
-    "### KVP-016: Capture a detached existing-project model\n",
-    maxsplit=1,
-)[1].split("\n### KVP-017:", maxsplit=1)[0]
-assert (
-    "**Allowed reads.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_016["allowedReads"])
-    + "."
-) in kvp_016_plan
-assert (
-    "**Allowed writes.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_016["allowedWrites"])
-    + "."
-) in kvp_016_plan
-assert f"**Review boundary.** {kvp_016['reviewBoundary']}" in kvp_016_plan
+kvp_016_plan = verify_task_plan(normative_plan, kvp_016, "KVP-017")
 assert "KVP-017 owns epoch observation and identity" in kvp_016["goal"]
 assert "KVP-019 owns freshness policy" in kvp_016["goal"]
 kvp_017 = by_id["KVP-017"]
@@ -266,22 +233,52 @@ assert (
     "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/"
     "Kvp014ReceiptRegistration.kt"
 ) not in set(kvp_017["allowedWrites"])
-kvp_017_plan = normative_plan.split(
-    "### KVP-017: Define the project read epoch\n",
-    maxsplit=1,
-)[1].split("\n### KVP-018:", maxsplit=1)[0]
-assert (
-    "**Allowed reads.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_017["allowedReads"])
-    + "."
-) in kvp_017_plan
-assert (
-    "**Allowed writes.** "
-    + ", ".join(f"`{entry}`" for entry in kvp_017["allowedWrites"])
-    + "."
-) in kvp_017_plan
-assert f"**Review boundary.** {kvp_017['reviewBoundary']}" in kvp_017_plan
+kvp_017_plan = verify_task_plan(normative_plan, kvp_017, "KVP-018")
 verify_kvp017_report(root)
+kvp_018 = by_id["KVP-018"]
+assert kvp_018["dependencyExpression"]["taskIds"] == ["KVP-016", "KVP-017"]
+assert kvp_018["authorities"] == ["READ_EPOCH"]
+assert kvp_018["internalImplementation"] == (
+    "Whole-module compiled-class refinement, exact project and external runtime-artifact byte "
+    "admission, finite hosted effect classification, deterministic all-zero report, and "
+    "exact-head receipt admission; the hosted product API remains the admitted detached-model "
+    "and epoch observations."
+)
+assert {
+    "kernel",
+    "protocol/contract",
+    "workspace/contract",
+    "gradle/libs.versions.toml",
+    "org.jetbrains.kotlin:kotlin-stdlib:2.4.10",
+    "org.jetbrains:annotations:13.0",
+} <= set(kvp_018["allowedReads"])
+assert {
+    "Network access",
+    "Blocking waits",
+    "Compiled-class allowlist",
+    "Changing the legacy isolated fixture",
+    "Adding KVP-019 freshness policy",
+} <= set(kvp_018["forbiddenWork"])
+assert {
+    "workspace/intellij-read",
+    "build-logic/src/main/kotlin/support/architecture",
+    "build-logic/src/test/kotlin/support/architecture",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model",
+    "gradle/delivery/kast-vfs-passive-reused-index-program.json",
+    "docs/kast-vfs-passive-reused-index-delivery-program.md",
+    "scripts/verify_bundle.py",
+} <= set(kvp_018["allowedWrites"])
+kvp_018_plan = verify_task_plan(normative_plan, kvp_018, "KVP-019")
+for kvp_018_authority in (
+    "build-logic/src/main/kotlin/support/architecture/gradle/HostedReadPathTasks.kt",
+    "build-logic/src/main/kotlin/support/architecture/policy/HostedReadPathReport.kt",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/Kvp018ReceiptRegistration.kt",
+):
+    assert (root / kvp_018_authority).is_file()
+assert "registerKvp018ReceiptProgression" in (
+    root
+    / "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt"
+).read_text()
 assert "Event-triggered semantic work from a VFS listener" in by_id["KVP-019"]["forbiddenWork"]
 epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
 for expected_epoch_fact in (

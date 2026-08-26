@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `801e5cbd9ac88f280df117db5562f765bc2438da40272e6f08a19d8113227999`
+**Program fingerprint:** `776317704612a8962943cca8ab096aeaf8a36b7e65cbf364e25263b7d7b8dc24`
 
 ## Terminal outcome
 
@@ -597,13 +597,13 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 ### KVP-018: Remove source-tree hashing from the hosted read path
 
-**Goal.** Ensure the hosted model and epoch path never performs Files.walk, source-content hashing, or physical repository traversal under an IntelliJ read lock.
+**Goal.** Ensure the hosted model and epoch path performs no Files.walk, physical source scan, source-content hash, network access, blocking wait, repository traversal, refresh/import, or stronger read-only classpath effect.
 
 **Dependencies.** `KVP-016`, `KVP-017`. Computed wave: `12`.
 
-**Allowed reads.** `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleModelCapture.kt`, `workspace/intellij-read`.
+**Allowed reads.** `AGENTS.md`, `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleModelCapture.kt`, `workspace/intellij-read`, `kernel`, `protocol/contract`, `workspace/contract`, `gradle/libs.versions.toml`, `org.jetbrains.kotlin:kotlin-stdlib:2.4.10`, `org.jetbrains:annotations:13.0`, `build-logic/src/main/kotlin/support/architecture`, `build-logic/src/test/kotlin/support/architecture`, `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery`, `docs/AGENTS.md`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/verify_bundle.py`.
 
-**Allowed writes.** `workspace/intellij-read`, `build-logic/src/main/kotlin/support/architecture`.
+**Allowed writes.** `workspace/intellij-read`, `build-logic/src/main/kotlin/support/architecture`, `build-logic/src/test/kotlin/support/architecture`, `build-logic/src/main/kotlin/support/delivery/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/kast-vfs-passive-requirements.json`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.016.proof`, `taskOutput:kvp.017.proof`, `requirement:KVP-REQ-006`, `requirement:KVP-REQ-011`, `requirement:KVP-REQ-014`, `requirement:KVP-REQ-016`.
 
@@ -611,17 +611,17 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Public interface.** `VfsPassiveHostedModelCapture`.
 
-**Internal implementation.** Hosted adapter separated from isolated content-hash bootstrap.
+**Internal implementation.** Whole-module compiled-class refinement, exact project and external runtime-artifact byte admission, finite hosted effect classification, deterministic all-zero report, and exact-head receipt admission; the hosted product API remains the admitted detached-model and epoch observations.
 
 **Effect and cost.** `IDE_PROJECT_READ`, `BUILD_POLICY_WRITE`; `SEMANTIC_READ`.
 
-**Forbidden work.** Moving Files.walk outside the read but retaining it on each request; Hashing every source file; Using LocalFileSystem refreshAndFind.
+**Forbidden work.** Moving Files.walk outside the read but retaining it on each request; Hashing every source file; Using LocalFileSystem refreshAndFind; Network access; Blocking waits; Compiled-class allowlist; Changing the legacy isolated fixture; Adding KVP-019 freshness policy.
 
-**RED.** `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalkNegative`. Expected failure: Injected Files.walk, hashing loop, or physical source scan is not detected.
+**RED.** `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalkNegative`. Expected failure: One or more injected traversal, physical source read, source hash, VFS refresh, network, or blocking-wait JVM families are not detected.
 
-**GREEN.** `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalk`. Expected proof: Hosted read bytecode and traces contain zero repository walks and zero source hashes.
+**GREEN.** `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalk`. Expected proof: The complete hosted production inventory contains zero repository traversal, source hashing, network access, blocking waits, refresh/import, or stronger forbidden authorities.
 
-**Review boundary.** Hosted adapter and effect policy only; isolated fixture may retain old capture temporarily.
+**Review boundary.** Hosted whole-module effect policy, the minimum KVP-018 authority correction, deterministic report, and KVP-018 receipt progression only; the isolated fixture may retain its old capture and KVP-019 owns freshness.
 
 **Completion receipt.** `KVP-018-COMPLETE` at `build/reports/delivery/receipts/KVP-018-COMPLETE.receipt.json`. It consumes `KVP-018-RED`, `KVP-018-GREEN`, and all predecessor completion receipts.
 

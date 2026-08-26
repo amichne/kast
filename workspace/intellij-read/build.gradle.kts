@@ -1,10 +1,13 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("kast.kotlin-serialization")
+    id("kast.kotlin-library")
+    kotlin("plugin.serialization")
     id("kast.role.ide-read-only")
 }
 
@@ -65,6 +68,7 @@ dependencies {
     compileOnly(kotlinPluginLibraries)
     testImplementation(ideaLibraries)
     testImplementation(kotlinPluginLibraries)
+    testImplementation(catalog.findLibrary("serialization-json").get())
 }
 
 private val workspaceContractFriendPath =
@@ -141,6 +145,76 @@ val verifyProjectReadEpochReportNegative =
         reportFile.set(projectReadEpochReport)
     }
 
+tasks.register<support.architecture.gradle.VerifyNoHostedRepositoryWalkNegativeTask>(
+    "verifyNoHostedRepositoryWalkNegative",
+) {
+    group = "verification"
+    description = "Detects every fixed KVP-018 forbidden hosted-read JVM reference."
+}
+
+val verifyNoHostedRepositoryWalk =
+    tasks.register<support.architecture.gradle.VerifyNoHostedRepositoryWalkTask>(
+        "verifyNoHostedRepositoryWalk",
+    ) {
+        group = "verification"
+        description = "Admits the complete KVP-018 hosted production class inventory."
+        dependsOn("classes", ":verifyKVP016CompletionReceipt", ":verifyKVP017CompletionReceipt")
+        compiledClassDirectories.from(sourceSets.named("main").map { it.output.classesDirs })
+        requiredClassNames.set(listOf(
+            "io/github/amichne/kast/workspace/intellij/read/AdmittedIdeProject.class",
+            "io/github/amichne/kast/workspace/intellij/read/LiveDetachedModelCapture.class",
+            "io/github/amichne/kast/workspace/intellij/read/LiveProjectReadEpochSource.class",
+            "io/github/amichne/kast/workspace/intellij/read/RootFilteredProjectEpochVfsListener.class",
+        ))
+        val runtimeArtifacts = configurations.getByName("runtimeClasspath").incoming
+        val projectArtifacts = runtimeArtifacts.artifactView {
+            componentFilter { it is ProjectComponentIdentifier }
+        }.artifacts
+        val projectArtifactResults = projectArtifacts.resolvedArtifacts.map { artifacts ->
+            artifacts
+                .sortedBy { artifact ->
+                    val component = artifact.id.componentIdentifier as ProjectComponentIdentifier
+                    "${component.projectPath}|${artifact.file.name}"
+                }
+        }
+        runtimeProjectArtifactIdentities.set(projectArtifactResults.map { artifacts ->
+            artifacts.map { artifact ->
+                val component = artifact.id.componentIdentifier as ProjectComponentIdentifier
+                "${component.projectPath}|${artifact.file.name}"
+            }
+        })
+        runtimeProjectArtifactFiles.from(projectArtifacts.artifactFiles)
+        val externalArtifacts = runtimeArtifacts.artifactView {
+            componentFilter { it !is ProjectComponentIdentifier }
+        }.artifacts
+        val externalArtifactResults = externalArtifacts.resolvedArtifacts.map { artifacts ->
+            artifacts.sortedBy { it.file.name }
+        }
+        runtimeExternalArtifactIdentities.set(externalArtifactResults.map { artifacts ->
+            artifacts.map { artifact ->
+                val component = artifact.id.componentIdentifier
+                val identity = when (component) {
+                    is ModuleComponentIdentifier ->
+                        "${component.group}:${component.module}:${component.version}"
+                    else -> "UNSUPPORTED:${component.displayName}"
+                }
+                "$identity|${artifact.file.name}"
+            }
+        })
+        runtimeExternalArtifactFiles.from(externalArtifacts.artifactFiles)
+        kvp016CompletionReceipt.set(
+            rootProject.layout.buildDirectory.file(
+                "reports/delivery/receipts/KVP-016-COMPLETE.receipt.json",
+            ),
+        )
+        kvp017CompletionReceipt.set(
+            rootProject.layout.buildDirectory.file(
+                "reports/delivery/receipts/KVP-017-COMPLETE.receipt.json",
+            ),
+        )
+        reportFile.set(layout.buildDirectory.file("reports/KVP-018-no-walk.json"))
+    }
+
 tasks.withType<Test>().configureEach {
     exclude("**/EpochSignalApiContract.class")
     dependsOn(generateExistingProjectAdmissionReport)
@@ -214,4 +288,5 @@ tasks.named("check") {
     dependsOn(verifyProjectReadEpochReportNegative)
     dependsOn(characterizeEpochNegative)
     dependsOn(characterizeEpoch)
+    dependsOn("verifyNoHostedRepositoryWalkNegative")
 }
