@@ -3,6 +3,9 @@ package io.github.amichne.kast.runtime.ide.read
 /** Finite client causes that end active or queued read demand. */
 internal enum class ProjectReadCancellationCause { REQUEST_CANCELLED, CLIENT_DISCONNECTED }
 
+/** Finite platform causes that abort an executing read independently of client demand. */
+internal enum class ProjectReadExecutionCancellationCause { WRITE_PREEMPTED, PLATFORM_CANCELLED }
+
 /** Finite host lifecycle causes that retire one project's read authority. */
 internal enum class ProjectReadRetirementCause {
     PROJECT_DISPOSED,
@@ -15,6 +18,8 @@ internal enum class ProjectReadRetirementCause {
 internal sealed interface ProjectReadPermitTerminal {
     data object Released : ProjectReadPermitTerminal
     data class Cancelled(val cause: ProjectReadCancellationCause) : ProjectReadPermitTerminal
+    data class ExecutionCancelled(val cause: ProjectReadExecutionCancellationCause) :
+        ProjectReadPermitTerminal
     data class Retired(val cause: ProjectReadRetirementCause) : ProjectReadPermitTerminal
 }
 
@@ -40,6 +45,40 @@ internal sealed interface ProjectReadAdmissionFailure {
     data class Retired(val cause: ProjectReadRetirementCause) : ProjectReadAdmissionFailure
 }
 
+/** Closed result of refining one active permit into executing authority. */
+internal sealed interface ProjectReadExecutionAdmission {
+    data class Admitted(val execution: ExecutingProjectRead) : ProjectReadExecutionAdmission
+    data class Rejected(val failure: ProjectReadExecutionAdmissionFailure) :
+        ProjectReadExecutionAdmission
+}
+
+/** Finite failures for `ProjectReadPermit -> ExecutingProjectRead`. */
+internal sealed interface ProjectReadExecutionAdmissionFailure {
+    data object NotOwned : ProjectReadExecutionAdmissionFailure
+    data object AlreadyExecuting : ProjectReadExecutionAdmissionFailure
+    data class Terminal(val terminal: ProjectReadPermitTerminal) :
+        ProjectReadExecutionAdmissionFailure
+}
+
+/** Non-forgeable proof that one active permit is currently executing. */
+internal sealed interface ExecutingProjectRead
+
+/** Closed outcome of requesting cancellation through the KVP-021 executor boundary. */
+internal sealed interface ProjectReadExecutionCancellation {
+    data class Ended(
+        val terminal: ProjectReadPermitTerminal,
+        val continuation: ProjectReadContinuation,
+    ) : ProjectReadExecutionCancellation
+
+    data class Deferred(val cause: ProjectReadCancellationCause) :
+        ProjectReadExecutionCancellation
+    data class AlreadyDeferred(val terminal: ProjectReadPermitTerminal) :
+        ProjectReadExecutionCancellation
+    data class AlreadyTerminal(val terminal: ProjectReadPermitTerminal) :
+        ProjectReadExecutionCancellation
+    data object NotOwned : ProjectReadExecutionCancellation
+}
+
 /** Closed continuation after one active permit ends. */
 internal sealed interface ProjectReadContinuation {
     data object Idle : ProjectReadContinuation
@@ -56,6 +95,8 @@ internal sealed interface ProjectReadPermitEnd {
         val continuation: ProjectReadContinuation,
     ) : ProjectReadPermitEnd
     data class AlreadyEnded(val terminal: ProjectReadPermitTerminal) : ProjectReadPermitEnd
+    data class Deferred(val terminal: ProjectReadPermitTerminal) : ProjectReadPermitEnd
+    data object ExecutionInProgress : ProjectReadPermitEnd
     data object NotOwned : ProjectReadPermitEnd
 }
 
@@ -66,6 +107,13 @@ internal sealed interface QueuedProjectReadCancellation {
     data class AlreadyTerminal(val terminal: QueuedProjectReadTerminal) :
         QueuedProjectReadCancellation
     data object NotOwned : QueuedProjectReadCancellation
+}
+
+/** Closed no-mutation observation of one exact queued request. */
+internal sealed interface QueuedProjectReadObservation {
+    data object Pending : QueuedProjectReadObservation
+    data class Terminal(val value: QueuedProjectReadTerminal) : QueuedProjectReadObservation
+    data object NotOwned : QueuedProjectReadObservation
 }
 
 /** Exact authorities terminalized by the first retirement transition. */

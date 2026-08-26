@@ -16,6 +16,10 @@ import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure
+import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
+import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmission
+import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmissionFailure
+import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecution
 
 /** Finite observation stages at the existing-Project boundary. */
 enum class ExistingProjectObservationStage {
@@ -121,12 +125,11 @@ internal interface ExistingProjectObservationPort {
     fun hostIdentity(): ExistingProjectHostIdentityObservation
 }
 
-/**
- * Live read authority for the one already-open, exact-root, compatible IntelliJ Project.
- *
- * The live [Project] remains private. Later operations owned by this module must be added as
- * state-specific members; no generic Project accessor or callback escape is permitted.
- */
+/** Non-forgeable package proof that KVP-014 retained the exact live Project. */
+internal sealed interface AdmittedProjectReadExecutionProof
+private data object RetainedAdmittedProjectProof : AdmittedProjectReadExecutionProof
+
+/** Exact-root compatible live read authority; its [Project] has no generic accessor or escape. */
 class AdmittedIdeProject private constructor(
     private val liveProject: LiveProjectHandle,
     private val readEpochSource: ProjectReadEpoch.Source<*>,
@@ -134,11 +137,8 @@ class AdmittedIdeProject private constructor(
     val compatibility: AdmittedIdeHostCompatibility,
 ) {
     /**
-     * Proof transition: `AdmittedIdeProject -> DetachedModelCapture`.
-     *
-     * Establishes a bounded exact-root model detached during one cancellable write-priority read,
-     * or returns the closed [DetachedModelCaptureFailure] set. Raw IntelliJ and Gradle extraction
-     * is permitted only inside [LiveDetachedModelCapture]; the private Project never escapes.
+     * `AdmittedIdeProject -> DetachedModelCapture`; returns an exact detached model or closed
+     * [DetachedModelCaptureFailure]. Raw extraction stays inside [LiveDetachedModelCapture].
      */
     fun captureDetachedModel(): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
         canonicalRoot,
@@ -147,21 +147,14 @@ class AdmittedIdeProject private constructor(
     )
 
     /**
-     * Proof transition: `AdmittedIdeProject -> ProjectReadEpochObservation`.
-     *
-     * Establishes one opaque epoch from the retained Project/runtime source, or returns the
-     * closed [ProjectReadEpochObservationFailure] set. The source, Project, listeners, and raw
-     * signal values remain private to this adapter; callers receive only the epoch or rejection.
+     * `AdmittedIdeProject -> ProjectReadEpochObservation`; returns one opaque retained-source epoch
+     * or [ProjectReadEpochObservationFailure], without exposing Project or raw signal values.
      */
     fun observeReadEpoch(): ProjectReadEpochObservation = readEpochSource.observe()
 
     /**
-     * Proof transition: `(AdmittedIdeProject, ProjectReadEpoch<*>) ->
-     * VfsPassiveReadAdmission`.
-     *
-     * Establishes that one newly observed IDE-visible epoch is unchanged from [expectedEpoch], or
-     * returns the closed [VfsPassiveReadAdmissionFailure] set. The private epoch source is observed
-     * exactly once; raw Project extraction remains confined to its KVP-017 adapter boundary.
+     * `(AdmittedIdeProject, ProjectReadEpoch<*>) -> VfsPassiveReadAdmission`; one observation proves
+     * unchanged same-source state or [VfsPassiveReadAdmissionFailure]. Raw Project stays confined.
      */
     fun admitVfsPassiveRead(
         expectedEpoch: ProjectReadEpoch<*>,
@@ -171,15 +164,36 @@ class AdmittedIdeProject private constructor(
         readEpochSource.observe(),
     )
 
+    /**
+     * `(AdmittedIdeProject, VfsPassiveReadCapability) -> execution admission`; one observation
+     * issues authority only for unchanged same-source freshness, with Project remaining private.
+     */
+    internal fun cancellableReadExecution(
+        freshness: VfsPassiveReadCapability,
+    ): AdmittedProjectReadExecutionAdmission {
+        if (freshness.canonicalRoot != canonicalRoot) {
+            return AdmittedProjectReadExecutionAdmission.Rejected(
+                AdmittedProjectReadExecutionAdmissionFailure.WrongProject,
+            )
+        }
+        return when (val admitted = admitVfsPassiveRead(freshness.admittedEpoch)) {
+            is VfsPassiveReadAdmission.Admitted -> AdmittedProjectReadExecutionAdmission.Admitted(
+                AdmittedProjectReadExecution.bind(
+                    liveProject.project,
+                    RetainedAdmittedProjectProof,
+                ),
+                admitted.capability,
+            )
+            is VfsPassiveReadAdmission.Rejected -> AdmittedProjectReadExecutionAdmission.Rejected(
+                AdmittedProjectReadExecutionAdmissionFailure.FreshnessRejected(admitted.failure),
+            )
+        }
+    }
+
     companion object {
         /**
-         * Proof transition: `(Project, CanonicalWorkspaceRoot, IdeHostCompatibilityCandidate,
-         * IdeHostCompatibilityPolicy) -> ExistingProjectAdmission`.
-         *
-         * Establishes that the supplied Project is open, initialized, exact-root, backed by one
-         * complete cached Gradle model, smart, K2-capable, and exactly host-compatible.
-         * [ExistingProjectAdmissionFailure] closes every expected rejection. Raw Project access
-         * remains private to this module's IntelliJ observation boundary.
+         * `(Project, root, host candidate, policy) -> ExistingProjectAdmission`; proves open,
+         * initialized, exact-root, complete-model, smart, K2, compatible state or closed failure.
          */
         fun admit(
             project: Project,
@@ -196,15 +210,8 @@ class AdmittedIdeProject private constructor(
         )
 
         /**
-         * Proof transition: `(Project, CanonicalWorkspaceRoot,
-         * IdeHostCompatibilityCandidate, IdeHostCompatibilityPolicy,
-         * ExistingProjectObservationPort, ExistingProjectReadEpochSourceFactory) ->
-         * ExistingProjectAdmission`.
-         *
-         * Establishes the same admitted-Project invariants as [admit] through an explicit
-         * observation boundary. [ExistingProjectAdmissionFailure] closes expected observation
-         * and compatibility failures, and every admitted value retains one epoch source. Raw
-         * Project access remains confined to the observation port and resulting capability.
+         * `(Project, root, host policy, observation port, epoch factory) -> admission`; proves the
+         * [admit] invariants or closed failure while raw Project stays at the observation boundary.
          */
         internal fun admitObserved(
             project: Project,
@@ -370,14 +377,11 @@ class AdmittedIdeProject private constructor(
     }
 }
 
-private class LiveProjectHandle(
-    val project: Project,
-)
+private class LiveProjectHandle(val project: Project)
 
 private sealed interface ExistingProjectObservation<out Value> {
     data class Observed<Value>(val value: Value) : ExistingProjectObservation<Value>
-    data class Failed(val stage: ExistingProjectObservationStage) :
-        ExistingProjectObservation<Nothing>
+    data class Failed(val stage: ExistingProjectObservationStage) : ExistingProjectObservation<Nothing>
 }
 
 private inline fun <Value> observe(
@@ -391,7 +395,6 @@ private inline fun <Value> observe(
     ExistingProjectObservation.Failed(stage)
 }
 
-private fun ExistingProjectObservation.Failed.rejection(): ExistingProjectAdmission.Rejected =
-    ExistingProjectAdmission.Rejected(
-        ExistingProjectAdmissionFailure.ObservationFailed(stage),
-    )
+private fun ExistingProjectObservation.Failed.rejection() = ExistingProjectAdmission.Rejected(
+    ExistingProjectAdmissionFailure.ObservationFailed(stage),
+)

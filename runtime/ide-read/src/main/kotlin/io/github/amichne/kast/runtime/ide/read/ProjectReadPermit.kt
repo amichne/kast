@@ -1,16 +1,8 @@
 package io.github.amichne.kast.runtime.ide.read
 
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
-import io.github.amichne.kast.workspace.contract.ProjectReadEpochRelation
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
 
-/**
- * Opaque authority for one admitted semantic read.
- *
- * Construction and lifecycle mutation are private to the nested [Controller]. The handle exposes
- * no retained freshness evidence; the owning controller must validate it for every transition.
- */
+/** Opaque authority whose construction, freshness, and lifecycle stay private to [Controller]. */
 class ProjectReadPermit private constructor(
     private val owner: OwnerToken,
     private val freshness: VfsPassiveReadCapability,
@@ -18,7 +10,7 @@ class ProjectReadPermit private constructor(
     private var lifecycle: PermitLifecycle = PermitLifecycle.Active
 
     private fun end(terminal: ProjectReadPermitTerminal) {
-        check(lifecycle === PermitLifecycle.Active)
+        check(lifecycle !is PermitLifecycle.Terminal)
         lifecycle = PermitLifecycle.Terminal(terminal)
     }
 
@@ -26,10 +18,23 @@ class ProjectReadPermit private constructor(
 
     private sealed interface PermitLifecycle {
         data object Active : PermitLifecycle
+        class Executing(
+            val authority: ExecutingProjectRead,
+            val completion: ExecutionCompletion,
+        ) : PermitLifecycle
         class Terminal(val value: ProjectReadPermitTerminal) : PermitLifecycle
     }
 
-    /** Opaque, non-forgeable identity of the sole bounded queued request. */
+    private sealed interface ExecutionCompletion {
+        data object NotRequested : ExecutionCompletion
+        class CancellationRequested(val cause: ProjectReadCancellationCause) : ExecutionCompletion
+    }
+
+    private sealed interface ActivePermitEnd {
+        data object Release : ActivePermitEnd
+        class Cancel(val cause: ProjectReadCancellationCause) : ActivePermitEnd
+    }
+
     internal class QueuedRequest private constructor(
         private val owner: OwnerToken,
         private val freshness: VfsPassiveReadCapability,
@@ -46,54 +51,40 @@ class ProjectReadPermit private constructor(
             class Terminal(val value: QueuedProjectReadTerminal) : QueueLifecycle
         }
 
-    /**
-     * One project-scoped owner of one active read and one bounded queued request.
-     *
-     * Proof transition: `VfsPassiveReadCapability -> Controller`. The private constructor retains
-     * the capability's exact canonical root and epoch-comparison domain as its scope. Construction
-     * stays closed until the later hosted project-level owner is introduced.
-     *
-     * The private lock serializes only this instance. State contains no live Project, callback,
-     * collection, channel, executor, or installation registry.
-     */
+    /** Exact-root controller owning one active and one queued slot without raw Project or I/O. */
     internal class Controller private constructor(
         initialFreshness: VfsPassiveReadCapability,
     ) {
         private val lock = Any()
         private val owner = OwnerToken()
-        private var state: State = State.Idle(ProjectScope.bind(initialFreshness))
+        private var state: State = State.Idle(ProjectReadScope.bind(initialFreshness))
 
-        /**
-         * Proof transition: `VfsPassiveReadCapability -> ProjectReadAdmission`.
-         *
-         * Matching scope becomes the sole permit, the sole queue position, or finite Busy.
-         * Mismatched root, incomparable source, or retirement fails closed without mutation.
-         */
+        /** `VfsPassiveReadCapability -> ProjectReadAdmission`; admits exact scope or closed failure. */
         fun admit(freshness: VfsPassiveReadCapability): ProjectReadAdmission = synchronized(lock) {
             when (val current = state) {
                 is State.Idle -> when (val scoped = current.scope.admit(freshness)) {
-                    is ProjectScopeAdmission.Admitted -> {
+                    is ProjectReadScopeAdmission.Admitted -> {
                         val permit = ProjectReadPermit(owner, scoped.freshness)
                         state = State.Active(current.scope, permit)
                         ProjectReadAdmission.Active(permit)
                     }
-                    is ProjectScopeAdmission.Rejected ->
+                    is ProjectReadScopeAdmission.Rejected ->
                         ProjectReadAdmission.Rejected(scoped.failure)
                 }
                 is State.Active -> when (val scoped = current.scope.admit(freshness)) {
-                    is ProjectScopeAdmission.Admitted -> {
+                    is ProjectReadScopeAdmission.Admitted -> {
                         val request = QueuedRequest(owner, scoped.freshness)
                         state = State.ActiveAndQueued(current.scope, current.permit, request)
                         ProjectReadAdmission.Queued(request)
                     }
-                    is ProjectScopeAdmission.Rejected ->
+                    is ProjectReadScopeAdmission.Rejected ->
                         ProjectReadAdmission.Rejected(scoped.failure)
                 }
                 is State.ActiveAndQueued -> when (val scoped = current.scope.admit(freshness)) {
-                    is ProjectScopeAdmission.Admitted -> ProjectReadAdmission.Rejected(
+                    is ProjectReadScopeAdmission.Admitted -> ProjectReadAdmission.Rejected(
                         ProjectReadAdmissionFailure.Busy,
                     )
-                    is ProjectScopeAdmission.Rejected ->
+                    is ProjectReadScopeAdmission.Rejected ->
                         ProjectReadAdmission.Rejected(scoped.failure)
                 }
                 is State.Retired -> ProjectReadAdmission.Rejected(
@@ -102,32 +93,118 @@ class ProjectReadPermit private constructor(
             }
         }
 
-        /**
-         * Proof transition: `ProjectReadPermit -> ProjectReadPermitEnd`.
-         *
-         * Ends owned active authority exactly once as Released and promotes at most one queue.
-         * Foreign and repeated terminalization remain closed outcomes.
-         */
+        /** `ProjectReadPermit -> ProjectReadPermitEnd`; releases exact authority or fails closed. */
         fun release(permit: ProjectReadPermit): ProjectReadPermitEnd =
-            endActive(permit, ProjectReadPermitTerminal.Released)
+            endActive(permit, ActivePermitEnd.Release)
 
-        /**
-         * Proof transition: `(ProjectReadPermit, ProjectReadCancellationCause) ->
-         * ProjectReadPermitEnd`.
-         *
-         * Ends owned active authority once with the finite cause and promotes at most one queue.
-         */
+        /** `(ProjectReadPermit, cause) -> ProjectReadPermitEnd`; preserves the finite cause. */
         fun cancel(
             permit: ProjectReadPermit,
             cause: ProjectReadCancellationCause,
-        ): ProjectReadPermitEnd = endActive(permit, ProjectReadPermitTerminal.Cancelled(cause))
+        ): ProjectReadPermitEnd = endActive(permit, ActivePermitEnd.Cancel(cause))
 
-        /**
-         * Proof transition: `(QueuedProjectReadRequest, ProjectReadCancellationCause) ->
-         * QueuedProjectReadCancellation`.
-         *
-         * Removes the exact pending request once. Terminal and foreign candidates remain data.
-         */
+        /** `ProjectReadPermit -> ProjectReadExecutionAdmission`; refines Active or fails closed. */
+        fun beginExecution(permit: ProjectReadPermit): ProjectReadExecutionAdmission =
+            synchronized(lock) {
+                if (permit.owner !== owner) {
+                    return@synchronized ProjectReadExecutionAdmission.Rejected(
+                        ProjectReadExecutionAdmissionFailure.NotOwned,
+                    )
+                }
+                when (val lifecycle = permit.lifecycle) {
+                    PermitLifecycle.Active -> when (val current = state) {
+                        is State.Active -> if (current.permit === permit) {
+                            val authority = OwnedExecutingProjectRead(owner, permit)
+                            permit.lifecycle = PermitLifecycle.Executing(
+                                authority,
+                                ExecutionCompletion.NotRequested,
+                            )
+                            ProjectReadExecutionAdmission.Admitted(authority)
+                        } else {
+                            ProjectReadExecutionAdmission.Rejected(
+                                ProjectReadExecutionAdmissionFailure.NotOwned,
+                            )
+                        }
+                        is State.ActiveAndQueued -> if (current.permit === permit) {
+                            val authority = OwnedExecutingProjectRead(owner, permit)
+                            permit.lifecycle = PermitLifecycle.Executing(
+                                authority,
+                                ExecutionCompletion.NotRequested,
+                            )
+                            ProjectReadExecutionAdmission.Admitted(authority)
+                        } else {
+                            ProjectReadExecutionAdmission.Rejected(
+                                ProjectReadExecutionAdmissionFailure.NotOwned,
+                            )
+                        }
+                        is State.Idle, is State.Retired -> ProjectReadExecutionAdmission.Rejected(
+                            ProjectReadExecutionAdmissionFailure.NotOwned,
+                        )
+                    }
+                    is PermitLifecycle.Executing -> ProjectReadExecutionAdmission.Rejected(
+                        ProjectReadExecutionAdmissionFailure.AlreadyExecuting,
+                    )
+                    is PermitLifecycle.Terminal -> ProjectReadExecutionAdmission.Rejected(
+                        ProjectReadExecutionAdmissionFailure.Terminal(lifecycle.value),
+                    )
+                }
+            }
+
+        /** `ExecutingProjectRead -> ProjectReadPermitEnd`; releases exact execution or rejects. */
+        fun releaseExecution(execution: ExecutingProjectRead): ProjectReadPermitEnd =
+            endExecution(execution, ProjectReadPermitTerminal.Released)
+
+        /** `(ExecutingProjectRead, platform cause) -> ProjectReadPermitEnd`; preserves the cause. */
+        fun cancelExecution(
+            execution: ExecutingProjectRead,
+            cause: ProjectReadExecutionCancellationCause,
+        ): ProjectReadPermitEnd = endExecution(
+            execution,
+            ProjectReadPermitTerminal.ExecutionCancelled(cause),
+        )
+
+        /** `(ProjectReadPermit, client cause) -> cancellation`; ends or defers, otherwise closes. */
+        fun requestExecutionCancellation(
+            permit: ProjectReadPermit,
+            cause: ProjectReadCancellationCause,
+        ): ProjectReadExecutionCancellation = synchronized(lock) {
+            if (permit.owner !== owner) return@synchronized ProjectReadExecutionCancellation.NotOwned
+            when (val lifecycle = permit.lifecycle) {
+                PermitLifecycle.Active -> when (
+                    val end = endCurrentPermit(permit, cancelledTerminal(cause))
+                ) {
+                    is ProjectReadPermitEnd.Ended -> ProjectReadExecutionCancellation.Ended(
+                        end.terminal,
+                        end.continuation,
+                    )
+                    is ProjectReadPermitEnd.AlreadyEnded ->
+                        ProjectReadExecutionCancellation.AlreadyTerminal(end.terminal)
+                    is ProjectReadPermitEnd.Deferred ->
+                        ProjectReadExecutionCancellation.AlreadyDeferred(end.terminal)
+                    ProjectReadPermitEnd.ExecutionInProgress ->
+                        ProjectReadExecutionCancellation.NotOwned
+                    ProjectReadPermitEnd.NotOwned -> ProjectReadExecutionCancellation.NotOwned
+                }
+                is PermitLifecycle.Executing -> when (val request = lifecycle.completion) {
+                    ExecutionCompletion.NotRequested -> {
+                        permit.lifecycle = PermitLifecycle.Executing(
+                            lifecycle.authority,
+                            ExecutionCompletion.CancellationRequested(cause),
+                        )
+                        ProjectReadExecutionCancellation.Deferred(cause)
+                    }
+                    is ExecutionCompletion.CancellationRequested ->
+                        ProjectReadExecutionCancellation.AlreadyDeferred(
+                            ProjectReadPermitTerminal.Cancelled(request.cause),
+                        )
+                }
+                is PermitLifecycle.Terminal -> ProjectReadExecutionCancellation.AlreadyTerminal(
+                    lifecycle.value,
+                )
+            }
+        }
+
+        /** `(QueuedProjectReadRequest, cause) -> QueuedProjectReadCancellation`; removes once. */
         fun cancelQueued(
             request: QueuedProjectReadRequest,
             cause: ProjectReadCancellationCause,
@@ -152,20 +229,31 @@ class ProjectReadPermit private constructor(
             }
         }
 
-        /**
-         * Proof transition: `ProjectReadRetirementCause -> ProjectReadRetirement`.
-         *
-         * Terminalizes every retained authority, enters Retired, and preserves the first cause.
-         */
+        /** `QueuedProjectReadRequest -> QueuedProjectReadObservation`; observes without mutation. */
+        fun observeQueued(request: QueuedProjectReadRequest): QueuedProjectReadObservation =
+            synchronized(lock) {
+                if (request.owner !== owner) return@synchronized QueuedProjectReadObservation.NotOwned
+                when (val lifecycle = request.lifecycle) {
+                    QueueLifecycle.Pending -> if (
+                        state is State.ActiveAndQueued &&
+                        (state as State.ActiveAndQueued).request === request
+                    ) QueuedProjectReadObservation.Pending else QueuedProjectReadObservation.NotOwned
+                    is QueueLifecycle.Terminal -> QueuedProjectReadObservation.Terminal(
+                        lifecycle.value,
+                    )
+                }
+            }
+
+        /** `ProjectReadRetirementCause -> ProjectReadRetirement`; preserves first cause exactly. */
         fun retire(cause: ProjectReadRetirementCause): ProjectReadRetirement = synchronized(lock) {
             when (val current = state) {
                 is State.Idle -> retireFrom(cause, RetiredProjectReadAuthority.None)
                 is State.Active -> {
-                    current.permit.end(ProjectReadPermitTerminal.Retired(cause))
+                    current.permit.end(current.permit.retirementTerminal(cause))
                     retireFrom(cause, RetiredProjectReadAuthority.Active(current.permit))
                 }
                 is State.ActiveAndQueued -> {
-                    current.permit.end(ProjectReadPermitTerminal.Retired(cause))
+                    current.permit.end(current.permit.retirementTerminal(cause))
                     current.request.end(QueuedProjectReadTerminal.Retired(cause))
                     retireFrom(
                         cause,
@@ -181,12 +269,60 @@ class ProjectReadPermit private constructor(
 
         private fun endActive(
             permit: ProjectReadPermit,
-            terminal: ProjectReadPermitTerminal,
+            requestedEnd: ActivePermitEnd,
         ): ProjectReadPermitEnd = synchronized(lock) {
             if (permit.owner !== owner) return@synchronized ProjectReadPermitEnd.NotOwned
             when (val ended = permit.lifecycle) {
                 is PermitLifecycle.Terminal -> ProjectReadPermitEnd.AlreadyEnded(ended.value)
-                PermitLifecycle.Active -> when (val current = state) {
+                PermitLifecycle.Active -> endCurrentPermit(
+                    permit,
+                    requestedEnd.terminal(),
+                )
+                is PermitLifecycle.Executing -> when (requestedEnd) {
+                    ActivePermitEnd.Release -> ProjectReadPermitEnd.ExecutionInProgress
+                    is ActivePermitEnd.Cancel -> when (val request = ended.completion) {
+                        ExecutionCompletion.NotRequested -> {
+                            permit.lifecycle = PermitLifecycle.Executing(
+                                ended.authority,
+                                ExecutionCompletion.CancellationRequested(requestedEnd.cause),
+                            )
+                            ProjectReadPermitEnd.Deferred(requestedEnd.terminal())
+                        }
+                        is ExecutionCompletion.CancellationRequested ->
+                            ProjectReadPermitEnd.Deferred(
+                                ProjectReadPermitTerminal.Cancelled(request.cause),
+                            )
+                    }
+                }
+            }
+        }
+        private fun endExecution(
+            execution: ExecutingProjectRead,
+            terminal: ProjectReadPermitTerminal,
+        ): ProjectReadPermitEnd = synchronized(lock) {
+            val owned = execution as? OwnedExecutingProjectRead
+                ?: return@synchronized ProjectReadPermitEnd.NotOwned
+            if (owned.owner !== owner) return@synchronized ProjectReadPermitEnd.NotOwned
+            val permit = owned.permit
+            when (val lifecycle = permit.lifecycle) {
+                PermitLifecycle.Active -> ProjectReadPermitEnd.NotOwned
+                is PermitLifecycle.Executing -> if (lifecycle.authority !== execution) {
+                    ProjectReadPermitEnd.NotOwned
+                } else when (val request = lifecycle.completion) {
+                    ExecutionCompletion.NotRequested -> endCurrentPermit(permit, terminal)
+                    is ExecutionCompletion.CancellationRequested -> endCurrentPermit(
+                        permit,
+                        ProjectReadPermitTerminal.Cancelled(request.cause),
+                    )
+                }
+                is PermitLifecycle.Terminal -> ProjectReadPermitEnd.AlreadyEnded(lifecycle.value)
+            }
+        }
+
+        private fun endCurrentPermit(
+            permit: ProjectReadPermit,
+            terminal: ProjectReadPermitTerminal,
+        ): ProjectReadPermitEnd = when (val current = state) {
                     is State.Active -> if (current.permit !== permit) {
                         ProjectReadPermitEnd.NotOwned
                     } else {
@@ -208,7 +344,26 @@ class ProjectReadPermit private constructor(
                     }
                     is State.Idle, is State.Retired -> ProjectReadPermitEnd.NotOwned
                 }
+
+        private fun cancelledTerminal(
+            cause: ProjectReadCancellationCause,
+        ): ProjectReadPermitTerminal = ProjectReadPermitTerminal.Cancelled(cause)
+
+        private fun ActivePermitEnd.terminal(): ProjectReadPermitTerminal = when (this) {
+            ActivePermitEnd.Release -> ProjectReadPermitTerminal.Released
+            is ActivePermitEnd.Cancel -> ProjectReadPermitTerminal.Cancelled(cause)
+        }
+
+        private fun ProjectReadPermit.retirementTerminal(
+            cause: ProjectReadRetirementCause,
+        ): ProjectReadPermitTerminal = when (val current = lifecycle) {
+            PermitLifecycle.Active -> ProjectReadPermitTerminal.Retired(cause)
+            is PermitLifecycle.Executing -> when (val completion = current.completion) {
+                ExecutionCompletion.NotRequested -> ProjectReadPermitTerminal.Retired(cause)
+                is ExecutionCompletion.CancellationRequested ->
+                    ProjectReadPermitTerminal.Cancelled(completion.cause)
             }
+            is PermitLifecycle.Terminal -> current.value
         }
 
         private fun retireFrom(
@@ -220,54 +375,25 @@ class ProjectReadPermit private constructor(
         }
 
         private sealed interface State {
-            class Idle(val scope: ProjectScope) : State
-            class Active(val scope: ProjectScope, val permit: ProjectReadPermit) : State
+            class Idle(val scope: ProjectReadScope) : State
+            class Active(val scope: ProjectReadScope, val permit: ProjectReadPermit) : State
             class ActiveAndQueued(
-                val scope: ProjectScope,
+                val scope: ProjectReadScope,
                 val permit: ProjectReadPermit,
                 val request: QueuedRequest,
             ) : State
             class Retired(val cause: ProjectReadRetirementCause) : State
         }
 
-        /** Bound exact-root and epoch-source identity for one controller. */
-        private class ProjectScope(
-            private val canonicalRoot: CanonicalWorkspaceRoot,
-            private val comparisonEpoch: ProjectReadEpoch<*>,
-        ) {
-            /**
-             * Proof transition: `VfsPassiveReadCapability -> ProjectScopeAdmission`.
-             *
-             * Establishes exact root and comparable source, or returns one closed scope failure.
-             */
-            fun admit(freshness: VfsPassiveReadCapability): ProjectScopeAdmission = when {
-                freshness.canonicalRoot != canonicalRoot -> ProjectScopeAdmission.Rejected(
-                    ProjectReadAdmissionFailure.WrongProject,
-                )
-                comparisonEpoch.relationTo(freshness.admittedEpoch) ==
-                    ProjectReadEpochRelation.INCOMPARABLE -> ProjectScopeAdmission.Rejected(
-                        ProjectReadAdmissionFailure.IncomparableProjectSource,
-                    )
-                else -> ProjectScopeAdmission.Admitted(freshness)
-            }
+        private class OwnedExecutingProjectRead(
+            val owner: Any,
+            val permit: ProjectReadPermit,
+        ) : ExecutingProjectRead
 
-            companion object {
-                /**
-                 * Proof transition: `VfsPassiveReadCapability -> ProjectScope`.
-                 *
-                 * Retains exact root and epoch domain. Raw evidence cannot leave this controller.
-                 */
-                fun bind(freshness: VfsPassiveReadCapability): ProjectScope = ProjectScope(
-                    freshness.canonicalRoot,
-                    freshness.admittedEpoch,
-                )
-            }
-        }
-
-        /** Closed refinement of freshness evidence into this controller's project scope. */
-        private sealed interface ProjectScopeAdmission {
-            class Admitted(val freshness: VfsPassiveReadCapability) : ProjectScopeAdmission
-            class Rejected(val failure: ProjectReadAdmissionFailure) : ProjectScopeAdmission
+        companion object {
+            /** `VfsPassiveReadCapability -> ProjectReadSingleFlight`; retains exact scope. */
+            fun bind(initialFreshness: VfsPassiveReadCapability): Controller =
+                Controller(initialFreshness)
         }
     }
     }

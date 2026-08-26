@@ -16,20 +16,49 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+private val ideHostBuild = catalog.findVersion("ide-host-build").get().requiredVersion
+
+private val workspaceIdeaDistributionDirectory = layout.dir(
+    providers.provider {
+        gradle.gradleUserHomeDir.resolve(
+            "kast/workspace-intellij-read-idea-distributions/$ideHostBuild",
+        )
+    },
+)
+
+private val workspaceIdeaLibraries = files(
+    workspaceIdeaDistributionDirectory.map { directory ->
+        fileTree(directory) {
+            include("**/lib/**/*.jar")
+            exclude("**/plugins/**")
+            exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
+            exclude("**/lib/intellij.libraries.ktor.utils.jar")
+        }
+    },
+).builtBy(":workspace:intellij-read:extractWorkspaceReadIdeaDistribution")
 
 dependencies {
     implementation(project(":workspace:contract"))
+    implementation(project(":workspace:intellij-read"))
+    compileOnly(workspaceIdeaLibraries)
+    testImplementation(workspaceIdeaLibraries)
     testImplementation(catalog.findLibrary("serialization-json").get())
 }
 
 private val workspaceContractFriendPath =
     project(":workspace:contract").layout.buildDirectory.dir("classes/kotlin/main")
+private val workspaceIntellijReadFriendPath =
+    project(":workspace:intellij-read").layout.buildDirectory.dir("classes/kotlin/main")
 
-tasks.named<KotlinCompile>("compileTestKotlin") {
-    dependsOn(":workspace:contract:compileKotlin")
+tasks.withType<KotlinCompile>().configureEach {
+    dependsOn(
+        ":workspace:contract:compileKotlin",
+        ":workspace:intellij-read:compileKotlin",
+        ":workspace:intellij-read:extractWorkspaceReadIdeaDistribution",
+    )
     compilerOptions.freeCompilerArgs.add(
-        workspaceContractFriendPath.map { directory ->
-            "-Xfriend-paths=${directory.asFile.absolutePath}"
+        workspaceContractFriendPath.zip(workspaceIntellijReadFriendPath) { contract, intellijRead ->
+            "-Xfriend-paths=${contract.asFile.absolutePath},${intellijRead.asFile.absolutePath}"
         },
     )
 }
