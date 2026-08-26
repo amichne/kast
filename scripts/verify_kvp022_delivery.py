@@ -162,4 +162,10 @@ if __name__ == "__main__":
         "docs/kast-vfs-passive-reused-index-delivery-program.md",
     )
     verify_kvp022_delivery(repository, generated_program, generated_requirements, plan)
+    runtime_root = repository / "runtime/ide-read/src/main/kotlin"
+    runtime_source = "\n".join(
+        path.read_text()
+        for path in sorted(runtime_root.rglob("*.kt"))
+    )
+    assert "RevalidatedIdeReadResult" not in runtime_source
     print("KVP-022 delivery authority: valid")
