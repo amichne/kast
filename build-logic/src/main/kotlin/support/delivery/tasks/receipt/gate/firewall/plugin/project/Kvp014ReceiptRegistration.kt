@@ -68,6 +68,7 @@ internal fun Project.registerKvp014ReceiptProgression(
     ) {
         configureProjectAdmission()
         dependsOn(recordGreen)
+        mustRunAfter(":workspace:intellij-read:generateExistingProjectAdmissionReport")
         redReceiptFile.set(projectAdmission.redReceipt)
         greenReceiptFile.set(projectAdmission.greenReceipt)
         proofReportFile.set(projectAdmission.proofReport)
