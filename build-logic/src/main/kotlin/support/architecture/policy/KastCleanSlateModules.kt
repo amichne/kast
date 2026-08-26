@@ -264,6 +264,7 @@ internal object KastCleanSlateModules {
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_INTELLIJ_READ,
             ModuleId.SYMBOL_CONTRACT,
+            lifecycle = ModuleLifecycle.ACTIVE,
         ),
         ideRead(
             ModuleId.IDE_PLUGIN,

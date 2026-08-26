@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `c598579695dc2c6a05fbf94f8f952232c6c63e835b3feaf67ea32ab31f6deba0`
+**Program fingerprint:** `fb847ae2a4dc707cb8f28f00780fc1b329546a31c938ea2e804e7019b18bfa6c`
 
 ## Terminal outcome
 

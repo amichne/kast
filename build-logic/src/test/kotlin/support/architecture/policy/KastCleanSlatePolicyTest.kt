@@ -63,7 +63,7 @@ class KastCleanSlatePolicyTest {
             architecture.modules.getValue(ModuleId.WORKSPACE_INTELLIJ_READ).lifecycle,
         )
         assertEquals(
-            ModuleLifecycle.PLANNED,
+            ModuleLifecycle.ACTIVE,
             architecture.modules.getValue(ModuleId.RUNTIME_IDE_READ).lifecycle,
         )
     }

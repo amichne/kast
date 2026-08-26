@@ -5,6 +5,7 @@ import pathlib
 import re
 from verify_kvp017_report import verify_kvp017_report
 from verify_kvp019_delivery import verify_kvp019_delivery
+from verify_kvp020_delivery import verify_kvp020_delivery
 
 def schema_errors(value, schema, root_schema, path="$"):
     if "$ref" in schema:
@@ -281,6 +282,7 @@ assert "registerKvp018ReceiptProgression" in (
     / "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt"
 ).read_text()
 verify_kvp019_delivery(root, program, normative_plan)
+verify_kvp020_delivery(root, program, normative_plan)
 epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
 for expected_epoch_fact in (
     "WorkspaceModelTopics.CHANGED",

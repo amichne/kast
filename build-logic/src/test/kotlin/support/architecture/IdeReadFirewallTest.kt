@@ -12,13 +12,17 @@ import java.nio.file.Path
 
 class IdeReadFirewallTest {
     @Test
-    fun `workspace split IDE read graph is physically narrow`() {
+    fun `runtime split IDE read graph is physically narrow`() {
         val proof = completeProof(canonical())
 
         assertEquals(IdeReadFirewall.moduleIds, proof.modules.mapTo(mutableSetOf()) { it.id })
-        assertEquals(IdeReadFirewallStage.WORKSPACE_SPLIT, proof.stage)
+        assertEquals(IdeReadFirewallStage.RUNTIME_SPLIT, proof.stage)
         assertEquals(
-            setOf(ModuleId.IDE_PLUGIN, ModuleId.WORKSPACE_INTELLIJ_READ),
+            setOf(
+                ModuleId.IDE_PLUGIN,
+                ModuleId.RUNTIME_IDE_READ,
+                ModuleId.WORKSPACE_INTELLIJ_READ,
+            ),
             proof.modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }.mapTo(mutableSetOf()) {
                 it.id
             },
@@ -152,7 +156,7 @@ class IdeReadFirewallTest {
         assertEquals(3, decoded.proof.modules.size)
         assertEquals(9, decoded.proof.forbiddenAuthorities.size)
         assertTrue("\"schemaVersion\": 2" in encoded)
-        assertTrue("\"stage\": \"WORKSPACE_SPLIT\"" in encoded)
+        assertTrue("\"stage\": \"RUNTIME_SPLIT\"" in encoded)
     }
 
     @Test

@@ -201,7 +201,7 @@ checksum, archive, and managed-link checks when changing its presentation. Run
 ## Gradle topology
 
 `settings.gradle.kts` is the project-membership authority. The main build has
-exactly 38 target subprojects and one included build:
+exactly 39 target subprojects and one included build:
 
 | Project or family | Broad owner | Dependency direction | Local guide |
 | --- | --- | --- | --- |
@@ -216,7 +216,7 @@ exactly 38 target subprojects and one included build:
 | `:diagnostic:{contract,service,intellij}` | Generation-bound diagnostic evidence and compiler projection | Contract then service/adapter | Each project root |
 | `:change:{contract,plan,apply,verify,recovery,intellij}` | Closed change intents and proof-preserving mutation stages | Contract inward; services and sole write adapter outward | Each project root |
 | `:evidence:{contract,sqlite}` | Publication/recovery contracts and sole physical persistence | Contract then SQLite adapter | Each project root |
-| `:runtime:{server,composition}` | Contract-only dispatch and the sole complete implementation graph | Server inward; composition depends on all target implementations | Each project root |
+| `:runtime:{server,ide-read,composition}` | Contract-only dispatch, bounded project-read admission, and the sole complete implementation graph | Read admission depends on workspace evidence; composition depends on all target implementations | Each project root |
 | `:cli` | Command parsing, indexer admission, wire transport, and result projection | Inward to kernel/protocol only | `cli/AGENTS.md` |
 | `:indexer` | Isolated host for one already-constructed runtime composition | Depends only on `:runtime:composition` | `indexer/AGENTS.md` |
 | `:ide-plugin` | Standalone IntelliJ plugin packaging owner | Depends inward on `:protocol:contract`; no runtime implementation dependency | `ide-plugin/AGENTS.md` |
@@ -230,6 +230,7 @@ Keep dependencies pointed toward host-neutral evidence:
 indexer -> runtime:composition
 runtime:composition -> runtime:server + target services + target adapters
 runtime:server -> protocol:{contract,registry,wire}
+runtime:ide-read -> workspace:contract
 services -> their contracts and narrower contracts
 IntelliJ/SQLite adapters -> their contracts
 workspace:intellij-read -> protocol:contract + workspace:contract
