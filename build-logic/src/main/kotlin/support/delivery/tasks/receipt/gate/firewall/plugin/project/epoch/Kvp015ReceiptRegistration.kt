@@ -6,7 +6,7 @@ internal fun Project.registerKvp015ReceiptProgression(
     program: DeliveryProgram,
     projectAdmission: TaskReceiptRegistration,
     configureProjectAdmission: Kvp014ReceiptTaskBase.() -> Unit,
-): TaskId {
+): Set<TaskId> {
     val epoch = taskReceiptRegistration(program, TaskId("KVP-015"))
     val testRoot =
         "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/"
@@ -94,5 +94,8 @@ internal fun Project.registerKvp015ReceiptProgression(
         proofReportFile.set(epoch.proofReport)
         completionReceiptFile.set(epoch.completionReceipt)
     }
-    return epoch.task.id
+    val detached = registerKvp016ReceiptProgression(program, epoch) {
+        configureEpoch()
+    }
+    return setOf(epoch.task.id, detached)
 }

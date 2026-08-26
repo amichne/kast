@@ -92,6 +92,19 @@ val generateEpochSignalLedgerReport =
         reportFile.set(epochSignalLedgerReport)
     }
 
+val detachedModelReport = layout.buildDirectory.file(
+    "reports/KVP-016-detached-model.json",
+)
+
+val generateDetachedModelReport =
+    tasks.register<support.delivery.GenerateKvp016DetachedModelReportTask>(
+        "generateDetachedModelReport",
+    ) {
+        group = "verification"
+        description = "Generates the canonical KVP-016 detached-model report."
+        reportFile.set(detachedModelReport)
+    }
+
 tasks.withType<Test>().configureEach {
     exclude("**/EpochSignalApiContract.class")
     dependsOn(generateExistingProjectAdmissionReport)
@@ -112,6 +125,16 @@ tasks.withType<Test>().configureEach {
         "kast.ide.epoch.ledger.report",
         generateEpochSignalLedgerReport.flatMap(
             support.delivery.GenerateKvp015EpochLedgerReportTask::reportFile,
+        ).get().asFile.absolutePath,
+    )
+    dependsOn(generateDetachedModelReport)
+    inputs.file(generateDetachedModelReport.flatMap(
+        support.delivery.GenerateKvp016DetachedModelReportTask::reportFile,
+    )).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty(
+        "kast.ide.detached.model.report",
+        generateDetachedModelReport.flatMap(
+            support.delivery.GenerateKvp016DetachedModelReportTask::reportFile,
         ).get().asFile.absolutePath,
     )
 }
@@ -139,6 +162,7 @@ val characterizeEpoch = tasks.register<Test>("characterizeEpoch") {
 tasks.named("check") {
     dependsOn(generateExistingProjectAdmissionReport)
     dependsOn(generateEpochSignalLedgerReport)
+    dependsOn(generateDetachedModelReport)
     dependsOn(characterizeEpochNegative)
     dependsOn(characterizeEpoch)
 }

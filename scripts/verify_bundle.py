@@ -190,6 +190,49 @@ assert (
     + "."
 ) in kvp_015_plan
 assert f"**Review boundary.** {kvp_015['reviewBoundary']}" in kvp_015_plan
+kvp_016 = by_id["KVP-016"]
+assert kvp_016["dependencyExpression"]["taskIds"] == ["KVP-014", "KVP-015"]
+assert kvp_016["authorities"] == ["OPEN_PROJECT"]
+assert set(kvp_016["forbiddenWork"]) == {
+    "Leaking Project, VirtualFile, Module, SearchScope, PSI, Gradle DataNode, callback, or mutable collection",
+    "Gradle import, link, prepare, or repair",
+    "Blocking read action or synchronous nonblocking execution",
+    "Waiting for smart mode",
+    "VFS refresh",
+    "Recursive filesystem or VFS walk",
+    "Source-content hashing",
+    "Unbounded model traversal",
+    "Operation routing",
+    "Production epoch identity or freshness policy",
+}
+assert "com.jetbrains.intellij.idea:ideaIC:262.9437.185@zip" in set(
+    kvp_016["allowedReads"]
+)
+assert "runtime/ide-read" not in set(kvp_016["allowedWrites"])
+assert {
+    "workspace/intellij-read",
+    "workspace/contract",
+    "docs/engineering",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/Kvp014ReceiptRegistration.kt",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model",
+} <= set(kvp_016["allowedWrites"])
+kvp_016_plan = normative_plan.split(
+    "### KVP-016: Capture a detached existing-project model\n",
+    maxsplit=1,
+)[1].split("\n### KVP-017:", maxsplit=1)[0]
+assert (
+    "**Allowed reads.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_016["allowedReads"])
+    + "."
+) in kvp_016_plan
+assert (
+    "**Allowed writes.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_016["allowedWrites"])
+    + "."
+) in kvp_016_plan
+assert f"**Review boundary.** {kvp_016['reviewBoundary']}" in kvp_016_plan
+assert "KVP-017 solely owns production epoch identity" in kvp_016["goal"]
 epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
 for expected_epoch_fact in (
     "WorkspaceModelTopics.CHANGED",

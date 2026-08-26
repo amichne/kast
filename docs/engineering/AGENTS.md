@@ -12,5 +12,15 @@ The ledger characterizes supported platform observations. It does not own `Proje
 freshness admission, read scheduling, or semantic operation behavior. Later KVP tasks own those
 types and effects.
 
-Run both module characterization tasks after changing this directory. Then run
+## KVP-016 detached model
+
+`ide-detached-model.md` is the reader projection of the executable KVP-016 report. Keep its IDEA
+build, capture mode, count and UTF-8 bounds, retained facets, rejected capabilities, forbidden-
+effect observations, and focused selectors equal to
+`workspace/intellij-read/build/reports/KVP-016-detached-model.json` and the canonical task.
+
+The page records detached existing-project model evidence only. KVP-017 owns production epoch
+identity and freshness admission.
+
+Run the focused task named by each evidence page after changing that page. Then run
 `bash scripts/verify_bundle.sh` to prove that the document matches the typed delivery authority.

@@ -20,6 +20,13 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 - A VFS event observer may increment one bounded project/runtime metadata counter. It must not
   schedule semantic work, dispatch to the EDT, refresh VFS, or traverse event descendants.
 - Expected failures remain the finite `ExistingProjectAdmissionFailure` hierarchy.
+- KVP-016 captures root, modules, source roots, Gradle ownership, SDK, classpath URLs, and host
+  compatibility into `DetachedIdeWorkspaceModel`. Every retained collection is defensively
+  unmodifiable and every identity is bounded before it enters the model.
+- Live detached capture rejects EDT entry before `ReadAction.computeCancellable`, then rechecks
+  disposal, open state, initialization, smart state, exact root, and bounded cached Gradle
+  completeness inside the read.
+  KVP-017 solely owns production epoch identity and freshness.
 - Production compiles against the declared IDEA build 262 host and its bundled Kotlin/Gradle APIs.
 
 ## Focused proof
@@ -29,3 +36,6 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 3. Run `./gradlew :workspace:intellij-read:check verifyKastModuleGraph verifyForbiddenEffects`.
 4. Run `./gradlew :workspace:intellij-read:characterizeEpochNegative`.
 5. Run `./gradlew :workspace:intellij-read:characterizeEpoch`.
+6. Run `./gradlew :workspace:intellij-read:test --tests '*DetachedModelNegativeTest'`.
+7. Run `./gradlew :workspace:intellij-read:test --tests '*DetachedModelTest'`.
+8. Run `./gradlew :workspace:intellij-read:test --tests '*DetachedModelClassContractTest'`.

@@ -20,9 +20,11 @@ module graph before the reader understands the runtime flow.
 ## Source and generated boundaries
 
 - Author human-facing pages under `public/`.
-- Keep internal supported-build characterization ledgers under `engineering/`. These files are
+- Keep internal supported-build engineering evidence under `engineering/`. These files are
   delivery evidence, not public-site routes. `engineering/ide-read-epoch-ledger.md` records the
   KVP-015 IDEA 262 epoch-signal characterization and must match its generated JSON report.
+  `engineering/ide-detached-model.md` records KVP-016 detached-model capture and must match its
+  generated report, exact limits, and no-production-epoch boundary.
 - Generate `public/reference/cli.md` from the typed operation-registry artifact with
   `./gradlew :protocol:wire:generateOperationRegistry` followed by
   `python3 docs/generate_cli_reference.py`. Do not edit that page by hand.

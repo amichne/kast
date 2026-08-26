@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `dd63afcb4c0118c49832195e0bc86a1c1f15647f13fce400d80b5e35473de9e9`
+**Program fingerprint:** `444b8c45ebe9d053b947796a40f2a592011e0a7207fd7efc50a245c710e2658b`
 
 ## Terminal outcome
 
@@ -537,13 +537,13 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 ### KVP-016: Capture a detached existing-project model
 
-**Goal.** Read and detach root, modules, source roots, Gradle ownership, SDK, classpath identity, compatibility, and epoch from the admitted Project in a short cancellable read.
+**Goal.** Read and detach root, modules, source roots, Gradle ownership, SDK, classpath identity, and compatibility from the admitted Project in a short cancellable read; KVP-017 solely owns production epoch identity and freshness policy.
 
 **Dependencies.** `KVP-014`, `KVP-015`. Computed wave: `11`.
 
-**Allowed reads.** `workspace/intellij-read`, `workspace/contract`, `runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/platform`.
+**Allowed reads.** `AGENTS.md`, `workspace/intellij-read`, `workspace/contract`, `runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/platform`, `gradle/libs.versions.toml`, `com.jetbrains.intellij.idea:ideaIC:262.9437.185@zip`, `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery`, `docs/AGENTS.md`, `docs/engineering`, `scripts/verify_bundle.py`.
 
-**Allowed writes.** `workspace/intellij-read`, `workspace/contract`, `runtime/ide-read`.
+**Allowed writes.** `workspace/intellij-read`, `workspace/contract`, `docs/AGENTS.md`, `docs/engineering`, `build-logic/src/main/kotlin/support/delivery/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/Kvp014ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/kast-vfs-passive-requirements.json`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.014.proof`, `taskOutput:kvp.015.proof`, `requirement:KVP-REQ-005`, `requirement:KVP-REQ-012`, `requirement:KVP-REQ-015`, `requirement:KVP-REQ-016`.
 
@@ -551,17 +551,17 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Public interface.** `DetachedIdeWorkspaceModel`.
 
-**Internal implementation.** Short read adapter returning immutable values only.
+**Internal implementation.** Bounded cancellable read adapter, primitive-only raw observation, immutable refinement, deterministic report, and exact-head receipt admission.
 
 **Effect and cost.** `IDE_PROJECT_READ`; `SEMANTIC_READ`.
 
-**Forbidden work.** Leaking Project, VirtualFile, Module, SearchScope, PSI, or Gradle DataNode; Importing missing model; Blocking read action.
+**Forbidden work.** Leaking Project, VirtualFile, Module, SearchScope, PSI, Gradle DataNode, callback, or mutable collection; Gradle import, link, prepare, or repair; Blocking read action or synchronous nonblocking execution; Waiting for smart mode; VFS refresh; Recursive filesystem or VFS walk; Source-content hashing; Unbounded model traversal; Operation routing; Production epoch identity or freshness policy.
 
 **RED.** `./gradlew :workspace:intellij-read:test --tests "*DetachedModelNegativeTest"`. Expected failure: Live platform objects escape or capture repairs missing state.
 
 **GREEN.** `./gradlew :workspace:intellij-read:test --tests "*DetachedModelTest"`. Expected proof: Capture is detached, bounded, cancellable, exact-root, and model-complete.
 
-**Review boundary.** Model capture only; no freshness policy or operation routing.
+**Review boundary.** Detached model capture, the minimum task-authority correction, and KVP-016 receipt progression only; no epoch policy or operation routing.
 
 **Completion receipt.** `KVP-016-COMPLETE` at `build/reports/delivery/receipts/KVP-016-COMPLETE.receipt.json`. It consumes `KVP-016-RED`, `KVP-016-GREEN`, and all predecessor completion receipts.
 

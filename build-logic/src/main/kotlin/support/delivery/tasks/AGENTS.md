@@ -13,7 +13,7 @@ This directory owns Gradle effects for the VFS-passive delivery program.
   expectations. `Kvp001ReceiptTasks.kt` owns the root RED, GREEN, completion, and re-admission
   boundaries. `receipt/ReceiptIssuanceBoundary.kt` reuses a fully admitted same-expectation receipt;
   replacement writes are followed by read-back admission and exact-head revalidation.
-- `receipt/` owns typed post-authority progression through KVP-010 and for KVP-012 through KVP-015.
+- `receipt/` owns typed post-authority progression through KVP-010 and for KVP-012 through KVP-016.
   Each task executes only fixed gate argument vectors, owns or decodes generated proof reports, and
   closes over every direct predecessor receipt.
 

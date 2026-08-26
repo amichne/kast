@@ -1,6 +1,7 @@
 # KVP-015 READ_EPOCH receipt guide
 
 This directory owns the generated KVP-015 signal ledger and its typed exact-head receipt closure.
+Its `model/` child owns KVP-016 detached-model proof and directly re-admits this complete closure.
 
 - Keep the report a closed generated-serialization document with canonical bytes, authority
   `READ_EPOCH`, exact IDEA build `262.9437.185`, and the five ordered signal categories.

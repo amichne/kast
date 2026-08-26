@@ -84,8 +84,8 @@ internal fun Project.registerKvp014ReceiptProgression(
         proofReportFile.set(projectAdmission.proofReport)
         completionReceiptFile.set(projectAdmission.completionReceipt)
     }
-    val epoch = registerKvp015ReceiptProgression(program, projectAdmission) {
+    val epochTasks = registerKvp015ReceiptProgression(program, projectAdmission) {
         configureProjectAdmission()
     }
-    return setOf(projectAdmission.task.id, epoch)
+    return setOf(projectAdmission.task.id) + epochTasks
 }

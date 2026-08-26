@@ -126,6 +126,19 @@ class AdmittedIdeProject private constructor(
     val canonicalRoot: CanonicalWorkspaceRoot,
     val compatibility: AdmittedIdeHostCompatibility,
 ) {
+    /**
+     * Proof transition: `AdmittedIdeProject -> DetachedModelCapture`.
+     *
+     * Establishes a bounded exact-root model detached during one cancellable write-priority read,
+     * or returns the closed [DetachedModelCaptureFailure] set. Raw IntelliJ and Gradle extraction
+     * is permitted only inside [LiveDetachedModelCapture]; the private Project never escapes.
+     */
+    fun captureDetachedModel(): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
+        canonicalRoot,
+        compatibility,
+        LiveDetachedModelCapture.observe(liveProject.project, canonicalRoot),
+    )
+
     companion object {
         /**
          * Proof transition: `(Project, CanonicalWorkspaceRoot, IdeHostCompatibilityCandidate,
