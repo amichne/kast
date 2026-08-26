@@ -171,5 +171,8 @@ internal fun Project.registerKvp021ReceiptProgression(
         proofReportFile.set(cancellable.proofReport)
         completionReceiptFile.set(cancellable.completionReceipt)
     }
-    return setOf(cancellable.task.id)
+    val revalidationTasks = registerKvp022ReceiptProgression(program, cancellable) {
+        configureCancellable()
+    }
+    return setOf(cancellable.task.id) + revalidationTasks
 }

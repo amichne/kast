@@ -16,3 +16,7 @@ Expected failures remain closed typed data until a Gradle task renders them.
 The `cancellable/` child owns KVP-021's product-claim report, dedicated exact-selector Test
 evidence, direct KVP-019/KVP-020 re-admission, and completion closure. Its Test tasks must not
 become dependencies of the default `test` task used by KVP-020 receipt execution.
+
+The `revalidation/` child owns KVP-022's epoch-revalidation report, dedicated exact-selector Test
+evidence, sole direct KVP-021 re-admission, and completion closure. Its report and Test tasks must
+remain outside the default `test` task so the unchanged canonical selectors stay runnable.

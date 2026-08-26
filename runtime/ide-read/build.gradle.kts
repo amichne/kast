@@ -218,9 +218,95 @@ val cancellableReadGate = tasks.register<support.delivery.Kvp021CancellableReadG
     mustRunAfter(cancellableReadNegativeGate, ":recordKVP021RedReceipt")
 }
 
+val epochRevalidationReport = layout.buildDirectory.file(
+    "reports/KVP-022-epoch-revalidation.json",
+)
+val generateEpochRevalidationReport =
+    tasks.register<support.delivery.GenerateKvp022EpochRevalidationReportTask>(
+        "generateEpochRevalidationReport",
+    ) {
+        group = "verification"
+        description = "Generates the exact KVP-021-bound KVP-022 epoch-revalidation report."
+        dependsOn(rootProject.tasks.named("verifyKVP021CompletionReceipt"))
+        kvp021CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-021-COMPLETE.receipt.json",
+        ))
+        reportFile.set(epochRevalidationReport)
+    }
+
+val verifyEpochRevalidationReportNegative =
+    tasks.register<support.delivery.VerifyKvp022EpochRevalidationReportNegativeTask>(
+        "verifyEpochRevalidationReportNegative",
+    ) {
+        group = "verification"
+        description = "Rejects every fixed KVP-022 report, predecessor, and gate mutation."
+        dependsOn(generateEpochRevalidationReport)
+        reportFile.set(epochRevalidationReport)
+        kvp021CompletionReceipt.set(generateEpochRevalidationReport.flatMap(
+            support.delivery.GenerateKvp022EpochRevalidationReportTask::kvp021CompletionReceipt,
+        ))
+    }
+
+fun support.delivery.Kvp022EpochRevalidationGateTask.configureEpochRevalidationGate(
+    command: support.delivery.Kvp022GateCommand,
+    evidencePath: String,
+) {
+    group = "verification"
+    testClassesDirs = defaultTest.get().testClassesDirs
+    classpath = defaultTest.get().classpath
+    filter.includeTestsMatching(command.selectorPattern)
+    filter.setFailOnNoMatchingTests(true)
+    dependsOn(verifyEpochRevalidationReportNegative)
+    repositoryRootPath.set(rootProject.layout.projectDirectory.asFile.absolutePath)
+    declaredCommand.set(command.declaredCommand)
+    gateEvidenceFile.set(layout.buildDirectory.file(evidencePath))
+    doFirst { beginGateExecution() }
+    doLast { completeGateExecution() }
+    inputs.file(epochRevalidationReport).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty(
+        "kast.ide.epoch.revalidation.report",
+        epochRevalidationReport.get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.ide.epoch.revalidation.kvp021.receipt",
+        rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-021-COMPLETE.receipt.json",
+        ).get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.ide.epoch.revalidation.gate.evidence",
+        gateEvidenceFile.get().asFile.absolutePath,
+    )
+}
+
+val epochRevalidationNegativeGate =
+    tasks.register<support.delivery.Kvp022EpochRevalidationGateTask>(
+        "epochRevalidationNegativeGate",
+    ) {
+        description = "Runs only the canonical KVP-022 negative selector at one exact head."
+        configureEpochRevalidationGate(
+            support.delivery.Kvp022GateCommand.RED,
+            "reports/KVP-022-red-gate.json",
+        )
+    }
+
+val epochRevalidationGate = tasks.register<support.delivery.Kvp022EpochRevalidationGateTask>(
+    "epochRevalidationGate",
+) {
+    description = "Runs only the canonical KVP-022 GREEN selector at one exact head."
+    configureEpochRevalidationGate(
+        support.delivery.Kvp022GateCommand.GREEN,
+        "reports/KVP-022-green-gate.json",
+    )
+    mustRunAfter(epochRevalidationNegativeGate, ":recordKVP022RedReceipt")
+}
+
 tasks.named("check") {
     dependsOn(verifySingleFlightReportNegative)
     dependsOn(verifyCancellableReadReportNegative)
+    dependsOn(verifyEpochRevalidationReportNegative)
     dependsOn(cancellableReadNegativeGate)
     dependsOn(cancellableReadGate)
+    dependsOn(epochRevalidationNegativeGate)
+    dependsOn(epochRevalidationGate)
 }
