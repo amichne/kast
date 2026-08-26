@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `444b8c45ebe9d053b947796a40f2a592011e0a7207fd7efc50a245c710e2658b`
+**Program fingerprint:** `801e5cbd9ac88f280df117db5562f765bc2438da40272e6f08a19d8113227999`
 
 ## Terminal outcome
 
@@ -537,7 +537,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 ### KVP-016: Capture a detached existing-project model
 
-**Goal.** Read and detach root, modules, source roots, Gradle ownership, SDK, classpath identity, and compatibility from the admitted Project in a short cancellable read; KVP-017 solely owns production epoch identity and freshness policy.
+**Goal.** Read and detach root, modules, source roots, Gradle ownership, SDK, classpath identity, and compatibility from the admitted Project in a short cancellable read; KVP-017 owns epoch observation and identity, while KVP-019 owns freshness policy.
 
 **Dependencies.** `KVP-014`, `KVP-015`. Computed wave: `11`.
 
@@ -571,9 +571,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-015`. Computed wave: `11`.
 
-**Allowed reads.** `workspace/intellij-read/src/test`, `docs/engineering/ide-read-epoch-ledger.md`, `workspace/contract`.
+**Allowed reads.** `AGENTS.md`, `workspace/intellij-read`, `workspace/contract`, `gradle/libs.versions.toml`, `com.jetbrains.intellij.idea:ideaIC:262.9437.185@zip`, `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery`, `docs/AGENTS.md`, `docs/engineering`, `scripts/verify_bundle.py`, `scripts/verify_kvp017_report.py`.
 
-**Allowed writes.** `workspace/contract`, `workspace/intellij-read`.
+**Allowed writes.** `workspace/contract`, `workspace/intellij-read`, `docs/AGENTS.md`, `docs/engineering`, `build-logic/src/main/kotlin/support/delivery/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/kast-vfs-passive-requirements.json`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/verify_bundle.py`, `scripts/verify_kvp017_report.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.015.proof`, `requirement:KVP-REQ-012`, `requirement:KVP-REQ-015`, `requirement:KVP-REQ-027`.
 
@@ -581,17 +581,17 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Public interface.** `ProjectReadEpoch`.
 
-**Internal implementation.** Opaque comparable epoch plus finite observation failures.
+**Internal implementation.** Compiler-confined source-bound epoch, typed adapter-private signal state, pure bounded VFS classification, short cancellable IDEA observation, deterministic report, and exact-head receipt admission.
 
 **Effect and cost.** `PURE`, `IDE_PROJECT_READ`; `METADATA`.
 
-**Forbidden work.** Primitive counters crossing modules; Epoch recreated by callers; Treating dumb mode as an epoch value.
+**Forbidden work.** Primitive counters crossing modules; Epoch recreated by callers; Treating dumb mode as an epoch value; VFS refresh; Gradle import or repair; Repository or VFS traversal; Source-content hashing; Blocking wait; Per-event semantic job; Semantic work on the EDT; Live Project, listener, counter, callback, or signal-state escape.
 
 **RED.** `./gradlew :workspace:contract:test --tests "*ProjectReadEpochNegativeTest"`. Expected failure: Malformed or incomparable epochs and repeated validation remain possible.
 
 **GREEN.** `./gradlew :workspace:contract:test :workspace:intellij-read:test --tests "*ProjectReadEpochTest"`. Expected proof: Epochs compare only within one admitted Project/runtime and movement changes identity.
 
-**Review boundary.** Epoch contract and adapter only.
+**Review boundary.** Epoch contract and adapter, the minimum KVP-017 authority correction, and KVP-017 receipt progression only.
 
 **Completion receipt.** `KVP-017-COMPLETE` at `build/reports/delivery/receipts/KVP-017-COMPLETE.receipt.json`. It consumes `KVP-017-RED`, `KVP-017-GREEN`, and all predecessor completion receipts.
 
@@ -645,7 +645,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Effect and cost.** `IDE_PROJECT_READ`; `METADATA`.
 
-**Forbidden work.** VFS refresh; Gradle import; Background repair; Per-event semantic job; VFS listener in the MVP read path.
+**Forbidden work.** VFS refresh; Gradle import; Background repair; Per-event semantic job; Event-triggered semantic work from a VFS listener.
 
 **RED.** `./gradlew :workspace:intellij-read:test --tests "*VfsPassiveAdmissionNegativeTest"`. Expected failure: Dirty or moved state causes refresh, repair, listener work, or false readiness.
 

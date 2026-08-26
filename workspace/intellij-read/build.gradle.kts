@@ -1,6 +1,7 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("kast.kotlin-serialization")
@@ -66,6 +67,18 @@ dependencies {
     testImplementation(kotlinPluginLibraries)
 }
 
+private val workspaceContractFriendPath =
+    project(":workspace:contract").layout.buildDirectory.dir("classes/kotlin/main")
+
+tasks.withType<KotlinCompile>().configureEach {
+    dependsOn(":workspace:contract:compileKotlin")
+    compilerOptions.freeCompilerArgs.add(
+        workspaceContractFriendPath.map { directory ->
+            "-Xfriend-paths=${directory.asFile.absolutePath}"
+        },
+    )
+}
+
 val projectAdmissionReport = layout.buildDirectory.file(
     "reports/KVP-014-project-admission.json",
 )
@@ -105,6 +118,29 @@ val generateDetachedModelReport =
         reportFile.set(detachedModelReport)
     }
 
+val projectReadEpochReport = layout.buildDirectory.file(
+    "reports/KVP-017-read-epoch.json",
+)
+
+val generateProjectReadEpochReport =
+    tasks.register<support.delivery.GenerateKvp017ReadEpochReportTask>(
+        "generateProjectReadEpochReport",
+    ) {
+        group = "verification"
+        description = "Generates the canonical KVP-017 project-read epoch report."
+        reportFile.set(projectReadEpochReport)
+    }
+
+val verifyProjectReadEpochReportNegative =
+    tasks.register<support.delivery.VerifyKvp017ReadEpochReportNegativeTask>(
+        "verifyProjectReadEpochReportNegative",
+    ) {
+        group = "verification"
+        description = "Rejects every finite KVP-017 report mutation."
+        dependsOn(generateProjectReadEpochReport)
+        reportFile.set(projectReadEpochReport)
+    }
+
 tasks.withType<Test>().configureEach {
     exclude("**/EpochSignalApiContract.class")
     dependsOn(generateExistingProjectAdmissionReport)
@@ -137,6 +173,17 @@ tasks.withType<Test>().configureEach {
             support.delivery.GenerateKvp016DetachedModelReportTask::reportFile,
         ).get().asFile.absolutePath,
     )
+    dependsOn(generateProjectReadEpochReport)
+    dependsOn(verifyProjectReadEpochReportNegative)
+    inputs.file(generateProjectReadEpochReport.flatMap(
+        support.delivery.GenerateKvp017ReadEpochReportTask::reportFile,
+    )).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty(
+        "kast.ide.project.read.epoch.report",
+        generateProjectReadEpochReport.flatMap(
+            support.delivery.GenerateKvp017ReadEpochReportTask::reportFile,
+        ).get().asFile.absolutePath,
+    )
 }
 
 val defaultTest = tasks.named<Test>("test")
@@ -163,6 +210,8 @@ tasks.named("check") {
     dependsOn(generateExistingProjectAdmissionReport)
     dependsOn(generateEpochSignalLedgerReport)
     dependsOn(generateDetachedModelReport)
+    dependsOn(generateProjectReadEpochReport)
+    dependsOn(verifyProjectReadEpochReportNegative)
     dependsOn(characterizeEpochNegative)
     dependsOn(characterizeEpoch)
 }

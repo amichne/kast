@@ -1,7 +1,7 @@
 # KVP-009 firewall progression guide
 
 This directory owns KVP-009's exact-head receipt progression. Its `plugin/` child owns KVP-010,
-KVP-012, KVP-013, KVP-014, KVP-015, and KVP-016, refining the firewall closure into standalone-plugin and
+KVP-012, KVP-013, KVP-014, KVP-015, KVP-016, and KVP-017, refining the firewall closure into standalone-plugin and
 host-compatibility evidence before the endpoint and project children admit their independent
 predecessor closures.
 

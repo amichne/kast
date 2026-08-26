@@ -141,6 +141,7 @@ class ExistingProjectAdmissionNegativeTest {
         FIXTURE_COMPATIBILITY,
         FIXTURE_COMPATIBILITY_POLICY,
         observation,
+        FIXTURE_EPOCH_SOURCE_FACTORY,
     )
 
     private data class RejectionCase(

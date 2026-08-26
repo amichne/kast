@@ -1,7 +1,9 @@
-# KVP-015 READ_EPOCH receipt guide
+# KVP-015 and KVP-017 READ_EPOCH receipt guide
 
 This directory owns the generated KVP-015 signal ledger and its typed exact-head receipt closure.
-Its `model/` child owns KVP-016 detached-model proof and directly re-admits this complete closure.
+It also owns the sibling KVP-017 source-bound read-epoch report and receipt closure, which directly
+re-admits KVP-015 only. Its `model/` child independently owns KVP-016 detached-model proof and
+re-admits KVP-014 and KVP-015.
 
 - Keep the report a closed generated-serialization document with canonical bytes, authority
   `READ_EPOCH`, exact IDEA build `262.9437.185`, and the five ordered signal categories.
@@ -16,6 +18,12 @@ Its `model/` child owns KVP-016 detached-model proof and directly re-admits this
 - RED binds its negative, API, class-member, and typed fixture contracts plus the module task
   wiring. GREEN binds the canonical report, positive, API, class-member, and fixture contracts,
   module task wiring, and engineering ledger.
+- KVP-017 executes only the fixed contract RED and two-module GREEN selectors. Its canonical
+  report proves exact admitted-Project/runtime scope, `SAME`, `MOVED`, and `INCOMPARABLE`
+  comparison, the five live signal authorities, finite observation failures, exact event/path and
+  cached-model bounds, a bounded 1,000-event VFS batch, and separate zero repository-walk and VFS-
+  traversal observations alongside zero refresh, import, hash, scheduling, EDT, and blocking
+  effects. The product GREEN selector consumes an independently owned exact-byte report contract.
 
 Raw JSON, process, source, and receipt bytes stay at Gradle boundaries. Expected report and receipt
 failures remain finite typed data until a task renders them.

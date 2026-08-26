@@ -25,6 +25,8 @@ module graph before the reader understands the runtime flow.
   KVP-015 IDEA 262 epoch-signal characterization and must match its generated JSON report.
   `engineering/ide-detached-model.md` records KVP-016 detached-model capture and must match its
   generated report, exact limits, and no-production-epoch boundary.
+  `engineering/ide-project-read-epoch.md` records KVP-017's opaque Project/runtime-scoped epoch,
+  bounded IDEA observation, comparison relations, and zero stronger effects.
 - Generate `public/reference/cli.md` from the typed operation-registry artifact with
   `./gradlew :protocol:wire:generateOperationRegistry` followed by
   `python3 docs/generate_cli_reference.py`. Do not edit that page by hand.

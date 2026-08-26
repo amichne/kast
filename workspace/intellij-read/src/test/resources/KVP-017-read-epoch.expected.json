@@ -1,0 +1,195 @@
+{
+    "schemaVersion": 1,
+    "authority": "READ_EPOCH",
+    "ideBuild": "262.9437.185",
+    "comparisonScope": "ADMITTED_PROJECT_RUNTIME",
+    "signalComponents": [
+        "PROJECT_MODEL",
+        "PSI",
+        "ROOT_FILTERED_VFS",
+        "ROOT_MODEL",
+        "DUMB_MODE_TRACKER"
+    ],
+    "comparisonRelations": [
+        "SAME",
+        "MOVED",
+        "INCOMPARABLE"
+    ],
+    "observationFailures": [
+        "WRONG_THREAD",
+        "PROJECT_DISPOSED",
+        "PROJECT_NOT_OPEN",
+        "PROJECT_NOT_INITIALIZED",
+        "PROJECT_ROOT_UNAVAILABLE",
+        "PROJECT_ROOT_MALFORMED",
+        "DUMB_MODE",
+        "GRADLE_MODEL_UNAVAILABLE",
+        "GRADLE_MODEL_INCOMPLETE",
+        "GRADLE_MODEL_AMBIGUOUS",
+        "GRADLE_ROOT_UNAVAILABLE",
+        "GRADLE_ROOT_MALFORMED",
+        "IMPORT_TIMESTAMPS_INCOHERENT",
+        "VFS_BATCH_LIMIT_EXCEEDED",
+        "VFS_PATH_MALFORMED",
+        "SIGNAL_EXHAUSTED",
+        "READ_PREEMPTED",
+        "OBSERVATION_FAILED_THREAD",
+        "OBSERVATION_FAILED_DISPOSAL",
+        "OBSERVATION_FAILED_OPEN",
+        "OBSERVATION_FAILED_INITIALIZATION",
+        "OBSERVATION_FAILED_PROJECT_ROOT",
+        "OBSERVATION_FAILED_PROJECT_MODEL",
+        "OBSERVATION_FAILED_PSI",
+        "OBSERVATION_FAILED_VFS",
+        "OBSERVATION_FAILED_ROOT_MODEL",
+        "OBSERVATION_FAILED_DUMB_MODE"
+    ],
+    "maxVfsEventsPerBatch": 4096,
+    "maxVfsPathCharacters": 4096,
+    "maxVfsPathUtf8Bytes": 8192,
+    "maxCachedGradleModels": 16,
+    "cases": [
+        {
+            "caseId": "STABLE",
+            "sampleCount": 2,
+            "movedSignals": [],
+            "vfsEventCount": 0,
+            "expectedRelation": "SAME",
+            "observedRelation": "SAME"
+        },
+        {
+            "caseId": "WORKSPACE_MODEL_MOVEMENT",
+            "sampleCount": 2,
+            "movedSignals": [
+                "PROJECT_MODEL"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "GRADLE_IMPORT_STARTED",
+            "sampleCount": 2,
+            "movedSignals": [
+                "PROJECT_MODEL"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "GRADLE_IMPORT_COMPLETED",
+            "sampleCount": 2,
+            "movedSignals": [
+                "PROJECT_MODEL"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "GRADLE_ROOT_MOVEMENT",
+            "sampleCount": 2,
+            "movedSignals": [
+                "PROJECT_MODEL"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "PSI_MOVEMENT",
+            "sampleCount": 2,
+            "movedSignals": [
+                "PSI"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "VFS_MOVEMENT",
+            "sampleCount": 2,
+            "movedSignals": [
+                "ROOT_FILTERED_VFS"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "ROOT_MODEL_MOVEMENT",
+            "sampleCount": 2,
+            "movedSignals": [
+                "ROOT_MODEL"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "DUMB_MODE_TRACKER_MOVEMENT",
+            "sampleCount": 2,
+            "movedSignals": [
+                "DUMB_MODE_TRACKER"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "COMBINED_MOVEMENT",
+            "sampleCount": 2,
+            "movedSignals": [
+                "PROJECT_MODEL",
+                "PSI",
+                "ROOT_FILTERED_VFS",
+                "ROOT_MODEL",
+                "DUMB_MODE_TRACKER"
+            ],
+            "vfsEventCount": 0,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "VFS_EVENT_STORM",
+            "sampleCount": 2,
+            "movedSignals": [
+                "ROOT_FILTERED_VFS"
+            ],
+            "vfsEventCount": 1000,
+            "expectedRelation": "MOVED",
+            "observedRelation": "MOVED"
+        },
+        {
+            "caseId": "OTHER_PROJECT_SCOPE",
+            "sampleCount": 2,
+            "movedSignals": [],
+            "vfsEventCount": 0,
+            "expectedRelation": "INCOMPARABLE",
+            "observedRelation": "INCOMPARABLE"
+        },
+        {
+            "caseId": "OTHER_RUNTIME_SCOPE",
+            "sampleCount": 2,
+            "movedSignals": [],
+            "vfsEventCount": 0,
+            "expectedRelation": "INCOMPARABLE",
+            "observedRelation": "INCOMPARABLE"
+        }
+    ],
+    "primitiveCounterEscapeCount": 0,
+    "callerEpochReconstructionCount": 0,
+    "repeatedValidationCount": 0,
+    "dumbModeEpochValueCount": 0,
+    "vfsRefreshCount": 0,
+    "gradleImportCount": 0,
+    "gradleRepairCount": 0,
+    "repositoryWalkCount": 0,
+    "vfsTraversalCount": 0,
+    "sourceHashCount": 0,
+    "semanticJobCount": 0,
+    "edtSemanticWorkCount": 0,
+    "blockingWaitCount": 0,
+    "liveObjectEscapeCount": 0
+}

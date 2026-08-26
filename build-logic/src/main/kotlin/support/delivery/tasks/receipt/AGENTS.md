@@ -15,7 +15,7 @@ This directory owns task-specific exact-head receipt progression after KVP-001.
   generated KVP-005 report, bind all five projected artifacts, admit KVP-004 completion, and derive
   KVP-005 completion.
 - `gate/registration/ReceiptProgressionRegistration.kt` is the Gradle registration authority for
-  KVP-001 through KVP-010 and KVP-012 through KVP-016; the convention script retains only projection,
+  KVP-001 through KVP-010 and KVP-012 through KVP-017; the convention script retains only projection,
   authority, and placeholder orchestration.
 - `gate/` owns KVP-006's positive and negative structural reports over all 129 receipt tasks and its
   exact-head receipt progression, KVP-007 receipt invalidation, KVP-008 delivery-state progression,
@@ -23,8 +23,9 @@ This directory owns task-specific exact-head receipt progression after KVP-001.
   plugin artifact receipt closure. Its plugin child owns KVP-012's compatibility report, its endpoint
   child admits KVP-013's descriptor closure, and its project child admits KVP-014's existing-Project
   report plus independent KVP-009 and KVP-012 closures. The project's `epoch/` child admits
-  KVP-015's supported-build signal ledger and the complete KVP-014 closure; its `model/` child
-  admits KVP-016's detached-model report and preserves KVP-014 and KVP-015. Structural validation
-  never executes registered gates.
+  KVP-015's supported-build signal ledger and the complete KVP-014 closure. The same `epoch/`
+  owner admits KVP-017's source-bound read-epoch report directly from KVP-015; its `model/` child
+  independently admits KVP-016's detached-model report and preserves KVP-014 and KVP-015.
+  Structural validation never executes registered gates.
 Keep gate commands fixed and argument-vector based. Every receipt write must be exact-head checked,
 atomically written, read back, and admitted before it can support a later task.

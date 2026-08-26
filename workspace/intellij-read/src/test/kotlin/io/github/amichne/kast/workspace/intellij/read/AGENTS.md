@@ -1,4 +1,4 @@
-# Existing Project admission and epoch-signal tests
+# Existing Project admission, signal, and read-epoch tests
 
 This package proves the KVP-014 boundary without opening, importing, refreshing, or waiting for an
 IntelliJ project.
@@ -24,6 +24,15 @@ IntelliJ project.
   authorities and must remain explicitly rejected.
 - Bind Gradle model movement to `ExternalProjectInfo.lastImportTimestamp` and
   `lastSuccessfulImportTimestamp`; do not invent start/finish property names.
+- KVP-017 tests exercise the production source through portable supplied observations: stable and
+  changed same-source states, cross-source incomparability, every finite failure, all five signal
+  transitions, inbound/outbound VFS movement, the one-advance 1,000-event batch, the 4,096-event
+  bound, and malformed/overlong paths. The class contract binds exact listener-local member sets,
+  the IDEA read-action surface, and exact live-source fingerprints while rejecting stronger effects.
+  `ReportedProjectReadEpochTest` consumes the generated report and compares it to the independently
+  owned exact-byte resource before proving its thirteen ordered relations through product sources.
+- KVP-017 compiled-byte, identity, report, and detachment proofs live under `epoch/`; its inventory
+  covers every production class, including companions and listener/source lambdas.
 
 Run:
 
@@ -32,4 +41,6 @@ Run:
 ./gradlew :workspace:intellij-read:test --tests '*ExistingProjectAdmissionTest'
 ./gradlew :workspace:intellij-read:characterizeEpochNegative
 ./gradlew :workspace:intellij-read:characterizeEpoch
+./gradlew :workspace:contract:test :workspace:intellij-read:test --tests '*ProjectReadEpochTest'
+./gradlew :workspace:intellij-read:generateProjectReadEpochReport
 ```

@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.contract.KotlinPluginBuildIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import java.lang.reflect.Proxy
 import java.nio.file.Path
 
@@ -32,6 +33,12 @@ internal val FIXTURE_COMPATIBILITY_POLICY = when (
 ) {
     is Refinement.Refined -> result.value
     is Refinement.Rejected -> error("invalid compatibility fixture: ${result.failure}")
+}
+
+internal val FIXTURE_EPOCH_SOURCE_FACTORY = ExistingProjectReadEpochSourceFactory { _, _ ->
+    Refinement.Refined(
+        ProjectReadEpoch.Source.create { ProjectReadEpochState.admit(stableFixtureEpochBoundary()) },
+    )
 }
 
 internal val EXPECTED_PROJECT_ADMISSION_REPORT = """
@@ -138,6 +145,12 @@ internal fun projectWithBasePath(basePath: String?): Project = proxyProject { me
     )
 }
 
+internal fun disposedProject(): Project = proxyProject { methodName ->
+    if (methodName == "isDisposed") true else error(
+        "Project method unexpectedly invoked while rejecting disposed source: $methodName",
+    )
+}
+
 internal fun admittedFailure(
     result: ExistingProjectAdmission,
 ): ExistingProjectAdmissionFailure = when (result) {
@@ -166,6 +179,19 @@ private fun fixtureRoot(raw: String): CanonicalWorkspaceRoot = when (
     is Refinement.Refined -> result.value
     is Refinement.Rejected -> error("invalid root fixture: ${result.failure}")
 }
+
+private fun stableFixtureEpochBoundary() = ProjectReadEpochBoundary(
+    ProjectReadEpochSignalSample.Value(1),
+    fixtureProjectEpochRoot(FIXTURE_ROOT.value),
+    fixtureGradleEpochRoot(FIXTURE_ROOT.value),
+    1,
+    1,
+    ProjectReadEpochSignalSample.Value(1),
+    ProjectReadEpochSignalSample.Value(1),
+    ProjectReadEpochSignalSample.Value(1),
+    ProjectReadEpochSignalSample.Value(1),
+    false,
+)
 
 private fun proxyProject(read: (String) -> Any?): Project = Proxy.newProxyInstance(
     Project::class.java.classLoader,

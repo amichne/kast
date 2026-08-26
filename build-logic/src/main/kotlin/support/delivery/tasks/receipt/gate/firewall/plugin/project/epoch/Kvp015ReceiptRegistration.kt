@@ -97,5 +97,8 @@ internal fun Project.registerKvp015ReceiptProgression(
     val detached = registerKvp016ReceiptProgression(program, epoch) {
         configureEpoch()
     }
-    return setOf(epoch.task.id, detached)
+    val readEpoch = registerKvp017ReceiptProgression(program, epoch) {
+        configureEpoch()
+    }
+    return setOf(epoch.task.id, detached, readEpoch)
 }

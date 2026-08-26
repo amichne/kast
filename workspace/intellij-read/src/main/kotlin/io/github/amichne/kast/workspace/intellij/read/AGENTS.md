@@ -1,7 +1,8 @@
 # Existing-Project admission source guide
 
 This package owns the transition from a live IntelliJ `Project` to `AdmittedIdeProject` and the
-state-specific transition from that capability to `DetachedIdeWorkspaceModel`.
+state-specific transitions from that capability to `DetachedIdeWorkspaceModel` and an opaque
+`ProjectReadEpoch` observation.
 
 ## Invariants
 
@@ -30,10 +31,24 @@ state-specific transition from that capability to `DetachedIdeWorkspaceModel`.
 - The public detached surface may expose only immutable host-neutral values and unmodifiable
   collections. It must not retain a Project, Module, VirtualFile, PSI, Gradle DataNode, callback,
   mutable collection, or generic platform wrapper.
-- KVP-016 records no production epoch or freshness policy; KVP-017 owns that transition.
+- `AdmittedIdeProject` retains exactly one private Project/runtime epoch source. Its listeners live
+  with the Project connection, and each observation performs one short cancellable read over
+  cached model, PSI, root-model, dumb-mode tracker, and root-filtered VFS evidence.
+- Construct that contract-internal source only through the module's explicit Kotlin friend path;
+  keep its constructor private and its internal construction/observation surface JVM-synthetic.
+- Keep primitive counters, raw paths, listener callbacks, and platform types inside this adapter.
+  Expose only opaque epoch observations; reject EDT, dumb, moved lifecycle/root/model, exhausted
+  counters, malformed VFS paths, and read preemption as finite typed failures.
+- One VFS batch is bounded at 4,096 events and each path at 4,096 characters/8,192 UTF-8 bytes.
+  Classify it purely, then advance the local counter once. Do not refresh, import, walk, hash,
+  schedule semantic work, or block.
+- KVP-016 records no production epoch or freshness policy. KVP-017 owns observation and
+  comparison; KVP-019 owns freshness policy.
+- KVP-017 implementation files live under `epoch/`; follow its guide for strong root identities,
+  typed source installation, VFS bounds, and detached epoch ownership.
 
 ## Focused proof
 
-Run the admission, epoch-characterization, detached negative/positive, and detached bytecode
-selectors named by the module guide. The detached proof must retain its recursive public-surface,
-exact report-byte, and exact live-adapter class-fingerprint checks.
+Run the admission, epoch-characterization, detached negative/positive, detached bytecode, and
+project-read epoch selectors named by the module guide. The proof must retain recursive public
+surface, exact report bytes, and exact live-adapter class fingerprints.

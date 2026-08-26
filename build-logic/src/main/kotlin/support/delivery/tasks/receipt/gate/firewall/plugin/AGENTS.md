@@ -1,4 +1,4 @@
-# KVP-010 and KVP-012 through KVP-016 plugin receipt guide
+# KVP-010 and KVP-012 through KVP-017 plugin receipt guide
 
 This directory owns KVP-010's standalone-plugin progression, KVP-012's host-compatibility
 progression, delegates KVP-013 descriptor progression to `endpoint/`, and delegates KVP-014
@@ -19,6 +19,9 @@ existing-Project admission to `project/`.
   wiring.
 - Delegate KVP-016 to `project/epoch/model/`. It admits KVP-014 and KVP-015, decodes the canonical
   detached-model report, and binds the production, fixture, API, class, and build inputs.
+- Delegate KVP-017 to `project/epoch/`. It directly admits KVP-015, decodes the canonical live
+  read-epoch report, and binds the opaque contract, live source, admission, characterization, and
+  module task wiring.
 
 Keep raw process arguments, JSON, and ZIP bytes at their outer Gradle boundaries. Expected command,
 report, archive, and receipt failures remain finite typed data until the task renders them.

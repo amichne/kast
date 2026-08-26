@@ -1,6 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.Refinement
 import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
@@ -10,6 +11,16 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
 class ExistingProjectAdmissionTest {
+    @Test
+    fun `epoch source installation closes a disposal race`() {
+        assertEquals(
+            Refinement.Rejected(
+                ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed,
+            ),
+            LiveProjectReadEpochSourceFactory.create(disposedProject(), FIXTURE_ROOT),
+        )
+    }
+
     @Test
     fun `only the exact ready existing Project yields the stronger authority`() {
         val observation = RecordingProjectObservation()
@@ -21,6 +32,7 @@ class ExistingProjectAdmissionTest {
                 FIXTURE_COMPATIBILITY,
                 FIXTURE_COMPATIBILITY_POLICY,
                 observation,
+                FIXTURE_EPOCH_SOURCE_FACTORY,
             )
         ) {
             is ExistingProjectAdmission.Admitted -> result.project

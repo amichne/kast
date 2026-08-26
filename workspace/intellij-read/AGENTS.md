@@ -26,7 +26,19 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 - Live detached capture rejects EDT entry before `ReadAction.computeCancellable`, then rechecks
   disposal, open state, initialization, smart state, exact root, and bounded cached Gradle
   completeness inside the read.
-  KVP-017 solely owns production epoch identity and freshness.
+- KVP-017 gives each admitted Project/runtime one private `ProjectReadEpoch.Source`. It installs
+  one project-lifetime workspace-model listener and one root-filtered VFS listener; raw platform
+  counters and state remain adapter-private.
+- The module's explicit Kotlin friend path is the sole construction route to the contract-internal
+  epoch source. Its constructor is private and its internal methods are JVM-synthetic; do not
+  expose or replace this edge with a public factory.
+- Live epoch observation rejects EDT entry, runs one short cancellable read, rechecks lifecycle and
+  dumb mode, and returns only an opaque epoch or a finite failure. Same-source equal state is
+  `SAME`, changed state is `MOVED`, and another admitted Project/runtime is `INCOMPARABLE`.
+- One VFS batch may contain at most 4,096 events; paths are bounded before parsing to 4,096
+  characters and 8,192 UTF-8 bytes. Pure batch classification precedes the sole counter effect.
+  Observation never refreshes, imports, traverses, hashes, schedules semantic work, or waits.
+  KVP-019 owns later freshness policy; KVP-017 owns only observation and comparison.
 - Production compiles against the declared IDEA build 262 host and its bundled Kotlin/Gradle APIs.
 
 ## Focused proof
@@ -39,3 +51,5 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 6. Run `./gradlew :workspace:intellij-read:test --tests '*DetachedModelNegativeTest'`.
 7. Run `./gradlew :workspace:intellij-read:test --tests '*DetachedModelTest'`.
 8. Run `./gradlew :workspace:intellij-read:test --tests '*DetachedModelClassContractTest'`.
+9. Run `./gradlew :workspace:contract:test :workspace:intellij-read:test --tests '*ProjectReadEpochTest'`.
+10. Run `./gradlew :workspace:intellij-read:generateProjectReadEpochReport`.

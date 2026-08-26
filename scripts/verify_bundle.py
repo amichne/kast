@@ -3,7 +3,7 @@ import hashlib
 import json
 import pathlib
 import re
-
+from verify_kvp017_report import verify_kvp017_report
 
 def schema_errors(value, schema, root_schema, path="$"):
     if "$ref" in schema:
@@ -74,13 +74,11 @@ def schema_errors(value, schema, root_schema, path="$"):
             elif isinstance(additional, dict):
                 yield from schema_errors(item, additional, root_schema, f"{path}.{name}")
 
-
 def validate_document(document_path, schema_path):
     document = json.loads(document_path.read_text())
     schema = json.loads(schema_path.read_text())
     errors = list(schema_errors(document, schema, schema))
     assert not errors, "\n".join(errors)
-
 
 root = pathlib.Path(__file__).resolve().parents[1]
 program_path = root / "gradle/delivery/kast-vfs-passive-reused-index-program.json"
@@ -232,7 +230,59 @@ assert (
     + "."
 ) in kvp_016_plan
 assert f"**Review boundary.** {kvp_016['reviewBoundary']}" in kvp_016_plan
-assert "KVP-017 solely owns production epoch identity" in kvp_016["goal"]
+assert "KVP-017 owns epoch observation and identity" in kvp_016["goal"]
+assert "KVP-019 owns freshness policy" in kvp_016["goal"]
+kvp_017 = by_id["KVP-017"]
+assert kvp_017["dependencyExpression"]["taskIds"] == ["KVP-015"]
+assert kvp_017["authorities"] == ["READ_EPOCH"]
+assert kvp_017["internalImplementation"] == (
+    "Compiler-confined source-bound epoch, typed adapter-private signal state, pure bounded VFS "
+    "classification, short cancellable IDEA observation, deterministic report, and exact-head "
+    "receipt admission."
+)
+assert set(kvp_017["forbiddenWork"]) == {
+    "Primitive counters crossing modules",
+    "Epoch recreated by callers",
+    "Treating dumb mode as an epoch value",
+    "VFS refresh",
+    "Gradle import or repair",
+    "Repository or VFS traversal",
+    "Source-content hashing",
+    "Blocking wait",
+    "Per-event semantic job",
+    "Semantic work on the EDT",
+    "Live Project, listener, counter, callback, or signal-state escape",
+}
+assert "com.jetbrains.intellij.idea:ideaIC:262.9437.185@zip" in set(
+    kvp_017["allowedReads"]
+)
+assert {
+    "workspace/contract",
+    "workspace/intellij-read",
+    "docs/engineering",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch",
+} <= set(kvp_017["allowedWrites"])
+assert (
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/"
+    "Kvp014ReceiptRegistration.kt"
+) not in set(kvp_017["allowedWrites"])
+kvp_017_plan = normative_plan.split(
+    "### KVP-017: Define the project read epoch\n",
+    maxsplit=1,
+)[1].split("\n### KVP-018:", maxsplit=1)[0]
+assert (
+    "**Allowed reads.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_017["allowedReads"])
+    + "."
+) in kvp_017_plan
+assert (
+    "**Allowed writes.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_017["allowedWrites"])
+    + "."
+) in kvp_017_plan
+assert f"**Review boundary.** {kvp_017['reviewBoundary']}" in kvp_017_plan
+verify_kvp017_report(root)
+assert "Event-triggered semantic work from a VFS listener" in by_id["KVP-019"]["forbiddenWork"]
 epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
 for expected_epoch_fact in (
     "WorkspaceModelTopics.CHANGED",

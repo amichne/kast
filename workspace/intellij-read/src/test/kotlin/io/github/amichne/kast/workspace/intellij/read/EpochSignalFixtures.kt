@@ -1,5 +1,8 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
+import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationStage
 import java.nio.file.Path
 
 internal class EpochFixtureRoot private constructor(
@@ -288,3 +291,63 @@ private val FIXTURE_SAMPLE = EpochFixtureSample(
     dumbModeModificationCount = 1,
     dumbModeState = EpochDumbModeState.SMART,
 )
+
+internal class RecordingProjectReadEpochPlatform : ProjectReadEpochPlatformPort {
+    var disposed = false
+    var open = true
+    var initialized = true
+    var dumbStates = ArrayDeque(listOf(false, false))
+    var projectRoot: String? = "/workspace/kast"
+    var gradle: Refinement<ObservedEpochGradleModel, ProjectReadEpochObservationFailure> =
+        Refinement.Refined(ObservedEpochGradleModel(fixtureGradleEpochRoot("/workspace/kast"), 10, 10))
+    var psi = 1L
+    var rootModel = 1L
+    var dumbCycle = 1L
+    var throwAt: ProjectReadEpochObservationStage? = null
+    var cancellation: RuntimeException? = null
+
+    override fun checkCanceled() {
+        cancellation?.let { throw it }
+    }
+
+    override fun isDisposed(): Boolean = read(ProjectReadEpochObservationStage.DISPOSAL, disposed)
+    override fun isOpen(): Boolean = read(ProjectReadEpochObservationStage.OPEN, open)
+    override fun isInitialized(): Boolean =
+        read(ProjectReadEpochObservationStage.INITIALIZATION, initialized)
+    override fun isDumb(): Boolean = read(
+        ProjectReadEpochObservationStage.DUMB_MODE,
+        if (dumbStates.isEmpty()) false else dumbStates.removeFirst(),
+    )
+    override fun root(): String? = read(ProjectReadEpochObservationStage.PROJECT_ROOT, projectRoot)
+    override fun gradleModel(
+        projectRoot: ProjectEpochRootIdentity,
+    ): Refinement<ObservedEpochGradleModel, ProjectReadEpochObservationFailure> =
+        read(ProjectReadEpochObservationStage.PROJECT_MODEL, gradle)
+    override fun psiModificationCount(): Long = read(ProjectReadEpochObservationStage.PSI, psi)
+    override fun rootModelModificationCount(): Long =
+        read(ProjectReadEpochObservationStage.ROOT_MODEL, rootModel)
+    override fun dumbModeModificationCount(): Long =
+        read(ProjectReadEpochObservationStage.DUMB_MODE, dumbCycle)
+
+    private fun <Value> read(stage: ProjectReadEpochObservationStage, value: Value): Value {
+        if (throwAt == stage) error("fixture $stage failure")
+        return value
+    }
+}
+
+internal class RecordingProjectReadEpochExecution(
+    var dispatchThread: Boolean = false,
+    var probeFailure: RuntimeException? = null,
+    var failure: RuntimeException? = null,
+) : ProjectReadEpochExecution {
+    override fun isDispatchThread(): Boolean {
+        probeFailure?.let { throw it }
+        return dispatchThread
+    }
+    override fun compute(
+        read: () -> Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>,
+    ): Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure> {
+        failure?.let { throw it }
+        return read()
+    }
+}

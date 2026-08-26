@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.progress.ProcessCanceledException
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.protocol.contract.IdeBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
@@ -10,6 +11,9 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.KotlinPluginBuildIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
+import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
+import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 
 /** Finite observation stages at the existing-Project boundary. */
 enum class ExistingProjectObservationStage {
@@ -123,6 +127,7 @@ internal interface ExistingProjectObservationPort {
  */
 class AdmittedIdeProject private constructor(
     private val liveProject: LiveProjectHandle,
+    private val readEpochSource: ProjectReadEpoch.Source<*>,
     val canonicalRoot: CanonicalWorkspaceRoot,
     val compatibility: AdmittedIdeHostCompatibility,
 ) {
@@ -138,6 +143,15 @@ class AdmittedIdeProject private constructor(
         compatibility,
         LiveDetachedModelCapture.observe(liveProject.project, canonicalRoot),
     )
+
+    /**
+     * Proof transition: `AdmittedIdeProject -> ProjectReadEpochObservation`.
+     *
+     * Establishes one opaque epoch from the retained Project/runtime source, or returns the
+     * closed [ProjectReadEpochObservationFailure] set. The source, Project, listeners, and raw
+     * signal values remain private to this adapter; callers receive only the epoch or rejection.
+     */
+    fun observeReadEpoch(): ProjectReadEpochObservation = readEpochSource.observe()
 
     companion object {
         /**
@@ -160,17 +174,19 @@ class AdmittedIdeProject private constructor(
             compatibilityCandidate,
             compatibilityPolicy,
             LiveExistingProjectObservation,
+            LiveProjectReadEpochSourceFactory,
         )
 
         /**
          * Proof transition: `(Project, CanonicalWorkspaceRoot,
          * IdeHostCompatibilityCandidate, IdeHostCompatibilityPolicy,
-         * ExistingProjectObservationPort) -> ExistingProjectAdmission`.
+         * ExistingProjectObservationPort, ExistingProjectReadEpochSourceFactory) ->
+         * ExistingProjectAdmission`.
          *
          * Establishes the same admitted-Project invariants as [admit] through an explicit
          * observation boundary. [ExistingProjectAdmissionFailure] closes expected observation
-         * and compatibility failures. Raw Project access remains confined to the observation
-         * port and the resulting [AdmittedIdeProject].
+         * and compatibility failures, and every admitted value retains one epoch source. Raw
+         * Project access remains confined to the observation port and resulting capability.
          */
         internal fun admitObserved(
             project: Project,
@@ -178,6 +194,7 @@ class AdmittedIdeProject private constructor(
             compatibilityCandidate: IdeHostCompatibilityCandidate,
             compatibilityPolicy: IdeHostCompatibilityPolicy,
             observation: ExistingProjectObservationPort,
+            readEpochSourceFactory: ExistingProjectReadEpochSourceFactory,
         ): ExistingProjectAdmission {
             val disposed = when (
                 val attempt = observe(ExistingProjectObservationStage.DISPOSAL) {
@@ -311,19 +328,47 @@ class AdmittedIdeProject private constructor(
             }
 
             return when (val admitted = compatibilityPolicy.admit(observedCandidate)) {
-                is IdeHostCompatibilityAdmission.Admitted -> ExistingProjectAdmission.Admitted(
-                    AdmittedIdeProject(
-                        LiveProjectHandle(project),
-                        exactRoot,
-                        admitted.compatibility,
-                    ),
-                )
+                is IdeHostCompatibilityAdmission.Admitted -> when (
+                    val installed = readEpochSourceFactory.create(project, exactRoot)
+                ) {
+                    is Refinement.Refined -> ExistingProjectAdmission.Admitted(
+                        AdmittedIdeProject(
+                            LiveProjectHandle(project),
+                            installed.value,
+                            exactRoot,
+                            admitted.compatibility,
+                        ),
+                    )
+                    is Refinement.Rejected -> when (installed.failure) {
+                        ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed ->
+                            ExistingProjectAdmission.Rejected(ExistingProjectAdmissionFailure.ProjectDisposed)
+                    }
+                }
                 is IdeHostCompatibilityAdmission.Rejected -> ExistingProjectAdmission.Rejected(
                     ExistingProjectAdmissionFailure.HostIncompatible(admitted.failure),
                 )
             }
         }
     }
+}
+
+/** Internal typed installation boundary for the one epoch source retained by an admission. */
+internal sealed interface ExistingProjectReadEpochSourceInstallationFailure {
+    data object ProjectDisposed : ExistingProjectReadEpochSourceInstallationFailure
+}
+
+internal fun interface ExistingProjectReadEpochSourceFactory {
+    /**
+     * Proof transition: `(Project, CanonicalWorkspaceRoot) ->
+     * Refinement<ProjectReadEpoch.Source<*>,
+     * ExistingProjectReadEpochSourceInstallationFailure>`.
+     * Establishes one source identity retained for the admitted Project/runtime or closes a
+     * disposal race. Raw Project and listener construction remain in `:workspace:intellij-read`.
+     */
+    fun create(
+        project: Project,
+        root: CanonicalWorkspaceRoot,
+    ): Refinement<ProjectReadEpoch.Source<*>, ExistingProjectReadEpochSourceInstallationFailure>
 }
 
 private class LiveProjectHandle(
