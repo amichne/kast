@@ -69,5 +69,5 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 10. Run `./gradlew :workspace:intellij-read:generateProjectReadEpochReport`.
 11. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalkNegative`.
 12. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalk`.
-13. Run `./gradlew :workspace:intellij-read:test --tests '*VfsPassiveAdmissionNegativeTest' --tests '*VfsPassiveAdmissionTest'`.
-14. Run `./gradlew :workspace:intellij-read:verifyVfsPassiveReportNegative`.
+13. Run `./gradlew :workspace:intellij-read:verifyVfsPassiveReportNegative`.
+14. Run `./gradlew :workspace:intellij-read:test --tests '*VfsPassiveAdmissionNegativeTest' --tests '*VfsPassiveAdmissionTest'`.

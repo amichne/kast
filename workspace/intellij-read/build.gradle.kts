@@ -300,7 +300,9 @@ val defaultTest = tasks.named<Test>("test")
 
 defaultTest.configure {
     mustRunAfter(verifyVfsPassiveReportNegative)
-    inputs.file(vfsPassiveReport).optional().withPathSensitivity(PathSensitivity.NONE)
+    inputs.files(vfsPassiveReport.map { report ->
+        if (report.asFile.isFile) listOf(report.asFile) else emptyList()
+    }).withPathSensitivity(PathSensitivity.NONE)
     systemProperty(
         "kast.ide.vfs.passive.report",
         vfsPassiveReport.get().asFile.absolutePath,
