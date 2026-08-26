@@ -15,7 +15,7 @@ internal fun Project.registerKvp023ReceiptProgression(
     val runtimeTest =
         "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/"
     val runtimeDispatch = runtimeMain + "dispatch/"
-    val runtimeTestDispatch = runtimeTest + "dispatch/"
+    val runtimeTestDispatch = runtimeTest + "revalidation/dispatch/"
     val reportRoot =
         "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/" +
             "project/epoch/model/freshness/singleflight/revalidation/dispatch/"
