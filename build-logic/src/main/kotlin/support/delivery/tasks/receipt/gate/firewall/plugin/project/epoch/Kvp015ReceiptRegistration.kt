@@ -13,7 +13,7 @@ internal fun Project.registerKvp015ReceiptProgression(
     val negativeTestPath = testRoot + "EpochSignalCharacterizationNegativeTest.kt"
     val positiveTestPath = testRoot + "EpochSignalCharacterizationTest.kt"
     val apiContractPath = testRoot + "EpochSignalApiContract.kt"
-    val classContractPath = testRoot + "EpochSignalClassContract.kt"
+    val classContractPath = testRoot + "epoch/EpochSignalClassContract.kt"
     val fixturePath = testRoot + "EpochSignalFixtures.kt"
     val moduleBuildPath = "workspace/intellij-read/build.gradle.kts"
     val engineeringLedgerPath = "docs/engineering/ide-read-epoch-ledger.md"
