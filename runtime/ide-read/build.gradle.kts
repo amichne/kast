@@ -106,9 +106,15 @@ val verifySingleFlightReportNegative =
         ))
     }
 
-tasks.named<Test>("test") {
+val defaultTest = tasks.named<Test>("test")
+
+defaultTest.configure {
     dependsOn(verifySingleFlightReportNegative)
     mustRunAfter(verifySingleFlightReportNegative)
+    exclude(
+        "**/CancellableReadNegativeTest.class",
+        "**/CancellableReadTest.class",
+    )
     inputs.file(singleFlightReport).withPathSensitivity(PathSensitivity.NONE)
     inputs.property("kast.ide.single.flight.expected.head", singleFlightExpectedHead)
     systemProperty("kast.ide.single.flight.report", singleFlightReport.get().asFile.absolutePath)
@@ -130,6 +136,95 @@ tasks.named<Test>("test") {
     )
 }
 
+val cancellableReadReport = layout.buildDirectory.file(
+    "reports/KVP-021-cancellable-read.json",
+)
+val generateCancellableReadReport =
+    tasks.register<support.delivery.GenerateKvp021CancellableReadReportTask>(
+        "generateCancellableReadReport",
+    ) {
+        group = "verification"
+        description = "Generates the exact predecessor-bound KVP-021 cancellable-read report."
+        dependsOn(
+            rootProject.tasks.named("verifyKVP019CompletionReceipt"),
+            rootProject.tasks.named("verifyKVP020CompletionReceipt"),
+        )
+        kvp019CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-019-COMPLETE.receipt.json",
+        ))
+        kvp020CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-020-COMPLETE.receipt.json",
+        ))
+        reportFile.set(cancellableReadReport)
+    }
+
+val verifyCancellableReadReportNegative =
+    tasks.register<support.delivery.VerifyKvp021CancellableReadReportNegativeTask>(
+        "verifyCancellableReadReportNegative",
+    ) {
+        group = "verification"
+        description = "Rejects every fixed KVP-021 report and gate-evidence mutation."
+        dependsOn(generateCancellableReadReport)
+        reportFile.set(cancellableReadReport)
+        kvp019CompletionReceipt.set(generateCancellableReadReport.flatMap(
+            support.delivery.GenerateKvp021CancellableReadReportTask::kvp019CompletionReceipt,
+        ))
+        kvp020CompletionReceipt.set(generateCancellableReadReport.flatMap(
+            support.delivery.GenerateKvp021CancellableReadReportTask::kvp020CompletionReceipt,
+        ))
+    }
+
+fun support.delivery.Kvp021CancellableReadGateTask.configureCancellableReadGate(
+    command: support.delivery.Kvp021GateCommand,
+    evidencePath: String,
+) {
+    group = "verification"
+    testClassesDirs = defaultTest.get().testClassesDirs
+    classpath = defaultTest.get().classpath
+    filter.includeTestsMatching(command.selectorPattern)
+    filter.setFailOnNoMatchingTests(true)
+    dependsOn(verifyCancellableReadReportNegative)
+    repositoryRootPath.set(rootProject.layout.projectDirectory.asFile.absolutePath)
+    declaredCommand.set(command.declaredCommand)
+    gateEvidenceFile.set(layout.buildDirectory.file(evidencePath))
+    doFirst { beginGateExecution() }
+    doLast { completeGateExecution() }
+    inputs.file(cancellableReadReport).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty(
+        "kast.ide.cancellable.read.report",
+        cancellableReadReport.get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.ide.cancellable.read.gate.evidence",
+        gateEvidenceFile.get().asFile.absolutePath,
+    )
+}
+
+val cancellableReadNegativeGate =
+    tasks.register<support.delivery.Kvp021CancellableReadGateTask>(
+        "cancellableReadNegativeGate",
+    ) {
+        description = "Runs only the canonical KVP-021 negative selector at one exact head."
+        configureCancellableReadGate(
+            support.delivery.Kvp021GateCommand.RED,
+            "reports/KVP-021-red-gate.json",
+        )
+    }
+
+val cancellableReadGate = tasks.register<support.delivery.Kvp021CancellableReadGateTask>(
+    "cancellableReadGate",
+) {
+    description = "Runs only the canonical KVP-021 GREEN selector at one exact head."
+    configureCancellableReadGate(
+        support.delivery.Kvp021GateCommand.GREEN,
+        "reports/KVP-021-green-gate.json",
+    )
+    mustRunAfter(cancellableReadNegativeGate, ":recordKVP021RedReceipt")
+}
+
 tasks.named("check") {
     dependsOn(verifySingleFlightReportNegative)
+    dependsOn(verifyCancellableReadReportNegative)
+    dependsOn(cancellableReadNegativeGate)
+    dependsOn(cancellableReadGate)
 }

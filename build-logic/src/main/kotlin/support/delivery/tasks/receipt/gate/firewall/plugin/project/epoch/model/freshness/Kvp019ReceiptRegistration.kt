@@ -126,12 +126,12 @@ internal fun Project.registerKvp019ReceiptProgression(
         proofReportFile.set(freshness.proofReport)
         completionReceiptFile.set(freshness.completionReceipt)
     }
-    val singleFlight = registerKvp020ReceiptProgression(
+    val singleFlightTasks = registerKvp020ReceiptProgression(
         program,
         taskReceiptRegistration(program, TaskId("KVP-014")),
         freshness,
     ) {
         configureFreshness()
     }
-    return setOf(freshness.task.id, singleFlight)
+    return setOf(freshness.task.id) + singleFlightTasks
 }

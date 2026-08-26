@@ -12,3 +12,7 @@ read only those completion receipts and write only the declared generated report
 
 Keep raw JSON, receipt bytes, paths, and Gradle properties at report or receipt boundaries.
 Expected failures remain closed typed data until a Gradle task renders them.
+
+The `cancellable/` child owns KVP-021's product-claim report, dedicated exact-selector Test
+evidence, direct KVP-019/KVP-020 re-admission, and completion closure. Its Test tasks must not
+become dependencies of the default `test` task used by KVP-020 receipt execution.

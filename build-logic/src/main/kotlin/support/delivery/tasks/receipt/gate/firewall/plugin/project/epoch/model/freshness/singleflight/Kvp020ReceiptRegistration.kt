@@ -7,7 +7,7 @@ internal fun Project.registerKvp020ReceiptProgression(
     projectAdmission: TaskReceiptRegistration,
     freshness: TaskReceiptRegistration,
     configureFreshness: Kvp019ReceiptTaskBase.() -> Unit,
-): TaskId {
+): Set<TaskId> {
     val singleFlight = taskReceiptRegistration(program, TaskId("KVP-020"))
     val mainRoot =
         "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/"
@@ -145,5 +145,12 @@ internal fun Project.registerKvp020ReceiptProgression(
         proofReportFile.set(singleFlight.proofReport)
         completionReceiptFile.set(singleFlight.completionReceipt)
     }
-    return singleFlight.task.id
+    val cancellableTasks = registerKvp021ReceiptProgression(
+        program,
+        freshness,
+        singleFlight,
+    ) {
+        configureSingleFlight()
+    }
+    return setOf(singleFlight.task.id) + cancellableTasks
 }
