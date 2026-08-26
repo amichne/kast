@@ -24,7 +24,7 @@ abstract class RecordKvp020RedReceiptTask : Kvp020ReceiptTaskBase() {
 @UntrackedTask(because = "Executes and binds the exact KVP-020 GREEN gate")
 abstract class RecordKvp020GreenReceiptTask : Kvp020ReceiptTaskBase() {
     @get:InputFile abstract val redReceiptFile: RegularFileProperty
-    @get:OutputFile abstract val proofReportFile: RegularFileProperty
+    @get:InputFile abstract val proofReportFile: RegularFileProperty
     @get:OutputFile abstract val receiptFile: RegularFileProperty
 
     @TaskAction fun recordReceipt() {
