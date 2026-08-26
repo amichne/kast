@@ -91,6 +91,8 @@ class KastCleanSlatePolicyTest {
                     ModuleId.RUNTIME_IDE_READ,
                     ModuleId.IDE_PLUGIN,
                 ),
+                ForbiddenEffect.UDS_BIND to setOf(ModuleId.IDE_PLUGIN),
+                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.IDE_PLUGIN),
                 ForbiddenEffect.PROJECT_OPEN to emptySet(),
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(

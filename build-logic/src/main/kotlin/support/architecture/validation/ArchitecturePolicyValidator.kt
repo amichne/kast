@@ -91,6 +91,8 @@ object ArchitecturePolicyValidator {
     }
 
     private val EXCLUSIVE_EFFECT_OWNERS = mapOf(
+        ForbiddenEffect.UDS_BIND to setOf(ModuleId.IDE_PLUGIN),
+        ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.IDE_PLUGIN),
         ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to setOf(ModuleId.TOPOLOGY_BUILD),
         ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_SQLITE),
     )

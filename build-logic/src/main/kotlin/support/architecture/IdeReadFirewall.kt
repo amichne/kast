@@ -123,7 +123,17 @@ internal object IdeReadFirewall {
             if (module.role != ModuleRole.IDE_READ_ONLY) {
                 failures += IdeReadFirewallFailure.RoleMismatch(module.id, module.role)
             }
-            val expectedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
+            val expectedEffects = when (module.id) {
+                ModuleId.IDE_PLUGIN -> setOf(
+                    ForbiddenEffect.INTELLIJ_PLATFORM,
+                    ForbiddenEffect.UDS_BIND,
+                    ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
+                )
+                ModuleId.RUNTIME_IDE_READ,
+                ModuleId.WORKSPACE_INTELLIJ_READ,
+                -> setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
+                else -> emptySet()
+            }
             if (module.allowedEffects != expectedEffects) {
                 failures += IdeReadFirewallFailure.AllowedEffectsMismatch(
                     module.id,

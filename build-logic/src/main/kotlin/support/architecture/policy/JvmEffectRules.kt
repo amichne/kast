@@ -1,6 +1,8 @@
 package support.architecture
 
 internal object EffectRules {
+    private const val IDE_ENDPOINT_OWNER_PREFIX = "io/github/amichne/kast/ide/endpoint/"
+
     private val filesystemMutators = setOf(
         "copy",
         "createDirectories",
@@ -57,8 +59,19 @@ internal object EffectRules {
             (owner == "java/nio/file/Files" && name in filesystemMutators) ||
             (owner.startsWith("kotlin/io/path/") && filesystemMutators.any(name::startsWith))
         ) {
-            add(ForbiddenEffect.FILESYSTEM_WRITE)
-            if (caller.isSourceMutationSurface()) add(ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
+            if (caller.owner.internalName.startsWith(IDE_ENDPOINT_OWNER_PREFIX)) {
+                add(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE)
+            } else {
+                add(ForbiddenEffect.FILESYSTEM_WRITE)
+                if (caller.isSourceMutationSurface()) add(ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
+            }
+        }
+        if (
+            caller.owner.internalName.startsWith(IDE_ENDPOINT_OWNER_PREFIX) &&
+            owner == "java/nio/channels/ServerSocketChannel" &&
+            name in setOf("open", "bind")
+        ) {
+            add(ForbiddenEffect.UDS_BIND)
         }
         if (owner.startsWith("java/sql/") || owner.startsWith("org/sqlite/")) {
             add(ForbiddenEffect.JDBC)

@@ -273,6 +273,10 @@ internal object KastCleanSlateModules {
             ModuleId.RUNTIME_IDE_READ,
             ModuleId.WORKSPACE_INTELLIJ_READ,
             lifecycle = ModuleLifecycle.ACTIVE,
+            additionalEffects = setOf(
+                ForbiddenEffect.UDS_BIND,
+                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
+            ),
         ),
         runtimeComposition(),
         target(
@@ -312,12 +316,13 @@ internal object KastCleanSlateModules {
         id: ModuleId,
         vararg dependencies: ModuleId,
         lifecycle: ModuleLifecycle = ModuleLifecycle.PLANNED,
+        additionalEffects: Set<ForbiddenEffect> = emptySet(),
     ): ModulePolicy = ModulePolicy(
         id = id,
         lifecycle = lifecycle,
         role = ModuleRole.IDE_READ_ONLY,
         allowedProjectDependencies = dependencies.toSet(),
-        allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
+        allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM) + additionalEffects,
     )
 
     private fun targetIds(): Set<ModuleId> = setOf(

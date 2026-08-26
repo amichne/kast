@@ -84,8 +84,21 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "ide-plugin/src/main/kotlin",
         "ide-plugin/src/main/resources",
         "ide-plugin/src/test",
+        "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/AGENTS.md",
+        "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocation.kt",
+        "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/AGENTS.md",
+        "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocationTest.kt",
+        "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt",
+        "build-logic/src/main/kotlin/support/architecture/IdeReadFirewall.kt",
         "build-logic/src/main/kotlin/support/architecture/policy/AGENTS.md",
         "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+        "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",
+        "build-logic/src/main/kotlin/support/architecture/validation/AGENTS.md",
+        "build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyValidator.kt",
+        "build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
+        "build-logic/src/test/kotlin/support/architecture/IdeReadFirewallTest.kt",
+        "build-logic/src/test/kotlin/support/architecture/Kvp024EndpointAuthorityTest.kt",
+        "build-logic/src/test/kotlin/support/architecture/policy/KastCleanSlatePolicyTest.kt",
         "build-logic/src/main/kotlin/support/delivery/AGENTS.md",
         "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt",
         "build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md",
@@ -118,9 +131,12 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "indexer/",
         "runtime/ide-read",
         "workspace/",
-        "protocol/",
     ):
         assert not any(path.startswith(forbidden_write_root) for path in expected_writes)
+    assert not any(
+        path.startswith("protocol/") and not path.startswith("protocol/wire/")
+        for path in expected_writes
+    )
 
     section = normative_plan.split(
         "### KVP-024: Publish the exact-root project endpoint\n",
@@ -175,6 +191,11 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     )
     assert ide_plugin["projectPath"] == ":ide-plugin"
     assert ide_plugin["role"] == "IDE_READ_ONLY"
+    assert ide_plugin["allowedEffects"] == [
+        "ENDPOINT_DESCRIPTOR_WRITE",
+        "INTELLIJ_PLATFORM",
+        "UDS_BIND",
+    ]
     assert ide_plugin["allowedProjectDependencies"] == [
         ":protocol:contract",
         ":protocol:wire",
@@ -196,6 +217,15 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "ModuleId.WORKSPACE_INTELLIJ_READ",
     ):
         assert dependency in plugin_policy
+    assert "ForbiddenEffect.UDS_BIND" in plugin_policy
+    assert "ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE" in plugin_policy
+
+    location = required_text(
+        root,
+        "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocation.kt",
+    )
+    assert "class IdeEndpointLocation private constructor" in location
+    assert "IdeEndpointDescriptorPath" in location
 
     bundle = required_text(root, "scripts/verify_bundle.py")
     assert "from verify_kvp024_delivery import verify_kvp024_delivery" in bundle

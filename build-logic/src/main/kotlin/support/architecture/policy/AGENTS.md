@@ -9,8 +9,10 @@ This directory owns the canonical module-policy declarations.
   modules. Their lifecycle set is the `RUNTIME_SPLIT` firewall stage.
 - Lifecycle changes must match one monotonic `IdeReadFirewallStage`; activation cannot skip a
   predecessor module or return an active module to planned state.
-- IDE-read modules may depend only on declared inward contracts or another IDE-read module and may
-  allow only the generic IntelliJ platform read effect.
+- IDE-read modules may depend only on declared inward contracts or another IDE-read module.
+  Workspace and runtime read owners allow only the generic IntelliJ platform read effect. The IDE
+  plugin additionally owns the named UDS bind and endpoint-descriptor write effects; these remain
+  confined to `io.github.amichne.kast.ide.endpoint` and grant no source-write authority.
 - `ide-plugin` may additionally consume `protocol:wire` as the sole canonical endpoint-descriptor
   codec boundary; this does not authorize protocol routing or another runtime composition.
 - KVP-018's added walk, read, hash, network, wait, refresh, and indexing classifiers apply only to

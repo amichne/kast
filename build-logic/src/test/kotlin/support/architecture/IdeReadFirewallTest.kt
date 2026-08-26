@@ -28,7 +28,15 @@ class IdeReadFirewallTest {
             },
         )
         assertTrue(proof.modules.all { it.role == ModuleRole.IDE_READ_ONLY })
-        assertTrue(proof.modules.all {
+        assertEquals(
+            setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.UDS_BIND,
+                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
+            ),
+            proof.modules.single { it.id == ModuleId.IDE_PLUGIN }.allowedEffects,
+        )
+        assertTrue(proof.modules.filterNot { it.id == ModuleId.IDE_PLUGIN }.all {
             it.allowedEffects == setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
         })
         assertEquals(
@@ -39,6 +47,7 @@ class IdeReadFirewallTest {
         assertEquals(
             setOf(
                 ModuleId.PROTOCOL_CONTRACT,
+                ModuleId.PROTOCOL_WIRE,
                 ModuleId.RUNTIME_IDE_READ,
                 ModuleId.WORKSPACE_INTELLIJ_READ,
             ),
@@ -90,7 +99,12 @@ class IdeReadFirewallTest {
         assertTrue(
             IdeReadFirewallFailure.AllowedEffectsMismatch(
                 ModuleId.IDE_PLUGIN,
-                setOf(ForbiddenEffect.INTELLIJ_PLATFORM, ForbiddenEffect.PROJECT_OPEN),
+                setOf(
+                    ForbiddenEffect.INTELLIJ_PLATFORM,
+                    ForbiddenEffect.UDS_BIND,
+                    ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
+                    ForbiddenEffect.PROJECT_OPEN,
+                ),
             ) in rejected.failures,
         )
         assertTrue(
