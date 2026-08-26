@@ -104,12 +104,7 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
             controlMetadataJson.encodeToString(SemanticRuntimeDocument.serializer(), manifest),
         )
         operationRegistryFile.get().asFile.copyTo(output.resolve("operation-registry.json"))
-        output.resolve("wire-schema.json").writeText(
-            controlMetadataJson.encodeToString(
-                WireSchemaDocument.serializer(),
-                WireSchemaDocument(schemaVersion = 1, wireSchemaId = wireSchemaId),
-            ),
-        )
+        output.resolve("wire-schema.json").writeBytes(canonicalWireSchemaBytes(wireSchemaId))
         licenseFile.get().asFile.copyTo(output.resolve("licenses/LICENSE"))
     }
 
@@ -160,3 +155,16 @@ internal val controlMetadataJson = Json {
     ignoreUnknownKeys = false
     isLenient = false
 }
+
+/**
+ * Proof transition: `String -> ByteArray` at the generated wire-schema boundary.
+ *
+ * Projects the existing wire-schema identity through its dedicated generated serializer. The
+ * returned bytes are the sole digest input for compatibility metadata and may be written only by
+ * build-report or control-metadata adapters.
+ */
+internal fun canonicalWireSchemaBytes(wireSchemaId: String): ByteArray =
+    controlMetadataJson.encodeToString(
+        WireSchemaDocument.serializer(),
+        WireSchemaDocument(schemaVersion = 1, wireSchemaId = wireSchemaId),
+    ).toByteArray(StandardCharsets.UTF_8)

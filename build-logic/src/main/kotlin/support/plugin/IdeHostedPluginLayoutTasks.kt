@@ -3,6 +3,8 @@ package support.plugin
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+import java.util.HexFormat
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -10,6 +12,10 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -17,6 +23,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
+import support.tasks.canonicalWireSchemaBytes
 
 private val REPORT_JSON = Json { prettyPrint = true; prettyPrintIndent = "    " }
 
@@ -43,6 +50,63 @@ private data class LayoutJarDocument(
     val classCount: Int,
     val classOwnerDigest: String,
 )
+
+@Serializable
+private data class IdeHostCompatibilityReportDocument(
+    val schemaVersion: Int,
+    val taskId: String,
+    val ideBuild: String,
+    val kotlinPluginBuild: String,
+    val kastPluginVersion: String,
+    val runtimeProtocolIdentity: String,
+    val operationRegistryDigest: String,
+    val wireSchemaDigest: String,
+    val capabilities: List<String>,
+)
+
+@CacheableTask
+abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
+    @get:Input abstract val ideBuild: Property<String>
+    @get:Input abstract val kotlinPluginBuild: Property<String>
+    @get:Input abstract val kastPluginVersion: Property<String>
+    @get:Input abstract val runtimeProtocolIdentity: Property<String>
+    @get:Input abstract val wireSchemaIdentity: Property<String>
+    @get:Input abstract val capabilities: ListProperty<String>
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val operationRegistryFile: RegularFileProperty
+
+    @get:OutputFile abstract val reportFile: RegularFileProperty
+
+    /**
+     * Proof transition: declared pins and exact registry/wire bytes `->` KVP-012 report.
+     *
+     * Computes both artifact digests from their canonical bytes and projects the closed report via
+     * its generated serializer. Filesystem failures cross into Gradle only at this task boundary.
+     */
+    @TaskAction
+    fun generate() {
+        val registryBytes = operationRegistryFile.get().asFile.readBytes()
+        val wireBytes = canonicalWireSchemaBytes(wireSchemaIdentity.get())
+        val report = IdeHostCompatibilityReportDocument(
+            schemaVersion = 1,
+            taskId = "KVP-012",
+            ideBuild = ideBuild.get(),
+            kotlinPluginBuild = kotlinPluginBuild.get(),
+            kastPluginVersion = kastPluginVersion.get(),
+            runtimeProtocolIdentity = runtimeProtocolIdentity.get(),
+            operationRegistryDigest = compatibilityDigest(registryBytes),
+            wireSchemaDigest = compatibilityDigest(wireBytes),
+            capabilities = capabilities.get(),
+        )
+        writeAtomically(
+            reportFile.get().asFile.toPath(),
+            REPORT_JSON.encodeToString(IdeHostCompatibilityReportDocument.serializer(), report) +
+                "\n",
+        )
+    }
+}
 
 @UntrackedTask(
     because = "Rechecks canonical path, symlink state, and exact archive bytes at execution time",
@@ -149,3 +213,6 @@ private fun writeAtomically(target: Path, content: String) {
         Files.deleteIfExists(temporary)
     }
 }
+
+private fun compatibilityDigest(bytes: ByteArray): String =
+    "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))

@@ -1,12 +1,14 @@
 import org.gradle.jvm.tasks.Jar
 import org.gradle.language.jvm.tasks.ProcessResources
 import support.plugin.BuildStandalonePluginTask
+import support.plugin.GenerateIdeHostCompatibilityReportTask
 import support.plugin.StandalonePluginNegativeProofTask
 import support.plugin.VerifyIdeHostedPluginLayoutNegativeTask
 import support.plugin.VerifyIdeHostedPluginLayoutTask
+import org.gradle.api.tasks.testing.Test
 
 plugins {
-    id("kast.kotlin-library")
+    id("kast.kotlin-serialization")
     id("kast.role.ide-read-only")
 }
 
@@ -14,6 +16,10 @@ group = "${rootProject.group}.ide"
 
 base {
     archivesName.set("kast-ide-plugin")
+}
+
+dependencies {
+    api(project(":protocol:contract"))
 }
 
 tasks.named<Jar>("jar") {
@@ -67,10 +73,52 @@ val verifyPluginLayout by tasks.registering(VerifyIdeHostedPluginLayoutTask::cla
     reportFile.set(layout.buildDirectory.file("reports/KVP-011-layout.json"))
 }
 
+val operationRegistryArtifact = project(":protocol:wire").layout.buildDirectory.file(
+    "generated/operation-registry/operation-registry.json",
+)
+
+val generateIdeHostCompatibilityReport by tasks.registering(
+    GenerateIdeHostCompatibilityReportTask::class,
+) {
+    group = "verification"
+    description = "Projects the exact KVP-012 IDE-host compatibility tuple and artifact digests."
+    dependsOn(":protocol:wire:generateOperationRegistry")
+    ideBuild.set(libs.versions.ide.host.build)
+    kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
+    kastPluginVersion.set(project.version.toString())
+    runtimeProtocolIdentity.set("kast.ide-hosted.runtime.v1")
+    wireSchemaIdentity.set("kast-wire-v1")
+    capabilities.set(
+        listOf(
+            "workspace.inspect",
+            "symbol.discover",
+            "symbol.resolve",
+            "symbol.describe",
+        ),
+    )
+    operationRegistryFile.set(operationRegistryArtifact)
+    reportFile.set(layout.buildDirectory.file("reports/KVP-012-compatibility.json"))
+}
+
+tasks.withType<Test>().configureEach {
+    dependsOn(generateIdeHostCompatibilityReport)
+    systemProperty(
+        "kast.ide.compatibility.report",
+        generateIdeHostCompatibilityReport.flatMap(
+            GenerateIdeHostCompatibilityReportTask::reportFile,
+        ).get().asFile.absolutePath,
+    )
+    systemProperty("kast.ide.compatibility.plugin-version", project.version.toString())
+}
+
 tasks.named("assemble") {
     dependsOn(buildPlugin)
 }
 
 tasks.named("check") {
-    dependsOn(standalonePluginNegativeProof, verifyPluginLayoutNegative)
+    dependsOn(
+        standalonePluginNegativeProof,
+        verifyPluginLayoutNegative,
+        generateIdeHostCompatibilityReport,
+    )
 }
