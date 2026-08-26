@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import pathlib
+import re
 
 
 REPORT_PATH = "runtime/ide-read/build/reports/KVP-023-read-runtime.json"
@@ -166,6 +167,8 @@ def verify_kvp023_delivery(root, program, requirements, normative_plan):
 
     build_script = required_text(root, "runtime/ide-read/build.gradle.kts")
     assert 'id("kast.role.ide-read-only")' in build_script
+    assert 'implementation(project(":protocol:wire"))' in build_script
+    assert 'api(project(' not in build_script
     for forbidden_project in (
         ":runtime:server",
         ":runtime:composition",
@@ -222,6 +225,118 @@ def verify_kvp023_delivery(root, program, requirements, normative_plan):
     assert "from verify_kvp023_delivery import verify_kvp023_delivery" in bundle
     assert "verify_kvp023_delivery(root, program, requirements, normative_plan)" in bundle
 
+    ports = required_text(
+        root,
+        "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/"
+        "IdeReadOperationPorts.kt",
+    )
+    assert set(re.findall(r"fun interface (\w+)", ports)) == {
+        "WorkspaceInspectReadPort",
+        "SymbolDiscoverReadPort",
+        "SymbolResolveReadPort",
+        "SymbolDescribeReadPort",
+    }
+    for request, result, qualification, rejection in (
+        (
+            "WorkspaceInspectRequest",
+            "WorkspaceInspectResult",
+            "WorkspaceInspectQualification",
+            "WorkspaceInspectRejection",
+        ),
+        (
+            "SymbolDiscoverRequest",
+            "SymbolDiscoverResult",
+            "SymbolDiscoverQualification",
+            "SymbolDiscoverRejection",
+        ),
+        (
+            "SymbolResolveRequest",
+            "SymbolResolveResult",
+            "Nothing",
+            "SymbolResolveRejection",
+        ),
+        (
+            "SymbolDescribeRequest",
+            "SymbolDescribeResult",
+            "Nothing",
+            "SymbolDescribeRejection",
+        ),
+    ):
+        assert f"request: {request}" in ports
+        assert (
+            f"OperationOutcome<\n        {result},\n        {qualification},\n"
+            f"        {rejection},"
+        ) in ports
+
+    binding = required_text(
+        root,
+        "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/"
+        "IdeReadRuntimeBinding.kt",
+    )
+    for factory, capability, codec in (
+        ("workspaceInspect", "WORKSPACE_INSPECT", "workspaceInspect"),
+        ("symbolDiscover", "SYMBOL_DISCOVER", "symbolDiscover"),
+        ("symbolResolve", "SYMBOL_RESOLVE", "symbolResolve"),
+        ("symbolDescribe", "SYMBOL_DESCRIBE", "symbolDescribe"),
+    ):
+        factory_body = binding.split(f"fun {factory}(", maxsplit=1)[1].split("\n        )", maxsplit=1)[0]
+        assert f"IdeHostCapability.{capability}" in factory_body
+        assert f"CanonicalOperationWireBindings.{codec}" in factory_body
+
+    dispatch = required_text(
+        root,
+        "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/"
+        "IdeReadRuntimeDispatch.kt",
+    )
+    assert "Proof transition: `String -> IdeReadRuntimeDispatchResult`." in dispatch
+    assert "else ->" not in dispatch
+    supported_routes = {
+        "WORKSPACE_INSPECT": "workspaceInspect",
+        "SYMBOL_DISCOVER": "symbolDiscover",
+        "SYMBOL_RESOLVE": "symbolResolve",
+        "SYMBOL_DESCRIBE": "symbolDescribe",
+    }
+    for operation, slot in supported_routes.items():
+        assert (
+            f"CanonicalOperation.{operation} -> {slot}.dispatch(admission.request)"
+        ) in dispatch
+    unsupported = {
+        "TOPOLOGY_BUILD",
+        "RELATION_READ",
+        "TRAVERSAL_RUN",
+        "DIAGNOSTIC_CHECK",
+        "CHANGE_PLAN",
+        "CHANGE_APPLY",
+        "CHANGE_VERIFY",
+        "CHANGE_RECOVER",
+    }
+    for operation in unsupported:
+        assert f"CanonicalOperation.{operation}," in dispatch
+    assert dispatch.count("IdeReadRuntimeDispatchFailure.UnsupportedOperation(") == 1
+    assert set(re.findall(r"data class (\w+)\(", dispatch)) == {
+        "Responded",
+        "Rejected",
+        "RequestAdmissionFailed",
+        "UnsupportedOperation",
+        "RequestDecodingFailed",
+        "ResponseEncodingFailed",
+    }
+
+    negative_test = required_text(
+        root,
+        "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/"
+        "IdeReadRuntimeDispatchNegativeTest.kt",
+    )
+    positive_test = required_text(
+        root,
+        "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/"
+        "IdeReadRuntimeDispatchTest.kt",
+    )
+    assert "all eight known unsupported operations reject before every port" in negative_test
+    assert "assertEquals(8, unsupported.size)" in negative_test
+    assert "exact four codecs route to one nominal port and preserve legal outcomes" in positive_test
+    assert positive_test.count("assertEquals(listOf(") == 4
+
 
 if __name__ == "__main__":
     repository = pathlib.Path(__file__).resolve().parents[1]
@@ -238,10 +353,4 @@ if __name__ == "__main__":
         "docs/kast-vfs-passive-reused-index-delivery-program.md",
     )
     verify_kvp023_delivery(repository, generated_program, generated_requirements, plan)
-    runtime_root = repository / "runtime/ide-read/src/main/kotlin"
-    runtime_source = "\n".join(
-        path.read_text()
-        for path in sorted(runtime_root.rglob("*.kt"))
-    )
-    assert "IdeReadRuntimeDispatch" not in runtime_source
     print("KVP-023 delivery authority: valid")

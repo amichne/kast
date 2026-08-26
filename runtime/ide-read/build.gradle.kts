@@ -38,6 +38,7 @@ private val workspaceIdeaLibraries = files(
 ).builtBy(":workspace:intellij-read:extractWorkspaceReadIdeaDistribution")
 
 dependencies {
+    implementation(project(":protocol:wire"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
     compileOnly(workspaceIdeaLibraries)
