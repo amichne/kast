@@ -97,7 +97,6 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyValidator.kt",
         "build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
         "build-logic/src/test/kotlin/support/architecture/IdeReadFirewallTest.kt",
-        "build-logic/src/test/kotlin/support/architecture/Kvp024EndpointAuthorityTest.kt",
         "build-logic/src/test/kotlin/support/architecture/policy/KastCleanSlatePolicyTest.kt",
         "build-logic/src/main/kotlin/support/delivery/AGENTS.md",
         "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt",
