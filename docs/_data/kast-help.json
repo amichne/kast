@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-21T00:00:00Z",
+  "capturedFrom": "kast 0.27.0 supplied CLI specification",
+  "productVersion": "0.27.0",
+  "version": "kast 0.27.0 (semantic runtime sha256:9f0df5b37b60354f0aefe542cf02705889cb05f575b5d3837cbe06ba9b8f3212)",
+  "root": "kast 0.27.0 (semantic runtime sha256:9f0df5b37b60354f0aefe542cf02705889cb05f575b5d3837cbe06ba9b8f3212) \n\nUsage: \n    kast [<options>] <command> [<args>]... \n    Inspect and change one exact Kotlin workspace through typed semantic operations. \n    Options: \n        --version Show product and semantic runtime versions \n        --schema Print the installed machine-readable schema \n        -h, --help Show this message and exit Commands: workspace Inspect the exact canonical workspace.\n        symbol\n            Discover, resolve, and describe Kotlin symbols.\n        relation \n            Read one-hop semantic relations.\n        traversal \n            Traverse bounded semantic relation graphs. \n        diagnostic\n            Read bounded compiler diagnostics.\n        change \n            Plan, apply, verify, and recover typed changes.\n        start\n            Start or reuse the exact-root runtime. \n        stop\n            Stop the exact-root runtime and retire markers.\n        status \n            Read exact-root runtime status. \n        clean \n            Remove stopped runtime markers and state.\n        reindex \n            Stop, clean, and rebuild exact-root semantic state.\n    Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr.",
+  "families": {
+    "symbol": "Usage: kast symbol [<options>] <command> [<args>]... Discover, resolve, and describe Kotlin symbols. Options: -h, --help Show this message and exit Commands: discover Discover symbols by name, source location, file structure, or bounded text search. resolve Resolve one candidate to an exact selector. describe Describe one exact generation-bound symbol."
+  },
+  "commands": {},
+  "lifecycle": {}
+}

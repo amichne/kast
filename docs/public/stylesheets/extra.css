@@ -1,0 +1,21 @@
+:root {
+  --kast-contract-border: color-mix(in srgb, var(--md-primary-fg-color) 36%, transparent);
+}
+
+.md-typeset .admonition.info,
+.md-typeset details.info {
+  border-color: var(--kast-contract-border);
+}
+
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > ol > li {
+  min-height: 9rem;
+}
+
+.md-typeset h1 {
+  letter-spacing: -0.025em;
+}
+
+.md-typeset code {
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,113 @@
+[project]
+site_name = "Kast"
+site_description = "Compiler-grounded Kotlin operations for coding agents."
+site_author = "amichne"
+site_url = "https://kast.michne.com/"
+repo_url = "https://github.com/amichne/kast"
+repo_name = "amichne/kast"
+edit_uri = "edit/main/docs/public"
+docs_dir = "docs/public"
+site_dir = "site"
+copyright = "Copyright &copy; 2026 amichne"
+extra_css = ["stylesheets/extra.css"]
+nav = [
+  { "Start" = "index.md" },
+  { "Capabilities" = [
+    { "Workspace" = [
+      { "Inspect the workspace" = "operations/workspace/workspace-inspect.md" },
+    ] },
+    { "Symbols" = [
+      { "Discover candidates" = "operations/symbols/symbol-discover.md" },
+      { "Resolve exact identity" = "operations/symbols/symbol-resolve.md" },
+      { "Describe a symbol" = "operations/symbols/symbol-describe.md" },
+    ] },
+    { "Relations" = [
+      { "Read one relation" = "operations/relations/relation-read.md" },
+      { "Traverse relations" = "operations/relations/traversal-run.md" },
+    ] },
+    { "Diagnostics" = [
+      { "Check diagnostics" = "operations/diagnostics/diagnostic-check.md" },
+    ] },
+    { "Changes" = [
+      { "Plan a change" = "operations/changes/change-plan.md" },
+      { "Apply a plan" = "operations/changes/change-apply.md" },
+      { "Verify an application" = "operations/changes/change-verify.md" },
+      { "Recover a plan" = "operations/changes/change-recover.md" },
+    ] },
+  ] },
+  { "Concepts" = [
+    { "Symbol identity" = "concepts/symbol-identity.md" },
+    { "Outcomes" = "concepts/outcomes.md" },
+    { "Runtime" = "concepts/runtime.md" },
+  ] },
+  { "Agent setup" = "guides/agent-setup.md" },
+  { "Glossary" = "glossary.md" },
+  { "Reference" = [
+    { "Operations" = "reference/operations.md" },
+    { "CLI" = "reference/cli.md" },
+    { "Documentation contract" = "reference/documentation-contract.md" },
+  ] },
+]
+
+[project.theme]
+language = "en"
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.copy",
+  "navigation.footer",
+  "navigation.instant",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+  "search.highlight",
+  "toc.follow",
+]
+
+[project.theme.icon]
+logo = "lucide/network"
+repo = "fontawesome/brands/github"
+edit = "material/file-edit-outline"
+view = "material/file-eye-outline"
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.extra.status]
+released = "Available in the installed CLI contract"
+generated = "Generated from the installed CLI contract"
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+
+[project.markdown_extensions.zensical.extensions.macros]
+module_name = "docs_macros"
+render_by_default = true
+on_error_fail = true
+on_undefined = "strict"
+
+[project.validation]
+invalid_links = true
+invalid_link_anchors = true
+unresolved_references = false
+unresolved_footnotes = false
+unused_definitions = false
+unused_footnotes = false
+shadowed_definitions = false
+shadowed_footnotes = false

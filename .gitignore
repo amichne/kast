@@ -26,9 +26,10 @@ replay_pid*
 # Operating-system state
 .DS_Store
 
-# Python helper state
+# Python helper and documentation build state
 __pycache__/
 *.pyc
+/site/
 
 # Agent-local state
 .agent-workflows/

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "operationRegistry": {
+    "schemaVersion": 1,
+    "operationIds": [
+      "workspace.inspect",
+      "symbol.discover",
+      "symbol.resolve",
+      "symbol.describe",
+      "relation.read",
+      "traversal.run",
+      "diagnostic.check",
+      "change.plan",
+      "change.apply",
+      "change.verify",
+      "change.recover"
+    ]
+  },
+  "wireSchema": {
+    "schemaVersion": 1,
+    "wireSchemaId": "kast-wire-v1"
+  },
+  "cliProjection": {
+    "localFlags": [
+      "--help",
+      "--version",
+      "--schema"
+    ],
+    "lifecycleCommands": [
+      "start",
+      "stop",
+      "status",
+      "clean",
+      "reindex"
+    ],
+    "commands": [
+      "workspace inspect",
+      "symbol discover --mode <name|location|structure|text> ... --limit <1..1000>",
+      "symbol resolve --candidate <candidate-selector>",
+      "symbol describe --selector <exact-selector>",
+      "relation read --selector <exact-selector> --relation <kind> --limit <1..1000>",
+      "traversal run --selector <exact-selector> --relation <kind> --maximum-depth <1..1000> --maximum-results <1..1000>",
+      "diagnostic check --scope <scope> --limit <1..1000>",
+      "change plan --intent <add-file|add-declaration|replace-declaration|rename-symbol> <intent-options>",
+      "change apply --plan <plan-identity>",
+      "change verify --application <application-identity>",
+      "change recover --plan <plan-identity>"
+    ]
+  },
+  "semanticRuntime": {
+    "schemaVersion": 1,
+    "runtimeId": "sha256:9f0df5b37b60354f0aefe542cf02705889cb05f575b5d3837cbe06ba9b8f3212",
+    "productVersion": "0.27.0",
+    "platform": "macos",
+    "architecture": "aarch64",
+    "ideaBuild": "261.25134.95",
+    "kotlinPluginBuild": "2.4.10",
+    "kastPluginSha256": "sha256:5c9d9b5c65bf487227b4b83a63b0099944f8748b80d06184a1f3009cdef07dac",
+    "wireSchemaId": "kast-wire-v1",
+    "archive": {
+      "fileName": "kast-semantic-runtime-0.27.0-macos-aarch64.zip",
+      "url": "https://github.com/amichne/kast/releases/download/v0.27.0/kast-semantic-runtime-0.27.0-macos-aarch64.zip",
+      "sha256": "sha256:9cee76c36d0ffeb39f18ad3c0473e8ffd8b9675cef98bd8e3f646bb311a1774b",
+      "bytes": 534601049
+    },
+    "layout": {
+      "executable": "kast-indexer",
+      "requiredEntries": [
+        "kast-indexer",
+        "runtime-libs/",
+        "idea-home/product-info.json",
+        "idea-home/plugins/kast-indexer/"
+      ],
+      "executableEntries": [
+        "kast-indexer"
+      ]
+    }
+  }
+}
