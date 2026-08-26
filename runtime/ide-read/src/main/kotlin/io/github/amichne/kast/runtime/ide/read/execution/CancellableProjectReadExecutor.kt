@@ -109,6 +109,7 @@ class CancellableProjectReadExecutor private constructor(
 
     /** Atomically refines one permit and installs its indicator cancellation capability. */
     private fun begin(permit: ProjectReadPermit): ExecutionAttempt = synchronized(executionLock) {
+        val process = processFactory.prepare()
         when (val admission = singleFlight.beginExecution(permit)) {
             is ProjectReadExecutionAdmission.Rejected -> ExecutionAttempt.Rejected(
                 admission.failure,
@@ -117,7 +118,6 @@ class CancellableProjectReadExecutor private constructor(
                 check(running === RunningProjectRead.None) {
                     "single-flight admitted overlapping executor authority"
                 }
-                val process = processFactory.prepare()
                 running = RunningProjectRead.Active(permit, admission.execution, process)
                 ExecutionAttempt.Admitted(admission.execution, process)
             }

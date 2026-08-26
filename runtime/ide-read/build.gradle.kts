@@ -111,10 +111,6 @@ val defaultTest = tasks.named<Test>("test")
 defaultTest.configure {
     dependsOn(verifySingleFlightReportNegative)
     mustRunAfter(verifySingleFlightReportNegative)
-    exclude(
-        "**/CancellableReadNegativeTest.class",
-        "**/CancellableReadTest.class",
-    )
     inputs.file(singleFlightReport).withPathSensitivity(PathSensitivity.NONE)
     inputs.property("kast.ide.single.flight.expected.head", singleFlightExpectedHead)
     systemProperty("kast.ide.single.flight.report", singleFlightReport.get().asFile.absolutePath)

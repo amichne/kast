@@ -227,6 +227,31 @@ class CancellableReadNegativeTest {
     }
 
     @Test
+    fun `process preparation defect leaves permit active and owned`() {
+        val freshness = FreshnessFixture("/tmp/kast-cancellable-process-defect")
+        val controller = controller(freshness.capability())
+        val defect = IllegalStateException("process preparation defect")
+        val port = InvokingReadPort()
+        val executor = cancellableExecutor(controller, port) { throw defect }
+        val permit = active(controller.admit(freshness.capability()))
+        val observed = try {
+            executor.execute(permit) { "not-called" }
+            throw AssertionError("process preparation defect was swallowed")
+        } catch (caught: IllegalStateException) {
+            caught
+        }
+        assertSame(defect, observed)
+        assertEquals(0, port.calls)
+        assertEquals(
+            ProjectReadPermitEnd.Ended(
+                ProjectReadPermitTerminal.Released,
+                ProjectReadContinuation.Idle,
+            ),
+            controller.release(permit),
+        )
+    }
+
+    @Test
     fun `live adapter bytecode and public surface enforce the KVP 021 boundary`() {
         val resource = AdmittedProjectReadExecution::class.java.name.replace('.', '/') + ".class"
         val bytes = checkNotNull(

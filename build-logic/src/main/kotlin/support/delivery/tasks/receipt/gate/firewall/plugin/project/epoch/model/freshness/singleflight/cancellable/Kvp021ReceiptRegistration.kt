@@ -27,10 +27,12 @@ internal fun Project.registerKvp021ReceiptProgression(
         runtimeMain + "AGENTS.md",
         runtimeMain + "ProjectReadOutcomes.kt",
         runtimeMain + "ProjectReadPermit.kt",
+        runtimeMain + "ProjectReadScope.kt",
         runtimeMain + "ProjectReadSingleFlight.kt",
         runtimeExecution + "AGENTS.md",
         runtimeExecution + "CancellableProjectReadExecutor.kt",
         runtimeExecution + "CancellableProjectReadOutcomes.kt",
+        runtimeExecution + "CancellableProjectReadProcess.kt",
         runtimeTest + "AGENTS.md",
         runtimeTest + "CancellableReadFixtures.kt",
         "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/" +
