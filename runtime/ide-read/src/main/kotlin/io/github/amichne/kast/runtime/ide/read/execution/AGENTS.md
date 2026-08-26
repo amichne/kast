@@ -12,5 +12,7 @@ This package joins KVP-020 permit authority to the admitted IDEA 262 read bounda
   terminalization may produce Completed.
 - Keep operation semantics out of this package. The internal Project-bearing computation exists
   only for later operation-specific adapters.
+- KVP-022 may retain the admitted Project's epoch-observer capability, but it must observe only
+  after permit execution admission and keep the queue barrier until AFTER revalidation completes.
 
 Run the exact `CancellableReadNegativeTest` and `CancellableReadTest` selectors.

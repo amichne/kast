@@ -232,7 +232,11 @@ class CancellableReadNegativeTest {
         val controller = controller(freshness.capability())
         val defect = IllegalStateException("process preparation defect")
         val port = InvokingReadPort()
-        val executor = cancellableExecutor(controller, port) { throw defect }
+        val executor = cancellableExecutor(
+            controller,
+            port,
+            processFactory = { throw defect },
+        )
         val permit = active(controller.admit(freshness.capability()))
         val observed = try {
             executor.execute(permit) { "not-called" }

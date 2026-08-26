@@ -7,6 +7,7 @@ import io.github.amichne.kast.runtime.ide.read.execution.CancellableProjectReadO
 import io.github.amichne.kast.runtime.ide.read.execution.CancellableProjectReadPort
 import io.github.amichne.kast.runtime.ide.read.execution.CancellableProjectReadProcessFactory
 import io.github.amichne.kast.runtime.ide.read.execution.PreparedCancellableProjectRead
+import io.github.amichne.kast.runtime.ide.read.revalidation.ProjectReadEpochObserver
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionFailure
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionResult
 import java.lang.reflect.Proxy
@@ -16,14 +17,20 @@ internal fun cancellableExecutor(
     singleFlight: ProjectReadSingleFlight,
     port: CancellableProjectReadPort,
     processFactory: CancellableProjectReadProcessFactory = DirectReadProcessFactory,
+    epochObserver: ProjectReadEpochObserver = UnusedProjectReadEpochObserver,
 ): CancellableProjectReadExecutor {
     val constructor = CancellableProjectReadExecutor::class.java.getDeclaredConstructor(
         ProjectReadSingleFlight::class.java,
         CancellableProjectReadPort::class.java,
         CancellableProjectReadProcessFactory::class.java,
+        ProjectReadEpochObserver::class.java,
     )
     constructor.isAccessible = true
-    return constructor.newInstance(singleFlight, port, processFactory)
+    return constructor.newInstance(singleFlight, port, processFactory, epochObserver)
+}
+
+private object UnusedProjectReadEpochObserver : ProjectReadEpochObserver {
+    override fun observe() = error("epoch observer was used by the non-revalidated path")
 }
 
 /** Host-free process capability used by controller-focused unit tests. */

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.ide.read.execution
 
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.runtime.ide.read.ExecutingProjectRead
 import io.github.amichne.kast.runtime.ide.read.ProjectReadAdmission
@@ -17,10 +16,14 @@ import io.github.amichne.kast.runtime.ide.read.ProjectReadRetirementCause
 import io.github.amichne.kast.runtime.ide.read.ProjectReadSingleFlight
 import io.github.amichne.kast.runtime.ide.read.QueuedProjectReadObservation
 import io.github.amichne.kast.runtime.ide.read.QueuedProjectReadRequest
+import io.github.amichne.kast.runtime.ide.read.revalidation.DetachedIdeReadProjection
+import io.github.amichne.kast.runtime.ide.read.revalidation.EpochRevalidationPhase
+import io.github.amichne.kast.runtime.ide.read.revalidation.ProjectReadEpochObserver
+import io.github.amichne.kast.runtime.ide.read.revalidation.RevalidatedIdeReadResult
+import io.github.amichne.kast.runtime.ide.read.revalidation.revalidateIdeRead
+import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
-import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadComputation
-import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecution
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmission
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmissionFailure
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionFailure
@@ -36,6 +39,7 @@ class CancellableProjectReadExecutor private constructor(
     private val singleFlight: ProjectReadSingleFlight,
     private val readPort: CancellableProjectReadPort,
     private val processFactory: CancellableProjectReadProcessFactory,
+    private val epochObserver: ProjectReadEpochObserver,
 ) {
     private val executionLock = Any()
     private var running: RunningProjectRead = RunningProjectRead.None
@@ -68,7 +72,52 @@ class CancellableProjectReadExecutor private constructor(
         is ExecutionAttempt.Rejected -> CancellableProjectReadResult.PermitRejected(
             attempt.failure,
         )
-        is ExecutionAttempt.Admitted -> executeAdmitted(attempt, operation)
+        is ExecutionAttempt.Admitted -> finishAttempt(attempt) {
+            attempt.process.execute(readPort, operation)
+        }
+    }
+
+    /**
+     * Proof transition: `(ProjectReadPermit, CancellableProjectReadOperation<Value>) ->
+     * CancellableProjectReadResult<RevalidatedIdeReadResult<Value>>`.
+     *
+     * Establishes an exact retained-source epoch immediately before semantic execution and again
+     * after detached projection while the permit still owns the queue barrier. Only equality
+     * admits [RevalidatedIdeReadResult.Complete]; movement, incomparability, and observation
+     * rejection remain finite typed data. Platform cancellation propagates unchanged.
+     */
+    internal fun <Value : Any> executeRevalidated(
+        permit: ProjectReadPermit,
+        operation: CancellableProjectReadOperation<Value>,
+    ): CancellableProjectReadResult<RevalidatedIdeReadResult<Value>> = when (
+        val attempt = begin(permit)
+    ) {
+        is ExecutionAttempt.Rejected -> CancellableProjectReadResult.PermitRejected(
+            attempt.failure,
+        )
+        is ExecutionAttempt.Admitted -> finishAttempt(attempt) {
+            when (val before = epochObserver.observe()) {
+                is ProjectReadEpochObservation.Rejected ->
+                    AdmittedProjectReadExecutionResult.Completed(
+                        RevalidatedIdeReadResult.Rejected.EpochObservationRejected(
+                            EpochRevalidationPhase.BEFORE,
+                            before.failure,
+                        ),
+                    )
+                is ProjectReadEpochObservation.Observed -> when (
+                    val read = attempt.process.execute(readPort, operation)
+                ) {
+                    is AdmittedProjectReadExecutionResult.Completed -> {
+                        val projection = DetachedIdeReadProjection.capture(read.value)
+                        val after = epochObserver.observe()
+                        AdmittedProjectReadExecutionResult.Completed(
+                            revalidateIdeRead(before.epoch, projection, after),
+                        )
+                    }
+                    is AdmittedProjectReadExecutionResult.Rejected -> read
+                }
+            }
+        }
     }
 
     /**
@@ -124,12 +173,12 @@ class CancellableProjectReadExecutor private constructor(
         }
     }
 
-    private fun <Value : Any> executeAdmitted(
+    private fun <Value : Any> finishAttempt(
         attempt: ExecutionAttempt.Admitted,
-        operation: CancellableProjectReadOperation<Value>,
+        observe: () -> AdmittedProjectReadExecutionResult<Value>,
     ): CancellableProjectReadResult<Value> {
         val observed = try {
-            attempt.process.execute(readPort, operation)
+            observe()
         } catch (cancelled: ProcessCanceledException) {
             clear(attempt.execution)
             singleFlight.cancelExecution(attempt.execution, cancelled.executionCause())
@@ -236,6 +285,7 @@ class CancellableProjectReadExecutor private constructor(
                         ProjectReadSingleFlight.bind(admission.freshness),
                         LiveCancellableProjectReadPort(admission.execution),
                         LiveCancellableProjectReadProcessFactory,
+                        ProjectReadEpochObserver(project::observeReadEpoch),
                     ),
                 )
             is AdmittedProjectReadExecutionAdmission.Rejected ->
@@ -274,44 +324,6 @@ private fun disposeAfterRetirement(
     }
     else -> invalidated(end)
 }
-
-/** Running indicator ownership retained only for exact executing authority. */
-private sealed interface RunningProjectRead {
-    data object None : RunningProjectRead
-    class Active(
-        val permit: ProjectReadPermit,
-        val execution: ExecutingProjectRead,
-        val process: PreparedCancellableProjectRead,
-    ) : RunningProjectRead
-}
-
-/** Closed executor-local refinement of a permit and platform cancellation capability. */
-private sealed interface ExecutionAttempt {
-    data class Admitted(
-        val execution: ExecutingProjectRead,
-        val process: PreparedCancellableProjectRead,
-    ) : ExecutionAttempt
-    data class Rejected(val failure: ProjectReadExecutionAdmissionFailure) : ExecutionAttempt
-}
-
-/** Live adapter keeping the workspace capability and Project out of the executor surface. */
-private class LiveCancellableProjectReadPort(
-    private val execution: AdmittedProjectReadExecution,
-) : CancellableProjectReadPort {
-    override fun <Value : Any> execute(
-        operation: CancellableProjectReadOperation<Value>,
-    ): AdmittedProjectReadExecutionResult<Value> = execution.execute(
-        AdmittedProjectReadComputation(operation::execute),
-    )
-}
-
-/** Distinguishes write priority from other platform cancellation without swallowing identity. */
-private fun ProcessCanceledException.executionCause(): ProjectReadExecutionCancellationCause =
-    if (this is ReadAction.CannotReadException) {
-        ProjectReadExecutionCancellationCause.WRITE_PREEMPTED
-    } else {
-        ProjectReadExecutionCancellationCause.PLATFORM_CANCELLED
-    }
 
 /** Admits a computed value only when exact permit release succeeded. */
 private fun <Value : Any> complete(

@@ -1,8 +1,16 @@
 package io.github.amichne.kast.runtime.ide.read.execution
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.progress.EmptyProgressIndicator
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Computable
+import io.github.amichne.kast.runtime.ide.read.ExecutingProjectRead
+import io.github.amichne.kast.runtime.ide.read.ProjectReadExecutionAdmissionFailure
+import io.github.amichne.kast.runtime.ide.read.ProjectReadExecutionCancellationCause
+import io.github.amichne.kast.runtime.ide.read.ProjectReadPermit
+import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadComputation
+import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecution
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionResult
 
 /** Factory for one non-reusable, externally cancellable read-process capability. */
@@ -46,3 +54,41 @@ private class LiveCancellableProjectReadProcess : PreparedCancellableProjectRead
     /** Signals cancellation to the exact process that owns this indicator. */
     override fun cancel() = indicator.cancel()
 }
+
+/** Running indicator ownership retained only for exact executing authority. */
+internal sealed interface RunningProjectRead {
+    data object None : RunningProjectRead
+    class Active(
+        val permit: ProjectReadPermit,
+        val execution: ExecutingProjectRead,
+        val process: PreparedCancellableProjectRead,
+    ) : RunningProjectRead
+}
+
+/** Closed executor-local refinement of a permit and platform cancellation capability. */
+internal sealed interface ExecutionAttempt {
+    data class Admitted(
+        val execution: ExecutingProjectRead,
+        val process: PreparedCancellableProjectRead,
+    ) : ExecutionAttempt
+    data class Rejected(val failure: ProjectReadExecutionAdmissionFailure) : ExecutionAttempt
+}
+
+/** Live adapter keeping the workspace capability and Project out of the executor surface. */
+internal class LiveCancellableProjectReadPort(
+    private val execution: AdmittedProjectReadExecution,
+) : CancellableProjectReadPort {
+    override fun <Value : Any> execute(
+        operation: CancellableProjectReadOperation<Value>,
+    ): AdmittedProjectReadExecutionResult<Value> = execution.execute(
+        AdmittedProjectReadComputation(operation::execute),
+    )
+}
+
+/** Distinguishes write priority from other platform cancellation without swallowing identity. */
+internal fun ProcessCanceledException.executionCause(): ProjectReadExecutionCancellationCause =
+    if (this is ReadAction.CannotReadException) {
+        ProjectReadExecutionCancellationCause.WRITE_PREEMPTED
+    } else {
+        ProjectReadExecutionCancellationCause.PLATFORM_CANCELLED
+    }
