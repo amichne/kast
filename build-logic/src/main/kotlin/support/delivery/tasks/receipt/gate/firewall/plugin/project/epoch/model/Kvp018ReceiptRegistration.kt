@@ -218,7 +218,11 @@ internal fun Project.registerKvp018ReceiptProgression(
     }
     val recordRed = tasks.register("recordKVP018RedReceipt", RecordKvp018RedReceiptTask::class.java) {
         configureHosted()
-        dependsOn("verifyKVP016CompletionReceipt", "verifyKVP017CompletionReceipt")
+        dependsOn(
+            "verifyKVP016CompletionReceipt",
+            "verifyKVP017CompletionReceipt",
+            ":workspace:intellij-read:classes",
+        )
         receiptFile.set(hosted.redReceipt)
     }
     val recordGreen = tasks.register(
