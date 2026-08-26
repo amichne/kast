@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `0c3ce40d81cd0c8420b61605aadb7ed2d38f77d914809e9198e71ec3eecc81a9`
+**Program fingerprint:** `36983415f6e0156e1ee256717a89d86f7929b9415802600ba5da0483887abb97`
 
 ## Terminal outcome
 
@@ -273,7 +273,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery/schema/proof-receipt.schema.json`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt`, `build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/ReceiptIssuanceBoundary.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryTaskOwnershipTest.kt`, `build-logic/src/test/kotlin/support/delivery/proof/AGENTS.md`, `build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/schema/proof-receipt.schema.json`, `scripts/verify_bundle.py`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt`, `build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/ReceiptIssuanceBoundary.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryTaskOwnershipTest.kt`, `build-logic/src/test/kotlin/support/delivery/proof/AGENTS.md`, `build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/schema/proof-receipt.schema.json`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.006.proof`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-023`, `requirement:KVP-REQ-026`.
 
