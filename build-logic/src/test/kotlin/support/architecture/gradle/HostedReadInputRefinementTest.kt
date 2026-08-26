@@ -1,15 +1,9 @@
-package support.architecture
+package support.architecture.gradle
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import support.architecture.gradle.HostedReadExternalInputFailure
-import support.architecture.gradle.HostedReadExternalInputResult
-import support.architecture.gradle.HostedReadProjectInputFailure
-import support.architecture.gradle.HostedReadProjectInputResult
-import support.architecture.gradle.loadHostedReadExternalInputs
-import support.architecture.gradle.loadHostedReadProjectInputs
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path

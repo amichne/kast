@@ -14,3 +14,4 @@ This directory owns executable proof for architecture policy, admission, and com
   inventory rejection, and predecessor proof. `HostedReadProjectClasspathTest.kt` and
   `HostedReadClasspathFixtures.kt` own exact project-artifact admission, archive failures,
   immutable byte snapshots, and stronger-effect rejection.
+- `gradle/` owns executable proof for raw hosted-input refinement and finite task failures.

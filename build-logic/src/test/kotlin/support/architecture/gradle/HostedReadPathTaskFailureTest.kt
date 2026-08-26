@@ -1,4 +1,4 @@
-package support.architecture
+package support.architecture.gradle
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -7,11 +7,13 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
-import support.architecture.gradle.HostedReadPathTaskFailure
-import support.architecture.gradle.HostedReadPredecessorReceiptObservation
-import support.architecture.gradle.canonicalArchitecturePolicy
-import support.architecture.gradle.observeKvp018PredecessorReceipt
-import support.architecture.gradle.renderAtGradleBoundary
+import support.architecture.ArchitecturePolicyValidation
+import support.architecture.HostedReadPathDerivation
+import support.architecture.HostedReadPathDeriver
+import support.architecture.Kvp018PredecessorReceiptFailure
+import support.architecture.Kvp018PredecessorReceiptId
+import support.architecture.ModuleId
+import support.architecture.ValidatedArchitecturePolicy
 
 class HostedReadPathTaskFailureTest {
     @Test
