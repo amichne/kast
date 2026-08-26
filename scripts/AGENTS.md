@@ -12,6 +12,9 @@ This directory owns the dependency-free verifier for the VFS-passive delivery bu
 - `verify_kvp021_delivery.py` independently checks KVP-021's admitted-Project execution scope,
   exact predecessors, cycle-free proof ownership, read-only dependency direction, and generated
   projections before executor behavior exists.
+- `verify_kvp022_delivery.py` independently checks KVP-022's epoch-revalidation scope, exact
+  predecessor and gates, read-only dependency direction, requirement trace, and generated
+  projections without assuming whether product or receipt files exist yet.
 - `verify_bundle.sh` compiles the canonical Kotlin authority in isolation, regenerates both projections in a temporary directory, and compares their bytes with the checked-in artifacts.
 
 Do not add host-package installation as a prerequisite. Run `scripts/verify_bundle.sh` from the repository root.

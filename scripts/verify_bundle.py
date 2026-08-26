@@ -7,7 +7,7 @@ from verify_kvp017_report import verify_kvp017_report
 from verify_kvp019_delivery import verify_kvp019_delivery
 from verify_kvp020_delivery import verify_kvp020_delivery
 from verify_kvp021_delivery import verify_kvp021_delivery
-
+from verify_kvp022_delivery import verify_kvp022_delivery
 def schema_errors(value, schema, root_schema, path="$"):
     if "$ref" in schema:
         reference = schema["$ref"]
@@ -17,7 +17,6 @@ def schema_errors(value, schema, root_schema, path="$"):
             resolved = resolved[part.replace("~1", "/").replace("~0", "~")]
         yield from schema_errors(value, resolved, root_schema, path)
         return
-
     declared_types = schema.get("type")
     if declared_types is not None:
         if isinstance(declared_types, str):
@@ -33,7 +32,6 @@ def schema_errors(value, schema, root_schema, path="$"):
         if not any(predicates[kind](value) for kind in declared_types):
             yield f"{path}: expected type {declared_types}, got {type(value).__name__}"
             return
-
     if "const" in schema and value != schema["const"]:
         yield f"{path}: expected constant {schema['const']!r}, got {value!r}"
 
@@ -46,7 +44,6 @@ def schema_errors(value, schema, root_schema, path="$"):
         pattern = schema.get("pattern")
         if pattern is not None and re.search(pattern, value) is None:
             yield f"{path}: string does not match {pattern!r}"
-
     if isinstance(value, int) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             yield f"{path}: integer is less than minimum {schema['minimum']}"
@@ -147,6 +144,8 @@ assert "build-logic/src/main/kotlin/support/delivery/tasks/receipt" not in set(
 normative_plan = (
     root / "docs/kast-vfs-passive-reused-index-delivery-program.md"
 ).read_text()
+requirements_path = root / "gradle/delivery/kast-vfs-passive-requirements.json"
+requirements = json.loads(requirements_path.read_text())
 assert f"**Program fingerprint:** `{program['programFingerprint']}`" in normative_plan
 kvp_014_plan = verify_task_plan(normative_plan, kvp_014, "KVP-015")
 kvp_015 = by_id["KVP-015"]
@@ -285,6 +284,7 @@ assert "registerKvp018ReceiptProgression" in (
 verify_kvp019_delivery(root, program, normative_plan)
 verify_kvp020_delivery(root, program, normative_plan)
 verify_kvp021_delivery(root, program, normative_plan)
+verify_kvp022_delivery(root, program, requirements, normative_plan)
 epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
 for expected_epoch_fact in (
     "WorkspaceModelTopics.CHANGED",
@@ -325,8 +325,6 @@ for effect in program["effects"]:
 base = dict(program); fingerprint = base.pop("programFingerprint")
 canonical = json.dumps(base, sort_keys=True, separators=(", ",":"), ensure_ascii=False)
 assert hashlib.sha256(canonical.encode()).hexdigest() == fingerprint
-requirements_path = root / "gradle/delivery/kast-vfs-passive-requirements.json"
-requirements = json.loads(requirements_path.read_text())
 assert requirements["programFingerprint"] == fingerprint
 validate_document(program_path, root / "gradle/delivery/schema/delivery-program.schema.json")
 validate_document(requirements_path, root / "gradle/delivery/schema/requirement-trace.schema.json")

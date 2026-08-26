@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `7cc74bb9a02cbc5793cbf9e9a809ea944878b72f98ae220dcfc63be455eb1a96`
+**Program fingerprint:** `da8a350e09f24df15640dd26e3f3b4af0ede56dfd46275113aacb76a909f965f`
 
 ## Terminal outcome
 
@@ -721,9 +721,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-021`. Computed wave: `16`.
 
-**Allowed reads.** `workspace/contract`, `workspace/intellij-read`, `runtime/ide-read`.
+**Allowed reads.** `AGENTS.md`, `gradle/libs.versions.toml`, `runtime/ide-read`, `workspace/contract`, `workspace/intellij-read`, `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery`, `docs/AGENTS.md`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/AGENTS.md`, `scripts/verify_bundle.py`, `scripts/verify_kvp022_delivery.py`.
 
-**Allowed writes.** `runtime/ide-read`, `runtime/ide-read/src/test`.
+**Allowed writes.** `AGENTS.md`, `runtime/ide-read`, `build-logic/src/main/kotlin/support/delivery/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/freshness/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/freshness/singleflight/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/freshness/singleflight/cancellable/Kvp021ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/freshness/singleflight/revalidation`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/kast-vfs-passive-requirements.json`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/AGENTS.md`, `scripts/verify_bundle.py`, `scripts/verify_kvp022_delivery.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.021.proof`, `requirement:KVP-REQ-010`, `requirement:KVP-REQ-012`, `requirement:KVP-REQ-015`, `requirement:KVP-REQ-027`.
 
