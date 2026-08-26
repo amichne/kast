@@ -5,15 +5,11 @@ import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
 import java.util.jar.JarInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
@@ -32,30 +28,16 @@ import org.gradle.api.tasks.UntrackedTask
 abstract class StandalonePluginNegativeProofTask : DefaultTask() {
     @TaskAction
     fun verify() {
-        val descriptor = PluginDescriptorObservation.Present(
-            KastStandalonePlugin.id.value,
-            RegistrationObservation.PRESENT,
-            RegistrationObservation.PRESENT,
-        )
-        val cases = listOf(
-            emptyList<PluginPayloadObservation>() to StandalonePluginFailure.MISSING_PAYLOAD,
-            listOf(PluginPayloadObservation("idea-home/lib/payload.jar", emptySet(), descriptor)) to
-                StandalonePluginFailure.PRIVATE_IDEA_HOME_LAYOUT,
-            listOf(
-                PluginPayloadObservation(
-                    "${KastStandalonePlugin.root}/lib/platform.jar",
-                    setOf("com/intellij/idea/Main.class"),
-                    descriptor,
-                ),
-            ) to StandalonePluginFailure.PLATFORM_CLASS_PRESENT,
-        )
-        cases.forEach { (input, expected) ->
-            val rejected = KastStandalonePlugin.admit(input)
-            if (rejected != StandalonePluginPayloadResult.Rejected(expected)) {
-                throw GradleException("KVP-010 negative case $expected was not rejected: $rejected")
+        val proof = when (val result = deriveStandalonePluginNegativeProof()) {
+            is StandalonePluginNegativeProofResult.Complete -> result.proof
+            is StandalonePluginNegativeProofResult.Rejected -> {
+                throw GradleException("KVP-010 negative proof rejected: ${result.failure.name}")
             }
         }
-        logger.lifecycle("KVP-010 rejected all {} standalone-plugin negative cases", cases.size)
+        logger.lifecycle(
+            "KVP-010 rejected all {} standalone-plugin negative cases",
+            proof.failures.size,
+        )
     }
 }
 
@@ -93,9 +75,9 @@ abstract class BuildStandalonePluginTask : DefaultTask() {
         writeArchiveAtomically(archive, admittedFiles)
         val payloadDocuments = admittedFiles.map { file ->
             PayloadJarDocument(
-                file.entry,
-                sha256(Files.readAllBytes(file.source)),
-                ArtifactSizeBytes(Files.size(file.source)),
+                file.entry.value,
+                StandalonePluginDigest.observe(Files.readAllBytes(file.source)).value,
+                Files.size(file.source),
             )
         }
         val root = repositoryRoot.get().asFile.toPath()
@@ -104,20 +86,20 @@ abstract class BuildStandalonePluginTask : DefaultTask() {
             is RepositoryRelativeArtifactPathResult.Rejected -> fail(result.failure)
         }
         val report = StandalonePluginReportDocument(
-            schemaVersion = 1,
-            taskId = StandalonePluginReportTaskId.KVP_010,
-            pluginId = KastStandalonePlugin.id,
-            descriptorJarEntry = payload.descriptorJarEntry,
+            schemaVersion = StandalonePluginReportSchemaVersion.V1.value,
+            taskId = StandalonePluginReportTaskId.KVP_010.value,
+            pluginId = KastStandalonePlugin.id.value,
+            descriptorJarEntry = payload.descriptorJarEntry.value,
             artifact = PluginArtifactDocument(
-                artifactPath,
-                sha256(Files.readAllBytes(archive)),
-                ArtifactSizeBytes(Files.size(archive)),
+                artifactPath.value,
+                StandalonePluginDigest.observe(Files.readAllBytes(archive)).value,
+                Files.size(archive),
             ),
             payloadJars = payloadDocuments,
         )
         writeTextAtomically(
             reportFile.get().asFile.toPath(),
-            pluginReportJson.encodeToString(StandalonePluginReportDocument.serializer(), report) + "\n",
+            encodeStandalonePluginReport(report),
         )
     }
 
@@ -185,7 +167,7 @@ private sealed interface DescriptorBytesObservation {
     data class Present(val bytes: ByteArray) : DescriptorBytesObservation
 }
 
-private sealed interface DescriptorParseResult {
+internal sealed interface DescriptorParseResult {
     data class Complete(val descriptor: PluginDescriptorObservation.Present) : DescriptorParseResult
     data object Rejected : DescriptorParseResult
 }
@@ -196,7 +178,7 @@ private sealed interface DescriptorParseResult {
  * malformed XML or missing identity is closed [DescriptorParseResult.Rejected]. Raw XML is
  * permitted only in this outer packaging boundary.
  */
-private fun parseDescriptor(bytes: ByteArray): DescriptorParseResult {
+internal fun parseDescriptor(bytes: ByteArray): DescriptorParseResult {
     return try {
         val factory = DocumentBuilderFactory.newInstance().apply {
             setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
@@ -275,54 +257,4 @@ private fun writeBytesAtomically(target: Path, bytes: ByteArray) {
     } finally {
         Files.deleteIfExists(temporary)
     }
-}
-
-@Serializable
-@JvmInline
-private value class ArtifactSha256(val value: String)
-
-@Serializable
-@JvmInline
-private value class ArtifactSizeBytes(val value: Long)
-
-@Serializable
-private enum class StandalonePluginReportTaskId {
-    @SerialName("KVP-010")
-    KVP_010,
-}
-
-private fun sha256(bytes: ByteArray): ArtifactSha256 = ArtifactSha256(
-    MessageDigest.getInstance("SHA-256")
-        .digest(bytes)
-        .joinToString("") { byte -> "%02x".format(byte) },
-)
-
-@Serializable
-private data class PluginArtifactDocument(
-    val path: RepositoryRelativeArtifactPath,
-    val sha256: ArtifactSha256,
-    val sizeBytes: ArtifactSizeBytes,
-)
-
-@Serializable
-private data class PayloadJarDocument(
-    val entry: PluginArchiveEntry,
-    val sha256: ArtifactSha256,
-    val sizeBytes: ArtifactSizeBytes,
-)
-
-@Serializable
-private data class StandalonePluginReportDocument(
-    val schemaVersion: Int,
-    val taskId: StandalonePluginReportTaskId,
-    val pluginId: StandalonePluginId,
-    val descriptorJarEntry: PluginArchiveEntry,
-    val artifact: PluginArtifactDocument,
-    val payloadJars: List<PayloadJarDocument>,
-)
-
-private val pluginReportJson = Json {
-    encodeDefaults = true
-    explicitNulls = false
-    prettyPrint = true
 }

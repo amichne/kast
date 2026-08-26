@@ -379,6 +379,9 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     registerKvp007ReceiptProgression(deliveryProof) { configureDeliveryProof() }
     registerKvp008ReceiptProgression(deliveryState) { configureDeliveryState() }
     registerKvp009ReceiptProgression(firewall) { configureFirewall() }
+    val standalonePlugin = registerKvp010ReceiptProgression(program, firewall) {
+        configureFirewall()
+    }
     return setOf(
         authority.task.id,
         typeModel.task.id,
@@ -389,5 +392,6 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         deliveryProof.task.id,
         deliveryState.task.id,
         firewall.task.id,
+        standalonePlugin.task.id,
     )
 }

@@ -97,6 +97,56 @@ internal sealed interface StandalonePluginPayloadResult {
     data class Rejected(val failure: StandalonePluginFailure) : StandalonePluginPayloadResult
 }
 
+internal data class StandalonePluginNegativeProof(
+    val failures: List<StandalonePluginFailure>,
+)
+
+internal enum class StandalonePluginNegativeProofFailure { EXPECTED_REJECTION_MISSING }
+
+internal sealed interface StandalonePluginNegativeProofResult {
+    data class Complete(val proof: StandalonePluginNegativeProof) :
+        StandalonePluginNegativeProofResult
+    data class Rejected(val failure: StandalonePluginNegativeProofFailure) :
+        StandalonePluginNegativeProofResult
+}
+
+/**
+ * Proof transition: fixed KVP-010 rejection fixtures -> `StandalonePluginNegativeProofResult`.
+ * Establishes that missing payload, private IDEA-home layout, and platform-owned classes remain
+ * independently rejected by their exact finite [StandalonePluginFailure]. Expected proof drift is
+ * [StandalonePluginNegativeProofFailure]; fixture primitives do not leave this build boundary.
+ */
+internal fun deriveStandalonePluginNegativeProof(): StandalonePluginNegativeProofResult {
+    val descriptor = PluginDescriptorObservation.Present(
+        KastStandalonePlugin.id.value,
+        RegistrationObservation.PRESENT,
+        RegistrationObservation.PRESENT,
+    )
+    val cases = listOf(
+        emptyList<PluginPayloadObservation>() to StandalonePluginFailure.MISSING_PAYLOAD,
+        listOf(PluginPayloadObservation("idea-home/lib/payload.jar", emptySet(), descriptor)) to
+            StandalonePluginFailure.PRIVATE_IDEA_HOME_LAYOUT,
+        listOf(
+            PluginPayloadObservation(
+                "${KastStandalonePlugin.root}/lib/platform.jar",
+                setOf("com/intellij/idea/Main.class"),
+                descriptor,
+            ),
+        ) to StandalonePluginFailure.PLATFORM_CLASS_PRESENT,
+    )
+    if (cases.any { (input, expected) ->
+            KastStandalonePlugin.admit(input) != StandalonePluginPayloadResult.Rejected(expected)
+        }
+    ) {
+        return StandalonePluginNegativeProofResult.Rejected(
+            StandalonePluginNegativeProofFailure.EXPECTED_REJECTION_MISSING,
+        )
+    }
+    return StandalonePluginNegativeProofResult.Complete(
+        StandalonePluginNegativeProof(cases.map { it.second }),
+    )
+}
+
 internal object KastStandalonePlugin {
     val id = StandalonePluginId.Kast
     const val root: String = "kast-indexer"

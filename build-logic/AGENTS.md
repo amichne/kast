@@ -17,7 +17,7 @@ the consuming projects.
   runtime library synchronization, classpath layout proof, indexer-version
   generation, generated-serialization source guards, and wrapper scripts.
 - `support/plugin` owns standalone IntelliJ plugin payload refinement, deterministic ZIP assembly,
-  and generated build-report serialization.
+  generated build-report serialization, and independent report/archive admission for receipts.
 - `support/pr633` owns reusable exact-head, bytecode, API, and gate-evidence task types.
 - `support/architecture` owns the typed clean-slate module graph, effect policy,
   and checked-in architecture projection.

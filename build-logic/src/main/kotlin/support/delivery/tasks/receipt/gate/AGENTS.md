@@ -1,8 +1,8 @@
 # Gate and receipt-proof guide
 
 This directory owns the canonical 129-gate Gradle registration proof, the exact-head KVP-006
-receipt progression, KVP-007's receipt-invalidation proof, KVP-008's derived-state proof, and
-KVP-009's IDE-read firewall receipt closure.
+receipt progression, KVP-007's receipt-invalidation proof, KVP-008's derived-state proof,
+KVP-009's IDE-read firewall receipt closure, and KVP-010's standalone-plugin receipt closure.
 
 - `DeliveryGateGraphTasks.kt` generates and decodes the positive and negative KVP-006 reports from
   generated-serializer documents.
@@ -11,8 +11,8 @@ KVP-009's IDE-read firewall receipt closure.
 - KVP-007 receipt tasks execute the fixed included-build selectors, directly admit KVP-006,
   generate and decode the exhaustive invalidation report, and derive completion at one exact head.
 - `state/` owns KVP-008's generated state report and exact-head receipt progression; `firewall/`
-  owns KVP-009 report admission and exact-head progression; `registration/` owns compiled task
-  registration through KVP-009.
+  owns KVP-009 report admission and exact-head progression plus KVP-010's nested plugin artifact
+  receipt owner; `registration/` owns compiled task registration through KVP-010.
 - Registration must replace generic placeholders through KVP-009 and preserve one registered task
   for every program gate without executing later placeholders.
 

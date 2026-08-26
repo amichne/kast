@@ -5,6 +5,8 @@ This directory owns focused tests for build-time standalone plugin payload admis
 - Prove the exact descriptor and registrations refine to `ValidatedStandalonePluginPayload`.
 - Keep private IDEA-home, platform-class, descriptor-cardinality, identity, and registration
   failures exhaustive over `StandalonePluginFailure` cases relevant to KVP-010.
+- Decode the generated KVP-010 report as a closed schema and independently bind its physical ZIP,
+  entry set, sizes, digests, and single descriptor owner.
 
-Run `./gradlew :build-logic:test --tests '*StandalonePluginModelTest'` before the full build-logic
-suite and the consuming `:ide-plugin:buildPlugin` task.
+Run `./gradlew :build-logic:test --tests 'support.plugin.StandalonePlugin*Test'` before the full
+build-logic suite and the consuming `:ide-plugin:buildPlugin` task.
