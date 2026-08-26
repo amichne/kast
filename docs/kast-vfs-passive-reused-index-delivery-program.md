@@ -391,9 +391,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-002`, `KVP-010`. Computed wave: `8`.
 
-**Allowed reads.** `protocol`, `ide-plugin`, `gradle/libs.versions.toml`.
+**Allowed reads.** `protocol`, `ide-plugin`, `gradle/libs.versions.toml`, `build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt`.
 
-**Allowed writes.** `workspace/contract`, `protocol/contract`, `ide-plugin/src/main/kotlin`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayoutTasks.kt`, `build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt`, `gradle/libs.versions.toml`, `ide-plugin/AGENTS.md`, `ide-plugin/build.gradle.kts`, `ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityMetadata.kt`, `ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityNegativeTest.kt`, `ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityTest.kt`, `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeHostCompatibility.kt`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.002.proof`, `taskOutput:kvp.010.proof`, `requirement:KVP-REQ-017`, `requirement:KVP-REQ-018`.
 
@@ -403,15 +403,15 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Internal implementation.** Closed compatibility parser and mismatch failures.
 
-**Effect and cost.** `PURE`, `METADATA_READ`; `METADATA`.
+**Effect and cost.** `PURE`, `METADATA_READ`, `BUILD_POLICY_WRITE`; `METADATA`.
 
 **Forbidden work.** Loose version comparison; Ignoring Kotlin plugin build; Boolean compatible flag; Unknown capability acceptance.
 
-**RED.** `./gradlew :ide-plugin:test --tests "*IdeHostCompatibilityNegativeTest"`. Expected failure: Wrong IDE, Kotlin, plugin, registry, wire, or capability identity is accepted.
+**RED.** `./gradlew :ide-plugin:test --tests "*IdeHostCompatibilityNegativeTest"`. Expected failure: Wrong IDE, Kotlin, plugin, runtime protocol, registry, wire, or capability identity is accepted.
 
-**GREEN.** `./gradlew :ide-plugin:test --tests "*IdeHostCompatibilityTest"`. Expected proof: Only one exact supported compatibility tuple is admitted.
+**GREEN.** `./gradlew :ide-plugin:generateIdeHostCompatibilityReport :ide-plugin:test --tests "*IdeHostCompatibilityTest"`. Expected proof: Only one exact supported compatibility tuple is admitted and projected from declared artifacts.
 
-**Review boundary.** Compatibility contract and tests only.
+**Review boundary.** Compatibility contract, hosted build pins, generated report, and tests only.
 
 **Completion receipt.** `KVP-012-COMPLETE` at `build/reports/delivery/receipts/KVP-012-COMPLETE.receipt.json`. It consumes `KVP-012-RED`, `KVP-012-GREEN`, `KVP-002-COMPLETE`, and `KVP-010-COMPLETE`.
 
