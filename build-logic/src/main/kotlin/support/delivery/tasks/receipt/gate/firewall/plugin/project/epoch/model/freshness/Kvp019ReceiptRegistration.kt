@@ -109,6 +109,7 @@ internal fun Project.registerKvp019ReceiptProgression(
     ) {
         configureFreshness()
         dependsOn(recordGreen)
+        mustRunAfter(":workspace:intellij-read:generateVfsPassiveReport")
         redReceiptFile.set(freshness.redReceipt)
         greenReceiptFile.set(freshness.greenReceipt)
         proofReportFile.set(freshness.proofReport)

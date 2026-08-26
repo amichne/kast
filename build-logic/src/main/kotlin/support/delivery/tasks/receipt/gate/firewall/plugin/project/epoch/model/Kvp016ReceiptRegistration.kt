@@ -98,6 +98,7 @@ internal fun Project.registerKvp016ReceiptProgression(
     ) {
         configureDetached()
         dependsOn(recordGreen)
+        mustRunAfter(":workspace:intellij-read:generateDetachedModelReport")
         redReceiptFile.set(detached.redReceipt)
         greenReceiptFile.set(detached.greenReceipt)
         proofReportFile.set(detached.proofReport)

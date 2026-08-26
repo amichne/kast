@@ -78,6 +78,7 @@ internal fun Project.registerKvp015ReceiptProgression(
     ) {
         configureEpoch()
         dependsOn(recordGreen)
+        mustRunAfter(":workspace:intellij-read:generateEpochSignalLedgerReport")
         redReceiptFile.set(epoch.redReceipt)
         greenReceiptFile.set(epoch.greenReceipt)
         proofReportFile.set(epoch.proofReport)

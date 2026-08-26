@@ -127,6 +127,7 @@ internal fun Project.registerKvp017ReceiptProgression(
     ) {
         configureReadEpoch()
         dependsOn(recordGreen)
+        mustRunAfter(":workspace:intellij-read:generateProjectReadEpochReport")
         redReceiptFile.set(readEpoch.redReceipt)
         greenReceiptFile.set(readEpoch.greenReceipt)
         proofReportFile.set(readEpoch.proofReport)

@@ -96,6 +96,7 @@ internal fun Project.registerKvp012ReceiptProgression(
     ) {
         configureCompatibility()
         dependsOn(recordGreen)
+        mustRunAfter(":ide-plugin:generateIdeHostCompatibilityReport")
         redReceiptFile.set(compatibility.redReceipt)
         greenReceiptFile.set(compatibility.greenReceipt)
         proofReportFile.set(compatibility.proofReport)

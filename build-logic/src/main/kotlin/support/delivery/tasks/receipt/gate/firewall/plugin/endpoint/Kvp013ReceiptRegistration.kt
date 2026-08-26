@@ -73,6 +73,7 @@ internal fun Project.registerKvp013ReceiptProgression(
     ) {
         configureEndpoint()
         dependsOn(recordGreen)
+        mustRunAfter(":protocol:wire:generateIdeEndpointDescriptorReport")
         redReceiptFile.set(endpoint.redReceipt)
         greenReceiptFile.set(endpoint.greenReceipt)
         proofReportFile.set(endpoint.proofReport)

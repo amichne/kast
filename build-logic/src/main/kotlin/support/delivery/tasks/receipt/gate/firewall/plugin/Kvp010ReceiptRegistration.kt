@@ -52,6 +52,7 @@ internal fun Project.registerKvp010ReceiptProgression(
         DeriveKvp010CompletionReceiptTask::class.java,
     ) {
         configureStandalonePlugin(); dependsOn(recordGreen)
+        mustRunAfter(":ide-plugin:buildPlugin")
         redReceiptFile.set(standalonePlugin.redReceipt)
         greenReceiptFile.set(standalonePlugin.greenReceipt)
         proofReportFile.set(standalonePlugin.proofReport)

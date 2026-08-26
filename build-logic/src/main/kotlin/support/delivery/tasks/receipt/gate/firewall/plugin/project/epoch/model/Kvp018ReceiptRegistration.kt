@@ -241,6 +241,7 @@ internal fun Project.registerKvp018ReceiptProgression(
     ) {
         configureHosted()
         dependsOn(recordGreen)
+        mustRunAfter(":workspace:intellij-read:verifyNoHostedRepositoryWalk")
         redReceiptFile.set(hosted.redReceipt)
         greenReceiptFile.set(hosted.greenReceipt)
         proofReportFile.set(hosted.proofReport)
