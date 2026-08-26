@@ -302,6 +302,90 @@ val epochRevalidationGate = tasks.register<support.delivery.Kvp022EpochRevalidat
     mustRunAfter(epochRevalidationNegativeGate, ":recordKVP022RedReceipt")
 }
 
+val readRuntimeReport = layout.buildDirectory.file("reports/KVP-023-read-runtime.json")
+val generateReadRuntimeReport = tasks.register<support.delivery.GenerateKvp023ReadRuntimeReportTask>(
+        "generateReadRuntimeReport",
+    ) {
+        group = "verification"
+        description = "Generates the exact predecessor-bound KVP-023 read-runtime report."
+        dependsOn(
+            rootProject.tasks.named("verifyKVP009CompletionReceipt"),
+            rootProject.tasks.named("verifyKVP016CompletionReceipt"),
+            rootProject.tasks.named("verifyKVP022CompletionReceipt"),
+        )
+        kvp009CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-009-COMPLETE.receipt.json",
+        ))
+        kvp016CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-016-COMPLETE.receipt.json",
+        ))
+        kvp022CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-022-COMPLETE.receipt.json",
+        ))
+        reportFile.set(readRuntimeReport)
+    }
+
+val verifyReadRuntimeReportNegative =
+    tasks.register<support.delivery.VerifyKvp023ReadRuntimeReportNegativeTask>(
+        "verifyReadRuntimeReportNegative",
+    ) {
+        group = "verification"
+        description = "Rejects every fixed KVP-023 report, predecessor, and gate mutation."
+        dependsOn(generateReadRuntimeReport)
+        reportFile.set(readRuntimeReport)
+        kvp009CompletionReceipt.set(generateReadRuntimeReport.flatMap(
+            support.delivery.GenerateKvp023ReadRuntimeReportTask::kvp009CompletionReceipt,
+        ))
+        kvp016CompletionReceipt.set(generateReadRuntimeReport.flatMap(
+            support.delivery.GenerateKvp023ReadRuntimeReportTask::kvp016CompletionReceipt,
+        ))
+        kvp022CompletionReceipt.set(generateReadRuntimeReport.flatMap(
+            support.delivery.GenerateKvp023ReadRuntimeReportTask::kvp022CompletionReceipt,
+        ))
+    }
+fun support.delivery.Kvp023ReadOnlyGraphGateTask.configureReadOnlyGraphGate(
+    command: support.delivery.Kvp023GateCommand,
+    evidencePath: String,
+) {
+    group = "verification"
+    testClassesDirs = defaultTest.get().testClassesDirs
+    classpath = defaultTest.get().classpath
+    filter.includeTestsMatching(command.selectorPattern)
+    filter.setFailOnNoMatchingTests(true)
+    dependsOn(verifyReadRuntimeReportNegative)
+    repositoryRootPath.set(rootProject.layout.projectDirectory.asFile.absolutePath)
+    declaredCommand.set(command.declaredCommand)
+    gateEvidenceFile.set(layout.buildDirectory.file(evidencePath))
+    doFirst { beginGateExecution() }
+    doLast { completeGateExecution() }
+    inputs.file(readRuntimeReport).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty(
+        "kast.ide.read.runtime.report",
+        readRuntimeReport.get().asFile.absolutePath,
+    )
+}
+
+val verifyReadOnlyGraphNegative = tasks.register<support.delivery.Kvp023ReadOnlyGraphGateTask>(
+        "verifyReadOnlyGraphNegative",
+    ) {
+        description = "Runs only the canonical KVP-023 negative selector at one exact head."
+        configureReadOnlyGraphGate(
+            support.delivery.Kvp023GateCommand.RED,
+            "reports/KVP-023-red-gate.json",
+        )
+    }
+
+val verifyReadOnlyGraph = tasks.register<support.delivery.Kvp023ReadOnlyGraphGateTask>(
+    "verifyReadOnlyGraph",
+) {
+    description = "Runs only the canonical KVP-023 positive selector at one exact head."
+    configureReadOnlyGraphGate(
+        support.delivery.Kvp023GateCommand.GREEN,
+        "reports/KVP-023-green-gate.json",
+    )
+    mustRunAfter(defaultTest, verifyReadOnlyGraphNegative, ":recordKVP023RedReceipt")
+}
+
 tasks.named("check") {
     dependsOn(verifySingleFlightReportNegative)
     dependsOn(verifyCancellableReadReportNegative)
@@ -310,4 +394,7 @@ tasks.named("check") {
     dependsOn(cancellableReadGate)
     dependsOn(epochRevalidationNegativeGate)
     dependsOn(epochRevalidationGate)
+    dependsOn(verifyReadRuntimeReportNegative)
+    dependsOn(verifyReadOnlyGraphNegative)
+    dependsOn(verifyReadOnlyGraph)
 }

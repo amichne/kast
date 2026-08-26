@@ -12,3 +12,7 @@ and AFTER head observations and emits canonical COMPLETE evidence without nested
 
 Keep raw JSON, paths, selector text, and Gradle properties at report, gate, or receipt boundaries.
 Expected failures remain closed typed data until those boundaries render them.
+
+The `dispatch/` child owns KVP-023's exact four-operation read-runtime report, dedicated
+nonrecursive Test gates, direct KVP-009/KVP-016/KVP-022 re-admission, and completion closure. The
+default runtime `test` task must remain independent of all KVP-023 report and receipt tasks.

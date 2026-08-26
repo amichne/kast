@@ -159,5 +159,8 @@ internal fun Project.registerKvp022ReceiptProgression(
         proofReportFile.set(revalidation.proofReport)
         completionReceiptFile.set(revalidation.completionReceipt)
     }
-    return setOf(revalidation.task.id)
+    val dispatchTasks = registerKvp023ReceiptProgression(program) {
+        configureRevalidation()
+    }
+    return setOf(revalidation.task.id) + dispatchTasks
 }
