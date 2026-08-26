@@ -13,5 +13,7 @@ tasks alone write generated metadata files.
   storing Gradle script closures in the execution task.
 - WriteProtocolSchemaVersionsTask and WriteSourceIndexSchemaVersionTask emit checked version
   metadata from declared Gradle inputs.
+- The canonical `wire-schema.json` serializer projection is shared with KVP-012 digest generation;
+  both consumers must hash or write the same no-newline bytes.
 
 Run the focused task tests, then ./gradlew generateKastControlMetadata.

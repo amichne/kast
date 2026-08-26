@@ -19,5 +19,8 @@ plugin artifact.
 - Scan nested class definitions and effect-bearing bytecode references. Reject platform-owned,
   bootstrap, mutation, topology, JDBC, runtime-acquisition, process-launch, JBR, and native-runtime
   payloads through the closed `IdePluginLayoutFailure` set.
+- Generate the KVP-012 compatibility report from declared hosted pins and exact registry and wire
+  bytes. Keep the report document on generated kotlinx serialization and leave semantic admission
+  to the product compatibility contract.
 
 This is build-only policy. Product runtime behavior remains in the consuming modules.

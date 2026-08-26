@@ -15,10 +15,16 @@
   `verifyPluginLayout` scans the physical ZIP and every nested class owner and bytecode effect; it
   must reject the transitional KVP-010 payload until KVP-025 and KVP-031 provide the final hosted
   service and exact four-operation runtime.
+- `generateIdeHostCompatibilityReport` is the KVP-012 report authority. It binds separate hosted
+  IDEA and bundled Kotlin-plugin pins, `project.version`, the IDE-hosted runtime protocol, the
+  physical operation-registry digest, the canonical wire-schema digest, and the exact four
+  `CanonicalOperation` capabilities without a Boolean compatibility flag.
 - Never copy an IDEA home or bundle platform-owned IntelliJ, Kotlin-plugin, Gradle-plugin, or JBR
   classes into this artifact.
 
 Run `./gradlew :ide-plugin:standalonePluginNegativeProof :ide-plugin:buildPlugin
 :ide-plugin:verifyPluginLayoutNegative`, then the architecture gates and
 `:indexer:verifyPortableDistLayout`. Run `:ide-plugin:verifyPluginLayout` only after the final
-read-only payload replaces the transitional archive.
+read-only payload replaces the transitional archive. Run
+`./gradlew :ide-plugin:generateIdeHostCompatibilityReport :ide-plugin:test --tests
+'*IdeHostCompatibilityTest' --tests '*IdeHostCompatibilityNegativeTest'` for KVP-012.

@@ -37,6 +37,7 @@ fun Project.registerGeneratedBuildLogicSerializationVerification():
                 "build-logic/src/main/kotlin/support/pr633/Pr633GateEvidenceSerialization.kt",
                 "build-logic/src/main/kotlin/support/pr633/VerifyPr633StackTask.kt",
                 "build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt",
+                "build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayoutTasks.kt",
             ),
         )
         forbiddenTokens.set(
@@ -62,6 +63,7 @@ fun Project.registerGeneratedBuildLogicSerializationVerification():
                 "ArchitectureProjection",
                 "ArchitectureTasks",
                 "GenerateControlMetadataTask",
+                "IdeHostedPluginLayoutTasks",
                 "Pr633GateEvidenceSerialization",
                 "Pr633StackAdmission",
                 "Pr633StackEvidence",
