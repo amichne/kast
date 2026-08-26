@@ -2,8 +2,12 @@ package io.github.amichne.kast.runtime.ide.read
 
 import io.github.amichne.kast.runtime.ide.read.execution.CancellableProjectReadResult
 import io.github.amichne.kast.runtime.ide.read.revalidation.RevalidatedIdeReadResult
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class EpochRevalidationTest {
@@ -15,7 +19,7 @@ class EpochRevalidationTest {
         val executor = cancellableExecutor(controller, port, epochObserver = fixture)
         val permit = active(controller.admit(fixture.capability()))
 
-        val completed = executor.executeRevalidated(permit) { "detached-result" }
+        val completed = executor.executeRevalidated(permit) { detached("detached-result") }
             as CancellableProjectReadResult.Completed
         val revalidated = completed.value as RevalidatedIdeReadResult.Complete
         assertEquals("detached-result", revalidated.projection.value)
@@ -33,16 +37,53 @@ class EpochRevalidationTest {
         val firstPermit = active(controller.admit(fixture.capability()))
         val queuedRequest = queued(controller.admit(fixture.capability()))
 
-        val first = executor.executeRevalidated(firstPermit) { "first" }
+        val first = executor.executeRevalidated(firstPermit) { detached("first") }
             as CancellableProjectReadResult.Completed
         val promotion = first.continuation as ProjectReadContinuation.Promoted
         assertSame(queuedRequest, promotion.request)
-        val second = executor.executeRevalidated(promotion.permit) { "second" }
+        val second = executor.executeRevalidated(promotion.permit) { detached("second") }
             as CancellableProjectReadResult.Completed
         val revalidated = second.value as RevalidatedIdeReadResult.Complete
         assertEquals("second", revalidated.projection.value)
         assertEquals(ProjectReadContinuation.Idle, second.continuation)
         assertEquals(4, fixture.observations)
         assertEquals(2, port.calls)
+    }
+
+    @Test
+    fun `queue barrier remains owned through the after observation`() {
+        val entered = CountDownLatch(1)
+        val continueObservation = CountDownLatch(1)
+        val fixture = EpochRevalidationFixture("/tmp/kast-epoch-after-barrier")
+        fixture.plan(
+            EpochRevalidationFixture.Step.Current,
+            EpochRevalidationFixture.Step.Await(entered, continueObservation),
+        )
+        val controller = controller(fixture.capability())
+        val executor = cancellableExecutor(
+            controller,
+            InvokingReadPort(),
+            epochObserver = fixture,
+        )
+        val permit = active(controller.admit(fixture.capability()))
+        val request = queued(controller.admit(fixture.capability()))
+        val thread = Executors.newSingleThreadExecutor()
+        try {
+            val pending = thread.submit<
+                CancellableProjectReadResult<RevalidatedIdeReadResult<String>>,
+            > {
+                executor.executeRevalidated(permit) { detached("stable") }
+            }
+            assertTrue(entered.await(10, TimeUnit.SECONDS))
+            assertEquals(QueuedProjectReadObservation.Pending, executor.observeQueued(request))
+            continueObservation.countDown()
+            val completed = pending.get(10, TimeUnit.SECONDS)
+                as CancellableProjectReadResult.Completed
+            val promotion = completed.continuation as ProjectReadContinuation.Promoted
+            assertSame(request, promotion.request)
+        } finally {
+            continueObservation.countDown()
+            thread.shutdownNow()
+        }
     }
 }

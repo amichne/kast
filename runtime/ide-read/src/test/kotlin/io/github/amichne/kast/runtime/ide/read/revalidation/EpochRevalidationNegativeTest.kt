@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.ide.read
 
 import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.runtime.ide.read.execution.CancellableProjectReadHostRejection
+import io.github.amichne.kast.runtime.ide.read.execution.CancellableProjectReadInvalidation
 import io.github.amichne.kast.runtime.ide.read.execution.CancellableProjectReadResult
 import io.github.amichne.kast.runtime.ide.read.revalidation.EpochRevalidationPhase
 import io.github.amichne.kast.runtime.ide.read.revalidation.RevalidatedIdeReadResult
@@ -27,7 +28,7 @@ class EpochRevalidationNegativeTest {
             ),
             executor.executeRevalidated(permit) {
                 fixture.advance()
-                "discarded"
+                detached("discarded")
             },
         )
         assertEquals(2, fixture.observations)
@@ -51,7 +52,7 @@ class EpochRevalidationNegativeTest {
                 RevalidatedIdeReadResult.Rejected.WorkspaceMoved,
                 ProjectReadContinuation.Idle,
             ),
-            executor.executeRevalidated(permit) { "discarded" },
+            executor.executeRevalidated(permit) { detached("discarded") },
         )
         assertEquals(2, fixture.observations)
         assertEquals(1, port.calls)
@@ -77,7 +78,7 @@ class EpochRevalidationNegativeTest {
                 RevalidatedIdeReadResult.Rejected.IncomparableEpoch,
                 ProjectReadContinuation.Idle,
             ),
-            executor.executeRevalidated(permit) { "discarded" },
+            executor.executeRevalidated(permit) { detached("discarded") },
         )
     }
 
@@ -144,7 +145,7 @@ class EpochRevalidationNegativeTest {
             CancellableProjectReadResult.PermitRejected(
                 ProjectReadExecutionAdmissionFailure.NotOwned,
             ),
-            executor.executeRevalidated(foreignPermit) { "not-called" },
+            executor.executeRevalidated(foreignPermit) { detached("not-called") },
         )
         assertEquals(0, fixture.observations)
         assertEquals(0, port.calls)
@@ -162,9 +163,53 @@ class EpochRevalidationNegativeTest {
                 CancellableProjectReadHostRejection.WRONG_THREAD,
                 ProjectReadContinuation.Idle,
             ),
-            hostExecutor.executeRevalidated(hostPermit) { "not-called" },
+            hostExecutor.executeRevalidated(hostPermit) { detached("not-called") },
         )
         assertEquals(1, hostFixture.observations)
+
+        val disposedFixture = EpochRevalidationFixture("/tmp/kast-epoch-disposed")
+        val disposedController = controller(disposedFixture.capability())
+        val disposedExecutor = cancellableExecutor(
+            disposedController,
+            RejectingReadPort(AdmittedProjectReadExecutionFailure.PROJECT_DISPOSED),
+            epochObserver = disposedFixture,
+        )
+        val disposedPermit = active(disposedController.admit(disposedFixture.capability()))
+        val disposed = disposedExecutor.executeRevalidated(disposedPermit) {
+            detached("not-called")
+        } as CancellableProjectReadResult.ProjectDisposed
+        assertSame(
+            disposedPermit,
+            (disposed.retiredAuthority as RetiredProjectReadAuthority.Active).permit,
+        )
+
+        val invalidatedFixture = EpochRevalidationFixture("/tmp/kast-epoch-invalidated")
+        val invalidatedController = controller(invalidatedFixture.capability())
+        val invalidatedExecutor = cancellableExecutor(
+            invalidatedController,
+            InvokingReadPort(),
+            epochObserver = invalidatedFixture,
+        )
+        val invalidatedPermit = active(
+            invalidatedController.admit(invalidatedFixture.capability()),
+        )
+        assertEquals(
+            CancellableProjectReadResult.PermitInvalidated(
+                CancellableProjectReadInvalidation.Terminalized(
+                    ProjectReadPermitTerminal.Cancelled(
+                        ProjectReadCancellationCause.CLIENT_DISCONNECTED,
+                    ),
+                    ProjectReadContinuation.Idle,
+                ),
+            ),
+            invalidatedExecutor.executeRevalidated(invalidatedPermit) {
+                invalidatedController.cancel(
+                    invalidatedPermit,
+                    ProjectReadCancellationCause.CLIENT_DISCONNECTED,
+                )
+                detached("discarded")
+            },
+        )
     }
 
     private fun executeOne(
@@ -174,7 +219,7 @@ class EpochRevalidationNegativeTest {
         val controller = controller(fixture.capability())
         val executor = cancellableExecutor(controller, port, epochObserver = fixture)
         val permit = active(controller.admit(fixture.capability()))
-        return executor.executeRevalidated(permit) { "detached" }
+        return executor.executeRevalidated(permit) { detached("detached") }
     }
 
     private fun assertCancellation(phase: CancellationPhase) {
@@ -198,7 +243,7 @@ class EpochRevalidationNegativeTest {
         val request = queued(controller.admit(fixture.capability()))
 
         val observed = try {
-            executor.executeRevalidated(permit) { "must-not-complete" }
+            executor.executeRevalidated(permit) { detached("must-not-complete") }
             throw AssertionError("platform cancellation was swallowed")
         } catch (caught: ProcessCanceledException) {
             caught
@@ -216,7 +261,9 @@ class EpochRevalidationNegativeTest {
 
         val terminal = executor.observeQueued(request) as QueuedProjectReadObservation.Terminal
         val promotion = terminal.value as QueuedProjectReadTerminal.Promoted
-        val completed = executor.executeRevalidated(promotion.permit) { "after-cancellation" }
+        val completed = executor.executeRevalidated(promotion.permit) {
+            detached("after-cancellation")
+        }
             as CancellableProjectReadResult.Completed
         val revalidated = completed.value as RevalidatedIdeReadResult.Complete
         assertEquals("after-cancellation", revalidated.projection.value)

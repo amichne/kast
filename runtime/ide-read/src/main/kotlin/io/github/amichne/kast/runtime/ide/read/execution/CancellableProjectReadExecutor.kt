@@ -58,7 +58,8 @@ class CancellableProjectReadExecutor private constructor(
         singleFlight.observeQueued(request)
 
     /**
-     * Proof transition: `(ProjectReadPermit, CancellableProjectReadOperation<Value>) ->
+     * Proof transition: `(ProjectReadPermit,
+     * CancellableProjectReadOperation<DetachedIdeReadProjection<Value>>) ->
      * CancellableProjectReadResult<Value>`.
      *
      * Establishes exact permit ownership and an owned progress indicator before running one
@@ -88,7 +89,7 @@ class CancellableProjectReadExecutor private constructor(
      */
     internal fun <Value : Any> executeRevalidated(
         permit: ProjectReadPermit,
-        operation: CancellableProjectReadOperation<Value>,
+        operation: CancellableProjectReadOperation<DetachedIdeReadProjection<Value>>,
     ): CancellableProjectReadResult<RevalidatedIdeReadResult<Value>> = when (
         val attempt = begin(permit)
     ) {
@@ -108,10 +109,9 @@ class CancellableProjectReadExecutor private constructor(
                     val read = attempt.process.execute(readPort, operation)
                 ) {
                     is AdmittedProjectReadExecutionResult.Completed -> {
-                        val projection = DetachedIdeReadProjection.capture(read.value)
                         val after = epochObserver.observe()
                         AdmittedProjectReadExecutionResult.Completed(
-                            revalidateIdeRead(before.epoch, projection, after),
+                            revalidateIdeRead(before.epoch, read.value, after),
                         )
                     }
                     is AdmittedProjectReadExecutionResult.Rejected -> read
@@ -220,6 +220,25 @@ class CancellableProjectReadExecutor private constructor(
     private fun cancelRunning() = synchronized(executionLock) {
         val current = running
         if (current is RunningProjectRead.Active) current.process.cancel()
+    }
+
+    /** Running indicator ownership retained only for exact executing authority. */
+    private sealed interface RunningProjectRead {
+        data object None : RunningProjectRead
+        class Active(
+            val permit: ProjectReadPermit,
+            val execution: ExecutingProjectRead,
+            val process: PreparedCancellableProjectRead,
+        ) : RunningProjectRead
+    }
+
+    /** Closed executor-local refinement of a permit and platform cancellation capability. */
+    private sealed interface ExecutionAttempt {
+        data class Admitted(
+            val execution: ExecutingProjectRead,
+            val process: PreparedCancellableProjectRead,
+        ) : ExecutionAttempt
+        data class Rejected(val failure: ProjectReadExecutionAdmissionFailure) : ExecutionAttempt
     }
 
     /** Maps disposal separately so no other retirement cause can inhabit that result. */
@@ -370,24 +389,3 @@ private fun reject(
     }
     else -> invalidated(end)
 }
-
-/** Converts every non-successful permit end into closed result invalidation. */
-private fun invalidated(
-    end: ProjectReadPermitEnd,
-): CancellableProjectReadResult.PermitInvalidated = CancellableProjectReadResult.PermitInvalidated(
-    when (end) {
-        is ProjectReadPermitEnd.Ended -> CancellableProjectReadInvalidation.Terminalized(
-            end.terminal,
-            end.continuation,
-        )
-        is ProjectReadPermitEnd.AlreadyEnded -> CancellableProjectReadInvalidation.AlreadyEnded(
-            end.terminal,
-        )
-        is ProjectReadPermitEnd.Deferred -> CancellableProjectReadInvalidation.Deferred(
-            end.terminal,
-        )
-        ProjectReadPermitEnd.ExecutionInProgress ->
-            CancellableProjectReadInvalidation.ExecutionInProgress
-        ProjectReadPermitEnd.NotOwned -> CancellableProjectReadInvalidation.NotOwned
-    },
-)

@@ -15,10 +15,10 @@ enum class EpochRevalidationPhase { BEFORE, AFTER }
  * be extracted only by the later operation adapter that consumes the completed read.
  */
 class DetachedIdeReadProjection<out Value : Any> private constructor(
-    val value: Value,
+    internal val value: Value,
 ) {
     internal companion object {
-        /** `Value -> DetachedIdeReadProjection<Value>` at the live Project read boundary. */
+        /** `Value -> DetachedIdeReadProjection<Value>` at an operation's live read boundary. */
         fun <Value : Any> capture(value: Value): DetachedIdeReadProjection<Value> =
             DetachedIdeReadProjection(value)
     }
