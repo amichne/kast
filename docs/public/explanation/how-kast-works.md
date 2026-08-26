@@ -17,12 +17,58 @@ interrupting that path.
 `kast start` resolves a supported JetBrains installation for matched platform
 libraries, then starts or reuses one indexer for the canonical root. The
 semantic runtime is a digest-verified release artifact stored separately from
-the small control command.
+the Kotlin control executable.
 
 Before the indexer reports readiness, runtime composition proves that all
 twelve canonical operations have one implementation. A request is then
 admitted by operation identity, capability, effect, scope, cost, and
 completeness policy before it can reach compiler or write adapters.
+
+## Follow one symbol request
+
+Assume that discovery and resolution already returned an exact selector. A
+description request starts with the current CLI shape:
+
+```console
+kast symbol describe --selector '<exact-selector>'
+```
+
+The Kotlin control executable parses that command as `symbol.describe` and
+constructs a `SymbolDescribeRequestDocument`. `UnixDomainWireClient` sends the
+generated document as one bounded JSON frame over the exact root's Unix-domain
+socket.
+
+`RuntimeServer` accepts the local RPC request. `CanonicalProtocolAuthority`
+admits the operation and routes it to the installed symbol service. The
+`IntellijSymbolExactCompilerAdapter` resolves the exact selector with
+request-local PSI and K2 state, then projects the compiler object into a
+host-neutral `SymbolDescription`.
+
+The same RPC returns one closed outcome. The control executable writes one JSON
+document to standard output for complete or qualified evidence, or one JSON
+diagnostic to standard error for rejection.
+
+PSI and K2 objects never cross the wire.
+
+<details class="kast-architecture-details" markdown>
+<summary>Trace the implementation owners</summary>
+
+The request path is owned by these Kotlin sources:
+
+- [`KastCli`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt)
+  parses the public command.
+- [`SymbolDescribeRequestDocument`](https://github.com/amichne/kast/blob/main/protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/serialization/CanonicalReadDocuments.kt)
+  carries the typed wire request.
+- [`UnixDomainWireClient`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/UnixDomainWireClient.kt)
+  owns the client side of the local RPC.
+- [`RuntimeServer`](https://github.com/amichne/kast/blob/main/runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/RuntimeServer.kt)
+  owns the server side.
+- [`CanonicalProtocolAuthority`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/protocol/core/CanonicalProtocolAuthority.kt)
+  admits and routes the operation.
+- [`IntellijSymbolExactCompilerAdapter`](https://github.com/amichne/kast/blob/main/symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijSymbolExactCompilerAdapter.kt)
+  confines the request-local K2 work.
+
+</details>
 
 <details class="kast-architecture-details" markdown>
 <summary>Explore module ownership</summary>

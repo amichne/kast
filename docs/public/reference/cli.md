@@ -2,9 +2,12 @@
 
 # CLI reference
 
-This page mirrors the command surface encoded by the canonical operation set
-and CLI command graph. Run `kast --schema` when a tool needs the same contract
-as JSON.
+This page is generated from the same typed operation registry and Kotlin
+command graph used by `kast --schema`. The documentation check fails when this
+page differs from either authority.
+
+Run `kast --schema` when a tool needs the contract as JSON. Run a command with
+`--help` when you need every option and intent-specific combination.
 
 ## Semantic operations
 
