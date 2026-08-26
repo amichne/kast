@@ -53,6 +53,7 @@ val cleanSlateProjects = listOf(
     ":evidence:sqlite",
     ":runtime:server",
     ":runtime:composition",
+    ":ide-plugin",
     ":cli",
     ":indexer",
 )

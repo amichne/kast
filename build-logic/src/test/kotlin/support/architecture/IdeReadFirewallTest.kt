@@ -12,11 +12,17 @@ import java.nio.file.Path
 
 class IdeReadFirewallTest {
     @Test
-    fun `planned IDE read graph is physically narrow`() {
+    fun `plugin split IDE read graph is physically narrow`() {
         val proof = completeProof(canonical())
 
         assertEquals(IdeReadFirewall.moduleIds, proof.modules.mapTo(mutableSetOf()) { it.id })
-        assertTrue(proof.modules.all { it.lifecycle == ModuleLifecycle.PLANNED })
+        assertEquals(IdeReadFirewallStage.PLUGIN_SPLIT, proof.stage)
+        assertEquals(
+            setOf(ModuleId.IDE_PLUGIN),
+            proof.modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }.mapTo(mutableSetOf()) {
+                it.id
+            },
+        )
         assertTrue(proof.modules.all { it.role == ModuleRole.IDE_READ_ONLY })
         assertTrue(proof.modules.all {
             it.allowedEffects == setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
@@ -93,6 +99,36 @@ class IdeReadFirewallTest {
     }
 
     @Test
+    fun `firewall rejects a lifecycle stage that skips the workspace split`() {
+        val policy = canonical()
+        val original = policy.modules.getValue(ModuleId.RUNTIME_IDE_READ)
+        val activated = ValidatedModulePolicy(
+            ModulePolicy(
+                original.id,
+                ModuleLifecycle.ACTIVE,
+                original.role,
+                original.allowedProjectDependencies,
+                original.allowedEffects,
+            ),
+            original.boundary,
+        )
+        val changed = ValidatedArchitecturePolicy(
+            policy.modules + (activated.id to activated),
+            policy.moduleOrder,
+        )
+
+        val rejected = assertInstanceOf<IdeReadFirewallResult.Rejected>(
+            IdeReadFirewall.derive(changed),
+        )
+
+        assertTrue(
+            IdeReadFirewallFailure.LifecycleProgressionMismatch(
+                setOf(ModuleId.IDE_PLUGIN, ModuleId.RUNTIME_IDE_READ),
+            ) in rejected.failures,
+        )
+    }
+
+    @Test
     fun `closed report codec preserves the complete firewall proof`() {
         val encoded = encodeIdeReadFirewallReport(completeProof(canonical()))
 
@@ -102,6 +138,8 @@ class IdeReadFirewallTest {
 
         assertEquals(3, decoded.proof.modules.size)
         assertEquals(9, decoded.proof.forbiddenAuthorities.size)
+        assertTrue("\"schemaVersion\": 2" in encoded)
+        assertTrue("\"stage\": \"PLUGIN_SPLIT\"" in encoded)
     }
 
     @Test

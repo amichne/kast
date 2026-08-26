@@ -54,6 +54,18 @@ class KastCleanSlatePolicyTest {
             ),
             architecture.modules.values.mapTo(linkedSetOf()) { it.id.projectPath },
         )
+        assertEquals(
+            ModuleLifecycle.ACTIVE,
+            architecture.modules.getValue(ModuleId.IDE_PLUGIN).lifecycle,
+        )
+        assertEquals(
+            ModuleLifecycle.PLANNED,
+            architecture.modules.getValue(ModuleId.WORKSPACE_INTELLIJ_READ).lifecycle,
+        )
+        assertEquals(
+            ModuleLifecycle.PLANNED,
+            architecture.modules.getValue(ModuleId.RUNTIME_IDE_READ).lifecycle,
+        )
     }
 
     @Test

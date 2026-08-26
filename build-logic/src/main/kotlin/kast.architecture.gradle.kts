@@ -49,7 +49,7 @@ tasks.register<VerifyKastVfsPassiveFirewallNegativeTask>(
 }
 tasks.register<VerifyKastVfsPassiveFirewallTask>("verifyKastVfsPassiveFirewall") {
     group = "verification"
-    description = "Proves the planned IDE-hosted read graph and writes its firewall report."
+    description = "Proves the staged IDE-hosted read graph and writes its firewall report."
     reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-009-firewall.json"))
 }
 val verifyNoLegacyArchitecture = tasks.register<VerifyNoLegacyArchitectureTask>(

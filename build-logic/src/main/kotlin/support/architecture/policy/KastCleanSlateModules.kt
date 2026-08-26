@@ -249,11 +249,11 @@ internal object KastCleanSlateModules {
             ModuleId.PROTOCOL_WIRE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
         ),
-        plannedIdeRead(
+        ideRead(
             ModuleId.WORKSPACE_INTELLIJ_READ,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        plannedIdeRead(
+        ideRead(
             ModuleId.RUNTIME_IDE_READ,
             ModuleId.KERNEL,
             ModuleId.PROTOCOL_CONTRACT,
@@ -263,11 +263,12 @@ internal object KastCleanSlateModules {
             ModuleId.WORKSPACE_INTELLIJ_READ,
             ModuleId.SYMBOL_CONTRACT,
         ),
-        plannedIdeRead(
+        ideRead(
             ModuleId.IDE_PLUGIN,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.RUNTIME_IDE_READ,
             ModuleId.WORKSPACE_INTELLIJ_READ,
+            lifecycle = ModuleLifecycle.ACTIVE,
         ),
         runtimeComposition(),
         target(
@@ -303,12 +304,13 @@ internal object KastCleanSlateModules {
         allowedEffects = effects,
     )
 
-    private fun plannedIdeRead(
+    private fun ideRead(
         id: ModuleId,
         vararg dependencies: ModuleId,
+        lifecycle: ModuleLifecycle = ModuleLifecycle.PLANNED,
     ): ModulePolicy = ModulePolicy(
         id = id,
-        lifecycle = ModuleLifecycle.PLANNED,
+        lifecycle = lifecycle,
         role = ModuleRole.IDE_READ_ONLY,
         allowedProjectDependencies = dependencies.toSet(),
         allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),

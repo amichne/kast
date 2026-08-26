@@ -98,7 +98,8 @@ internal data class Kvp009ReceiptContexts(
                 "forbiddenAuthorityCount" to proof.forbiddenAuthorities.size.toString(),
                 "modulePolicies" to proof.moduleObservation(),
                 "role" to "IDE_READ_ONLY",
-                "schemaVersion" to "1",
+                "schemaVersion" to "2",
+                "stage" to proof.stage.name,
             ),
             boundary.artifactDigests(listOf(proofReportPath)),
             taskId,
@@ -134,7 +135,8 @@ private fun IdeReadFirewallProof.moduleObservation(): String = modules
     .joinToString(",") { module ->
         val dependencies = module.allowedProjectDependencies.map { it.projectPath }.sorted()
         val effects = module.allowedEffects.map(Enum<*>::name).sorted()
-        "${module.id.projectPath}=${dependencies.joinToString("+")};${effects.joinToString("+")}"
+        "${module.id.projectPath}=${module.lifecycle.name};" +
+            "${dependencies.joinToString("+")};${effects.joinToString("+")}"
     }
 
 abstract class Kvp009ReceiptTaskBase : Kvp006ReceiptTaskBase() {

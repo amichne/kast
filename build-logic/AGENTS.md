@@ -16,6 +16,8 @@ the consuming projects.
 - `support/tasks` owns IDEA distribution extraction, test-tag selection,
   runtime library synchronization, classpath layout proof, indexer-version
   generation, generated-serialization source guards, and wrapper scripts.
+- `support/plugin` owns standalone IntelliJ plugin payload refinement, deterministic ZIP assembly,
+  and generated build-report serialization.
 - `support/pr633` owns reusable exact-head, bytecode, API, and gate-evidence task types.
 - `support/architecture` owns the typed clean-slate module graph, effect policy,
   and checked-in architecture projection.
@@ -33,8 +35,9 @@ the consuming projects.
 - Convention-plugin IDs and registered task names are consumed across project
   boundaries. Renaming or changing their output layout is a repository-wide
   contract change.
-- `kast.runtime-app` provides generic application packaging. `indexer` owns the
-  additional private-plugin/runtime split required by its IntelliJ host.
+- `kast.runtime-app` provides generic application packaging. `:ide-plugin` owns the standalone
+  plugin artifact; `:indexer` stages its current private payload inputs and consumes that artifact
+  in the isolated distribution.
 
 ## Shared invariants
 

@@ -9,6 +9,7 @@ internal enum class IdeReadFirewallReportFailure {
     SCHEMA_VERSION_MISMATCH,
     TASK_ID_MISMATCH,
     ROLE_MISMATCH,
+    STAGE_MISMATCH,
     MODULE_POLICIES_MISMATCH,
     FORBIDDEN_AUTHORITIES_MISMATCH,
     POLICY_REJECTED,
@@ -23,6 +24,7 @@ internal sealed interface IdeReadFirewallReportResult {
 @Serializable
 private data class IdeReadModulePolicyDocument(
     val module: String,
+    val lifecycle: ModuleLifecycle,
     val allowedDependencies: List<String>,
     val allowedEffects: List<String>,
 )
@@ -38,6 +40,7 @@ private data class IdeReadFirewallReportDocument(
     val schemaVersion: Int,
     val taskId: String,
     val role: String,
+    val stage: IdeReadFirewallStage,
     val modulePolicies: List<IdeReadModulePolicyDocument>,
     val forbiddenAuthorities: List<IdeReadForbiddenAuthorityDocument>,
 )
@@ -51,8 +54,9 @@ private val ideReadFirewallJson = Json {
 
 /**
  * Proof transition: `IdeReadFirewallProof -> String`.
- * Preserves the exact three module policies and all finite forbidden authorities in a generated,
- * closed JSON document. Raw JSON leaves only at the Gradle report boundary.
+ * Preserves the materialization stage, exact three module policies, and all finite forbidden
+ * authorities in a generated, closed JSON document. Raw JSON leaves only at the Gradle report
+ * boundary.
  */
 internal fun encodeIdeReadFirewallReport(proof: IdeReadFirewallProof): String =
     ideReadFirewallJson.encodeToString(IdeReadFirewallReportDocument.serializer(), proof.document()) +
@@ -60,9 +64,9 @@ internal fun encodeIdeReadFirewallReport(proof: IdeReadFirewallProof): String =
 
 /**
  * Proof transition: report JSON `String -> IdeReadFirewallReportResult`.
- * Establishes exact schema, task, role, module policies, and authority classifications against an
- * independently derived canonical firewall. Expected malformed or mismatched evidence is finite
- * [IdeReadFirewallReportFailure]; raw JSON remains at this boundary.
+ * Establishes exact schema, task, role, materialization stage, module policies, and authority
+ * classifications against an independently derived canonical firewall. Expected malformed or
+ * mismatched evidence is finite [IdeReadFirewallReportFailure]; raw JSON remains at this boundary.
  */
 internal fun decodeIdeReadFirewallReport(raw: String): IdeReadFirewallReportResult {
     val document = try {
@@ -91,6 +95,7 @@ internal fun decodeIdeReadFirewallReport(raw: String): IdeReadFirewallReportResu
             IdeReadFirewallReportFailure.SCHEMA_VERSION_MISMATCH
         document.taskId != expected.taskId -> IdeReadFirewallReportFailure.TASK_ID_MISMATCH
         document.role != expected.role -> IdeReadFirewallReportFailure.ROLE_MISMATCH
+        document.stage != expected.stage -> IdeReadFirewallReportFailure.STAGE_MISMATCH
         document.modulePolicies != expected.modulePolicies ->
             IdeReadFirewallReportFailure.MODULE_POLICIES_MISMATCH
         document.forbiddenAuthorities != expected.forbiddenAuthorities ->
@@ -101,12 +106,14 @@ internal fun decodeIdeReadFirewallReport(raw: String): IdeReadFirewallReportResu
 }
 
 private fun IdeReadFirewallProof.document() = IdeReadFirewallReportDocument(
-    schemaVersion = 1,
+    schemaVersion = 2,
     taskId = "KVP-009",
     role = ModuleRole.IDE_READ_ONLY.name,
+    stage = stage,
     modulePolicies = modules.map { module ->
         IdeReadModulePolicyDocument(
             module = module.id.projectPath,
+            lifecycle = module.lifecycle,
             allowedDependencies = module.allowedProjectDependencies.map { it.projectPath }.sorted(),
             allowedEffects = module.allowedEffects.map(Enum<*>::name).sorted(),
         )

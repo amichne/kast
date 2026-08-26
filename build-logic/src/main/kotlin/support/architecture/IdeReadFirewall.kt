@@ -52,6 +52,9 @@ internal sealed interface IdeReadFirewallFailure {
         val module: ModuleId,
         val observed: ModuleLifecycle,
     ) : IdeReadFirewallFailure
+    data class LifecycleProgressionMismatch(
+        val observedActiveModules: Set<ModuleId>,
+    ) : IdeReadFirewallFailure
     data class RoleMismatch(val module: ModuleId, val observed: ModuleRole) : IdeReadFirewallFailure
     data class AllowedEffectsMismatch(
         val module: ModuleId,
@@ -68,7 +71,17 @@ internal sealed interface IdeReadFirewallFailure {
     ) : IdeReadFirewallFailure
 }
 
+internal enum class IdeReadFirewallStage(val activeModules: Set<ModuleId>) {
+    DECLARED(emptySet()),
+    PLUGIN_SPLIT(setOf(ModuleId.IDE_PLUGIN)),
+    WORKSPACE_SPLIT(setOf(ModuleId.IDE_PLUGIN, ModuleId.WORKSPACE_INTELLIJ_READ)),
+    RUNTIME_SPLIT(
+        setOf(ModuleId.IDE_PLUGIN, ModuleId.WORKSPACE_INTELLIJ_READ, ModuleId.RUNTIME_IDE_READ),
+    ),
+}
+
 internal class IdeReadFirewallProof internal constructor(
+    val stage: IdeReadFirewallStage,
     val modules: List<ValidatedModulePolicy>,
     val forbiddenAuthorities: Map<IdeReadForbiddenAuthority, Set<ForbiddenEffect>>,
 )
@@ -87,8 +100,9 @@ internal object IdeReadFirewall {
 
     /**
      * Proof transition: `ValidatedArchitecturePolicy -> IdeReadFirewallResult`.
-     * Establishes exact planned IDE-read-only role/effect ownership and finite rejection of every
-     * project-open, repair, mutation, topology, JDBC, process, and isolated-runtime reference.
+     * Establishes one valid monotonic IDE-read materialization stage, exact role/effect ownership,
+     * and finite rejection of every project-open, repair, mutation, topology, JDBC, process, and
+     * isolated-runtime reference.
      * Expected policy gaps are closed [IdeReadFirewallFailure]; JVM primitives are extracted only
      * by [JvmEffectScanner] or the fixed build-policy fixture boundary.
      */
@@ -103,7 +117,7 @@ internal object IdeReadFirewall {
             }
         }
         modules.forEach { module ->
-            if (module.lifecycle != ModuleLifecycle.PLANNED) {
+            if (module.lifecycle !in setOf(ModuleLifecycle.PLANNED, ModuleLifecycle.ACTIVE)) {
                 failures += IdeReadFirewallFailure.LifecycleMismatch(module.id, module.lifecycle)
             }
             if (module.role != ModuleRole.IDE_READ_ONLY) {
@@ -119,6 +133,12 @@ internal object IdeReadFirewall {
         }
         if (modules.size != moduleIds.size) {
             return IdeReadFirewallResult.Rejected(failures)
+        }
+        val observedActive = modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }
+            .mapTo(linkedSetOf()) { it.id }
+        val stages = IdeReadFirewallStage.entries.filter { it.activeModules == observedActive }
+        if (stages.size != 1) {
+            failures += IdeReadFirewallFailure.LifecycleProgressionMismatch(observedActive)
         }
         val classifier = modules.first()
         val caller = JvmMember.of("io/github/amichne/kast/ide/HostedReadFixture", "read", "()V")
@@ -141,7 +161,9 @@ internal object IdeReadFirewall {
             }
         }
         return if (failures.isEmpty()) {
-            IdeReadFirewallResult.Complete(IdeReadFirewallProof(modules, classifications))
+            IdeReadFirewallResult.Complete(
+                IdeReadFirewallProof(stages.single(), modules, classifications),
+            )
         } else {
             IdeReadFirewallResult.Rejected(failures)
         }
