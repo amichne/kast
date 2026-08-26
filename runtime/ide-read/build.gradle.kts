@@ -95,12 +95,10 @@ tasks.named<Test>("test") {
             "reports/delivery/receipts/KVP-019-COMPLETE.receipt.json",
         ).get().asFile.absolutePath,
     )
-    doFirst {
-        systemProperty(
-            "kast.ide.single.flight.expected.head",
-            singleFlightExpectedHead.get(),
-        )
-    }
+    systemProperty(
+        "kast.ide.single.flight.expected.head",
+        singleFlightExpectedHead.get(),
+    )
 }
 
 tasks.named("check") {
