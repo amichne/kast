@@ -11,6 +11,8 @@ This directory owns the canonical module-policy declarations.
   predecessor module or return an active module to planned state.
 - IDE-read modules may depend only on declared inward contracts or another IDE-read module and may
   allow only the generic IntelliJ platform read effect.
+- `ide-plugin` may additionally consume `protocol:wire` as the sole canonical endpoint-descriptor
+  codec boundary; this does not authorize protocol routing or another runtime composition.
 - KVP-018's added walk, read, hash, network, wait, refresh, and indexing classifiers apply only to
   `IDE_READ_ONLY`; do not reclassify legitimate legacy `INTELLIJ_READ_ADAPTER` effects. The
   inherited VFS mark-dirty and Gradle-import rules retain their existing broader role scopes. Its

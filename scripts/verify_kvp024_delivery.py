@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+"""Verify KVP-024 authority without assuming its product exists."""
+
+import json
+import pathlib
+
+
+REPORT_PATH = "ide-plugin/build/reports/KVP-024-endpoint.json"
+RECEIPT_PATH = "build/reports/delivery/receipts/KVP-024-COMPLETE.receipt.json"
+RECEIPT_ROOT = (
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/"
+    "plugin/project/epoch/model/freshness/singleflight/revalidation/dispatch/"
+)
+
+
+def required_text(root, relative_path):
+    path = root / relative_path
+    assert path.is_file(), relative_path
+    return path.read_text()
+
+
+def verify_kvp024_delivery(root, program, requirements, normative_plan):
+    task = next(item for item in program["tasks"] if item["id"] == "KVP-024")
+    assert task["dependencyExpression"] == {
+        "kind": "allOf",
+        "taskIds": ["KVP-013", "KVP-023"],
+    }
+    assert task["authorities"] == ["IDE_ENDPOINT"]
+    assert task["publicInterface"] == "ReadyIdeEndpoint"
+    assert task["provesRequirements"] == [
+        "KVP-REQ-005",
+        "KVP-REQ-017",
+        "KVP-REQ-019",
+    ]
+    assert task["outputs"] == [{
+        "description": (
+            "One exact endpoint becomes reachable only after complete runtime construction."
+        ),
+        "id": "kvp.024.proof",
+        "kind": "PROOF_ARTIFACT",
+        "path": REPORT_PATH,
+    }]
+    assert task["red"]["command"] == (
+        './gradlew :ide-plugin:test --tests "*IdeEndpointPublicationNegativeTest"'
+    )
+    assert task["green"]["command"] == (
+        './gradlew :ide-plugin:test --tests "*IdeEndpointPublicationTest"'
+    )
+    assert task["completionReceipt"] == {
+        "outputPath": RECEIPT_PATH,
+        "receiptId": "KVP-024-COMPLETE",
+        "requiredDependencyReceipts": ["KVP-013-COMPLETE", "KVP-023-COMPLETE"],
+        "requiredGateIds": ["KVP-024-GREEN", "KVP-024-RED"],
+    }
+
+    expected_reads = {
+        "AGENTS.md",
+        "settings.gradle.kts",
+        "gradle/libs.versions.toml",
+        "ide-plugin",
+        "indexer/src/main/kotlin/io/github/amichne/kast/indexer/InstalledIndexerTransport.kt",
+        "indexer/src/main/resources/META-INF/plugin.xml",
+        "runtime/ide-read",
+        "workspace/contract",
+        "workspace/intellij-read",
+        "protocol/contract",
+        "protocol/wire",
+        "build-logic/src/main/kotlin/support/architecture",
+        "build-logic/src/test/kotlin/support/architecture",
+        "build-logic/src/main/kotlin/support/delivery",
+        "build/reports/delivery/receipts",
+        "gradle/architecture",
+        "gradle/delivery",
+        "docs/AGENTS.md",
+        "docs/kast-vfs-passive-reused-index-delivery-program.md",
+        "scripts/AGENTS.md",
+        "scripts/verify_bundle.py",
+        "scripts/verify_kvp024_delivery.py",
+    }
+    expected_writes = {
+        "AGENTS.md",
+        "ide-plugin/AGENTS.md",
+        "ide-plugin/build.gradle.kts",
+        "ide-plugin/src/main/kotlin",
+        "ide-plugin/src/main/resources",
+        "ide-plugin/src/test",
+        "build-logic/src/main/kotlin/support/architecture/policy/AGENTS.md",
+        "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+        "build-logic/src/main/kotlin/support/delivery/AGENTS.md",
+        "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt",
+        "build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md",
+        "build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md",
+        "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md",
+        "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md",
+        "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md",
+        RECEIPT_ROOT.split("project/", maxsplit=1)[0] + "AGENTS.md",
+        RECEIPT_ROOT.split("epoch/", maxsplit=1)[0] + "AGENTS.md",
+        RECEIPT_ROOT.split("model/", maxsplit=1)[0] + "AGENTS.md",
+        RECEIPT_ROOT.split("freshness/", maxsplit=1)[0] + "AGENTS.md",
+        RECEIPT_ROOT.split("singleflight/", maxsplit=1)[0] + "AGENTS.md",
+        RECEIPT_ROOT.split("revalidation/", maxsplit=1)[0] + "AGENTS.md",
+        RECEIPT_ROOT.split("dispatch/", maxsplit=1)[0] + "AGENTS.md",
+        RECEIPT_ROOT + "AGENTS.md",
+        RECEIPT_ROOT + "Kvp023ReceiptRegistration.kt",
+        RECEIPT_ROOT + "endpoint",
+        "gradle/architecture/kast-architecture-policy.json",
+        "gradle/delivery/kast-vfs-passive-reused-index-program.json",
+        "gradle/delivery/kast-vfs-passive-requirements.json",
+        "docs/kast-vfs-passive-reused-index-delivery-program.md",
+        "scripts/AGENTS.md",
+        "scripts/verify_bundle.py",
+        "scripts/verify_kvp024_delivery.py",
+    }
+    assert set(task["allowedReads"]) == expected_reads
+    assert set(task["allowedWrites"]) == expected_writes
+    assert "settings.gradle.kts" not in expected_writes
+    for forbidden_write_root in (
+        "indexer/",
+        "runtime/ide-read",
+        "workspace/",
+        "protocol/",
+    ):
+        assert not any(path.startswith(forbidden_write_root) for path in expected_writes)
+
+    section = normative_plan.split(
+        "### KVP-024: Publish the exact-root project endpoint\n",
+        maxsplit=1,
+    )[1].split("\n### KVP-025:", maxsplit=1)[0]
+    assert "**Dependencies.** `KVP-013`, `KVP-023`." in section
+    assert (
+        "**Allowed reads.** "
+        + ", ".join(f"`{path}`" for path in task["allowedReads"])
+        + "."
+    ) in section
+    assert (
+        "**Allowed writes.** "
+        + ", ".join(f"`{path}`" for path in task["allowedWrites"])
+        + "."
+    ) in section
+    assert f"**Program fingerprint:** `{program['programFingerprint']}`" in normative_plan
+
+    gates = {
+        gate["id"]: gate
+        for gate in program["gateGraph"]
+        if gate["taskId"] == "KVP-024"
+    }
+    assert set(gates) == {"KVP-024-COMPLETE-GATE", "KVP-024-GREEN", "KVP-024-RED"}
+    direct_receipts = {"KVP-013-COMPLETE", "KVP-023-COMPLETE"}
+    assert set(gates["KVP-024-RED"]["dependsOnReceiptIds"]) == direct_receipts
+    assert set(gates["KVP-024-GREEN"]["dependsOnReceiptIds"]) == direct_receipts | {
+        "KVP-024-RED-RECEIPT",
+    }
+    assert set(gates["KVP-024-COMPLETE-GATE"]["dependsOnReceiptIds"]) == (
+        direct_receipts | {"KVP-024-GREEN-RECEIPT", "KVP-024-RED-RECEIPT"}
+    )
+
+    assert requirements["programFingerprint"] == program["programFingerprint"]
+    traced = {
+        entry["requirementId"]: entry
+        for entry in requirements["entries"]
+        if entry["requirementId"] in task["provesRequirements"]
+    }
+    assert set(traced) == set(task["provesRequirements"])
+    for entry in traced.values():
+        assert "KVP-024" in entry["implementationTaskIds"]
+        assert {"KVP-024-RED", "KVP-024-GREEN"} <= set(entry["enforcementGateIds"])
+
+    architecture = json.loads(required_text(
+        root,
+        "gradle/architecture/kast-architecture-policy.json",
+    ))
+    ide_plugin = next(
+        module for module in architecture["modules"]
+        if module["id"] == "IDE_PLUGIN"
+    )
+    assert ide_plugin["projectPath"] == ":ide-plugin"
+    assert ide_plugin["role"] == "IDE_READ_ONLY"
+    assert ide_plugin["allowedProjectDependencies"] == [
+        ":protocol:contract",
+        ":protocol:wire",
+        ":runtime:ide-read",
+        ":workspace:intellij-read",
+    ]
+    policy = required_text(
+        root,
+        "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+    )
+    plugin_policy = policy.split(
+        "ideRead(\n            ModuleId.IDE_PLUGIN,",
+        maxsplit=1,
+    )[1].split("\n        ),", maxsplit=1)[0]
+    for dependency in (
+        "ModuleId.PROTOCOL_CONTRACT",
+        "ModuleId.PROTOCOL_WIRE",
+        "ModuleId.RUNTIME_IDE_READ",
+        "ModuleId.WORKSPACE_INTELLIJ_READ",
+    ):
+        assert dependency in plugin_policy
+
+    bundle = required_text(root, "scripts/verify_bundle.py")
+    assert "from verify_kvp024_delivery import verify_kvp024_delivery" in bundle
+    assert "verify_kvp024_delivery(root, program, requirements, normative_plan)" in bundle
+
+    # Deliberate sentinel: this authority correction must precede all KVP-024 product work.
+    build_script = required_text(root, "ide-plugin/build.gradle.kts")
+    assert 'id("kast.role.ide-read-only")' in build_script
+    for future_dependency in (
+        ":protocol:wire",
+        ":runtime:ide-read",
+        ":workspace:intellij-read",
+    ):
+        assert f'implementation(project("{future_dependency}"))' not in build_script
+    plugin_sources = list((root / "ide-plugin/src").rglob("*.kt"))
+    assert not any("ReadyIdeEndpoint" in path.read_text() for path in plugin_sources)
+    assert not any(path.name == "IdeEndpointPublicationTest.kt" for path in plugin_sources)
+    assert not any(path.name == "IdeEndpointPublicationNegativeTest.kt" for path in plugin_sources)
+    receipt_authority = root / "build-logic/src/main/kotlin/support/delivery/tasks/receipt"
+    assert not list(receipt_authority.rglob("*Kvp024*"))
+    assert not (root / REPORT_PATH).exists()
+    assert not (root / RECEIPT_PATH).exists()
+
+
+if __name__ == "__main__":
+    repository = pathlib.Path(__file__).resolve().parents[1]
+    generated_program = json.loads(required_text(
+        repository,
+        "gradle/delivery/kast-vfs-passive-reused-index-program.json",
+    ))
+    generated_requirements = json.loads(required_text(
+        repository,
+        "gradle/delivery/kast-vfs-passive-requirements.json",
+    ))
+    plan = required_text(
+        repository,
+        "docs/kast-vfs-passive-reused-index-delivery-program.md",
+    )
+    verify_kvp024_delivery(repository, generated_program, generated_requirements, plan)
+    print("KVP-024 authority: valid (pre-product sentinel intact)")

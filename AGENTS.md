@@ -219,7 +219,7 @@ exactly 39 target subprojects and one included build:
 | `:runtime:{server,ide-read,composition}` | Contract-only dispatch, bounded project-read admission, and the sole complete implementation graph | Read admission depends on workspace evidence; composition depends on all target implementations | Each project root |
 | `:cli` | Command parsing, indexer admission, wire transport, and result projection | Inward to kernel/protocol only | `cli/AGENTS.md` |
 | `:indexer` | Isolated host for one already-constructed runtime composition | Depends only on `:runtime:composition` | `indexer/AGENTS.md` |
-| `:ide-plugin` | Standalone IntelliJ plugin packaging owner | Depends inward on `:protocol:contract`; no runtime implementation dependency | `ide-plugin/AGENTS.md` |
+| `:ide-plugin` | Standalone IntelliJ plugin packaging and hosted endpoint owner | Depends inward on `:protocol:{contract,wire}`, `:runtime:ide-read`, and `:workspace:intellij-read` | `ide-plugin/AGENTS.md` |
 | included `build-logic` | `kast.*` conventions and reusable Gradle task types | Version catalog; no product project | `build-logic/AGENTS.md` |
 
 ## Dependency direction
@@ -234,6 +234,7 @@ runtime:ide-read -> workspace:contract
 services -> their contracts and narrower contracts
 IntelliJ/SQLite adapters -> their contracts
 workspace:intellij-read -> protocol:contract + workspace:contract
+ide-plugin -> protocol:{contract,wire} + runtime:ide-read + workspace:intellij-read
 cli -> distribution:{contract,managed} + kernel + protocol:{contract,registry,wire}
 workspace, symbol, relation, traversal, topology, diagnostic, change, and evidence contracts -> kernel
 ```

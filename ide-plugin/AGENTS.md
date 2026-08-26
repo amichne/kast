@@ -5,8 +5,10 @@
 ## Boundary
 
 - Apply the `IDE_READ_ONLY` role and declare no dependency on the isolated indexer runtime.
-- Depend inward on `:protocol:contract` for the host-neutral compatibility model; keep that model
-  behind module-internal metadata adapters so the plugin does not export the contract dependency.
+- Depend inward on `:protocol:contract`, `:protocol:wire`, `:runtime:ide-read`, and
+  `:workspace:intellij-read` for the hosted endpoint. Keep those dependencies behind
+  module-internal adapters so the plugin does not export them. Do not depend on
+  `:runtime:composition` or any isolated-indexer implementation.
 - The module JAR owns delivery of `META-INF/plugin.xml` from the canonical indexer registration
   source; the staged legacy Kast payload is a build input only while later delivery tasks refine
   runtime and workspace implementations into read-only modules.
