@@ -33,6 +33,10 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
   included-build gates without shell parsing, emit generated proof reports, admit the complete
   predecessor closure, and derive exact-head completion receipts.
 - `ProgramMain.kt` is the dependency-free projection entry point used by `scripts/verify_bundle.sh`.
+- KVP-011 is a late M3 layout gate. It consumes the completed KVP-010 package split, KVP-025
+  endpoint lifecycle, and KVP-031 four-operation read path before KVP-032 scans the complete hosted
+  graph. KVP-012 consumes KVP-010 identity directly so compatibility work does not depend on the
+  not-yet-built read-only payload.
 
 Gate and completion receipt paths are part of the typed program, but their live evidence belongs
 under `build/reports/delivery/receipts`. Never place receipt evidence in tracked projection paths:

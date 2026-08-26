@@ -2,6 +2,8 @@ import org.gradle.jvm.tasks.Jar
 import org.gradle.language.jvm.tasks.ProcessResources
 import support.plugin.BuildStandalonePluginTask
 import support.plugin.StandalonePluginNegativeProofTask
+import support.plugin.VerifyIdeHostedPluginLayoutNegativeTask
+import support.plugin.VerifyIdeHostedPluginLayoutTask
 
 plugins {
     id("kast.kotlin-library")
@@ -49,10 +51,26 @@ val buildPlugin by tasks.registering(BuildStandalonePluginTask::class) {
     reportFile.set(layout.buildDirectory.file("reports/KVP-010-plugin.json"))
 }
 
+val verifyPluginLayoutNegative by tasks.registering(
+    VerifyIdeHostedPluginLayoutNegativeTask::class,
+) {
+    group = "verification"
+    description = "Proves all fixed KVP-011 forbidden classpath injections are rejected."
+}
+
+val verifyPluginLayout by tasks.registering(VerifyIdeHostedPluginLayoutTask::class) {
+    group = "verification"
+    description = "Proves the plugin ZIP and every nested JAR satisfy the hosted read-only policy."
+    dependsOn(buildPlugin, verifyPluginLayoutNegative)
+    pluginArchive.set(buildPlugin.flatMap(BuildStandalonePluginTask::pluginArchive))
+    repositoryRoot.set(rootProject.layout.projectDirectory)
+    reportFile.set(layout.buildDirectory.file("reports/KVP-011-layout.json"))
+}
+
 tasks.named("assemble") {
     dependsOn(buildPlugin)
 }
 
 tasks.named("check") {
-    dependsOn(standalonePluginNegativeProof)
+    dependsOn(standalonePluginNegativeProof, verifyPluginLayoutNegative)
 }

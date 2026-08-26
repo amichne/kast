@@ -25,6 +25,75 @@ class KastVfsPassiveReusedIndexProgramTest {
         assertEquals(validated.waves.values.maxOrNull(), validated.waves.getValue(TaskId("KVP-043")))
     }
 
+    @Test fun `final plugin layout follows hosted runtime and compatibility remains actionable`() {
+        val tasks = validated.program.tasks.associateBy { it.id }
+        val layout = tasks.getValue(TaskId("KVP-011"))
+        val compatibility = tasks.getValue(TaskId("KVP-012"))
+        val staticSafety = tasks.getValue(TaskId("KVP-032"))
+
+        assertEquals(
+            setOf(TaskId("KVP-010"), TaskId("KVP-025"), TaskId("KVP-031")),
+            layout.dependencies.taskIds,
+        )
+        assertEquals(
+            setOf(TaskId("KVP-002"), TaskId("KVP-010")),
+            compatibility.dependencies.taskIds,
+        )
+        assertEquals(
+            setOf(
+                TaskId("KVP-009"),
+                TaskId("KVP-011"),
+                TaskId("KVP-023"),
+                TaskId("KVP-027"),
+                TaskId("KVP-031"),
+            ),
+            staticSafety.dependencies.taskIds,
+        )
+        assertEquals(
+            setOf("kvp.010.proof", "kvp.025.proof", "kvp.031.proof"),
+            layout.taskOutputInputIds(),
+        )
+        assertEquals(setOf("kvp.002.proof", "kvp.010.proof"), compatibility.taskOutputInputIds())
+        assertEquals(
+            setOf(
+                "kvp.009.proof",
+                "kvp.011.proof",
+                "kvp.023.proof",
+                "kvp.027.proof",
+                "kvp.031.proof",
+            ),
+            staticSafety.taskOutputInputIds(),
+        )
+        assertEquals(
+            setOf("KVP-010-COMPLETE", "KVP-025-COMPLETE", "KVP-031-COMPLETE"),
+            layout.completionReceipt.dependencyReceiptIds,
+        )
+        assertEquals(
+            setOf("KVP-002-COMPLETE", "KVP-010-COMPLETE"),
+            compatibility.completionReceipt.dependencyReceiptIds,
+        )
+        assertEquals(
+            setOf(
+                "KVP-009-COMPLETE",
+                "KVP-011-COMPLETE",
+                "KVP-023-COMPLETE",
+                "KVP-027-COMPLETE",
+                "KVP-031-COMPLETE",
+            ),
+            staticSafety.completionReceipt.dependencyReceiptIds,
+        )
+        assertTrue(validated.waves.getValue(TaskId("KVP-011")) > validated.waves.getValue(TaskId("KVP-031")))
+        assertFalse(RequirementId("KVP-REQ-021") in layout.provesRequirements)
+        assertTrue(
+            RequirementId("KVP-REQ-021") in
+                tasks.getValue(TaskId("KVP-035")).provesRequirements,
+        )
+    }
+
+    private fun TaskNode.taskOutputInputIds(): Set<String> = inputs
+        .filter { it["kind"] == "taskOutput" }
+        .mapTo(linkedSetOf()) { it.getValue("id") }
+
     @Test fun `no task or projection has manual status`() {
         val projection = canonicalJson(validated.projection())
         assertFalse("\"status\"" in projection)

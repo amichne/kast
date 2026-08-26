@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `4e848e480c104cd13abcf57a691091b8204cf7c82f8ad0e893f94315e2fccced`
+**Program fingerprint:** `076f5b8b4069766e0dfafcd13de8b13d93e0697d01d7afc181db6e444abcde36`
 
 ## Terminal outcome
 
@@ -53,23 +53,23 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 | 5 | `KVP-006` |
 | 6 | `KVP-007`, `KVP-009` |
 | 7 | `KVP-008`, `KVP-010` |
-| 8 | `KVP-011` |
-| 9 | `KVP-012` |
-| 10 | `KVP-013`, `KVP-014` |
-| 11 | `KVP-015` |
-| 12 | `KVP-016`, `KVP-017` |
-| 13 | `KVP-018` |
-| 14 | `KVP-019` |
-| 15 | `KVP-020` |
-| 16 | `KVP-021` |
-| 17 | `KVP-022` |
-| 18 | `KVP-023` |
-| 19 | `KVP-024` |
-| 20 | `KVP-025`, `KVP-026` |
-| 21 | `KVP-027`, `KVP-028` |
-| 22 | `KVP-029` |
-| 23 | `KVP-030` |
-| 24 | `KVP-031` |
+| 8 | `KVP-012` |
+| 9 | `KVP-013`, `KVP-014` |
+| 10 | `KVP-015` |
+| 11 | `KVP-016`, `KVP-017` |
+| 12 | `KVP-018` |
+| 13 | `KVP-019` |
+| 14 | `KVP-020` |
+| 15 | `KVP-021` |
+| 16 | `KVP-022` |
+| 17 | `KVP-023` |
+| 18 | `KVP-024` |
+| 19 | `KVP-025`, `KVP-026` |
+| 20 | `KVP-027`, `KVP-028` |
+| 21 | `KVP-029` |
+| 22 | `KVP-030` |
+| 23 | `KVP-031` |
+| 24 | `KVP-011` |
 | 25 | `KVP-032` |
 | 26 | `KVP-033` |
 | 27 | `KVP-034` |
@@ -385,47 +385,17 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Completion receipt.** `KVP-010-COMPLETE` at `build/reports/delivery/receipts/KVP-010-COMPLETE.receipt.json`. It consumes `KVP-010-RED`, `KVP-010-GREEN`, and all predecessor completion receipts.
 
-### KVP-011: Prove plugin layout and classpath closure
-
-**Goal.** Reject every platform, bootstrap, mutation, topology, JDBC, runtime-acquisition, and process-launch artifact from the plugin ZIP and runtime classpath.
-
-**Dependencies.** `KVP-010`. Computed wave: `8`.
-
-**Allowed reads.** `ide-plugin/build.gradle.kts`, `ide-plugin/src`, `runtime/ide-read`, `workspace/intellij-read`.
-
-**Allowed writes.** `build-logic/src/main/kotlin/support/tasks/VerifyIdeHostedPluginLayoutTask.kt`, `ide-plugin/src/test`.
-
-**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.010.proof`, `requirement:KVP-REQ-007`, `requirement:KVP-REQ-016`, `requirement:KVP-REQ-021`.
-
-**Outputs.** `kvp.011.proof` at `ide-plugin/build/reports/KVP-011-layout.json`.
-
-**Public interface.** `VerifiedIdePluginLayout`.
-
-**Internal implementation.** Artifact inventory and bytecode owner report.
-
-**Effect and cost.** `FILESYSTEM_READ`, `BUILD_POLICY_WRITE`; `PACKAGE_BUILD`.
-
-**Forbidden work.** Size-only verification; Filename-only verification; Allowing hidden shaded platform classes.
-
-**RED.** `./gradlew :ide-plugin:verifyPluginLayoutNegative`. Expected failure: Injected IntelliJ, Kotlin, Gradle, JBR, bootstrap, change, topology, or JDBC class is not detected.
-
-**GREEN.** `./gradlew :ide-plugin:verifyPluginLayout`. Expected proof: Plugin contents and transitive classpath satisfy the read-only policy and size ceiling.
-
-**Review boundary.** Layout verifier and plugin tests only.
-
-**Completion receipt.** `KVP-011-COMPLETE` at `build/reports/delivery/receipts/KVP-011-COMPLETE.receipt.json`. It consumes `KVP-011-RED`, `KVP-011-GREEN`, and all predecessor completion receipts.
-
 ### KVP-012: Define IDE host compatibility identity
 
 **Goal.** Parse IDE build, Kotlin plugin build, Kast plugin version, runtime protocol identity, registry digest, and wire-schema digest into one admitted compatibility value.
 
-**Dependencies.** `KVP-002`, `KVP-011`. Computed wave: `9`.
+**Dependencies.** `KVP-002`, `KVP-010`. Computed wave: `8`.
 
 **Allowed reads.** `protocol`, `ide-plugin`, `gradle/libs.versions.toml`.
 
 **Allowed writes.** `workspace/contract`, `protocol/contract`, `ide-plugin/src/main/kotlin`.
 
-**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.002.proof`, `taskOutput:kvp.011.proof`, `requirement:KVP-REQ-017`, `requirement:KVP-REQ-018`.
+**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.002.proof`, `taskOutput:kvp.010.proof`, `requirement:KVP-REQ-017`, `requirement:KVP-REQ-018`.
 
 **Outputs.** `kvp.012.proof` at `ide-plugin/build/reports/KVP-012-compatibility.json`.
 
@@ -443,13 +413,13 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Compatibility contract and tests only.
 
-**Completion receipt.** `KVP-012-COMPLETE` at `build/reports/delivery/receipts/KVP-012-COMPLETE.receipt.json`. It consumes `KVP-012-RED`, `KVP-012-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-012-COMPLETE` at `build/reports/delivery/receipts/KVP-012-COMPLETE.receipt.json`. It consumes `KVP-012-RED`, `KVP-012-GREEN`, `KVP-002-COMPLETE`, and `KVP-010-COMPLETE`.
 
 ### KVP-013: Define the project endpoint descriptor schema
 
 **Goal.** Create endpoint schema v2 carrying exact root, host kind, PID, compatibility identity, socket, framing, epoch capability, and exact operation set.
 
-**Dependencies.** `KVP-005`, `KVP-012`. Computed wave: `10`.
+**Dependencies.** `KVP-005`, `KVP-012`. Computed wave: `9`.
 
 **Allowed reads.** `indexer/src/main/kotlin/io/github/amichne/kast/indexer/IndexerEndpointDescriptor.kt`, `protocol/wire`, `ide-plugin`.
 
@@ -479,7 +449,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Refine the Project supplied by IntelliJ into one exact-root, non-disposed, Gradle-model-ready, K2-capable read authority without opening or importing anything.
 
-**Dependencies.** `KVP-009`, `KVP-012`. Computed wave: `10`.
+**Dependencies.** `KVP-009`, `KVP-012`. Computed wave: `9`.
 
 **Allowed reads.** `workspace/intellij/src/main`, `workspace/contract`, `ide-plugin`.
 
@@ -509,7 +479,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Produce executable evidence for the supported project-model, PSI, VFS, root-model, and dumb-mode signals that can define a stable read epoch without refresh or repository scanning.
 
-**Dependencies.** `KVP-014`. Computed wave: `11`.
+**Dependencies.** `KVP-014`. Computed wave: `10`.
 
 **Allowed reads.** `workspace/intellij-read`, `gradle/libs.versions.toml`, `fixtures`.
 
@@ -539,7 +509,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Read and detach root, modules, source roots, Gradle ownership, SDK, classpath identity, compatibility, and epoch from the admitted Project in a short cancellable read.
 
-**Dependencies.** `KVP-014`, `KVP-015`. Computed wave: `12`.
+**Dependencies.** `KVP-014`, `KVP-015`. Computed wave: `11`.
 
 **Allowed reads.** `workspace/intellij-read`, `workspace/contract`, `runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/platform`.
 
@@ -569,7 +539,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Convert the characterized platform signals into one proof-carrying ProjectReadEpoch that can be observed before and after a semantic read.
 
-**Dependencies.** `KVP-015`. Computed wave: `12`.
+**Dependencies.** `KVP-015`. Computed wave: `11`.
 
 **Allowed reads.** `workspace/intellij-read/src/test`, `docs/engineering/ide-read-epoch-ledger.md`, `workspace/contract`.
 
@@ -599,7 +569,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Ensure the hosted model and epoch path never performs Files.walk, source-content hashing, or physical repository traversal under an IntelliJ read lock.
 
-**Dependencies.** `KVP-016`, `KVP-017`. Computed wave: `13`.
+**Dependencies.** `KVP-016`, `KVP-017`. Computed wave: `12`.
 
 **Allowed reads.** `workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleModelCapture.kt`, `workspace/intellij-read`.
 
@@ -629,7 +599,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Admit current IDE-visible state without refresh, listener-driven semantic work, import, or repair and bind it to ProjectReadEpoch.
 
-**Dependencies.** `KVP-017`, `KVP-018`. Computed wave: `14`.
+**Dependencies.** `KVP-017`, `KVP-018`. Computed wave: `13`.
 
 **Allowed reads.** `workspace/contract`, `workspace/intellij-read`, `build-logic/src/main/kotlin/support/architecture`.
 
@@ -659,7 +629,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Issue at most one active semantic read permit per Project with at most one bounded queued request and lifecycle cancellation.
 
-**Dependencies.** `KVP-014`, `KVP-019`. Computed wave: `15`.
+**Dependencies.** `KVP-014`, `KVP-019`. Computed wave: `14`.
 
 **Allowed reads.** `runtime/ide-read`, `workspace/contract`, `ide-plugin`.
 
@@ -689,7 +659,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Run semantic work through write-priority cancellable smart read actions, propagate platform cancellation, and fail fast during dumb mode or disposal.
 
-**Dependencies.** `KVP-019`, `KVP-020`. Computed wave: `16`.
+**Dependencies.** `KVP-019`, `KVP-020`. Computed wave: `15`.
 
 **Allowed reads.** `symbol/intellij`, `workspace/intellij-read`, `runtime/ide-read`.
 
@@ -719,7 +689,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Observe ProjectReadEpoch before the read and after detached projection; accept only equality and reject every moved-state result.
 
-**Dependencies.** `KVP-021`. Computed wave: `17`.
+**Dependencies.** `KVP-021`. Computed wave: `16`.
 
 **Allowed reads.** `workspace/contract`, `workspace/intellij-read`, `runtime/ide-read`.
 
@@ -749,7 +719,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Construct exactly four operation bindings from read-only workspace and symbol ports without full composition, persistence, change, topology, bootstrap, or runtime acquisition.
 
-**Dependencies.** `KVP-009`, `KVP-016`, `KVP-022`. Computed wave: `18`.
+**Dependencies.** `KVP-009`, `KVP-016`, `KVP-022`. Computed wave: `17`.
 
 **Allowed reads.** `runtime/server`, `runtime/composition`, `workspace/service`, `symbol/service`, `protocol`.
 
@@ -779,7 +749,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Start a Project-level service, bind one UDS endpoint, and atomically publish descriptor v2 only after read runtime construction succeeds.
 
-**Dependencies.** `KVP-013`, `KVP-023`. Computed wave: `19`.
+**Dependencies.** `KVP-013`, `KVP-023`. Computed wave: `18`.
 
 **Allowed reads.** `ide-plugin`, `indexer/src/main/kotlin/io/github/amichne/kast/indexer/InstalledIndexerTransport.kt`, `protocol/wire`.
 
@@ -809,7 +779,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Retire descriptor and socket on Project close, plugin unload, bind failure, runtime failure, and service cancellation with idempotent cleanup.
 
-**Dependencies.** `KVP-024`. Computed wave: `20`.
+**Dependencies.** `KVP-024`. Computed wave: `19`.
 
 **Allowed reads.** `ide-plugin/src/main/kotlin`, `protocol/wire`.
 
@@ -839,7 +809,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Parse descriptor v2 once, prove compatibility, root, capabilities, reachability, and runtime identity, then issue one endpoint capability.
 
-**Dependencies.** `KVP-007`, `KVP-013`, `KVP-024`. Computed wave: `20`.
+**Dependencies.** `KVP-007`, `KVP-013`, `KVP-024`. Computed wave: `19`.
 
 **Allowed reads.** `cli/src/main/kotlin`, `protocol/wire`, `gradle/delivery/schema/ide-endpoint.schema.json`.
 
@@ -869,7 +839,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Make missing or incompatible IDE endpoint a closed rejection and make runtime-store, archive, executable, launchd, and process-start paths unreachable from the default CLI composition.
 
-**Dependencies.** `KVP-026`. Computed wave: `21`.
+**Dependencies.** `KVP-026`. Computed wave: `20`.
 
 **Allowed reads.** `cli/src/main/kotlin/io/github/amichne/kast/cli/runtime`, `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap`, `distribution/managed`.
 
@@ -899,7 +869,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Serve workspace.inspect from the admitted detached Project model and read epoch through the IDE endpoint.
 
-**Dependencies.** `KVP-023`, `KVP-026`. Computed wave: `21`.
+**Dependencies.** `KVP-023`, `KVP-026`. Computed wave: `20`.
 
 **Allowed reads.** `workspace/service`, `runtime/ide-read`, `cli`, `protocol`.
 
@@ -929,7 +899,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Serve symbol.discover from native IntelliJ contributors under compiled scope, single-flight admission, cancellation, bounds, and epoch revalidation.
 
-**Dependencies.** `KVP-021`, `KVP-023`, `KVP-028`. Computed wave: `22`.
+**Dependencies.** `KVP-021`, `KVP-023`, `KVP-028`. Computed wave: `21`.
 
 **Allowed reads.** `symbol/intellij`, `symbol/service`, `runtime/ide-read`, `fixtures`.
 
@@ -959,7 +929,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Refine one discovery candidate into one compiler-grounded selector under the same exact Project and revalidated epoch.
 
-**Dependencies.** `KVP-029`. Computed wave: `23`.
+**Dependencies.** `KVP-029`. Computed wave: `22`.
 
 **Allowed reads.** `symbol/contract`, `symbol/service`, `symbol/intellij`, `runtime/ide-read`.
 
@@ -989,7 +959,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Goal.** Describe the exact selector and detach its canonical definition within one cancellable epoch-checked read.
 
-**Dependencies.** `KVP-030`. Computed wave: `24`.
+**Dependencies.** `KVP-030`. Computed wave: `23`.
 
 **Allowed reads.** `symbol/contract`, `symbol/service`, `symbol/intellij`, `runtime/ide-read`.
 
@@ -1015,17 +985,47 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Completion receipt.** `KVP-031-COMPLETE` at `build/reports/delivery/receipts/KVP-031-COMPLETE.receipt.json`. It consumes `KVP-031-RED`, `KVP-031-GREEN`, and all predecessor completion receipts.
 
+### KVP-011: Prove final plugin layout and classpath closure
+
+**Goal.** After the read runtime and exact four operations exist, replace the transitional payload and reject every platform, bootstrap, mutation, topology, JDBC, runtime-acquisition, and process-launch artifact from the plugin ZIP and runtime classpath.
+
+**Dependencies.** `KVP-010`, `KVP-025`, `KVP-031`. Computed wave: `24`.
+
+**Allowed reads.** `ide-plugin/build.gradle.kts`, `ide-plugin/src`, `indexer/build.gradle.kts`, `runtime/ide-read`, `workspace/intellij-read`.
+
+**Allowed writes.** `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginArchiveFile.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginBytecodePolicy.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayout.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayoutFixtures.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayoutTasks.kt`, `ide-plugin/build.gradle.kts`, `ide-plugin/src/main/resources`, `ide-plugin/src/test`, `indexer/build.gradle.kts`.
+
+**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.010.proof`, `taskOutput:kvp.025.proof`, `taskOutput:kvp.031.proof`, `requirement:KVP-REQ-007`, `requirement:KVP-REQ-016`.
+
+**Outputs.** `kvp.011.proof` at `ide-plugin/build/reports/KVP-011-layout.json`.
+
+**Public interface.** `VerifiedIdePluginLayout`.
+
+**Internal implementation.** Artifact inventory and bytecode owner report.
+
+**Effect and cost.** `BUILD_POLICY_WRITE`, `FILESYSTEM_READ`; `PACKAGE_BUILD`.
+
+**Forbidden work.** Size-only verification; Filename-only verification; Allowing hidden shaded platform classes.
+
+**RED.** `./gradlew :ide-plugin:verifyPluginLayoutNegative`. Expected failure: Injected IntelliJ, Kotlin, Gradle, JBR, bootstrap, change, topology, JDBC, runtime-acquisition, or process-launch content is not detected.
+
+**GREEN.** `./gradlew :ide-plugin:verifyPluginLayout`. Expected proof: Plugin contents and transitive classpath satisfy the read-only policy and size ceiling.
+
+**Review boundary.** Read-only payload ownership, layout verifier, and plugin tests only.
+
+**Completion receipt.** `KVP-011-COMPLETE` at `build/reports/delivery/receipts/KVP-011-COMPLETE.receipt.json`. It consumes `KVP-011-RED`, `KVP-011-GREEN`, `KVP-010-COMPLETE`, `KVP-025-COMPLETE`, and `KVP-031-COMPLETE`.
+
 ### KVP-032: Enforce static VFS-passive safety
 
 **Goal.** Scan source, bytecode, classpath, and Gradle dependencies for every forbidden refresh, bootstrap, blocking-read, walk, listener, write, persistence, topology, runtime-acquisition, or process symbol.
 
-**Dependencies.** `KVP-009`, `KVP-023`, `KVP-027`, `KVP-031`. Computed wave: `25`.
+**Dependencies.** `KVP-009`, `KVP-011`, `KVP-023`, `KVP-027`, `KVP-031`. Computed wave: `25`.
 
 **Allowed reads.** `workspace/intellij-read`, `runtime/ide-read`, `ide-plugin`, `cli`, `build-logic/src/main/kotlin/support/architecture`.
 
 **Allowed writes.** `build-logic/src/main/kotlin/support/tasks/VerifyVfsPassiveReadTask.kt`, `gradle/architecture/kast-architecture-policy.json`.
 
-**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.009.proof`, `taskOutput:kvp.023.proof`, `taskOutput:kvp.027.proof`, `taskOutput:kvp.031.proof`, `requirement:KVP-REQ-006`, `requirement:KVP-REQ-011`, `requirement:KVP-REQ-014`, `requirement:KVP-REQ-016`, `requirement:KVP-REQ-027`.
+**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.009.proof`, `taskOutput:kvp.011.proof`, `taskOutput:kvp.023.proof`, `taskOutput:kvp.027.proof`, `taskOutput:kvp.031.proof`, `requirement:KVP-REQ-006`, `requirement:KVP-REQ-011`, `requirement:KVP-REQ-014`, `requirement:KVP-REQ-016`, `requirement:KVP-REQ-027`.
 
 **Outputs.** `kvp.032.proof` at `build/reports/ide-hosted/KVP-032-static-safety.json`.
 
@@ -1043,7 +1043,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Review boundary.** Static policy and negative fixtures only.
 
-**Completion receipt.** `KVP-032-COMPLETE` at `build/reports/delivery/receipts/KVP-032-COMPLETE.receipt.json`. It consumes `KVP-032-RED`, `KVP-032-GREEN`, and all predecessor completion receipts.
+**Completion receipt.** `KVP-032-COMPLETE` at `build/reports/delivery/receipts/KVP-032-COMPLETE.receipt.json`. It consumes `KVP-032-RED`, `KVP-032-GREEN`, `KVP-009-COMPLETE`, `KVP-011-COMPLETE`, `KVP-023-COMPLETE`, `KVP-027-COMPLETE`, and `KVP-031-COMPLETE`.
 
 ### KVP-033: Prove dynamic VFS contention and movement safety
 

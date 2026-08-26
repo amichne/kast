@@ -60,7 +60,14 @@ private data class Kvp004ProgramProofJsonDocument(
 private val kvp004ProofJson = Json { ignoreUnknownKeys = false; prettyPrint = true }
 private val expectedKvp004RejectedCases = Kvp004RejectedCase.entries.toSet()
 private val expectedKvp004Counts = Kvp004ProgramCounts(43, 27, 21, 14, 22, 19, 17, 129)
-private val expectedKvp004Order = (1..43).map { number -> "KVP-${number.toString().padStart(3, '0')}" }
+private val expectedKvp004Order: List<TaskId> = buildList {
+    addAll((1..10).map(::taskId))
+    addAll((12..31).map(::taskId))
+    add(taskId(11))
+    addAll((32..43).map(::taskId))
+}
+
+private fun taskId(number: Int): TaskId = TaskId("KVP-${number.toString().padStart(3, '0')}")
 
 private data class Kvp004ProgramCounts(
     val tasks: Int,
@@ -126,7 +133,7 @@ internal fun deriveKvp004ProgramProof(): Kvp004ProgramProofResult {
         is CanonicalProgramAdmission.Rejected -> return proofMismatch()
     }
     if (admitted.counts() != expectedKvp004Counts ||
-        admitted.order.map { it.value } != expectedKvp004Order ||
+        admitted.order != expectedKvp004Order ||
         admitted.program.terminalTask != TaskId("KVP-043") ||
         admitted.waves.values.max() + 1 != 37
     ) return proofMismatch()
@@ -195,6 +202,14 @@ internal fun decodeKvp004ProgramProof(raw: String): Kvp004ProgramProofResult {
             Kvp004ProgramProofFailure.MALFORMED_DOCUMENT,
         )
     }
+    val taskOrder = document.taskOrder.map { rawTaskId ->
+        when (val refinement = refineTaskId(rawTaskId)) {
+            is DeliveryRefinement.Complete -> refinement.value
+            is DeliveryRefinement.Rejected -> return Kvp004ProgramProofResult.Rejected(
+                Kvp004ProgramProofFailure.ORDER_MISMATCH,
+            )
+        }
+    }
     val counts = Kvp004ProgramCounts(
         document.taskCount,
         document.requirementCount,
@@ -213,7 +228,8 @@ internal fun decodeKvp004ProgramProof(raw: String): Kvp004ProgramProofResult {
             Kvp004ProgramProofFailure.REJECTED_CASES_MISMATCH
         counts != expectedKvp004Counts -> Kvp004ProgramProofFailure.PROGRAM_COUNTS_MISMATCH
         document.terminalTaskId != "KVP-043" -> Kvp004ProgramProofFailure.TERMINAL_MISMATCH
-        document.taskOrder != expectedKvp004Order -> Kvp004ProgramProofFailure.ORDER_MISMATCH
+        taskOrder != expectedKvp004Order ->
+            Kvp004ProgramProofFailure.ORDER_MISMATCH
         document.waveCount != 37 -> Kvp004ProgramProofFailure.WAVE_MISMATCH
         else -> return deriveKvp004ProgramProof()
     }
