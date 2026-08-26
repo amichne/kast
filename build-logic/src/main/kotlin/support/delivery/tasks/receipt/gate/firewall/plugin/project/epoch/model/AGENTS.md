@@ -7,7 +7,7 @@ closure.
   `OPEN_PROJECT`, exact root `/workspace/kast`, bounded model facets, rejected live capabilities,
   and zero forbidden stronger effects.
 - KVP-016 does not define or retain a production epoch. KVP-017 solely owns epoch identity and
-  freshness policy.
+  observation; KVP-019 owns freshness admission policy.
 - Execute only the declared `DetachedModelNegativeTest` and `DetachedModelTest` selectors as fixed
   Gradle argument vectors.
 - Reconstruct the complete KVP-015 closure and preserve its directly admitted KVP-014 completion.

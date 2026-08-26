@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `776317704612a8962943cca8ab096aeaf8a36b7e65cbf364e25263b7d7b8dc24`
+**Program fingerprint:** `c598579695dc2c6a05fbf94f8f952232c6c63e835b3feaf67ea32ab31f6deba0`
 
 ## Terminal outcome
 
@@ -631,9 +631,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-017`, `KVP-018`. Computed wave: `13`.
 
-**Allowed reads.** `workspace/contract`, `workspace/intellij-read`, `build-logic/src/main/kotlin/support/architecture`.
+**Allowed reads.** `AGENTS.md`, `workspace/contract`, `workspace/intellij-read`, `build-logic/src/main/kotlin/support/architecture`, `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery`, `docs/AGENTS.md`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/AGENTS.md`, `scripts/verify_bundle.py`, `scripts/verify_kvp019_delivery.py`.
 
-**Allowed writes.** `workspace/contract`, `workspace/intellij-read`.
+**Allowed writes.** `workspace/contract`, `workspace/intellij-read`, `build-logic/src/main/kotlin/support/delivery/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/Kvp018ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/model/freshness`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/kast-vfs-passive-requirements.json`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/AGENTS.md`, `scripts/verify_bundle.py`, `scripts/verify_kvp019_delivery.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.017.proof`, `taskOutput:kvp.018.proof`, `requirement:KVP-REQ-011`, `requirement:KVP-REQ-012`, `requirement:KVP-REQ-015`, `requirement:KVP-REQ-027`.
 
@@ -641,7 +641,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Public interface.** `VfsPassiveReadCapability`.
 
-**Internal implementation.** Admission from exact Project plus epoch with closed dumb, disposed, busy, and unavailable failures.
+**Internal implementation.** Admission from exact Project plus epoch with closed dumb, disposed, unavailable, and moved failures.
 
 **Effect and cost.** `IDE_PROJECT_READ`; `METADATA`.
 
