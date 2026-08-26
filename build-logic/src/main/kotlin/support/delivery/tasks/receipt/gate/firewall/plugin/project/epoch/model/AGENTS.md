@@ -25,4 +25,5 @@ admission independently reloads every compiled hosted main class, derives digest
 from the same bytes, admits the exact runtime project-component closure, and compares semantic
 predecessor receipt digests. RED, GREEN, and completion remain fixed typed task boundaries.
 
-The `freshness/` child owns KVP-019's predecessor-bound report and receipt progression.
+The `freshness/` child owns KVP-019 freshness and its nested KVP-020 single-flight report and
+receipt progressions.

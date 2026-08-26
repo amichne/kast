@@ -255,12 +255,12 @@ internal fun Project.registerKvp018ReceiptProgression(
         proofReportFile.set(hosted.proofReport)
         completionReceiptFile.set(hosted.completionReceipt)
     }
-    val freshness = registerKvp019ReceiptProgression(
+    val freshnessTasks = registerKvp019ReceiptProgression(
         program,
         readEpoch,
         hosted,
     ) {
         configureHosted()
     }
-    return setOf(hosted.task.id, freshness)
+    return setOf(hosted.task.id) + freshnessTasks
 }
