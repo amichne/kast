@@ -8,6 +8,7 @@ from verify_kvp019_delivery import verify_kvp019_delivery
 from verify_kvp020_delivery import verify_kvp020_delivery
 from verify_kvp021_delivery import verify_kvp021_delivery
 from verify_kvp022_delivery import verify_kvp022_delivery
+from verify_kvp023_delivery import verify_kvp023_delivery
 def schema_errors(value, schema, root_schema, path="$"):
     if "$ref" in schema:
         reference = schema["$ref"]
@@ -34,7 +35,6 @@ def schema_errors(value, schema, root_schema, path="$"):
             return
     if "const" in schema and value != schema["const"]:
         yield f"{path}: expected constant {schema['const']!r}, got {value!r}"
-
     if isinstance(value, str):
         if len(value) < schema.get("minLength", 0):
             yield f"{path}: string is shorter than minLength"
@@ -47,7 +47,6 @@ def schema_errors(value, schema, root_schema, path="$"):
     if isinstance(value, int) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             yield f"{path}: integer is less than minimum {schema['minimum']}"
-
     if isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             yield f"{path}: array has fewer than minItems"
@@ -285,6 +284,7 @@ verify_kvp019_delivery(root, program, normative_plan)
 verify_kvp020_delivery(root, program, normative_plan)
 verify_kvp021_delivery(root, program, normative_plan)
 verify_kvp022_delivery(root, program, requirements, normative_plan)
+verify_kvp023_delivery(root, program, requirements, normative_plan)
 epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
 for expected_epoch_fact in (
     "WorkspaceModelTopics.CHANGED",
