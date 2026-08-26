@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `36983415f6e0156e1ee256717a89d86f7929b9415802600ba5da0483887abb97`
+**Program fingerprint:** `9eb6393ff92272fe62b0f3873f445f7ca6c245072b921b72731796ded0bf9e0b`
 
 ## Terminal outcome
 
@@ -421,9 +421,39 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-005`, `KVP-012`. Computed wave: `9`.
 
-**Allowed reads.** `indexer/src/main/kotlin/io/github/amichne/kast/indexer/IndexerEndpointDescriptor.kt`, `protocol/wire`, `ide-plugin`.
+**Allowed reads.** `indexer/src/main/kotlin/io/github/amichne/kast/indexer/IndexerEndpointDescriptor.kt`,
+`protocol/contract`, `protocol/wire`, `ide-plugin`, `build/reports/delivery/receipts`,
+`build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/ReceiptIssuanceBoundary.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/Kvp005ReceiptProgression.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/Kvp005ReceiptTasks.kt`,
+`build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/Kvp012ReceiptProgression.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/Kvp012ReceiptTasks.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/DeliveryReceiptRegistrationModel.kt`.
 
-**Allowed writes.** `protocol/wire`, `ide-plugin/src/main/kotlin`, `gradle/delivery/schema/ide-endpoint.schema.json`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`,
+`build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/Kvp012ReceiptRegistration.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/endpoint/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/endpoint/Kvp013EndpointDescriptorReport.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/endpoint/Kvp013ReceiptProgression.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/endpoint/Kvp013ReceiptRegistration.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/endpoint/Kvp013ReceiptTasks.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/ReceiptProgressionRegistration.kt`,
+`protocol/wire`,
+`gradle/delivery/AGENTS.md`, `gradle/delivery/kast-vfs-passive-requirements.json`,
+`gradle/delivery/kast-vfs-passive-reused-index-program.json`,
+`gradle/delivery/schema/AGENTS.md`, `gradle/delivery/schema/ide-endpoint.schema.json`,
+`docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.005.proof`, `taskOutput:kvp.012.proof`, `requirement:KVP-REQ-008`, `requirement:KVP-REQ-009`, `requirement:KVP-REQ-017`, `requirement:KVP-REQ-018`.
 
@@ -431,7 +461,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Public interface.** `IdeEndpointDescriptorV2`.
 
-**Internal implementation.** Generated serialization, strict parsing, and canonical digest.
+**Internal implementation.** Generated serialization, strict parsing, and canonical descriptor/report bytes.
 
 **Effect and cost.** `PURE`, `BUILD_POLICY_WRITE`; `METADATA`.
 
@@ -439,9 +469,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **RED.** `./gradlew :protocol:wire:test --tests "*IdeEndpointDescriptorNegativeTest"`. Expected failure: Malformed, ambiguous, stale, or under-specified endpoint documents are admitted.
 
-**GREEN.** `./gradlew :protocol:wire:test --tests "*IdeEndpointDescriptorTest"`. Expected proof: Descriptor round-trips exactly and every mismatch remains a closed rejection.
+**GREEN.** `./gradlew :protocol:wire:generateIdeEndpointDescriptorReport :protocol:wire:test --tests "*IdeEndpointDescriptorTest"`. Expected proof: Descriptor round-trips exactly and every mismatch remains a closed rejection.
 
-**Review boundary.** Endpoint contract, codec, and schema only.
+**Review boundary.** Endpoint contract, codec, schema, proof report, generated authority projections, and exact receipt progression only.
 
 **Completion receipt.** `KVP-013-COMPLETE` at `build/reports/delivery/receipts/KVP-013-COMPLETE.receipt.json`. It consumes `KVP-013-RED`, `KVP-013-GREEN`, and all predecessor completion receipts.
 

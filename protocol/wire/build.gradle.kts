@@ -9,8 +9,16 @@ val operationRegistryArtifact = layout.buildDirectory.file(
 
 val canonicalSerializationSources = fileTree("src/main/kotlin") {
     include("io/github/amichne/kast/protocol/wire/serialization/**/*.kt")
+    include("io/github/amichne/kast/protocol/wire/metadata/**/*.kt")
     include("io/github/amichne/kast/protocol/wire/Canonical*.kt")
 }
+
+val ideEndpointDescriptorReport = layout.buildDirectory.file(
+    "reports/KVP-013-endpoint-schema.json",
+)
+val ideEndpointDescriptorSchema = rootProject.layout.projectDirectory.file(
+    "gradle/delivery/schema/ide-endpoint.schema.json",
+)
 
 val verifyGeneratedOperationSerialization =
     tasks.register<support.tasks.VerifyGeneratedSerializationSourcesTask>(
@@ -59,8 +67,41 @@ tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateOperationRegis
     outputFile.set(operationRegistryArtifact)
 }
 
+val generateIdeEndpointDescriptorReport =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>(
+        "generateIdeEndpointDescriptorReport",
+    ) {
+        group = "verification"
+        description = "Generates the canonical KVP-013 IDE endpoint descriptor report."
+        dependsOn(tasks.named("classes"))
+        classpath.from(sourceSets.main.get().runtimeClasspath)
+        mainClass.set(
+            "io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorProjection",
+        )
+        outputFile.set(ideEndpointDescriptorReport)
+    }
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    dependsOn(generateIdeEndpointDescriptorReport)
+    inputs.file(generateIdeEndpointDescriptorReport.flatMap(
+        support.tasks.WriteJavaProcessOutputTask::outputFile,
+    )).withPathSensitivity(org.gradle.api.tasks.PathSensitivity.NONE)
+    inputs.file(ideEndpointDescriptorSchema)
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    systemProperty(
+        "kast.ide.endpoint.report",
+        generateIdeEndpointDescriptorReport.flatMap(
+            support.tasks.WriteJavaProcessOutputTask::outputFile,
+        ).get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.ide.endpoint.schema",
+        ideEndpointDescriptorSchema.asFile.absolutePath,
+    )
+}
+
 tasks.named("check") {
-    dependsOn(verifyGeneratedOperationSerialization)
+    dependsOn(verifyGeneratedOperationSerialization, generateIdeEndpointDescriptorReport)
 }
 
 dependencies {

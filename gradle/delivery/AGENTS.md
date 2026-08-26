@@ -8,6 +8,8 @@ This directory owns the checked-in machine projections of the typed program in `
   its guide and preserve significant terminal newlines.
 - `schema/` owns the closed JSON Schema contracts. The proof-receipt contract requires receipt and
   base identities and string-valued open observation entries matching the generated Kotlin codec.
+  The KVP-013 IDE endpoint schema closes the exact 14-field v2 descriptor projected by
+  `:protocol:wire:generateIdeEndpointDescriptorReport`.
 
 Live gate and task-completion receipts belong under `build/reports/delivery/receipts`. They bind the
 commit observed after checkout and must never be checked in.

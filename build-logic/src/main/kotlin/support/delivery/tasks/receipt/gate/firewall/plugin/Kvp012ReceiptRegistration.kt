@@ -112,5 +112,8 @@ internal fun Project.registerKvp012ReceiptProgression(
         proofReportFile.set(compatibility.proofReport)
         completionReceiptFile.set(compatibility.completionReceipt)
     }
-    return setOf(standalonePlugin.task.id, compatibility.task.id)
+    val endpoint = registerKvp013ReceiptProgression(program, compatibility) {
+        configureCompatibility()
+    }
+    return setOf(standalonePlugin.task.id, compatibility.task.id, endpoint)
 }

@@ -2,7 +2,7 @@ package support.delivery
 
 import org.gradle.api.Project
 
-/** Registers exact-head typed receipt progression for KVP-001 through KVP-010 and KVP-012. */
+/** Registers exact-head typed receipt progression for KVP-001 through KVP-010 and KVP-012/013. */
 internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val validated = KastVfsPassiveReusedIndexProgram.validated
     val program = validated.program

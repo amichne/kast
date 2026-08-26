@@ -37,6 +37,9 @@ def schema_errors(value, schema, root_schema, path="$"):
     if isinstance(value, str):
         if len(value) < schema.get("minLength", 0):
             yield f"{path}: string is shorter than minLength"
+        maximum_length = schema.get("maxLength")
+        if maximum_length is not None and len(value) > maximum_length:
+            yield f"{path}: string is longer than maxLength"
         pattern = schema.get("pattern")
         if pattern is not None and re.search(pattern, value) is None:
             yield f"{path}: string does not match {pattern!r}"
@@ -137,6 +140,69 @@ requirements = json.loads(requirements_path.read_text())
 assert requirements["programFingerprint"] == fingerprint
 validate_document(program_path, root / "gradle/delivery/schema/delivery-program.schema.json")
 validate_document(requirements_path, root / "gradle/delivery/schema/requirement-trace.schema.json")
+endpoint_schema_path = root / "gradle/delivery/schema/ide-endpoint.schema.json"
+endpoint_schema = json.loads(endpoint_schema_path.read_text())
+endpoint_fields = [
+    "schema",
+    "canonicalRoot",
+    "hostKind",
+    "processId",
+    "ideBuild",
+    "kotlinPluginBuild",
+    "kastPluginVersion",
+    "runtimeProtocolIdentity",
+    "operationRegistryDigest",
+    "wireSchemaDigest",
+    "socketPath",
+    "framing",
+    "runtimeEpoch",
+    "capabilities",
+]
+assert endpoint_schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+assert endpoint_schema["additionalProperties"] is False
+assert endpoint_schema["required"] == endpoint_fields
+assert set(endpoint_schema["properties"]) == set(endpoint_fields)
+endpoint_example = {
+    "schema": "kast.ide.endpoint.v2",
+    "canonicalRoot": "/Users/kast/project",
+    "hostKind": "IDE_PROJECT",
+    "processId": 7321,
+    "ideBuild": "262.1.2",
+    "kotlinPluginBuild": "262.1.2-IJ",
+    "kastPluginVersion": "0.1.0",
+    "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v1",
+    "operationRegistryDigest": f"sha256:{'a' * 64}",
+    "wireSchemaDigest": f"sha256:{'b' * 64}",
+    "socketPath": "/tmp/kast/project.sock",
+    "framing": "length-prefixed-json-v1",
+    "runtimeEpoch": 0,
+    "capabilities": [
+        "workspace.inspect",
+        "symbol.discover",
+        "symbol.resolve",
+        "symbol.describe",
+    ],
+}
+assert not list(schema_errors(endpoint_example, endpoint_schema, endpoint_schema))
+endpoint_rejections = []
+for field, invalid in (
+    ("schema", "kast.runtime.endpoint.v2"),
+    ("canonicalRoot", "/Users/kast/../project"),
+    ("processId", 0),
+    ("socketPath", "/tmp/kast//project.sock"),
+    ("runtimeEpoch", -1),
+    ("capabilities", list(reversed(endpoint_example["capabilities"]))),
+):
+    candidate = dict(endpoint_example)
+    candidate[field] = invalid
+    endpoint_rejections.append(list(schema_errors(candidate, endpoint_schema, endpoint_schema)))
+extra_field = dict(endpoint_example)
+extra_field["descriptorDigest"] = f"sha256:{'c' * 64}"
+endpoint_rejections.append(list(schema_errors(extra_field, endpoint_schema, endpoint_schema)))
+missing_field = dict(endpoint_example)
+missing_field.pop("runtimeEpoch")
+endpoint_rejections.append(list(schema_errors(missing_field, endpoint_schema, endpoint_schema)))
+assert all(endpoint_rejections)
 receipt_paths = sorted(
     (root / "build/reports/delivery/receipts").glob("*.receipt.json")
 )

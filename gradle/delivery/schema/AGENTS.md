@@ -6,3 +6,9 @@ requires receipt/base identities and nonempty string-valued observations; it mus
 Kotlin receipt serializer and typed admission model. A schema change is a delivery-contract change
 and must be paired with typed Kotlin authority, regenerated projections when affected, and
 dependency-free validation through `scripts/verify_bundle.py`.
+
+`ide-endpoint.schema.json` owns the closed 14-field `kast.ide.endpoint.v2` document. It fixes the
+IDE Project host, framing, and ordered four-operation capability set; admits only positive process
+IDs and non-negative runtime epochs; and constrains root and socket text to normalized absolute
+POSIX paths. The wire codec additionally enforces the Unix-domain socket's 103-byte UTF-8 limit,
+which JSON Schema cannot express from character count alone.
