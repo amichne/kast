@@ -28,6 +28,47 @@ private val proofReceiptJson = Json {
     prettyPrint = true
 }
 
+internal sealed interface ExistingProofReceiptCandidate {
+    data object Missing : ExistingProofReceiptCandidate
+    data class Present(val rawDocument: String) : ExistingProofReceiptCandidate
+}
+
+internal sealed interface ProofReceiptReplacementReason {
+    data object Missing : ProofReceiptReplacementReason
+    data class Rejected(val failure: ProofReceiptFailure) : ProofReceiptReplacementReason
+}
+
+internal sealed interface ProofReceiptReconciliation {
+    data class Reuse(val receipt: AdmittedProofReceipt) : ProofReceiptReconciliation
+    data class Replace(val reason: ProofReceiptReplacementReason) : ProofReceiptReconciliation
+}
+
+/**
+ * Proof transition: `ExistingProofReceiptCandidate` plus `ProofReceiptExpectation` ->
+ * `ProofReceiptReconciliation`.
+ *
+ * Full receipt admission is the only route to [ProofReceiptReconciliation.Reuse]. Missing,
+ * malformed, or expectation-mismatched evidence selects replacement with a closed
+ * [ProofReceiptReplacementReason]. Raw JSON extraction is permitted only at the receipt issuance
+ * boundary.
+ */
+internal fun reconcileProofReceipt(
+    candidate: ExistingProofReceiptCandidate,
+    expectation: ProofReceiptExpectation,
+): ProofReceiptReconciliation = when (candidate) {
+    ExistingProofReceiptCandidate.Missing -> ProofReceiptReconciliation.Replace(
+        ProofReceiptReplacementReason.Missing,
+    )
+    is ExistingProofReceiptCandidate.Present -> when (
+        val admission = admitProofReceipt(candidate.rawDocument, expectation)
+    ) {
+        is ProofReceiptAdmission.Complete -> ProofReceiptReconciliation.Reuse(admission.receipt)
+        is ProofReceiptAdmission.Rejected -> ProofReceiptReconciliation.Replace(
+            ProofReceiptReplacementReason.Rejected(admission.failure),
+        )
+    }
+}
+
 /**
  * Proof transition: receipt JSON bytes -> parsed `ProofReceiptDocument`.
  *

@@ -29,9 +29,21 @@ class DeliveryTaskOwnershipTest {
         )
         assertEquals(
             listOf(
+                "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt",
+                "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt",
                 "build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt",
-                "build-logic/src/test/kotlin/support/delivery/DeliveryReceiptTest.kt",
+                "build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md",
+                "build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt",
+                "build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt",
+                "build-logic/src/main/kotlin/support/delivery/tasks/ReceiptIssuanceBoundary.kt",
+                "build-logic/src/test/kotlin/support/delivery/DeliveryTaskOwnershipTest.kt",
+                "build-logic/src/test/kotlin/support/delivery/proof/AGENTS.md",
+                "build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt",
+                "docs/kast-vfs-passive-reused-index-delivery-program.md",
+                "gradle/delivery/kast-vfs-passive-requirements.json",
+                "gradle/delivery/kast-vfs-passive-reused-index-program.json",
                 "gradle/delivery/schema/proof-receipt.schema.json",
+                "scripts/verify_bundle.py",
             ),
             tasks.getValue("KVP-007").allowedWrites,
         )

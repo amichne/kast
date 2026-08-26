@@ -2,7 +2,6 @@ package support.delivery
 
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
-import java.time.Instant
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
@@ -351,37 +350,5 @@ internal fun rejectReceipt(
     failure: ProofReceiptFailure,
     detail: String? = null,
 ): Nothing = rejectAuthority(owner, listOfNotNull(failure.name, detail).joinToString(":"))
-
-/**
- * Proof transition: exact-head `ProofReceiptExpectation` -> written and re-admitted
- * `AdmittedProofReceipt`.
- *
- * Establishes stable Git HEAD before and after one atomic build-report write, then reads the bytes
- * back through generated JSON and domain admission. Expected failures remain finite
- * [ProofReceiptFailure] values until rendered at this Gradle boundary.
- */
-internal fun issueReceiptAtBoundary(
-    repositoryRoot: Path,
-    exactHead: AuthorityGitRevision,
-    expectation: ProofReceiptExpectation,
-    output: Path,
-): AdmittedProofReceipt {
-    revalidateExactHead(repositoryRoot, exactHead)
-    val document = issueProofReceipt(expectation, Instant.now())
-    writeTextAtomically(output, encodeProofReceiptDocument(document))
-    revalidateExactHead(repositoryRoot, exactHead)
-    val raw = when (val read = readBoundaryFile(output, MAX_RECEIPT_EVIDENCE_BYTES)) {
-        is BoundaryFileRead.Complete -> read.bytes.toString(Charsets.UTF_8)
-        is BoundaryFileRead.Rejected -> rejectReceipt(
-            "written receipt",
-            ProofReceiptFailure.MALFORMED_DOCUMENT,
-            read.failure.name,
-        )
-    }
-    return when (val admission = admitProofReceipt(raw, expectation)) {
-        is ProofReceiptAdmission.Complete -> admission.receipt
-        is ProofReceiptAdmission.Rejected -> rejectReceipt("written receipt", admission.failure)
-    }
-}
 
 internal const val MAX_RECEIPT_EVIDENCE_BYTES = 32L shl 20

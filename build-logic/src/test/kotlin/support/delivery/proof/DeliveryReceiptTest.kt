@@ -1,9 +1,15 @@
 package support.delivery
 
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Instant
+import org.gradle.api.GradleException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 internal class DeliveryProofTest {
     @Test
@@ -17,6 +23,128 @@ internal class DeliveryProofTest {
         assertEquals(RECEIPT_ID, complete.receipt.receiptId.value)
         assertEquals(EXACT_HEAD, complete.receipt.exactHead.value)
         assertEquals(document.receiptDigest, complete.receipt.digest)
+    }
+
+    @Test
+    fun `same-head receipt replay preserves identity`(@TempDir repositoryRoot: Path) {
+        writeDetachedHead(repositoryRoot)
+        val expectation = expectation()
+        val original = encodeProofReceiptDocument(issueProofReceipt(expectation, RECORDED_AT))
+        val output = repositoryRoot.resolve("build/receipt.json")
+        Files.createDirectories(output.parent)
+        Files.writeString(output, original)
+
+        assertInstanceOf(
+            ProofReceiptReconciliation.Reuse::class.java,
+            reconcileProofReceipt(
+                ExistingProofReceiptCandidate.Present(original),
+                expectation,
+            ),
+        )
+
+        val admitted = issueReceiptAtBoundary(
+            repositoryRoot,
+            AuthorityGitRevision(EXACT_HEAD),
+            expectation,
+            output,
+        )
+
+        assertEquals(original, Files.readString(output))
+        assertEquals(issueProofReceipt(expectation, RECORDED_AT).receiptDigest, admitted.digest)
+    }
+
+    @Test
+    fun `every nonadmitted candidate selects replacement and replacement admits`() {
+        val expectation = expectation()
+        val cases = listOf(
+            ExistingProofReceiptCandidate.Missing to ProofReceiptReplacementReason.Missing,
+            ExistingProofReceiptCandidate.Present("not-json") to rejectedReplacement(
+                ProofReceiptFailure.MALFORMED_DOCUMENT,
+            ),
+            candidate(expectation(exactHead = "0".repeat(40))) to rejectedReplacement(
+                ProofReceiptFailure.EXACT_HEAD_MISMATCH,
+            ),
+            candidate(
+                expectation(dependencies = mapOf("KVP-002-COMPLETE" to "1".repeat(64))),
+            ) to rejectedReplacement(ProofReceiptFailure.DEPENDENCY_RECEIPTS_MISMATCH),
+            candidate(expectation(commandDigest = "0".repeat(64))) to rejectedReplacement(
+                ProofReceiptFailure.COMMAND_DIGEST_MISMATCH,
+            ),
+            candidate(expectation(outcome = "QUALIFIED")) to rejectedReplacement(
+                ProofReceiptFailure.OBSERVATION_MISMATCH,
+            ),
+            candidate(expectation(artifactDigest = "0".repeat(64))) to rejectedReplacement(
+                ProofReceiptFailure.ARTIFACT_DIGESTS_MISMATCH,
+            ),
+        )
+
+        cases.forEach { (candidate, expectedReason) ->
+            assertEquals(
+                ProofReceiptReconciliation.Replace(expectedReason),
+                reconcileProofReceipt(candidate, expectation),
+            )
+            assertInstanceOf(
+                ProofReceiptAdmission.Complete::class.java,
+                admitProofReceipt(issueProofReceipt(expectation, RECORDED_AT), expectation),
+            )
+        }
+    }
+
+    @Test
+    fun `changed expectation replaces regular stale receipt`(@TempDir repositoryRoot: Path) {
+        writeDetachedHead(repositoryRoot)
+        val staleExpectation = expectation()
+        val currentExpectation = expectation(declaredInputDigest = "0".repeat(64))
+        val stale = encodeProofReceiptDocument(issueProofReceipt(staleExpectation, RECORDED_AT))
+        val output = repositoryRoot.resolve("build/receipt.json")
+        Files.createDirectories(output.parent)
+        Files.writeString(output, stale)
+
+        val admitted = issueReceiptAtBoundary(
+            repositoryRoot,
+            AuthorityGitRevision(EXACT_HEAD),
+            currentExpectation,
+            output,
+        )
+        val current = Files.readString(output)
+
+        assertNotEquals(stale, current)
+        assertEquals(admitted.digest, issueProofReceiptDocumentDigest(current, currentExpectation))
+        assertEquals(
+            ProofReceiptAdmission.Rejected(ProofReceiptFailure.DECLARED_INPUT_DIGEST_MISMATCH),
+            admitProofReceipt(current, staleExpectation),
+        )
+    }
+
+    @Test
+    fun `unsafe existing receipt state fails closed`(@TempDir repositoryRoot: Path) {
+        writeDetachedHead(repositoryRoot)
+        val output = repositoryRoot.resolve("build/receipt.json")
+        Files.createDirectories(output.parent)
+        Files.createSymbolicLink(output, repositoryRoot.resolve("outside.json"))
+
+        assertThrows(GradleException::class.java) {
+            issueReceiptAtBoundary(
+                repositoryRoot,
+                AuthorityGitRevision(EXACT_HEAD),
+                expectation(),
+                output,
+            )
+        }
+    }
+
+    @Test
+    fun `receipt expectation head must equal revalidated head`(@TempDir repositoryRoot: Path) {
+        writeDetachedHead(repositoryRoot)
+
+        assertThrows(GradleException::class.java) {
+            issueReceiptAtBoundary(
+                repositoryRoot,
+                AuthorityGitRevision(EXACT_HEAD),
+                expectation(exactHead = "0".repeat(40)),
+                repositoryRoot.resolve("build/receipt.json"),
+            )
+        }
     }
 
     @Test
@@ -173,25 +301,55 @@ internal class DeliveryProofTest {
         )
     }
 
-    private fun expectation(): ProofReceiptExpectation = when (
+    private fun issueProofReceiptDocumentDigest(
+        raw: String,
+        expectation: ProofReceiptExpectation,
+    ): ProofReceiptDigest = when (val admission = admitProofReceipt(raw, expectation)) {
+        is ProofReceiptAdmission.Complete -> admission.receipt.digest
+        is ProofReceiptAdmission.Rejected -> error("invalid issued receipt: ${admission.failure}")
+    }
+
+    private fun writeDetachedHead(repositoryRoot: Path) {
+        Files.createDirectory(repositoryRoot.resolve(".git"))
+        Files.writeString(repositoryRoot.resolve(".git/HEAD"), EXACT_HEAD)
+    }
+
+    private fun expectation(
+        exactHead: String = EXACT_HEAD,
+        dependencies: Map<String, String> = emptyMap(),
+        declaredInputDigest: String = DECLARED_INPUT_DIGEST,
+        commandDigest: String = COMMAND_DIGEST,
+        outcome: String = "COMPLETE",
+        artifactDigest: String = ARTIFACT_DIGEST,
+    ): ProofReceiptExpectation = when (
         val parsed = ProofReceiptExpectation.parse(
             RECEIPT_ID,
             BASE_REVISION,
-            EXACT_HEAD,
+            exactHead,
             PROGRAM_FINGERPRINT,
             REQUIREMENT_FINGERPRINT,
             "KVP-001",
             "KVP-001-RED",
-            emptyMap(),
-            DECLARED_INPUT_DIGEST,
-            COMMAND_DIGEST,
-            mapOf("outcome" to "COMPLETE"),
-            mapOf(ARTIFACT_PATH to ARTIFACT_DIGEST),
+            dependencies,
+            declaredInputDigest,
+            commandDigest,
+            mapOf("outcome" to outcome),
+            mapOf(ARTIFACT_PATH to artifactDigest),
         )
     ) {
         is ProofReceiptExpectationResult.Complete -> parsed.expectation
         is ProofReceiptExpectationResult.Rejected -> error("invalid fixture: ${parsed.failure}")
     }
+
+    private fun candidate(
+        expectation: ProofReceiptExpectation,
+    ): ExistingProofReceiptCandidate.Present = ExistingProofReceiptCandidate.Present(
+        encodeProofReceiptDocument(issueProofReceipt(expectation, RECORDED_AT)),
+    )
+
+    private fun rejectedReplacement(
+        failure: ProofReceiptFailure,
+    ): ProofReceiptReplacementReason = ProofReceiptReplacementReason.Rejected(failure)
 
     private companion object {
         val RECORDED_AT: Instant = Instant.parse("2026-08-25T00:00:00Z")

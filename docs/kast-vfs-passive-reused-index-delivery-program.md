@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `7d555c4d07f04fd0a4412f479b4c4b3f313c186fc6fcc2fe3238d8e165ec8ef6`
+**Program fingerprint:** `0c3ce40d81cd0c8420b61605aadb7ed2d38f77d914809e9198e71ec3eecc81a9`
 
 ## Terminal outcome
 
@@ -271,13 +271,13 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-006`. Computed wave: `6`.
 
-**Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `gradle/delivery/schema/proof-receipt.schema.json`.
+**Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery/schema/proof-receipt.schema.json`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryReceiptTest.kt`, `gradle/delivery/schema/proof-receipt.schema.json`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt`, `build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/ReceiptIssuanceBoundary.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryTaskOwnershipTest.kt`, `build-logic/src/test/kotlin/support/delivery/proof/AGENTS.md`, `build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/schema/proof-receipt.schema.json`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.006.proof`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-023`, `requirement:KVP-REQ-026`.
 
-**Outputs.** `kvp.007.proof` at `build/reports/delivery/KVP-007-receipts.json`.
+**Outputs.** `kvp.007.proof` at `build/reports/delivery/KVP-007-receipts.json`. Same-head replay preserves receipt bytes; every changed head, requirement, command, dependency, input, or artifact invalidates proof.
 
 **Public interface.** `ProofReceipt`.
 
@@ -289,9 +289,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **RED.** `./gradlew :build-logic:test --tests "*DeliveryProofNegativeTest"`. Expected failure: Forged, stale, dependency-mismatched, or artifact-mismatched receipts are admitted.
 
-**GREEN.** `./gradlew :build-logic:test --tests "*DeliveryProofTest"`. Expected proof: Every changed head, requirement, command, dependency, input, or artifact invalidates proof.
+**GREEN.** `./gradlew :build-logic:test --tests "*DeliveryProofTest"`. Expected proof: Same-head replay preserves receipt bytes; every changed head, requirement, command, dependency, input, or artifact invalidates proof.
 
-**Review boundary.** Receipt code, schema, and fixtures only.
+**Review boundary.** Receipt model, issuance boundary, schema, and fixtures only.
 
 **Completion receipt.** `KVP-007-COMPLETE` at `build/reports/delivery/receipts/KVP-007-COMPLETE.receipt.json`. It consumes `KVP-007-RED`, `KVP-007-GREEN`, and all predecessor completion receipts.
 

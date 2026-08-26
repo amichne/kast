@@ -106,10 +106,13 @@ assert by_id["KVP-002"]["allowedWrites"][0] == (
 assert by_id["KVP-003"]["allowedWrites"][0] == (
     "build-logic/src/main/kotlin/support/delivery/model/DeliveryGraph.kt"
 )
-assert by_id["KVP-007"]["allowedWrites"][:2] == [
+kvp_007_writes = set(by_id["KVP-007"]["allowedWrites"])
+assert {
     "build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt",
-    "build-logic/src/test/kotlin/support/delivery/DeliveryReceiptTest.kt",
-]
+    "build-logic/src/main/kotlin/support/delivery/tasks/ReceiptIssuanceBoundary.kt",
+    "build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt",
+} <= kvp_007_writes
+assert "build-logic/src/test/kotlin/support/delivery/DeliveryReceiptTest.kt" not in kvp_007_writes
 assert by_id["KVP-008"]["allowedWrites"][0] == (
     "build-logic/src/main/kotlin/support/delivery/model/DeliveryState.kt"
 )

@@ -2,8 +2,8 @@
 
 This directory owns the focused KVP-007 receipt-binding and KVP-008 derived-state test selectors.
 
-- `DeliveryReceiptTest.kt` proves exact receipt admission, generated-codec rejection, and every
-  recomputed-digest invalidation.
+- `DeliveryReceiptTest.kt` proves exact receipt admission, same-head replay identity,
+  generated-codec rejection, and every recomputed-digest invalidation.
 - `DeliveryStateTest.kt` proves blocked, ready, invalid, proven, requirement, critical-path, and
   terminal derivation from admitted completion receipts.
 

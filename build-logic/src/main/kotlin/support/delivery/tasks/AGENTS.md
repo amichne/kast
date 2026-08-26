@@ -11,7 +11,8 @@ This directory owns Gradle effects for the VFS-passive delivery program.
 - `DeliveryReceiptJsonBoundary.kt` is the generated receipt codec.
   `Kvp001ReceiptTaskSupport.kt` refines the authority reports and exact artifact bytes into receipt
   expectations. `Kvp001ReceiptTasks.kt` owns the root RED, GREEN, completion, and re-admission
-  boundaries. Every write is followed by exact-head revalidation and read-back admission.
+  boundaries. A fully admitted same-expectation receipt is reused; replacement writes are followed
+  by exact-head revalidation and read-back admission.
 - `receipt/` owns typed post-authority progression through KVP-010 and for KVP-012. Each task executes only fixed
   gate argument vectors, owns or decodes generated proof reports, and closes over every direct
   predecessor receipt.
