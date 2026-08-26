@@ -12,13 +12,13 @@ import java.nio.file.Path
 
 class IdeReadFirewallTest {
     @Test
-    fun `plugin split IDE read graph is physically narrow`() {
+    fun `workspace split IDE read graph is physically narrow`() {
         val proof = completeProof(canonical())
 
         assertEquals(IdeReadFirewall.moduleIds, proof.modules.mapTo(mutableSetOf()) { it.id })
-        assertEquals(IdeReadFirewallStage.PLUGIN_SPLIT, proof.stage)
+        assertEquals(IdeReadFirewallStage.WORKSPACE_SPLIT, proof.stage)
         assertEquals(
-            setOf(ModuleId.IDE_PLUGIN),
+            setOf(ModuleId.IDE_PLUGIN, ModuleId.WORKSPACE_INTELLIJ_READ),
             proof.modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }.mapTo(mutableSetOf()) {
                 it.id
             },
@@ -28,7 +28,7 @@ class IdeReadFirewallTest {
             it.allowedEffects == setOf(ForbiddenEffect.INTELLIJ_PLATFORM)
         })
         assertEquals(
-            setOf(ModuleId.WORKSPACE_CONTRACT),
+            setOf(ModuleId.PROTOCOL_CONTRACT, ModuleId.WORKSPACE_CONTRACT),
             proof.modules.single { it.id == ModuleId.WORKSPACE_INTELLIJ_READ }
                 .allowedProjectDependencies,
         )
@@ -101,19 +101,32 @@ class IdeReadFirewallTest {
     @Test
     fun `firewall rejects a lifecycle stage that skips the workspace split`() {
         val policy = canonical()
-        val original = policy.modules.getValue(ModuleId.RUNTIME_IDE_READ)
-        val activated = ValidatedModulePolicy(
+        val runtime = policy.modules.getValue(ModuleId.RUNTIME_IDE_READ)
+        val activatedRuntime = ValidatedModulePolicy(
             ModulePolicy(
-                original.id,
+                runtime.id,
                 ModuleLifecycle.ACTIVE,
-                original.role,
-                original.allowedProjectDependencies,
-                original.allowedEffects,
+                runtime.role,
+                runtime.allowedProjectDependencies,
+                runtime.allowedEffects,
             ),
-            original.boundary,
+            runtime.boundary,
+        )
+        val workspace = policy.modules.getValue(ModuleId.WORKSPACE_INTELLIJ_READ)
+        val skippedWorkspace = ValidatedModulePolicy(
+            ModulePolicy(
+                workspace.id,
+                ModuleLifecycle.PLANNED,
+                workspace.role,
+                workspace.allowedProjectDependencies,
+                workspace.allowedEffects,
+            ),
+            workspace.boundary,
         )
         val changed = ValidatedArchitecturePolicy(
-            policy.modules + (activated.id to activated),
+            policy.modules +
+                (activatedRuntime.id to activatedRuntime) +
+                (skippedWorkspace.id to skippedWorkspace),
             policy.moduleOrder,
         )
 
@@ -139,7 +152,7 @@ class IdeReadFirewallTest {
         assertEquals(3, decoded.proof.modules.size)
         assertEquals(9, decoded.proof.forbiddenAuthorities.size)
         assertTrue("\"schemaVersion\": 2" in encoded)
-        assertTrue("\"stage\": \"PLUGIN_SPLIT\"" in encoded)
+        assertTrue("\"stage\": \"WORKSPACE_SPLIT\"" in encoded)
     }
 
     @Test

@@ -107,8 +107,8 @@ internal fun deliveryModules(): List<ModuleBoundary> = listOf(
                 listOf("Canonical root", "Project read epoch", "Detached workspace model", "Read lease"), setOf(ModuleId(":kernel")), setOf(AuthorityId("CANONICAL_ROOT"), AuthorityId("READ_EPOCH")), emptySet(),
             ),
             ModuleBoundary(
-                ModuleId(":workspace:intellij-read"), "ADDED", "INTELLIJ_READ_ADAPTER",
-                listOf("Existing Project admission", "Detached model capture", "Epoch observation"), setOf(ModuleId(":kernel"), ModuleId(":workspace:contract")), setOf(AuthorityId("OPEN_PROJECT"), AuthorityId("READ_EPOCH")), setOf(EffectId("IDE_PROJECT_READ")),
+                ModuleId(":workspace:intellij-read"), "ADDED", "IDE_READ_ONLY",
+                listOf("Existing Project admission", "Detached model capture", "Epoch observation"), setOf(ModuleId(":protocol:contract"), ModuleId(":workspace:contract")), setOf(AuthorityId("OPEN_PROJECT"), AuthorityId("READ_EPOCH")), setOf(EffectId("IDE_PROJECT_READ")),
             ),
             ModuleBoundary(
                 ModuleId(":workspace:service"), "EXISTING", "SERVICE",

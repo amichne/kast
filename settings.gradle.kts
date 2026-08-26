@@ -28,6 +28,7 @@ val cleanSlateProjects = listOf(
     ":workspace:contract",
     ":workspace:service",
     ":workspace:intellij",
+    ":workspace:intellij-read",
     ":symbol:contract",
     ":symbol:service",
     ":symbol:intellij",

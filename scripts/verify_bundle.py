@@ -119,6 +119,49 @@ assert "build-logic/src/test/kotlin/support/delivery/DeliveryReceiptTest.kt" not
 assert by_id["KVP-008"]["allowedWrites"][0] == (
     "build-logic/src/main/kotlin/support/delivery/model/DeliveryState.kt"
 )
+kvp_014 = by_id["KVP-014"]
+assert set(kvp_014["dependencyExpression"]["taskIds"]) == {"KVP-009", "KVP-012"}
+assert {
+    "settings.gradle.kts",
+    "workspace/intellij-read",
+    "build-logic/src/main/kotlin/kast.architecture.gradle.kts",
+    "build-logic/src/main/kotlin/support/architecture/AGENTS.md",
+    "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/Kvp012ReceiptRegistration.kt",
+    "gradle/architecture/kast-architecture-policy.json",
+} <= set(kvp_014["allowedWrites"])
+assert "build-logic/src/main/kotlin/support/delivery/tasks/receipt" not in set(
+    kvp_014["allowedWrites"]
+)
+normative_plan = (
+    root / "docs/kast-vfs-passive-reused-index-delivery-program.md"
+).read_text()
+assert f"**Program fingerprint:** `{program['programFingerprint']}`" in normative_plan
+kvp_014_plan = normative_plan.split(
+    "### KVP-014: Admit the existing open IntelliJ Project\n",
+    maxsplit=1,
+)[1].split("\n### KVP-015:", maxsplit=1)[0]
+assert (
+    "**Allowed reads.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_014["allowedReads"])
+    + "."
+) in kvp_014_plan
+assert (
+    "**Allowed writes.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_014["allowedWrites"])
+    + "."
+) in kvp_014_plan
+assert f"**Review boundary.** {kvp_014['reviewBoundary']}" in kvp_014_plan
+workspace_read_module = next(
+    module for module in program["modules"]
+    if module["id"] == ":workspace:intellij-read"
+)
+assert workspace_read_module["role"] == "IDE_READ_ONLY"
+assert set(workspace_read_module["dependencies"]) == {
+    ":protocol:contract",
+    ":workspace:contract",
+}
 seen = set(); order=[]
 while len(order) < len(by_id):
     ready = sorted(i for i,t in by_id.items() if i not in seen and set(t["dependencyExpression"]["taskIds"]) <= seen)

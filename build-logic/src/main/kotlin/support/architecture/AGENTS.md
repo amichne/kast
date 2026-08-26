@@ -16,5 +16,6 @@ admission used by the root build.
 - Policy construction, validation, projection, and Gradle effects remain in their named child
   owners; do not duplicate those rules at the task boundary.
 
-Run focused architecture tests, then `verifyKastModuleGraph`, `verifyForbiddenEffects`, and the two
-`verifyKastVfsPassiveFirewall*` tasks.
+Run focused architecture tests, then `verifyKastArchitectureProjection` (the aggregate for
+`verifyKastModuleGraph` and `verifyForbiddenEffects`) and the two `verifyKastVfsPassiveFirewall*`
+tasks.

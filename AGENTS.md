@@ -201,14 +201,14 @@ checksum, archive, and managed-link checks when changing its presentation. Run
 ## Gradle topology
 
 `settings.gradle.kts` is the project-membership authority. The main build has
-exactly 37 target subprojects and one included build:
+exactly 38 target subprojects and one included build:
 
 | Project or family | Broad owner | Dependency direction | Local guide |
 | --- | --- | --- | --- |
 | `:kernel` | Host-neutral refinement and generation primitives | Leaf project | `kernel/AGENTS.md` |
 | `:distribution:{contract,managed}` | Runtime identity and the sole acquisition/store adapter | Contract then managed adapter | Each project root |
 | `:protocol:{contract,registry,wire}` | Twelve canonical operations, typed metadata, and generated wire bindings | Contract then registry/wire | Each project root |
-| `:workspace:{contract,service,intellij}` | Published-workspace identity, transition coordination, and IntelliJ/Gradle effects | Contract then service/adapter | Each project root |
+| `:workspace:{contract,service,intellij,intellij-read}` | Published-workspace identity, transition coordination, IntelliJ/Gradle effects, and existing-Project read admission | Contracts inward; transition and read adapters remain separate | Each project root |
 | `:symbol:{contract,service,intellij}` | Discovery/exact-symbol contracts, admission, and IntelliJ/K2 execution | Contract then service/adapter | Each project root |
 | `:relation:{contract,service,intellij}` | One-hop semantic relation evidence and bounded K2 execution | Contract then service/adapter | Each project root |
 | `:traversal:{contract,service}` | Deterministic bounded traversal contracts and pure workflow | Contract then service | Each project root |
@@ -232,6 +232,7 @@ runtime:composition -> runtime:server + target services + target adapters
 runtime:server -> protocol:{contract,registry,wire}
 services -> their contracts and narrower contracts
 IntelliJ/SQLite adapters -> their contracts
+workspace:intellij-read -> protocol:contract + workspace:contract
 cli -> distribution:{contract,managed} + kernel + protocol:{contract,registry,wire}
 workspace, symbol, relation, traversal, topology, diagnostic, change, and evidence contracts -> kernel
 ```

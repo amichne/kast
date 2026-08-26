@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `9eb6393ff92272fe62b0f3873f445f7ca6c245072b921b72731796ded0bf9e0b`
+**Program fingerprint:** `c17a998380d304a1d4b3afabab6ed0bb6207bb9bc5933e5833eb3ae5b8056f67`
 
 ## Terminal outcome
 
@@ -481,9 +481,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-009`, `KVP-012`. Computed wave: `9`.
 
-**Allowed reads.** `workspace/intellij/src/main`, `workspace/contract`, `ide-plugin`.
+**Allowed reads.** `AGENTS.md`, `settings.gradle.kts`, `gradle/libs.versions.toml`, `workspace/intellij/src/main`, `workspace/contract`, `protocol/contract`, `ide-plugin`, `build-logic/src/main/kotlin/support/architecture`, `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/architecture`, `gradle/delivery`, `scripts/verify_bundle.py`.
 
-**Allowed writes.** `workspace/intellij-read`, `workspace/contract`.
+**Allowed writes.** `AGENTS.md`, `settings.gradle.kts`, `workspace/intellij-read`, `build-logic/src/main/kotlin/kast.architecture.gradle.kts`, `build-logic/src/main/kotlin/support/architecture/AGENTS.md`, `build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt`, `build-logic/src/main/kotlin/support/architecture/policy/AGENTS.md`, `build-logic/src/test/kotlin/support/architecture/IdeReadFirewallTest.kt`, `build-logic/src/test/kotlin/support/architecture/policy/KastCleanSlatePolicyTest.kt`, `gradle/architecture/kast-architecture-policy.json`, `build-logic/src/main/kotlin/support/delivery/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramFoundation.kt`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/Kvp012ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/kast-vfs-passive-requirements.json`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.009.proof`, `taskOutput:kvp.012.proof`, `requirement:KVP-REQ-005`, `requirement:KVP-REQ-006`, `requirement:KVP-REQ-011`, `requirement:KVP-REQ-012`.
 
@@ -501,7 +501,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **GREEN.** `./gradlew :workspace:intellij-read:test --tests "*ExistingProjectAdmissionTest"`. Expected proof: Only the already-open exact Project yields AdmittedIdeProject and no stronger effect occurs.
 
-**Review boundary.** New read adapter and contract only; existing bootstrap remains untouched.
+**Review boundary.** New read adapter, its exact module authority, and KVP-014 receipt progression only; existing bootstrap remains untouched.
 
 **Completion receipt.** `KVP-014-COMPLETE` at `build/reports/delivery/receipts/KVP-014-COMPLETE.receipt.json`. It consumes `KVP-014-RED`, `KVP-014-GREEN`, and all predecessor completion receipts.
 

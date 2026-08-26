@@ -72,6 +72,11 @@ val architectureVerifications = listOf(
     verifyKastModuleGraph,
     verifyForbiddenEffects,
 )
+tasks.register("verifyKastArchitectureProjection") {
+    group = "verification"
+    description = "Verifies the checked architecture projection against membership, edges, and effects."
+    dependsOn(architectureVerifications)
+}
 
 subprojects {
     val modulePath = path
