@@ -219,7 +219,7 @@ exactly 37 target subprojects and one included build:
 | `:runtime:{server,composition}` | Contract-only dispatch and the sole complete implementation graph | Server inward; composition depends on all target implementations | Each project root |
 | `:cli` | Command parsing, indexer admission, wire transport, and result projection | Inward to kernel/protocol only | `cli/AGENTS.md` |
 | `:indexer` | Isolated host for one already-constructed runtime composition | Depends only on `:runtime:composition` | `indexer/AGENTS.md` |
-| `:ide-plugin` | Standalone IntelliJ plugin packaging owner | Build-time payload split; no product project dependency | `ide-plugin/AGENTS.md` |
+| `:ide-plugin` | Standalone IntelliJ plugin packaging owner | Depends inward on `:protocol:contract`; no runtime implementation dependency | `ide-plugin/AGENTS.md` |
 | included `build-logic` | `kast.*` conventions and reusable Gradle task types | Version catalog; no product project | `build-logic/AGENTS.md` |
 
 ## Dependency direction

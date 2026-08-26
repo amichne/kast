@@ -33,7 +33,7 @@ internal data class IdeHostCompatibilityReportDocument(
     val capabilities: List<String>,
 )
 
-sealed interface IdeHostCompatibilityMetadataFailure {
+internal sealed interface IdeHostCompatibilityMetadataFailure {
     data object MalformedDocument : IdeHostCompatibilityMetadataFailure
     data object UnsupportedSchemaVersion : IdeHostCompatibilityMetadataFailure
     data object WrongTaskIdentity : IdeHostCompatibilityMetadataFailure
@@ -43,7 +43,7 @@ sealed interface IdeHostCompatibilityMetadataFailure {
     ) : IdeHostCompatibilityMetadataFailure
 }
 
-object IdeHostCompatibilityMetadata {
+internal object IdeHostCompatibilityMetadata {
     /**
      * Proof transition: `String + IdeHostCompatibilityPolicy ->
      * Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityMetadataFailure>`.
@@ -53,7 +53,7 @@ object IdeHostCompatibilityMetadata {
      * finite compatibility rejections remain [IdeHostCompatibilityMetadataFailure] data. Raw JSON
      * and field text are extracted only here, at the generated build-report boundary.
      */
-    fun decode(
+    internal fun decode(
         raw: String,
         policy: IdeHostCompatibilityPolicy,
     ): Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityMetadataFailure> {

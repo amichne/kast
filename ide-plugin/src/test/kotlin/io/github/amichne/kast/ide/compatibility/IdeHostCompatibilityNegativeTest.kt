@@ -1,12 +1,18 @@
 package io.github.amichne.kast.ide.compatibility
 
+import io.github.amichne.kast.kernel.OperationId
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.IdeHostCapability
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityField
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityIdentityField
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilitySyntaxFailure
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
@@ -47,17 +53,17 @@ class IdeHostCompatibilityNegativeTest {
     fun `each independently substituted identity is rejected as a mismatch`() {
         listOf(
             expected.copy(ideBuild = "262.9437.186") to
-                IdeHostCompatibilityField.IDE_BUILD,
+                IdeHostCompatibilityIdentityField.IDE_BUILD,
             expected.copy(kotlinPluginBuild = "262.9437.186-IJ") to
-                IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD,
+                IdeHostCompatibilityIdentityField.KOTLIN_PLUGIN_BUILD,
             expected.copy(kastPluginVersion = "0.28.2") to
-                IdeHostCompatibilityField.KAST_PLUGIN_VERSION,
+                IdeHostCompatibilityIdentityField.KAST_PLUGIN_VERSION,
             expected.copy(runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2") to
-                IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY,
+                IdeHostCompatibilityIdentityField.RUNTIME_PROTOCOL_IDENTITY,
             expected.copy(operationRegistryDigest = digest('b')) to
-                IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST,
+                IdeHostCompatibilityIdentityField.OPERATION_REGISTRY_DIGEST,
             expected.copy(wireSchemaDigest = digest('c')) to
-                IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST,
+                IdeHostCompatibilityIdentityField.WIRE_SCHEMA_DIGEST,
         ).forEach { (candidate, field) ->
             assertRejected(candidate, IdeHostCompatibilityFailure.Mismatch(field))
         }
@@ -67,7 +73,18 @@ class IdeHostCompatibilityNegativeTest {
     fun `unknown duplicate missing extra and reordered capabilities fail closed`() {
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES + "diagnostic.check"),
-            IdeHostCompatibilityFailure.UnknownCapability,
+            IdeHostCompatibilityFailure.UnsupportedCapability(CanonicalOperation.DIAGNOSTIC_CHECK),
+        )
+        assertRejected(
+            expected.copy(capabilities = HOSTED_CAPABILITIES + "other.read"),
+            IdeHostCompatibilityFailure.UnknownCapability(operationId("other.read")),
+        )
+        assertRejected(
+            expected.copy(capabilities = listOf("a".repeat(97))),
+            IdeHostCompatibilityFailure.Malformed(
+                IdeHostCompatibilityField.CAPABILITIES,
+                IdeHostCompatibilitySyntaxFailure.TOO_LONG,
+            ),
         )
         assertRejected(
             expected.copy(
@@ -91,6 +108,36 @@ class IdeHostCompatibilityNegativeTest {
         )
     }
 
+    @Test
+    fun `metadata boundary rejects malformed schema and task documents as finite data`() {
+        val document = IdeHostCompatibilityReportDocument(
+            schemaVersion = 1,
+            taskId = "KVP-012",
+            ideBuild = expected.ideBuild,
+            kotlinPluginBuild = expected.kotlinPluginBuild,
+            kastPluginVersion = expected.kastPluginVersion,
+            runtimeProtocolIdentity = expected.runtimeProtocolIdentity,
+            operationRegistryDigest = expected.operationRegistryDigest,
+            wireSchemaDigest = expected.wireSchemaDigest,
+            capabilities = expected.capabilities,
+        )
+        assertMetadataRejected("{", IdeHostCompatibilityMetadataFailure.MalformedDocument)
+        assertMetadataRejected(
+            metadataJson.encodeToString(
+                IdeHostCompatibilityReportDocument.serializer(),
+                document.copy(schemaVersion = 2),
+            ),
+            IdeHostCompatibilityMetadataFailure.UnsupportedSchemaVersion,
+        )
+        assertMetadataRejected(
+            metadataJson.encodeToString(
+                IdeHostCompatibilityReportDocument.serializer(),
+                document.copy(taskId = "KVP-999"),
+            ),
+            IdeHostCompatibilityMetadataFailure.WrongTaskIdentity,
+        )
+    }
+
     private fun assertRejected(
         candidate: IdeHostCompatibilityCandidate,
         expectedFailure: IdeHostCompatibilityFailure,
@@ -102,6 +149,16 @@ class IdeHostCompatibilityNegativeTest {
         }
     }
 
+    private fun assertMetadataRejected(
+        raw: String,
+        expectedFailure: IdeHostCompatibilityMetadataFailure,
+    ) {
+        when (val result = IdeHostCompatibilityMetadata.decode(raw, policy)) {
+            is Refinement.Refined -> fail("metadata unexpectedly admitted")
+            is Refinement.Rejected -> assertEquals(expectedFailure, result.failure)
+        }
+    }
+
     private fun malformed(
         field: IdeHostCompatibilityField,
         syntax: IdeHostCompatibilitySyntaxFailure =
@@ -109,4 +166,18 @@ class IdeHostCompatibilityNegativeTest {
     ) = IdeHostCompatibilityFailure.Malformed(field, syntax)
 
     private fun digest(character: Char): String = "sha256:" + character.toString().repeat(64)
+
+    private fun operationId(raw: String): OperationId = when (val parsed = OperationId.parse(raw)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> fail("invalid test operation id: ${parsed.failure}")
+    }
+
+    private companion object {
+        val metadataJson = Json {
+            encodeDefaults = true
+            explicitNulls = true
+            ignoreUnknownKeys = false
+            isLenient = false
+        }
+    }
 }

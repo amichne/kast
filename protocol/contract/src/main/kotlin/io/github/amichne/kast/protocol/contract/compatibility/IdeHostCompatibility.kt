@@ -21,8 +21,18 @@ enum class IdeHostCompatibilityField {
     CAPABILITIES,
 }
 
+enum class IdeHostCompatibilityIdentityField {
+    IDE_BUILD,
+    KOTLIN_PLUGIN_BUILD,
+    KAST_PLUGIN_VERSION,
+    RUNTIME_PROTOCOL_IDENTITY,
+    OPERATION_REGISTRY_DIGEST,
+    WIRE_SCHEMA_DIGEST,
+}
+
 enum class IdeHostCompatibilitySyntaxFailure {
     BLANK,
+    TOO_LONG,
     INVALID_FORMAT,
 }
 
@@ -33,10 +43,16 @@ sealed interface IdeHostCompatibilityFailure {
     ) : IdeHostCompatibilityFailure
 
     data class Mismatch(
-        val field: IdeHostCompatibilityField,
+        val field: IdeHostCompatibilityIdentityField,
     ) : IdeHostCompatibilityFailure
 
-    data object UnknownCapability : IdeHostCompatibilityFailure
+    data class UnknownCapability(
+        val operationId: OperationId,
+    ) : IdeHostCompatibilityFailure
+
+    data class UnsupportedCapability(
+        val operation: CanonicalOperation,
+    ) : IdeHostCompatibilityFailure
 
     data class DuplicateCapability(
         val capability: IdeHostCapability,
@@ -154,62 +170,6 @@ value class WireSchemaDigest private constructor(val value: String) {
     }
 }
 
-enum class IdeHostCapability(val operation: CanonicalOperation) {
-    WORKSPACE_INSPECT(CanonicalOperation.WORKSPACE_INSPECT),
-    SYMBOL_DISCOVER(CanonicalOperation.SYMBOL_DISCOVER),
-    SYMBOL_RESOLVE(CanonicalOperation.SYMBOL_RESOLVE),
-    SYMBOL_DESCRIBE(CanonicalOperation.SYMBOL_DESCRIBE),
-    ;
-
-    companion object {
-        private val byOperationId = entries.associateBy { it.operation.id }
-
-        internal fun from(operationId: OperationId): IdeHostCapability? = byOperationId[operationId]
-    }
-}
-
-class IdeHostCapabilitySet private constructor(
-    val capabilities: List<IdeHostCapability>,
-) {
-    companion object {
-        private val exactCapabilities = IdeHostCapability.entries.toList()
-
-        /**
-         * Proof transition: `List<String> -> Refinement<IdeHostCapabilitySet, IdeHostCompatibilityFailure>`.
-         *
-         * Establishes the exact ordered, unique four-operation IDE-hosted read set derived from
-         * [CanonicalOperation]. Unknown, duplicate, missing, extra, and reordered values are closed
-         * [IdeHostCompatibilityFailure] cases. Raw identities may be extracted only at endpoint or
-         * generated-report boundaries.
-         */
-        fun parse(raw: List<String>): Refinement<IdeHostCapabilitySet, IdeHostCompatibilityFailure> {
-            val admitted = ArrayList<IdeHostCapability>(raw.size)
-            val observed = LinkedHashSet<IdeHostCapability>()
-            raw.forEach { identity ->
-                val operationId = when (val parsed = OperationId.parse(identity)) {
-                    is Refinement.Refined -> parsed.value
-                    is Refinement.Rejected -> return Refinement.Rejected(
-                        malformed(IdeHostCompatibilityField.CAPABILITIES, identity),
-                    )
-                }
-                val capability = IdeHostCapability.from(operationId)
-                    ?: return Refinement.Rejected(IdeHostCompatibilityFailure.UnknownCapability)
-                if (!observed.add(capability)) {
-                    return Refinement.Rejected(
-                        IdeHostCompatibilityFailure.DuplicateCapability(capability),
-                    )
-                }
-                admitted += capability
-            }
-            return if (admitted == exactCapabilities) {
-                Refinement.Refined(IdeHostCapabilitySet(admitted.toList()))
-            } else {
-                Refinement.Rejected(IdeHostCompatibilityFailure.CapabilitySetMismatch)
-            }
-        }
-    }
-}
-
 data class IdeHostCompatibilityCandidate(
     val ideBuild: String,
     val kotlinPluginBuild: String,
@@ -229,19 +189,28 @@ class AdmittedIdeHostCompatibility private constructor(
     val wireSchemaDigest: WireSchemaDigest,
     val capabilities: IdeHostCapabilitySet,
 ) {
-    internal fun differsFrom(other: AdmittedIdeHostCompatibility): IdeHostCompatibilityField? =
+    /**
+     * Proof transition: `AdmittedIdeHostCompatibility + AdmittedIdeHostCompatibility ->
+     * IdeHostCompatibilityComparison`.
+     *
+     * Establishes exact identity equality or the first finite identity mismatch. Both inputs
+     * already carry the exact capability invariant, so capability mismatch is unrepresentable.
+     * Raw values may be extracted only at endpoint or generated-report boundaries.
+     */
+    internal fun compareWith(other: AdmittedIdeHostCompatibility): IdeHostCompatibilityComparison =
         when {
-            ideBuild != other.ideBuild -> IdeHostCompatibilityField.IDE_BUILD
-            kotlinPluginBuild != other.kotlinPluginBuild -> IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD
-            kastPluginVersion != other.kastPluginVersion -> IdeHostCompatibilityField.KAST_PLUGIN_VERSION
+            ideBuild != other.ideBuild -> mismatch(IdeHostCompatibilityIdentityField.IDE_BUILD)
+            kotlinPluginBuild != other.kotlinPluginBuild ->
+                mismatch(IdeHostCompatibilityIdentityField.KOTLIN_PLUGIN_BUILD)
+            kastPluginVersion != other.kastPluginVersion ->
+                mismatch(IdeHostCompatibilityIdentityField.KAST_PLUGIN_VERSION)
             runtimeProtocolIdentity != other.runtimeProtocolIdentity ->
-                IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY
+                mismatch(IdeHostCompatibilityIdentityField.RUNTIME_PROTOCOL_IDENTITY)
             operationRegistryDigest != other.operationRegistryDigest ->
-                IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST
-            wireSchemaDigest != other.wireSchemaDigest -> IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST
-            capabilities.capabilities != other.capabilities.capabilities ->
-                IdeHostCompatibilityField.CAPABILITIES
-            else -> null
+                mismatch(IdeHostCompatibilityIdentityField.OPERATION_REGISTRY_DIGEST)
+            wireSchemaDigest != other.wireSchemaDigest ->
+                mismatch(IdeHostCompatibilityIdentityField.WIRE_SCHEMA_DIGEST)
+            else -> IdeHostCompatibilityComparison.Exact
         }
 
     companion object {
@@ -328,11 +297,28 @@ class IdeHostCompatibilityPolicy private constructor(
     fun admit(candidate: IdeHostCompatibilityCandidate): IdeHostCompatibilityAdmission =
         when (val parsed = AdmittedIdeHostCompatibility.parse(candidate)) {
             is Refinement.Rejected -> IdeHostCompatibilityAdmission.Rejected(parsed.failure)
-            is Refinement.Refined -> parsed.value.differsFrom(supported)
-                ?.let { IdeHostCompatibilityAdmission.Rejected(IdeHostCompatibilityFailure.Mismatch(it)) }
-                ?: IdeHostCompatibilityAdmission.Admitted(parsed.value)
+            is Refinement.Refined -> when (val comparison = parsed.value.compareWith(supported)) {
+                IdeHostCompatibilityComparison.Exact ->
+                    IdeHostCompatibilityAdmission.Admitted(parsed.value)
+                is IdeHostCompatibilityComparison.Mismatch ->
+                    IdeHostCompatibilityAdmission.Rejected(
+                        IdeHostCompatibilityFailure.Mismatch(comparison.field),
+                    )
+            }
         }
 }
+
+internal sealed interface IdeHostCompatibilityComparison {
+    data object Exact : IdeHostCompatibilityComparison
+
+    data class Mismatch(
+        val field: IdeHostCompatibilityIdentityField,
+    ) : IdeHostCompatibilityComparison
+}
+
+private fun mismatch(
+    field: IdeHostCompatibilityIdentityField,
+): IdeHostCompatibilityComparison = IdeHostCompatibilityComparison.Mismatch(field)
 
 private fun malformed(
     field: IdeHostCompatibilityField,

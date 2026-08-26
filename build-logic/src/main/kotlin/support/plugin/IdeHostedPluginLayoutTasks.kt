@@ -23,7 +23,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
-import support.tasks.canonicalWireSchemaBytes
+import support.tasks.CanonicalWireSchema
 
 private val REPORT_JSON = Json { prettyPrint = true; prettyPrintIndent = "    " }
 
@@ -70,7 +70,6 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
     @get:Input abstract val kotlinPluginBuild: Property<String>
     @get:Input abstract val kastPluginVersion: Property<String>
     @get:Input abstract val runtimeProtocolIdentity: Property<String>
-    @get:Input abstract val wireSchemaIdentity: Property<String>
     @get:Input abstract val capabilities: ListProperty<String>
 
     @get:InputFile
@@ -88,7 +87,7 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
     @TaskAction
     fun generate() {
         val registryBytes = operationRegistryFile.get().asFile.readBytes()
-        val wireBytes = canonicalWireSchemaBytes(wireSchemaIdentity.get())
+        val wireBytes = CanonicalWireSchema.encodedBytes()
         val report = IdeHostCompatibilityReportDocument(
             schemaVersion = 1,
             taskId = "KVP-012",
@@ -96,8 +95,8 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
             kotlinPluginBuild = kotlinPluginBuild.get(),
             kastPluginVersion = kastPluginVersion.get(),
             runtimeProtocolIdentity = runtimeProtocolIdentity.get(),
-            operationRegistryDigest = compatibilityDigest(registryBytes),
-            wireSchemaDigest = compatibilityDigest(wireBytes),
+            operationRegistryDigest = CompatibilityDigest.observe(registryBytes).value,
+            wireSchemaDigest = CompatibilityDigest.observe(wireBytes).value,
             capabilities = capabilities.get(),
         )
         writeAtomically(
@@ -214,5 +213,14 @@ private fun writeAtomically(target: Path, content: String) {
     }
 }
 
-private fun compatibilityDigest(bytes: ByteArray): String =
-    "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
+@JvmInline
+private value class CompatibilityDigest private constructor(val value: String) {
+    companion object {
+        /** Proof transition: `ByteArray -> CompatibilityDigest` by SHA-256 observation. */
+        fun observe(bytes: ByteArray): CompatibilityDigest = CompatibilityDigest(
+            "sha256:" + HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(bytes),
+            ),
+        )
+    }
+}

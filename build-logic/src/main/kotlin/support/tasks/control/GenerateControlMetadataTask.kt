@@ -61,7 +61,7 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
                             ?.singleOrNull { it.name.startsWith("indexer-") && it.name.endsWith("-plugin.jar") }
                         ?: error("semantic runtime has no exact private Kast plugin jar")
         val pluginDigest = sha256(pluginJar.readBytes())
-        val wireSchemaId = "kast-wire-v1"
+        val wireSchemaId = CanonicalWireSchema.identity
         val identityMaterial = listOf(
             "macos",
             "aarch64",
@@ -104,7 +104,7 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
             controlMetadataJson.encodeToString(SemanticRuntimeDocument.serializer(), manifest),
         )
         operationRegistryFile.get().asFile.copyTo(output.resolve("operation-registry.json"))
-        output.resolve("wire-schema.json").writeBytes(canonicalWireSchemaBytes(wireSchemaId))
+        output.resolve("wire-schema.json").writeBytes(CanonicalWireSchema.encodedBytes())
         licenseFile.get().asFile.copyTo(output.resolve("licenses/LICENSE"))
     }
 
@@ -156,15 +156,18 @@ internal val controlMetadataJson = Json {
     isLenient = false
 }
 
-/**
- * Proof transition: `String -> ByteArray` at the generated wire-schema boundary.
- *
- * Projects the existing wire-schema identity through its dedicated generated serializer. The
- * returned bytes are the sole digest input for compatibility metadata and may be written only by
- * build-report or control-metadata adapters.
- */
-internal fun canonicalWireSchemaBytes(wireSchemaId: String): ByteArray =
-    controlMetadataJson.encodeToString(
+/** The sole admitted wire schema and its generated-serializer byte projection. */
+internal object CanonicalWireSchema {
+    const val identity = "kast-wire-v1"
+
+    /**
+     * Proof transition: `CanonicalWireSchema -> ByteArray` at the wire-schema boundary.
+     *
+     * Projects the sole supported schema through its dedicated generated serializer. Each call
+     * returns fresh bytes for build-report or control-metadata adapters only.
+     */
+    fun encodedBytes(): ByteArray = controlMetadataJson.encodeToString(
         WireSchemaDocument.serializer(),
-        WireSchemaDocument(schemaVersion = 1, wireSchemaId = wireSchemaId),
+        WireSchemaDocument(schemaVersion = 1, wireSchemaId = identity),
     ).toByteArray(StandardCharsets.UTF_8)
+}

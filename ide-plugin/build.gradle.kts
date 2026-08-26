@@ -6,6 +6,7 @@ import support.plugin.StandalonePluginNegativeProofTask
 import support.plugin.VerifyIdeHostedPluginLayoutNegativeTask
 import support.plugin.VerifyIdeHostedPluginLayoutTask
 import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.PathSensitivity
 
 plugins {
     id("kast.kotlin-serialization")
@@ -19,7 +20,7 @@ base {
 }
 
 dependencies {
-    api(project(":protocol:contract"))
+    implementation(project(":protocol:contract"))
 }
 
 tasks.named<Jar>("jar") {
@@ -87,7 +88,6 @@ val generateIdeHostCompatibilityReport by tasks.registering(
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
     kastPluginVersion.set(project.version.toString())
     runtimeProtocolIdentity.set("kast.ide-hosted.runtime.v1")
-    wireSchemaIdentity.set("kast-wire-v1")
     capabilities.set(
         listOf(
             "workspace.inspect",
@@ -102,6 +102,9 @@ val generateIdeHostCompatibilityReport by tasks.registering(
 
 tasks.withType<Test>().configureEach {
     dependsOn(generateIdeHostCompatibilityReport)
+    inputs.file(generateIdeHostCompatibilityReport.flatMap(
+        GenerateIdeHostCompatibilityReportTask::reportFile,
+    )).withPathSensitivity(PathSensitivity.NONE)
     systemProperty(
         "kast.ide.compatibility.report",
         generateIdeHostCompatibilityReport.flatMap(
