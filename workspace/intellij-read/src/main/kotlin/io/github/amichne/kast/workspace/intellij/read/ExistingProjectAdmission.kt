@@ -14,6 +14,8 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
+import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission
+import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure
 
 /** Finite observation stages at the existing-Project boundary. */
 enum class ExistingProjectObservationStage {
@@ -152,6 +154,22 @@ class AdmittedIdeProject private constructor(
      * signal values remain private to this adapter; callers receive only the epoch or rejection.
      */
     fun observeReadEpoch(): ProjectReadEpochObservation = readEpochSource.observe()
+
+    /**
+     * Proof transition: `(AdmittedIdeProject, ProjectReadEpoch<*>) ->
+     * VfsPassiveReadAdmission`.
+     *
+     * Establishes that one newly observed IDE-visible epoch is unchanged from [expectedEpoch], or
+     * returns the closed [VfsPassiveReadAdmissionFailure] set. The private epoch source is observed
+     * exactly once; raw Project extraction remains confined to its KVP-017 adapter boundary.
+     */
+    fun admitVfsPassiveRead(
+        expectedEpoch: ProjectReadEpoch<*>,
+    ): VfsPassiveReadAdmission = admitVfsPassiveReadObservation(
+        canonicalRoot,
+        expectedEpoch,
+        readEpochSource.observe(),
+    )
 
     companion object {
         /**
@@ -350,25 +368,6 @@ class AdmittedIdeProject private constructor(
             }
         }
     }
-}
-
-/** Internal typed installation boundary for the one epoch source retained by an admission. */
-internal sealed interface ExistingProjectReadEpochSourceInstallationFailure {
-    data object ProjectDisposed : ExistingProjectReadEpochSourceInstallationFailure
-}
-
-internal fun interface ExistingProjectReadEpochSourceFactory {
-    /**
-     * Proof transition: `(Project, CanonicalWorkspaceRoot) ->
-     * Refinement<ProjectReadEpoch.Source<*>,
-     * ExistingProjectReadEpochSourceInstallationFailure>`.
-     * Establishes one source identity retained for the admitted Project/runtime or closes a
-     * disposal race. Raw Project and listener construction remain in `:workspace:intellij-read`.
-     */
-    fun create(
-        project: Project,
-        root: CanonicalWorkspaceRoot,
-    ): Refinement<ProjectReadEpoch.Source<*>, ExistingProjectReadEpochSourceInstallationFailure>
 }
 
 private class LiveProjectHandle(

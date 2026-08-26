@@ -15,6 +15,12 @@ contract. It contains no IntelliJ observation implementation.
   preemption are finite failures. Dumb mode is never retained as an epoch value.
 - Platform cancellation remains platform cancellation; this contract does not turn it into an
   epoch or manufacture a successful observation.
+- `VfsPassiveReadCapability` preserves one strong canonical root and current same-source epoch.
+  Its constructor and issue transition remain compiler-confined to the friend hosted adapter;
+  callers cannot parse, copy, or mint the proof.
+- KVP-019 freshness admission distinguishes moved, incomparable, disposed, and dumb states while
+  retaining every other epoch observation failure as exact `Unavailable` data. KVP-020 alone owns
+  queue admission and `Busy`.
 
 ## Focused proof
 

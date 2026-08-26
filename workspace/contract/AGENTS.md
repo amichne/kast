@@ -10,6 +10,8 @@ physical effects.
   lease, and the closed guard result for effects that require that lease to remain current.
 - `epoch/ProjectReadEpoch.kt` owns opaque same-source epoch comparison and finite observation
   failures. Platform signal extraction remains in `:workspace:intellij-read`.
+- `epoch/VfsPassiveReadCapability.kt` owns the unforgeable exact-root/current-epoch freshness
+  proof and its closed admission outcomes. KVP-020 owns later queue admission.
 - `SourceRoot.kt` owns the clean-slate detached source-root proof, exact Gradle source-set
   ownership, and authored/generated/qualified-unknown provenance.
 - `WorkspaceSearchScopeModel.kt` owns the generation-bound source-root model compiled into native
@@ -36,6 +38,8 @@ physical effects.
 - A project-read epoch exposes no counters or source authority. Equal private states from one exact
   source compare as `SAME`; changed state is `MOVED`; another source is `INCOMPARABLE`. Dumb mode
   is an observation failure, never epoch state.
+- A VFS-passive read capability retains only the strong canonical root and newly observed epoch.
+  Moved, incomparable, disposed, dumb, and unavailable states cannot construct it.
 - Every clean-slate source root is workspace-contained, preserves exact model ownership, and
   carries Authored, Generated, or a finite reason for Unknown provenance. Platform-invalid raw
   path text is rejected before a `SourceRoot` can be constructed.

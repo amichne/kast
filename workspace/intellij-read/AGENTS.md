@@ -46,6 +46,10 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
   coordinate, name, and SHA-256 with a separate stronger-effect scan. Its report binds all-zero
   effects and semantic KVP-016/KVP-017 receipt digests; no compiled-class allowlist may substitute
   for the complete inventory.
+- KVP-019 observes the retained epoch source exactly once per freshness admission. Only a
+  same-source equal state issues `VfsPassiveReadCapability`; moved, incomparable, disposed, dumb,
+  and unavailable states remain closed typed rejections. Admission performs no Project access,
+  refresh, import, repair, listener installation, queue work, or semantic execution.
 
 ## Focused proof
 
@@ -61,3 +65,4 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 10. Run `./gradlew :workspace:intellij-read:generateProjectReadEpochReport`.
 11. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalkNegative`.
 12. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalk`.
+13. Run `./gradlew :workspace:intellij-read:test --tests '*VfsPassiveAdmissionNegativeTest' --tests '*VfsPassiveAdmissionTest'`.

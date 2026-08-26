@@ -9,5 +9,7 @@ This directory owns KVP-017 production observation while retaining the
 - Retain one source per admitted Project/runtime, but emit epochs containing only refined state and
   a callback-free comparison identity.
 - Map only named platform observation failures; propagate cancellation and unexpected defects.
+- Keep epoch-source installation types in this owner even though they retain the parent package.
+  KVP-019 consumes the resulting source only through one state-specific admission observation.
 
 Run `./gradlew :workspace:contract:test :workspace:intellij-read:test --tests '*ProjectReadEpochTest'`.

@@ -46,6 +46,9 @@ state-specific transitions from that capability to `DetachedIdeWorkspaceModel` a
   comparison; KVP-019 owns freshness policy.
 - KVP-017 implementation files live under `epoch/`; follow its guide for strong root identities,
   typed source installation, VFS bounds, and detached epoch ownership.
+- `AdmittedIdeProject.admitVfsPassiveRead` performs one retained-source observation and consumes
+  its result. It returns only the detached capability or finite freshness failure; it does not
+  expose Project, source, callback, listener, queue, or semantic-read authority.
 
 ## Focused proof
 

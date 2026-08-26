@@ -33,6 +33,9 @@ IntelliJ project.
   owned exact-byte resource before proving its thirteen ordered relations through product sources.
 - KVP-017 compiled-byte, identity, report, and detachment proofs live under `epoch/`; its inventory
   covers every production class, including companions and listener/source lambdas.
+- KVP-019 freshness tests live under `epoch/` and retain the parent package. Prove exactly one
+  admission observation, stable same-source proof, moved/incomparable rejection, exhaustive finite
+  failure mapping, cancellation propagation, and the absence of forgeable or live authority.
 
 Run:
 

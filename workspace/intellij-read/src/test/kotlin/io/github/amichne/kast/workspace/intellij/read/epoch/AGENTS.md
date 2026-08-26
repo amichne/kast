@@ -8,5 +8,7 @@ the parent Kotlin package.
 - Consume the generated report as exact independent bytes and prove all thirteen ordered relations.
 - Prove actual production epoch graphs retain no callback, Project, source, listener counter, or
   other live authority.
+- Prove KVP-019 capability construction is source-closed, admission observes exactly once, and all
+  non-stable epoch outcomes remain finite data without Project or listener work.
 
 Run `./gradlew :workspace:contract:test :workspace:intellij-read:test --tests '*ProjectReadEpochTest'`.
