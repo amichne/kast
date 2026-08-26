@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.ide.read.dispatch
+package io.github.amichne.kast.runtime.ide.read.revalidation.dispatch
 
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -7,6 +7,8 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireBodyKind
 import io.github.amichne.kast.protocol.wire.WireFailure
+import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchFailure
+import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

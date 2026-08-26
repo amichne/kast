@@ -324,12 +324,12 @@ def verify_kvp023_delivery(root, program, requirements, normative_plan):
 
     negative_test = required_text(
         root,
-        "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/"
+        "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/revalidation/dispatch/"
         "IdeReadRuntimeDispatchNegativeTest.kt",
     )
     positive_test = required_text(
         root,
-        "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/"
+        "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/revalidation/dispatch/"
         "IdeReadRuntimeDispatchTest.kt",
     )
     assert "all eight known unsupported operations reject before every port" in negative_test

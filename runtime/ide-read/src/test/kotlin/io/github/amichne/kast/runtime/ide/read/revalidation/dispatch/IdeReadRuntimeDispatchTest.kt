@@ -1,4 +1,4 @@
-package io.github.amichne.kast.runtime.ide.read.dispatch
+package io.github.amichne.kast.runtime.ide.read.revalidation.dispatch
 
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import org.junit.jupiter.api.Assertions.assertEquals
