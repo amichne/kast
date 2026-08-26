@@ -7,6 +7,11 @@ import org.junit.jupiter.api.Test
 
 class VfsPassiveAdmissionTest {
     @Test
+    fun `generated report binds exact predecessor and success evidence`() {
+        assertExactVfsPassiveReport()
+    }
+
+    @Test
     fun `one equal current observation issues exact root and epoch proof`() {
         val source = RecordingFreshnessEpochSource()
         val admittedProject = admittedFreshnessProject(source)

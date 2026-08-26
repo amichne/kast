@@ -100,7 +100,7 @@ internal fun Project.registerKvp015ReceiptProgression(
     val readEpoch = registerKvp017ReceiptProgression(program, epoch) {
         configureEpoch()
     }
-    val hosted = registerKvp018ReceiptProgression(
+    val hostedTasks = registerKvp018ReceiptProgression(
         program,
         epoch,
         taskReceiptRegistration(program, TaskId("KVP-016")),
@@ -108,5 +108,5 @@ internal fun Project.registerKvp015ReceiptProgression(
     ) {
         configureEpoch()
     }
-    return setOf(epoch.task.id, detached, readEpoch, hosted)
+    return setOf(epoch.task.id, detached, readEpoch) + hostedTasks
 }

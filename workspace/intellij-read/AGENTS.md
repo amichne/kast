@@ -50,6 +50,10 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
   same-source equal state issues `VfsPassiveReadCapability`; moved, incomparable, disposed, dumb,
   and unavailable states remain closed typed rejections. Admission performs no Project access,
   refresh, import, repair, listener installation, queue work, or semantic execution.
+- The generated KVP-019 report re-admits exact KVP-017/KVP-018 completion digests, records every
+  closed admission case and retained capability field, and keeps all five forbidden-work counts
+  at zero. The KVP-019 receipt dependency generates and mutation-checks those bytes before both
+  focused selectors consume them, without adding that producer to the shared predecessor test.
 
 ## Focused proof
 
@@ -66,3 +70,4 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 11. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalkNegative`.
 12. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalk`.
 13. Run `./gradlew :workspace:intellij-read:test --tests '*VfsPassiveAdmissionNegativeTest' --tests '*VfsPassiveAdmissionTest'`.
+14. Run `./gradlew :workspace:intellij-read:verifyVfsPassiveReportNegative`.

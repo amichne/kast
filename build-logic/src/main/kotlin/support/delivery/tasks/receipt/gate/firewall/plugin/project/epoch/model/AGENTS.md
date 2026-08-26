@@ -1,4 +1,4 @@
-# KVP-016 detached-model and KVP-018 hosted-path receipt guide
+# KVP-016 detached-model, KVP-018 hosted-path, and KVP-019 freshness receipt guide
 
 This directory owns the generated KVP-016 detached-model report and its typed exact-head receipt
 closure.
@@ -24,3 +24,5 @@ KVP-018 re-admits the complete KVP-016 and KVP-017 sibling closures sequentially
 admission independently reloads every compiled hosted main class, derives digest and ASM effects
 from the same bytes, admits the exact runtime project-component closure, and compares semantic
 predecessor receipt digests. RED, GREEN, and completion remain fixed typed task boundaries.
+
+The `freshness/` child owns KVP-019's predecessor-bound report and receipt progression.

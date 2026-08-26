@@ -10,5 +10,7 @@ the parent Kotlin package.
   other live authority.
 - Prove KVP-019 capability construction is source-closed, admission observes exactly once, and all
   non-stable epoch outcomes remain finite data without Project or listener work.
+- Both KVP-019 selectors consume the pre-generated canonical report and compare its exact policy,
+  predecessor identities, same-head evidence, and semantic receipt digests.
 
 Run `./gradlew :workspace:contract:test :workspace:intellij-read:test --tests '*ProjectReadEpochTest'`.

@@ -10,7 +10,7 @@ internal fun Project.registerKvp018ReceiptProgression(
     detached: TaskReceiptRegistration,
     readEpoch: TaskReceiptRegistration,
     configureSignalLedger: Kvp015ReceiptTaskBase.() -> Unit,
-): TaskId {
+): Set<TaskId> {
     val hosted = taskReceiptRegistration(program, TaskId("KVP-018"))
     val contractMainRoot =
         "workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/"
@@ -254,5 +254,12 @@ internal fun Project.registerKvp018ReceiptProgression(
         proofReportFile.set(hosted.proofReport)
         completionReceiptFile.set(hosted.completionReceipt)
     }
-    return hosted.task.id
+    val freshness = registerKvp019ReceiptProgression(
+        program,
+        readEpoch,
+        hosted,
+    ) {
+        configureHosted()
+    }
+    return setOf(hosted.task.id, freshness)
 }

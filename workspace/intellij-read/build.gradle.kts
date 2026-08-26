@@ -215,6 +215,42 @@ val verifyNoHostedRepositoryWalk =
         reportFile.set(layout.buildDirectory.file("reports/KVP-018-no-walk.json"))
     }
 
+val vfsPassiveReport = layout.buildDirectory.file(
+    "reports/KVP-019-vfs-passive.json",
+)
+
+val generateVfsPassiveReport =
+    tasks.register<support.delivery.GenerateKvp019VfsPassiveReportTask>(
+        "generateVfsPassiveReport",
+    ) {
+        group = "verification"
+        description = "Generates the exact predecessor-bound KVP-019 freshness report."
+        dependsOn(rootProject.tasks.named("verifyKVP018CompletionReceipt"))
+        kvp017CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-017-COMPLETE.receipt.json",
+        ))
+        kvp018CompletionReceipt.set(rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-018-COMPLETE.receipt.json",
+        ))
+        reportFile.set(vfsPassiveReport)
+    }
+
+val verifyVfsPassiveReportNegative =
+    tasks.register<support.delivery.VerifyKvp019VfsPassiveReportNegativeTask>(
+        "verifyVfsPassiveReportNegative",
+    ) {
+        group = "verification"
+        description = "Rejects every fixed KVP-019 report mutation."
+        dependsOn(generateVfsPassiveReport)
+        reportFile.set(vfsPassiveReport)
+        kvp017CompletionReceipt.set(generateVfsPassiveReport.flatMap(
+            support.delivery.GenerateKvp019VfsPassiveReportTask::kvp017CompletionReceipt,
+        ))
+        kvp018CompletionReceipt.set(generateVfsPassiveReport.flatMap(
+            support.delivery.GenerateKvp019VfsPassiveReportTask::kvp018CompletionReceipt,
+        ))
+    }
+
 tasks.withType<Test>().configureEach {
     exclude("**/EpochSignalApiContract.class")
     dependsOn(generateExistingProjectAdmissionReport)
@@ -262,6 +298,27 @@ tasks.withType<Test>().configureEach {
 
 val defaultTest = tasks.named<Test>("test")
 
+defaultTest.configure {
+    mustRunAfter(verifyVfsPassiveReportNegative)
+    inputs.file(vfsPassiveReport).optional().withPathSensitivity(PathSensitivity.NONE)
+    systemProperty(
+        "kast.ide.vfs.passive.report",
+        vfsPassiveReport.get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.ide.vfs.passive.kvp017.receipt",
+        rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-017-COMPLETE.receipt.json",
+        ).get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.ide.vfs.passive.kvp018.receipt",
+        rootProject.layout.buildDirectory.file(
+            "reports/delivery/receipts/KVP-018-COMPLETE.receipt.json",
+        ).get().asFile.absolutePath,
+    )
+}
+
 val characterizeEpochNegative = tasks.register<Test>("characterizeEpochNegative") {
     group = "verification"
     description = "Rejects incomplete or forbidden KVP-015 epoch-signal ledgers."
@@ -286,6 +343,8 @@ tasks.named("check") {
     dependsOn(generateDetachedModelReport)
     dependsOn(generateProjectReadEpochReport)
     dependsOn(verifyProjectReadEpochReportNegative)
+    dependsOn(generateVfsPassiveReport)
+    dependsOn(verifyVfsPassiveReportNegative)
     dependsOn(characterizeEpochNegative)
     dependsOn(characterizeEpoch)
     dependsOn("verifyNoHostedRepositoryWalkNegative")

@@ -19,6 +19,11 @@ import org.junit.jupiter.api.Test
 
 class VfsPassiveAdmissionNegativeTest {
     @Test
+    fun `generated report binds exact closed failure policy`() {
+        assertExactVfsPassiveReport()
+    }
+
+    @Test
     fun `admitted project owns the typed freshness transition`() {
         val transitions = AdmittedIdeProject::class.java.declaredMethods.filter { method ->
             Modifier.isPublic(method.modifiers) &&
