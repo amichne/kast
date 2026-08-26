@@ -92,6 +92,36 @@ class IdeReadFirewallTest {
         )
     }
 
+    @Test
+    fun `closed report codec preserves the complete firewall proof`() {
+        val encoded = encodeIdeReadFirewallReport(completeProof(canonical()))
+
+        val decoded = assertInstanceOf<IdeReadFirewallReportResult.Complete>(
+            decodeIdeReadFirewallReport(encoded),
+        )
+
+        assertEquals(3, decoded.proof.modules.size)
+        assertEquals(9, decoded.proof.forbiddenAuthorities.size)
+    }
+
+    @Test
+    fun `closed report codec rejects task tampering and unknown fields`() {
+        val encoded = encodeIdeReadFirewallReport(completeProof(canonical()))
+
+        assertEquals(
+            IdeReadFirewallReportResult.Rejected(
+                IdeReadFirewallReportFailure.TASK_ID_MISMATCH,
+            ),
+            decodeIdeReadFirewallReport(encoded.replace("KVP-009", "KVP-010")),
+        )
+        assertEquals(
+            IdeReadFirewallReportResult.Rejected(
+                IdeReadFirewallReportFailure.MALFORMED_DOCUMENT,
+            ),
+            decodeIdeReadFirewallReport(encoded.replaceFirst("{", "{\"unknown\":true,")),
+        )
+    }
+
     private fun completeProof(policy: ValidatedArchitecturePolicy) =
         assertInstanceOf<IdeReadFirewallResult.Complete>(IdeReadFirewall.derive(policy)).proof
 

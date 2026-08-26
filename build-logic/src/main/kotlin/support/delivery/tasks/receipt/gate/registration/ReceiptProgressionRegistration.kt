@@ -2,7 +2,7 @@ package support.delivery
 
 import org.gradle.api.Project
 
-/** Registers exact-head typed receipt progression from KVP-001 through KVP-008. */
+/** Registers exact-head typed receipt progression from KVP-001 through KVP-009. */
 internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val validated = KastVfsPassiveReusedIndexProgram.validated
     val program = validated.program
@@ -16,6 +16,7 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     val gateGraph = taskReceiptRegistration(program, TaskId("KVP-006"))
     val deliveryProof = taskReceiptRegistration(program, TaskId("KVP-007"))
     val deliveryState = taskReceiptRegistration(program, TaskId("KVP-008"))
+    val firewall = taskReceiptRegistration(program, TaskId("KVP-009"))
     val authorityNegativeReportPath = "build/reports/delivery/KVP-001-authority-negative.json"
     val authorityVerificationReportPath =
         KastVfsPassiveReusedIndexProgram.authorityVerificationOutputPath.value
@@ -196,6 +197,27 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         deliveryProofCompletionReceiptFile.set(deliveryProof.completionReceipt)
     }
 
+    fun Kvp009ReceiptTaskBase.configureFirewall() {
+        configureGateGraph()
+        firewallTaskId.set(firewall.task.id.value)
+        firewallRedGateId.set(firewall.redGate.id)
+        firewallGreenGateId.set(firewall.greenGate.id)
+        firewallCompletionGateId.set(firewall.completionGate.id)
+        firewallRedReceiptId.set(firewall.redGate.outputReceiptId)
+        firewallGreenReceiptId.set(firewall.greenGate.outputReceiptId)
+        firewallCompletionReceiptId.set(firewall.completionGate.outputReceiptId)
+        firewallRedCommand.set(firewall.redGate.command)
+        firewallGreenCommand.set(firewall.greenGate.command)
+        firewallCompletionCommand.set(firewall.completionGate.command)
+        firewallTaskInputDigest.set(firewall.taskInputDigest)
+        firewallCompletionInputDigest.set(firewall.completionInputDigest)
+        firewallProofReportPath.set(firewall.task.outputs.single().path)
+        directGateGraphRedReceiptFile.set(gateGraph.redReceipt)
+        directGateGraphGreenReceiptFile.set(gateGraph.greenReceipt)
+        directGateGraphProofReportFile.set(gateGraph.proofReport)
+        directGateGraphCompletionReceiptFile.set(gateGraph.completionReceipt)
+    }
+
     val recordAuthorityRed = tasks.register(
         "recordKVP001RedReceipt",
         RecordKvp001RedReceiptTask::class.java,
@@ -356,6 +378,7 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
     }
     registerKvp007ReceiptProgression(deliveryProof) { configureDeliveryProof() }
     registerKvp008ReceiptProgression(deliveryState) { configureDeliveryState() }
+    registerKvp009ReceiptProgression(firewall) { configureFirewall() }
     return setOf(
         authority.task.id,
         typeModel.task.id,
@@ -365,5 +388,6 @@ internal fun Project.registerDeliveryReceiptProgression(): Set<TaskId> {
         gateGraph.task.id,
         deliveryProof.task.id,
         deliveryState.task.id,
+        firewall.task.id,
     )
 }

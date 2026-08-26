@@ -10,6 +10,8 @@ admission used by the root build.
   scoped to that role so legitimate effect owners are not reclassified.
 - `IdeReadFirewall.kt` derives the KVP-009 proof for the three planned `IDE_READ_ONLY` modules and
   nine fixed forbidden authorities.
+- `IdeReadFirewallReport.kt` owns the generated closed report schema; fixed module policies and
+  forbidden authorities are dedicated documents rather than map-shaped extension slots.
 - Policy construction, validation, projection, and Gradle effects remain in their named child
   owners; do not duplicate those rules at the task boundary.
 

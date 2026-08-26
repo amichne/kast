@@ -1,7 +1,5 @@
 package support.architecture.gradle
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
@@ -15,6 +13,7 @@ import support.architecture.IdeReadFirewallProof
 import support.architecture.IdeReadFirewallResult
 import support.architecture.KastArchitecturePolicy
 import support.architecture.ValidatedArchitecturePolicy
+import support.architecture.encodeIdeReadFirewallReport
 import java.nio.file.Files
 
 @UntrackedTask(because = "Re-derives every fixed forbidden-authority rejection")
@@ -39,29 +38,9 @@ abstract class VerifyKastVfsPassiveFirewallTask : DefaultTask() {
     @TaskAction
     fun verify() {
         val proof = deriveFirewallProof()
-        val document = IdeReadFirewallReportDocument(
-            schemaVersion = 1,
-            taskId = "KVP-009",
-            role = "IDE_READ_ONLY",
-            modules = proof.modules.map { it.id.projectPath }.sorted(),
-            allowedDependencies = proof.modules.associate { module ->
-                module.id.projectPath to module.allowedProjectDependencies
-                    .map { it.projectPath }
-                    .sorted()
-            }.toSortedMap(),
-            allowedEffects = proof.modules.associate { module ->
-                module.id.projectPath to module.allowedEffects.map(Enum<*>::name).sorted()
-            }.toSortedMap(),
-            forbiddenAuthorities = proof.forbiddenAuthorities.entries.associate { (authority, effects) ->
-                authority.name to effects.map(Enum<*>::name).sorted()
-            }.toSortedMap(),
-        )
         val target = reportFile.get().asFile.toPath()
         Files.createDirectories(target.parent)
-        Files.writeString(
-            target,
-            ideReadFirewallJson.encodeToString(IdeReadFirewallReportDocument.serializer(), document) + "\n",
-        )
+        Files.writeString(target, encodeIdeReadFirewallReport(proof))
     }
 }
 
@@ -87,21 +66,4 @@ private fun ValidatedArchitecturePolicy.firewallProof(): IdeReadFirewallProof = 
     is IdeReadFirewallResult.Rejected -> throw GradleException(
         "KVP-009 IDE-read firewall rejected: ${result.failures}",
     )
-}
-
-@Serializable
-private data class IdeReadFirewallReportDocument(
-    val schemaVersion: Int,
-    val taskId: String,
-    val role: String,
-    val modules: List<String>,
-    val allowedDependencies: Map<String, List<String>>,
-    val allowedEffects: Map<String, List<String>>,
-    val forbiddenAuthorities: Map<String, List<String>>,
-)
-
-private val ideReadFirewallJson = Json {
-    encodeDefaults = true
-    explicitNulls = false
-    prettyPrint = true
 }
