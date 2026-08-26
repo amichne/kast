@@ -69,7 +69,7 @@ private data class Kvp024ForbiddenWorkDocument(
     ENDPOINT_V2_DESCRIPTOR_INPUTS,
 }
 
-@Serializable private enum class Kvp024ServiceState { PREPARED, SOCKET_BOUND, READY }
+@Serializable private enum class Kvp024ServiceState { UNPUBLISHED, BOUND, READY }
 @Serializable private enum class Kvp024TransitionEffect {
     UDS_BIND,
     ENDPOINT_DESCRIPTOR_WRITE,
@@ -88,6 +88,7 @@ private data class Kvp024ForbiddenWorkDocument(
     DUPLICATE_ENDPOINT,
     OCCUPIED_NON_SOCKET_PATH,
     REACHABLE_OR_OCCUPIED_SOCKET,
+    OCCUPIED_DESCRIPTOR_PATH,
     SOCKET_BIND_FAILED,
     DESCRIPTOR_PUBLICATION_FAILED,
 }
@@ -298,12 +299,12 @@ internal fun canonicalKvp024EndpointPublicationReport(
 
 private fun canonicalKvp024Transitions() = listOf(
     Kvp024TransitionDocument(
-        Kvp024ServiceState.PREPARED,
-        Kvp024ServiceState.SOCKET_BOUND,
+        Kvp024ServiceState.UNPUBLISHED,
+        Kvp024ServiceState.BOUND,
         Kvp024TransitionEffect.UDS_BIND,
     ),
     Kvp024TransitionDocument(
-        Kvp024ServiceState.SOCKET_BOUND,
+        Kvp024ServiceState.BOUND,
         Kvp024ServiceState.READY,
         Kvp024TransitionEffect.ENDPOINT_DESCRIPTOR_WRITE,
     ),
@@ -321,6 +322,7 @@ private fun Kvp024RejectionCase.decision() = when (this) {
         Kvp024RejectionDecision.REJECT_BEFORE_SECOND_BIND
     Kvp024RejectionCase.OCCUPIED_NON_SOCKET_PATH,
     Kvp024RejectionCase.REACHABLE_OR_OCCUPIED_SOCKET,
+    Kvp024RejectionCase.OCCUPIED_DESCRIPTOR_PATH,
     -> Kvp024RejectionDecision.PRESERVE_AND_REJECT
     Kvp024RejectionCase.SOCKET_BIND_FAILED ->
         Kvp024RejectionDecision.REJECT_WITHOUT_PUBLISH

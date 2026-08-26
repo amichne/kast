@@ -19,6 +19,8 @@ internal fun Project.registerKvp024ReceiptProgression(
         "ide-plugin/AGENTS.md",
         "ide-plugin/build.gradle.kts",
         "ide-plugin/src/main/resources/META-INF/plugin.xml",
+        "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/" +
+            "IdeHostCompatibilityMetadata.kt",
         mainRoot + "AGENTS.md",
         mainRoot + "ReadyIdeEndpoint.kt",
         mainRoot + "PreparedIdeEndpoint.kt",
@@ -27,7 +29,25 @@ internal fun Project.registerKvp024ReceiptProgression(
         mainRoot + "IdeEndpointPublicationFailure.kt",
         mainRoot + "IdeEndpointService.kt",
         testRoot + "AGENTS.md",
+        "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/" +
+            "AGENTS.md",
+        "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/" +
+            "IdeEndpointLocation.kt",
+        "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/" +
+            "AGENTS.md",
+        "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/" +
+            "IdeEndpointLocationTest.kt",
+        "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt",
+        "build-logic/src/main/kotlin/support/architecture/IdeReadFirewall.kt",
+        "build-logic/src/main/kotlin/support/architecture/policy/AGENTS.md",
         "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+        "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",
+        "build-logic/src/main/kotlin/support/architecture/validation/AGENTS.md",
+        "build-logic/src/main/kotlin/support/architecture/validation/" +
+            "ArchitecturePolicyValidator.kt",
+        "build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
+        "build-logic/src/test/kotlin/support/architecture/IdeReadFirewallTest.kt",
+        "build-logic/src/test/kotlin/support/architecture/policy/KastCleanSlatePolicyTest.kt",
         "gradle/architecture/kast-architecture-policy.json",
         "build-logic/src/main/kotlin/support/delivery/AGENTS.md",
         "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt",

@@ -166,13 +166,13 @@ private fun kvp024ReportMutations(canonical: String) = listOf(
         Kvp024EndpointPublicationReportFailure.PREPARATION_INPUT_SET_MISMATCH,
     ),
     reportMutation(
-        canonical.replaceFirst("\"PREPARED\"", "\"READY\""),
+        canonical.replaceFirst("\"UNPUBLISHED\"", "\"READY\""),
         Kvp024EndpointPublicationReportFailure.SERVICE_STATE_SET_MISMATCH,
     ),
     reportMutation(
         canonical.replaceFirst(
-            "\"from\": \"PREPARED\",\n      \"to\": \"SOCKET_BOUND\"",
-            "\"from\": \"PREPARED\",\n      \"to\": \"READY\"",
+            "\"from\": \"UNPUBLISHED\",\n      \"to\": \"BOUND\"",
+            "\"from\": \"UNPUBLISHED\",\n      \"to\": \"READY\"",
         ),
         Kvp024EndpointPublicationReportFailure.TRANSITION_SET_MISMATCH,
     ),
@@ -196,6 +196,15 @@ private fun kvp024ReportMutations(canonical: String) = listOf(
     ),
     reportMutation(
         canonical.replaceFirst("\"WRONG_ROOT\"", "\"PARTIAL_RUNTIME\""),
+        Kvp024EndpointPublicationReportFailure.REJECTION_CASE_SET_MISMATCH,
+    ),
+    reportMutation(
+        canonical.replaceFirst(
+            "\"case\": \"OCCUPIED_DESCRIPTOR_PATH\",\n" +
+                "      \"decision\": \"PRESERVE_AND_REJECT\"",
+            "\"case\": \"OCCUPIED_DESCRIPTOR_PATH\",\n" +
+                "      \"decision\": \"RETIRE_OWNED_AND_REJECT\"",
+        ),
         Kvp024EndpointPublicationReportFailure.REJECTION_CASE_SET_MISMATCH,
     ),
     reportMutation(

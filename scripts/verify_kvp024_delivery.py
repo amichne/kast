@@ -4,7 +4,6 @@
 import json
 import pathlib
 
-
 REPORT_PATH = "ide-plugin/build/reports/KVP-024-endpoint.json"
 RECEIPT_PATH = "build/reports/delivery/receipts/KVP-024-COMPLETE.receipt.json"
 RECEIPT_ROOT = (
@@ -17,7 +16,6 @@ def required_text(root, relative_path):
     path = root / relative_path
     assert path.is_file(), relative_path
     return path.read_text()
-
 
 def verify_kvp024_delivery(root, program, requirements, normative_plan):
     task = next(item for item in program["tasks"] if item["id"] == "KVP-024")
@@ -77,13 +75,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "scripts/verify_bundle.py",
         "scripts/verify_kvp024_delivery.py",
     }
-    expected_writes = {
-        "AGENTS.md",
-        "ide-plugin/AGENTS.md",
-        "ide-plugin/build.gradle.kts",
-        "ide-plugin/src/main/kotlin",
-        "ide-plugin/src/main/resources",
-        "ide-plugin/src/test",
+    corrected_authority_artifacts = {
         "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/AGENTS.md",
         "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocation.kt",
         "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/AGENTS.md",
@@ -98,8 +90,21 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
         "build-logic/src/test/kotlin/support/architecture/IdeReadFirewallTest.kt",
         "build-logic/src/test/kotlin/support/architecture/policy/KastCleanSlatePolicyTest.kt",
-        "build-logic/src/main/kotlin/support/delivery/AGENTS.md",
         "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt",
+        "docs/kast-vfs-passive-reused-index-delivery-program.md",
+        "gradle/architecture/kast-architecture-policy.json",
+        "gradle/delivery/kast-vfs-passive-requirements.json",
+        "gradle/delivery/kast-vfs-passive-reused-index-program.json",
+        "scripts/verify_kvp024_delivery.py",
+    }
+    expected_writes = {
+        "AGENTS.md",
+        "ide-plugin/AGENTS.md",
+        "ide-plugin/build.gradle.kts",
+        "ide-plugin/src/main/kotlin",
+        "ide-plugin/src/main/resources",
+        "ide-plugin/src/test",
+        "build-logic/src/main/kotlin/support/delivery/AGENTS.md",
         "build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md",
         "build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md",
         "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md",
@@ -115,14 +120,9 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         RECEIPT_ROOT + "AGENTS.md",
         RECEIPT_ROOT + "Kvp023ReceiptRegistration.kt",
         RECEIPT_ROOT + "endpoint",
-        "gradle/architecture/kast-architecture-policy.json",
-        "gradle/delivery/kast-vfs-passive-reused-index-program.json",
-        "gradle/delivery/kast-vfs-passive-requirements.json",
-        "docs/kast-vfs-passive-reused-index-delivery-program.md",
         "scripts/AGENTS.md",
         "scripts/verify_bundle.py",
-        "scripts/verify_kvp024_delivery.py",
-    }
+    } | corrected_authority_artifacts
     assert set(task["allowedReads"]) == expected_reads
     assert set(task["allowedWrites"]) == expected_writes
     assert "settings.gradle.kts" not in expected_writes
@@ -136,7 +136,6 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         path.startswith("protocol/") and not path.startswith("protocol/wire/")
         for path in expected_writes
     )
-
     section = normative_plan.split(
         "### KVP-024: Publish the exact-root project endpoint\n",
         maxsplit=1,
@@ -153,7 +152,6 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         + "."
     ) in section
     assert f"**Program fingerprint:** `{program['programFingerprint']}`" in normative_plan
-
     gates = {
         gate["id"]: gate
         for gate in program["gateGraph"]
@@ -250,6 +248,10 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         root,
         endpoint_receipt_root + "Kvp024EndpointPublicationReport.kt",
     )
+    lifecycle = "enum class Kvp024ServiceState { UNPUBLISHED, BOUND, READY }"
+    assert lifecycle in report, "KVP-024 lifecycle must be UNPUBLISHED -> BOUND -> READY"
+    occupied = "Kvp024RejectionCase.OCCUPIED_DESCRIPTOR_PATH,\n    -> Kvp024RejectionDecision.PRESERVE_AND_REJECT"
+    assert occupied in report, "KVP-024 occupied descriptor must be preserved and rejected"
     for claim in (
         "IDE_ENDPOINT",
         "ReadyIdeEndpoint",
@@ -257,9 +259,6 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "UNIX_DOMAIN_SOCKET",
         "kast.ide.endpoint.v2",
         "length-prefixed-json-v1",
-        "PREPARED",
-        "SOCKET_BOUND",
-        "READY",
         "UDS_BIND",
         "ENDPOINT_DESCRIPTOR_WRITE",
         "endpointLimitPerProject = 1",
@@ -267,6 +266,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "descriptorPublicationLimitPerEndpoint = 1",
         "OCCUPIED_NON_SOCKET_PATH",
         "REACHABLE_OR_OCCUPIED_SOCKET",
+        "OCCUPIED_DESCRIPTOR_PATH",
         "NO_MOVE_FALLBACK",
         "DELETE_UNOWNED_PATH",
     ):
@@ -276,6 +276,14 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         endpoint_receipt_root + "Kvp024ReceiptDependencies.kt",
     )
     assert dependencies.index("KVP_013_COMPLETE") < dependencies.index("KVP_023_COMPLETE")
+    registration = required_text(
+        root, endpoint_receipt_root + "Kvp024ReceiptRegistration.kt",
+    ).replace('" +\n            "', "")
+    receipt_artifacts = corrected_authority_artifacts | {
+        "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityMetadata.kt",
+    }
+    for artifact in receipt_artifacts:
+        assert f'"{artifact}"' in registration, f"KVP-024 receipt does not bind {artifact}"
     descriptor_bindings = required_text(
         root,
         endpoint_receipt_root + "Kvp024DescriptorBindings.kt",
