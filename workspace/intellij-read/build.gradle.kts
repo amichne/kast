@@ -3,7 +3,7 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 
 plugins {
-    id("kast.kotlin-library")
+    id("kast.kotlin-serialization")
     id("kast.role.ide-read-only")
 }
 
@@ -45,6 +45,7 @@ private val ideaLibraries: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/lib/**/*.jar")
     exclude("**/plugins/**")
     exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
+    exclude("**/lib/intellij.libraries.ktor.utils.jar")
 }
 
 private val kotlinPluginLibraries: ConfigurableFileCollection = extractedIdeaFiles {
@@ -78,7 +79,21 @@ val generateExistingProjectAdmissionReport =
         reportFile.set(projectAdmissionReport)
     }
 
+val epochSignalLedgerReport = layout.buildDirectory.file(
+    "reports/KVP-015-epoch-ledger.json",
+)
+
+val generateEpochSignalLedgerReport =
+    tasks.register<support.delivery.GenerateKvp015EpochLedgerReportTask>(
+        "generateEpochSignalLedgerReport",
+    ) {
+        group = "verification"
+        description = "Generates the canonical KVP-015 epoch-signal ledger."
+        reportFile.set(epochSignalLedgerReport)
+    }
+
 tasks.withType<Test>().configureEach {
+    exclude("**/EpochSignalApiContract.class")
     dependsOn(generateExistingProjectAdmissionReport)
     inputs.file(generateExistingProjectAdmissionReport.flatMap(
         support.delivery.GenerateKvp014ProjectAdmissionReportTask::reportFile,
@@ -89,8 +104,41 @@ tasks.withType<Test>().configureEach {
             support.delivery.GenerateKvp014ProjectAdmissionReportTask::reportFile,
         ).get().asFile.absolutePath,
     )
+    dependsOn(generateEpochSignalLedgerReport)
+    inputs.file(generateEpochSignalLedgerReport.flatMap(
+        support.delivery.GenerateKvp015EpochLedgerReportTask::reportFile,
+    )).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty(
+        "kast.ide.epoch.ledger.report",
+        generateEpochSignalLedgerReport.flatMap(
+            support.delivery.GenerateKvp015EpochLedgerReportTask::reportFile,
+        ).get().asFile.absolutePath,
+    )
+}
+
+val defaultTest = tasks.named<Test>("test")
+
+val characterizeEpochNegative = tasks.register<Test>("characterizeEpochNegative") {
+    group = "verification"
+    description = "Rejects incomplete or forbidden KVP-015 epoch-signal ledgers."
+    testClassesDirs = defaultTest.get().testClassesDirs
+    classpath = defaultTest.get().classpath
+    setScanForTestClasses(false)
+    include("**/EpochSignalCharacterizationNegativeTest.class")
+}
+
+val characterizeEpoch = tasks.register<Test>("characterizeEpoch") {
+    group = "verification"
+    description = "Characterizes the complete supported KVP-015 epoch-signal ledger."
+    testClassesDirs = defaultTest.get().testClassesDirs
+    classpath = defaultTest.get().classpath
+    setScanForTestClasses(false)
+    include("**/EpochSignalCharacterizationTest.class")
 }
 
 tasks.named("check") {
     dependsOn(generateExistingProjectAdmissionReport)
+    dependsOn(generateEpochSignalLedgerReport)
+    dependsOn(characterizeEpochNegative)
+    dependsOn(characterizeEpoch)
 }

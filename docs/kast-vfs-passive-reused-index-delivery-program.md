@@ -3,7 +3,7 @@
 **Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `c17a998380d304a1d4b3afabab6ed0bb6207bb9bc5933e5833eb3ae5b8056f67`
+**Program fingerprint:** `dd63afcb4c0118c49832195e0bc86a1c1f15647f13fce400d80b5e35473de9e9`
 
 ## Terminal outcome
 
@@ -511,9 +511,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-014`. Computed wave: `10`.
 
-**Allowed reads.** `workspace/intellij-read`, `gradle/libs.versions.toml`, `fixtures`.
+**Allowed reads.** `AGENTS.md`, `workspace/intellij-read`, `gradle/libs.versions.toml`, `com.jetbrains.intellij.idea:ideaIC:262.9437.185@zip`, `fixtures`, `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery`, `docs/AGENTS.md`, `docs/engineering`, `scripts/verify_bundle.py`.
 
-**Allowed writes.** `workspace/intellij-read/src/test`, `docs/engineering/ide-read-epoch-ledger.md`.
+**Allowed writes.** `workspace/intellij-read/build.gradle.kts`, `workspace/intellij-read/AGENTS.md`, `workspace/intellij-read/src/test`, `docs/AGENTS.md`, `docs/engineering`, `build-logic/src/main/kotlin/support/delivery/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/registration/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/Kvp012ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/Kvp014ReceiptRegistration.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/kast-vfs-passive-requirements.json`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.014.proof`, `requirement:KVP-REQ-011`, `requirement:KVP-REQ-012`, `requirement:KVP-REQ-015`, `requirement:KVP-REQ-027`.
 
@@ -525,13 +525,13 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Effect and cost.** `IDE_PROJECT_READ`, `NATIVE_INDEX_READ`; `SEMANTIC_READ`.
 
-**Forbidden work.** Freezing an epoch contract from undocumented assumptions; Calling refresh to observe disk; Using one global Boolean readiness flag.
+**Forbidden work.** Freezing an epoch contract from undocumented assumptions; VFS refresh; Gradle import or repair; Recursive filesystem or VFS walk; Source-content hashing; Event-triggered semantic jobs; Global Boolean readiness; Production epoch policy; Product behavior assigned to KVP-016 or KVP-017.
 
 **RED.** `./gradlew :workspace:intellij-read:characterizeEpochNegative`. Expected failure: Signal gaps, movement, dumb-mode transitions, and root-model changes are not detected.
 
 **GREEN.** `./gradlew :workspace:intellij-read:characterizeEpoch`. Expected proof: The selected signals detect every fixture movement without refresh or source-tree walk.
 
-**Review boundary.** Characterization fixtures and ledger only.
+**Review boundary.** Characterization fixtures, ledger/report generation, the minimum task-authority correction, and KVP-015 receipt progression only.
 
 **Completion receipt.** `KVP-015-COMPLETE` at `build/reports/delivery/receipts/KVP-015-COMPLETE.receipt.json`. It consumes `KVP-015-RED`, `KVP-015-GREEN`, and all predecessor completion receipts.
 

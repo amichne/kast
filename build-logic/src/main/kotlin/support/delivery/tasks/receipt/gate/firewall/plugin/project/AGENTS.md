@@ -1,6 +1,7 @@
 # KVP-014 existing-Project receipt guide
 
-This directory owns the deterministic KVP-014 report and typed exact-head receipt progression.
+This directory owns the deterministic KVP-014 report and typed exact-head receipt progression. Its
+`epoch/` child owns KVP-015 signal characterization and directly re-admits this complete closure.
 
 - The report is a closed generated-serialization document. Admission requires canonical bytes,
   the exact build-262 identities, the exact ready observation states, and zero for every forbidden

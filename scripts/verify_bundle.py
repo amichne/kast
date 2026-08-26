@@ -153,6 +153,58 @@ assert (
     + "."
 ) in kvp_014_plan
 assert f"**Review boundary.** {kvp_014['reviewBoundary']}" in kvp_014_plan
+kvp_015 = by_id["KVP-015"]
+assert kvp_015["dependencyExpression"]["taskIds"] == ["KVP-014"]
+assert set(kvp_015["forbiddenWork"]) == {
+    "Freezing an epoch contract from undocumented assumptions",
+    "VFS refresh",
+    "Gradle import or repair",
+    "Recursive filesystem or VFS walk",
+    "Source-content hashing",
+    "Event-triggered semantic jobs",
+    "Global Boolean readiness",
+    "Production epoch policy",
+    "Product behavior assigned to KVP-016 or KVP-017",
+}
+assert {
+    "workspace/intellij-read/build.gradle.kts",
+    "workspace/intellij-read/src/test",
+    "docs/AGENTS.md",
+    "docs/engineering",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/Kvp012ReceiptRegistration.kt",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/Kvp014ReceiptRegistration.kt",
+    "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch",
+} <= set(kvp_015["allowedWrites"])
+kvp_015_plan = normative_plan.split(
+    "### KVP-015: Characterize model and epoch signals\n",
+    maxsplit=1,
+)[1].split("\n### KVP-016:", maxsplit=1)[0]
+assert (
+    "**Allowed reads.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_015["allowedReads"])
+    + "."
+) in kvp_015_plan
+assert (
+    "**Allowed writes.** "
+    + ", ".join(f"`{entry}`" for entry in kvp_015["allowedWrites"])
+    + "."
+) in kvp_015_plan
+assert f"**Review boundary.** {kvp_015['reviewBoundary']}" in kvp_015_plan
+epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
+for expected_epoch_fact in (
+    "WorkspaceModelTopics.CHANGED",
+    "ExternalProjectInfo",
+    "PsiModificationTracker.modificationCount",
+    "VirtualFileManager.VFS_CHANGES",
+    "ProjectRootModificationTracker.modificationCount",
+    "DumbService.modificationTracker",
+    "getModificationCount()` and",
+    "getStructureModificationCount()` as constant zero",
+    "1,000-event VFS storm",
+    "zero semantic jobs",
+    "zero semantic work on the EDT",
+):
+    assert expected_epoch_fact in epoch_ledger
 workspace_read_module = next(
     module for module in program["modules"]
     if module["id"] == ":workspace:intellij-read"
