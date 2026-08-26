@@ -181,5 +181,8 @@ internal fun Project.registerKvp023ReceiptProgression(
         proofReportFile.set(dispatch.proofReport)
         completionReceiptFile.set(dispatch.completionReceipt)
     }
-    return setOf(dispatch.task.id)
+    val endpointTasks = registerKvp024ReceiptProgression(program) {
+        configureDispatch()
+    }
+    return setOf(dispatch.task.id) + endpointTasks
 }

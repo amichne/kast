@@ -16,3 +16,7 @@ and exact-head receipt progression.
 
 Raw JSON, receipt bytes, paths, and Gradle properties stay at report, gate, or receipt boundaries.
 Expected failures remain closed typed data until those boundaries render them.
+
+The `endpoint/` child owns KVP-024's prepared-to-ready endpoint-publication report, dedicated
+nonrecursive Test gates, direct KVP-013/KVP-023 binding, and exact-head completion closure. Keep
+all KVP-024 dependencies out of the default `:ide-plugin:test` task.
