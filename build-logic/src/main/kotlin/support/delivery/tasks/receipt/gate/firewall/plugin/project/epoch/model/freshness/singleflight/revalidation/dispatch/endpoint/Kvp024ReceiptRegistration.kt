@@ -21,6 +21,11 @@ internal fun Project.registerKvp024ReceiptProgression(
         "ide-plugin/src/main/resources/META-INF/plugin.xml",
         "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/" +
             "IdeHostCompatibilityMetadata.kt",
+        "runtime/ide-read/AGENTS.md",
+        "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/" +
+            "AGENTS.md",
+        "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/" +
+            "HostedIdeReadRuntime.kt",
         mainRoot + "AGENTS.md",
         mainRoot + "ReadyIdeEndpoint.kt",
         mainRoot + "PreparedIdeEndpoint.kt",

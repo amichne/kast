@@ -356,7 +356,7 @@ internal fun deliveryTasksM2(): List<TaskNode> = listOf(
                 ),
                 allowedWrites = listOf(
                     "AGENTS.md", "ide-plugin/AGENTS.md", "ide-plugin/build.gradle.kts",
-                    "ide-plugin/src/main/kotlin", "ide-plugin/src/main/resources", "ide-plugin/src/test",
+                    "ide-plugin/src/main/kotlin", "ide-plugin/src/main/resources", "ide-plugin/src/test", "runtime/ide-read/AGENTS.md", "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/AGENTS.md", "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/HostedIdeReadRuntime.kt",
                     "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/AGENTS.md", "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocation.kt",
                     "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/AGENTS.md", "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocationTest.kt",
                     "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt", "build-logic/src/main/kotlin/support/architecture/IdeReadFirewall.kt",

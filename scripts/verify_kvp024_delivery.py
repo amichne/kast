@@ -97,6 +97,11 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "gradle/delivery/kast-vfs-passive-reused-index-program.json",
         "scripts/verify_kvp024_delivery.py",
     }
+    runtime_preparation_artifacts = {
+        "runtime/ide-read/AGENTS.md",
+        "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/AGENTS.md",
+        "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/HostedIdeReadRuntime.kt",
+    }
     expected_writes = {
         "AGENTS.md",
         "ide-plugin/AGENTS.md",
@@ -122,13 +127,12 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         RECEIPT_ROOT + "endpoint",
         "scripts/AGENTS.md",
         "scripts/verify_bundle.py",
-    } | corrected_authority_artifacts
+    } | corrected_authority_artifacts | runtime_preparation_artifacts
     assert set(task["allowedReads"]) == expected_reads
     assert set(task["allowedWrites"]) == expected_writes
     assert "settings.gradle.kts" not in expected_writes
     for forbidden_write_root in (
         "indexer/",
-        "runtime/ide-read",
         "workspace/",
     ):
         assert not any(path.startswith(forbidden_write_root) for path in expected_writes)
@@ -279,7 +283,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     registration = required_text(
         root, endpoint_receipt_root + "Kvp024ReceiptRegistration.kt",
     ).replace('" +\n            "', "")
-    receipt_artifacts = corrected_authority_artifacts | {
+    receipt_artifacts = corrected_authority_artifacts | runtime_preparation_artifacts | {
         "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityMetadata.kt",
     }
     for artifact in receipt_artifacts:
