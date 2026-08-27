@@ -104,6 +104,42 @@ internal fun admitKvp029ImplementationScope(
 }
 
 /**
+ * Proof transition: structurally admitted prior report scope plus current Git head ->
+ * `Kvp029ImplementationScopeAdmission`.
+ *
+ * Establishes that the prior report head remains an ancestor and that replaying the graph-declared
+ * write policy to that exact head yields byte-identical commit evidence. Later unrelated commits
+ * are deliberately outside this content-scoped transition.
+ */
+internal fun admitPriorKvp029ImplementationScope(
+    exec: ExecOperations,
+    repositoryRoot: Path,
+    predecessorHead: DeliveryGeneration,
+    currentHead: DeliveryGeneration,
+    candidate: Kvp029PriorProofScopeCandidate,
+    allowedWrites: List<String>,
+    companionWrites: List<String>,
+): Kvp029ImplementationScopeAdmission {
+    if (git(exec, repositoryRoot, listOf(
+            "merge-base", "--is-ancestor", candidate.reportHead.value, currentHead.value,
+        )).exitCode != 0
+    ) return scopeRejected(Kvp029BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
+    return when (val replayed = admitKvp029ImplementationScope(
+        exec,
+        repositoryRoot,
+        predecessorHead,
+        candidate.reportHead,
+        allowedWrites,
+        companionWrites,
+    )) {
+        is Kvp029ImplementationScopeAdmission.Complete -> if (
+            replayed.scope.commits == candidate.commits
+        ) replayed else scopeRejected(Kvp029BoundaryFailure.RELEVANT_INPUT_READ_REJECTED)
+        is Kvp029ImplementationScopeAdmission.Rejected -> replayed
+    }
+}
+
+/**
  * Proof transition: graph-declared read roots plus packet/dependency evidence ->
  * `Kvp029RelevantInputAdmission`.
  *

@@ -56,6 +56,14 @@ abstract class PrepareKvp029ProofTask : DefaultTask() {
     @TaskAction fun prepare() {
         val root = Path.of(repositoryRootPath.get()).toAbsolutePath().normalize()
         val head = DeliveryGeneration(observeExactHead(root).value)
+        val report = readBoundaryFile(
+            proofReportFile.get().asFile.toPath(),
+            MAX_RECEIPT_EVIDENCE_BYTES,
+        )
+        val receipt = readBoundaryFile(
+            receiptFile.get().asFile.toPath(),
+            MAX_RECEIPT_EVIDENCE_BYTES,
+        )
         val context = when (val prepared = prepareKvp029ProofContext(
             execOperations,
             root,
@@ -65,18 +73,11 @@ abstract class PrepareKvp029ProofTask : DefaultTask() {
             kvp023ReceiptFile.get().asFile.toPath(),
             kvp028ReceiptFile.get().asFile.toPath(),
             kvp028ReportFile.get().asFile.toPath(),
+            (report as? BoundaryFileRead.Complete)?.bytes?.toString(Charsets.UTF_8),
         )) {
             is Kvp029ProofContextPreparation.Complete -> prepared.context
             is Kvp029ProofContextPreparation.Rejected -> rejectPreparation(prepared.failure)
         }
-        val report = readBoundaryFile(
-            proofReportFile.get().asFile.toPath(),
-            MAX_RECEIPT_EVIDENCE_BYTES,
-        )
-        val receipt = readBoundaryFile(
-            receiptFile.get().asFile.toPath(),
-            MAX_RECEIPT_EVIDENCE_BYTES,
-        )
         val decision = if (
             report is BoundaryFileRead.Complete && receipt is BoundaryFileRead.Complete &&
             admitKvp029ReportAndReceipt(
@@ -111,6 +112,7 @@ internal fun prepareKvp029ProofContext(
     kvp023Path: Path,
     kvp028Path: Path,
     kvp028ReportPath: Path,
+    priorReportRaw: String?,
 ): Kvp029ProofContextPreparation {
     val (expectedPacket, version) = canonicalKvp029Packet()
     val packetRaw = readRequiredKvp029File(packetPath) ?: return preparationRejected(
@@ -134,19 +136,6 @@ internal fun prepareKvp029ProofContext(
             Kvp029ProofPreparationFailure.DEPENDENCY_REJECTED,
         )
     }
-    val scope = when (val admitted = admitKvp029ImplementationScope(
-        exec,
-        root,
-        dependencies.implementationBaseline,
-        observedHead,
-        packet.packet.task.allowedWrites,
-        emptyList(),
-    )) {
-        is Kvp029ImplementationScopeAdmission.Complete -> admitted.scope
-        is Kvp029ImplementationScopeAdmission.Rejected -> return preparationRejected(
-            Kvp029ProofPreparationFailure.IMPLEMENTATION_SCOPE_REJECTED,
-        )
-    }
     val relevantInputs = when (val admitted = admitKvp029RelevantInputs(
         exec,
         root,
@@ -164,6 +153,47 @@ internal fun prepareKvp029ProofContext(
             Kvp029ProofPreparationFailure.CASE_EXPECTATION_REJECTED,
         )
     }
+    val commandDigest = packet.packet.kvp029CommandDigest()
+    val toolchainDigest = currentKvp029ToolchainDigest()
+    val priorScope = priorReportRaw?.let { raw ->
+        admitKvp029PriorProofScope(
+            raw,
+            version,
+            packet,
+            dependencies,
+            cases,
+            relevantInputs,
+            commandDigest,
+            toolchainDigest,
+        )
+    }
+    val scopeAdmission = when (priorScope) {
+        is Kvp029PriorProofScopeAdmission.Complete -> admitPriorKvp029ImplementationScope(
+            exec,
+            root,
+            dependencies.implementationBaseline,
+            observedHead,
+            priorScope.candidate,
+            packet.packet.task.allowedWrites,
+            emptyList(),
+        )
+        Kvp029PriorProofScopeAdmission.Rejected,
+        null,
+            -> admitKvp029ImplementationScope(
+                exec,
+                root,
+                dependencies.implementationBaseline,
+                observedHead,
+                packet.packet.task.allowedWrites,
+                emptyList(),
+            )
+    }
+    val scope = when (scopeAdmission) {
+        is Kvp029ImplementationScopeAdmission.Complete -> scopeAdmission.scope
+        is Kvp029ImplementationScopeAdmission.Rejected -> return preparationRejected(
+            Kvp029ProofPreparationFailure.IMPLEMENTATION_SCOPE_REJECTED,
+        )
+    }
     return Kvp029ProofContextPreparation.Complete(
         Kvp029ProofContext(
             version,
@@ -172,8 +202,8 @@ internal fun prepareKvp029ProofContext(
             cases,
             scope,
             relevantInputs,
-            packet.packet.kvp029CommandDigest(),
-            currentKvp029ToolchainDigest(),
+            commandDigest,
+            toolchainDigest,
             observedHead,
         ),
     )

@@ -52,6 +52,7 @@ abstract class ProveKvp029Task : DefaultTask() {
     @TaskAction fun prove() {
         val root = Path.of(repositoryRootPath.get()).toAbsolutePath().normalize()
         val observedHead = DeliveryGeneration(observeExactHead(root).value)
+        val priorReport = readRequiredKvp029File(proofReportFile.get().asFile.toPath())
         val context = when (val prepared = prepareKvp029ProofContext(
             execOperations,
             root,
@@ -61,6 +62,7 @@ abstract class ProveKvp029Task : DefaultTask() {
             kvp023ReceiptFile.get().asFile.toPath(),
             kvp028ReceiptFile.get().asFile.toPath(),
             kvp028ReportFile.get().asFile.toPath(),
+            priorReport,
         )) {
             is Kvp029ProofContextPreparation.Complete -> prepared.context
             is Kvp029ProofContextPreparation.Rejected -> reject("context", prepared.failure)

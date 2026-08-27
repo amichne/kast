@@ -74,6 +74,18 @@ internal sealed interface Kvp029ProofReportAdmission {
     data class Rejected(val failure: Kvp029ProofReportFailure) : Kvp029ProofReportAdmission
 }
 
+internal data class Kvp029PriorProofScopeCandidate(
+    val reportHead: DeliveryGeneration,
+    val commits: List<Kvp029ImplementationCommit>,
+)
+
+internal sealed interface Kvp029PriorProofScopeAdmission {
+    data class Complete(val candidate: Kvp029PriorProofScopeCandidate) :
+        Kvp029PriorProofScopeAdmission
+
+    data object Rejected : Kvp029PriorProofScopeAdmission
+}
+
 private val kvp029ProofReportJson = Json {
     encodeDefaults = true
     ignoreUnknownKeys = false
@@ -129,6 +141,79 @@ internal fun admitKvp029ProofReport(
             context.completeObservations(),
             reportHead,
         ),
+    )
+}
+
+/**
+ * Proof transition: prior KVP-029 report JSON plus the current stable content closure ->
+ * `Kvp029PriorProofScopeAdmission`.
+ *
+ * Establishes that every non-head, non-scope report field still matches the current graph packet,
+ * dependencies, relevant inputs, cases, command, and toolchain. It extracts only typed commit and
+ * report-head candidates; the Git boundary must replay and admit that history before reuse.
+ */
+internal fun admitKvp029PriorProofScope(
+    raw: String,
+    programVersion: TaskProofProgramVersion,
+    packet: AdmittedTaskPacketFile,
+    dependencies: AdmittedKvp029Dependencies,
+    cases: Kvp029ProofCaseExpectation,
+    relevantInputDigest: RelevantInputDigest,
+    commandDigest: TaskProofCommandDigest,
+    toolchainDigest: ToolchainDigest,
+): Kvp029PriorProofScopeAdmission {
+    val document = try {
+        kvp029ProofReportJson.decodeFromString(Kvp029ProofReportDocument.serializer(), raw)
+    } catch (_: SerializationException) {
+        return Kvp029PriorProofScopeAdmission.Rejected
+    } catch (_: IllegalArgumentException) {
+        return Kvp029PriorProofScopeAdmission.Rejected
+    }
+    val reportHead = when (val refined = refineDeliveryGeneration(
+        document.observedRepositoryHead,
+    )) {
+        is DeliveryRefinement.Complete -> refined.value
+        is DeliveryRefinement.Rejected -> return Kvp029PriorProofScopeAdmission.Rejected
+    }
+    val commits = document.implementationCommits.map { commit ->
+        val revision = when (val refined = refineDeliveryGeneration(commit.revision)) {
+            is DeliveryRefinement.Complete -> refined.value
+            is DeliveryRefinement.Rejected -> return Kvp029PriorProofScopeAdmission.Rejected
+        }
+        if (commit.changedPaths.isEmpty() || commit.changedPaths != commit.changedPaths.sorted()) {
+            return Kvp029PriorProofScopeAdmission.Rejected
+        }
+        Kvp029ImplementationCommit(revision, commit.changedPaths)
+    }
+    val task = packet.packet.task
+    if (
+        document.schemaVersion != 1 ||
+        document.programVersion != programVersion.value ||
+        document.taskId != task.id.value ||
+        document.taskDefinitionDigest != packet.packet.taskDefinitionDigest.value ||
+        document.dependencyReceiptDigests != dependencies.digests ||
+        document.packetDigest != packet.documentDigest.value ||
+        document.relevantInputDigest != relevantInputDigest.value ||
+        document.commandDigest != commandDigest.value ||
+        document.toolchainDigest != toolchainDigest.value ||
+        document.outcome != Kvp029ReportOutcome.COMPLETE ||
+        document.misuse != Kvp029ReportCaseDocument(
+            cases.misuseName,
+            Kvp029SemanticOutcome.REJECTED,
+        ) ||
+        document.legalPath != Kvp029ReportCaseDocument(
+            cases.legalPathName,
+            Kvp029SemanticOutcome.COMPLETE,
+        ) ||
+        document.allowedWrites != task.allowedWrites ||
+        document.forbiddenWork != cases.forbiddenWork.map {
+            Kvp029ForbiddenWorkDocument(it.description, it.enforcementCaseName)
+        } ||
+        commits.isEmpty() ||
+        raw != encode(document)
+    ) return Kvp029PriorProofScopeAdmission.Rejected
+    return Kvp029PriorProofScopeAdmission.Complete(
+        Kvp029PriorProofScopeCandidate(reportHead, commits),
     )
 }
 
