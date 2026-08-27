@@ -32,9 +32,9 @@ internal data class Kvp038DependencyPaths(
     val kvp037Report: Path,
 )
 
-private sealed interface Kvp038LegacyAdmission {
-    data class Complete(val digest: String) : Kvp038LegacyAdmission
-    data object Rejected : Kvp038LegacyAdmission
+internal sealed interface Kvp038LegacyClosureAdmission {
+    data class Complete(val digest: String) : Kvp038LegacyClosureAdmission
+    data object Rejected : Kvp038LegacyClosureAdmission
 }
 
 private sealed interface Kvp038LegacyDocumentAdmission {
@@ -74,8 +74,8 @@ internal fun admitKvp038Dependencies(
         return dependencyRejected(Kvp038DependencyFailure.CLOSURE_MISMATCH)
     }
     val legacy = when (val admitted = admitKvp008(paths)) {
-        is Kvp038LegacyAdmission.Complete -> admitted.digest
-        Kvp038LegacyAdmission.Rejected -> return dependencyRejected(
+        is Kvp038LegacyClosureAdmission.Complete -> admitted.digest
+        Kvp038LegacyClosureAdmission.Rejected -> return dependencyRejected(
             Kvp038DependencyFailure.LEGACY_RECEIPT_REJECTED,
         )
     }
@@ -111,42 +111,73 @@ internal fun admitKvp038Dependencies(
     ))
 }
 
-private fun admitKvp008(paths: Kvp038DependencyPaths): Kvp038LegacyAdmission {
+private fun admitKvp008(paths: Kvp038DependencyPaths): Kvp038LegacyClosureAdmission {
     val raw = listOf(paths.kvp008Red, paths.kvp008Green, paths.kvp008Complete, paths.kvp008Report)
         .map { path ->
             when (val read = read038(path)) {
                 is Kvp038DependencyRead.Complete -> read.raw
-                Kvp038DependencyRead.Rejected -> return Kvp038LegacyAdmission.Rejected
+                Kvp038DependencyRead.Rejected -> return Kvp038LegacyClosureAdmission.Rejected
             }
         }
     val documents = raw.take(3).map { receipt ->
         when (val admitted = decodeLegacy(receipt)) {
             is Kvp038LegacyDocumentAdmission.Complete -> admitted.document
-            Kvp038LegacyDocumentAdmission.Rejected -> return Kvp038LegacyAdmission.Rejected
+            Kvp038LegacyDocumentAdmission.Rejected ->
+                return Kvp038LegacyClosureAdmission.Rejected
         }
     }
     val red = documents[0]
     val green = documents[1]
     val complete = documents[2]
     val reportRaw = raw[3]
-    val projectionFingerprint = KastVfsPassiveReusedIndexProgram.validated.projection()
-        .getValue("programFingerprint") as String
-    val sameBoundary = listOf(red, green, complete).all {
-        it.taskId.value == "KVP-008" && it.programFingerprint.value == projectionFingerprint &&
+    return admitKvp008LegacyClosure(red, green, complete, reportRaw)
+}
+
+/**
+ * Proof transition: `(KVP-008 RED receipt, GREEN receipt, completion receipt, report bytes) ->
+ * Kvp038LegacyClosureAdmission`.
+ *
+ * Establishes one internally consistent, canonical, self-digested KVP-008 content closure whose
+ * inherited dependencies, exact head, admitted program/requirement identities, input digest, gate
+ * identities, and report artifact are unchanged. The preserved legacy program fingerprint is the
+ * authority for this already-admitted prefix; later task-graph fingerprints are outside this
+ * closure. Every mixed or incomplete lineage returns [Kvp038LegacyClosureAdmission.Rejected]. Raw
+ * report bytes remain confined to the KVP-038 dependency boundary.
+ */
+internal fun admitKvp008LegacyClosure(
+    red: ProofReceiptDocument,
+    green: ProofReceiptDocument,
+    complete: ProofReceiptDocument,
+    reportRaw: String,
+): Kvp038LegacyClosureAdmission {
+    val documents = listOf(red, green, complete)
+    val sameBoundary = documents.all {
+        it.taskId.value == "KVP-008" &&
+            it.baseRevision == complete.baseRevision &&
+            it.exactHead == complete.exactHead &&
+            it.programFingerprint == complete.programFingerprint &&
             it.requirementFingerprint == complete.requirementFingerprint &&
-            it.exactHead == complete.exactHead
+            it.declaredInputDigest == complete.declaredInputDigest
     }
     val reportPath = "build/reports/delivery/KVP-008-derived-state.json"
     val greenArtifacts = green.artifactDigests.mapKeys { it.key.value }.mapValues { it.value.value }
+    val inheritedDependencies = red.dependencyReceiptDigests
     if (
         !sameBoundary || red.receiptId.value != "KVP-008-RED-RECEIPT" ||
+        red.gateId.value != "KVP-008-RED" ||
         green.receiptId.value != "KVP-008-GREEN-RECEIPT" ||
+        green.gateId.value != "KVP-008-GREEN" ||
         complete.receiptId.value != "KVP-008-COMPLETE" ||
-        !green.hasDependency(red) || !complete.hasDependency(red) ||
-        !complete.hasDependency(green) ||
+        complete.gateId.value != "KVP-008-COMPLETE-GATE" ||
+        green.dependencyReceiptDigests != inheritedDependencies +
+            (red.receiptId to red.receiptDigest) ||
+        complete.dependencyReceiptDigests != inheritedDependencies + mapOf(
+            red.receiptId to red.receiptDigest,
+            green.receiptId to green.receiptDigest,
+        ) ||
         greenArtifacts != mapOf(reportPath to sha256(reportRaw).value)
-    ) return Kvp038LegacyAdmission.Rejected
-    return Kvp038LegacyAdmission.Complete(complete.receiptDigest.value)
+    ) return Kvp038LegacyClosureAdmission.Rejected
+    return Kvp038LegacyClosureAdmission.Complete(complete.receiptDigest.value)
 }
 
 /** Legacy receipt JSON -> canonical self-digested document or boundary-local absence. */
@@ -209,11 +240,6 @@ private fun admitTaskDependency(
     ) Kvp038TaskDocumentAdmission.Complete(document)
     else Kvp038TaskDocumentAdmission.Rejected
 }
-
-private fun ProofReceiptDocument.hasDependency(dependency: ProofReceiptDocument): Boolean =
-    dependencyReceiptDigests.entries.any {
-        it.key == dependency.receiptId && it.value == dependency.receiptDigest
-    }
 
 private fun read038(path: Path): Kvp038DependencyRead = when (
     val result = readBoundaryFile(path, MAX_RECEIPT_EVIDENCE_BYTES)
