@@ -1,5 +1,5 @@
 val isolatedRuntimeRetirementVerifier = layout.projectDirectory.file(
-    "packaging/verify_no_default_isolated_runtime.py",
+    "packaging/verification/verify_no_default_isolated_runtime.py",
 )
 
 val verifyHostedPublicInstaller by tasks.registering(Exec::class) {

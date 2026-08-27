@@ -26,7 +26,7 @@ the authority for KVP-036 task semantics and proof command.
   exact prefix; its launcher must carry no archive-read or isolated-indexer authority.
 - `pr633-final-gate.sh` invokes only `pr633MergeCandidateAcceptance` and rejects tracked changes
   both before and after the clean-checkout GATE-060 run.
-- `test-public-installer.sh` exercises installer presentation and failure output
+- `verification/test-public-installer.sh` exercises installer presentation and failure output
   without downloading or installing a release.
 
 Run `./gradlew installedProductTest` after changing the installed journey and

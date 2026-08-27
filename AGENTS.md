@@ -197,7 +197,7 @@ projection, fingerprint, and schema boundary. The normative reader plan is
 
 `install.sh` is the public release-install boundary. Preserve its host,
 checksum, archive, and managed-link checks when changing its presentation. Run
-`bash packaging/test-public-installer.sh` after changing its output.
+`bash packaging/verification/test-public-installer.sh` after changing its output.
 
 ## Gradle topology
 

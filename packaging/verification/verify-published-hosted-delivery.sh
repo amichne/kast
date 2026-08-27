@@ -19,7 +19,7 @@ done
 [[ "${repository}" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ||
   fail "repository must be owner/name"
 version="${release#v}"
-repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-published-hosted.XXXXXX")"
 cleanup() {

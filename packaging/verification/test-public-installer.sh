@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-public-installer.XXXXXX")"
 trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/home"
