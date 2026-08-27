@@ -3,7 +3,7 @@
 **Status:** Normative reader plan. The canonical Kotlin graph and its deterministic projections are the sole task-field authority.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `3c05ade558a0d6ef301e25165c714563e1aa3b0036a23d3d9681211eab455422`
+**Program fingerprint:** `e6b42cceb6ffb4b529793d35ef16b7324ab91e8f6cd43f33efd6a7fb5698984d`
 
 ## Terminal outcome
 
