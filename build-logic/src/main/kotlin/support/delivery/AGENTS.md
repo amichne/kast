@@ -38,6 +38,8 @@ This package owns the typed delivery program and the Gradle task boundaries that
 - `gradle/kvp039/` owns KVP-039's graph-derived exact-head CI workflow refinement, exact-head
   KVP-038 predecessor join, stale/merge-head rejection, declared-write enforcement, and content
   receipt.
+- `gradle/kvp040/` owns KVP-040's graph-derived exact-head diff review, seven-area evidence
+  coverage, stale-head rejection, structured finding projection, and content receipt.
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.

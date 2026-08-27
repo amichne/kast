@@ -54,5 +54,5 @@ internal fun Project.registerKvp039AtomicProof(): Set<TaskId> {
         exactHeadReportFile.set(report)
         receiptFile.set(receipt)
     }
-    return setOf(packet.task.id)
+    return setOf(packet.task.id) + registerKvp040AtomicProof()
 }
