@@ -67,6 +67,7 @@ jobs:
           runtimeDeliveryMvpAcceptance
 
       - name: Verify legacy architecture retirement
+        # Keep this consumer separate from generated compatibility-source producers.
         if: github.event.pull_request.number != 633
         run: >-
           ./gradlew
