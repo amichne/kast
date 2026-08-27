@@ -55,7 +55,7 @@ internal fun Project.registerKvp038AtomicProof(): Set<TaskId> {
         cleanCheckoutReportFile.set(report)
         receiptFile.set(receipt)
     }
-    return setOf(packet.task.id)
+    return setOf(packet.task.id) + registerKvp039AtomicProof()
 }
 
 private fun ProveKvp038Task.configureDependencies038() {
