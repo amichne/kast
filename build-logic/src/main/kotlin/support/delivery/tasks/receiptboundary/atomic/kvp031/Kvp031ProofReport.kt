@@ -148,9 +148,11 @@ internal fun admitKvp031ProofReport(
  * Proof transition: prior KVP-031 report JSON plus the current stable content closure ->
  * `Kvp031PriorProofScopeAdmission`.
  *
- * Establishes that every non-head, non-scope report field still matches the current graph packet,
- * dependencies, relevant inputs, cases, command, and toolchain. It extracts only typed commit and
- * report-head candidates; the Git boundary must replay and admit that history before reuse.
+ * Establishes that the task definition, dependencies, cases, command, and toolchain still match.
+ * Relevant-input movement deliberately does not rewrite historical implementation ownership: it
+ * forces fresh case execution while the Git boundary separately replays the prior task commits.
+ * This extracts only typed commit and report-head candidates; the Git boundary must replay and
+ * admit that history before reuse.
  */
 internal fun admitKvp031PriorProofScope(
     raw: String,
@@ -158,7 +160,6 @@ internal fun admitKvp031PriorProofScope(
     packet: AdmittedTaskPacketFile,
     dependencies: AdmittedKvp031Dependencies,
     cases: Kvp031ProofCaseExpectation,
-    relevantInputDigest: RelevantInputDigest,
     commandDigest: TaskProofCommandDigest,
     toolchainDigest: ToolchainDigest,
 ): Kvp031PriorProofScopeAdmission {
@@ -193,7 +194,6 @@ internal fun admitKvp031PriorProofScope(
         document.taskDefinitionDigest != packet.packet.taskDefinitionDigest.value ||
         document.dependencyReceiptDigests != dependencies.digests ||
         document.packetDigest != packet.documentDigest.value ||
-        document.relevantInputDigest != relevantInputDigest.value ||
         document.commandDigest != commandDigest.value ||
         document.toolchainDigest != toolchainDigest.value ||
         document.outcome != Kvp031ReportOutcome.COMPLETE ||
@@ -283,4 +283,3 @@ private fun encode(document: Kvp031ProofReportDocument) =
 
 private fun reportRejected(failure: Kvp031ProofReportFailure) =
     Kvp031ProofReportAdmission.Rejected(failure)
-

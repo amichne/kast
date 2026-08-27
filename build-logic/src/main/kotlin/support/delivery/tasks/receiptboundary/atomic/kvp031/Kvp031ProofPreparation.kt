@@ -154,7 +154,6 @@ internal fun prepareKvp031ProofContext(
             packet,
             dependencies,
             cases,
-            relevantInputs,
             commandDigest,
             toolchainDigest,
         )
