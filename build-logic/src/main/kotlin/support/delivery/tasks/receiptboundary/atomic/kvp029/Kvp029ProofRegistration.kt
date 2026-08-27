@@ -50,6 +50,19 @@ internal fun Project.registerKvp029AtomicProof(): Set<TaskId> {
         receiptFile.set(receipt)
         decisionFile.set(decision)
     }
+    val namedCaseNames = setOf(
+        "ideHostedSymbolDiscoverNegativeProof",
+        "ideHostedSymbolDiscoverAcceptance",
+    )
+    runtime.tasks.configureEach {
+        if (name in namedCaseNames) {
+            dependsOn(prepare)
+            onlyIf("KVP-029 content closure requires fresh execution") {
+                readRequiredKvp029File(decision.get().asFile.toPath()) !=
+                    "${Kvp029ProofDecision.REUSE.name}\n"
+            }
+        }
+    }
     val cases = runtime.tasks.register(
         "proveKVP029Cases",
         Kvp029AtomicProofEvidenceTask::class.java,
