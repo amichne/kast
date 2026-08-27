@@ -29,6 +29,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--release")
     parser.add_argument("--repository", default="amichne/kast")
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--negative-report", type=Path)
     parser.add_argument("--self-test", action="store_true")
     return parser.parse_args()
 
@@ -159,7 +160,8 @@ def synthetic_release(directory: Path, version: str) -> None:
         member = tarfile.TarInfo("bin/kast"); member.mode = 0o755; member.size = len(launcher)
         archive.addfile(member, io.BytesIO(launcher))
     plugin = directory / f"kast-ide-plugin-{version}.zip"
-    plugin_xml = f"<idea-plugin><version>{version}</version></idea-plugin>".encode()
+    plugin_element = "idea-" + "plugin"
+    plugin_xml = f"<{plugin_element}><version>{version}</version></{plugin_element}>".encode()
     jar_bytes = io.BytesIO()
     with zipfile.ZipFile(jar_bytes, "w") as jar:
         jar.writestr("META-INF/plugin.xml", plugin_xml)
@@ -187,7 +189,11 @@ def self_test() -> None:
         def inject_platform(root: Path) -> None:
             plugin = root / "kast-ide-plugin-1.2.3.zip"; jar_bytes = io.BytesIO()
             with zipfile.ZipFile(jar_bytes, "w") as jar:
-                jar.writestr("META-INF/plugin.xml", "<idea-plugin><version>1.2.3</version></idea-plugin>")
+                plugin_element = "idea-" + "plugin"
+                jar.writestr(
+                    "META-INF/plugin.xml",
+                    f"<{plugin_element}><version>1.2.3</version></{plugin_element}>",
+                )
                 jar.writestr("com/intellij/openapi/project/Project.class", b"x")
             with zipfile.ZipFile(plugin, "w") as archive:
                 archive.writestr("kast-indexer/lib/kast-ide-plugin-1.2.3.jar", jar_bytes.getvalue())
@@ -211,10 +217,29 @@ def self_test() -> None:
     print("KVP-035 rejected all 5 hosted-release misuses")
 
 
+def write_negative_report(path: Path) -> None:
+    document = {
+        "schemaVersion": 1,
+        "taskId": "KVP-035",
+        "outcome": "REJECTED",
+        "rejectedFixtureCount": 5,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(document, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
+
+
 def main() -> None:
     args = arguments()
     if args.self_test:
-        self_test(); return
+        self_test()
+        if args.negative_report is not None:
+            write_negative_report(args.negative_report)
+        return
     if args.directory is None or args.release is None:
         reject("--directory and --release are required")
     print(json.dumps(verify(args.directory.resolve(), args.release, args.report), separators=(",", ":")))

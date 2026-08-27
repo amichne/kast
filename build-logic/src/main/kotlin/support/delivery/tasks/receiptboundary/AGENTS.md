@@ -19,6 +19,8 @@ bounded legacy-prefix observation, and atomic issuance for delivery receipts.
   dependency-closure, and content-receipt proof.
 - `atomic/kvp034/` owns graph-derived installed metrics, live exact-root CLI acceptance, predecessor
   closure, declared-write enforcement, and the exact-head installed receipt.
+- `release/kvp035/` owns the default hosted release's graph-derived packet, misuse fixtures, exact
+  asset admission, ready-frontier write scope, predecessor closure, and content receipt.
 
 Raw JSON, filesystem paths, time, and current Git head may appear only at these boundaries. Pass admitted receipt capabilities inward; never pass decoded primitives or silently reinterpret a v1 receipt as v2.
 

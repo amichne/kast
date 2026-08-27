@@ -66,7 +66,10 @@ object KastVfsPassiveReusedIndexProgram {
         processNodes = deliveryProcessNodes(),
         processTransitions = deliveryProcessTransitions(),
         installedMetrics = deliveryInstalledMetrics(),
-        deliveryBatches = listOf(hostedProductionCompositionDeliveryBatch()),
+        deliveryBatches = listOf(
+            hostedProductionCompositionDeliveryBatch(),
+            defaultHostedReleaseDeliveryBatch(),
+        ),
         terminalTask = TaskId("KVP-043"),
     )
 
@@ -96,6 +99,11 @@ internal fun hostedProductionCompositionCompanionWrites(taskId: TaskId): List<St
         }
         .distinct()
 }
+
+internal fun defaultHostedReleaseBatch(): DeliveryBatch =
+    KastVfsPassiveReusedIndexProgram.validated.program.deliveryBatches.single {
+        it.id == DeliveryBatchId("default-hosted-release")
+    }
 
 enum class CanonicalProgramFailure : DeliveryFailure {
     UNSUPPORTED_SCHEMA,

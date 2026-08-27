@@ -154,7 +154,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
             TaskNode(
                 id = TaskId("KVP-035"), title = "Build the default control-plus-plugin release", goal = "Assemble deterministic control and plugin assets, bind their identities, and enforce the combined download ceiling without a semantic runtime asset.", milestone = "M4",
                 dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-011"), TaskId("KVP-034"))),
-                allowedReads = listOf("build.gradle.kts", "distribution", "ide-plugin", "cli", ".github/scripts/release", "packaging"), allowedWrites = listOf("distribution/release", "build.gradle.kts", ".github/scripts/release", "packaging"),
+                allowedReads = listOf("build.gradle.kts", "distribution", "ide-plugin", "cli", ".github/scripts/release", "packaging", "build-logic/src/main/kotlin/conventions/vfs-passive-delivery.gradle.kts", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM3M5.kt", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt", "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/release/kvp035", "gradle/delivery/kast-vfs-passive-requirements.json", "gradle/delivery/kast-vfs-passive-reused-index-program.json"), allowedWrites = listOf("distribution/release", "build.gradle.kts", ".github/scripts/release", "packaging", "build-logic/src/main/kotlin/conventions/vfs-passive-delivery.gradle.kts", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM3M5.kt", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt", "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/AGENTS.md", "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/release/kvp035", "gradle/delivery/kast-vfs-passive-requirements.json", "gradle/delivery/kast-vfs-passive-reused-index-program.json"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.011.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.034.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-007", "kind" to "requirement"), mapOf("id" to "KVP-REQ-021", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.035.proof", "PROOF_ARTIFACT", "build/reports/ide-hosted/KVP-035-release.json", "Release contains exactly two matched assets and stays at or below 80 MiB.")),
                 publicInterface = "DefaultIdeHostedRelease", internalImplementation = "Manifest with exactly control and plugin assets and their digests.",
@@ -316,5 +316,13 @@ internal fun hostedProductionCompositionDeliveryBatch() = DeliveryBatch(
                 "gradle/delivery/kast-vfs-passive-reused-index-program.json",
             ),
         ),
+    ),
+)
+
+internal fun defaultHostedReleaseDeliveryBatch() = DeliveryBatch(
+    id = DeliveryBatchId("default-hosted-release"),
+    readyFrontier = DeliveryGeneration("23154cb96ab1bf57213d8b92bd35a3e66138735f"),
+    tasks = listOf(
+        DeliveryBatchTask(TaskId("KVP-035"), listOf("distribution/release")),
     ),
 )

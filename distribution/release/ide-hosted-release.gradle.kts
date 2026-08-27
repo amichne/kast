@@ -54,15 +54,25 @@ val assembleIdeHostedRelease by tasks.registering(Sync::class) {
 tasks.register<Exec>("verifyIdeHostedReleaseNegative") {
     group = "verification"
     description = "Rejects runtime, mismatch, platform-payload, and size release misuses."
-    commandLine("python3", releaseVerifier.asFile, "--self-test")
+    val negativeReport = layout.buildDirectory.file(
+        "reports/ide-hosted/KVP-035-negative.json",
+    )
+    outputs.file(negativeReport)
+    outputs.upToDateWhen { false }
+    commandLine(
+        "python3", releaseVerifier.asFile, "--self-test",
+        "--negative-report", negativeReport.get().asFile,
+    )
 }
 
 tasks.register<Exec>("verifyIdeHostedRelease") {
     group = "verification"
     description = "Verifies the exact matched control-plus-plugin default release."
     dependsOn(assembleIdeHostedRelease)
+    mustRunAfter("verifyIdeHostedReleaseNegative")
     inputs.dir(releaseDirectory)
     outputs.file(layout.buildDirectory.file("reports/ide-hosted/KVP-035-release.json"))
+    outputs.upToDateWhen { false }
     commandLine(
         "python3", releaseVerifier.asFile,
         "--directory", releaseDirectory.get().asFile,
