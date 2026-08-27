@@ -16,7 +16,7 @@ kotlinc \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM2.kt" \
-  "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM3M5.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/program/KastVfsPassiveProgramTasksM3M5.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/ProgramMain.kt" \
   -include-runtime -d "$temporary/program.jar"
