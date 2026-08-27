@@ -193,7 +193,7 @@ private fun admitPinnedKvp010(raw: String): Kvp011PinnedLegacyAdmission {
         document.receiptId.value == KVP010_RECEIPT_ID &&
             document.taskId.value == KVP010_TASK_ID &&
             document.gateId.value == KVP010_GATE_ID &&
-            document.programFingerprint.value == LEGACY_PREFIX_PROGRAM_FINGERPRINT &&
+            document.programFingerprint.value == KVP010_PROGRAM_FINGERPRINT &&
             document.requirementFingerprint.value == LEGACY_PREFIX_REQUIREMENT_FINGERPRINT &&
             document.receiptDigest.value == KVP010_RECEIPT_DIGEST &&
             document.receiptDigest == document.derivedDigest() &&
@@ -292,6 +292,8 @@ private const val KVP010_TASK_ID = "KVP-010"
 private const val KVP010_GATE_ID = "KVP-010-COMPLETE-GATE"
 private const val KVP010_RECEIPT_DIGEST =
     "7d532dba031c394693dfd828c92be3f3b38c6096cc1d39d0864e5d9bac680685"
+private const val KVP010_PROGRAM_FINGERPRINT =
+    "31fcef0d003e673781fe38c8aa52e9ad3c4aadec4a888764bbe17645abaf8888"
 private const val KVP025_RECEIPT_ID = "KVP-025-COMPLETE"
 private const val KVP031_RECEIPT_ID = "KVP-031-COMPLETE"
 private const val KVP031_TASK_ID = "KVP-031"
