@@ -164,6 +164,40 @@ internal sealed interface IdeEndpointStartup {
     ) : IdeEndpointStartup
 }
 
+internal object IdeEndpointModelCaptureAdmission {
+    /**
+     * Proof transition: `Set<DetachedModelCaptureFailure> -> IdeEndpointStartup`.
+     *
+     * Establishes that the exact transient clean-import ownership observation remains closed as
+     * [IdeEndpointStartup.Deferred] while every mixed or terminal capture failure remains a
+     * complete [IdeEndpointStartup.Rejected]. Raw module state remains confined to the IntelliJ
+     * capture adapter; this boundary consumes only its finite failure evidence.
+     */
+    fun admit(failures: Set<DetachedModelCaptureFailure>): IdeEndpointStartup {
+        if (failures == setOf(DetachedModelCaptureFailure.NOT_GRADLE_OWNED)) {
+            return IdeEndpointStartup.Deferred(
+                IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
+            )
+        }
+        return when {
+            DetachedModelCaptureFailure.PROJECT_NOT_INITIALIZED in failures ->
+                IdeEndpointStartup.Deferred(
+                    IdeEndpointDeferredReadiness.PROJECT_NOT_INITIALIZED,
+                )
+            DetachedModelCaptureFailure.GRADLE_MODEL_INCOMPLETE in failures ->
+                IdeEndpointStartup.Deferred(
+                    IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
+                )
+            DetachedModelCaptureFailure.PROJECT_DUMB in failures ||
+                DetachedModelCaptureFailure.READ_PREEMPTED in failures ->
+                IdeEndpointStartup.Deferred(IdeEndpointDeferredReadiness.DUMB_MODE)
+            else -> IdeEndpointStartup.Rejected(
+                IdeEndpointStartupFailure.ProjectModelRejected(failures),
+            )
+        }
+    }
+}
+
 /** Live project-service startup boundary with no import, refresh, traversal, or fallback path. */
 internal object LiveIdeEndpointStartup {
     /**
@@ -223,7 +257,9 @@ internal object LiveIdeEndpointStartup {
         }
         val model = when (val capture = admittedProject.captureDetachedModelAsync()) {
             is DetachedModelCapture.Captured -> capture.model
-            is DetachedModelCapture.Rejected -> return classify(capture.failures)
+            is DetachedModelCapture.Rejected -> return IdeEndpointModelCaptureAdmission.admit(
+                capture.failures,
+            )
         }
         val composition = when (val preparation = HostedIdeReadProductionComposition.prepare(
             hostedProject,
@@ -304,20 +340,6 @@ internal object LiveIdeEndpointStartup {
                 else -> rejected(IdeEndpointStartupFailure.ProjectRejected(failure))
             }
         }
-
-    private fun classify(failures: Set<DetachedModelCaptureFailure>): IdeEndpointStartup = when {
-        DetachedModelCaptureFailure.PROJECT_NOT_INITIALIZED in failures -> deferred(
-            IdeEndpointDeferredReadiness.PROJECT_NOT_INITIALIZED,
-        )
-        DetachedModelCaptureFailure.GRADLE_MODEL_INCOMPLETE in failures -> deferred(
-            IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
-        )
-        DetachedModelCaptureFailure.PROJECT_DUMB in failures ||
-            DetachedModelCaptureFailure.READ_PREEMPTED in failures -> deferred(
-            IdeEndpointDeferredReadiness.DUMB_MODE,
-        )
-        else -> rejected(IdeEndpointStartupFailure.ProjectModelRejected(failures))
-    }
 
     private fun deferred(readiness: IdeEndpointDeferredReadiness) =
         IdeEndpointStartup.Deferred(readiness)

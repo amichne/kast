@@ -23,7 +23,9 @@ This package owns one project-scoped Unix-domain endpoint and its descriptor-v2 
   suspending re-observation because IntelliJ publishes cached external-project data asynchronously
   after its startup activities complete. It performs no polling or platform work. Signals during
   installation are coalesced; later signals repeat exact admission only for the four typed
-  transient readiness states.
+  transient readiness states. The exact singleton `NOT_GRADLE_OWNED` capture observed while a
+  clean Gradle import settles refines to `GRADLE_MODEL_INCOMPLETE`; a mixed failure set remains
+  terminal and no incomplete capture can publish.
 - Issue the Project endpoint generation only after the admitted Project has produced the complete
   four-port runtime. Never use semantic freshness epochs or a constant as endpoint incarnation.
 - Capture the cached detached model through the suspending write-priority read boundary, prepare

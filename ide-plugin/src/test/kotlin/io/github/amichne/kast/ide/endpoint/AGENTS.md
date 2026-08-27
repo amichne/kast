@@ -9,6 +9,8 @@ KVP-025 lifecycle and cleanup behavior.
   connects physically, reads canonical bytes, and re-admits descriptor v2.
 - Retirement proves exact-once cleanup, pending-accept shutdown, explicit service disposal,
   identity-mismatch preservation, and disposal racing publication.
+- Model-capture admission proves that exact clean-import ownership incompleteness remains deferred
+  without allowing a terminal failure to hide in a mixed failure set.
 - Shared endpoint fixtures may be package-internal only when both receipt-bound task selectors use
   the same physical JDK publication boundary.
 
