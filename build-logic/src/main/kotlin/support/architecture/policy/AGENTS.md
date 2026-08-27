@@ -23,3 +23,6 @@ This directory owns the canonical module-policy declarations.
   Project runtime artifacts are exact project/name/SHA-256 identities, and external runtime
   artifacts are exact coordinate/name/SHA-256 identities. Each set has its own stronger-effect scan.
 - Regenerate `gradle/architecture/kast-architecture-policy.json` after every policy change.
+- `NoDefaultRuntimeFallback.kt` admits the transitive installed-composition class closure and owns
+  the five KVP-027 forbidden fallback mappings. Its negative fixture remains in the Gradle adapter;
+  this owner contains no filesystem effects.

@@ -19,7 +19,7 @@ admission used by the root build.
 - `policy/HostedRead*` owns the fixed 120-authority ASM negative contract, complete hosted-class,
   exact project-artifact closure, exact external-artifact byte admission, and canonical
   predecessor-bound KVP-018 report.
-- `NoDefaultRuntimeFallback.kt` owns the KVP-027 transitive installed-composition bytecode closure
+- `policy/NoDefaultRuntimeFallback.kt` owns the KVP-027 transitive installed-composition bytecode closure
   and its five closed fallback-authority mappings. Keep unreachable legacy fixtures outside the
   admitted closure; never weaken the entrypoint or turn a forbidden mapping into text inference.
 
