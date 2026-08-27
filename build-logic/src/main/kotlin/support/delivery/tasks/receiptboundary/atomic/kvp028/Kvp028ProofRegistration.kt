@@ -36,7 +36,7 @@ internal fun Project.registerKvp028AtomicProof(): Set<TaskId> {
     val prepare = tasks.register("prepareKVP028Proof", PrepareKvp028ProofTask::class.java) {
         group = "verification"
         description = "Revalidates KVP-028's closure and selects receipt reuse or execution."
-        dependsOn("verifyKVP023CompletionReceipt", "proveKVP026", generatePacket)
+        dependsOn(generatePacket)
         repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
         packetFile.set(packetOutput)
         kvp023ReceiptFile.set(kvp023)
