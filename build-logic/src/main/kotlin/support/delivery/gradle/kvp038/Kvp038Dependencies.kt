@@ -138,11 +138,12 @@ private fun admitKvp008(paths: Kvp038DependencyPaths): Kvp038LegacyClosureAdmiss
  * Kvp038LegacyClosureAdmission`.
  *
  * Establishes one internally consistent, canonical, self-digested KVP-008 content closure whose
- * inherited dependencies, exact head, admitted program/requirement identities, input digest, gate
- * identities, and report artifact are unchanged. The preserved legacy program fingerprint is the
- * authority for this already-admitted prefix; later task-graph fingerprints are outside this
- * closure. Every mixed or incomplete lineage returns [Kvp038LegacyClosureAdmission.Rejected]. Raw
- * report bytes remain confined to the KVP-038 dependency boundary.
+ * inherited dependencies, exact head, admitted program/requirement identities, receipt-local input
+ * identities, gate identities, and report artifact are unchanged. The preserved legacy program
+ * fingerprint is the authority for this already-admitted prefix; later task-graph fingerprints are
+ * outside this closure. Every mixed or incomplete lineage returns
+ * [Kvp038LegacyClosureAdmission.Rejected]. Raw report bytes remain confined to the KVP-038
+ * dependency boundary.
  */
 internal fun admitKvp008LegacyClosure(
     red: ProofReceiptDocument,
@@ -156,8 +157,7 @@ internal fun admitKvp008LegacyClosure(
             it.baseRevision == complete.baseRevision &&
             it.exactHead == complete.exactHead &&
             it.programFingerprint == complete.programFingerprint &&
-            it.requirementFingerprint == complete.requirementFingerprint &&
-            it.declaredInputDigest == complete.declaredInputDigest
+            it.requirementFingerprint == complete.requirementFingerprint
     }
     val reportPath = "build/reports/delivery/KVP-008-derived-state.json"
     val greenArtifacts = green.artifactDigests.mapKeys { it.key.value }.mapValues { it.value.value }

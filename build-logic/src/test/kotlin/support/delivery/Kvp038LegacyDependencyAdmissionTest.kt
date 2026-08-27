@@ -58,6 +58,7 @@ internal class Kvp038LegacyDependencyAdmissionTest {
                 red.receiptId.value to red.receiptDigest.value,
                 green.receiptId.value to green.receiptDigest.value,
             ),
+            declaredInputDigest = "f".repeat(64),
         )
         return LegacyClosureFixture(red, green, complete, report)
     }
@@ -67,6 +68,7 @@ internal class Kvp038LegacyDependencyAdmissionTest {
         gateId: String,
         dependencies: Map<String, String> = emptyMap(),
         artifacts: Map<String, String> = emptyMap(),
+        declaredInputDigest: String = "d".repeat(64),
     ): ProofReceiptDocument {
         val expectation = when (val parsed = ProofReceiptExpectation.parse(
             receiptId = receiptId,
@@ -77,7 +79,7 @@ internal class Kvp038LegacyDependencyAdmissionTest {
             taskId = "KVP-008",
             gateId = gateId,
             dependencyReceiptDigests = dependencies,
-            declaredInputDigest = "d".repeat(64),
+            declaredInputDigest = declaredInputDigest,
             commandDigest = "e".repeat(64),
             observedProofValues = mapOf("outcome" to "COMPLETE"),
             artifactDigests = artifacts,
