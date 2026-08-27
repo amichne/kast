@@ -109,7 +109,7 @@ internal fun admitKvp025ImplementationScope(
         val predecessorAndTaskWrites = allowedWrites + companionWrites
         if (observedPaths.any { path ->
                 successorWrites.any { scope -> path.inScope(scope) } &&
-                    predecessorAndTaskWrites.none { scope -> path.inScope(scope) }
+                    allowedWrites.none { scope -> path.inScope(scope) }
             }
         ) successorStarted = true
         if (successorStarted) continue
