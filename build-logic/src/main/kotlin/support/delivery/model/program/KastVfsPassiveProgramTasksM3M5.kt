@@ -331,6 +331,6 @@ internal fun defaultIsolatedRuntimeRetirementDeliveryBatch() = DeliveryBatch(
     id = DeliveryBatchId("default-isolated-runtime-retirement"),
     readyFrontier = DeliveryGeneration("d5ca8a4fcd51a221f8d1a8b5331cacf9210dd0e5"),
     tasks = listOf(
-        DeliveryBatchTask(TaskId("KVP-036"), listOf("install.sh")),
+        DeliveryBatchTask(TaskId("KVP-036"), listOf("install.sh", "packaging")),
     ),
 )

@@ -43,6 +43,10 @@ class KastVfsPassiveReusedIndexProgramTest {
         val owners = hostedProductionCompositionBatch().tasks
         val ownedScopes = owners.flatMap { it.ownedWrites }
         assertEquals(ownedScopes.size, ownedScopes.toSet().size)
+        assertEquals(
+            listOf("install.sh", "packaging"),
+            defaultIsolatedRuntimeRetirementBatch().tasks.single().ownedWrites,
+        )
     }
 
     @Test fun `final plugin layout follows hosted runtime and compatibility remains actionable`() {
