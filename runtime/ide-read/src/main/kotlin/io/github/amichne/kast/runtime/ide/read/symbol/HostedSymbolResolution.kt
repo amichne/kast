@@ -89,7 +89,8 @@ internal class HostedSymbolResolution private constructor(
      * Establishes current exact-root admission, a batch-owned candidate capability, one active
      * exact resolution, same-source epoch equality, and verified exact-operation output. Selector
      * admission and semantic failures remain closed [SymbolResolveRejection]. Raw selector text is
-     * extractable only inside [selectors].
+     * extractable only inside [selectors]. Cancellation and unexpected native defects terminalize
+     * their exact execution authority before propagating to the platform boundary.
      */
     override suspend fun execute(
         request: SymbolResolveRequest,
