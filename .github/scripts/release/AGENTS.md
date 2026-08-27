@@ -6,7 +6,9 @@ and the contract that keeps those stages releasable from main.
 - `verify-release-contract.py` must run in pull-request CI and at release start.
 - The public installer recovery contract must run in pull-request CI and at
   release start, before asset construction.
-- Build and installed-product acceptance must finish before immutable publication.
+- The default release contains exactly the matched control archive and standalone IDE plugin plus
+  checksum sidecars; it contains no semantic-runtime asset or platform payload.
+- The hosted-release misuse and legal gates must finish before immutable publication.
 - Published-runtime verification may own download and checksum checks, but it
   must acquire through `install.sh`, disable the manifest network URL after
   installation, and delegate semantic behavior to

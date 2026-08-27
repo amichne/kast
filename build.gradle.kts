@@ -142,6 +142,8 @@ val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTa
     maximumInstalledBytes.set(128L * 1024L * 1024L)
 }
 
+apply(from = "distribution/release/ide-hosted-release.gradle.kts")
+
 val verifyKastSemanticRuntimeDistLayout by tasks.registering(
     VerifySemanticRuntimeDistributionTask::class,
 ) {

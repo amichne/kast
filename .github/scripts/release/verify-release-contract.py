@@ -116,13 +116,22 @@ def main() -> None:
     build_assets = read(root / ".github/scripts/release/build-assets.sh", failures)
     require_tokens(
         build_assets,
-        ("runtimeDeliveryMvpAcceptance", "verify-assets.py"),
+        (
+            "verifyIdeHostedReleaseNegative",
+            "assembleIdeHostedRelease",
+            "verifyIdeHostedRelease",
+            "distribution/release/verify_assets.py",
+        ),
         "release asset build",
         failures,
     )
     require_order(
         build_assets,
-        ("runtimeDeliveryMvpAcceptance", "verify-assets.py"),
+        (
+            "  verifyIdeHostedReleaseNegative \\",
+            "  assembleIdeHostedRelease \\",
+            "  verifyIdeHostedRelease\n",
+        ),
         "release asset build",
         failures,
     )
