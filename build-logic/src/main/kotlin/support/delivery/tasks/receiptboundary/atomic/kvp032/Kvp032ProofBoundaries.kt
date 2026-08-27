@@ -20,6 +20,11 @@ internal data class Kvp032ImplementationCommit(
     val changedPaths: List<String>,
 )
 
+internal data class Kvp032ObservedCommit(
+    val revision: DeliveryGeneration,
+    val changedPaths: List<String>,
+)
+
 internal class AdmittedKvp032ImplementationScope internal constructor(
     val commits: List<Kvp032ImplementationCommit>,
 )
@@ -52,18 +57,26 @@ internal sealed interface Kvp032WriteOwnershipAdmission {
 /**
  * Proof transition: `(TaskPacket, ValidatedProgram) -> Kvp032WriteOwnershipAdmission`.
  *
- * Establishes KVP-032's declared write closure and the canonical delivery batch's non-overlapping
- * physical ownership anchors. An empty ownership set is a finite rejection. Raw path strings may
- * be extracted only by the Git write-scope boundary.
+ * Establishes KVP-032's declared write closure, canonical delivery-batch ownership, and later graph
+ * task scopes that are strictly nested beneath a KVP-032 physical root. Equal or broader later
+ * scopes cannot recover ownership. An empty ownership set is a finite rejection. Raw path strings
+ * may be extracted only by the Git write-scope boundary.
  */
 internal fun admitKvp032WriteOwnership(
     packet: TaskPacket,
     program: ValidatedProgram,
 ): Kvp032WriteOwnershipAdmission {
     val ownedWrites = hostedProductionCompositionOwnedWrites(packet.task.id)
-    val successorWrites = program.program.deliveryBatches
+    val laterBatchWrites = program.program.deliveryBatches
         .filterNot { it.id == hostedProductionCompositionBatch().id }
         .flatMap { batch -> batch.tasks.flatMap { it.ownedWrites } }
+    val taskWave = program.waves.getValue(packet.task.id)
+    val nestedLaterTaskWrites = program.program.tasks
+        .filter { task -> program.waves.getValue(task.id) > taskWave }
+        .flatMap { it.allowedWrites }
+        .filter { successor ->
+            ownedWrites.any { owner -> successor != owner && successor.startsWith("$owner/") }
+        }
     return if (ownedWrites.isEmpty()) {
         Kvp032WriteOwnershipAdmission.Rejected(Kvp032BoundaryFailure.EMPTY_OWNED_WRITE_SCOPE)
     } else {
@@ -72,7 +85,7 @@ internal fun admitKvp032WriteOwnership(
                 packet.task.allowedWrites,
                 ownedWrites,
                 hostedProductionCompositionCompanionWrites(packet.task.id),
-                successorWrites,
+                (laterBatchWrites + nestedLaterTaskWrites).distinct(),
             ),
         )
     }
@@ -85,7 +98,8 @@ internal fun admitKvp032WriteOwnership(
  * Establishes a nonempty ordered KVP-032 commit delta after observing every checkpoint without a
  * pathspec. Only checkpoints containing a KVP-032 physical ownership anchor enter the task delta.
  * A mixed checkpoint is ignored only when it also contains a physical anchor owned by a later
- * canonical delivery batch; otherwise every out-of-scope write is rejected. Every admitted
+ * canonical batch or a strictly nested later graph task; otherwise every out-of-scope write is
+ * rejected. Every admitted
  * KVP-032 checkpoint remains wholly within declared or companion writes. Git and scope failures
  * remain finite data.
  */
@@ -108,7 +122,7 @@ internal fun admitKvp032ImplementationScope(
     if (revisions.exitCode != 0) {
         return scopeRejected(Kvp032BoundaryFailure.GIT_COMMAND_REJECTED)
     }
-    val commits = mutableListOf<Kvp032ImplementationCommit>()
+    val observedCommits = mutableListOf<Kvp032ObservedCommit>()
     revisions.text.lineSequence().filter(String::isNotBlank).forEach { revision ->
         val changed = git(
             exec,
@@ -118,14 +132,39 @@ internal fun admitKvp032ImplementationScope(
         if (changed.exitCode != 0) {
             return scopeRejected(Kvp032BoundaryFailure.GIT_COMMAND_REJECTED)
         }
-        val observed = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        observedCommits += Kvp032ObservedCommit(
+            DeliveryGeneration(revision),
+            changed.text.lineSequence().filter(String::isNotBlank).sorted().toList(),
+        )
+    }
+    return admitKvp032ObservedImplementationScope(observedCommits, ownership)
+}
+
+/**
+ * Proof transition: `(List<Kvp032ObservedCommit>, AdmittedKvp032WriteOwnership) ->
+ * Kvp032ImplementationScopeAdmission`.
+ *
+ * Establishes that every retained checkpoint has a KVP-032 physical ownership anchor and no path
+ * outside its declared or companion scope. A checkpoint wholly anchored by a strictly nested
+ * later-task scope is excluded, and a mixed checkpoint may be excluded only when such a successor
+ * anchor is present. Empty KVP-032 scope and unowned writes remain finite [Kvp032BoundaryFailure]
+ * data. Raw Git path extraction is permitted only by [admitKvp032ImplementationScope].
+ */
+internal fun admitKvp032ObservedImplementationScope(
+    observedCommits: List<Kvp032ObservedCommit>,
+    ownership: AdmittedKvp032WriteOwnership,
+): Kvp032ImplementationScopeAdmission {
+    val commits = mutableListOf<Kvp032ImplementationCommit>()
+    observedCommits.forEach { commit ->
+        val observed = commit.changedPaths.sorted()
         val ownedPaths = observed.filter { path ->
             ownership.ownedWrites.any { scope -> path.inKvp032Scope(scope) }
         }
         if (ownedPaths.isEmpty()) return@forEach
-        val taskPaths = observed.filter { path ->
-            ownership.ownedWrites.any { scope -> path.inKvp032Scope(scope) }
+        val successorOwnedPaths = ownedPaths.filter { path ->
+            ownership.successorWrites.any { scope -> path.inKvp032Scope(scope) }
         }
+        if (successorOwnedPaths.size == ownedPaths.size) return@forEach
         val outside = observed.filter { path ->
             (ownership.declaredWrites + ownership.companionWrites).none { scope ->
                 path.inKvp032Scope(scope)
@@ -138,7 +177,7 @@ internal fun admitKvp032ImplementationScope(
             if (successorCheckpoint) return@forEach
             return scopeRejected(Kvp032BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
         }
-        commits += Kvp032ImplementationCommit(DeliveryGeneration(revision), taskPaths)
+        commits += Kvp032ImplementationCommit(commit.revision, ownedPaths)
     }
     return if (commits.isEmpty()) {
         scopeRejected(Kvp032BoundaryFailure.NO_IMPLEMENTATION_COMMIT)
