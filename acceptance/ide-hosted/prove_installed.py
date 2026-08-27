@@ -17,6 +17,8 @@ import zipfile
 OPERATIONS = ["workspace.inspect", "symbol.discover", "symbol.resolve", "symbol.describe"]
 PROGRAM_SOURCE = "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt"
 PROGRAM_SYMBOL = "KastVfsPassiveReusedIndexProgram"
+DISCOVERY_READINESS_ATTEMPTS = 60
+DISCOVERY_READINESS_DELAY_SECONDS = 1
 
 
 class Rejected(Exception):
@@ -90,7 +92,7 @@ def installed_kast(head):
     return executable
 
 
-def run_operation(executable, root, arguments, operation):
+def observe_operation(executable, root, arguments, operation):
     result = subprocess.run(
         [executable, *arguments], cwd=root, text=True, capture_output=True, check=False,
     )
@@ -103,16 +105,53 @@ def run_operation(executable, root, arguments, operation):
         document = json.loads(result.stdout)
     except json.JSONDecodeError as failure:
         raise Rejected("INSTALLED_OPERATION_MALFORMED", operation=operation) from failure
+    return document, result.stdout
+
+
+def admit_complete_operation(document, raw, operation):
     if document.get("operation") != operation or document.get("status") != "complete":
         raise Rejected("INSTALLED_OPERATION_INCOMPLETE", operation=operation, response=document)
-    return document, {"operation": operation, "status": "complete", "responseDigest": sha(result.stdout)}
+    return document, {"operation": operation, "status": "complete", "responseDigest": sha(raw)}
+
+
+def run_operation(executable, root, arguments, operation):
+    document, raw = observe_operation(executable, root, arguments, operation)
+    return admit_complete_operation(document, raw, operation)
+
+
+def run_operation_until_ready(
+        executable, root, arguments, operation,
+        maximum_attempts=DISCOVERY_READINESS_ATTEMPTS):
+    if maximum_attempts <= 0:
+        raise Rejected("INSTALLED_READINESS_BOUND_REJECTED", operation=operation)
+    for attempt in range(1, maximum_attempts + 1):
+        document, raw = observe_operation(executable, root, arguments, operation)
+        if document.get("operation") == operation and document.get("status") == "complete":
+            return admit_complete_operation(document, raw, operation)
+        transient = (
+            operation == "symbol.discover"
+            and document.get("operation") == operation
+            and document.get("status") == "rejected"
+            and document.get("reason") == "workspace-not-ready"
+        )
+        if not transient:
+            raise Rejected(
+                "INSTALLED_OPERATION_INCOMPLETE", operation=operation, response=document,
+            )
+        if attempt < maximum_attempts:
+            time.sleep(DISCOVERY_READINESS_DELAY_SECONDS)
+    raise Rejected(
+        "INSTALLED_DISCOVERY_READINESS_EXHAUSTED",
+        operation=operation,
+        maximumAttempts=maximum_attempts,
+    )
 
 
 def semantic_journey(executable, root):
     workspace, first = run_operation(executable, root, ["workspace", "inspect"], OPERATIONS[0])
     if workspace.get("canonicalRoot") != root:
         raise Rejected("WORKSPACE_ROOT_MISMATCH", observed=workspace.get("canonicalRoot"))
-    discovery, second = run_operation(
+    discovery, second = run_operation_until_ready(
         executable, root,
         ["symbol", "discover", "--mode", "name", "--query",
          PROGRAM_SYMBOL, "--kind", "symbol", "--match", "exact-name",
