@@ -40,9 +40,9 @@ internal sealed interface Kvp028RelevantInputAdmission {
  * `Kvp028ImplementationScopeAdmission`.
  *
  * Establishes a nonempty, ordered KVP-028 commit delta after observing every checkpoint without a
- * pathspec. Mixed delivery checkpoints must lie in the dependency-closed companion/task write
- * union, while the preserved delta contains only KVP-028-owned paths. Git or scope failure remains
- * finite rejection. Raw Git output exists only here.
+ * pathspec. Earlier completed-task checkpoints are skipped until the first KVP-028-exclusive path;
+ * subsequent mixed checkpoints must lie in the dependency-closed companion/task write union. Git
+ * or scope failure remains finite rejection. Raw Git output exists only here.
  */
 internal fun admitKvp028ImplementationScope(
     exec: ExecOperations,
@@ -65,6 +65,7 @@ internal fun admitKvp028ImplementationScope(
         return scopeRejected(Kvp028BoundaryFailure.GIT_COMMAND_REJECTED)
     }
     val commits = mutableListOf<Kvp028ImplementationCommit>()
+    var taskStarted = false
     revisions.text.lineSequence().filter(String::isNotBlank).forEach { revision ->
         val changed = git(
             exec,
@@ -75,6 +76,13 @@ internal fun admitKvp028ImplementationScope(
             return scopeRejected(Kvp028BoundaryFailure.GIT_COMMAND_REJECTED)
         }
         val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        if (!taskStarted) {
+            taskStarted = observedPaths.any { path ->
+                allowedWrites.any { scope -> path.inScope(scope) } &&
+                    companionWrites.none { scope -> path.inScope(scope) }
+            }
+            if (!taskStarted) return@forEach
+        }
         val taskPaths = observedPaths.filter { path ->
             allowedWrites.any { scope -> path.inScope(scope) }
         }
