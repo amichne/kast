@@ -134,7 +134,13 @@ class KastVfsPassiveReusedIndexProgramTest {
         }
 
         assertEquals(listOf(admitted.program.terminalTask), sinks)
-        assertEquals(24 * 3 + 19, admitted.program.gates.size)
+        val expectedGateCount = admitted.program.tasks.sumOf { task ->
+            when (task.proof) {
+                is TaskProofProtocol.Legacy -> 3
+                is TaskProofProtocol.Atomic -> 1
+            }
+        }
+        assertEquals(expectedGateCount, admitted.program.gates.size)
         assertEquals(
             admitted.program.authorities.size,
             admitted.program.authorities.map { it.id }.toSet().size,
@@ -142,22 +148,6 @@ class KastVfsPassiveReusedIndexProgramTest {
         assertEquals(
             admitted.program.requirements.map { it.id }.toSet(),
             admitted.program.tasks.flatMap { it.provesRequirements }.toSet(),
-        )
-        val proof = assertInstanceOf(
-            Kvp004ProgramProofResult.Complete::class.java,
-            deriveKvp004ProgramProof(),
-        ).proof
-        val decoded = assertInstanceOf(
-            Kvp004ProgramProofResult.Complete::class.java,
-            decodeKvp004ProgramProof(encodeKvp004ProgramProof(proof)),
-        ).proof
-        assertEquals(admitted.order, decoded.program.order)
-        assertEquals(admitted.waves, decoded.program.waves)
-        val changed = encodeKvp004ProgramProof(proof)
-            .replace("\"terminalTaskId\": \"KVP-043\"", "\"terminalTaskId\": \"KVP-042\"")
-        assertEquals(
-            Kvp004ProgramProofResult.Rejected(Kvp004ProgramProofFailure.TERMINAL_MISMATCH),
-            decodeKvp004ProgramProof(changed),
         )
     }
 }

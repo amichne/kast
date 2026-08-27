@@ -50,6 +50,8 @@ This package owns the typed delivery program and the Gradle task boundaries that
   endpoint lifecycle, and KVP-031 four-operation read path before KVP-032 scans the complete hosted
   graph. KVP-012 consumes KVP-010 identity directly so compatibility work does not depend on the
   not-yet-built read-only payload.
+- KVP-033 reruns exact production-behavior selectors in two non-cacheable test processes after
+  KVP-032 and binds their physical JUnit evidence into one zero-effect dynamic receipt.
 
 Gate and completion receipt paths are part of the typed program, but their live evidence belongs
 under `build/reports/delivery/receipts`. Never place receipt evidence in tracked projection paths:

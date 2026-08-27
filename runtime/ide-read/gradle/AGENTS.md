@@ -10,3 +10,5 @@ build script or typed build logic.
 execution to the existing native IntelliJ discovery test suite.
 `kvp030-symbol-resolve.gradle.kts` owns only the KVP-030 candidate-capability misuse and exact
 resolution selectors and binds them to the existing native IntelliJ exact-selector suite.
+`kvp033-vfs-safety.gradle.kts` owns only the non-cacheable single-flight, cancellable-read, and
+epoch-revalidation aggregate and emits JUnit evidence without becoming a receipt authority.

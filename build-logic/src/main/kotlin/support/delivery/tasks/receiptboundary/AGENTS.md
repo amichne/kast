@@ -15,6 +15,8 @@ bounded legacy-prefix observation, and atomic issuance for delivery receipts.
   evidence, successful CLI test observation, KVP-026 re-admission, and content-scoped reuse.
 - `atomic/kvp032/` owns the composed static VFS-passive proof over the compiled module graph,
   forbidden JVM effects, IDE-read firewall, and physical transitive plugin classpath.
+- `atomic/kvp033/` owns non-cacheable contention, cancellation, movement, VFS-storm, EDT-surface,
+  dependency-closure, and content-receipt proof.
 
 Raw JSON, filesystem paths, time, and current Git head may appear only at these boundaries. Pass admitted receipt capabilities inward; never pass decoded primitives or silently reinterpret a v1 receipt as v2.
 

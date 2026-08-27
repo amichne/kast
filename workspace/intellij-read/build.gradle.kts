@@ -339,6 +339,23 @@ val characterizeEpoch = tasks.register<Test>("characterizeEpoch") {
     include("**/EpochSignalCharacterizationTest.class")
 }
 
+val kvp033WorkspaceEventStorm = tasks.register<Test>("kvp033WorkspaceEventStorm") {
+    group = "verification"
+    description = "Runs the non-cacheable KVP-033 VFS event-storm and EDT-safety gate."
+    testClassesDirs = defaultTest.get().testClassesDirs
+    classpath = defaultTest.get().classpath
+    filter.includeTestsMatching("*EpochSignalCharacterizationTest")
+    filter.includeTestsMatching("*IdeProjectReadEpochTest")
+    filter.setFailOnNoMatchingTests(true)
+    reports.junitXml.required.set(true)
+    reports.junitXml.outputLocation.set(layout.buildDirectory.dir(
+        "test-results/kvp033WorkspaceEventStorm",
+    ))
+    reports.html.required.set(false)
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 tasks.named("check") {
     dependsOn(generateExistingProjectAdmissionReport)
     dependsOn(generateEpochSignalLedgerReport)

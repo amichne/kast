@@ -369,6 +369,7 @@ apply(from = "gradle/kvp028-workspace-inspect.gradle.kts")
 apply(from = "gradle/kvp029-symbol-discover.gradle.kts")
 apply(from = "gradle/kvp030-symbol-resolve.gradle.kts")
 apply(from = "gradle/kvp031-symbol-describe.gradle.kts")
+apply(from = "gradle/kvp033-vfs-safety.gradle.kts")
 tasks.named("check") {
     dependsOn(
         "ideHostedWorkspaceInspectNegativeProof",

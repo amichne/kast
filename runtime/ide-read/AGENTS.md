@@ -43,9 +43,13 @@ remains host-neutral and pure.
 - KVP-031's description port admits only parsed exact-selector authority, forbids rediscovery,
   verifies the same selector in detached canonical output, and closes the exact four-port runtime
   only after the complete journey is constructible at one head.
+- `kvp033RuntimeDynamicSafety` is the non-cacheable aggregate over the exact single-flight,
+  cancellable-read, and epoch-revalidation selectors. It emits only JUnit evidence for the root
+  KVP-033 report owner and must never become a second receipt authority.
 
 ## Verification ladder
 
 1. Run `./gradlew :runtime:ide-read:test --tests '*SingleFlightNegativeTest'`.
 2. Run `./gradlew :runtime:ide-read:test --tests '*SingleFlightTest'`.
 3. Run `./gradlew :runtime:ide-read:check verifyKastModuleGraph verifyForbiddenEffects`.
+4. Run `./gradlew :runtime:ide-read:kvp033RuntimeDynamicSafety` for the KVP-033 dynamic gate.

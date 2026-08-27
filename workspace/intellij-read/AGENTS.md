@@ -54,6 +54,9 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
   closed admission case and retained capability field, and keeps all five forbidden-work counts
   at zero. The KVP-019 receipt dependency generates and mutation-checks those bytes before both
   focused selectors consume them, without adding that producer to the shared predecessor test.
+- `kvp033WorkspaceEventStorm` is the non-cacheable exact selector for bounded root-filtered VFS
+  batches, lifecycle/dumb-mode movement, listener non-scheduling, and EDT-surface exclusion. It
+  emits JUnit evidence only; the root KVP-033 task remains the physical report owner.
 
 ## Focused proof
 
@@ -71,3 +74,4 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
 12. Run `./gradlew :workspace:intellij-read:verifyNoHostedRepositoryWalk`.
 13. Run `./gradlew :workspace:intellij-read:verifyVfsPassiveReportNegative`.
 14. Run `./gradlew :workspace:intellij-read:test --tests '*VfsPassiveAdmissionNegativeTest' --tests '*VfsPassiveAdmissionTest'`.
+15. Run `./gradlew :workspace:intellij-read:kvp033WorkspaceEventStorm` for the KVP-033 storm gate.
