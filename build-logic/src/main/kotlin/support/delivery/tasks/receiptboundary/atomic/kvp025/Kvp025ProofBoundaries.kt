@@ -27,13 +27,39 @@ internal sealed interface Kvp025RelevantInputAdmission {
     data class Rejected(val failure: Kvp025BoundaryFailure) : Kvp025RelevantInputAdmission
 }
 
+internal sealed interface Kvp025ChangedPathsAdmission {
+    data class Complete(val paths: List<String>) : Kvp025ChangedPathsAdmission
+    data object Rejected : Kvp025ChangedPathsAdmission
+}
+
+/**
+ * Proof transition: raw checkpoint paths plus graph-declared writes ->
+ * `Kvp025ChangedPathsAdmission`.
+ *
+ * Establishes that the nonempty, sorted checkpoint delta is wholly owned by KVP-025. Empty or
+ * out-of-scope deltas are the closed [Kvp025ChangedPathsAdmission.Rejected] state. Raw path text
+ * remains at the Git boundary that calls this transition.
+ */
+internal fun admitKvp025ChangedPaths(
+    paths: List<String>,
+    allowedWrites: List<String>,
+): Kvp025ChangedPathsAdmission {
+    val sorted = paths.filter(String::isNotBlank).sorted()
+    return if (sorted.isEmpty() || sorted.any { path ->
+        allowedWrites.none { path.inScope(it) }
+    }) {
+        Kvp025ChangedPathsAdmission.Rejected
+    } else {
+        Kvp025ChangedPathsAdmission.Complete(sorted)
+    }
+}
+
 /**
  * Proof transition: admitted predecessor/current heads plus graph-declared write roots ->
  * `Kvp025ImplementationScopeAdmission`.
  *
- * Establishes the task-scoped delta affecting KVP-025 after its predecessor. Commits remain batch
- * checkpoints: only paths inside this task's declared write roots are selected and bound, while
- * nonconflicting paths owned by other tasks are outside this transition. Git/process failures and
+ * Establishes that every path in every checkpoint after the predecessor is owned by KVP-025's
+ * graph-declared write scope, then preserves the complete admitted delta. Git/process failures and
  * malformed scoped deltas remain finite [Kvp025BoundaryFailure]. Raw Git output exists only here.
  */
 internal fun admitKvp025ImplementationScope(
@@ -58,8 +84,7 @@ internal fun admitKvp025ImplementationScope(
             "rev-list",
             "--reverse",
             "${predecessorHead.value}..${currentHead.value}",
-            "--",
-        ) + allowedWrites,
+        ),
     )
     if (revisions.exitCode != 0) {
         return rejectedScope(Kvp025BoundaryFailure.GIT_COMMAND_REJECTED)
@@ -70,15 +95,20 @@ internal fun admitKvp025ImplementationScope(
             exec,
             repositoryRoot,
             listOf(
-                "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", revision, "--",
-            ) + allowedWrites,
+                "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", revision,
+            ),
         )
         if (changed.exitCode != 0) {
             return rejectedScope(Kvp025BoundaryFailure.GIT_COMMAND_REJECTED)
         }
-        val paths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
-        if (paths.isEmpty() || paths.any { path -> allowedWrites.none { path.inScope(it) } }) {
-            return rejectedScope(Kvp025BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
+        val paths = when (val admitted = admitKvp025ChangedPaths(
+            changed.text.lineSequence().toList(),
+            allowedWrites,
+        )) {
+            is Kvp025ChangedPathsAdmission.Complete -> admitted.paths
+            Kvp025ChangedPathsAdmission.Rejected -> return rejectedScope(
+                Kvp025BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE,
+            )
         }
         commits += Kvp025ImplementationCommit(DeliveryGeneration(revision), paths)
     }

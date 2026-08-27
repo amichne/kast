@@ -6,6 +6,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
@@ -18,9 +19,10 @@ private data class Kvp025TestEvidenceDocument(
     val taskId: String,
     val selectedSelectors: List<String>,
     val executedTestCount: Int,
-    val observedFailureCount: Int,
+    val suiteFailureCount: Int,
     val misuse: Kvp025TestCaseDocument,
     val legalPath: Kvp025TestCaseDocument,
+    val forbiddenWork: List<Kvp025ForbiddenWorkEvidence>,
 )
 
 @Serializable
@@ -28,6 +30,13 @@ private data class Kvp025TestCaseDocument(
     val caseId: String,
     val name: String,
     val semanticOutcome: Kvp025SemanticOutcome,
+    val testResult: Kvp025ObservedTestResult,
+)
+
+@Serializable
+internal data class Kvp025ForbiddenWorkEvidence(
+    val description: String,
+    val enforcementCaseName: String,
     val testResult: Kvp025ObservedTestResult,
 )
 
@@ -49,14 +58,16 @@ internal class AdmittedKvp025TestEvidence internal constructor(
     val misuseName: String,
     val legalPathName: String,
     val executedTestCount: Int,
-    val observedFailureCount: Int,
+    val suiteFailureCount: Int,
+    val forbiddenWork: List<Kvp025ForbiddenWorkEvidence>,
 )
 
 internal data class Kvp025ProofCaseExpectation(
     val misuseName: String,
     val legalPathName: String,
     val executedTestCount: Int,
-    val observedFailureCount: Int,
+    val suiteFailureCount: Int,
+    val forbiddenWork: List<Kvp025ForbiddenWorkEvidence>,
 )
 
 internal sealed interface Kvp025ProofCaseExpectationAdmission {
@@ -78,6 +89,7 @@ private data class Kvp025TestConfiguration(
     val legalPath: ProofCommand,
     val misuseSelector: String,
     val legalPathSelector: String,
+    val forbiddenWork: List<Kvp025ForbiddenWorkEvidence>,
 )
 
 private sealed interface Kvp025TestConfigurationAdmission {
@@ -107,8 +119,9 @@ abstract class Kvp025AtomicProofTestTask : Test() {
     @get:Input abstract val legalPathCaseId: Property<String>
     @get:Input abstract val legalPathCaseName: Property<String>
     @get:Input abstract val legalPathSelector: Property<String>
+    @get:Input abstract val forbiddenWorkDescriptions: ListProperty<String>
+    @get:Input abstract val forbiddenWorkCaseNames: ListProperty<String>
     @get:OutputFile abstract val evidenceFile: RegularFileProperty
-
     init {
         doLast { writeCompleteEvidence() }
     }
@@ -127,6 +140,8 @@ abstract class Kvp025AtomicProofTestTask : Test() {
         legalPathCaseId.set(configuration.legalPath.gateId)
         legalPathCaseName.set(configuration.legalPath.namedCase)
         legalPathSelector.set(configuration.legalPathSelector)
+        forbiddenWorkDescriptions.set(configuration.forbiddenWork.map { it.description })
+        forbiddenWorkCaseNames.set(configuration.forbiddenWork.map { it.enforcementCaseName })
         filter.includeTestsMatching(configuration.misuseSelector)
         filter.includeTestsMatching(configuration.legalPathSelector)
         filter.setFailOnNoMatchingTests(true)
@@ -134,7 +149,19 @@ abstract class Kvp025AtomicProofTestTask : Test() {
     }
 
     private fun writeCompleteEvidence() {
-        val expected = setOf(misuseCaseName.get(), legalPathCaseName.get())
+        val forbiddenEvidence = forbiddenWorkDescriptions.get()
+            .zip(forbiddenWorkCaseNames.get()) { description, caseName ->
+                Kvp025ForbiddenWorkEvidence(
+                    description,
+                    caseName,
+                    Kvp025ObservedTestResult.SUCCESS,
+                )
+            }
+        val expected = buildSet {
+            add(misuseCaseName.get())
+            add(legalPathCaseName.get())
+            addAll(forbiddenEvidence.map { it.enforcementCaseName })
+        }
         val reportBytes = Files.list(reports.junitXml.outputLocation.get().asFile.toPath()).use {
             paths -> paths.filter { it.fileName.toString().endsWith(".xml") }
                 .map { path ->
@@ -155,13 +182,13 @@ abstract class Kvp025AtomicProofTestTask : Test() {
         val executedTestCount = reportBytes.sumOf { report ->
             Regex("<testcase\\b").findAll(report).count()
         }
-        val observedFailureCount = reportBytes.sumOf { report ->
+        val suiteFailureCount = reportBytes.sumOf { report ->
             Regex("<(failure|error|skipped)\\b").findAll(report).count()
         }
-        if (executedTestCount != KVP025_EXPECTED_TEST_COUNT || observedFailureCount != 0) {
+        if (executedTestCount != KVP025_EXPECTED_TEST_COUNT || suiteFailureCount != 0) {
             throw GradleException(
                 "KVP-025 suite evidence rejected: tests=$executedTestCount, " +
-                    "failures=$observedFailureCount",
+                    "failures=$suiteFailureCount",
             )
         }
         val document = Kvp025TestEvidenceDocument(
@@ -169,7 +196,7 @@ abstract class Kvp025AtomicProofTestTask : Test() {
             taskId = KVP025_TASK_ID,
             selectedSelectors = listOf(misuseSelector.get(), legalPathSelector.get()).sorted(),
             executedTestCount = executedTestCount,
-            observedFailureCount = observedFailureCount,
+            suiteFailureCount = suiteFailureCount,
             misuse = Kvp025TestCaseDocument(
                 misuseCaseId.get(),
                 misuseCaseName.get(),
@@ -182,6 +209,7 @@ abstract class Kvp025AtomicProofTestTask : Test() {
                 Kvp025SemanticOutcome.COMPLETE,
                 Kvp025ObservedTestResult.SUCCESS,
             ),
+            forbiddenWork = forbiddenEvidence,
         )
         writeTextAtomically(evidenceFile.get().asFile.toPath(), encode(document))
     }
@@ -217,11 +245,13 @@ internal fun admitKvp025TestEvidence(
             Kvp025TestEvidenceFailure.SELECTOR_MISMATCH
         document.misuse != expected.misuse || document.legalPath != expected.legalPath ->
             Kvp025TestEvidenceFailure.CASE_MISMATCH
+        document.forbiddenWork != expected.forbiddenWork ->
+            Kvp025TestEvidenceFailure.CASE_MISMATCH
         document.misuse.testResult != Kvp025ObservedTestResult.SUCCESS ||
             document.legalPath.testResult != Kvp025ObservedTestResult.SUCCESS ->
             Kvp025TestEvidenceFailure.CASE_NOT_SUCCESSFUL
         document.executedTestCount != KVP025_EXPECTED_TEST_COUNT ||
-            document.observedFailureCount != 0 -> Kvp025TestEvidenceFailure.SUITE_MISMATCH
+            document.suiteFailureCount != 0 -> Kvp025TestEvidenceFailure.SUITE_MISMATCH
         raw != encode(expected) -> Kvp025TestEvidenceFailure.NON_CANONICAL_DOCUMENT
         else -> null
     }
@@ -231,7 +261,8 @@ internal fun admitKvp025TestEvidence(
                 document.misuse.name,
                 document.legalPath.name,
                 document.executedTestCount,
-                document.observedFailureCount,
+                document.suiteFailureCount,
+                document.forbiddenWork,
             ),
         )
     } else {
@@ -255,7 +286,8 @@ internal fun expectedKvp025ProofCases(
                 expected.misuse.name,
                 expected.legalPath.name,
                 expected.executedTestCount,
-                expected.observedFailureCount,
+                expected.suiteFailureCount,
+                expected.forbiddenWork,
             ),
         )
     }
@@ -268,7 +300,8 @@ internal fun AdmittedKvp025TestEvidence.asCaseExpectation() = Kvp025ProofCaseExp
     misuseName,
     legalPathName,
     executedTestCount,
-    observedFailureCount,
+    suiteFailureCount,
+    forbiddenWork,
 )
 
 private fun TaskPacket.kvp025TestConfiguration(): Kvp025TestConfigurationAdmission {
@@ -285,11 +318,22 @@ private fun TaskPacket.kvp025TestConfiguration(): Kvp025TestConfigurationAdmissi
         is Kvp025SelectorRefinement.Complete -> refined.selector
         Kvp025SelectorRefinement.Rejected -> return rejectedConfiguration()
     }
+    val forbiddenWork = task.forbiddenWork.map { description ->
+        Kvp025ForbiddenWorkEvidence(
+            description,
+            KVP025_FORBIDDEN_WORK_CASES[description] ?: return rejectedConfiguration(),
+            Kvp025ObservedTestResult.SUCCESS,
+        )
+    }
+    if (task.forbiddenWork.toSet() != KVP025_FORBIDDEN_WORK_CASES.keys) {
+        return rejectedConfiguration()
+    }
     return Kvp025TestConfigurationAdmission.Complete(Kvp025TestConfiguration(
         proofCommand.misuse,
         proofCommand.legalPath,
         misuseSelector,
         legalPathSelector,
+        forbiddenWork,
     ))
 }
 
@@ -309,23 +353,25 @@ private fun rejectedConfiguration() = Kvp025TestConfigurationAdmission.Rejected(
 
 private fun expectedDocument(configuration: Kvp025TestConfiguration) =
     Kvp025TestEvidenceDocument(
-        1,
-        KVP025_TASK_ID,
-        listOf(configuration.misuseSelector, configuration.legalPathSelector).sorted(),
-        KVP025_EXPECTED_TEST_COUNT,
-        0,
-        Kvp025TestCaseDocument(
+        schemaVersion = 1,
+        taskId = KVP025_TASK_ID,
+        selectedSelectors =
+            listOf(configuration.misuseSelector, configuration.legalPathSelector).sorted(),
+        executedTestCount = KVP025_EXPECTED_TEST_COUNT,
+        suiteFailureCount = 0,
+        misuse = Kvp025TestCaseDocument(
             configuration.misuse.gateId,
             configuration.misuse.namedCase,
             Kvp025SemanticOutcome.REJECTED,
             Kvp025ObservedTestResult.SUCCESS,
         ),
-        Kvp025TestCaseDocument(
+        legalPath = Kvp025TestCaseDocument(
             configuration.legalPath.gateId,
             configuration.legalPath.namedCase,
             Kvp025SemanticOutcome.COMPLETE,
             Kvp025ObservedTestResult.SUCCESS,
         ),
+        forbiddenWork = configuration.forbiddenWork,
     )
 
 private fun encode(document: Kvp025TestEvidenceDocument) =
@@ -341,3 +387,13 @@ private fun String.xmlAttributeValue() = replace("&", "&amp;")
 
 private const val KVP025_TASK_ID = "KVP-025"
 private const val KVP025_EXPECTED_TEST_COUNT = 9
+
+private val KVP025_FORBIDDEN_WORK_CASES = linkedMapOf(
+    "Global application lifetime" to "project service disposal retires its READY endpoint",
+    "Stale descriptor retention" to
+        "disposal racing publication retires the late endpoint instead of leaking it",
+    "Deleting unrelated paths" to
+        "physically replaced descriptor is preserved and retirement rejects its identity",
+    "Non-idempotent cleanup" to
+        "READY retires owned artifacts exactly once and preserves a later generation",
+)

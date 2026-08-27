@@ -41,8 +41,8 @@ private data class Kvp025ImplementationCommitDocument(
 @Serializable
 private data class Kvp025ForbiddenWorkDocument(
     val description: String,
-    val enforcementAuthority: String,
-    val observedFailureCount: Int,
+    val enforcementCaseName: String,
+    val observedTestResult: Kvp025ObservedTestResult,
 )
 
 internal enum class Kvp025ProofReportFailure {
@@ -140,7 +140,8 @@ internal fun Kvp025ProofReportContext.completeObservations() = linkedMapOf(
         "legalPathOutcome" to Kvp025SemanticOutcome.COMPLETE.name,
         "implementationCommitCount" to implementationScope.commits.size.toString(),
         "executedTestCount" to caseExpectation.executedTestCount.toString(),
-        "forbiddenEffectCount" to caseExpectation.observedFailureCount.toString(),
+        "suiteFailureCount" to caseExpectation.suiteFailureCount.toString(),
+        "forbiddenWorkEnforcementCount" to caseExpectation.forbiddenWork.size.toString(),
         "predecessorReceipt" to predecessor.frontierReceiptId.value,
 )
 
@@ -171,11 +172,11 @@ private fun Kvp025ProofReportContext.document(): Kvp025ProofReportDocument {
             Kvp025ImplementationCommitDocument(it.revision.value, it.changedPaths)
         },
         allowedWrites = task.allowedWrites,
-        forbiddenWork = task.forbiddenWork.map {
+        forbiddenWork = caseExpectation.forbiddenWork.map {
             Kvp025ForbiddenWorkDocument(
-                it,
-                "KVP025_GRAPH_SELECTED_RETIREMENT_TEST_SUITE",
-                caseExpectation.observedFailureCount,
+                it.description,
+                it.enforcementCaseName,
+                it.testResult,
             )
         },
         executedTestCount = caseExpectation.executedTestCount,

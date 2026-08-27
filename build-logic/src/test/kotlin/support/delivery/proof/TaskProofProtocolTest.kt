@@ -47,6 +47,23 @@ class TaskProofProtocolTest {
         assertEquals(frontier.definitionDigest(), packet.taskDefinitionDigest)
         assertEquals(proof.command, packet.proofCommand)
         assertEquals(proof.receipt, packet.receipt)
+        val cases = assertInstanceOf(
+            Kvp025ProofCaseExpectationAdmission.Complete::class.java,
+            expectedKvp025ProofCases(packet),
+        ).expectation
+        assertEquals(
+            mapOf(
+                "Global application lifetime" to
+                    "project service disposal retires its READY endpoint",
+                "Stale descriptor retention" to
+                    "disposal racing publication retires the late endpoint instead of leaking it",
+                "Deleting unrelated paths" to
+                    "physically replaced descriptor is preserved and retirement rejects its identity",
+                "Non-idempotent cleanup" to
+                    "READY retires owned artifacts exactly once and preserves a later generation",
+            ),
+            cases.forbiddenWork.associate { it.description to it.enforcementCaseName },
+        )
     }
 
     @Test
@@ -96,12 +113,36 @@ class TaskProofProtocolTest {
                 "ide-plugin/src/main",
                 "ide-plugin/src/test",
                 "gradle/libs.versions.toml",
+                "gradlew",
                 "protocol",
             )),
         )
         assertTrue(
             program.program.requirements.single { it.id == RequirementId("KVP-REQ-004") }
                 .statement.contains("content-scoped receipts remain reusable"),
+        )
+    }
+
+    @Test
+    fun `KVP 025 write admission rejects any path outside its graph scope`() {
+        assertEquals(
+            Kvp025ChangedPathsAdmission.Rejected,
+            admitKvp025ChangedPaths(
+                listOf(
+                    "ide-plugin/src/main/kotlin/Endpoint.kt",
+                    "unowned/arbitrary.txt",
+                ),
+                listOf("ide-plugin/src/main/kotlin"),
+            ),
+        )
+        assertEquals(
+            Kvp025ChangedPathsAdmission.Complete(
+                listOf("ide-plugin/src/main/kotlin/Endpoint.kt"),
+            ),
+            admitKvp025ChangedPaths(
+                listOf("ide-plugin/src/main/kotlin/Endpoint.kt"),
+                listOf("ide-plugin/src/main/kotlin"),
+            ),
         )
     }
 

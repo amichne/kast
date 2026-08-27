@@ -6,8 +6,10 @@ delta admission, deterministic proof report, and single v2 completion receipt.
 - Derive every task field and selector from the admitted Kotlin graph packet.
 - Admit only the pinned KVP-024 legacy frontier receipt; do not reconstruct or rerun it.
 - Hash only declared tracked input roots and reject dirty relevant inputs.
-- Bind the KVP-025-scoped delta after KVP-024 without treating a delivery-batch commit as a task
-  boundary; nonconflicting paths owned by other tasks remain outside the transition.
+- Observe every changed path after KVP-024 before admitting the complete delta through KVP-025's
+  graph-declared write scope; never use a pathspec that can hide an unowned write.
+- Preserve one successful named enforcement case for every graph-declared forbidden-work fact;
+  suite success alone is not forbidden-work evidence.
 - Decide reuse before test execution. Re-admit unchanged report/receipt bytes, or execute the
   graph-selected suite and atomically replace both when the relevant closure changed.
 
