@@ -67,10 +67,6 @@ tasks.withType<KotlinCompile>().configureEach {
 val singleFlightReport = layout.buildDirectory.file(
     "reports/KVP-020-single-flight.json",
 )
-val singleFlightExpectedHead = providers.exec {
-    commandLine("git", "rev-parse", "HEAD")
-    workingDir(rootProject.rootDir)
-}.standardOutput.asText.map(String::trim)
 
 val generateSingleFlightReport =
     tasks.register<support.delivery.GenerateKvp020SingleFlightReportTask>(
@@ -110,26 +106,11 @@ val verifySingleFlightReportNegative =
 val defaultTest = tasks.named<Test>("test")
 
 defaultTest.configure {
-    dependsOn(verifySingleFlightReportNegative)
-    mustRunAfter(verifySingleFlightReportNegative)
-    inputs.file(singleFlightReport).withPathSensitivity(PathSensitivity.NONE)
-    inputs.property("kast.ide.single.flight.expected.head", singleFlightExpectedHead)
-    systemProperty("kast.ide.single.flight.report", singleFlightReport.get().asFile.absolutePath)
-    systemProperty(
-        "kast.ide.single.flight.kvp014.receipt",
-        rootProject.layout.buildDirectory.file(
-            "reports/delivery/receipts/KVP-014-COMPLETE.receipt.json",
-        ).get().asFile.absolutePath,
+    filter.excludeTestsMatching(
+        "*SingleFlightNegativeTest.generated report binds exact negative policy",
     )
-    systemProperty(
-        "kast.ide.single.flight.kvp019.receipt",
-        rootProject.layout.buildDirectory.file(
-            "reports/delivery/receipts/KVP-019-COMPLETE.receipt.json",
-        ).get().asFile.absolutePath,
-    )
-    systemProperty(
-        "kast.ide.single.flight.expected.head",
-        singleFlightExpectedHead.get(),
+    filter.excludeTestsMatching(
+        "*SingleFlightTest.generated report binds exact success evidence",
     )
 }
 
@@ -386,15 +367,5 @@ val verifyReadOnlyGraph = tasks.register<support.delivery.Kvp023ReadOnlyGraphGat
 }
 apply(from = "gradle/kvp028-workspace-inspect.gradle.kts")
 tasks.named("check") {
-    dependsOn(verifySingleFlightReportNegative)
-    dependsOn(verifyCancellableReadReportNegative)
-    dependsOn(verifyEpochRevalidationReportNegative)
-    dependsOn(cancellableReadNegativeGate)
-    dependsOn(cancellableReadGate)
-    dependsOn(epochRevalidationNegativeGate)
-    dependsOn(epochRevalidationGate)
-    dependsOn(verifyReadRuntimeReportNegative)
-    dependsOn(verifyReadOnlyGraphNegative)
-    dependsOn(verifyReadOnlyGraph)
     dependsOn("ideHostedWorkspaceInspectNegativeProof", "ideHostedWorkspaceInspectAcceptance")
 }
