@@ -59,7 +59,7 @@ private data class Kvp004ProgramProofJsonDocument(
 
 private val kvp004ProofJson = Json { ignoreUnknownKeys = false; prettyPrint = true }
 private val expectedKvp004RejectedCases = Kvp004RejectedCase.entries.toSet()
-private val expectedKvp004Counts = Kvp004ProgramCounts(43, 27, 21, 14, 22, 19, 17, 91)
+private val expectedKvp004Counts = Kvp004ProgramCounts(43, 27, 21, 14, 22, 19, 17, 129)
 private const val expectedKvp004WaveCount = 38
 private val expectedKvp004Order: List<TaskId> = buildList {
     addAll((1..10).map(::taskId))
