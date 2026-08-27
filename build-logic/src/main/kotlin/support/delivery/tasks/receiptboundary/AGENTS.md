@@ -21,6 +21,9 @@ bounded legacy-prefix observation, and atomic issuance for delivery receipts.
   closure, declared-write enforcement, and the exact-head installed receipt.
 - `release/kvp035/` owns the default hosted release's graph-derived packet, misuse fixtures, exact
   asset admission, ready-frontier write scope, predecessor closure, and content receipt.
+- `release/kvp036/` owns exact-head retirement of default manifest, archive, store, private-home,
+  process-fallback, installer, release, CLI, and documentation authority while preserving an
+  explicitly labeled non-default compatibility fixture.
 
 Raw JSON, filesystem paths, time, and current Git head may appear only at these boundaries. Pass admitted receipt capabilities inward; never pass decoded primitives or silently reinterpret a v1 receipt as v2.
 

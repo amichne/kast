@@ -232,10 +232,12 @@ class KastVfsPassiveProgramNegativeTest {
     }
 
     @Test fun `overlapping delivery batch ownership rejects as finite failure`() {
-        val batch = program.deliveryBatches.single()
         val conflicting = program.copy(
-            deliveryBatches = listOf(
-                batch.copy(
+            deliveryBatches = program.deliveryBatches.map { batch ->
+                if (batch.tasks.none { it.taskId == TaskId("KVP-025") }) {
+                    batch
+                } else {
+                    batch.copy(
                     tasks = batch.tasks.map { owned ->
                         if (owned.taskId == TaskId("KVP-025")) {
                             owned.copy(
@@ -247,8 +249,9 @@ class KastVfsPassiveProgramNegativeTest {
                             owned
                         }
                     },
-                ),
-            ),
+                    )
+                }
+            },
         )
 
         assertEquals(

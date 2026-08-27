@@ -169,7 +169,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
             TaskNode(
                 id = TaskId("KVP-036"), title = "Remove the isolated runtime from the default product", goal = "Remove semantic-runtime download, manifest acquisition, runtime store, private idea-home installation, and automatic isolated host authority from installer and release workflows.", milestone = "M4",
                 dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-027"), TaskId("KVP-035"))),
-                allowedReads = listOf("install.sh", "distribution/managed", "indexer", "build.gradle.kts", ".github", "packaging", "docs"), allowedWrites = listOf("install.sh", "build.gradle.kts", ".github", "packaging", "docs", "gradle/architecture/kast-architecture-policy.json"),
+                allowedReads = listOf("AGENTS.md", "install.sh", "README.md", "distribution", "indexer", "ide-plugin", "cli", "build.gradle.kts", "build-logic/src/main/kotlin/kast.runtime-app.gradle.kts", "build-logic/src/main/kotlin/conventions/vfs-passive-delivery.gradle.kts", "build-logic/src/main/kotlin/support/tasks/control", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM3M5.kt", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt", "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/release/kvp036", "build-logic/src/test/kotlin/support/delivery/KastVfsPassiveReusedIndexProgramTest.kt", ".github", "packaging", "docs", "gradle/delivery/kast-vfs-passive-requirements.json", "gradle/delivery/kast-vfs-passive-reused-index-program.json"), allowedWrites = listOf("AGENTS.md", "install.sh", "README.md", "build.gradle.kts", "ide-plugin/AGENTS.md", "ide-plugin/build.gradle.kts", "build-logic/src/main/kotlin/kast.runtime-app.gradle.kts", "build-logic/src/main/kotlin/conventions/vfs-passive-delivery.gradle.kts", "build-logic/src/main/kotlin/support/tasks/control/AGENTS.md", "build-logic/src/main/kotlin/support/tasks/control/GenerateHostedControlMetadataTask.kt", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM3M5.kt", "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt", "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/AGENTS.md", "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/release/kvp036", "build-logic/src/test/kotlin/support/delivery/KastVfsPassiveReusedIndexProgramTest.kt", "cli", ".github", "packaging", "docs", "gradle/delivery/kast-vfs-passive-requirements.json", "gradle/delivery/kast-vfs-passive-reused-index-program.json"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.027.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.035.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-006", "kind" to "requirement"), mapOf("id" to "KVP-REQ-007", "kind" to "requirement"), mapOf("id" to "KVP-REQ-008", "kind" to "requirement"), mapOf("id" to "KVP-REQ-021", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.036.proof", "PROOF_ARTIFACT", "build/reports/ide-hosted/KVP-036-retirement.json", "Default installation and release have no isolated runtime authority or payload.")),
                 publicInterface = "RetiredDefaultIsolatedRuntime", internalImplementation = "Retirement receipt over removed default assets, commands, and effects.",
@@ -324,5 +324,13 @@ internal fun defaultHostedReleaseDeliveryBatch() = DeliveryBatch(
     readyFrontier = DeliveryGeneration("23154cb96ab1bf57213d8b92bd35a3e66138735f"),
     tasks = listOf(
         DeliveryBatchTask(TaskId("KVP-035"), listOf("distribution/release")),
+    ),
+)
+
+internal fun defaultIsolatedRuntimeRetirementDeliveryBatch() = DeliveryBatch(
+    id = DeliveryBatchId("default-isolated-runtime-retirement"),
+    readyFrontier = DeliveryGeneration("d5ca8a4fcd51a221f8d1a8b5331cacf9210dd0e5"),
+    tasks = listOf(
+        DeliveryBatchTask(TaskId("KVP-036"), listOf("install.sh")),
     ),
 )

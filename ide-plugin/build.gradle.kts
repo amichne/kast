@@ -183,6 +183,10 @@ tasks.named<KotlinCompile>("compileKotlin") {
     dependsOn(generateIdeHostCompatibilitySource)
 }
 
+tasks.named<Jar>("sourcesJar") {
+    dependsOn(generateIdeHostCompatibilitySource)
+}
+
 tasks.withType<Test>().configureEach {
     dependsOn(generateIdeHostCompatibilityReport)
     inputs.file(generateIdeHostCompatibilityReport.flatMap(

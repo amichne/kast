@@ -1,8 +1,8 @@
 # How Kast works
 
-Kast places a narrow command boundary in front of an isolated IntelliJ and
-Kotlin semantic runtime. The caller never needs to open, focus, or coordinate a
-foreground IDE project.
+Kast places a narrow command boundary in front of the already-running supported
+foreground IDE. It reuses the exact open Project without opening, focusing,
+importing, or refreshing it.
 
 ## One request keeps one line of authority
 
@@ -30,7 +30,7 @@ interrupting that path.
     <span class="kast-flow-number">03</span>
     <strong class="kast-flow-title">Local wire RPC</strong>
     <code>Unix-domain socket</code>
-    <span>Sends one bounded JSON frame to the exact-root indexer.</span>
+    <span>Sends one bounded JSON frame to the exact-root hosted endpoint.</span>
   </li>
   <li class="kast-flow-step kast-tone-evidence">
     <span class="kast-flow-number">04</span>
@@ -43,15 +43,14 @@ interrupting that path.
 The result returns through the same local boundary as complete or qualified
 evidence, or as a typed rejection. Compiler objects stay inside the adapter.
 
-`kast start` resolves a supported JetBrains installation for matched platform
-libraries, then starts or reuses one indexer for the canonical root. The
-semantic runtime is a digest-verified release artifact stored separately from
-the Kotlin control executable.
+`kast start` admits one compatible endpoint published by the existing exact-root
+Project. Missing, stale, wrong-root, or incompatible endpoint evidence fails
+closed; no runtime acquisition or process fallback is available.
 
-Before the indexer reports readiness, runtime composition proves that all
-twelve canonical operations have one implementation. A request is then
-admitted by operation identity, capability, effect, scope, cost, and
-completeness policy before it can reach compiler or write adapters.
+Before the plugin reports readiness, its hosted composition proves that the
+published set of twelve canonical operations has one implementation. A request is then admitted by
+operation identity, capability, effect, scope, cost, and completeness policy
+before it can reach IntelliJ read adapters.
 
 ## Follow one symbol request
 
@@ -67,7 +66,7 @@ constructs a `SymbolDescribeRequestDocument`. `UnixDomainWireClient` sends the
 generated document as one bounded JSON frame over the exact root's Unix-domain
 socket.
 
-`RuntimeServer` accepts the local RPC request. `CanonicalProtocolAuthority`
+The hosted endpoint accepts the local RPC request. `CanonicalProtocolAuthority`
 admits the operation and routes it to the installed symbol service. The
 `IntellijSymbolExactCompilerAdapter` resolves the exact selector with
 request-local PSI and K2 state, then projects the compiler object into a
@@ -133,12 +132,12 @@ Repository topology is also explicit: `topology.build` is the only operation
 that can turn complete K2 coverage into a SQLite snapshot. Multi-hop traversal
 reads an eligible snapshot and cannot trigger compiler work as a fallback.
 
-## Isolation is part of the result
+## Exact endpoint identity is part of the result
 
-One exact-root indexer means another checkout, foreground IDE window, or stale
-endpoint cannot silently become the authority for this request. When root,
-generation, capability, scope, or runtime identity cannot be proven, the
-operation fails closed.
+One exact-root hosted endpoint means another checkout, Project, IDE process, or
+stale descriptor cannot silently become the authority for this request. When
+root, generation, capability, scope, or endpoint identity cannot be proven,
+the operation fails closed.
 
 [Set up and start Kast](../start.md) follows this path from a clean host.
 [Trust the evidence](../concepts/evidence-boundaries.md) explains how to read

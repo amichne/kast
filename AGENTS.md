@@ -141,26 +141,27 @@ fun requireRepositorySnapshotDatabase(path: Path): RepositorySnapshotDatabase
 - Return decoding, refinement, and document-mapping failures as closed typed data. Do not turn an
   expected malformed payload into an exception, null, sentinel, or manufactured success.
 
-## macOS indexer pathway
+## macOS IDE-hosted pathway
 
-On a macOS developer workstation, explicit semantic demand is the normal
-runtime bootstrap. Invoke the active public Kast CLI from the canonical
-workspace root:
+On a macOS developer workstation, open the canonical workspace in a supported
+IntelliJ IDE and let its existing Project reach indexed smart mode. Then invoke
+the active public Kast CLI from that exact workspace root:
 
 ```shell
 kast start
 ```
 
-Kast reuses or starts one isolated indexer for the exact root. It
-starts Gradle import and semantic indexing without opening, closing, focusing,
-or routing through a foreground IDE project. `kast start` returns only when
-semantic evidence is ready, or it reports a typed blocker.
+Kast admits one compatible endpoint published by that already-running Project
+and reuses its VFS, indexes, PSI, and Kotlin semantic APIs. It does not create a
+second Project, import Gradle, refresh the VFS, start an indexer process, or fall
+back automatically. `kast start` returns only when the exact-root endpoint is
+ready, or it reports a typed blocker.
 
 Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio
-2026.1.2/build 261. A supported installation supplies matched IntelliJ runtime
-libraries to the isolated process. It is not a semantic backend and its open
-or closed foreground state is irrelevant. Do not control a foreground IDE to
-repair Kast. Resolve the typed indexer blocker instead.
+2026.1.2/build 261. The already-running supported IDE is the semantic backend;
+if it is closed, has another root open, is incompatible, or has not published a
+complete endpoint, Kast fails closed. Resolve the typed endpoint blocker in the
+existing Project rather than manufacturing another host.
 
 ## Public documentation topology
 

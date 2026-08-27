@@ -30,6 +30,8 @@ ln -s "${sentinel}" "${install_prefix}/bin/kast"
   fail "installation followed and modified the previous launcher symlink"
 [[ -x "${install_prefix}/share/kast/control/bin/kast" ]] ||
   fail "control product is missing"
+[[ ! -e "${install_prefix}/share/kast/control/share/kast/semantic-runtime.json" ]] ||
+  fail "default control retained a semantic-runtime manifest"
 
 [[ ! -e "${install_prefix}/share/kast/runtime" ]] ||
   fail "default local install retained a semantic runtime payload"
@@ -54,7 +56,7 @@ import sys
 document = json.loads(sys.argv[1])
 expected_registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == expected_registry, document
-assert document["semanticRuntime"]["runtimeId"].startswith("sha256:"), document
+assert "semanticRuntime" not in document, document
 PY
 
 echo "install-local-test: PASS"

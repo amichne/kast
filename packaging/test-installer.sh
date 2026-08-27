@@ -120,13 +120,12 @@ default_data="$home/xdg-data/kast"
 legacy_data="$home/.local/share/kast"
 custom_install="$home/custom/install"
 custom_bin="$home/custom/bin"
-custom_runtime_store="$home/custom/runtime-store"
-custom_runtime_directory="$home/custom/runtime-directory"
 default_cache="$home/.cache/kast"
 xdg_config="$home/xdg-config/kast"
 legacy_config="$home/.config/kast"
 application_support="$home/Library/Application Support/Kast"
-idea_plugin="$home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast"
+idea_plugin_directory="$home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
+idea_plugin="$idea_plugin_directory/kast-indexer"
 idea_sibling="$home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/keep"
 runtime_directory="$fixture_root/tmp/kast-runtime"
 
@@ -136,8 +135,6 @@ seed_prior_installations() {
     "$legacy_data" \
     "$custom_install" \
     "$custom_bin" \
-    "$custom_runtime_store" \
-    "$custom_runtime_directory" \
     "$default_cache" \
     "$xdg_config" \
     "$legacy_config" \
@@ -161,8 +158,7 @@ installer_environment=(
   "XDG_CONFIG_HOME=$home/xdg-config"
   "KAST_INSTALL_ROOT=$custom_install"
   "KAST_BIN_DIR=$custom_bin"
-  "KAST_RUNTIME_STORE=$custom_runtime_store"
-  "KAST_RUNTIME_DIRECTORY=$custom_runtime_directory"
+  "KAST_IDE_PLUGIN_DIRECTORY=$idea_plugin_directory"
   "KAST_TEST_LAUNCHCTL_STATE=$launchctl_state"
   "KAST_TEST_LAUNCHCTL_LOG=$launchctl_log"
   "KAST_TEST_BREW_STATE=$brew_state"
@@ -190,8 +186,6 @@ for removed in \
   "$legacy_data" \
   "$custom_install" \
   "$custom_bin/kast" \
-  "$custom_runtime_store" \
-  "$custom_runtime_directory" \
   "$default_cache" \
   "$xdg_config" \
   "$legacy_config" \
@@ -229,37 +223,23 @@ assert_present "$unsafe_marker"
 
 control_root="$fixture_root/control"
 control_name="kast-control-v9.8.7-macos-aarch64.tar.gz"
-runtime_name="kast-semantic-runtime-9.8.7-macos-aarch64.zip"
-runtime_root="$fixture_root/runtime"
+plugin_name="kast-ide-plugin-9.8.7.zip"
+plugin_root="$fixture_root/plugin/kast-indexer"
 command -v zip >/dev/null 2>&1 || fail "zip is required by the installer contract"
-mkdir -p \
-  "$runtime_root/runtime-libs" \
-  "$runtime_root/idea-home/plugins/kast-indexer"
-printf '#!/bin/sh\nexit 0\n' > "$runtime_root/kast-indexer"
-chmod +x "$runtime_root/kast-indexer"
-printf 'fixture\n' > "$runtime_root/runtime-libs/fixture.jar"
-printf '{}\n' > "$runtime_root/idea-home/product-info.json"
-printf 'fixture\n' > "$runtime_root/idea-home/plugins/kast-indexer/fixture"
-(cd "$runtime_root" && zip -qr "$assets/$runtime_name" .)
-runtime_sha="$(shasum -a 256 "$assets/$runtime_name" | awk '{ print $1 }')"
-runtime_bytes="$(wc -c < "$assets/$runtime_name" | tr -d '[:space:]')"
-printf '%s  %s\n' "$runtime_sha" "$runtime_name" > "$assets/$runtime_name.sha256"
+mkdir -p "$plugin_root/lib"
+printf 'fixture\n' > "$plugin_root/lib/kast-ide-plugin-9.8.7.jar"
+(cd "$fixture_root/plugin" && zip -qr "$assets/$plugin_name" kast-indexer)
+plugin_sha="$(shasum -a 256 "$assets/$plugin_name" | awk '{ print $1 }')"
+printf '%s  %s\n' "$plugin_sha" "$plugin_name" > "$assets/$plugin_name.sha256"
 
 mkdir -p "$control_root/bin" "$control_root/share/kast"
 printf '%s\n' '#!/usr/bin/env bash' \
   'case "${1:-}" in' \
-  '  --version) printf "kast 9.8.7 (semantic runtime sha256:fixture)\\n" ;;' \
+  '  --version) printf "kast 9.8.7 (IDE-hosted)\\n" ;;' \
   '  --schema) printf "{}\\n" ;;' \
-  '  --runtime-source)' \
-  '    [[ -f "${KAST_RUNTIME_ARCHIVE:?}" ]] || exit 65' \
-  '    printf "%s\\n" "$KAST_RUNTIME_ARCHIVE"' \
-  '    ;;' \
   '  *) exit 64 ;;' \
   'esac' > "$control_root/bin/kast"
 chmod +x "$control_root/bin/kast"
-printf '%s\n' \
-  "{\"schemaVersion\":1,\"runtimeId\":\"sha256:fixture\",\"productVersion\":\"9.8.7\",\"archive\":{\"fileName\":\"$runtime_name\",\"url\":\"https://github.com/example/kast/releases/download/v9.8.7/$runtime_name\",\"sha256\":\"sha256:$runtime_sha\",\"bytes\":$runtime_bytes}}" \
-  > "$control_root/share/kast/semantic-runtime.json"
 printf '{}\n' > "$control_root/share/kast/operation-registry.json"
 printf '{}\n' > "$control_root/share/kast/wire-schema.json"
 tar -czf "$assets/$control_name" -C "$control_root" .
@@ -273,14 +253,14 @@ mkdir -p "$incomplete_assets"
 cp \
   "$assets/$control_name" \
   "$assets/$control_name.sha256" \
-  "$assets/$runtime_name.sha256" \
+  "$assets/$plugin_name.sha256" \
   "$incomplete_assets"
 unavailable_output="$fixture_root/unavailable.out"
 if env "${installer_environment[@]}" KAST_TEST_ASSET_DIR="$incomplete_assets" \
   bash "$repository_root/install.sh" install \
   --purge-existing --version 9.8.7 --repository example/kast \
   > "$unavailable_output" 2>&1; then
-  fail "installation succeeded without the semantic runtime artifact"
+  fail "installation succeeded without the hosted IDE plugin"
 fi
 assert_present "$custom_install/old-marker"
 assert_present "$custom_bin/kast"
@@ -303,14 +283,16 @@ fi
 [[ -L "$custom_install/current" ]] || fail "current release link is absent"
 [[ -L "$custom_bin/kast" ]] || fail "public command link is absent"
 [[ ! -e "$custom_install/old-marker" ]] || fail "prior install survived purge-first"
-installed_runtime="$custom_install/versions/9.8.7/share/kast/runtime/$runtime_name"
-[[ -f "$installed_runtime" ]] || fail "semantic runtime was not downloaded during installation"
-[[ "$(shasum -a 256 "$installed_runtime" | awk '{ print $1 }')" == "$runtime_sha" ]] ||
-  fail "installed semantic runtime digest changed"
-runtime_source="$("$custom_bin/kast" --runtime-source)"
-installed_runtime_physical="$(cd "$(dirname "$installed_runtime")" && pwd -P)/$runtime_name"
-[[ "$runtime_source" == "$installed_runtime_physical" ]] ||
-  fail "public launcher selected $runtime_source instead of $installed_runtime_physical"
+[[ -L "$idea_plugin_directory/kast-indexer" ]] || fail "hosted IDE plugin link is absent"
+installed_plugin="$custom_install/versions/9.8.7/share/kast/ide-plugin/kast-indexer"
+[[ -f "$installed_plugin/lib/kast-ide-plugin-9.8.7.jar" ]] ||
+  fail "matched hosted IDE plugin was not installed"
+if find "$custom_install/versions/9.8.7" \( -name 'semantic-runtime*' -o -name 'idea-home' \) \
+  -print -quit | grep -q .; then
+  fail "default installation retained isolated-runtime payload"
+fi
+[[ "$("$custom_bin/kast" --version)" == "kast 9.8.7 (IDE-hosted)" ]] ||
+  fail "public command did not select the hosted control"
 grep -Fq 'purging prior Kast installations' "$install_output" ||
   fail "purge-first did not report the shared cleanup operation"
 grep -Fq 'installed Kast 9.8.7' "$install_output" || fail "installation did not complete"

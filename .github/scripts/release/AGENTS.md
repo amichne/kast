@@ -9,10 +9,9 @@ and the contract that keeps those stages releasable from main.
 - The default release contains exactly the matched control archive and standalone IDE plugin plus
   checksum sidecars; it contains no semantic-runtime asset or platform payload.
 - The hosted-release misuse and legal gates must finish before immutable publication.
-- Published-runtime verification may own download and checksum checks, but it
-  must acquire through `install.sh`, disable the manifest network URL after
-  installation, and delegate semantic behavior to
-  `packaging/topology_installed_acceptance.py`.
+- Published-hosted verification may own download and checksum checks, but it
+  must acquire through `install.sh`, prove the installed control-plus-plugin
+  pair, and prove missing endpoint demand fails without an isolated process.
 - Do not duplicate public operation sequences in a release-only script.
 
 Run:

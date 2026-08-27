@@ -22,6 +22,8 @@
   IDEA and bundled Kotlin-plugin pins, `project.version`, the IDE-hosted runtime protocol, the
   physical operation-registry digest, the canonical wire-schema digest, and the exact four
   `CanonicalOperation` capabilities without a Boolean compatibility flag.
+- The generated compatibility source is an explicit input dependency of both `compileKotlin` and
+  `sourcesJar`; neither task may race or consume an undeclared generated file.
 - Never copy an IDEA home or bundle platform-owned IntelliJ, Kotlin-plugin, Gradle-plugin, or JBR
   classes into this artifact.
 - `endpoint/` owns KVP-024's exact-root UDS bind and atomic descriptor-v2 publication. It consumes

@@ -6,7 +6,7 @@ model {
 
   jetbrains = platform "Supported JetBrains installation" {
     #external
-    description "Supplies matched IntelliJ and Kotlin libraries without becoming a foreground project authority."
+    description "Owns the already-open exact Project, VFS, indexes, PSI, and Kotlin semantic APIs."
   }
 
   compiler = platform "IntelliJ PSI and Kotlin K2" {
@@ -25,16 +25,16 @@ model {
 
     rpc = boundary "Local wire RPC" {
       #identity
-      description "Exchanges one bounded JSON request and response frame with the exact-root indexer."
+      description "Exchanges one bounded JSON request and response frame with the hosted endpoint."
     }
 
-    acquisition = service "Managed runtime acquisition" {
-      description "Verifies and reuses the matching semantic runtime artifact."
+    acquisition = service "Endpoint admission" {
+      description "Admits one compatible live endpoint for the exact canonical root."
     }
 
-    indexer = runtime "Exact-root indexer" {
+    indexer = runtime "Hosted IDE plugin" {
       #identity
-      description "Owns one isolated imported workspace and its semantic generation."
+      description "Serves bounded reads from the existing Project without import or refresh."
     }
 
     composition = authority "Runtime composition" {
@@ -74,7 +74,7 @@ model {
       }
     }
     distribution = module "distribution" {
-      description "Runtime identity plus the sole acquisition and store adapter."
+      description "Installed product identity and explicit non-default compatibility contracts."
     }
     protocol = module "protocol" {
       #identity
@@ -134,7 +134,7 @@ model {
       }
     }
     indexer = module "indexer" {
-      description "Isolated host for one constructed runtime composition."
+      description "Explicit non-default compatibility fixture host."
       style {
         color secondary
       }
@@ -142,11 +142,11 @@ model {
   }
 
   caller -[request]-> kast.cli "runs one command"
-  kast.cli -[request]-> kast.acquisition "requests the matching runtime"
-  kast.acquisition -[request]-> kast.indexer "starts or reuses the exact root"
+  kast.cli -[request]-> kast.acquisition "admits the exact-root endpoint"
+  kast.acquisition -[request]-> kast.indexer "selects the hosted plugin"
   kast.cli -[request]-> kast.rpc "sends a generated request document"
   kast.rpc -[request]-> kast.indexer "delivers one bounded frame"
-  jetbrains -[supply]-> kast.indexer "supplies platform libraries"
+  jetbrains -[supply]-> kast.indexer "owns the existing Project and indexes"
   kast.indexer -[admit]-> kast.composition "constructs the implementation graph"
   kast.composition -[admit]-> kast.operations "admits one canonical operation"
   kast.operations -[inspect]-> kast.adapters "requests bounded semantic work"
@@ -156,9 +156,9 @@ model {
   kast.rpc -[prove]-> kast.cli "returns one response frame"
   kast.adapters -[prove]-> kast.evidence "publishes admitted evidence or recovery state"
 
-  source.cli -[depend]-> source.distribution "acquires runtime"
+  source.cli -[depend]-> source.distribution "uses installed product identity"
   source.cli -[depend]-> source.protocol "uses operation and wire contracts"
-  source.indexer -[depend]-> source.runtime "hosts composition"
+  source.indexer -[depend]-> source.runtime "hosts the explicit compatibility fixture"
   source.runtime -[depend]-> source.protocol "dispatches canonical operations"
   source.runtime -[depend]-> source.workspace "binds workspace services"
   source.runtime -[depend]-> source.symbol "binds symbol services"

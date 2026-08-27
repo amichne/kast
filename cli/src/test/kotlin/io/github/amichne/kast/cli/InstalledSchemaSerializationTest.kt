@@ -25,9 +25,8 @@ class InstalledSchemaSerializationTest {
     fun `generated installed schema embeds open resources inside a closed outer document`() {
         val operationRegistry = "{\"operation\":\"registry\"}"
         val wireSchema = "{\"wire\":true}"
-        val runtimeManifest = "{\"runtime\":{\"future\":null}}"
         val surface = commandGraphFactory().surface
-        val schema = installedSchema(operationRegistry, wireSchema, runtimeManifest, surface)
+        val schema = installedSchema(operationRegistry, wireSchema, surface)
             .constructedDocument()
 
         val document = Json.decodeFromString(
@@ -38,7 +37,6 @@ class InstalledSchemaSerializationTest {
         assertEquals(1, document.schemaVersion)
         assertEquals(Json.parseToJsonElement(operationRegistry), document.operationRegistry)
         assertEquals(Json.parseToJsonElement(wireSchema), document.wireSchema)
-        assertEquals(Json.parseToJsonElement(runtimeManifest), document.semanticRuntime)
         assertEquals(surface.localFlags, document.cliProjection.localFlags)
         assertEquals(
             surface.lifecycleCommands.map { it.command },
@@ -59,17 +57,9 @@ class InstalledSchemaSerializationTest {
             InstalledSchemaResource.OPERATION_REGISTRY to installedSchema(
                 "[]",
                 valid,
-                valid,
                 surface,
             ),
             InstalledSchemaResource.WIRE_SCHEMA to installedSchema(
-                valid,
-                "[]",
-                valid,
-                surface,
-            ),
-            InstalledSchemaResource.SEMANTIC_RUNTIME to installedSchema(
-                valid,
                 valid,
                 "[]",
                 surface,
@@ -103,7 +93,6 @@ private data class InstalledSchemaFixture(
     val operationRegistry: JsonElement,
     val wireSchema: JsonElement,
     val cliProjection: InstalledCliProjectionFixture,
-    val semanticRuntime: JsonElement,
 )
 
 @Serializable

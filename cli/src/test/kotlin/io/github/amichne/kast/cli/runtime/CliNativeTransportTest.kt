@@ -168,7 +168,6 @@ class CliNativeTransportTest {
     private fun testLocalMetadata(): CliLocalMetadata = when (
         val admitted = CliLocalMetadata.admit(
             "test",
-            "sha256:${"a".repeat(64)}",
             "{\"schemaVersion\":1}",
         )
     ) {

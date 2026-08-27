@@ -69,6 +69,7 @@ object KastVfsPassiveReusedIndexProgram {
         deliveryBatches = listOf(
             hostedProductionCompositionDeliveryBatch(),
             defaultHostedReleaseDeliveryBatch(),
+            defaultIsolatedRuntimeRetirementDeliveryBatch(),
         ),
         terminalTask = TaskId("KVP-043"),
     )
@@ -103,6 +104,11 @@ internal fun hostedProductionCompositionCompanionWrites(taskId: TaskId): List<St
 internal fun defaultHostedReleaseBatch(): DeliveryBatch =
     KastVfsPassiveReusedIndexProgram.validated.program.deliveryBatches.single {
         it.id == DeliveryBatchId("default-hosted-release")
+    }
+
+internal fun defaultIsolatedRuntimeRetirementBatch(): DeliveryBatch =
+    KastVfsPassiveReusedIndexProgram.validated.program.deliveryBatches.single {
+        it.id == DeliveryBatchId("default-isolated-runtime-retirement")
     }
 
 enum class CanonicalProgramFailure : DeliveryFailure {

@@ -183,7 +183,6 @@ class CliCommandGraphContractTest {
         localMetadata = when (
             val admitted = CliLocalMetadata.admit(
                 productVersion = "1.2.3",
-                runtimeIdentity = "sha256:${"a".repeat(64)}",
                 schema = "{\"schemaVersion\":1}",
             )
         ) {

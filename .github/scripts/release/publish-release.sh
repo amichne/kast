@@ -51,12 +51,12 @@ fi
 
 assets_directory="$(cd "${assets_directory}" && pwd -P)"
 control="${assets_directory}/kast-control-v${version}-macos-aarch64.tar.gz"
-runtime="${assets_directory}/kast-semantic-runtime-${version}-macos-aarch64.zip"
+plugin="${assets_directory}/kast-ide-plugin-${version}.zip"
 assets=(
   "${control}"
   "${control}.sha256"
-  "${runtime}"
-  "${runtime}.sha256"
+  "${plugin}"
+  "${plugin}.sha256"
 )
 for asset in "${assets[@]}"; do
   [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
@@ -75,7 +75,7 @@ cleanup() {
 }
 trap cleanup EXIT
 gh release download "${release}" --repo "${repository}" --dir "${verification_directory}"
-python3 .github/scripts/release/verify-assets.py \
+python3 distribution/release/verify_assets.py \
   --directory "${verification_directory}" \
   --release "${release}" \
   --repository "${repository}"
