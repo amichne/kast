@@ -97,7 +97,7 @@ def main() -> None:
             "packaging/test-installer.sh",
             ".github/scripts/release/build-assets.sh",
             ".github/scripts/release/publish-release.sh",
-            "packaging/verify-published-hosted-delivery.sh",
+            "packaging/verification/verify-published-hosted-delivery.sh",
         ),
         "release workflow",
         failures,
@@ -108,7 +108,7 @@ def main() -> None:
             "packaging/test-installer.sh",
             ".github/scripts/release/build-assets.sh",
             ".github/scripts/release/publish-release.sh",
-            "packaging/verify-published-hosted-delivery.sh",
+            "packaging/verification/verify-published-hosted-delivery.sh",
         ),
         "release workflow",
         failures,
@@ -146,7 +146,10 @@ def main() -> None:
         "staged installed-product verification",
         failures,
     )
-    published = read(root / "packaging/verify-published-hosted-delivery.sh", failures)
+    published = read(
+        root / "packaging/verification/verify-published-hosted-delivery.sh",
+        failures,
+    )
     require_tokens(
         published,
         (

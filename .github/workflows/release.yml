@@ -58,6 +58,6 @@ jobs:
 
       - name: Verify fresh published hosted installation
         run: >-
-          bash packaging/verify-published-hosted-delivery.sh
+          bash packaging/verification/verify-published-hosted-delivery.sh
           --release "v${RELEASE_VERSION}"
           --repository "$GITHUB_REPOSITORY"
