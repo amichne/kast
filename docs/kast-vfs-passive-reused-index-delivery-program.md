@@ -17,7 +17,9 @@ KVP-001..024 preserve their admitted v1 RED, GREEN, and completion receipts. KVP
 derives one `./gradlew proveKVPNNN` command and one `TaskProofReceipt` from each graph task. The
 historical RED/GREEN entries below are the misuse and legal case inputs to that atomic proof; they
 are not independent receipts. New receipts are reusable when their complete relevant-input closure
-is unchanged. Only KVP-031, KVP-034, KVP-036, and KVP-043 require exact-head admission.
+is unchanged. Reuse preserves the report and receipt bytes, including the head where proof was
+observed; it does not rewrite that observation to the later unrelated head. Only KVP-031, KVP-034,
+KVP-036, and KVP-043 require exact-head admission.
 
 ## Corrections to prior plans
 
