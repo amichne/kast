@@ -80,6 +80,27 @@ class TaskProofProtocolTest {
     }
 
     @Test
+    fun `KVP 026 consumes the admitted atomic frontier instead of an absent legacy task`() {
+        val packet = assertInstanceOf(
+            TaskPacketAdmission.Complete::class.java,
+            program.packet(TaskId("KVP-026")),
+        ).packet
+
+        assertEquals(
+            setOf(TaskId("KVP-013"), TaskId("KVP-024"), TaskId("KVP-025")),
+            packet.task.dependencies.taskIds,
+        )
+        assertEquals(
+            setOf(
+                ReceiptId("KVP-013-COMPLETE"),
+                ReceiptId("KVP-024-COMPLETE"),
+                ReceiptId("KVP-025-COMPLETE"),
+            ),
+            packet.receipt.dependencies,
+        )
+    }
+
+    @Test
     fun `generated KVP 025 packet re admits only canonical graph bytes`() {
         val packet = assertInstanceOf(
             TaskPacketAdmission.Complete::class.java,

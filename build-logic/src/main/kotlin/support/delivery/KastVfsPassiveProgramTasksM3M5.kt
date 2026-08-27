@@ -3,7 +3,7 @@ package support.delivery
 internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
             TaskNode(
                 id = TaskId("KVP-026"), title = "Admit the compatible exact-root IDE endpoint in the CLI", goal = "Parse descriptor v2 once, prove compatibility, root, capabilities, reachability, and runtime identity, then issue one endpoint capability.", milestone = "M3",
-                dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-007"), TaskId("KVP-013"), TaskId("KVP-024"))),
+                dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-013"), TaskId("KVP-024"), TaskId("KVP-025"))),
                 allowedReads = listOf("cli/src/main/kotlin", "protocol/wire", "gradle/delivery/schema/ide-endpoint.schema.json"), allowedWrites = listOf("cli/src/main/kotlin", "cli/src/test"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.007.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.013.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.024.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-008", "kind" to "requirement"), mapOf("id" to "KVP-REQ-017", "kind" to "requirement"), mapOf("id" to "KVP-REQ-018", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.026.proof", "PROOF_ARTIFACT", "cli/build/reports/KVP-026-cli-admission.json", "Only one compatible exact-root endpoint yields dispatch capability.")),
@@ -13,7 +13,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 red = ProofCommand("KVP-026-RED", "./gradlew :cli:test --tests \"*IdeEndpointAdmissionNegativeTest\"", "Wrong root, build, schema, PID, runtime, capability, or unreachable endpoint is admitted."),
                 green = ProofCommand("KVP-026-GREEN", "./gradlew :cli:test --tests \"*IdeEndpointAdmissionTest\"", "Only one compatible exact-root endpoint yields dispatch capability."),
                 reviewBoundary = "CLI endpoint admission only.",
-                completionReceipt = CompletionReceiptContract("KVP-026-COMPLETE", setOf("KVP-026-RED", "KVP-026-GREEN"), setOf("KVP-007-COMPLETE", "KVP-013-COMPLETE", "KVP-024-COMPLETE"), "build/reports/delivery/receipts/KVP-026-COMPLETE.receipt.json"),
+                completionReceipt = CompletionReceiptContract("KVP-026-COMPLETE", setOf("KVP-026-RED", "KVP-026-GREEN"), setOf("KVP-013-COMPLETE", "KVP-024-COMPLETE", "KVP-025-COMPLETE"), "build/reports/delivery/receipts/KVP-026-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-008"), RequirementId("KVP-REQ-017"), RequirementId("KVP-REQ-018")), authorities = setOf(AuthorityId("CLI_ENDPOINT_ADMISSION")),
             ),
             TaskNode(

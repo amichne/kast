@@ -9,7 +9,8 @@ and receipt admission tests.
   terminal derivation from admitted completion receipts.
 - `TaskProofProtocolTest.kt` proves the legacy/atomic seam, graph-derived packet, full KVP-025
   closure including `gradlew`, closed write-scope admission, exact-head milestone set, and
-  cross-head-stable content output.
+  cross-head-stable content output. It also keeps KVP-026 on the admitted KVP-025 atomic frontier
+  instead of an absent legacy completion.
 - `TaskProofReceiptTest.kt` proves every v2 content field, self digest, content-scoped replay, and
   exact-head rejection.
 
