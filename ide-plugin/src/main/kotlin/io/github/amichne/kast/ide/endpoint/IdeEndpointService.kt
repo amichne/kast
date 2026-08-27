@@ -37,8 +37,9 @@ class IdeEndpointService private constructor(
     }
 
     /**
-     * Installs cached-readiness signals before the first observation. Each signal only triggers a
-     * fresh admission; it never waits, imports, refreshes, or manufactures readiness.
+     * Installs cached-readiness signals before the first observation. Project initialization,
+     * Gradle import completion, smart-mode entry, and all-startup-activities completion each only
+     * trigger a fresh admission; they never wait, import, refresh, or manufacture readiness.
      */
     internal fun start(project: Project): IdeEndpointServiceStart {
         when (val beginning = coordinator.begin()) {
@@ -61,8 +62,12 @@ class IdeEndpointService private constructor(
                     override fun exitDumbMode() = requestAttempt(project)
                 },
             )
-            StartupManager.getInstance(project).runWhenProjectIsInitialized {
+            val startup = StartupManager.getInstance(project)
+            startup.runWhenProjectIsInitialized {
                 requestAttempt(project)
+            }
+            startup.allActivitiesPassedFuture.invokeOnCompletion { failure ->
+                if (failure == null) requestAttempt(project)
             }
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
