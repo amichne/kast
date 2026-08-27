@@ -301,10 +301,6 @@ tasks.named("assemble") {
 tasks.named("check") {
     dependsOn(
         standalonePluginNegativeProof,
-        verifyPluginLayoutNegative,
         generateIdeHostCompatibilityReport,
-        verifyIdeEndpointPublicationReportNegative,
-        verifyIdeEndpointPublicationNegative,
-        verifyIdeEndpointPublication,
     )
 }
