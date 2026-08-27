@@ -19,6 +19,9 @@
   Mode-specific and intent-specific combinations become closed failures before runtime access.
 - Filesystem discovery returns one canonical, settings-owned repository root before process or UDS
   access.
+- Descriptor v2 admission reads exactly one deterministic endpoint location and refines it through
+  parsed compatibility, exact root/socket identity, live IDE process identity, and UDS
+  reachability before issuing `AdmittedIdeEndpoint`. It never scans or selects a first match.
 - Runtime demand and UDS exchange remain exact-root capabilities with closed failures.
 - On macOS, runtime demand owns one deterministic exact-endpoint launchd service so the indexer
   survives its initiating caller. Existing service ownership, including between child attempts,

@@ -4,5 +4,6 @@ This directory owns test sources and fixtures under `cli/src/test/kotlin/io/gith
 
 ## Local scope
 
-- Keep changes within the parent guide's ownership.
-- Add local rules only when this directory gains a distinct durable boundary.
+- KVP-026 endpoint-admission case names must exactly match the canonical graph's named misuse and
+  legal path so the Gradle evidence task can bind executed JUnit evidence without manual fields.
+- Keep compatibility, root, socket, process, capability, and reachability fixtures deterministic.

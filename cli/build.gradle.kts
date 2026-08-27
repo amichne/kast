@@ -95,6 +95,19 @@ val nativeTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.named("test"))
 }
 
+val kvp026Packet = support.delivery.canonicalKvp026TaskPacket()
+val proveKVP026Cases = tasks.register<support.delivery.Kvp026AtomicProofTestTask>(
+    "proveKVP026Cases",
+) {
+    group = "verification"
+    description = "Runs only KVP-026's graph-named misuse and legal-path cases."
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    configureFrom(kvp026Packet)
+    evidenceFile.set(layout.buildDirectory.file("reports/KVP-026-test-evidence.json"))
+}
+
 val codexEvaluationRequest = providers.gradleProperty("kastCodexEvaluationRequest")
 val codexEvaluationEvidence = providers.gradleProperty("kastCodexEvaluationEvidence")
 

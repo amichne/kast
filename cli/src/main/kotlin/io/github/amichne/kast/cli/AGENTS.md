@@ -4,5 +4,7 @@ This directory owns production sources under `cli/src/main/kotlin/io/github/amic
 
 ## Local scope
 
-- Keep changes within the parent guide's ownership.
-- Add local rules only when this directory gains a distinct durable boundary.
+- `runtime/IdeEndpointAdmission.kt` owns the raw descriptor-to-compatible exact-root reachable
+  endpoint transition and preserves that proof in `AdmittedIdeEndpoint`.
+- Filesystem, process, and UDS probes remain injected outer capabilities with closed outcomes; no
+  downstream caller receives raw descriptor text or authority to scan endpoint locations.
