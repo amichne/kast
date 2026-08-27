@@ -4,7 +4,6 @@ import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
 import support.tasks.GenerateHostedControlMetadataTask
-import support.tasks.VerifyControlDistributionTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
 import support.tasks.registerGeneratedBuildLogicSerializationVerification
 
@@ -143,16 +142,6 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
     eachFile {
         if (relativePath.pathString == "bin/kast") permissions { unix("755") }
     }
-}
-
-val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTask::class) {
-    group = "verification"
-    description = "Rejects oversized or semantic-runtime-bearing control archives."
-    dependsOn(assembleKastControlDist)
-    controlDirectory.set(controlProductDirectory)
-    controlArchive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
-    maximumArchiveBytes.set(64L * 1024L * 1024L)
-    maximumInstalledBytes.set(128L * 1024L * 1024L)
 }
 
 apply(from = "distribution/release/ide-hosted-release.gradle.kts")

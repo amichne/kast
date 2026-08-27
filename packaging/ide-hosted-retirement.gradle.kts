@@ -74,13 +74,13 @@ tasks.register<Exec>("verifyNoDefaultIsolatedRuntime") {
 tasks.register("verifyDistributionContent") {
     group = "verification"
     description = "Verifies the hosted control-plus-plugin default artifact layouts."
-    dependsOn("verifyKastControlDistLayout", "verifyIdeHostedRelease")
+    dependsOn("verifyIdeHostedRelease")
 }
 
 tasks.register("verifyDistributionSize") {
     group = "verification"
-    description = "Enforces the control archive and installed-size ceilings."
-    dependsOn("verifyKastControlDistLayout")
+    description = "Enforces the hosted control-plus-plugin release size ceiling."
+    dependsOn("verifyIdeHostedRelease")
 }
 
 tasks.register("runtimeDeliveryMvpAcceptance") {
