@@ -166,17 +166,28 @@ abstract class Kvp026AtomicProofTestTask : Test() {
         if (executed != KVP026_EXPECTED_TEST_COUNT || failures != 0) {
             throw GradleException("KVP-026 suite rejected: tests=$executed, failures=$failures")
         }
-        val document = expectedDocument(configuration(), forbiddenEvidence)
+        val document = Kvp026TestEvidenceDocument(
+            1,
+            KVP026_TASK_ID,
+            listOf(misuseSelector.get(), legalPathSelector.get()).sorted(),
+            KVP026_EXPECTED_TEST_COUNT,
+            0,
+            Kvp026TestCaseDocument(
+                misuseCaseId.get(),
+                misuseCaseName.get(),
+                Kvp026SemanticOutcome.REJECTED,
+                Kvp026ObservedTestResult.SUCCESS,
+            ),
+            Kvp026TestCaseDocument(
+                legalPathCaseId.get(),
+                legalPathCaseName.get(),
+                Kvp026SemanticOutcome.COMPLETE,
+                Kvp026ObservedTestResult.SUCCESS,
+            ),
+            forbiddenEvidence,
+        )
         writeTextAtomically(evidenceFile.get().asFile.toPath(), encode(document))
     }
-
-    private fun configuration() = Kvp026TestConfiguration(
-        ProofCommand(misuseCaseId.get(), "", "", misuseCaseName.get()),
-        ProofCommand(legalPathCaseId.get(), "", "", legalPathCaseName.get()),
-        misuseSelector.get(),
-        legalPathSelector.get(),
-        emptyList(),
-    )
 }
 
 /**
