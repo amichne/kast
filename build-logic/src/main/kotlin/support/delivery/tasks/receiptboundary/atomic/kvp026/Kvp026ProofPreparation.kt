@@ -140,6 +140,7 @@ internal fun prepareKvp026ProofContext(
         dependencies.implementationBaseline,
         observedHead,
         packet.packet.task.allowedWrites,
+        canonicalKvp025TaskPacket().task.allowedWrites,
     )) {
         is Kvp026ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp026ImplementationScopeAdmission.Rejected -> return preparationRejected(

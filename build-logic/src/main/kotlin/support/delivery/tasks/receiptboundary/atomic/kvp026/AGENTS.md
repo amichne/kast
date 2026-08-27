@@ -7,7 +7,7 @@ dependency admission, content-scoped report, and v2 completion receipt.
   receipt before observing KVP-026 work.
 - Derive selectors, case names, forbidden-work obligations, paths, and receipt identity only from
   the canonical Kotlin graph packet.
-- Use the KVP-025 receipt's observed head as the implementation-delta baseline. Admit every later
-  committed path against KVP-026's declared write scope.
+- Observe from the admitted KVP-024 historical head, retain only commits with KVP-026-owned paths,
+  and admit mixed checkpoint paths only through the graph-derived KVP-025/KVP-026 scope union.
 - Skip the named test task only after the complete relevant-input and dependency closure admits.
 - Emit exactly one KVP-026 report and one KVP-026 completion receipt.

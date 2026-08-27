@@ -58,8 +58,9 @@ internal fun admitKvp025ChangedPaths(
  * Proof transition: admitted predecessor/current heads plus graph-declared write roots ->
  * `Kvp025ImplementationScopeAdmission`.
  *
- * Establishes that every path in every checkpoint after the predecessor is owned by KVP-025's
- * graph-declared write scope, then preserves the complete admitted delta. Git/process failures and
+ * Establishes the prior admitted segment through [preservedThrough], then appends only later
+ * checkpoints containing KVP-025-owned paths. Every checkpoint is observed without a pathspec;
+ * commits owned wholly by later tasks are excluded from this task delta. Git/process failures and
  * malformed scoped deltas remain finite [Kvp025BoundaryFailure]. Raw Git output exists only here.
  */
 internal fun admitKvp025ImplementationScope(
@@ -68,6 +69,7 @@ internal fun admitKvp025ImplementationScope(
     predecessorHead: DeliveryGeneration,
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
+    preservedThrough: DeliveryGeneration? = null,
 ): Kvp025ImplementationScopeAdmission {
     val ancestor = git(
         exec,
@@ -77,6 +79,15 @@ internal fun admitKvp025ImplementationScope(
     if (ancestor.exitCode != 0) {
         return rejectedScope(Kvp025BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
     }
+    if (preservedThrough != null && (
+            git(exec, repositoryRoot, listOf(
+                "merge-base", "--is-ancestor", predecessorHead.value, preservedThrough.value,
+            )).exitCode != 0 ||
+                git(exec, repositoryRoot, listOf(
+                    "merge-base", "--is-ancestor", preservedThrough.value, currentHead.value,
+                )).exitCode != 0
+            )
+    ) return rejectedScope(Kvp025BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
     val revisions = git(
         exec,
         repositoryRoot,
@@ -90,6 +101,7 @@ internal fun admitKvp025ImplementationScope(
         return rejectedScope(Kvp025BoundaryFailure.GIT_COMMAND_REJECTED)
     }
     val commits = mutableListOf<Kvp025ImplementationCommit>()
+    var preservingPriorScope = preservedThrough != null
     for (revision in revisions.text.lineSequence().filter(String::isNotBlank)) {
         val changed = git(
             exec,
@@ -101,16 +113,22 @@ internal fun admitKvp025ImplementationScope(
         if (changed.exitCode != 0) {
             return rejectedScope(Kvp025BoundaryFailure.GIT_COMMAND_REJECTED)
         }
-        val paths = when (val admitted = admitKvp025ChangedPaths(
-            changed.text.lineSequence().toList(),
-            allowedWrites,
-        )) {
+        val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        val taskPaths = if (preservingPriorScope) observedPaths else observedPaths.filter { path ->
+            allowedWrites.any { path.inScope(it) }
+        }
+        if (taskPaths.isEmpty()) {
+            if (revision == preservedThrough?.value) preservingPriorScope = false
+            continue
+        }
+        val paths = when (val admitted = admitKvp025ChangedPaths(taskPaths, allowedWrites)) {
             is Kvp025ChangedPathsAdmission.Complete -> admitted.paths
             Kvp025ChangedPathsAdmission.Rejected -> return rejectedScope(
                 Kvp025BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE,
             )
         }
         commits += Kvp025ImplementationCommit(DeliveryGeneration(revision), paths)
+        if (revision == preservedThrough?.value) preservingPriorScope = false
     }
     return if (commits.isEmpty()) {
         rejectedScope(Kvp025BoundaryFailure.NO_IMPLEMENTATION_COMMIT)

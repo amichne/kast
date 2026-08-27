@@ -51,10 +51,10 @@ internal fun admitKvp026Dependencies(
         KVP013_GATE_ID,
         KVP013_RECEIPT_DIGEST,
     ) ?: return dependencyRejected(Kvp026DependencyFailure.DIGEST_MISMATCH)
-    val kvp024 = when (val admitted = admitLegacyKvp024Prefix(
+    val kvp024Prefix = when (val admitted = admitLegacyKvp024Prefix(
         read(kvp024Path) ?: return readRejected(),
     )) {
-        is LegacyReceiptPrefixFileAdmission.Complete -> admitted.prefix.frontierReceiptDigest.value
+        is LegacyReceiptPrefixFileAdmission.Complete -> admitted.prefix
         is LegacyReceiptPrefixFileAdmission.Rejected -> return dependencyRejected(
             Kvp026DependencyFailure.DIGEST_MISMATCH,
         )
@@ -89,10 +89,10 @@ internal fun admitKvp026Dependencies(
         AdmittedKvp026Dependencies(
             linkedMapOf(
                 KVP013_RECEIPT_ID to kvp013,
-                KVP024_RECEIPT_ID to kvp024,
+                KVP024_RECEIPT_ID to kvp024Prefix.frontierReceiptDigest.value,
                 KVP025_RECEIPT_ID to kvp025Document.receiptDigest.value,
             ),
-            kvp025Document.observedRepositoryHead,
+            kvp024Prefix.observedRepositoryHead,
         ),
     )
 }

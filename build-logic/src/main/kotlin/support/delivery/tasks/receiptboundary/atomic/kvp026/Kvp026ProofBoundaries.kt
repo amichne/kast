@@ -39,8 +39,10 @@ internal sealed interface Kvp026RelevantInputAdmission {
  * Proof transition: admitted KVP-025 baseline/current head and graph-declared write roots ->
  * `Kvp026ImplementationScopeAdmission`.
  *
- * Establishes a nonempty, ordered commit delta in which every observed changed path is owned by
- * KVP-026. Git or scope failure remains finite rejection. Raw Git output exists only here.
+ * Establishes a nonempty, ordered KVP-026 commit delta after observing every checkpoint without a
+ * pathspec. Mixed delivery checkpoints must lie in the dependency-closed companion/task write
+ * union, while the preserved delta contains only KVP-026-owned paths. Git or scope failure remains
+ * finite rejection. Raw Git output exists only here.
  */
 internal fun admitKvp026ImplementationScope(
     exec: ExecOperations,
@@ -48,6 +50,7 @@ internal fun admitKvp026ImplementationScope(
     predecessorHead: DeliveryGeneration,
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
+    companionWrites: List<String>,
 ): Kvp026ImplementationScopeAdmission {
     if (git(exec, repositoryRoot, listOf(
             "merge-base", "--is-ancestor", predecessorHead.value, currentHead.value,
@@ -71,12 +74,17 @@ internal fun admitKvp026ImplementationScope(
         if (changed.exitCode != 0) {
             return scopeRejected(Kvp026BoundaryFailure.GIT_COMMAND_REJECTED)
         }
-        val paths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
-        if (paths.isEmpty() || paths.any { path ->
-                allowedWrites.none { scope -> path.inScope(scope) }
+        val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        val taskPaths = observedPaths.filter { path ->
+            allowedWrites.any { scope -> path.inScope(scope) }
+        }
+        if (taskPaths.isEmpty()) return@forEach
+        val dependencyClosedBatchWrites = allowedWrites + companionWrites
+        if (observedPaths.any { path ->
+                dependencyClosedBatchWrites.none { scope -> path.inScope(scope) }
             }
         ) return scopeRejected(Kvp026BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
-        commits += Kvp026ImplementationCommit(DeliveryGeneration(revision), paths)
+        commits += Kvp026ImplementationCommit(DeliveryGeneration(revision), taskPaths)
     }
     return if (commits.isEmpty()) {
         scopeRejected(Kvp026BoundaryFailure.NO_IMPLEMENTATION_COMMIT)
