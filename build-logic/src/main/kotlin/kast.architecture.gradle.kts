@@ -7,7 +7,7 @@ import support.architecture.gradle.VerifyKastArchitectureTask
 import support.architecture.gradle.VerifyKastVfsPassiveFirewallNegativeTask
 import support.architecture.gradle.VerifyKastVfsPassiveFirewallTask
 import support.architecture.gradle.VerifyNoLegacyArchitectureTask
-import support.tasks.VerifyVfsPassiveReadTask
+import support.tasks.vfspassive.VerifyVfsPassiveReadTask
 
 plugins {
     base
