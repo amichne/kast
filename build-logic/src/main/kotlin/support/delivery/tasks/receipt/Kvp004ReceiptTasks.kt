@@ -60,6 +60,7 @@ private data class Kvp004ProgramProofJsonDocument(
 private val kvp004ProofJson = Json { ignoreUnknownKeys = false; prettyPrint = true }
 private val expectedKvp004RejectedCases = Kvp004RejectedCase.entries.toSet()
 private val expectedKvp004Counts = Kvp004ProgramCounts(43, 27, 21, 14, 22, 19, 17, 91)
+private const val expectedKvp004WaveCount = 38
 private val expectedKvp004Order: List<TaskId> = buildList {
     addAll((1..10).map(::taskId))
     addAll((12..31).map(::taskId))
@@ -135,7 +136,7 @@ internal fun deriveKvp004ProgramProof(): Kvp004ProgramProofResult {
     if (admitted.counts() != expectedKvp004Counts ||
         admitted.order != expectedKvp004Order ||
         admitted.program.terminalTask != TaskId("KVP-043") ||
-        admitted.waves.values.max() + 1 != 37
+        admitted.waves.values.max() + 1 != expectedKvp004WaveCount
     ) return proofMismatch()
     return Kvp004ProgramProofResult.Complete(
         Kvp004ProgramProof(expectedKvp004RejectedCases, admitted),
@@ -230,7 +231,7 @@ internal fun decodeKvp004ProgramProof(raw: String): Kvp004ProgramProofResult {
         document.terminalTaskId != "KVP-043" -> Kvp004ProgramProofFailure.TERMINAL_MISMATCH
         taskOrder != expectedKvp004Order ->
             Kvp004ProgramProofFailure.ORDER_MISMATCH
-        document.waveCount != 37 -> Kvp004ProgramProofFailure.WAVE_MISMATCH
+        document.waveCount != expectedKvp004WaveCount -> Kvp004ProgramProofFailure.WAVE_MISMATCH
         else -> return deriveKvp004ProgramProof()
     }
     return Kvp004ProgramProofResult.Rejected(failure)

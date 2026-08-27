@@ -3,7 +3,7 @@
 **Status:** Normative reader plan. The canonical Kotlin graph and its deterministic projections are the sole task-field authority.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `3037fa4113501a9cdb2cc1161cd8dbb6489487a15dc49e122a0256b663b828fd`
+**Program fingerprint:** `f487afff0cf1a93cfdf9c57082de33c3db5da4f38a046c219b8301680216504a`
 
 ## Terminal outcome
 
@@ -821,7 +821,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Allowed reads.** `build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper`, `build-logic`, `kernel`, `protocol`, `runtime/ide-read`, `workspace/contract`, `workspace/intellij-read`, `ide-plugin/AGENTS.md`, `ide-plugin/build.gradle.kts`, `ide-plugin/src/main`, `ide-plugin/src/test`.
 
-**Allowed writes.** `ide-plugin/AGENTS.md`, `ide-plugin/src/main/kotlin`, `ide-plugin/src/test`.
+**Allowed writes.** The generated graph packet is the sole scope authority. It admits the endpoint
+lifecycle implementation plus the exact delivery-proof, projection, architecture-classification,
+guide, and verification boundaries required to issue the KVP-025 receipt.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.024.proof`, `requirement:KVP-REQ-019`.
 
@@ -855,13 +857,17 @@ checkpoint may also contain nonconflicting writes owned by other tasks.
 
 **Goal.** Parse descriptor v2 once, prove compatibility, root, capabilities, reachability, and runtime identity, then issue one endpoint capability.
 
-**Dependencies.** `KVP-007`, `KVP-013`, `KVP-024`. Computed wave: `19`.
+**Dependencies.** `KVP-013`, `KVP-024`, `KVP-025`. Computed wave: `19`.
 
-**Allowed reads.** `cli/src/main/kotlin`, `protocol/wire`, `gradle/delivery/schema/ide-endpoint.schema.json`.
+**Allowed reads.** The generated graph packet admits the exact Gradle/toolchain inputs, KVP-026
+proof boundary, CLI sources and tests, protocol wire sources, and endpoint schema.
 
-**Allowed writes.** `cli/src/main/kotlin`, `cli/src/test`.
+**Allowed writes.** The generated graph packet admits only the KVP-026 proof registration/boundary,
+CLI build and guide files, and CLI production/test sources.
 
-**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.007.proof`, `taskOutput:kvp.013.proof`, `taskOutput:kvp.024.proof`, `requirement:KVP-REQ-008`, `requirement:KVP-REQ-017`, `requirement:KVP-REQ-018`.
+**Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`,
+`taskOutput:kvp.013.proof`, `taskOutput:kvp.024.proof`, `taskOutput:kvp.025.proof`,
+`requirement:KVP-REQ-008`, `requirement:KVP-REQ-017`, `requirement:KVP-REQ-018`.
 
 **Outputs.** `kvp.026.proof` at `cli/build/reports/KVP-026-cli-admission.json`.
 
@@ -873,13 +879,20 @@ checkpoint may also contain nonconflicting writes owned by other tasks.
 
 **Forbidden work.** Scanning arbitrary sockets; First-match endpoint selection; Ignoring capability set; Revalidating raw strings downstream.
 
-**RED.** `./gradlew :cli:test --tests "*IdeEndpointAdmissionNegativeTest"`. Expected failure: Wrong root, build, schema, PID, runtime, capability, or unreachable endpoint is admitted.
+**Atomic proof.** `./gradlew proveKVP026`.
 
-**GREEN.** `./gradlew :cli:test --tests "*IdeEndpointAdmissionTest"`. Expected proof: Only one compatible exact-root endpoint yields dispatch capability.
+The command re-admits KVP-013, KVP-024, and the topologically revalidated KVP-025 receipt,
+enforces the graph-declared implementation delta and relevant-input closure, and either reuses an
+unchanged content-scoped receipt or executes the two graph-selected cases before automatic report
+and receipt emission.
+
+**Named misuse.** `Wrong root, build, schema, PID, runtime, capability, or unreachable endpoint is admitted.` must be rejected.
+
+**Named legal path.** `Only one compatible exact-root endpoint yields dispatch capability.` must complete.
 
 **Review boundary.** CLI endpoint admission only.
 
-**Completion receipt.** `KVP-026-COMPLETE` at `build/reports/delivery/receipts/KVP-026-COMPLETE.receipt.json`. It consumes `KVP-026-RED`, `KVP-026-GREEN`, and all predecessor completion receipts.
+**Task proof receipt.** Content-scoped `KVP-026-COMPLETE` at `build/reports/delivery/receipts/KVP-026-COMPLETE.receipt.json`. It binds the task definition, admitted predecessor receipt digests, relevant-input closure, command/toolchain identity, observed proof, and output digest.
 
 ### KVP-027: Remove semantic runtime acquisition and process fallback from default demand
 

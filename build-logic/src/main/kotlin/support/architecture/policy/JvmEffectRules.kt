@@ -10,6 +10,7 @@ internal object EffectRules {
         "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$BoundSocket",
         "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$DescriptorTemporary",
         "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$IdentifiedDescriptorTemporary",
+        "io/github/amichne/kast/ide/endpoint/RetainedPublishedDescriptor",
     )
 
     private val filesystemMutators = setOf(

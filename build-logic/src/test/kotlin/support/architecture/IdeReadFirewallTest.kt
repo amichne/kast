@@ -9,7 +9,6 @@ import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import java.nio.file.Files
 import java.nio.file.Path
-
 class IdeReadFirewallTest {
     @Test
     fun `runtime split IDE read graph is physically narrow`() {
@@ -236,14 +235,12 @@ class IdeReadFirewallTest {
         return temporary.resolve("HostedReadFixture.class").also { Files.write(it, bytecode) }
     }
 }
-
 class Kvp024EndpointAuthorityTest {
     @Test
     fun `only IDE plugin selects the two endpoint effects`() {
         val policies = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
         ).architecture.modules
-
         assertEquals(
             setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
@@ -261,7 +258,6 @@ class Kvp024EndpointAuthorityTest {
             policies.getValue(ModuleId.WORKSPACE_INTELLIJ_READ).allowedEffects,
         )
     }
-
     @Test
     fun `endpoint package receives named effects instead of generic write authority`() {
         val caller = JvmMember.of(
@@ -269,7 +265,6 @@ class Kvp024EndpointAuthorityTest {
             "publish",
             "()V",
         )
-
         assertEquals(
             setOf(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
             EffectRules.classify(
@@ -291,6 +286,11 @@ class Kvp024EndpointAuthorityTest {
                 JvmMember.of("java/nio/file/Files", "createTempFile", "()V"),
             ),
         )
+        assertEquals(setOf(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE), EffectRules.classify(
+            ModuleRole.IDE_READ_ONLY,
+            JvmMember.of("io/github/amichne/kast/ide/endpoint/RetainedPublishedDescriptor", "deleteFromOwner", "()V"),
+            JvmMember.of("java/nio/file/Files", "delete", "()V"),
+        ))
         assertEquals(
             setOf(ForbiddenEffect.UDS_BIND),
             EffectRules.classify(
