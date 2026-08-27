@@ -6,7 +6,8 @@ metadata boundary.
 ## Local scope
 
 - `InstalledKastCliComposition` must construct `IdeOnlyRuntimeDemander` from the installed protocol
-  digests, supported host tuple, deterministic endpoint directory, and admitted runtime identity.
+  digests, supported host tuple, the hosted publisher's stable `/tmp` endpoint directory, and
+  admitted runtime identity. Never substitute the launcher JVM's platform-specific temp directory.
 - Managed runtime acquisition, runtime stores, archives, indexer executables, launchd, and process
   start must remain unreachable from this composition. Prove this with both
   `verifyNoDefaultRuntimeFallbackNegative` and `verifyNoDefaultRuntimeFallback`.

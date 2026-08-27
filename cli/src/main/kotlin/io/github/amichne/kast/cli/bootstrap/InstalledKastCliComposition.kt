@@ -35,6 +35,19 @@ private val IDE_CAPABILITIES = listOf(
     "symbol.describe",
 )
 
+/**
+ * Proof transition: installed host constant ->
+ * `Refinement<IdeEndpointSocketDirectory, IdeEndpointSocketDirectoryFailure>`.
+ *
+ * Establishes the same stable, bounded `/tmp` directory used by hosted endpoint publication.
+ * [IdeEndpointSocketDirectoryFailure] remains the closed expected failure; raw path extraction is
+ * permitted only when the installed composition constructs its endpoint admitter.
+ */
+internal fun installedIdeEndpointSocketDirectory(): Refinement<
+    IdeEndpointSocketDirectory,
+    IdeEndpointSocketDirectoryFailure,
+> = IdeEndpointSocketDirectory.parse("/tmp")
+
 private sealed interface InstalledCompositionFailure : KastCliCompositionFailure {
     data class ControlProductRejected(
         val failure: InstalledKastControlProductFailure,
@@ -119,9 +132,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     InstalledCompositionFailure.EndpointPolicyRejected(admission.failure),
                 )
         }
-        val socketDirectory = when (val admission = IdeEndpointSocketDirectory.parse(
-            Path.of(System.getProperty("java.io.tmpdir")).toAbsolutePath().normalize().toString(),
-        )) {
+        val socketDirectory = when (val admission = installedIdeEndpointSocketDirectory()) {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> return KastCliCompositionConstruction.Rejected(
                 InstalledCompositionFailure.EndpointSocketDirectoryRejected(admission.failure),
