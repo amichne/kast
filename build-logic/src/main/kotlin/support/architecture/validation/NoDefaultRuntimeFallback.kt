@@ -1,5 +1,8 @@
 package support.architecture
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
@@ -242,3 +245,118 @@ private fun typeOwners(type: Type): List<String> = when (type.sort) {
 
 private fun List<NoDefaultRuntimeFallbackFailure>.rejected() =
     NoDefaultRuntimeFallbackVerification.Rejected(first(), drop(1))
+
+@Serializable
+private data class NoDefaultRuntimeFallbackReportDocument(
+    val schemaVersion: Int,
+    val taskId: String,
+    val gate: NoDefaultRuntimeFallbackGate,
+    val outcome: NoDefaultRuntimeFallbackGateOutcome,
+    val reachableClassCount: Int,
+    val verifiedAuthorities: List<DefaultRuntimeFallbackAuthority>,
+)
+
+@Serializable
+enum class NoDefaultRuntimeFallbackGate { MISUSE, LEGAL_PATH }
+
+@Serializable
+enum class NoDefaultRuntimeFallbackGateOutcome { REJECTED, COMPLETE }
+
+enum class NoDefaultRuntimeFallbackReportFailure {
+    MALFORMED_DOCUMENT,
+    NON_CANONICAL_DOCUMENT,
+    SCHEMA_MISMATCH,
+    TASK_MISMATCH,
+    AUTHORITY_MISMATCH,
+    OUTCOME_MISMATCH,
+}
+
+data class AdmittedNoDefaultRuntimeFallbackReport(
+    val gate: NoDefaultRuntimeFallbackGate,
+    val outcome: NoDefaultRuntimeFallbackGateOutcome,
+    val reachableClassCount: Int,
+)
+
+sealed interface NoDefaultRuntimeFallbackReportAdmission {
+    data class Complete(val report: AdmittedNoDefaultRuntimeFallbackReport) :
+        NoDefaultRuntimeFallbackReportAdmission
+    data class Rejected(val failure: NoDefaultRuntimeFallbackReportFailure) :
+        NoDefaultRuntimeFallbackReportAdmission
+}
+
+private val noFallbackReportJson = Json {
+    encodeDefaults = true
+    ignoreUnknownKeys = false
+    prettyPrint = true
+    prettyPrintIndent = "    "
+}
+
+/** Projects one admitted KVP-027 misuse or legal gate as canonical generated JSON. */
+fun encodeNoDefaultRuntimeFallbackReport(
+    gate: NoDefaultRuntimeFallbackGate,
+    outcome: NoDefaultRuntimeFallbackGateOutcome,
+    reachableClassCount: Int,
+): String = encode(
+    NoDefaultRuntimeFallbackReportDocument(
+        1,
+        "KVP-027",
+        gate,
+        outcome,
+        reachableClassCount,
+        DefaultRuntimeFallbackAuthority.entries,
+    ),
+)
+
+/**
+ * Proof transition: `String -> NoDefaultRuntimeFallbackReportAdmission`.
+ *
+ * Establishes the exact KVP-027 schema/task identity, all five ordered authority mappings, one
+ * closed gate outcome, and canonical generated encoding. Every malformed or mismatched document
+ * remains finite [NoDefaultRuntimeFallbackReportFailure]. Raw JSON exists only here.
+ */
+fun admitNoDefaultRuntimeFallbackReport(
+    raw: String,
+): NoDefaultRuntimeFallbackReportAdmission {
+    val document = try {
+        noFallbackReportJson.decodeFromString(NoDefaultRuntimeFallbackReportDocument.serializer(), raw)
+    } catch (_: SerializationException) {
+        return reportRejected(NoDefaultRuntimeFallbackReportFailure.MALFORMED_DOCUMENT)
+    } catch (_: IllegalArgumentException) {
+        return reportRejected(NoDefaultRuntimeFallbackReportFailure.MALFORMED_DOCUMENT)
+    }
+    val failure = when {
+        document.schemaVersion != 1 -> NoDefaultRuntimeFallbackReportFailure.SCHEMA_MISMATCH
+        document.taskId != "KVP-027" -> NoDefaultRuntimeFallbackReportFailure.TASK_MISMATCH
+        document.verifiedAuthorities != DefaultRuntimeFallbackAuthority.entries ->
+            NoDefaultRuntimeFallbackReportFailure.AUTHORITY_MISMATCH
+        document.reachableClassCount < 1 -> NoDefaultRuntimeFallbackReportFailure.OUTCOME_MISMATCH
+        document.gate == NoDefaultRuntimeFallbackGate.MISUSE &&
+            document.outcome != NoDefaultRuntimeFallbackGateOutcome.REJECTED ->
+            NoDefaultRuntimeFallbackReportFailure.OUTCOME_MISMATCH
+        document.gate == NoDefaultRuntimeFallbackGate.LEGAL_PATH &&
+            document.outcome != NoDefaultRuntimeFallbackGateOutcome.COMPLETE ->
+            NoDefaultRuntimeFallbackReportFailure.OUTCOME_MISMATCH
+        raw != encode(document) -> NoDefaultRuntimeFallbackReportFailure.NON_CANONICAL_DOCUMENT
+        else -> null
+    }
+    return if (failure == null) {
+        NoDefaultRuntimeFallbackReportAdmission.Complete(
+            AdmittedNoDefaultRuntimeFallbackReport(
+                document.gate,
+                document.outcome,
+                document.reachableClassCount,
+            ),
+        )
+    } else {
+        reportRejected(failure)
+    }
+}
+
+private fun encode(document: NoDefaultRuntimeFallbackReportDocument): String =
+    noFallbackReportJson.encodeToString(
+        NoDefaultRuntimeFallbackReportDocument.serializer(),
+        document,
+    ) + "\n"
+
+private fun reportRejected(failure: NoDefaultRuntimeFallbackReportFailure) =
+    NoDefaultRuntimeFallbackReportAdmission.Rejected(failure)

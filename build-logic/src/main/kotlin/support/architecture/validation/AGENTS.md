@@ -10,3 +10,6 @@ effect boundaries.
   `ENDPOINT_DESCRIPTOR_WRITE`; only the IDE plugin policy selects the two endpoint effects.
 - Keep policy failures finite and exhaustive. Do not turn a forbidden edge or effect into a
   warning or convenience exception.
+- `NoDefaultRuntimeFallback.kt` admits the transitive installed-composition class closure and owns
+  the five KVP-027 forbidden fallback mappings plus their closed report codec. Its synthetic
+  misuse remains in the Gradle adapter; this owner contains no filesystem effects.

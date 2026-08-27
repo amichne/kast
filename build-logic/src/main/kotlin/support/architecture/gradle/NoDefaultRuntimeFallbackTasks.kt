@@ -1,8 +1,5 @@
 package support.architecture.gradle
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
@@ -18,30 +15,19 @@ import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import support.architecture.DefaultRuntimeFallbackAuthority
 import support.architecture.NoDefaultRuntimeFallbackFailure
+import support.architecture.NoDefaultRuntimeFallbackGate
+import support.architecture.NoDefaultRuntimeFallbackGateOutcome
 import support.architecture.NoDefaultRuntimeFallbackInspection
 import support.architecture.NoDefaultRuntimeFallbackVerification
 import support.architecture.RuntimeClassBytes
+import support.architecture.encodeNoDefaultRuntimeFallbackReport
 import java.nio.file.Files
-
-@Serializable
-private data class NoDefaultRuntimeFallbackReportDocument(
-    val schemaVersion: Int,
-    val taskId: String,
-    val status: String,
-    val entrypoint: String,
-    val reachableClassCount: Int,
-    val verifiedAuthorities: List<String>,
-)
-
-private val fallbackReportJson = Json {
-    encodeDefaults = true
-    explicitNulls = true
-    prettyPrint = true
-    prettyPrintIndent = "    "
-}
 
 @UntrackedTask(because = "Re-derives the fixed KVP-027 fallback-link misuse")
 abstract class VerifyNoDefaultRuntimeFallbackNegativeTask : DefaultTask() {
+    @get:OutputFile
+    abstract val reportFile: RegularFileProperty
+
     @TaskAction
     fun verify() {
         val result = NoDefaultRuntimeFallbackInspection.inspect(negativeFixture())
@@ -55,6 +41,16 @@ abstract class VerifyNoDefaultRuntimeFallbackNegativeTask : DefaultTask() {
         if (observed != expected) {
             throw GradleException("KVP-027 misuse mismatch: expected=$expected observed=$observed")
         }
+        val output = reportFile.get().asFile.toPath()
+        Files.createDirectories(output.parent)
+        Files.writeString(
+            output,
+            encodeNoDefaultRuntimeFallbackReport(
+                NoDefaultRuntimeFallbackGate.MISUSE,
+                NoDefaultRuntimeFallbackGateOutcome.REJECTED,
+                1,
+            ),
+        )
         logger.lifecycle("KVP-027 rejected all {} fallback authorities", observed.size)
     }
 }
@@ -85,17 +81,16 @@ abstract class VerifyNoDefaultRuntimeFallbackTask : DefaultTask() {
                     result.additional.joinToString(),
             )
         }
-        val report = NoDefaultRuntimeFallbackReportDocument(
-            schemaVersion = 1,
-            taskId = "KVP-027",
-            status = "COMPLETE",
-            entrypoint = proof.entrypoint,
-            reachableClassCount = proof.reachableClasses.size,
-            verifiedAuthorities = proof.verifiedAuthorities.map { it.name },
-        )
         val output = reportFile.get().asFile.toPath()
         Files.createDirectories(output.parent)
-        Files.writeString(output, fallbackReportJson.encodeToString(report) + "\n")
+        Files.writeString(
+            output,
+            encodeNoDefaultRuntimeFallbackReport(
+                NoDefaultRuntimeFallbackGate.LEGAL_PATH,
+                NoDefaultRuntimeFallbackGateOutcome.COMPLETE,
+                proof.reachableClasses.size,
+            ),
+        )
         logger.lifecycle(
             "KVP-027 admitted IDE-only composition closure ({} classes, {} forbidden mappings)",
             proof.reachableClasses.size,

@@ -100,6 +100,7 @@ val verifyNoDefaultRuntimeFallbackNegative by tasks.registering(
 ) {
     group = "verification"
     description = "Proves the fixed KVP-027 fallback-linked composition is rejected."
+    reportFile.set(layout.buildDirectory.file("reports/KVP-027-no-fallback-negative.json"))
 }
 
 val verifyNoDefaultRuntimeFallback by tasks.registering(
@@ -109,7 +110,29 @@ val verifyNoDefaultRuntimeFallback by tasks.registering(
     description = "Proves the installed CLI bytecode reaches only the IDE endpoint runtime path."
     dependsOn(tasks.named("classes"), verifyNoDefaultRuntimeFallbackNegative)
     compiledClassDirectories.from(sourceSets.main.get().output.classesDirs)
-    reportFile.set(layout.buildDirectory.file("reports/KVP-027-no-fallback.json"))
+    reportFile.set(layout.buildDirectory.file("reports/KVP-027-no-fallback-evidence.json"))
+}
+
+val kvp027Packet = support.delivery.canonicalKvp027TaskPacket()
+val proveKVP027Cases = tasks.register<support.delivery.Kvp027AtomicProofEvidenceTask>(
+    "proveKVP027Cases",
+) {
+    group = "verification"
+    description = "Admits KVP-027's graph-named misuse, legal, and CLI test evidence."
+    dependsOn(tasks.named("test"), verifyNoDefaultRuntimeFallback)
+    configureFrom(kvp027Packet)
+    misuseReportFile.set(
+        verifyNoDefaultRuntimeFallbackNegative.flatMap(
+            support.architecture.gradle.VerifyNoDefaultRuntimeFallbackNegativeTask::reportFile,
+        ),
+    )
+    legalReportFile.set(
+        verifyNoDefaultRuntimeFallback.flatMap(
+            support.architecture.gradle.VerifyNoDefaultRuntimeFallbackTask::reportFile,
+        ),
+    )
+    testResultsDirectory.set(layout.buildDirectory.dir("test-results/test"))
+    evidenceFile.set(layout.buildDirectory.file("reports/KVP-027-gate-evidence.json"))
 }
 
 val kvp026Packet = support.delivery.canonicalKvp026TaskPacket()

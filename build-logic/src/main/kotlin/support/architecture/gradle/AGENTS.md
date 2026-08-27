@@ -16,7 +16,7 @@ This directory owns the Gradle task boundary for architecture projection and ver
   bytes for digest and ASM proof, admits both exact artifact sets, and writes
   `workspace/intellij-read/build/reports/KVP-018-no-walk.json`.
 - `verifyNoDefaultRuntimeFallbackNegative` owns the synthetic fallback-linked misuse;
-  `verifyNoDefaultRuntimeFallback` reads compiled CLI classes once and writes the closed
-  `cli/build/reports/KVP-027-no-fallback.json` projection.
+  `verifyNoDefaultRuntimeFallback` reads compiled CLI classes once. They write separate typed gate
+  evidence consumed by the atomic KVP-027 receipt boundary.
 
 Run `./gradlew -p build-logic test`, then `./gradlew verifyKastModuleGraph verifyForbiddenEffects`.
