@@ -148,17 +148,15 @@ internal fun admitKvp031ProofReport(
  * Proof transition: prior KVP-031 report JSON plus the current stable content closure ->
  * `Kvp031PriorProofScopeAdmission`.
  *
- * Establishes that the task definition, dependencies, cases, command, and toolchain still match.
- * Relevant-input movement deliberately does not rewrite historical implementation ownership: it
- * forces fresh case execution while the Git boundary separately replays the prior task commits.
- * This extracts only typed commit and report-head candidates; the Git boundary must replay and
- * admit that history before reuse.
+ * Establishes that the task definition, dependency identities, cases, command, and toolchain still
+ * match. Dependency-digest and relevant-input movement force fresh exact-head case execution while
+ * the Git boundary separately replays the prior task commits. This extracts only typed commit and
+ * report-head candidates; the Git boundary must replay and admit that history before reuse.
  */
 internal fun admitKvp031PriorProofScope(
     raw: String,
     programVersion: TaskProofProgramVersion,
     packet: AdmittedTaskPacketFile,
-    dependencies: AdmittedKvp031Dependencies,
     cases: Kvp031ProofCaseExpectation,
     commandDigest: TaskProofCommandDigest,
     toolchainDigest: ToolchainDigest,
@@ -192,8 +190,10 @@ internal fun admitKvp031PriorProofScope(
         document.programVersion != programVersion.value ||
         document.taskId != task.id.value ||
         document.taskDefinitionDigest != packet.packet.taskDefinitionDigest.value ||
-        document.dependencyReceiptDigests != dependencies.digests ||
+        document.dependencyReceiptDigests.keys != packet.packet.receipt.dependencies
+            .mapTo(linkedSetOf()) { it.value } ||
         document.packetDigest != packet.documentDigest.value ||
+        document.relevantInputDigest.isBlank() ||
         document.commandDigest != commandDigest.value ||
         document.toolchainDigest != toolchainDigest.value ||
         document.outcome != Kvp031ReportOutcome.COMPLETE ||

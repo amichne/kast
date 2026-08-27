@@ -9,6 +9,8 @@ dependency admission, content-scoped report, and v2 completion receipt.
   the canonical Kotlin graph packet.
 - Observe from the last task-owned KVP-029 implementation checkpoint, then retain the
   dependency-closed delta from the first KVP-030-exclusive path.
+- Preserve structurally admitted historical implementation scope when dependency digests or
+  relevant inputs change; replay only through its last admitted implementation commit.
 - Skip the named gate-evidence task only after the complete relevant-input and dependency closure
   admits.
 - Preserve the report and receipt's original observed head when that closure is unchanged at a

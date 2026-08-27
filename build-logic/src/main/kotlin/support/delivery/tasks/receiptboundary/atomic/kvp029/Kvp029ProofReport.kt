@@ -145,20 +145,19 @@ internal fun admitKvp029ProofReport(
 }
 
 /**
- * Proof transition: prior KVP-029 report JSON plus the current stable content closure ->
+ * Proof transition: prior KVP-029 report JSON plus current static task authority ->
  * `Kvp029PriorProofScopeAdmission`.
  *
- * Establishes that every non-head, non-scope report field still matches the current graph packet,
- * dependencies, relevant inputs, cases, command, and toolchain. It extracts only typed commit and
- * report-head candidates; the Git boundary must replay and admit that history before reuse.
+ * Establishes that the report's task definition, packet, cases, command, and toolchain remain
+ * compatible enough to extract only typed commit and report-head candidates. Dependency and
+ * relevant-input changes invalidate report reuse without erasing prior Git scope; the Git boundary
+ * must replay and admit that history before a fresh report is issued.
  */
 internal fun admitKvp029PriorProofScope(
     raw: String,
     programVersion: TaskProofProgramVersion,
     packet: AdmittedTaskPacketFile,
-    dependencies: AdmittedKvp029Dependencies,
     cases: Kvp029ProofCaseExpectation,
-    relevantInputDigest: RelevantInputDigest,
     commandDigest: TaskProofCommandDigest,
     toolchainDigest: ToolchainDigest,
 ): Kvp029PriorProofScopeAdmission {
@@ -191,9 +190,10 @@ internal fun admitKvp029PriorProofScope(
         document.programVersion != programVersion.value ||
         document.taskId != task.id.value ||
         document.taskDefinitionDigest != packet.packet.taskDefinitionDigest.value ||
-        document.dependencyReceiptDigests != dependencies.digests ||
+        document.dependencyReceiptDigests.keys != packet.packet.receipt.dependencies
+            .mapTo(linkedSetOf()) { it.value } ||
         document.packetDigest != packet.documentDigest.value ||
-        document.relevantInputDigest != relevantInputDigest.value ||
+        document.relevantInputDigest.isBlank() ||
         document.commandDigest != commandDigest.value ||
         document.toolchainDigest != toolchainDigest.value ||
         document.outcome != Kvp029ReportOutcome.COMPLETE ||

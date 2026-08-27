@@ -160,9 +160,7 @@ internal fun prepareKvp029ProofContext(
             raw,
             version,
             packet,
-            dependencies,
             cases,
-            relevantInputs,
             commandDigest,
             toolchainDigest,
         )

@@ -127,11 +127,18 @@ internal fun admitPriorKvp031ImplementationScope(
             "merge-base", "--is-ancestor", candidate.reportHead.value, currentHead.value,
         )).exitCode != 0
     ) return scopeRejected(Kvp031BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
+    val implementationHead = candidate.commits.lastOrNull()?.revision ?: return scopeRejected(
+        Kvp031BoundaryFailure.NO_IMPLEMENTATION_COMMIT,
+    )
+    if (git(exec, repositoryRoot, listOf(
+            "merge-base", "--is-ancestor", implementationHead.value, candidate.reportHead.value,
+        )).exitCode != 0
+    ) return scopeRejected(Kvp031BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
     return when (val replayed = admitKvp031ImplementationScope(
         exec,
         repositoryRoot,
         predecessorHead,
-        candidate.commits.last().revision,
+        implementationHead,
         allowedWrites,
         ownedWrites,
         companionWrites,

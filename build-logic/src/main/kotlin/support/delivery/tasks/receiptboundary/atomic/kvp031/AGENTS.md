@@ -9,6 +9,8 @@ dependency admission, exact-head report closure, and v2 completion receipt.
   the canonical Kotlin graph packet.
 - Observe from the last task-owned KVP-030 implementation checkpoint, then retain only the
   graph-admitted runtime/workspace paths from the hosted production-composition batch.
+- Preserve structurally admitted historical implementation scope when dependency digests or
+  relevant inputs change; replay only through its last admitted implementation commit.
 - Skip the named gate-evidence task only when the complete relevant-input and dependency closure
   admits and the existing receipt binds the current exact head.
 - A later repository head invalidates the receipt even when its content closure is unchanged; rerun

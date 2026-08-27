@@ -107,9 +107,10 @@ internal fun admitKvp029ImplementationScope(
  * Proof transition: structurally admitted prior report scope plus current Git head ->
  * `Kvp029ImplementationScopeAdmission`.
  *
- * Establishes that the prior report head remains an ancestor and that replaying the graph-declared
- * write policy to that exact head yields byte-identical commit evidence. Later unrelated commits
- * are deliberately outside this content-scoped transition.
+ * Establishes that the prior report head remains an ancestor, that the last admitted implementation
+ * commit is an ancestor of that report head, and that replaying the graph-declared write policy to
+ * the implementation commit yields byte-identical evidence. Later successor commits are
+ * deliberately outside this content-scoped transition.
  */
 internal fun admitPriorKvp029ImplementationScope(
     exec: ExecOperations,
@@ -124,11 +125,18 @@ internal fun admitPriorKvp029ImplementationScope(
             "merge-base", "--is-ancestor", candidate.reportHead.value, currentHead.value,
         )).exitCode != 0
     ) return scopeRejected(Kvp029BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
+    val implementationHead = candidate.commits.lastOrNull()?.revision ?: return scopeRejected(
+        Kvp029BoundaryFailure.NO_IMPLEMENTATION_COMMIT,
+    )
+    if (git(exec, repositoryRoot, listOf(
+            "merge-base", "--is-ancestor", implementationHead.value, candidate.reportHead.value,
+        )).exitCode != 0
+    ) return scopeRejected(Kvp029BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
     return when (val replayed = admitKvp029ImplementationScope(
         exec,
         repositoryRoot,
         predecessorHead,
-        candidate.reportHead,
+        implementationHead,
         allowedWrites,
         companionWrites,
     )) {
