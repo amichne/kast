@@ -11,8 +11,9 @@ dependency admission, content-scoped report, and v2 completion receipt.
   KVP-027 checkpoints, then retain the dependency-closed delta from the first KVP-028-exclusive
   path.
 - When a predecessor digest changes after successor work exists, structurally admit the prior
-  report's static task authority and replay its exact Git scope. Rerun invalidated cases and issue
-  fresh evidence without absorbing later task checkpoints into KVP-028.
+  report's static task authority and replay through its last admitted implementation commit. Prove
+  both that commit and the report head are ancestral, rerun invalidated cases, and issue fresh
+  evidence without absorbing later task checkpoints into KVP-028.
 - Skip the named gate-evidence task only after the complete relevant-input and dependency closure
   admits.
 - Preserve the report and receipt's original observed head when that closure is unchanged at a
