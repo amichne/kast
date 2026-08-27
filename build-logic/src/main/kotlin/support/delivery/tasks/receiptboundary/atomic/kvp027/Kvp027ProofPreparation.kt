@@ -133,6 +133,7 @@ internal fun prepareKvp027ProofContext(
         observedHead,
         packet.packet.task.allowedWrites,
         emptyList(),
+        canonicalKvp028TaskPacket().task.allowedWrites,
     )) {
         is Kvp027ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp027ImplementationScopeAdmission.Rejected -> return preparationRejected(

@@ -41,8 +41,8 @@ internal sealed interface Kvp027RelevantInputAdmission {
  *
  * Establishes a nonempty, ordered KVP-027 commit delta after observing every checkpoint without a
  * pathspec. Mixed delivery checkpoints must lie in the dependency-closed companion/task write
- * union, while the preserved delta contains only KVP-027-owned paths. Git or scope failure remains
- * finite rejection. Raw Git output exists only here.
+ * union until the first KVP-028-exclusive checkpoint. That checkpoint closes the delta so later
+ * shared convention paths cannot be absorbed. Git or scope failure remains finite rejection.
  */
 internal fun admitKvp027ImplementationScope(
     exec: ExecOperations,
@@ -51,6 +51,7 @@ internal fun admitKvp027ImplementationScope(
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
     companionWrites: List<String>,
+    successorWrites: List<String>,
 ): Kvp027ImplementationScopeAdmission {
     if (git(exec, repositoryRoot, listOf(
             "merge-base", "--is-ancestor", predecessorHead.value, currentHead.value,
@@ -65,6 +66,7 @@ internal fun admitKvp027ImplementationScope(
         return scopeRejected(Kvp027BoundaryFailure.GIT_COMMAND_REJECTED)
     }
     val commits = mutableListOf<Kvp027ImplementationCommit>()
+    var successorStarted = false
     revisions.text.lineSequence().filter(String::isNotBlank).forEach { revision ->
         val changed = git(
             exec,
@@ -75,11 +77,17 @@ internal fun admitKvp027ImplementationScope(
             return scopeRejected(Kvp027BoundaryFailure.GIT_COMMAND_REJECTED)
         }
         val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        val dependencyClosedBatchWrites = allowedWrites + companionWrites
+        if (observedPaths.any { path ->
+                successorWrites.any { scope -> path.inScope(scope) } &&
+                    dependencyClosedBatchWrites.none { scope -> path.inScope(scope) }
+            }
+        ) successorStarted = true
+        if (successorStarted) return@forEach
         val taskPaths = observedPaths.filter { path ->
             allowedWrites.any { scope -> path.inScope(scope) }
         }
         if (taskPaths.isEmpty()) return@forEach
-        val dependencyClosedBatchWrites = allowedWrites + companionWrites
         if (observedPaths.any { path ->
                 dependencyClosedBatchWrites.none { scope -> path.inScope(scope) }
             }

@@ -136,7 +136,8 @@ internal fun prepareKvp028ProofContext(
         dependencies.implementationBaseline,
         observedHead,
         packet.packet.task.allowedWrites,
-        emptyList(),
+        canonicalKvp025TaskPacket().task.allowedWrites.filter { it.endsWith("/kvp025") } +
+            canonicalKvp027TaskPacket().task.allowedWrites.filter { it.endsWith("/kvp027") },
     )) {
         is Kvp028ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp028ImplementationScopeAdmission.Rejected -> return preparationRejected(

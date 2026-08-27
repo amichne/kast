@@ -59,9 +59,9 @@ internal fun admitKvp025ChangedPaths(
  * `Kvp025ImplementationScopeAdmission`.
  *
  * Retains KVP-025-owned paths from every fully observed checkpoint. Mixed checkpoints must lie in
- * the dependency-closed companion/task write union; commits wholly owned by later tasks are
- * excluded from this task delta. Git/process failures and malformed scoped deltas remain finite
- * [Kvp025BoundaryFailure]. Raw Git output exists only here.
+ * the dependency-closed companion/task write union until the first KVP-026-exclusive checkpoint.
+ * That checkpoint closes the delta so later proof paths cannot be absorbed through KVP-025's broad
+ * authority scope. Git/process failures remain finite [Kvp025BoundaryFailure].
  */
 internal fun admitKvp025ImplementationScope(
     exec: ExecOperations,
@@ -70,6 +70,7 @@ internal fun admitKvp025ImplementationScope(
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
     companionWrites: List<String>,
+    successorWrites: List<String>,
 ): Kvp025ImplementationScopeAdmission {
     val ancestor = git(
         exec,
@@ -92,6 +93,7 @@ internal fun admitKvp025ImplementationScope(
         return rejectedScope(Kvp025BoundaryFailure.GIT_COMMAND_REJECTED)
     }
     val commits = mutableListOf<Kvp025ImplementationCommit>()
+    var successorStarted = false
     for (revision in revisions.text.lineSequence().filter(String::isNotBlank)) {
         val changed = git(
             exec,
@@ -104,12 +106,19 @@ internal fun admitKvp025ImplementationScope(
             return rejectedScope(Kvp025BoundaryFailure.GIT_COMMAND_REJECTED)
         }
         val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        val predecessorAndTaskWrites = allowedWrites + companionWrites
+        if (observedPaths.any { path ->
+                successorWrites.any { scope -> path.inScope(scope) } &&
+                    predecessorAndTaskWrites.none { scope -> path.inScope(scope) }
+            }
+        ) successorStarted = true
+        if (successorStarted) continue
         val taskPaths = observedPaths.filter { path ->
             allowedWrites.any { path.inScope(it) }
         }
         if (taskPaths.isEmpty()) continue
         if (observedPaths.any { path ->
-                (allowedWrites + companionWrites).none { scope -> path.inScope(scope) }
+                predecessorAndTaskWrites.none { scope -> path.inScope(scope) }
             }
         ) return rejectedScope(Kvp025BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
         val paths = when (val admitted = admitKvp025ChangedPaths(taskPaths, allowedWrites)) {
