@@ -6,3 +6,5 @@ module's compiled test classpath. Product dependencies and shared conventions re
 build script or typed build logic.
 
 `kvp028-workspace-inspect.gradle.kts` owns only the KVP-028 misuse and legal acceptance selectors.
+`kvp029-symbol-discover.gradle.kts` owns only the KVP-029 hosted-route selectors and binds their
+execution to the existing native IntelliJ discovery test suite.
