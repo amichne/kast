@@ -27,8 +27,9 @@ internal sealed interface Kvp027DependencyAdmission {
  * `Kvp027DependencyAdmission`.
  *
  * Establishes the sole graph-declared predecessor, its canonical self-digested v2 receipt, and
- * exact report output digest. The admitted KVP-026 observed head becomes the implementation
- * baseline. Expected read, identity, closure, digest, or output mismatch remains finite
+ * exact report output digest. The report's last task-owned KVP-026 checkpoint becomes the
+ * implementation baseline, independent of later receipt revalidation heads. Expected read,
+ * identity, closure, digest, or output mismatch remains finite
  * rejection; raw receipt JSON exists only here.
  */
 internal fun admitKvp027Dependencies(
@@ -67,10 +68,16 @@ internal fun admitKvp027Dependencies(
     if (outputDigests != mapOf(expectedOutput to sha256(report).value)) {
         return rejected(Kvp027DependencyFailure.OUTPUT_MISMATCH)
     }
+    val baseline = when (val admitted = admitKvp026ImplementationBaseline(report)) {
+        is Kvp026ImplementationBaselineAdmission.Complete -> admitted.baseline
+        Kvp026ImplementationBaselineAdmission.Rejected -> return rejected(
+            Kvp027DependencyFailure.CLOSURE_MISMATCH,
+        )
+    }
     return Kvp027DependencyAdmission.Complete(
         AdmittedKvp027Dependencies(
             mapOf(KVP026_RECEIPT_ID to document.receiptDigest.value),
-            document.observedRepositoryHead,
+            baseline,
         ),
     )
 }
