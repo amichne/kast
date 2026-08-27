@@ -240,6 +240,6 @@ private fun IdeEndpointPreparation.positivePrepared() = when (this) {
 private fun consumePositiveReport() {
     val reportPath = System.getProperty("kast.ide.endpoint.report") ?: return
     val report = Files.readString(Path.of(reportPath))
-    assertTrue(report.contains("\"taskId\":\"KVP-024\""))
-    assertTrue(report.contains("\"publicInterface\":\"ReadyIdeEndpoint\""))
+    assertTrue(report.contains("\"taskId\": \"KVP-024\""))
+    assertTrue(report.contains("\"publicInterface\": \"ReadyIdeEndpoint\""))
 }

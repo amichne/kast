@@ -396,5 +396,5 @@ private fun deleteFixture(endpoint: ReadyIdeEndpoint) {
 private fun consumeCanonicalReport() {
     val reportPath = System.getProperty("kast.ide.endpoint.report") ?: return
     val path = Path.of(reportPath)
-    assertTrue(Files.readString(path).contains("\"taskId\":\"KVP-024\""))
+    assertTrue(Files.readString(path).contains("\"taskId\": \"KVP-024\""))
 }
