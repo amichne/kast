@@ -16,6 +16,8 @@ This package owns one project-scoped Unix-domain endpoint and its descriptor-v2 
 - `IdeEndpointService` owns at most one ready endpoint. Duplicate publication must fail before a
   second bind. Project/plugin disposal, service cancellation, serving termination, and disposal
   racing publication must converge on the same idempotent `RetiredIdeEndpoint` transition.
+- Log each closed startup outcome at the project-service owner so a missing descriptor never
+  collapses plugin loading, transient readiness, and terminal rejection into one diagnosis.
 - Commit initialization, cached Gradle-import, smart-mode, and all-startup-activities completion
   listeners before issuing the first attempt. The final startup signal owns one bounded,
   suspending re-observation because IntelliJ publishes cached external-project data asynchronously

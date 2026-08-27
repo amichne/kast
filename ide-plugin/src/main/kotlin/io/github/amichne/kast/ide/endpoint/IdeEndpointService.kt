@@ -3,6 +3,7 @@ package io.github.amichne.kast.ide.endpoint
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -96,10 +97,12 @@ class IdeEndpointService private constructor(
     ) {
         when (plan) {
             is IdeEndpointSignalPlan.Launch -> coroutineScope.launch(Dispatchers.IO) {
+                val startup = LiveIdeEndpointStartup.prepare(project, generations)
+                LOG.info("Kast hosted endpoint startup outcome: $startup")
                 complete(
                     project,
                     plan.attempt,
-                    LiveIdeEndpointStartup.prepare(project, generations),
+                    startup,
                 )
             }
             IdeEndpointSignalPlan.Coalesced,
@@ -137,6 +140,7 @@ class IdeEndpointService private constructor(
     }
 
     internal companion object {
+        private val LOG = Logger.getInstance(IdeEndpointService::class.java)
         private val CACHED_MODEL_PUBLICATION_REOBSERVATION_DELAY = 3.seconds
 
         @JvmSynthetic
