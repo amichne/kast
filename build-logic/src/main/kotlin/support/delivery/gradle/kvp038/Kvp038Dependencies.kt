@@ -107,9 +107,19 @@ internal fun admitKvp038Dependencies(
             "KVP-036-COMPLETE" to kvp036.receiptDigest.value,
             "KVP-037-COMPLETE" to kvp037.receiptDigest.value,
         ),
-        kvp037.observedRepositoryHead,
+        kvp038ImplementationBaseline(),
     ))
 }
+
+/**
+ * Proof transition: `ValidatedProgram -> DeliveryGeneration`.
+ *
+ * Establishes the canonical graph-owned ready frontier used to select KVP-038 implementation
+ * commits. The content-scoped KVP-037 observed head remains receipt evidence and cannot replace
+ * this implementation authority. Raw revision text is extracted only by the Git scope boundary.
+ */
+internal fun kvp038ImplementationBaseline(): DeliveryGeneration =
+    defaultIsolatedRuntimeRetirementBatch().readyFrontier
 
 private fun admitKvp008(paths: Kvp038DependencyPaths): Kvp038LegacyClosureAdmission {
     val raw = listOf(paths.kvp008Red, paths.kvp008Green, paths.kvp008Complete, paths.kvp008Report)
