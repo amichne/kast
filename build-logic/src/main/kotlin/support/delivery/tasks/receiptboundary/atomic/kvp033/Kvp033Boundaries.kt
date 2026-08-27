@@ -12,6 +12,7 @@ internal enum class Kvp033BoundaryFailure {
     DIRTY_RELEVANT_INPUT,
     EMPTY_RELEVANT_INPUT,
     RELEVANT_INPUT_READ_REJECTED,
+    EMPTY_OWNED_WRITE_SCOPE,
 }
 
 internal class AdmittedKvp033ImplementationScope internal constructor(
@@ -30,20 +31,53 @@ internal sealed interface Kvp033RelevantInputAdmission {
     data class Rejected(val failure: Kvp033BoundaryFailure) : Kvp033RelevantInputAdmission
 }
 
+internal class AdmittedKvp033WriteOwnership internal constructor(
+    val declaredWrites: List<String>,
+    val ownedWrites: List<String>,
+)
+
+internal sealed interface Kvp033WriteOwnershipAdmission {
+    data class Complete(val ownership: AdmittedKvp033WriteOwnership) :
+        Kvp033WriteOwnershipAdmission
+    data class Rejected(val failure: Kvp033BoundaryFailure) : Kvp033WriteOwnershipAdmission
+}
+
+/**
+ * Proof transition: `(TaskPacket, ValidatedProgram) -> Kvp033WriteOwnershipAdmission`.
+ *
+ * Establishes KVP-033's declared writes and graph-derived physical anchors that no other canonical
+ * task declares. An empty ownership set is closed [Kvp033BoundaryFailure] data. Raw path strings
+ * leave only at the Git write-scope boundary.
+ */
+internal fun admitKvp033WriteOwnership(
+    packet: TaskPacket,
+    program: ValidatedProgram,
+): Kvp033WriteOwnershipAdmission {
+    val otherWrites = program.program.tasks.filter { it.id != packet.task.id }
+        .flatMap { it.allowedWrites }.toSet()
+    val ownedWrites = packet.task.allowedWrites.filterNot(otherWrites::contains)
+    return if (ownedWrites.isEmpty()) {
+        Kvp033WriteOwnershipAdmission.Rejected(Kvp033BoundaryFailure.EMPTY_OWNED_WRITE_SCOPE)
+    } else Kvp033WriteOwnershipAdmission.Complete(
+        AdmittedKvp033WriteOwnership(packet.task.allowedWrites, ownedWrites),
+    )
+}
+
 /**
  * Proof transition: ready-frontier/current generations plus graph write roots ->
  * `Kvp033ImplementationScopeAdmission`.
  *
- * Establishes a nonempty ordered KVP-033 commit delta. Unrelated checkpoints are ignored only when
- * they contain no KVP-033 path; each task checkpoint must be wholly inside declared writes. Git,
- * ancestry, empty-delta, and mixed-scope failures remain finite [Kvp033BoundaryFailure] data.
+ * Establishes a nonempty ordered KVP-033 commit delta. Only commits containing a graph-derived
+ * physical ownership anchor enter the delta, so successor edits to shared projection/convention
+ * paths cannot invalidate content proof. Each admitted commit remains wholly inside declared
+ * writes. Git, ancestry, empty-delta, and mixed-scope failures are finite failure data.
  */
 internal fun admitKvp033ImplementationScope(
     exec: ExecOperations,
     repositoryRoot: Path,
     predecessorHead: DeliveryGeneration,
     currentHead: DeliveryGeneration,
-    allowedWrites: List<String>,
+    ownership: AdmittedKvp033WriteOwnership,
 ): Kvp033ImplementationScopeAdmission {
     if (git033(exec, repositoryRoot, listOf(
             "merge-base", "--is-ancestor", predecessorHead.value, currentHead.value,
@@ -57,7 +91,6 @@ internal fun admitKvp033ImplementationScope(
     if (revisions.exitCode != 0) return scopeRejected(
         Kvp033BoundaryFailure.GIT_COMMAND_REJECTED,
     )
-    var taskStarted = false
     var commitCount = 0
     revisions.text.lineSequence().filter(String::isNotBlank).forEach { revision ->
         val changed = git033(
@@ -69,16 +102,12 @@ internal fun admitKvp033ImplementationScope(
             Kvp033BoundaryFailure.GIT_COMMAND_REJECTED,
         )
         val observed = changed.text.lineSequence().filter(String::isNotBlank).toList()
-        val taskPaths = observed.filter { path ->
-            allowedWrites.any { scope -> path.inKvp033Scope(scope) }
+        val ownedPaths = observed.filter { path ->
+            ownership.ownedWrites.any { scope -> path.inKvp033Scope(scope) }
         }
-        if (!taskStarted) {
-            taskStarted = taskPaths.isNotEmpty()
-            if (!taskStarted) return@forEach
-        }
-        if (taskPaths.isEmpty()) return@forEach
+        if (ownedPaths.isEmpty()) return@forEach
         if (observed.any { path ->
-                allowedWrites.none { scope -> path.inKvp033Scope(scope) }
+                ownership.declaredWrites.none { scope -> path.inKvp033Scope(scope) }
             }
         ) return scopeRejected(Kvp033BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
         commitCount += 1
