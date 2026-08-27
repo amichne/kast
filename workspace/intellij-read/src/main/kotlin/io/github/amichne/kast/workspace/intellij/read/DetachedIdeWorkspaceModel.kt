@@ -241,7 +241,7 @@ private fun <Value> immutableList(values: List<Value>): List<Value> =
 
 internal object DetachedModelLimits {
     const val MAX_CACHED_GRADLE_MODELS = 8
-    const val MAX_MODULES = 128
+    const val MAX_MODULES = 256
     const val MAX_SOURCE_ROOTS_PER_MODULE = 256
     const val MAX_CLASSPATH_ENTRIES_PER_MODULE = 512
     const val MAX_IDENTITY_CHARS = 512

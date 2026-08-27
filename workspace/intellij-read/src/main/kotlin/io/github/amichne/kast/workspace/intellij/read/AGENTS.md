@@ -22,6 +22,8 @@ state-specific transitions from that capability to `DetachedIdeWorkspaceModel` a
   every collection bound.
 - Refine primitive observations into bounded identity and path types. Reject duplicate or
   conflicting source roots, cross-module ownership ambiguity, and duplicate classpath URLs.
+- Admit at most 256 detached IntelliJ modules. This covers the canonical Kast model's 132 cached
+  Gradle modules while preserving a finite rejection above the evidence-backed capacity.
 - Preserve each Java code/resource source folder's explicit cached `isForGeneratedSources` flag;
   missing or conflicting provenance is a closed capture rejection and must never be inferred from
   a path name.

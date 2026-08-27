@@ -59,7 +59,7 @@ class DetachedModelNegativeTest {
         assertFailures(
             DetachedModelObservation.Observed(
                 detachedModelBoundary(
-                    modules = (0..128).map(::detachedModuleBoundary),
+                    modules = (0..256).map(::detachedModuleBoundary),
                 ),
             ),
             DetachedModelCaptureFailure.TOO_MANY_MODULES,
