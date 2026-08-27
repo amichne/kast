@@ -15,6 +15,8 @@ import zipfile
 
 
 OPERATIONS = ["workspace.inspect", "symbol.discover", "symbol.resolve", "symbol.describe"]
+PROGRAM_SOURCE = "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveReusedIndexProgram.kt"
+PROGRAM_SYMBOL = "KastVfsPassiveReusedIndexProgram"
 
 
 class Rejected(Exception):
@@ -113,15 +115,19 @@ def semantic_journey(executable, root):
     discovery, second = run_operation(
         executable, root,
         ["symbol", "discover", "--mode", "name", "--query",
-         "KastVfsPassiveReusedIndexProgram", "--kind", "symbol", "--match", "exact-name",
+         PROGRAM_SYMBOL, "--kind", "symbol", "--match", "exact-name",
          "--limit", "10"],
         OPERATIONS[1],
     )
+    program_source = str(Path(root) / PROGRAM_SOURCE)
     declarations = [item for item in discovery.get("items", [])
-                    if item.get("name") == "KastVfsPassiveReusedIndexProgram"
+                    if item.get("name") == PROGRAM_SYMBOL
+                    and item.get("file") == program_source
                     and isinstance(item.get("candidateSelector"), str)]
     if len(declarations) != 1:
-        raise Rejected("DISCOVERY_NOT_UNIQUE", candidateCount=len(declarations))
+        raise Rejected(
+            "DISCOVERY_NOT_UNIQUE", candidateCount=len(declarations), source=program_source,
+        )
     resolved, third = run_operation(
         executable, root, ["symbol", "resolve", "--candidate", declarations[0]["candidateSelector"]],
         OPERATIONS[2],
