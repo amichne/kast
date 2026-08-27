@@ -20,6 +20,7 @@ internal enum class Kvp032ProofDecision { REUSE, EXECUTE }
 internal enum class Kvp032ProofPreparationFailure {
     PACKET_REJECTED,
     DEPENDENCY_REJECTED,
+    WRITE_OWNERSHIP_REJECTED,
     IMPLEMENTATION_SCOPE_REJECTED,
     RELEVANT_INPUT_REJECTED,
     CASE_EXPECTATION_REJECTED,
@@ -165,6 +166,15 @@ internal fun prepareKvp032ProofContext(
             Kvp032ProofPreparationFailure.DEPENDENCY_REJECTED,
         )
     }
+    val ownership = when (val admitted = admitKvp032WriteOwnership(
+        packet.packet,
+        KastVfsPassiveReusedIndexProgram.validated,
+    )) {
+        is Kvp032WriteOwnershipAdmission.Complete -> admitted.ownership
+        is Kvp032WriteOwnershipAdmission.Rejected -> return preparationRejected(
+            Kvp032ProofPreparationFailure.WRITE_OWNERSHIP_REJECTED,
+        )
+    }
     val relevant = when (val admitted = admitKvp032RelevantInputs(
         exec, root, packet, dependencies,
     )) {
@@ -178,7 +188,7 @@ internal fun prepareKvp032ProofContext(
         root,
         dependencies.implementationBaseline,
         observedHead,
-        packet.packet.task.allowedWrites,
+        ownership,
     )) {
         is Kvp032ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp032ImplementationScopeAdmission.Rejected -> return preparationRejected(
