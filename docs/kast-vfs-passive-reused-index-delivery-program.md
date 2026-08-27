@@ -1,15 +1,23 @@
 # Kast best-case VFS-passive reused-index delivery program
 
-**Status:** Normative program definition. No task is complete until its exact-head receipts are admitted.
+**Status:** Normative reader plan. The canonical Kotlin graph and its deterministic projections are the sole task-field authority.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `f564dea6a123a43320ae96933f370f446eb738b32de16fc53d2c94685ab89d44`
+**Program fingerprint:** `fe71c74178345292f2a317cf26ec622242f31cba9c6fc034eb7bb4948a5d4b3a`
 
 ## Terminal outcome
 
 The terminal type is `BestCaseVfsPassiveReusedIndex`. It proves that the installed `kast` command reached `workspace.inspect -> symbol.discover -> symbol.resolve -> symbol.describe` through the already-running IDE process and existing Project, with zero second Project opens, Gradle imports, VFS refreshes, Kast-caused indexing cycles, runtime archive reads, or `kast-indexer` processes.
 
 The terminal type has no public constructor. `KVP-043` derives it only from the complete receipt closure.
+
+## Proof protocol
+
+KVP-001..024 preserve their admitted v1 RED, GREEN, and completion receipts. KVP-025 onward
+derives one `./gradlew proveKVPNNN` command and one `TaskProofReceipt` from each graph task. The
+historical RED/GREEN entries below are the misuse and legal case inputs to that atomic proof; they
+are not independent receipts. New receipts are reusable when their complete relevant-input closure
+is unchanged. Only KVP-031, KVP-034, KVP-036, and KVP-043 require exact-head admission.
 
 ## Corrections to prior plans
 
@@ -273,7 +281,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Allowed reads.** `build-logic/src/main/kotlin/support/delivery`, `build/reports/delivery/receipts`, `gradle/delivery/schema/proof-receipt.schema.json`.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt`, `build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/ReceiptIssuanceBoundary.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryTaskOwnershipTest.kt`, `build-logic/src/test/kotlin/support/delivery/proof/AGENTS.md`, `build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/schema/proof-receipt.schema.json`, `scripts/verify_bundle.py`.
+**Allowed writes.** `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt`, `build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt`, `build-logic/src/main/kotlin/support/delivery/model/proof/DeliveryReceipt.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/DeliveryReceiptJsonBoundary.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md`, `build-logic/src/main/kotlin/support/delivery/tasks/receipt/ReceiptIssuanceBoundary.kt`, `build-logic/src/test/kotlin/support/delivery/DeliveryTaskOwnershipTest.kt`, `build-logic/src/test/kotlin/support/delivery/proof/AGENTS.md`, `build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt`, `docs/kast-vfs-passive-reused-index-delivery-program.md`, `gradle/delivery/kast-vfs-passive-requirements.json`, `gradle/delivery/kast-vfs-passive-reused-index-program.json`, `gradle/delivery/schema/proof-receipt.schema.json`, `scripts/verify_bundle.py`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.006.proof`, `requirement:KVP-REQ-004`, `requirement:KVP-REQ-023`, `requirement:KVP-REQ-026`.
 
@@ -424,7 +432,7 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 **Allowed reads.** `indexer/src/main/kotlin/io/github/amichne/kast/indexer/IndexerEndpointDescriptor.kt`,
 `protocol/contract`, `protocol/wire`, `ide-plugin`, `build/reports/delivery/receipts`,
 `build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt`,
-`build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt`,
+`build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/DeliveryReceiptJsonBoundary.kt`,
 `build-logic/src/main/kotlin/support/delivery/tasks/receipt/ReceiptIssuanceBoundary.kt`,
 `build-logic/src/main/kotlin/support/delivery/tasks/receipt/Kvp005ReceiptProgression.kt`,
 `build-logic/src/main/kotlin/support/delivery/tasks/receipt/Kvp005ReceiptTasks.kt`,
@@ -811,9 +819,9 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Dependencies.** `KVP-024`. Computed wave: `19`.
 
-**Allowed reads.** `ide-plugin/src/main/kotlin`, `protocol/wire`.
+**Allowed reads.** `build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper`, `build-logic`, `kernel`, `protocol`, `runtime/ide-read`, `workspace/contract`, `workspace/intellij-read`, `ide-plugin/AGENTS.md`, `ide-plugin/build.gradle.kts`, `ide-plugin/src/main`, `ide-plugin/src/test`.
 
-**Allowed writes.** `ide-plugin/src/main/kotlin`, `ide-plugin/src/test`.
+**Allowed writes.** `ide-plugin/AGENTS.md`, `ide-plugin/src/main/kotlin`, `ide-plugin/src/test`.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.024.proof`, `requirement:KVP-REQ-019`.
 
@@ -827,13 +835,21 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 **Forbidden work.** Global application lifetime; Stale descriptor retention; Deleting unrelated paths; Non-idempotent cleanup.
 
-**RED.** `./gradlew :ide-plugin:test --tests "*IdeEndpointRetirementNegativeTest"`. Expected failure: Failure or disposal leaves reachable stale readiness or unsafe cleanup.
+**Atomic proof.** `./gradlew proveKVP025`.
 
-**GREEN.** `./gradlew :ide-plugin:test --tests "*IdeEndpointRetirementTest"`. Expected proof: Every lifecycle termination retires owned artifacts exactly once.
+The command first admits the complete tracked source, proof, build, and test-classpath source
+closure. An unchanged content-scoped receipt skips the semantic test cases and is re-admitted at
+the new observed head; an invalidated closure executes the graph-selected cases before emission.
+The task-scoped implementation delta binds only KVP-025's declared writes, so a delivery-batch
+checkpoint may also contain nonconflicting writes owned by other tasks.
+
+**Named misuse.** `physically replaced descriptor is preserved and retirement rejects its identity` must be rejected.
+
+**Named legal path.** `READY retires owned artifacts exactly once and preserves a later generation` must complete.
 
 **Review boundary.** Lifecycle and cleanup only.
 
-**Completion receipt.** `KVP-025-COMPLETE` at `build/reports/delivery/receipts/KVP-025-COMPLETE.receipt.json`. It consumes `KVP-025-RED`, `KVP-025-GREEN`, and all predecessor completion receipts.
+**Task proof receipt.** Content-scoped `KVP-025-COMPLETE` at `build/reports/delivery/receipts/KVP-025-COMPLETE.receipt.json`. It consumes the admitted `KVP-024-COMPLETE` digest and the complete packet/input/command/toolchain/output closure.
 
 ### KVP-026: Admit the compatible exact-root IDE endpoint in the CLI
 
@@ -1438,4 +1454,4 @@ The terminal read product adds `:workspace:intellij-read`, `:runtime:ide-read`, 
 
 ## Derived stopping condition
 
-Success requires every task receipt at one exact head, the installed metrics above, the detached clean-checkout receipt, exact-head CI receipt, independent review receipt, review-resolution receipt, and a PASS entry for every requirement. Code volume, commits, elapsed time, and subjective confidence do not contribute to progression.
+Success requires every content-scoped task receipt to remain valid, every milestone exact-head closure to admit at its required clean head, the installed metrics above, detached clean-checkout and exact-head CI receipts, clean independent review or resolved valid findings, and a PASS entry for every requirement. Code volume, commits, elapsed time, and subjective confidence do not contribute to progression.

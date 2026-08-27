@@ -10,7 +10,7 @@ private val taskIdPattern = Regex("KVP-[0-9]{3}")
 private val requirementIdPattern = Regex("KVP-REQ-[0-9]{3}")
 private val moduleIdPattern = Regex(":[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)*")
 private val classificationIdPattern = Regex("[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*")
-private val gateIdPattern = Regex("KVP-[0-9]{3}-(?:RED|GREEN|COMPLETE-GATE)")
+private val gateIdPattern = Regex("KVP-[0-9]{3}-(?:RED|GREEN|COMPLETE-GATE|PROOF)")
 private val receiptIdPattern = Regex("KVP-[0-9]{3}-(?:RED-RECEIPT|GREEN-RECEIPT|COMPLETE)")
 private val exactRevisionPattern = Regex("[0-9a-f]{40}")
 private val sha256Pattern = Regex("[0-9a-f]{64}")
@@ -21,7 +21,7 @@ enum class DeliveryModelFailure : DeliveryFailure {
     INVALID_PROGRAM_ID, INVALID_TASK_ID, INVALID_REQUIREMENT_ID,
     INVALID_MODULE_ID, INVALID_AUTHORITY_ID, INVALID_EFFECT_ID,
     INVALID_COST_ID, INVALID_GATE_ID, INVALID_RECEIPT_ID,
-    INVALID_GENERATION, INVALID_SHA256, EMPTY_EVIDENCE, EMPTY_LIMITATIONS,
+    INVALID_GENERATION, INVALID_SHA256, EMPTY_EVIDENCE, EMPTY_LIMITATIONS, UNKNOWN_TASK,
 }
 
 sealed interface DeliveryRefinement<out T> {
@@ -190,13 +190,18 @@ sealed interface TaskProgression {
 }
 
 enum class EdgeKind { REQUIRES_ALL, REQUIRES_ONE, JOINS_SELECTED_LANE, RETIRES, INVALIDATES, RECOVERS_TO }
-enum class GateKind { RED, GREEN, TASK_COMPLETION, ACCEPTANCE, REVIEW, REVALIDATION, TERMINAL }
+enum class GateKind { RED, GREEN, TASK_COMPLETION, TASK_PROOF, ACCEPTANCE, REVIEW, REVALIDATION, TERMINAL }
 
 data class DependencyExpression(val kind: EdgeKind, val taskIds: Set<TaskId>)
 data class TaskOutput(val id: String, val kind: String, val path: String, val description: String)
-data class ProofCommand(val gateId: String, val command: String, val expectation: String) {
+data class ProofCommand(
+    val gateId: String,
+    val command: String,
+    val expectation: String,
+    val namedCase: String = expectation,
+) {
     val identity = GateId(gateId)
-    init { require(command.isNotBlank() && expectation.isNotBlank()) }
+    init { require(command.isNotBlank() && expectation.isNotBlank() && namedCase.isNotBlank()) }
 }
 data class CompletionReceiptContract(val receiptId: String, val requiredGateIds: Set<String>, val dependencyReceiptIds: Set<String>, val outputPath: String) {
     val identity = ReceiptId(receiptId)
@@ -228,6 +233,7 @@ data class TaskNode(
     val authorities: Set<AuthorityId>,
 ) {
     val costClassifications = costs.mapTo(linkedSetOf(), ::CostId)
+    val proof: TaskProofProtocol = deriveTaskProofProtocol(this)
 }
 
 data class ModuleBoundary(val id: ModuleId, val lifecycle: String, val role: String, val owns: List<String>, val dependencies: Set<ModuleId>, val authorities: Set<AuthorityId>, val effects: Set<EffectId>)
@@ -259,11 +265,11 @@ data class DeliveryProgram(
     val specialEdges: List<SpecialEdge>,
     val processNodes: List<ProcessNode>,
     val processTransitions: List<ProcessTransition>,
-    val gates: List<GateNode>,
     val installedMetrics: List<MetricRequirement>,
     val terminalTask: TaskId,
 ) {
     val generation = DeliveryGeneration(targetHead)
+    val gates: List<GateNode> = tasks.flatMap { it.proof.gates }
 
     /**
      * Proof transition: `DeliveryProgram -> ValidatedProgram`.
@@ -285,6 +291,9 @@ data class DeliveryProgram(
             require(task.title.isNotBlank() && task.goal.isNotBlank())
             require(task.allowedReads.isNotEmpty() && task.allowedWrites.isNotEmpty())
             require(task.inputs.isNotEmpty() && task.outputs.isNotEmpty())
+            require(task.inputs.all { input ->
+                input.keys == setOf("id", "kind") && input.values.none(String::isBlank)
+            })
             require(task.forbiddenWork.isNotEmpty())
             require(task.dependencies.kind == EdgeKind.REQUIRES_ALL)
             require(task.dependencies.taskIds.all(byId::containsKey))
@@ -315,71 +324,6 @@ data class DeliveryProgram(
         while (ready.isNotEmpty()) { val current = ready.remove(); order += current; outgoing.getValue(current).sorted().forEach { next -> indegree[next] = indegree.getValue(next) - 1; if (indegree.getValue(next) == 0) ready += next } }
         require(order.size == byId.size) { "delivery graph contains a cycle" }
         return order
-    }
-}
-
-data class ValidatedProgram(val program: DeliveryProgram, val order: List<TaskId>, val waves: Map<TaskId, Int>) {
-    fun projection(): Map<String, Any?> {
-        val base = linkedMapOf<String, Any?>(
-            "schemaVersion" to program.schemaVersion,
-            "programId" to program.id.value,
-            "name" to program.name,
-            "targetHead" to program.targetHead,
-            "requirementFingerprint" to program.requirementFingerprint.value,
-            "sourceDigests" to program.sourceDigests.mapKeys { it.key }.mapValues { it.value.value },
-            "requirements" to program.requirements.sortedBy { it.id.value }.map { mapOf("id" to it.id.value, "statement" to it.statement) },
-            "modules" to program.modules.sortedBy { it.id.value }.map { m -> mapOf("id" to m.id.value, "lifecycle" to m.lifecycle, "role" to m.role, "owns" to m.owns.sorted(), "dependencies" to m.dependencies.map { it.value }.sorted(), "authorities" to m.authorities.map { it.value }.sorted(), "effects" to m.effects.map { it.value }.sorted()) },
-            "authorities" to program.authorities.sortedBy { it.id.value }.map { mapOf("id" to it.id.value, "owner" to it.owner.value, "fact" to it.fact) },
-            "effects" to program.effects.sortedBy { it.id.value }.map { mapOf("id" to it.id.value, "owners" to it.owners.map { o -> o.value }.sorted(), "purpose" to it.purpose) },
-            "tasks" to program.tasks.sortedBy { it.id }.map { t ->
-                mapOf(
-                    "id" to t.id.value, "title" to t.title, "goal" to t.goal, "milestone" to t.milestone,
-                    "dependencyExpression" to mapOf("kind" to "allOf", "taskIds" to t.dependencies.taskIds.map { it.value }.sorted()),
-                    "allowedReads" to t.allowedReads, "allowedWrites" to t.allowedWrites, "inputs" to t.inputs,
-                    "outputs" to t.outputs.map { mapOf("id" to it.id, "kind" to it.kind, "path" to it.path, "description" to it.description) },
-                    "publicInterface" to t.publicInterface, "internalImplementation" to t.internalImplementation,
-                    "effectClassification" to t.effects.map { it.value }.sorted(), "costClassification" to t.costs.sorted(),
-                    "forbiddenWork" to t.forbiddenWork,
-                    "red" to mapOf("gateId" to t.red.gateId, "command" to t.red.command, "expectedFailure" to t.red.expectation),
-                    "green" to mapOf("gateId" to t.green.gateId, "command" to t.green.command, "expectedProof" to t.green.expectation),
-                    "reviewBoundary" to t.reviewBoundary,
-                    "completionReceipt" to mapOf("receiptId" to t.completionReceipt.receiptId, "requiredGateIds" to t.completionReceipt.requiredGateIds.sorted(), "requiredDependencyReceipts" to t.completionReceipt.dependencyReceiptIds.sorted(), "outputPath" to t.completionReceipt.outputPath),
-                    "provesRequirements" to t.provesRequirements.map { it.value }.sorted(), "authorities" to t.authorities.map { it.value }.sorted(),
-                    "computedWave" to waves.getValue(t.id),
-                )
-            },
-            "taskOrder" to order.map { it.value },
-            "waveCount" to (waves.values.maxOrNull()!! + 1),
-            "specialEdges" to program.specialEdges.map { mapOf("kind" to it.kind.name.lowercase(), "from" to it.from, "target" to it.target, "result" to it.result) },
-            "processGraph" to mapOf("nodes" to program.processNodes.map { mapOf("id" to it.id, "kind" to it.kind) }, "transitions" to program.processTransitions.map { mapOf("from" to it.from, "to" to it.to, "transition" to it.transition, "failure" to it.failure) }),
-            "gateGraph" to program.gates.sortedBy { it.id }.map { mapOf("id" to it.id, "taskId" to it.taskId.value, "kind" to it.kind.name, "command" to it.command, "statement" to it.statement, "dependsOnReceiptIds" to it.dependencyReceiptIds.sorted(), "outputReceiptId" to it.outputReceiptId) },
-            "installedAcceptance" to mapOf("ownerTask" to "KVP-034", "report" to "build/reports/ide-hosted/KVP-034-installed.json", "requiredMetrics" to program.installedMetrics.map { mapOf("id" to it.id, "predicate" to it.predicate, "value" to it.value) }),
-            "terminal" to mapOf("taskId" to program.terminalTask.value, "type" to "BestCaseVfsPassiveReusedIndex", "receiptPath" to "build/reports/ide-hosted/best-case-vfs-passive-reused-index.receipt.json", "derivedOnly" to true),
-        )
-        val fingerprint = sha256(canonicalJson(base))
-        return linkedMapOf<String, Any?>("programFingerprint" to fingerprint.value).apply { putAll(base) }
-    }
-
-    fun requirementTraceProjection(): Map<String, Any?> {
-        val orderedTasks = program.tasks.sortedBy { it.id }
-        val entries = program.requirements.sortedBy { it.id.value }.map { requirement ->
-            val implementationTasks = orderedTasks.filter { requirement.id in it.provesRequirements }
-            mapOf(
-                "requirementId" to requirement.id.value,
-                "statement" to requirement.statement,
-                "implementationTaskIds" to implementationTasks.map { it.id.value },
-                "enforcementGateIds" to implementationTasks.flatMap {
-                    listOf(it.red.gateId, it.green.gateId)
-                },
-                "finalRevalidationTaskId" to "KVP-042",
-                "proofStateSource" to "ADMITTED_RECEIPTS",
-            )
-        }
-        return mapOf(
-            "schemaVersion" to 1,
-            "programFingerprint" to projection().getValue("programFingerprint"),
-            "entries" to entries,
-        )
     }
 }
 

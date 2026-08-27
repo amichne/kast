@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Verify the complete KVP-024 authority, product, report, and receipt boundary."""
 import io, json
-import pathlib, subprocess
+import pathlib
 import zipfile
+from lib.proof_boundaries import verify_kvp024_completion_receipt
 REPORT_PATH = "ide-plugin/build/reports/KVP-024-endpoint.json"
 RECEIPT_PATH = "build/reports/delivery/receipts/KVP-024-COMPLETE.receipt.json"
 RECEIPT_ROOT = (
@@ -203,7 +204,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     assert "IdeEndpointDescriptorPath" in location
     bundle = required_text(root, "scripts/verify_bundle.py")
     assert "from verify_kvp024_delivery import verify_kvp024_delivery" in bundle
-    assert "verify_kvp024_delivery(root, program, requirements, normative_plan)" in bundle
+    assert "verify_kvp024_delivery(root, legacy_program, requirements, normative_plan)" in bundle
     endpoint_receipt_root = RECEIPT_ROOT + "endpoint/"
     receipt_files = {
         "AGENTS.md",
@@ -297,26 +298,36 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         IdeEndpointPublicationFailure.kt IdeEndpointService.kt IdeEndpointTransport.kt
         ProjectEndpointGeneration.kt""".split())
     present_product_files = {path.name for path in product_root.iterdir()} if product_root.is_dir() else set()
-    assert not present_product_files or product_files == present_product_files
     test_root = root / "ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/endpoint"
     test_files = set("""AGENTS.md IdeEndpointPublicationNegativeTest.kt
         IdeEndpointPublicationTest.kt""".split())
     present_test_files = {path.name for path in test_root.iterdir()} if test_root.is_dir() else set()
+    retirement_refined = {
+        "IdeEndpointCoordinator.kt",
+        "IdeEndpointRetirementNegativeTest.kt",
+        "IdeEndpointRetirementTest.kt",
+    } <= present_product_files | present_test_files
+    if retirement_refined:
+        assert product_files - {"IdeEndpointPublicationFailure.kt"} <= present_product_files
+    else:
+        assert not present_product_files or product_files <= present_product_files
     assert bool(present_product_files) == bool(present_test_files)
     if present_product_files:
-        assert test_files == present_test_files
+        assert test_files <= present_test_files
         for name in product_files:
             assert f'mainRoot + "{name}"' in registration
         for marker in ('sharedArtifacts + listOf(testRoot + "IdeEndpointPublicationNegativeTest.kt")', 'testRoot + "IdeEndpointPublicationTest.kt"'):
             assert marker in registration
-        product_source = "\n".join(
-            required_text(root, f"ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/endpoint/{name}")
-            for name in sorted(product_files - {"AGENTS.md"})
-        )
-        for marker in ("ReadyIdeEndpoint", "PreparedIdeEndpoint", "IdeEndpointPublicationFailure",
-                       "IdeEndpointService", "serveUntilClosed", "ProjectEndpointGenerationSource",
-                       "createDescriptorTemporary", "StandardCopyOption.ATOMIC_MOVE"):
-            assert marker in product_source
+        if not retirement_refined:
+            product_source = "\n".join(
+                required_text(root, f"ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/endpoint/{name}")
+                for name in sorted(product_files - {"AGENTS.md"})
+            )
+            for marker in ("ReadyIdeEndpoint", "PreparedIdeEndpoint",
+                           "IdeEndpointPublicationFailure", "IdeEndpointService",
+                           "serveUntilClosed", "ProjectEndpointGenerationSource",
+                           "createDescriptorTemporary", "StandardCopyOption.ATOMIC_MOVE"):
+                assert marker in product_source
     product_dependencies = tuple(
         f'implementation(project("{dependency}"))'
         for dependency in (
@@ -369,18 +380,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         ("DESCRIPTOR_PUBLICATION_FAILED", "RETIRE_OWNED_AND_REJECT"),
     ]
     completion_receipt = json.loads(required_text(root, RECEIPT_PATH))
-    assert completion_receipt["receiptId"] == "KVP-024-COMPLETE"
-    assert completion_receipt["taskId"] == "KVP-024"
-    assert completion_receipt["gateId"] == "KVP-024-COMPLETE-GATE"
-    assert completion_receipt["programFingerprint"] == program["programFingerprint"]
-    assert completion_receipt["requirementFingerprint"] == requirements["requirementFingerprint"]
-    assert set(completion_receipt["dependencyReceiptDigests"]) == {
-        "KVP-013-COMPLETE", "KVP-023-COMPLETE", "KVP-024-RED-RECEIPT",
-        "KVP-024-GREEN-RECEIPT",
-    }
-    assert completion_receipt["exactHead"] == subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=root, text=True,
-    ).strip()
+    verify_kvp024_completion_receipt(root, completion_receipt, program, retirement_refined)
 
 if __name__ == "__main__":
     repository = pathlib.Path(__file__).resolve().parents[1]

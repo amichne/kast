@@ -2,7 +2,8 @@
 
 Use JUnit Jupiter through the existing build-logic test contract. Test observable program invariants: exact target identity, derived graph order and waves, terminal reachability, requirement-trace derivation, proof-gate ownership, model-path ownership, build-only receipt locations, receipt field and digest invalidation, typed authority-gate observations, authority admission, digest-derived authority generation, explicit superseded-authority provenance, portable declared source paths, and rejection of invalid graph structure or authority input.
 
-`proof/` owns the canonical KVP-007 receipt and KVP-008 derived-state selectors.
+`proof/` owns the canonical KVP-007 receipt, KVP-008 derived-state selectors, and KVP-025+ atomic
+protocol/receipt admission tests.
 
 Run:
 

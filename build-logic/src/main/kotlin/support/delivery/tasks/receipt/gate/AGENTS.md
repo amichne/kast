@@ -1,6 +1,7 @@
 # Gate and receipt-proof guide
 
-This directory owns the canonical 129-gate Gradle registration proof, the exact-head KVP-006
+This directory preserves the 72 legacy KVP-001..024 RED/GREEN/completion gates inside the
+canonical 91-gate graph, the exact-head KVP-006
 receipt progression, KVP-007's receipt-invalidation proof, KVP-008's derived-state proof,
 KVP-009's IDE-read firewall receipt closure, KVP-010's standalone-plugin receipt closure, and
 KVP-012's exact host-compatibility receipt closure, KVP-013's endpoint-descriptor closure, and
@@ -18,9 +19,9 @@ KVP-018's hosted VFS-passive whole-module closure.
   owns KVP-009 report admission and exact-head progression plus KVP-010's nested plugin artifact
   receipt owner plus the KVP-012 through KVP-018 closures; `registration/` owns compiled task
   registration through KVP-010 and for KVP-012 through KVP-018.
-- Registration must replace generic placeholders for KVP-001 through KVP-010 and KVP-012 through
-  KVP-018, and preserve one registered task for every program gate without executing later
-  placeholders.
+- Registration must replace generic placeholders for the implemented legacy gates and preserve
+  one registered legacy task for every pre-KVP-025 gate. KVP-025+ atomic proof registration lives
+  at the receipt boundary and must not be reconstructed as three legacy gates.
 
 Keep all expected report and receipt failures finite typed data. Raw JSON and process arguments may
 cross only their outer Gradle boundaries.

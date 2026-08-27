@@ -2,84 +2,18 @@
 import hashlib
 import json
 import pathlib
-import re
-from verify_kvp017_report import verify_kvp017_report
+from lib.proof_boundaries import (
+    admit_legacy_receipt_prefix,
+    schema_errors,
+    validate_document,
+    verify_kvp017_report,
+)
 from verify_kvp019_delivery import verify_kvp019_delivery
 from verify_kvp020_delivery import verify_kvp020_delivery
 from verify_kvp021_delivery import verify_kvp021_delivery
 from verify_kvp022_delivery import verify_kvp022_delivery
 from verify_kvp023_delivery import verify_kvp023_delivery
 from verify_kvp024_delivery import verify_kvp024_delivery
-def schema_errors(value, schema, root_schema, path="$"):
-    if "$ref" in schema:
-        reference = schema["$ref"]
-        assert reference.startswith("#/")
-        resolved = root_schema
-        for part in reference[2:].split("/"):
-            resolved = resolved[part.replace("~1", "/").replace("~0", "~")]
-        yield from schema_errors(value, resolved, root_schema, path)
-        return
-    declared_types = schema.get("type")
-    if declared_types is not None:
-        if isinstance(declared_types, str):
-            declared_types = [declared_types]
-        predicates = {
-            "array": lambda candidate: isinstance(candidate, list),
-            "boolean": lambda candidate: isinstance(candidate, bool),
-            "integer": lambda candidate: isinstance(candidate, int) and not isinstance(candidate, bool),
-            "null": lambda candidate: candidate is None,
-            "object": lambda candidate: isinstance(candidate, dict),
-            "string": lambda candidate: isinstance(candidate, str),
-        }
-        if not any(predicates[kind](value) for kind in declared_types):
-            yield f"{path}: expected type {declared_types}, got {type(value).__name__}"
-            return
-    if "const" in schema and value != schema["const"]:
-        yield f"{path}: expected constant {schema['const']!r}, got {value!r}"
-    if isinstance(value, str):
-        if len(value) < schema.get("minLength", 0):
-            yield f"{path}: string is shorter than minLength"
-        maximum_length = schema.get("maxLength")
-        if maximum_length is not None and len(value) > maximum_length:
-            yield f"{path}: string is longer than maxLength"
-        pattern = schema.get("pattern")
-        if pattern is not None and re.search(pattern, value) is None:
-            yield f"{path}: string does not match {pattern!r}"
-    if isinstance(value, int) and not isinstance(value, bool):
-        if "minimum" in schema and value < schema["minimum"]:
-            yield f"{path}: integer is less than minimum {schema['minimum']}"
-    if isinstance(value, list):
-        if len(value) < schema.get("minItems", 0):
-            yield f"{path}: array has fewer than minItems"
-        if schema.get("uniqueItems") and len({json.dumps(item, sort_keys=True) for item in value}) != len(value):
-            yield f"{path}: array items are not unique"
-        item_schema = schema.get("items")
-        if item_schema is not None:
-            for index, item in enumerate(value):
-                yield from schema_errors(item, item_schema, root_schema, f"{path}[{index}]")
-
-    if isinstance(value, dict):
-        if len(value) < schema.get("minProperties", 0):
-            yield f"{path}: object has fewer than minProperties"
-        properties = schema.get("properties", {})
-        missing = set(schema.get("required", [])) - set(value)
-        for name in sorted(missing):
-            yield f"{path}: missing required property {name!r}"
-        additional = schema.get("additionalProperties", True)
-        for name, item in value.items():
-            if name in properties:
-                yield from schema_errors(item, properties[name], root_schema, f"{path}.{name}")
-            elif additional is False:
-                yield f"{path}: unexpected property {name!r}"
-            elif isinstance(additional, dict):
-                yield from schema_errors(item, additional, root_schema, f"{path}.{name}")
-
-def validate_document(document_path, schema_path):
-    document = json.loads(document_path.read_text())
-    schema = json.loads(schema_path.read_text())
-    errors = list(schema_errors(document, schema, schema))
-    assert not errors, "\n".join(errors)
-
 def verify_task_plan(plan, task, next_task_id):
     section = plan.split(f"### {task['id']}: {task['title']}\n", maxsplit=1)[1]
     section = section.split(f"\n### {next_task_id}:", maxsplit=1)[0]
@@ -95,13 +29,19 @@ program = json.loads(program_path.read_text())
 assert program["targetHead"] == "78262728313c90bb847e73425dc1a76d704397db"
 assert program["requirementFingerprint"] == "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
 assert len(program["tasks"]) == 43
-assert len(program["gateGraph"]) == 129
+assert len(program["gateGraph"]) == 91
 assert program["terminal"]["taskId"] == "KVP-043"
 for task in program["tasks"]:
     expected_receipt_path = (
         f"build/reports/delivery/receipts/{task['id']}-COMPLETE.receipt.json"
     )
-    assert task["completionReceipt"]["outputPath"] == expected_receipt_path
+    proof = task["proof"]
+    receipt = (
+        proof["completionReceipt"]
+        if proof["protocol"] == "LEGACY_GATE_RECEIPTS"
+        else proof["receipt"]
+    )
+    assert receipt["outputPath"] == expected_receipt_path
     assert all(
         not path.startswith("gradle/delivery/receipts")
         for path in task["allowedReads"] + task["allowedWrites"]
@@ -110,6 +50,19 @@ assert not (root / "gradle/delivery/receipts").exists()
 assert program["terminal"]["derivedOnly"] is True
 assert all("status" not in task for task in program["tasks"])
 by_id = {t["id"]: t for t in program["tasks"]}
+assert all(
+    by_id[f"KVP-{number:03d}"]["proof"]["protocol"] == "LEGACY_GATE_RECEIPTS"
+    for number in range(1, 25)
+)
+assert all(
+    by_id[f"KVP-{number:03d}"]["proof"]["protocol"] == "ATOMIC_TASK_PROOF"
+    for number in range(25, 44)
+)
+assert {
+    task["id"]
+    for task in program["tasks"]
+    if task["proof"].get("receipt", {}).get("headPolicy") == "EXACT_HEAD"
+} == {"KVP-031", "KVP-034", "KVP-036", "KVP-043"}
 assert by_id["KVP-002"]["allowedWrites"][0] == (
     "build-logic/src/main/kotlin/support/delivery/model/DeliveryProgramModel.kt"
 )
@@ -118,7 +71,7 @@ assert by_id["KVP-003"]["allowedWrites"][0] == (
 )
 kvp_007_writes = set(by_id["KVP-007"]["allowedWrites"])
 assert {
-    "build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt",
+    "build-logic/src/main/kotlin/support/delivery/model/proof/DeliveryReceipt.kt",
     "build-logic/src/main/kotlin/support/delivery/tasks/receipt/ReceiptIssuanceBoundary.kt",
     "build-logic/src/test/kotlin/support/delivery/proof/DeliveryReceiptTest.kt",
 } <= kvp_007_writes
@@ -281,12 +234,20 @@ assert "registerKvp018ReceiptProgression" in (
     root
     / "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt"
 ).read_text()
-verify_kvp019_delivery(root, program, normative_plan)
-verify_kvp020_delivery(root, program, normative_plan)
-verify_kvp021_delivery(root, program, normative_plan)
-verify_kvp022_delivery(root, program, requirements, normative_plan)
-verify_kvp023_delivery(root, program, requirements, normative_plan)
-verify_kvp024_delivery(root, program, requirements, normative_plan)
+legacy_program = json.loads(json.dumps(program))
+for legacy_task in legacy_program["tasks"][:24]:
+    legacy_proof = legacy_task["proof"]
+    legacy_task["red"] = dict(legacy_proof["red"])
+    legacy_task["red"]["gateId"] = legacy_task["red"]["caseId"]
+    legacy_task["green"] = dict(legacy_proof["green"])
+    legacy_task["green"]["gateId"] = legacy_task["green"]["caseId"]
+    legacy_task["completionReceipt"] = legacy_proof["completionReceipt"]
+verify_kvp019_delivery(root, legacy_program, normative_plan)
+verify_kvp020_delivery(root, legacy_program, normative_plan)
+verify_kvp021_delivery(root, legacy_program, normative_plan)
+verify_kvp022_delivery(root, legacy_program, requirements, normative_plan)
+verify_kvp023_delivery(root, legacy_program, requirements, normative_plan)
+verify_kvp024_delivery(root, legacy_program, requirements, normative_plan)
 epoch_ledger = (root / "docs/engineering/ide-read-epoch-ledger.md").read_text()
 for expected_epoch_fact in (
     "WorkspaceModelTopics.CHANGED",
@@ -318,9 +279,16 @@ while len(order) < len(by_id):
     for i in ready: seen.add(i); order.append(i)
 assert order[-1] == "KVP-043"
 for t in program["tasks"]:
-    assert t["red"]["command"].startswith("./gradlew ")
-    assert t["green"]["command"].startswith("./gradlew ")
-    assert set(t["completionReceipt"]["requiredGateIds"]) == {t["red"]["gateId"], t["green"]["gateId"]}
+    proof = t["proof"]
+    if proof["protocol"] == "LEGACY_GATE_RECEIPTS":
+        assert proof["red"]["command"].startswith("./gradlew ")
+        assert proof["green"]["command"].startswith("./gradlew ")
+        assert set(proof["completionReceipt"]["requiredGateIds"]) == {
+            proof["red"]["caseId"], proof["green"]["caseId"],
+        }
+    else:
+        assert proof["command"] == f"./gradlew prove{t['id'].replace('-', '')}"
+        assert proof["receipt"]["receiptId"] == f"{t['id']}-COMPLETE"
 for effect in program["effects"]:
     if effect["id"] in {"PROCESS_START","GRADLE_IMPORT","VFS_REFRESH","SOURCE_WRITE","JDBC","TOPOLOGY_BUILD","NETWORK_READ","RUNTIME_ARCHIVE_READ"}:
         assert effect["owners"] == []
@@ -396,7 +364,16 @@ assert all(endpoint_rejections)
 receipt_paths = sorted(
     (root / "build/reports/delivery/receipts").glob("*.receipt.json")
 )
+legacy_receipts = 0
+atomic_receipts = 0
+legacy_documents = []
 for receipt_path in receipt_paths:
-    validate_document(receipt_path, root / "gradle/delivery/schema/proof-receipt.schema.json")
+    receipt = json.loads(receipt_path.read_text())
+    if receipt["schemaVersion"] == 1:
+        legacy_documents.append(receipt)
+    else:
+        atomic_receipts += 1
+        validate_document(receipt_path, root / "gradle/delivery/schema/proof-receipt.schema.json")
+legacy_receipts = admit_legacy_receipt_prefix(legacy_documents)
 print(json.dumps({"valid": True, "programFingerprint": fingerprint, "tasks": len(by_id), "gates": len(program["gateGraph"]), "waves": program["waveCount"], "terminal": program["terminal"]["type"]}, indent=2))
-print(f"json-schema: valid ({len(receipt_paths)} live receipts)")
+print(f"receipts: preserved legacy={legacy_receipts}, v2-schema-valid={atomic_receipts}")

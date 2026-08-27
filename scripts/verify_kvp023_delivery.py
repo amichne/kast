@@ -223,7 +223,7 @@ def verify_kvp023_delivery(root, program, requirements, normative_plan):
     ]
     bundle = required_text(root, "scripts/verify_bundle.py")
     assert "from verify_kvp023_delivery import verify_kvp023_delivery" in bundle
-    assert "verify_kvp023_delivery(root, program, requirements, normative_plan)" in bundle
+    assert "verify_kvp023_delivery(root, legacy_program, requirements, normative_plan)" in bundle
 
     ports = required_text(
         root,

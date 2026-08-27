@@ -211,6 +211,17 @@ tasks.withType<Test>().configureEach {
 }
 
 val defaultTest = tasks.named<Test>("test")
+val kvp025Packet = support.delivery.canonicalKvp025TaskPacket()
+val proveKVP025Cases = tasks.register<support.delivery.Kvp025AtomicProofTestTask>(
+    "proveKVP025Cases",
+) {
+    group = "verification"
+    description = "Runs only KVP-025's graph-named misuse and legal-path cases."
+    testClassesDirs = defaultTest.get().testClassesDirs
+    classpath = defaultTest.get().classpath
+    configureFrom(kvp025Packet)
+    evidenceFile.set(layout.buildDirectory.file("reports/KVP-025-test-evidence.json"))
+}
 val endpointPublicationReport = layout.buildDirectory.file("reports/KVP-024-endpoint.json")
 val generateIdeEndpointPublicationReport =
     tasks.register<support.delivery.GenerateKvp024EndpointPublicationReportTask>(

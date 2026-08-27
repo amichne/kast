@@ -1,5 +1,4 @@
 package support.delivery
-
 internal fun deliveryTasksM2(): List<TaskNode> = listOf(
             TaskNode(
                 id = TaskId("KVP-014"), title = "Admit the existing open IntelliJ Project", goal = "Refine the Project supplied by IntelliJ into one exact-root, non-disposed, Gradle-model-ready, K2-capable read authority without opening or importing anything.", milestone = "M2",
@@ -385,14 +384,14 @@ internal fun deliveryTasksM2(): List<TaskNode> = listOf(
             TaskNode(
                 id = TaskId("KVP-025"), title = "Bind endpoint retirement to Project and plugin lifecycle", goal = "Retire descriptor and socket on Project close, plugin unload, bind failure, runtime failure, and service cancellation with idempotent cleanup.", milestone = "M2",
                 dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-024"))),
-                allowedReads = listOf("ide-plugin/src/main/kotlin", "protocol/wire"), allowedWrites = listOf("ide-plugin/src/main/kotlin", "ide-plugin/src/test"),
+                allowedReads = listOf("build.gradle.kts", "settings.gradle.kts", "gradle.properties", "gradle/libs.versions.toml", "gradle/wrapper", "build-logic", "kernel", "protocol", "runtime/ide-read", "workspace/contract", "workspace/intellij-read", "ide-plugin/AGENTS.md", "ide-plugin/build.gradle.kts", "ide-plugin/src/main", "ide-plugin/src/test"), allowedWrites = listOf("ide-plugin/AGENTS.md", "ide-plugin/src/main/kotlin", "ide-plugin/src/test"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.024.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-019", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.025.proof", "PROOF_ARTIFACT", "ide-plugin/build/reports/KVP-025-retirement.json", "Every lifecycle termination retires owned artifacts exactly once.")),
                 publicInterface = "RetiredIdeEndpoint", internalImplementation = "Project-scoped cleanup and recovery transitions.",
                 effects = setOf(EffectId("UDS_BIND"), EffectId("ENDPOINT_DESCRIPTOR_WRITE")), costs = setOf("METADATA"),
                 forbiddenWork = listOf("Global application lifetime", "Stale descriptor retention", "Deleting unrelated paths", "Non-idempotent cleanup"),
-                red = ProofCommand("KVP-025-RED", "./gradlew :ide-plugin:test --tests \"*IdeEndpointRetirementNegativeTest\"", "Failure or disposal leaves reachable stale readiness or unsafe cleanup."),
-                green = ProofCommand("KVP-025-GREEN", "./gradlew :ide-plugin:test --tests \"*IdeEndpointRetirementTest\"", "Every lifecycle termination retires owned artifacts exactly once."),
+                red = ProofCommand("KVP-025-RED", "./gradlew :ide-plugin:test --tests \"*IdeEndpointRetirementNegativeTest\"", "Failure or disposal leaves reachable stale readiness or unsafe cleanup.", "physically replaced descriptor is preserved and retirement rejects its identity"),
+                green = ProofCommand("KVP-025-GREEN", "./gradlew :ide-plugin:test --tests \"*IdeEndpointRetirementTest\"", "Every lifecycle termination retires owned artifacts exactly once.", "READY retires owned artifacts exactly once and preserves a later generation"),
                 reviewBoundary = "Lifecycle and cleanup only.",
                 completionReceipt = CompletionReceiptContract("KVP-025-COMPLETE", setOf("KVP-025-RED", "KVP-025-GREEN"), setOf("KVP-024-COMPLETE"), "build/reports/delivery/receipts/KVP-025-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-019")), authorities = setOf(AuthorityId("IDE_ENDPOINT")),

@@ -88,24 +88,23 @@ internal data class DeliveryTaskSchemaProperties(
     val allowedReads: SchemaNonEmptyStringArray = SchemaNonEmptyStringArray(),
     val allowedWrites: SchemaNonEmptyStringArray = SchemaNonEmptyStringArray(),
     val authorities: SchemaStringArray = SchemaStringArray(),
-    val completionReceipt: SchemaObject = SchemaObject(),
     val computedWave: SchemaMinimumInteger = SchemaMinimumInteger(0),
     val costClassification: SchemaStringArray = SchemaStringArray(),
     val dependencyExpression: DeliveryDependencySchema = DeliveryDependencySchema(),
     val effectClassification: SchemaStringArray = SchemaStringArray(),
     val forbiddenWork: SchemaNonEmptyStringArray = SchemaNonEmptyStringArray(),
     val goal: SchemaNonEmptyString = SchemaNonEmptyString(),
-    val green: SchemaObject = SchemaObject(),
     val id: SchemaPatternString = SchemaPatternString("^KVP-[0-9]{3}\$"),
     val inputs: SchemaNonEmptyObjectArray = SchemaNonEmptyObjectArray(),
     val internalImplementation: SchemaString = SchemaString(),
     val milestone: SchemaString = SchemaString(),
     val outputs: SchemaNonEmptyObjectArray = SchemaNonEmptyObjectArray(),
+    val proof: SchemaObject = SchemaObject(),
     val provesRequirements: SchemaStringArray = SchemaStringArray(),
     val publicInterface: SchemaString = SchemaString(),
-    val red: SchemaObject = SchemaObject(),
     val reviewBoundary: SchemaString = SchemaString(),
     val title: SchemaNonEmptyString = SchemaNonEmptyString(),
+    val taskDefinitionDigest: SchemaPatternString = SchemaPatternString(SHA256_PATTERN),
 )
 
 @Serializable
@@ -154,6 +153,6 @@ private val deliveryProgramRequiredProperties = listOf(
 private val deliveryTaskRequiredProperties = listOf(
     "id", "title", "goal", "dependencyExpression", "allowedReads", "allowedWrites", "inputs",
     "outputs", "publicInterface", "internalImplementation", "effectClassification",
-    "costClassification", "forbiddenWork", "red", "green", "reviewBoundary",
-    "completionReceipt", "provesRequirements", "computedWave",
+    "costClassification", "forbiddenWork", "proof", "reviewBoundary",
+    "provesRequirements", "taskDefinitionDigest", "computedWave",
 )

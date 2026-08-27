@@ -31,9 +31,9 @@ class DeliveryTaskOwnershipTest {
             listOf(
                 "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramRuntimeGraph.kt",
                 "build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramTasksM0M1.kt",
-                "build-logic/src/main/kotlin/support/delivery/model/DeliveryReceipt.kt",
+                "build-logic/src/main/kotlin/support/delivery/model/proof/DeliveryReceipt.kt",
                 "build-logic/src/main/kotlin/support/delivery/tasks/AGENTS.md",
-                "build-logic/src/main/kotlin/support/delivery/tasks/DeliveryReceiptJsonBoundary.kt",
+                "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/DeliveryReceiptJsonBoundary.kt",
                 "build-logic/src/main/kotlin/support/delivery/tasks/Kvp001ReceiptTaskSupport.kt",
                 "build-logic/src/main/kotlin/support/delivery/tasks/receipt/AGENTS.md",
                 "build-logic/src/main/kotlin/support/delivery/tasks/receipt/ReceiptIssuanceBoundary.kt",

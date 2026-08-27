@@ -4,7 +4,7 @@ internal fun deliveryRequirements(): List<Requirement> = listOf(
             Requirement(RequirementId("KVP-REQ-001"), "Current amichne/kast head is the sole tooling-state authority and the program rejects a stale target head."),
             Requirement(RequirementId("KVP-REQ-002"), "The delivery definition is a typed Kotlin graph executed and verified through Gradle, not a prose backlog."),
             Requirement(RequirementId("KVP-REQ-003"), "The task graph, module graph, process graph, gate graph, schemas, and traceability projections are deterministic."),
-            Requirement(RequirementId("KVP-REQ-004"), "Progress and completion derive only from proof-carrying receipts bound to the exact head and program fingerprint."),
+            Requirement(RequirementId("KVP-REQ-004"), "Progress and completion derive only from proof-carrying receipts bound to a stable program version, task definition, dependency receipts, complete relevant input closure, command and toolchain identities, observed proof, and outputs; content-scoped receipts remain reusable only while that closure is unchanged, and declared milestone receipts bind the exact head."),
             Requirement(RequirementId("KVP-REQ-005"), "The default semantic runtime executes inside the existing IntelliJ process and existing open Project."),
             Requirement(RequirementId("KVP-REQ-006"), "The default path starts no kast-indexer process, opens no second Project, imports no Gradle model, and causes no second indexing cycle."),
             Requirement(RequirementId("KVP-REQ-007"), "The default install contains no private IDEA home, JBR, bundled IntelliJ platform, or semantic-runtime archive."),

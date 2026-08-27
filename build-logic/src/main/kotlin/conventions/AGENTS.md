@@ -21,7 +21,8 @@ boundaries and verification.
   receipt progression owner; keep inputs and task names derived from the canonical program instead
   of parsing shell command strings. KVP-002 through KVP-004 execute fixed included-build filters as
   argument vectors and own generated proof reports under `build/reports/delivery`.
-  Register guarded RED, GREEN, and completion placeholders for every later task so KVP-006 can
-  prove all 129 program gates have one Gradle receipt task without manufacturing later receipts.
+  Preserve guarded RED/GREEN/completion registration only through KVP-024. Register one atomic
+  `proveKVPNNN` task for KVP-025 onward so KVP-006 proves all 91 derived gates without
+  manufacturing later receipts.
 - Feed PR 633 bytecode and ABI verifiers complete `main` source-set class outputs so Java and
   Kotlin implementations are governed by the same gate.

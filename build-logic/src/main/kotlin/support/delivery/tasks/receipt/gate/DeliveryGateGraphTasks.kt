@@ -93,7 +93,7 @@ private val expectedNegativeFailures = listOf(
 )
 
 private data class DeliveryGateGraphFixture(
-    val program: DeliveryProgram,
+    val gates: List<GateNode>,
     val registeredTaskNames: Set<String>,
 )
 
@@ -132,32 +132,29 @@ abstract class VerifyDeliveryGateGraphNegativeTask : DefaultTask() {
         val names = registeredTaskNames.get().toSet()
         val greenIndex = program.gates.indexOfFirst { it.kind == GateKind.GREEN }
         val duplicateIndex = 1
-        val missingDependency = program.copy(
-            gates = program.gates.mapIndexed { index, gate ->
-                if (index == greenIndex) gate.copy(dependencyReceiptIds = emptySet()) else gate
-            },
-        )
-        val duplicateOutput = program.copy(
-            gates = program.gates.mapIndexed { index, gate ->
-                if (index == duplicateIndex) {
-                    gate.copy(outputReceiptId = program.gates.first().outputReceiptId)
-                } else gate
-            },
-        )
+        val missingDependency = program.gates.mapIndexed { index, gate ->
+            if (index == greenIndex) gate.copy(dependencyReceiptIds = emptySet()) else gate
+        }
+        val duplicateOutput = program.gates.mapIndexed { index, gate ->
+            if (index == duplicateIndex) {
+                gate.copy(outputReceiptId = program.gates.first().outputReceiptId)
+            } else gate
+        }
         val fixtures = listOf(
             DeliveryGateGraphNegativeCase.MISSING_DEPENDENCY_RECEIPT to
                 DeliveryGateGraphFixture(missingDependency, names),
             DeliveryGateGraphNegativeCase.DUPLICATE_RECEIPT_OUTPUT to
                 DeliveryGateGraphFixture(duplicateOutput, names),
             DeliveryGateGraphNegativeCase.MISSING_REGISTERED_TASK to
-                DeliveryGateGraphFixture(program, names - names.sorted().first()),
+                DeliveryGateGraphFixture(program.gates, names - names.sorted().first()),
             DeliveryGateGraphNegativeCase.UNREPRESENTED_REGISTERED_TASK to
-                DeliveryGateGraphFixture(program, names + "manualCompletion"),
+                DeliveryGateGraphFixture(program.gates, names + "manualCompletion"),
         )
         val observed = fixtures.mapIndexed { index, (case, fixture) ->
             val failure = when (val result = admitDeliveryGateGraph(
-                fixture.program,
+                program,
                 fixture.registeredTaskNames,
+                fixture.gates,
             )) {
                 is DeliveryGateGraphAdmission.Rejected -> result.failure
                 is DeliveryGateGraphAdmission.Admitted -> throw GradleException(

@@ -105,11 +105,22 @@ class KastVfsPassiveReusedIndexProgramTest {
         validated.program.effects.filter { it.id.value in forbidden }.forEach { assertTrue(it.owners.isEmpty(), it.id.value) }
     }
 
-    @Test fun `every task owns focused red and green proof`() {
+    @Test fun `every task owns one closed proof protocol`() {
         validated.program.tasks.forEach { task ->
-            assertTrue(task.red.command.startsWith("./gradlew "))
-            assertTrue(task.green.command.startsWith("./gradlew "))
-            assertEquals(setOf(task.red.gateId, task.green.gateId), task.completionReceipt.requiredGateIds)
+            when (val proof = task.proof) {
+                is TaskProofProtocol.Legacy -> {
+                    assertTrue(proof.red.command.startsWith("./gradlew "))
+                    assertTrue(proof.green.command.startsWith("./gradlew "))
+                    assertEquals(
+                        setOf(proof.red.gateId, proof.green.gateId),
+                        proof.completion.requiredGateIds,
+                    )
+                }
+                is TaskProofProtocol.Atomic -> {
+                    assertTrue(proof.command.command.startsWith("./gradlew proveKVP"))
+                    assertEquals(1, proof.gates.size)
+                }
+            }
         }
     }
 
@@ -123,7 +134,7 @@ class KastVfsPassiveReusedIndexProgramTest {
         }
 
         assertEquals(listOf(admitted.program.terminalTask), sinks)
-        assertEquals(admitted.program.tasks.size * 3, admitted.program.gates.size)
+        assertEquals(24 * 3 + 19, admitted.program.gates.size)
         assertEquals(
             admitted.program.authorities.size,
             admitted.program.authorities.map { it.id }.toSet().size,

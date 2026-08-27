@@ -12,7 +12,9 @@ import support.delivery.VerifyDeliveryGateGraphTask
 import support.delivery.VerifyKastVfsPassiveAuthorityNegativeTask
 import support.delivery.VerifyKastVfsPassiveAuthorityTask
 import support.delivery.registerDeliveryReceiptProgression
+import support.delivery.registerKvp025AtomicProof
 import support.delivery.GradleGateTaskNameRefinement
+import support.delivery.TaskProofProtocol
 import support.delivery.refineGradleGateTaskName
 
 plugins { base }
@@ -113,53 +115,50 @@ tasks.register<VerifyKastVfsPassiveAuthorityTask>("verifyKastVfsPassiveAuthority
     )
 }
 
-val typedReceiptTaskIds = registerDeliveryReceiptProgression()
+val typedReceiptTaskIds = registerDeliveryReceiptProgression() + registerKvp025AtomicProof()
 program.program.tasks.sortedBy { it.id }.filterNot {
     it.id in typedReceiptTaskIds
 }.forEach { node ->
-    val redReceipt = receiptDirectory.map {
-        it.file("${node.red.gateId}-RECEIPT.receipt.json")
-    }
-    val greenReceipt = receiptDirectory.map {
-        it.file("${node.green.gateId}-RECEIPT.receipt.json")
-    }
-    val completionReceipt = receiptDirectory.map {
-        it.file("${node.id.value}-COMPLETE.receipt.json")
-    }
-    tasks.register("record${node.id.value.replace("-", "")}RedReceipt") {
-        group = "verification"
-        dependsOn(node.red.command.removePrefix("./gradlew ").split(' '))
-        inputs.file(checkedInProgramProjectionFile)
-        inputs.file(checkedInRequirementTraceFile)
-        node.dependencies.taskIds.forEach { dep ->
-            inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
+    when (node.proof) {
+        is TaskProofProtocol.Legacy -> {
+            val redReceipt = receiptDirectory.map {
+                it.file("${node.red.gateId}-RECEIPT.receipt.json")
+            }
+            val greenReceipt = receiptDirectory.map {
+                it.file("${node.green.gateId}-RECEIPT.receipt.json")
+            }
+            val completionReceipt = receiptDirectory.map {
+                it.file("${node.id.value}-COMPLETE.receipt.json")
+            }
+            tasks.register("record${node.id.value.replace("-", "")}RedReceipt") {
+                group = "verification"
+                dependsOn(node.red.command.removePrefix("./gradlew ").split(' '))
+                outputs.file(redReceipt)
+                doLast { error("Typed recorder required before writing ${redReceipt.get().asFile}") }
+            }
+            tasks.register("record${node.id.value.replace("-", "")}GreenReceipt") {
+                group = "verification"
+                dependsOn(node.green.command.removePrefix("./gradlew ").split(' '))
+                inputs.file(redReceipt)
+                outputs.file(greenReceipt)
+                doLast { error("Typed recorder required before writing ${greenReceipt.get().asFile}") }
+            }
+            tasks.register("derive${node.id.value.replace("-", "")}Completion") {
+                group = "verification"
+                inputs.file(redReceipt)
+                inputs.file(greenReceipt)
+                outputs.file(completionReceipt)
+                doLast {
+                    error("Typed completion deriver required before writing ${completionReceipt.get().asFile}")
+                }
+            }
         }
-        outputs.file(redReceipt)
-        doLast { error("Typed recorder required before writing ${redReceipt.get().asFile}") }
-    }
-    tasks.register("record${node.id.value.replace("-", "")}GreenReceipt") {
-        group = "verification"
-        dependsOn(node.green.command.removePrefix("./gradlew ").split(' '))
-        inputs.file(checkedInProgramProjectionFile)
-        inputs.file(checkedInRequirementTraceFile)
-        inputs.file(redReceipt)
-        node.dependencies.taskIds.forEach { dep ->
-            inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
+        is TaskProofProtocol.Atomic -> tasks.register(
+            "prove${node.id.value.replace("-", "")}",
+        ) {
+            group = "verification"
+            doLast { error("Typed atomic prover required for ${node.id.value}") }
         }
-        outputs.file(greenReceipt)
-        doLast { error("Typed recorder required before writing ${greenReceipt.get().asFile}") }
-    }
-    tasks.register("derive${node.id.value.replace("-", "")}Completion") {
-        group = "verification"
-        inputs.file(checkedInProgramProjectionFile)
-        inputs.file(checkedInRequirementTraceFile)
-        inputs.file(redReceipt)
-        inputs.file(greenReceipt)
-        node.dependencies.taskIds.forEach { dep ->
-            inputs.file(receiptDirectory.map { it.file("${dep.value}-COMPLETE.receipt.json") })
-        }
-        outputs.file(completionReceipt)
-        doLast { error("Typed completion deriver required before writing ${completionReceipt.get().asFile}") }
     }
 }
 

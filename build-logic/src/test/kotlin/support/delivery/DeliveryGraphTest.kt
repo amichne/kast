@@ -164,9 +164,9 @@ class DeliveryGateGraphTest {
             admitDeliveryGateGraph(program, registeredNames),
         ).graph
 
-        assertEquals(129, admitted.gates.size)
-        assertEquals(129, admitted.registeredTasks.size)
-        assertEquals(129, admitted.gates.map { it.outputReceiptId }.toSet().size)
+        assertEquals(91, admitted.gates.size)
+        assertEquals(91, admitted.registeredTasks.size)
+        assertEquals(91, admitted.gates.map { it.outputReceiptId }.toSet().size)
     }
 
     @Test fun `missing registered gate task rejects as finite failure`() {
@@ -184,11 +184,11 @@ class DeliveryGateGraphTest {
             deriveKvp006GateGraphProof(),
         ).proof
 
-        assertEquals(129, proof.gateCount)
-        assertEquals(43, proof.redGateCount)
-        assertEquals(43, proof.greenGateCount)
-        assertEquals(43, proof.completionGateCount)
-        assertEquals(129, proof.uniqueReceiptOutputCount)
+        assertEquals(91, proof.gateCount)
+        assertEquals(24, proof.redGateCount)
+        assertEquals(24, proof.greenGateCount)
+        assertEquals(24, proof.completionGateCount)
+        assertEquals(91, proof.uniqueReceiptOutputCount)
         assertEquals(registeredNames, proof.registeredTasks.map { it.value }.toSet())
     }
 }

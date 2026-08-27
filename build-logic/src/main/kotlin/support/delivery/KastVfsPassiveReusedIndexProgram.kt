@@ -65,7 +65,6 @@ object KastVfsPassiveReusedIndexProgram {
         specialEdges = deliverySpecialEdges(),
         processNodes = deliveryProcessNodes(),
         processTransitions = deliveryProcessTransitions(),
-        gates = deliveryGates(),
         installedMetrics = deliveryInstalledMetrics(),
         terminalTask = TaskId("KVP-043"),
     )
@@ -179,6 +178,9 @@ fun admitCanonicalProgram(candidate: DeliveryProgram): CanonicalProgramAdmission
             task.title.isBlank() || task.goal.isBlank() || task.milestone.isBlank() ||
                 task.allowedReads.isEmpty() || task.allowedWrites.isEmpty() ||
                 task.inputs.isEmpty() || task.outputs.isEmpty() ||
+                task.inputs.any { input ->
+                    input.keys != setOf("id", "kind") || input.values.any(String::isBlank)
+                } ||
                 task.outputs.any { it.id.isBlank() || it.path.isBlank() } ||
                 task.publicInterface.isBlank() || task.internalImplementation.isBlank() ||
                 task.effects.isEmpty() || task.costs.isEmpty() || task.forbiddenWork.isEmpty() ||
@@ -239,18 +241,26 @@ fun admitCanonicalProgram(candidate: DeliveryProgram): CanonicalProgramAdmission
     if (candidate.processTransitions.any { it.from !in processIds || it.to !in processIds }) {
         return rejected(CanonicalProgramFailure.UNKNOWN_PROCESS_NODE)
     }
-    val gatesById = candidate.gates.associateBy { it.id }
     val gateMismatch = candidate.tasks.any { task ->
-        val completionGateId = "${task.id.value}-COMPLETE-GATE"
-        val requiredIds = setOf(task.red.gateId, task.green.gateId, completionGateId)
-        requiredIds.any { id -> id !in gatesById || gatesById.getValue(id).taskId != task.id } ||
-            task.completionReceipt.requiredGateIds != setOf(task.red.gateId, task.green.gateId) ||
-            task.completionReceipt.dependencyReceiptIds !=
-            task.dependencies.taskIds.mapTo(linkedSetOf()) { "${it.value}-COMPLETE" } ||
-            gatesById.getValue(completionGateId).outputReceiptId !=
-            task.completionReceipt.receiptId
-    } || candidate.gates.size != candidate.tasks.size * 3 || candidate.gates.any {
-        it.command.isBlank() || it.statement.isBlank()
+        val dependencyReceipts = task.dependencies.taskIds.mapTo(linkedSetOf()) {
+            "${it.value}-COMPLETE"
+        }
+        when (val proof = task.proof) {
+            is TaskProofProtocol.Legacy ->
+                proof.completion.requiredGateIds != setOf(
+                    proof.red.gateId,
+                    proof.green.gateId,
+                ) || proof.completion.dependencyReceiptIds != dependencyReceipts ||
+                    proof.gates.size != 3
+            is TaskProofProtocol.Atomic ->
+                proof.receipt.dependencies.mapTo(linkedSetOf()) { it.value } !=
+                    dependencyReceipts || proof.gates.size != 1 ||
+                    proof.command.command.isBlank() ||
+                    proof.command.misuse.command.isBlank() ||
+                    proof.command.legalPath.command.isBlank()
+        }
+    } || candidate.gates.any { gate ->
+        gate.command.isBlank() || gate.statement.isBlank()
     }
     if (gateMismatch) {
         return rejected(CanonicalProgramFailure.GATE_CONTRACT_MISMATCH)

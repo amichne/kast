@@ -31,6 +31,9 @@
   imports, refreshes, or falls back. KVP-025 binds its descriptor/socket retirement to the Project
   service lifecycle and deletes only retained physical identities. The two hosted project JARs
   remain explicit transitional payload inputs until KVP-011 proves the final classpath closure.
+- `proveKVP025Cases` is the internal graph-configured nine-case retirement suite. It emits bounded
+  test evidence only when root `proveKVP025` determines that the content closure requires fresh
+  execution; do not expose a second public KVP-025 proof path.
 
 Run `./gradlew :ide-plugin:standalonePluginNegativeProof :ide-plugin:buildPlugin
 :ide-plugin:verifyPluginLayoutNegative`, then the architecture gates and

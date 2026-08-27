@@ -1,17 +1,17 @@
 # Delivery-program build policy
 
-This package owns the typed, exact-head delivery program and the Gradle task boundaries that project it into repository artifacts.
+This package owns the typed delivery program and the Gradle task boundaries that project it into repository artifacts and content-scoped or milestone-exact proof receipts.
 
 ## Authorities
 
 - `KastVfsPassiveReusedIndexProgram` composes and finitely admits the canonical program from the
   foundation, milestone-task, and runtime-graph files. Admission proves complete contracts, closed
   ownership/classification references, deterministic graph order and waves, and one terminal sink.
-- `model/DeliveryProgramModel.kt` owns program validation, derived waves, the canonical program projection, and the requirement-trace projection.
+- `model/DeliveryProgramModel.kt` owns checked identities, task/program structure, and graph validation. `model/projection/ValidatedProgramProjection.kt` owns derived waves, task packets, and deterministic program/requirement projection.
 - `model/ProgramAuthorityModel.kt` owns parsed expectations and authority admission.
 - `model/ProgramAuthorityGeneration.kt` binds source IDs to paths only through exact declared digests and returns finite failures for incomplete or ambiguous evidence.
-- `model/DeliveryReceipt.kt` and `model/DeliveryReceiptRefinement.kt` own closed receipt identities,
-  failures, canonical payload digests, issuance, and admission.
+- `model/proof/` owns the preserved legacy receipt model, pinned KVP-024 frontier, KVP-025+
+  atomic proof protocol, and v2 content-scoped/exact-head receipt admission.
 - `model/projection/` owns the KVP-005 five-artifact generation, generated schema documents,
   canonical JSON admission, and finite projection failures.
 - `tasks/projection/` owns the bounded KVP-005 generation, verification, negative-fixture, and proof
@@ -25,7 +25,8 @@ This package owns the typed, exact-head delivery program and the Gradle task bou
   verification re-observes the head and source bytes before reporting success. These exact-head
   artifacts are build evidence and must not be checked in.
 - `tasks/ProgramAuthorityNegativeTask.kt` owns the deterministic KVP-001 RED fixtures.
-- `tasks/DeliveryReceiptJsonBoundary.kt` owns the generated receipt serializer.
+- `tasks/receiptboundary/` owns generated v1/v2 receipt codecs, the task-packet codec, pinned-prefix
+  observation, and atomic receipt issuance. Its `atomic/kvp025/` child owns KVP-025's sole proof.
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.
@@ -86,6 +87,7 @@ M0 delivery model writes belong under `model/`; focused tests remain under the d
 ./gradlew verifyKVP018CompletionReceipt
 ./gradlew verifyKVP019CompletionReceipt
 ./gradlew verifyKVP020CompletionReceipt
+./gradlew proveKVP025
 ./gradlew verifyKastVfsPassiveGateGraphNegative verifyKastVfsPassiveGateGraph
 scripts/verify_bundle.sh
 ```

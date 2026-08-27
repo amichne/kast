@@ -8,7 +8,8 @@ This directory owns Gradle effects for the VFS-passive delivery program.
 - `ProgramAuthorityJsonBoundary.kt` uses generated serializers for every closed JSON document.
 - Authority generation observes exact bytes before writing the ledger and contradiction projection. Authority verification re-observes Git HEAD and source bytes and fails closed on movement or mismatch.
 - The negative task uses in-memory fixtures and must not read or write canonical authority sources.
-- `DeliveryReceiptJsonBoundary.kt` is the generated receipt codec.
+- `receiptboundary/` owns generated v1/v2 receipt codecs, pinned legacy-prefix admission, and
+  content-scoped v2 issuance.
   `Kvp001ReceiptTaskSupport.kt` refines the authority reports and exact artifact bytes into receipt
   expectations. `Kvp001ReceiptTasks.kt` owns the root RED, GREEN, completion, and re-admission
   boundaries. `receipt/ReceiptIssuanceBoundary.kt` reuses a fully admitted same-expectation receipt;

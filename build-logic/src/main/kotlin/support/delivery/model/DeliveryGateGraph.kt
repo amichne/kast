@@ -33,9 +33,9 @@ internal sealed interface GradleGateTaskNameRefinement {
 /**
  * Proof transition: `GateNode -> GradleGateTaskName`.
  *
- * Establishes the sole program-derived Gradle receipt-task identity for RED, GREEN, or task
- * completion. Unsupported kinds return [DeliveryGateGraphFailure.UNSUPPORTED_GATE_KIND]. Raw task
- * name extraction is permitted only by convention registration and Gradle task inputs.
+ * Establishes the sole program-derived Gradle task identity for a legacy receipt gate or one
+ * atomic task proof. Unsupported kinds return [DeliveryGateGraphFailure.UNSUPPORTED_GATE_KIND].
+ * Raw task-name extraction is permitted only by convention registration and Gradle task inputs.
  */
 internal fun refineGradleGateTaskName(gate: GateNode): GradleGateTaskNameRefinement {
     val stem = gate.taskId.value.replace("-", "")
@@ -43,6 +43,7 @@ internal fun refineGradleGateTaskName(gate: GateNode): GradleGateTaskNameRefinem
         GateKind.RED -> "record${stem}RedReceipt"
         GateKind.GREEN -> "record${stem}GreenReceipt"
         GateKind.TASK_COMPLETION -> "derive${stem}Completion"
+        GateKind.TASK_PROOF -> "prove$stem"
         else -> return GradleGateTaskNameRefinement.Rejected(
             DeliveryGateGraphFailure.UNSUPPORTED_GATE_KIND,
         )
@@ -62,52 +63,78 @@ internal fun refineGradleGateTaskName(gate: GateNode): GradleGateTaskNameRefinem
 internal fun admitDeliveryGateGraph(
     program: DeliveryProgram,
     registeredTaskNames: Set<String>,
+    candidateGates: List<GateNode> = program.gates,
 ): DeliveryGateGraphAdmission {
-    if (program.gates.map { it.id }.toSet().size != program.gates.size) {
+    if (candidateGates.map { it.id }.toSet().size != candidateGates.size) {
         return gateGraphRejected(DeliveryGateGraphFailure.DUPLICATE_GATE_ID)
     }
-    if (program.gates.map { it.outputReceiptId }.toSet().size != program.gates.size) {
+    if (candidateGates.map { it.outputReceiptId }.toSet().size != candidateGates.size) {
         return gateGraphRejected(DeliveryGateGraphFailure.DUPLICATE_RECEIPT_OUTPUT)
     }
     val tasks = program.tasks.associateBy { it.id }
     for (task in program.tasks) {
-        val taskGates = program.gates.filter { it.taskId == task.id }
-        if (taskGates.size != 3) {
-            return gateGraphRejected(DeliveryGateGraphFailure.MISSING_TASK_GATE)
-        }
-        val gates = taskGates.associateBy { it.kind }
-        if (gates.keys != setOf(GateKind.RED, GateKind.GREEN, GateKind.TASK_COMPLETION)) {
-            return gateGraphRejected(DeliveryGateGraphFailure.MISSING_TASK_GATE)
-        }
+        val taskGates = candidateGates.filter { it.taskId == task.id }
         val dependencyReceipts = task.dependencies.taskIds.mapTo(mutableSetOf()) {
             "${it.value}-COMPLETE"
         }
-        val red = gates.getValue(GateKind.RED)
-        val green = gates.getValue(GateKind.GREEN)
-        val completion = gates.getValue(GateKind.TASK_COMPLETION)
-        if (red.id != task.red.gateId || red.command != task.red.command ||
-            red.outputReceiptId != "${task.id.value}-RED-RECEIPT" ||
-            green.id != task.green.gateId || green.command != task.green.command ||
-            green.outputReceiptId != "${task.id.value}-GREEN-RECEIPT" ||
-            completion.id != "${task.id.value}-COMPLETE-GATE" ||
-            completion.command != "./gradlew derive${task.id.value.replace("-", "")}Completion" ||
-            completion.outputReceiptId != task.completionReceipt.receiptId ||
-            task.completionReceipt.requiredGateIds != setOf(red.id, green.id) ||
-            task.completionReceipt.dependencyReceiptIds != dependencyReceipts
-        ) return gateGraphRejected(DeliveryGateGraphFailure.GATE_CONTRACT_MISMATCH)
-        if (red.dependencyReceiptIds != dependencyReceipts ||
-            green.dependencyReceiptIds != dependencyReceipts + red.outputReceiptId ||
-            completion.dependencyReceiptIds != dependencyReceipts + setOf(
-                red.outputReceiptId,
-                green.outputReceiptId,
-            )
-        ) return gateGraphRejected(DeliveryGateGraphFailure.DEPENDENCY_RECEIPT_MISMATCH)
+        when (val proof = task.proof) {
+            is TaskProofProtocol.Legacy -> {
+                if (taskGates.size != 3) return gateGraphRejected(
+                    DeliveryGateGraphFailure.MISSING_TASK_GATE,
+                )
+                val gates = taskGates.associateBy { it.kind }
+                if (gates.keys != setOf(
+                        GateKind.RED,
+                        GateKind.GREEN,
+                        GateKind.TASK_COMPLETION,
+                    )
+                ) return gateGraphRejected(DeliveryGateGraphFailure.MISSING_TASK_GATE)
+                val red = gates.getValue(GateKind.RED)
+                val green = gates.getValue(GateKind.GREEN)
+                val completion = gates.getValue(GateKind.TASK_COMPLETION)
+                if (red.id != proof.red.gateId || red.command != proof.red.command ||
+                    red.outputReceiptId != "${task.id.value}-RED-RECEIPT" ||
+                    green.id != proof.green.gateId || green.command != proof.green.command ||
+                    green.outputReceiptId != "${task.id.value}-GREEN-RECEIPT" ||
+                    completion.id != "${task.id.value}-COMPLETE-GATE" ||
+                    completion.command !=
+                    "./gradlew derive${task.id.value.replace("-", "")}Completion" ||
+                    completion.outputReceiptId != proof.completion.receiptId ||
+                    proof.completion.requiredGateIds != setOf(red.id, green.id) ||
+                    proof.completion.dependencyReceiptIds != dependencyReceipts
+                ) return gateGraphRejected(DeliveryGateGraphFailure.GATE_CONTRACT_MISMATCH)
+                if (red.dependencyReceiptIds != dependencyReceipts ||
+                    green.dependencyReceiptIds != dependencyReceipts + red.outputReceiptId ||
+                    completion.dependencyReceiptIds != dependencyReceipts + setOf(
+                        red.outputReceiptId,
+                        green.outputReceiptId,
+                    )
+                ) return gateGraphRejected(
+                    DeliveryGateGraphFailure.DEPENDENCY_RECEIPT_MISMATCH,
+                )
+            }
+            is TaskProofProtocol.Atomic -> {
+                if (taskGates.size != 1 || taskGates.single().kind != GateKind.TASK_PROOF) {
+                    return gateGraphRejected(DeliveryGateGraphFailure.MISSING_TASK_GATE)
+                }
+                val gate = taskGates.single()
+                if (gate != proof.command.gate || gate.outputReceiptId != proof.receipt.receiptId.value) {
+                    return gateGraphRejected(DeliveryGateGraphFailure.GATE_CONTRACT_MISMATCH)
+                }
+                if (gate.dependencyReceiptIds != dependencyReceipts ||
+                    proof.receipt.dependencies.mapTo(mutableSetOf()) { it.value } !=
+                    dependencyReceipts
+                ) return gateGraphRejected(
+                    DeliveryGateGraphFailure.DEPENDENCY_RECEIPT_MISMATCH,
+                )
+            }
+        }
     }
-    if (program.gates.any { it.taskId !in tasks }) {
+    if (candidateGates.any { it.taskId !in tasks }) {
         return gateGraphRejected(DeliveryGateGraphFailure.GATE_CONTRACT_MISMATCH)
     }
     val expectedTasks = mutableSetOf<GradleGateTaskName>()
-    for (gate in program.gates) {
+    for (gate in candidateGates) {
         when (val refined = refineGradleGateTaskName(gate)) {
             is GradleGateTaskNameRefinement.Refined -> expectedTasks += refined.name
             is GradleGateTaskNameRefinement.Rejected -> return gateGraphRejected(refined.failure)
@@ -121,7 +148,7 @@ internal fun admitDeliveryGateGraph(
         return gateGraphRejected(DeliveryGateGraphFailure.UNREPRESENTED_REGISTERED_TASK)
     }
     return DeliveryGateGraphAdmission.Admitted(
-        AdmittedDeliveryGateGraph(program.gates.sortedBy { it.id }, registered),
+        AdmittedDeliveryGateGraph(candidateGates.sortedBy { it.id }, registered),
     )
 }
 

@@ -8,7 +8,7 @@ private const val AUX_SHA1 = "^[0-9a-f]{40}\$"
 
 @Serializable
 internal data class ProofReceiptSchemaDocument(
-    @SerialName("\$id") val id: String = "https://kast.michne.com/schema/proof-receipt-v1.json",
+    @SerialName("\$id") val id: String = "https://kast.michne.com/schema/proof-receipt-v2.json",
     @SerialName("\$schema") val schema: String = "https://json-schema.org/draft/2020-12/schema",
     val additionalProperties: Boolean = false,
     val properties: ProofReceiptSchemaProperties = ProofReceiptSchemaProperties(),
@@ -19,25 +19,21 @@ internal data class ProofReceiptSchemaDocument(
 
 @Serializable
 internal data class ProofReceiptSchemaProperties(
-    val artifactDigests: SchemaPatternStringMap = sha256Map(),
-    val baseRevision: SchemaPatternString = SchemaPatternString(AUX_SHA1),
     val commandDigest: SchemaPatternString = SchemaPatternString(AUX_SHA256),
-    val declaredInputDigest: SchemaPatternString = SchemaPatternString(AUX_SHA256),
+    val completeObservations: SchemaNonEmptyStringMap = SchemaNonEmptyStringMap(),
     val dependencyReceiptDigests: SchemaPatternStringMap = sha256Map(),
-    val exactHead: SchemaPatternString = SchemaPatternString(AUX_SHA1),
-    val gateId: SchemaPatternString = SchemaPatternString(
-        "^KVP-[0-9]{3}-(RED|GREEN|COMPLETE-GATE)\$",
-    ),
-    val observedProofValues: SchemaNonEmptyStringMap = SchemaNonEmptyStringMap(),
-    val programFingerprint: SchemaPatternString = SchemaPatternString(AUX_SHA256),
+    val headPolicy: SchemaPatternString = SchemaPatternString("^(CONTENT_SCOPED|EXACT_HEAD)\$"),
+    val observedRepositoryHead: SchemaPatternString = SchemaPatternString(AUX_SHA1),
+    val outputDigests: SchemaPatternStringMap = sha256Map(),
+    val programVersion: SchemaPatternString = SchemaPatternString("^[a-z0-9][a-z0-9.-]+\$"),
+    val receiptId: SchemaPatternString = SchemaPatternString("^KVP-[0-9]{3}-COMPLETE\$"),
     val receiptDigest: SchemaPatternString = SchemaPatternString(AUX_SHA256),
-    val receiptId: SchemaPatternString = SchemaPatternString(
-        "^KVP-[0-9]{3}-(RED-RECEIPT|GREEN-RECEIPT|COMPLETE)\$",
-    ),
     val recordedAtUtc: SchemaFormatString = SchemaFormatString("date-time"),
-    val requirementFingerprint: SchemaPatternString = SchemaPatternString(AUX_SHA256),
-    val schemaVersion: SchemaIntegerConst = SchemaIntegerConst(1),
+    val relevantInputDigest: SchemaPatternString = SchemaPatternString(AUX_SHA256),
+    val schemaVersion: SchemaIntegerConst = SchemaIntegerConst(2),
+    val taskDefinitionDigest: SchemaPatternString = SchemaPatternString(AUX_SHA256),
     val taskId: SchemaPatternString = SchemaPatternString("^KVP-[0-9]{3}\$"),
+    val toolchainDigest: SchemaPatternString = SchemaPatternString(AUX_SHA256),
 )
 
 @Serializable
@@ -91,8 +87,8 @@ internal data class RequirementTraceEntrySchemaProperties(
 private fun sha256Map() = SchemaPatternStringMap(SchemaPatternString(AUX_SHA256))
 
 private val proofReceiptRequiredProperties = listOf(
-    "schemaVersion", "receiptId", "baseRevision", "programFingerprint",
-    "requirementFingerprint", "exactHead", "taskId", "gateId", "dependencyReceiptDigests",
-    "declaredInputDigest", "commandDigest", "observedProofValues", "artifactDigests",
+    "schemaVersion", "programVersion", "receiptId", "taskId", "taskDefinitionDigest",
+    "dependencyReceiptDigests", "relevantInputDigest", "commandDigest", "toolchainDigest",
+    "completeObservations", "outputDigests", "headPolicy", "observedRepositoryHead",
     "recordedAtUtc", "receiptDigest",
 )

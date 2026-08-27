@@ -1,6 +1,6 @@
 # Delivery receipt progression guide
 
-This directory owns task-specific exact-head receipt progression after KVP-001.
+This directory owns task-specific legacy exact-head receipt progression through KVP-024.
 
 - `ReceiptIssuanceBoundary.kt` is the common reuse-or-replace effect boundary for every receipt.
   It reuses only fully admitted same-expectation bytes and fails closed on unsafe file states.
@@ -17,7 +17,8 @@ This directory owns task-specific exact-head receipt progression after KVP-001.
 - `gate/registration/ReceiptProgressionRegistration.kt` is the Gradle registration authority for
   KVP-001 through KVP-010 and KVP-012 through KVP-018; the convention script retains only projection,
   authority, and placeholder orchestration.
-- `gate/` owns KVP-006's positive and negative structural reports over all 129 receipt tasks and its
+- `gate/` owns KVP-006's positive and negative structural reports over the legacy portion of the
+  canonical 91-gate graph and its
   exact-head receipt progression, KVP-007 receipt invalidation, KVP-008 delivery-state progression,
   KVP-009's IDE-read firewall receipt closure, and KVP-010's independently revalidated standalone
   plugin artifact receipt closure. Its plugin child owns KVP-012's compatibility report, its endpoint
@@ -29,5 +30,5 @@ This directory owns task-specific exact-head receipt progression after KVP-001.
   That model owner also admits KVP-018 from the complete compiled-class/runtime closure and both
   semantic KVP-016/KVP-017 completion digests.
   Structural validation never executes registered gates.
-Keep gate commands fixed and argument-vector based. Every receipt write must be exact-head checked,
+Keep legacy gate commands fixed and argument-vector based. Every v1 receipt write must be exact-head checked,
 atomically written, read back, and admitted before it can support a later task.

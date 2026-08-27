@@ -6,6 +6,10 @@ temporary="$(mktemp -d)"
 trap 'rm -rf -- "$temporary"' EXIT
 kotlinc \
   "$root/build-logic/src/main/kotlin/support/delivery/model/DeliveryProgramModel.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/proof/TaskProofProtocol.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/proof/TaskProofReceipt.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/proof/TaskProofReceiptRefinement.kt" \
+  "$root/build-logic/src/main/kotlin/support/delivery/model/projection/ValidatedProgramProjection.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/model/ProgramAuthorityGeneration.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/model/ProgramAuthorityModel.kt" \
   "$root/build-logic/src/main/kotlin/support/delivery/KastVfsPassiveProgramFoundation.kt" \

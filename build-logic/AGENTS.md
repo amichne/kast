@@ -21,7 +21,8 @@ the consuming projects.
 - `support/pr633` owns reusable exact-head, bytecode, API, and gate-evidence task types.
 - `support/architecture` owns the typed clean-slate module graph, effect policy,
   and checked-in architecture projection.
-- `support/delivery/model` owns the exact-head VFS-passive delivery graph and typed authority
+- `support/delivery/model` owns the VFS-passive delivery graph, legacy exact-head receipt prefix,
+  content-scoped atomic proof protocol, and typed authority
   refinement. `support/delivery/tasks` owns projection, Git, source-read, serialization, generation,
   and verification boundaries.
 - `src/test/kotlin` contains task and convention contract tests.
