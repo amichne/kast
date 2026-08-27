@@ -18,6 +18,8 @@ remains host-neutral and pure.
 ## Contract invariants
 
 - One controller owns one Project's state; no global registry or cross-project lock is permitted.
+- `read/admission` physically owns the finite admission outcomes and exact-root scope refinement;
+  their Kotlin package remains the module's admission API.
 - At most one permit is active and at most one request is queued. Further admission is a finite
   `Busy` rejection.
 - Cancellation, release, disconnect, disposal, and retirement terminalize authority exactly once.
