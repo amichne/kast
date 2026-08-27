@@ -31,8 +31,8 @@ This package owns the typed delivery program and the Gradle task boundaries that
   `atomic/kvp034/` children own their sole graph-derived task proofs; each revalidates its admitted
   predecessor closure before using the last task-owned implementation checkpoint as the next
   write-scope baseline. KVP-025, KVP-031, KVP-011, and KVP-032 may share the graph-admitted hosted
-  production-composition checkpoint while retaining one physical owner per changed path. KVP-031
-  additionally binds its receipt to one exact head.
+  production-composition ready frontier and checkpoints while retaining one physical owner per
+  changed path. KVP-031 additionally binds its receipt to one exact head.
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.

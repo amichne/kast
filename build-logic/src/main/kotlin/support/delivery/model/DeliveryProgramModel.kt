@@ -260,6 +260,7 @@ data class DeliveryBatchTask(
 
 data class DeliveryBatch(
     val id: DeliveryBatchId,
+    val readyFrontier: DeliveryGeneration,
     val tasks: List<DeliveryBatchTask>,
 )
 

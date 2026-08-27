@@ -290,6 +290,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
 
 internal fun hostedProductionCompositionDeliveryBatch() = DeliveryBatch(
     id = DeliveryBatchId("hosted-production-composition"),
+    readyFrontier = DeliveryGeneration("0f7105c3cf3b91dd97e792c8aecdebb1bbc34446"),
     tasks = listOf(
         DeliveryBatchTask(TaskId("KVP-025"), listOf("ide-plugin/src/main/kotlin")),
         DeliveryBatchTask(

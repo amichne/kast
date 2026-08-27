@@ -95,8 +95,8 @@ private val kvp011DependencyJson = Json {
  * `Kvp011DependencyAdmission`.
  *
  * Establishes the pinned canonical KVP-010 v1 receipt, canonical KVP-025 v2 output, and current
- * exact-head KVP-031 v2 output. KVP-031's first task-owned checkpoint becomes the inclusive batch
- * baseline so a later task can retain its distinct physical paths from that same checkpoint.
+ * exact-head KVP-031 v2 output. The graph-admitted ready frontier becomes the inclusive batch
+ * baseline so a later task can retain its distinct physical paths from shared checkpoints.
  * Expected read, schema, closure, or digest failure is finite data; raw JSON and paths exist only
  * at this boundary.
  */
@@ -169,7 +169,7 @@ internal fun admitKvp011Dependencies(
     ) {
         return rejected(Kvp011DependencyFailure.OUTPUT_MISMATCH)
     }
-    val baseline = when (val admitted = admitKvp031Baseline(kvp031Report, observedHead)) {
+    when (val admitted = admitKvp031Baseline(kvp031Report, observedHead)) {
         is Kvp011BaselineAdmission.Complete -> admitted.baseline
         Kvp011BaselineAdmission.Rejected -> return rejected(
             Kvp011DependencyFailure.CLOSURE_MISMATCH,
@@ -180,7 +180,7 @@ internal fun admitKvp011Dependencies(
             KVP010_RECEIPT_ID to kvp010,
             KVP025_RECEIPT_ID to kvp025.receiptDigest.value,
             KVP031_RECEIPT_ID to kvp031.receiptDigest.value,
-        ), baseline),
+        ), hostedProductionCompositionBatch().readyFrontier),
     )
 }
 

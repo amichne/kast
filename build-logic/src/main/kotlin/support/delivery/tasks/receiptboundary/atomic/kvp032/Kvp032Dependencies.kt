@@ -93,7 +93,7 @@ internal fun admitKvp032Dependencies(
     return Kvp032DependencyAdmission.Complete(
         AdmittedKvp032Dependencies(
             dependencies,
-            DeliveryGeneration(KVP032_READY_FRONTIER_HEAD),
+            hostedProductionCompositionBatch().readyFrontier,
         ),
     )
 }
@@ -192,5 +192,3 @@ private const val KVP023_RECEIPT_DIGEST =
     "e3d7587ea38783234f7735dd8715d424eddeb399210dd41fbf00faf96ba8292e"
 private const val KVP027_RECEIPT_ID = "KVP-027-COMPLETE"
 private const val KVP031_RECEIPT_ID = "KVP-031-COMPLETE"
-private const val KVP032_READY_FRONTIER_HEAD =
-    "27a415c981de8e2d29b439be854a91cd2e1e21e2"

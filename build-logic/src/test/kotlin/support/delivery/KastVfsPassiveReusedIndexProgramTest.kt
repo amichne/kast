@@ -31,6 +31,7 @@ class KastVfsPassiveReusedIndexProgramTest {
         val batches = projection.getValue("deliveryBatches") as List<Map<String, Any?>>
         val batch = batches.single { it["id"] == "hosted-production-composition" }
 
+        assertEquals("0f7105c3cf3b91dd97e792c8aecdebb1bbc34446", batch["readyFrontier"])
         assertEquals(
             listOf("KVP-025", "KVP-031", "KVP-011", "KVP-032"),
             batch["taskOrder"],

@@ -59,6 +59,7 @@ data class ValidatedProgram(
                 val selected = batch.tasks.mapTo(linkedSetOf()) { it.taskId }
                 mapOf(
                     "id" to batch.id.value,
+                    "readyFrontier" to batch.readyFrontier.value,
                     "taskOrder" to order.filter(selected::contains).map { it.value },
                     "externalDependencyTaskIds" to batch.tasks.flatMap { owned ->
                         program.tasks.single { it.id == owned.taskId }.dependencies.taskIds
