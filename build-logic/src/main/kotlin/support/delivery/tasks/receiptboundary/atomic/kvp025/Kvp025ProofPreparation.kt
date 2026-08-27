@@ -41,7 +41,6 @@ abstract class PrepareKvp025ProofTask : DefaultTask() {
             observedHead,
             packetFile.get().asFile.toPath(),
             predecessorReceiptFile.get().asFile.toPath(),
-            receiptFile.get().asFile.toPath(),
         )) {
             is Kvp025ProofContextPreparation.Complete -> prepared.context
             is Kvp025ProofContextPreparation.Rejected ->
@@ -112,7 +111,6 @@ internal fun prepareKvp025ProofContext(
     observedHead: DeliveryGeneration,
     packetPath: Path,
     predecessorPath: Path,
-    existingReceiptPath: Path,
 ): Kvp025ProofContextPreparation {
     val (expectedPacket, programVersion) = canonicalKvp025Packet()
     val rawPacket = when (val read = readBoundaryFile(
@@ -140,14 +138,13 @@ internal fun prepareKvp025ProofContext(
             Kvp025ProofPreparationFailure.PREDECESSOR_REJECTED,
         )
     }
-    val preservedThrough = admittedKvp025ObservedHead(existingReceiptPath, packet.packet)
     val implementation = when (val admitted = admitKvp025ImplementationScope(
         exec,
         root,
         predecessor.observedRepositoryHead,
         observedHead,
         packet.packet.task.allowedWrites,
-        preservedThrough,
+        canonicalKvp026TaskPacket().task.allowedWrites,
     )) {
         is Kvp025ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp025ImplementationScopeAdmission.Rejected -> return rejectedPreparation(
@@ -186,24 +183,6 @@ internal fun prepareKvp025ProofContext(
             observedHead,
         ),
     ))
-}
-
-private fun admittedKvp025ObservedHead(path: Path, packet: TaskPacket): DeliveryGeneration? {
-    val raw = when (val read = readBoundaryFile(path, MAX_RECEIPT_EVIDENCE_BYTES)) {
-        is BoundaryFileRead.Complete -> read.bytes.toString(Charsets.UTF_8)
-        is BoundaryFileRead.Rejected -> return null
-    }
-    val document = when (val decoded = decodeTaskProofReceipt(raw)) {
-        is TaskProofReceiptDocumentRefinement.Complete -> decoded.document
-        is TaskProofReceiptDocumentRefinement.Rejected -> return null
-    }
-    return document.observedRepositoryHead.takeIf {
-        document.receiptId == packet.receipt.receiptId &&
-            document.taskId == packet.task.id &&
-            document.taskDefinitionDigest.value == packet.taskDefinitionDigest.value &&
-            document.headPolicy == packet.receipt.headPolicy &&
-            document.receiptDigest == document.derivedDigest()
-    }
 }
 
 /**

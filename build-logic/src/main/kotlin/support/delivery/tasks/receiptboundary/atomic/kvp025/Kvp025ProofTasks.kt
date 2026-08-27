@@ -55,7 +55,6 @@ abstract class ProveKvp025Task : DefaultTask() {
             observedHead,
             packetFile.get().asFile.toPath(),
             predecessorReceiptFile.get().asFile.toPath(),
-            receiptFile.get().asFile.toPath(),
         )) {
             is Kvp025ProofContextPreparation.Complete -> result.context
             is Kvp025ProofContextPreparation.Rejected -> reject("context", result.failure)
