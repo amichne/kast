@@ -108,8 +108,9 @@ internal fun admitKvp031ImplementationScope(
  * `Kvp031ImplementationScopeAdmission`.
  *
  * Establishes that the prior report head remains an ancestor and that replaying the graph-declared
- * write policy to that exact head yields byte-identical commit evidence. Later unrelated commits
- * are deliberately outside this content-scoped transition.
+ * write policy through the last recorded implementation checkpoint yields byte-identical commit
+ * evidence. Exact-head proof-only checkpoints and later dependent commits therefore cannot be
+ * reclassified as implementation. Later unrelated commits remain outside this content transition.
  */
 internal fun admitPriorKvp031ImplementationScope(
     exec: ExecOperations,
@@ -128,7 +129,7 @@ internal fun admitPriorKvp031ImplementationScope(
         exec,
         repositoryRoot,
         predecessorHead,
-        candidate.reportHead,
+        candidate.commits.last().revision,
         allowedWrites,
         companionWrites,
     )) {
