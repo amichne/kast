@@ -111,7 +111,8 @@ class StandalonePluginReportTest {
             val rootElement = "idea-" + "plugin"
             jar.write(
                 ("<$rootElement><id>${KastStandalonePlugin.id.value}</id>" +
-                    "<extensions><appStarter/><projectResolve/></extensions></$rootElement>")
+                    "<extensions><projectService/><postStartupActivity/></extensions>" +
+                    "</$rootElement>")
                     .toByteArray(),
             )
             jar.closeEntry()

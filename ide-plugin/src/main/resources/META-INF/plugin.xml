@@ -19,13 +19,5 @@
             preload="true"/>
         <postStartupActivity
             implementation="io.github.amichne.kast.ide.endpoint.IdeEndpointProjectActivity"/>
-        <appStarter
-            id="kast-indexer"
-            implementation="io.github.amichne.kast.indexer.KastIndexerApplicationStarter"/>
-    </extensions>
-    <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
-        <projectResolve
-            implementation="io.github.amichne.kast.workspace.intellij.provenance.KastGradleSourceRootProvenanceResolver"
-            order="first"/>
     </extensions>
 </idea-plugin>

@@ -200,8 +200,8 @@ internal fun parseDescriptor(bytes: ByteArray): DescriptorParseResult {
                 DescriptorParseResult.Complete(
                     PluginDescriptorObservation.Present(
                         id,
-                        document.registration("appStarter"),
-                        document.registration("projectResolve"),
+                        document.registration("projectService"),
+                        document.registration("postStartupActivity"),
                     ),
                 )
             }

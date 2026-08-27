@@ -4,8 +4,9 @@ This package owns build-time refinement and deterministic assembly of the standa
 plugin artifact.
 
 - Refine staged JAR observations into `ValidatedStandalonePluginPayload` before writing an archive.
-- Require one exact descriptor identity, application-starter registration, and Gradle resolver
-  registration.
+- Require one exact descriptor identity, hosted project-service registration, and post-startup
+  activity registration. Isolated application-starter and Gradle-resolver registrations belong
+  only to the explicit indexer fixture.
 - Reject private IDEA-home paths, duplicate entries, malformed JARs or descriptors, and directly
   observed platform-owned classes as finite `StandalonePluginFailure` data.
 - Emit KVP-010 reports through generated serializers. Decode them through the same closed document,

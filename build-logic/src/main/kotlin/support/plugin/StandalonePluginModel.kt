@@ -16,8 +16,8 @@ internal sealed interface PluginDescriptorObservation {
     data object Absent : PluginDescriptorObservation
     data class Present(
         val pluginId: String,
-        val applicationStarter: RegistrationObservation,
-        val gradleResolver: RegistrationObservation,
+        val projectService: RegistrationObservation,
+        val startupActivity: RegistrationObservation,
     ) : PluginDescriptorObservation
 }
 
@@ -51,8 +51,8 @@ internal enum class StandalonePluginFailure {
     MISSING_DESCRIPTOR,
     MULTIPLE_DESCRIPTORS,
     PLUGIN_ID_MISMATCH,
-    APPLICATION_STARTER_MISSING,
-    GRADLE_RESOLVER_MISSING,
+    PROJECT_SERVICE_MISSING,
+    STARTUP_ACTIVITY_MISSING,
     MALFORMED_JAR,
     MALFORMED_DESCRIPTOR,
     ARTIFACT_OUTSIDE_REPOSITORY,
@@ -196,11 +196,11 @@ internal object KastStandalonePlugin {
         if (descriptor.pluginId != id.value) {
             return rejected(StandalonePluginFailure.PLUGIN_ID_MISMATCH)
         }
-        if (descriptor.applicationStarter != RegistrationObservation.PRESENT) {
-            return rejected(StandalonePluginFailure.APPLICATION_STARTER_MISSING)
+        if (descriptor.projectService != RegistrationObservation.PRESENT) {
+            return rejected(StandalonePluginFailure.PROJECT_SERVICE_MISSING)
         }
-        if (descriptor.gradleResolver != RegistrationObservation.PRESENT) {
-            return rejected(StandalonePluginFailure.GRADLE_RESOLVER_MISSING)
+        if (descriptor.startupActivity != RegistrationObservation.PRESENT) {
+            return rejected(StandalonePluginFailure.STARTUP_ACTIVITY_MISSING)
         }
         return StandalonePluginPayloadResult.Complete(
             ValidatedStandalonePluginPayload(

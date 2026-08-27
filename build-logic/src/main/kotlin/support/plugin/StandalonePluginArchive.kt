@@ -108,7 +108,7 @@ private sealed interface CanonicalPluginDescriptorAdmission {
 
 /**
  * Proof transition: descriptor-owner JAR `ByteArray -> CanonicalPluginDescriptorAdmission`.
- * Establishes one securely parsed canonical descriptor with both required registrations. Expected
+ * Establishes one securely parsed canonical descriptor with both hosted registrations. Expected
  * malformed, absent, duplicate, or mismatched descriptors are finite
  * [CanonicalPluginDescriptorAdmission.Rejected]. Raw JAR and XML bytes remain at this archive
  * evidence boundary.

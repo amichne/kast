@@ -73,28 +73,15 @@ val standalonePluginNegativeProof by tasks.registering(StandalonePluginNegativeP
     description = "Proves the fixed missing, private-layout, and platform-class rejections."
 }
 
-val stagedIndexerPayload = rootProject.layout.projectDirectory.dir("indexer/build/plugin-payload")
-val hostedRuntimeJar = project(":runtime:ide-read").layout.buildDirectory.file(
-    "libs/runtime-ide-read-${project.version}.jar",
-)
-val hostedProjectJar = project(":workspace:intellij-read").layout.buildDirectory.file(
-    "libs/workspace-intellij-read-${project.version}.jar",
-)
-
 val buildPlugin by tasks.registering(BuildStandalonePluginTask::class) {
     group = "build"
     description = "Builds the deterministic standalone Kast IntelliJ plugin ZIP and proof report."
     dependsOn(
         standalonePluginNegativeProof,
         tasks.named("jar"),
-        ":runtime:ide-read:jar",
-        ":workspace:intellij-read:jar",
-        ":indexer:syncIndexerPluginPayload",
     )
     payloadJars.from(tasks.named<Jar>("jar").flatMap(Jar::getArchiveFile))
-    payloadJars.from(hostedRuntimeJar)
-    payloadJars.from(hostedProjectJar)
-    payloadJars.from(fileTree(stagedIndexerPayload) { include("*.jar") })
+    payloadJars.from(configurations.runtimeClasspath)
     repositoryRoot.set(rootProject.layout.projectDirectory)
     pluginArchive.set(
         layout.buildDirectory.file("distributions/kast-ide-plugin-${project.version}.zip"),

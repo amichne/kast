@@ -88,7 +88,7 @@ class StandalonePluginModelTest {
                     ),
                 ),
             ),
-            StandalonePluginFailure.APPLICATION_STARTER_MISSING,
+            StandalonePluginFailure.PROJECT_SERVICE_MISSING,
         )
         assertRejected(
             listOf(
@@ -101,7 +101,7 @@ class StandalonePluginModelTest {
                     ),
                 ),
             ),
-            StandalonePluginFailure.GRADLE_RESOLVER_MISSING,
+            StandalonePluginFailure.STARTUP_ACTIVITY_MISSING,
         )
     }
 

@@ -162,7 +162,6 @@ val indexerPluginJar by tasks.registering(Jar::class) {
     archiveClassifier.set("plugin")
     from(sourceSets.named("main").map { it.output }) {
         exclude(launcherClassEntries)
-        exclude("META-INF/plugin.xml")
     }
     manifest {
         attributes["Implementation-Title"] = "kast-indexer"
@@ -231,16 +230,13 @@ tasks.named<Sync>("syncPortableDist") {
         include(packagedIdeaHomeEntries)
         into("idea-home")
     }
-    from(
-        zipTree(
-            rootProject.layout.projectDirectory.file(
-                "ide-plugin/build/distributions/kast-ide-plugin-${project.version}.zip",
-            ),
-        ),
-    ) {
-        into("idea-home/plugins")
+    from(indexerPluginJar) {
+        into("idea-home/plugins/kast-indexer/lib")
     }
-    dependsOn("syncRuntimeLibs", extractIdeaDistribution, ":ide-plugin:buildPlugin")
+    from(indexerPluginRuntime) {
+        into("idea-home/plugins/kast-indexer/lib")
+    }
+    dependsOn("syncRuntimeLibs", extractIdeaDistribution, indexerPluginJar)
 }
 
 val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::class) {
@@ -261,10 +257,10 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
     forbiddenRuntimeJarPrefixes.set(listOf("composition-", "indexer-${project.version}-plugin"))
     forbiddenPluginClassEntries.set(platformKotlinPluginOwnedClassEntries)
     requiredRuntimeClassEntries.set(indexerRuntimeRequiredClassEntries)
-    requiredPluginJarPrefixes.set(listOf("composition-", "indexer-", "kast-ide-plugin-"))
+    requiredPluginJarPrefixes.set(listOf("composition-", "indexer-"))
     requiredPluginClassEntries.set(indexerPluginRequiredClassEntries)
     requiredPlatformPluginClassEntries.set(platformKotlinPluginOwnedClassEntries)
-    allowedPluginDescriptorJarPrefixes.set(listOf("kast-ide-plugin-"))
+    allowedPluginDescriptorJarPrefixes.set(listOf("indexer-"))
 }
 
 val testIndexerLauncherIsolation by tasks.registering(Exec::class) {
