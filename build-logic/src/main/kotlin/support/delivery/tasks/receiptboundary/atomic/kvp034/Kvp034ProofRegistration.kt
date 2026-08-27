@@ -38,7 +38,7 @@ internal fun Project.registerKvp034AtomicProof(): Set<TaskId> {
     ) {
         group = "verification"
         description = "Runs the installed exact-root four-operation journey in the live IDE."
-        dependsOn(generateMetrics, "proveKVP032", "proveKVP033")
+        dependsOn(generateMetrics)
         mustRunAfter(negative)
         repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
         harnessFile.set(layout.projectDirectory.file("acceptance/ide-hosted/prove_installed.py"))
@@ -54,7 +54,7 @@ internal fun Project.registerKvp034AtomicProof(): Set<TaskId> {
     tasks.register("proveKVP034", ProveKvp034Task::class.java) {
         group = "verification"
         description = "Executes KVP-034 misuse/legal proof and emits one exact-head receipt."
-        dependsOn(generatePacket, negative, acceptance, "proveKVP027", "proveKVP031", "proveKVP033")
+        dependsOn(generatePacket, negative, acceptance)
         repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
         this.packetFile.set(packetFile)
         configureDependencies()
