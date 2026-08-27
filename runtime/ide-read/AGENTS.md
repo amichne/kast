@@ -11,8 +11,9 @@ remains host-neutral and pure.
 - KVP-023 depends internally on `:protocol:wire` for the exact four generated read-operation
   bindings. Its intended KVP-024 composition consumer already owns the protocol boundary.
 - KVP-029 observes the existing symbol adapter through its nominal hosted route and named native
-  adapter gate; keep the product dependency edge indirect until its exact composition task. Do not
-  depend on `:ide-plugin`, runtime composition, persistence, change, topology, or acquisition.
+  adapter gate. KVP-031's production composition owns the direct `:symbol:intellij` edge required
+  to bind discovery, resolution, and description to the already-open exact-root Project. Do not
+  depend on `:ide-plugin`, full runtime composition, persistence, change, topology, or acquisition.
 - Keep the workspace contract edge internal; the public permit API must not export it.
 
 ## Contract invariants
@@ -43,6 +44,9 @@ remains host-neutral and pure.
 - KVP-031's description port admits only parsed exact-selector authority, forbids rediscovery,
   verifies the same selector in detached canonical output, and closes the exact four-port runtime
   only after the complete journey is constructible at one head.
+- `composition/HostedIdeReadProductionComposition` is the installed composition boundary. It
+  compiles one detached cached scope before generation issuance, binds the exact four routes, and
+  retains only host-neutral candidate and exact-selector capabilities between requests.
 - `kvp033RuntimeDynamicSafety` is the non-cacheable aggregate over the exact single-flight,
   cancellable-read, and epoch-revalidation selectors. It emits only JUnit evidence for the root
   KVP-033 report owner and must never become a second receipt authority.

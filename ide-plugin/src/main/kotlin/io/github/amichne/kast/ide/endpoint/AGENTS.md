@@ -21,6 +21,9 @@ This package owns one project-scoped Unix-domain endpoint and its descriptor-v2 
   for the four typed transient readiness states.
 - Issue the Project endpoint generation only after the admitted Project has produced the complete
   four-port runtime. Never use semantic freshness epochs or a constant as endpoint incarnation.
+- Capture the cached detached model through the suspending write-priority read boundary, prepare
+  the native exact-root composition, and only then issue the endpoint generation and activate all
+  four routes. A partial runtime is a named startup rejection, never a publication candidate.
 - `IdeEndpointTransport` owns bounded length-prefixed framing and sequential request dispatch. A
   successful connect without a framed response is not readiness.
 - Do not add project opening/import, refresh, repository traversal, blocking dispatch, persistence,

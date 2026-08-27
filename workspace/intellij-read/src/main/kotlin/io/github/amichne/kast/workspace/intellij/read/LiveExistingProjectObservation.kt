@@ -9,10 +9,79 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeBuildIdentity
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.KotlinPluginBuildIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Path
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
+
+/** Finite observation stages at the existing-Project boundary. */
+enum class ExistingProjectObservationStage {
+    DISPOSAL,
+    OPEN,
+    INITIALIZATION,
+    ROOT,
+    GRADLE_MODEL,
+    INDEXING,
+    KOTLIN_MODE,
+    HOST_IDENTITY,
+}
+
+/** Closed expected failures for `Project -> AdmittedIdeProject`. */
+sealed interface ExistingProjectAdmissionFailure {
+    data object ProjectDisposed : ExistingProjectAdmissionFailure
+    data object ProjectNotOpen : ExistingProjectAdmissionFailure
+    data object ProjectNotInitialized : ExistingProjectAdmissionFailure
+    data object ProjectRootUnavailable : ExistingProjectAdmissionFailure
+    data object ProjectRootMismatch : ExistingProjectAdmissionFailure
+    data object GradleModelUnavailable : ExistingProjectAdmissionFailure
+    data object GradleModelIncomplete : ExistingProjectAdmissionFailure
+    data object DumbMode : ExistingProjectAdmissionFailure
+    data object K2Unavailable : ExistingProjectAdmissionFailure
+    data object HostIdentityUnavailable : ExistingProjectAdmissionFailure
+    data class HostIncompatible(
+        val cause: IdeHostCompatibilityFailure,
+    ) : ExistingProjectAdmissionFailure
+    data class ObservationFailed(
+        val stage: ExistingProjectObservationStage,
+    ) : ExistingProjectAdmissionFailure
+}
+
+/** Closed result of attempting to admit one existing IntelliJ Project. */
+sealed interface ExistingProjectAdmission {
+    data class Admitted(val project: AdmittedIdeProject) : ExistingProjectAdmission
+    data class Rejected(val failure: ExistingProjectAdmissionFailure) : ExistingProjectAdmission
+}
+
+/** Cached Gradle model state observed without import or repair. */
+enum class ExistingProjectGradleModelState { UNAVAILABLE, INCOMPLETE, COMPLETE }
+
+/** Current IntelliJ indexing state observed without waiting. */
+enum class ExistingProjectIndexingState { DUMB, SMART }
+
+/** Current Kotlin frontend mode observed from the installed Kotlin plugin. */
+enum class ExistingProjectKotlinMode { K1, K2 }
+
+/** Detached result of refining the supplied Project root. */
+sealed interface ExistingProjectRootObservation {
+    data class Available(val root: CanonicalWorkspaceRoot) : ExistingProjectRootObservation
+    data object Mismatch : ExistingProjectRootObservation
+    data object Unavailable : ExistingProjectRootObservation
+}
+
+/** Detached running-host identity observed from the loaded IDE and Kotlin plugins. */
+sealed interface ExistingProjectHostIdentityObservation {
+    data class Available(
+        val ideBuild: IdeBuildIdentity,
+        val kotlinPluginBuild: KotlinPluginBuildIdentity,
+    ) : ExistingProjectHostIdentityObservation
+
+    data class Rejected(
+        val failure: IdeHostCompatibilityFailure,
+    ) : ExistingProjectHostIdentityObservation
+
+    data object Unavailable : ExistingProjectHostIdentityObservation
+}
 
 /** Closed comparison of one platform path with the already-admitted canonical root. */
 internal enum class ExistingProjectPathMatch {

@@ -39,6 +39,8 @@ private val workspaceIdeaLibraries = files(
 
 dependencies {
     implementation(project(":protocol:wire"))
+    implementation(project(":symbol:contract"))
+    implementation(project(":symbol:intellij"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
     compileOnly(workspaceIdeaLibraries)

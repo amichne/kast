@@ -32,9 +32,11 @@ enum class DetachedModelCaptureFailure {
     TOO_MANY_SOURCE_ROOTS,
     INVALID_SOURCE_ROOT,
     INVALID_SOURCE_ROOT_KIND,
+    INVALID_SOURCE_ROOT_PROVENANCE,
     SOURCE_ROOT_OUTSIDE_WORKSPACE,
     DUPLICATE_SOURCE_ROOT,
     CONFLICTING_SOURCE_ROOT_KIND,
+    CONFLICTING_SOURCE_ROOT_PROVENANCE,
     AMBIGUOUS_SOURCE_ROOT_OWNER,
     INVALID_SDK_IDENTITY,
     NO_CLASSPATH,
@@ -70,6 +72,9 @@ sealed interface DetachedModelCapture {
 /** Finite source-root kinds detached from IntelliJ source-folder implementations. */
 enum class DetachedSourceRootKind { PRODUCTION, TEST, RESOURCE, TEST_RESOURCE }
 
+/** Cached IntelliJ source-folder provenance detached without path inference. */
+enum class DetachedSourceRootProvenance { AUTHORED, GENERATED }
+
 @JvmInline
 value class DetachedModuleName internal constructor(val value: String)
 
@@ -104,6 +109,7 @@ data class DetachedGradleModuleOwner internal constructor(
 data class DetachedIdeSourceRoot internal constructor(
     val location: DetachedWorkspaceRelativePath,
     val kind: DetachedSourceRootKind,
+    val provenance: DetachedSourceRootProvenance,
 )
 
 /** Detached SDK identity used by one admitted module. */
@@ -214,6 +220,7 @@ internal data class DetachedModuleBoundary(
 internal data class DetachedSourceRootBoundary(
     val path: String?,
     val kind: DetachedSourceRootKind?,
+    val provenance: DetachedSourceRootProvenance?,
 )
 
 internal data class DetachedSdkBoundary(

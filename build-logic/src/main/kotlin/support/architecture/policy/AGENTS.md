@@ -9,7 +9,9 @@ This directory owns the canonical module-policy declarations.
   modules. Their lifecycle set is the `RUNTIME_SPLIT` firewall stage.
 - Lifecycle changes must match one monotonic `IdeReadFirewallStage`; activation cannot skip a
   predecessor module or return an active module to planned state.
-- IDE-read modules may depend only on declared inward contracts or another IDE-read module.
+- IDE-read modules may depend only on declared inward contracts, another IDE-read module, or an
+  explicitly declared existing IntelliJ read adapter. The runtime read owner uses that last edge
+  for native symbol indexes and K2 semantics without acquiring any stronger effect.
   Workspace and runtime read owners allow only the generic IntelliJ platform read effect. The IDE
   plugin additionally owns the named UDS bind and endpoint-descriptor write effects; classify only
   their exact endpoint members, never a package prefix, and grant no source-write authority.

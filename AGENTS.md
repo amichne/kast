@@ -230,7 +230,7 @@ Keep dependencies pointed toward host-neutral evidence:
 indexer -> runtime:composition
 runtime:composition -> runtime:server + target services + target adapters
 runtime:server -> protocol:{contract,registry,wire}
-runtime:ide-read -> workspace:contract
+runtime:ide-read -> workspace:contract + symbol:intellij
 services -> their contracts and narrower contracts
 IntelliJ/SQLite adapters -> their contracts
 workspace:intellij-read -> protocol:contract + workspace:contract

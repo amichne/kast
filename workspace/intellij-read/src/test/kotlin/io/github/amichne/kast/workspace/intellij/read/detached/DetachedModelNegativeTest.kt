@@ -278,7 +278,11 @@ class DetachedModelNegativeTest {
                 listOf(
                     valid.copy(
                         sourceRoots = listOf(
-                            DetachedSourceRootBoundary("src/main/kotlin", DetachedSourceRootKind.PRODUCTION),
+                            DetachedSourceRootBoundary(
+                                "src/main/kotlin",
+                                DetachedSourceRootKind.PRODUCTION,
+                                DetachedSourceRootProvenance.AUTHORED,
+                            ),
                         ),
                     ),
                 ),
@@ -292,6 +296,7 @@ class DetachedModelNegativeTest {
                             DetachedSourceRootBoundary(
                                 "/workspace/other/src",
                                 DetachedSourceRootKind.PRODUCTION,
+                                DetachedSourceRootProvenance.AUTHORED,
                             ),
                         ),
                     ),
@@ -305,6 +310,22 @@ class DetachedModelNegativeTest {
                         sourceRoots = listOf(
                             DetachedSourceRootBoundary(
                                 "${FIXTURE_ROOT.value}/src",
+                                null,
+                                DetachedSourceRootProvenance.AUTHORED,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            ModuleCase(
+                "unknown source-root provenance",
+                DetachedModelCaptureFailure.INVALID_SOURCE_ROOT_PROVENANCE,
+                listOf(
+                    valid.copy(
+                        sourceRoots = listOf(
+                            DetachedSourceRootBoundary(
+                                "${FIXTURE_ROOT.value}/src",
+                                DetachedSourceRootKind.PRODUCTION,
                                 null,
                             ),
                         ),

@@ -2,6 +2,7 @@ package io.github.amichne.kast.ide.endpoint
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.ide.compatibility.AdmittedIdeHostCompatibilityMetadata
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
@@ -19,11 +20,15 @@ import io.github.amichne.kast.protocol.wire.metadata.IdeRuntimeEpoch
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProject
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProjectAdmission
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProjectAdmissionFailure
-import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntime
+import io.github.amichne.kast.runtime.ide.read.composition.HostedIdeReadProductionComposition
+import io.github.amichne.kast.runtime.ide.read.composition.HostedIdeReadProductionCompositionFailure
+import io.github.amichne.kast.runtime.ide.read.composition.HostedIdeReadProductionCompositionPreparation
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparation
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparationFailure
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
+import io.github.amichne.kast.workspace.intellij.read.DetachedModelCapture
+import io.github.amichne.kast.workspace.intellij.read.DetachedModelCaptureFailure
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFailure
 import java.nio.file.Path
@@ -133,6 +138,12 @@ internal sealed interface IdeEndpointStartupFailure {
     data class RuntimeRejected(
         val cause: HostedIdeReadRuntimePreparationFailure,
     ) : IdeEndpointStartupFailure
+    data class ProjectModelRejected(
+        val causes: Set<DetachedModelCaptureFailure>,
+    ) : IdeEndpointStartupFailure
+    data class CompositionRejected(
+        val cause: HostedIdeReadProductionCompositionFailure,
+    ) : IdeEndpointStartupFailure
     data object EndpointGenerationExhausted : IdeEndpointStartupFailure
     data class EndpointRejected(
         val cause: IdeEndpointPublicationFailure,
@@ -164,7 +175,7 @@ internal object LiveIdeEndpointStartup {
      * failures remain finite [IdeEndpointStartupFailure]. Raw Project metadata, PID, and endpoint
      * directory values leave only at this outer hosted service boundary.
      */
-    fun prepare(
+    suspend fun prepare(
         project: Project,
         generations: ProjectEndpointGenerationSource,
     ): IdeEndpointStartup {
@@ -210,10 +221,17 @@ internal object LiveIdeEndpointStartup {
             is HostedIdeReadProjectAdmission.Admitted -> admission.project
             is HostedIdeReadProjectAdmission.Rejected -> return classify(admission.failure)
         }
-        val runtime = when (val preparation = HostedIdeReadRuntime.prepare(hostedProject)) {
-            is HostedIdeReadRuntimePreparation.Prepared -> preparation
-            is HostedIdeReadRuntimePreparation.Rejected -> return rejected(
-                IdeEndpointStartupFailure.RuntimeRejected(preparation.failure),
+        val model = when (val capture = admittedProject.captureDetachedModelAsync()) {
+            is DetachedModelCapture.Captured -> capture.model
+            is DetachedModelCapture.Rejected -> return classify(capture.failures)
+        }
+        val composition = when (val preparation = HostedIdeReadProductionComposition.prepare(
+            hostedProject,
+            model,
+        )) {
+            is HostedIdeReadProductionCompositionPreparation.Prepared -> preparation.composition
+            is HostedIdeReadProductionCompositionPreparation.Rejected -> return rejected(
+                IdeEndpointStartupFailure.CompositionRejected(preparation.failure),
             )
         }
         val socketDirectory = when (val parsed = IdeEndpointSocketDirectory.parse("/tmp")) {
@@ -232,6 +250,20 @@ internal object LiveIdeEndpointStartup {
             is ProjectEndpointGenerationIssuance.Issued -> issued.epoch
             ProjectEndpointGenerationIssuance.Exhausted -> return rejected(
                 IdeEndpointStartupFailure.EndpointGenerationExhausted,
+            )
+        }
+        val evidenceGeneration = when (
+            val parsed = EvidenceGeneration.parse(runtimeEpoch.value)
+        ) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostConfigurationUnavailable,
+            )
+        }
+        val runtime = when (val preparation = composition.activate(evidenceGeneration)) {
+            is HostedIdeReadRuntimePreparation.Prepared -> preparation
+            is HostedIdeReadRuntimePreparation.Rejected -> return rejected(
+                IdeEndpointStartupFailure.RuntimeRejected(preparation.failure),
             )
         }
         return when (val prepared = IdeEndpointPreparation.prepare(
@@ -272,6 +304,20 @@ internal object LiveIdeEndpointStartup {
                 else -> rejected(IdeEndpointStartupFailure.ProjectRejected(failure))
             }
         }
+
+    private fun classify(failures: Set<DetachedModelCaptureFailure>): IdeEndpointStartup = when {
+        DetachedModelCaptureFailure.PROJECT_NOT_INITIALIZED in failures -> deferred(
+            IdeEndpointDeferredReadiness.PROJECT_NOT_INITIALIZED,
+        )
+        DetachedModelCaptureFailure.GRADLE_MODEL_INCOMPLETE in failures -> deferred(
+            IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
+        )
+        DetachedModelCaptureFailure.PROJECT_DUMB in failures ||
+            DetachedModelCaptureFailure.READ_PREEMPTED in failures -> deferred(
+            IdeEndpointDeferredReadiness.DUMB_MODE,
+        )
+        else -> rejected(IdeEndpointStartupFailure.ProjectModelRejected(failures))
+    }
 
     private fun deferred(readiness: IdeEndpointDeferredReadiness) =
         IdeEndpointStartup.Deferred(readiness)

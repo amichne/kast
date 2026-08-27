@@ -174,9 +174,9 @@ private fun refineModule(
 /**
  * Proof transition: `List<DetachedSourceRootBoundary> ->
  * Refinement<List<DetachedIdeSourceRoot>, DetachedModelCaptureFailure>`. Establishes a bounded,
- * unique, workspace-owned root list with one coherent kind per location. The closed expected
- * failure is [DetachedModelCaptureFailure]. Raw source-root values may be extracted only at the
- * live IntelliJ `SourceFolder` adapter boundary.
+ * unique, workspace-owned root list with one coherent kind and explicit cached-model provenance
+ * per location. The closed expected failure is [DetachedModelCaptureFailure]. Raw source-root
+ * values may be extracted only at the live IntelliJ `SourceFolder` adapter boundary.
  */
 private fun refineSourceRoots(
     root: Path,
@@ -200,11 +200,16 @@ private fun refineSourceRoots(
             is Refinement.Rejected -> return value
         }
         val kind = raw.kind ?: return rejected(DetachedModelCaptureFailure.INVALID_SOURCE_ROOT_KIND)
-        roots += DetachedIdeSourceRoot(location, kind)
+        val provenance = raw.provenance
+            ?: return rejected(DetachedModelCaptureFailure.INVALID_SOURCE_ROOT_PROVENANCE)
+        roots += DetachedIdeSourceRoot(location, kind, provenance)
     }
     val byLocation = roots.groupBy { sourceRoot -> sourceRoot.location }
     if (byLocation.values.any { entries -> entries.map { it.kind }.distinct().size > 1 }) {
         return rejected(DetachedModelCaptureFailure.CONFLICTING_SOURCE_ROOT_KIND)
+    }
+    if (byLocation.values.any { entries -> entries.map { it.provenance }.distinct().size > 1 }) {
+        return rejected(DetachedModelCaptureFailure.CONFLICTING_SOURCE_ROOT_PROVENANCE)
     }
     if (byLocation.values.any { entries -> entries.size > 1 }) {
         return rejected(DetachedModelCaptureFailure.DUPLICATE_SOURCE_ROOT)

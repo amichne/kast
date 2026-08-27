@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -17,10 +18,36 @@ import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import org.jetbrains.jps.model.java.JavaResourceRootType
+import org.jetbrains.jps.model.java.JavaResourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
 
 /** Live IDEA 262 adapter for one bounded detached-model observation. */
 internal object LiveDetachedModelCapture {
+    /**
+     * Proof transition: `(Project, CanonicalWorkspaceRoot) -> DetachedModelObservation`.
+     *
+     * Establishes the same complete detached cached-model observation as [observe] while using
+     * IntelliJ's suspending write-priority read primitive. The caller thread never blocks waiting
+     * for a read action; lifecycle, model, and observation failures remain finite
+     * [DetachedModelCaptureFailure]. Raw Project values remain inside [observeInsideRead].
+     */
+    suspend fun observeAsync(
+        project: Project,
+        expectedRoot: CanonicalWorkspaceRoot,
+    ): DetachedModelObservation {
+        if (ApplicationManager.getApplication().isDispatchThread) {
+            return rejected(DetachedModelCaptureFailure.WRONG_THREAD)
+        }
+        return try {
+            readAction { observeInsideRead(project, expectedRoot) }
+        } catch (cancellation: ProcessCanceledException) {
+            throw cancellation
+        } catch (_: RuntimeException) {
+            rejected(DetachedModelCaptureFailure.OBSERVATION_FAILED)
+        }
+    }
+
     /**
      * Proof transition: `(Project, CanonicalWorkspaceRoot) -> DetachedModelObservation`.
      *
@@ -217,6 +244,17 @@ internal object LiveDetachedModelCapture {
                         JavaResourceRootType.RESOURCE -> DetachedSourceRootKind.RESOURCE
                         JavaResourceRootType.TEST_RESOURCE -> DetachedSourceRootKind.TEST_RESOURCE
                         else -> null
+                    },
+                    provenance = when (val properties = folder.jpsElement.properties) {
+                        is JavaSourceRootProperties -> properties.isForGeneratedSources
+                        is JavaResourceRootProperties -> properties.isForGeneratedSources
+                        else -> null
+                    }?.let { generated ->
+                        if (generated) {
+                            DetachedSourceRootProvenance.GENERATED
+                        } else {
+                            DetachedSourceRootProvenance.AUTHORED
+                        }
                     },
                 )
             }

@@ -66,6 +66,11 @@ class KastCleanSlatePolicyTest {
             ModuleLifecycle.ACTIVE,
             architecture.modules.getValue(ModuleId.RUNTIME_IDE_READ).lifecycle,
         )
+        assertTrue(
+            ModuleId.SYMBOL_INTELLIJ in architecture.modules
+                .getValue(ModuleId.RUNTIME_IDE_READ)
+                .allowedProjectDependencies,
+        )
     }
 
     @Test

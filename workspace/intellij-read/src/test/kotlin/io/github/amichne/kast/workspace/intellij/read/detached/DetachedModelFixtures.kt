@@ -54,9 +54,11 @@ internal fun detachedModuleBoundary(
 internal fun detachedSourceRootBoundary(
     relativePath: String,
     kind: DetachedSourceRootKind = DetachedSourceRootKind.PRODUCTION,
+    provenance: DetachedSourceRootProvenance = DetachedSourceRootProvenance.AUTHORED,
 ): DetachedSourceRootBoundary = DetachedSourceRootBoundary(
     path = "${FIXTURE_ROOT.value}/$relativePath",
     kind = kind,
+    provenance = provenance,
 )
 
 internal fun detachedSdkBoundary(

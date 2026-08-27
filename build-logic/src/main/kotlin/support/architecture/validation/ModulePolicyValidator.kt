@@ -187,7 +187,7 @@ private object ModuleRoleBoundaries {
             role,
             ModuleCost.BOUNDED_READ,
             ModuleRoleConvention.IDE_READ_ONLY,
-            inwardRoles + ModuleRole.IDE_READ_ONLY,
+            inwardRoles + ModuleRole.IDE_READ_ONLY + ModuleRole.INTELLIJ_READ_ADAPTER,
             safeReadCosts,
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,

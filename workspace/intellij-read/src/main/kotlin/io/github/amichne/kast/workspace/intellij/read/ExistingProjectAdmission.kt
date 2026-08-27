@@ -4,12 +4,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
-import io.github.amichne.kast.protocol.contract.IdeBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
-import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
-import io.github.amichne.kast.protocol.contract.KotlinPluginBuildIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
@@ -20,92 +17,6 @@ import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmission
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecutionAdmissionFailure
 import io.github.amichne.kast.workspace.intellij.read.epoch.execution.AdmittedProjectReadExecution
-
-/** Finite observation stages at the existing-Project boundary. */
-enum class ExistingProjectObservationStage {
-    DISPOSAL,
-    OPEN,
-    INITIALIZATION,
-    ROOT,
-    GRADLE_MODEL,
-    INDEXING,
-    KOTLIN_MODE,
-    HOST_IDENTITY,
-}
-
-/** Closed expected failures for `Project -> AdmittedIdeProject`. */
-sealed interface ExistingProjectAdmissionFailure {
-    data object ProjectDisposed : ExistingProjectAdmissionFailure
-    data object ProjectNotOpen : ExistingProjectAdmissionFailure
-    data object ProjectNotInitialized : ExistingProjectAdmissionFailure
-    data object ProjectRootUnavailable : ExistingProjectAdmissionFailure
-    data object ProjectRootMismatch : ExistingProjectAdmissionFailure
-    data object GradleModelUnavailable : ExistingProjectAdmissionFailure
-    data object GradleModelIncomplete : ExistingProjectAdmissionFailure
-    data object DumbMode : ExistingProjectAdmissionFailure
-    data object K2Unavailable : ExistingProjectAdmissionFailure
-    data object HostIdentityUnavailable : ExistingProjectAdmissionFailure
-    data class HostIncompatible(
-        val cause: IdeHostCompatibilityFailure,
-    ) : ExistingProjectAdmissionFailure
-    data class ObservationFailed(
-        val stage: ExistingProjectObservationStage,
-    ) : ExistingProjectAdmissionFailure
-}
-
-/** Closed result of attempting to admit one existing IntelliJ Project. */
-sealed interface ExistingProjectAdmission {
-    data class Admitted(
-        val project: AdmittedIdeProject,
-    ) : ExistingProjectAdmission
-
-    data class Rejected(
-        val failure: ExistingProjectAdmissionFailure,
-    ) : ExistingProjectAdmission
-}
-
-/** Cached Gradle model state observed without import or repair. */
-enum class ExistingProjectGradleModelState {
-    UNAVAILABLE,
-    INCOMPLETE,
-    COMPLETE,
-}
-
-/** Current IntelliJ indexing state observed without waiting. */
-enum class ExistingProjectIndexingState {
-    DUMB,
-    SMART,
-}
-
-/** Current Kotlin frontend mode observed from the installed Kotlin plugin. */
-enum class ExistingProjectKotlinMode {
-    K1,
-    K2,
-}
-
-/** Detached result of refining the supplied Project root. */
-sealed interface ExistingProjectRootObservation {
-    data class Available(
-        val root: CanonicalWorkspaceRoot,
-    ) : ExistingProjectRootObservation
-
-    data object Mismatch : ExistingProjectRootObservation
-    data object Unavailable : ExistingProjectRootObservation
-}
-
-/** Detached running-host identity observed from the loaded IDE and Kotlin plugins. */
-sealed interface ExistingProjectHostIdentityObservation {
-    data class Available(
-        val ideBuild: IdeBuildIdentity,
-        val kotlinPluginBuild: KotlinPluginBuildIdentity,
-    ) : ExistingProjectHostIdentityObservation
-
-    data class Rejected(
-        val failure: IdeHostCompatibilityFailure,
-    ) : ExistingProjectHostIdentityObservation
-
-    data object Unavailable : ExistingProjectHostIdentityObservation
-}
 
 /** Ordered observation boundary used by existing-Project admission. */
 internal interface ExistingProjectObservationPort {
@@ -144,6 +55,20 @@ class AdmittedIdeProject private constructor(
         canonicalRoot,
         compatibility,
         LiveDetachedModelCapture.observe(liveProject.project, canonicalRoot),
+    )
+
+    /**
+     * Proof transition: `AdmittedIdeProject -> DetachedModelCapture`.
+     *
+     * Establishes the complete exact-root cached Gradle model through a suspending write-priority
+     * read, so the hosted endpoint path never blocks a thread while waiting for read access.
+     * Expected model failures remain [DetachedModelCaptureFailure]; raw Project extraction stays
+     * inside [LiveDetachedModelCapture].
+     */
+    suspend fun captureDetachedModelAsync(): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
+        canonicalRoot,
+        compatibility,
+        LiveDetachedModelCapture.observeAsync(liveProject.project, canonicalRoot),
     )
 
     /**

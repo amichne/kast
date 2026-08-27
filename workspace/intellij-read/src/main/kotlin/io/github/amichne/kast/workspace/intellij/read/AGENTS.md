@@ -15,11 +15,16 @@ state-specific transitions from that capability to `DetachedIdeWorkspaceModel` a
 - `LiveExistingProjectObservation` may read cached IntelliJ/Gradle state only. Do not open a
   Project, link or import Gradle, refresh VFS, wait for indexing, walk the repository, or hash
   sources.
-- `LiveDetachedModelCapture` is the sole KVP-016 live adapter. Reject EDT entry before
-  `ReadAction.computeCancellable`; inside it, recheck cancellation, disposal, open state,
-  initialization, dumb mode, root, cached Gradle state, and every collection bound.
+- `LiveDetachedModelCapture` is the sole KVP-016 live adapter. The installed endpoint uses its
+  suspending write-priority `readAction` transition; the historical synchronous test boundary
+  rejects EDT entry before `ReadAction.computeCancellable`. Inside either boundary, recheck
+  cancellation, disposal, open state, initialization, dumb mode, root, cached Gradle state, and
+  every collection bound.
 - Refine primitive observations into bounded identity and path types. Reject duplicate or
   conflicting source roots, cross-module ownership ambiguity, and duplicate classpath URLs.
+- Preserve each Java code/resource source folder's explicit cached `isForGeneratedSources` flag;
+  missing or conflicting provenance is a closed capture rejection and must never be inferred from
+  a path name.
 - Preserve the exact `Project.basePath` match in `ExactObservedWorkspaceRoot`; detached model
   construction must consume that proof instead of recreating or discarding it.
 - Admit classpath URLs only as exact IntelliJ `file://`, `jar://`, or `jrt://` plus raw VFS path.
