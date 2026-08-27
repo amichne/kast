@@ -17,7 +17,9 @@ val ideHostedWorkspaceInspectNegativeProof = tasks.register<Test>(
     configureKvp028WorkspaceInspect("*IdeHostedWorkspaceInspectNegativeProof")
 }
 
-tasks.register<Test>("ideHostedWorkspaceInspectAcceptance") {
+val ideHostedWorkspaceInspectAcceptance = tasks.register<Test>(
+    "ideHostedWorkspaceInspectAcceptance",
+) {
     description = "Proves KVP-028 exact-root current-epoch IDE workspace inspection."
     configureKvp028WorkspaceInspect("*IdeHostedWorkspaceInspectAcceptance")
     mustRunAfter(ideHostedWorkspaceInspectNegativeProof)
