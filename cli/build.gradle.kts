@@ -95,6 +95,23 @@ val nativeTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.named("test"))
 }
 
+val verifyNoDefaultRuntimeFallbackNegative by tasks.registering(
+    support.architecture.gradle.VerifyNoDefaultRuntimeFallbackNegativeTask::class,
+) {
+    group = "verification"
+    description = "Proves the fixed KVP-027 fallback-linked composition is rejected."
+}
+
+val verifyNoDefaultRuntimeFallback by tasks.registering(
+    support.architecture.gradle.VerifyNoDefaultRuntimeFallbackTask::class,
+) {
+    group = "verification"
+    description = "Proves the installed CLI bytecode reaches only the IDE endpoint runtime path."
+    dependsOn(tasks.named("classes"), verifyNoDefaultRuntimeFallbackNegative)
+    compiledClassDirectories.from(sourceSets.main.get().output.classesDirs)
+    reportFile.set(layout.buildDirectory.file("reports/KVP-027-no-fallback.json"))
+}
+
 val kvp026Packet = support.delivery.canonicalKvp026TaskPacket()
 val proveKVP026Cases = tasks.register<support.delivery.Kvp026AtomicProofTestTask>(
     "proveKVP026Cases",
@@ -127,4 +144,5 @@ val codexAppServerEvaluation by tasks.registering(JavaExec::class) {
 tasks.named("check") {
     dependsOn(nativeTest)
     dependsOn(verifyGeneratedCliSerialization)
+    dependsOn(verifyNoDefaultRuntimeFallback)
 }

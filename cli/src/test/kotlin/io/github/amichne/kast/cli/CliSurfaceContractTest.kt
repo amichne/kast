@@ -64,6 +64,7 @@ class CliSurfaceContractTest {
                 is CliLocalMetadataAdmission.Admitted -> admitted.metadata
                 is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
             },
+            lifecycle = ExactRootRuntimeLifecycle(),
         )
 
         val help = cli.execute(listOf("--help"), Path.of("/missing")) as CliExit.Complete

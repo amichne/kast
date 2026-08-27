@@ -92,6 +92,18 @@ interface RuntimeLifecycleController {
     fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult
 }
 
+/** Lifecycle projection for an endpoint physically owned by the already-running IDE. */
+object IdeEndpointRuntimeLifecycle : RuntimeLifecycleController {
+    override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult =
+        RuntimeStatusResult.Observed(RuntimeLifecycleState.RUNNING)
+
+    override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
+        RuntimeStopResult.Rejected(RuntimeStopFailure.ACTIVE_ENDPOINT)
+
+    override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
+        RuntimeCleanResult.Rejected(RuntimeCleanFailure.ACTIVE_ENDPOINT)
+}
+
 /** Minimal exact-root lifecycle coordination over existing process and UDS boundaries. */
 class ExactRootRuntimeLifecycle internal constructor(
     private val endpointProbe: RuntimeEndpointProbe,

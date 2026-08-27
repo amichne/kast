@@ -62,6 +62,7 @@ class CliNativeTransportTest {
                 error("wire exchange must not run")
             },
             localMetadata = testLocalMetadata(),
+            lifecycle = ExactRootRuntimeLifecycle(),
         )
 
         val exit = cli.execute(listOf("workspace", "inspect"), root)
@@ -137,6 +138,7 @@ class CliNativeTransportTest {
                 },
                 wireClient = UnixDomainWireClient(),
                 localMetadata = testLocalMetadata(),
+                lifecycle = ExactRootRuntimeLifecycle(),
             )
 
             val exit = cli.execute(listOf("workspace", "inspect"), nested)

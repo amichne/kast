@@ -13,12 +13,28 @@ import java.nio.file.Path
 class KastCli(
     private val commandGraphFactory: CliCommandGraphFactory,
     private val rootDiscovery: CanonicalRootDiscoverer,
-    private val endpointLocator: RuntimeEndpointLocator,
-    private val runtimeDemander: RuntimeDemander,
+    private val runtimeDemander: RootRuntimeDemander,
     private val wireClient: WireClient,
     private val localMetadata: CliLocalMetadata,
-    private val lifecycle: RuntimeLifecycleController = ExactRootRuntimeLifecycle(),
+    private val lifecycle: RuntimeLifecycleController,
 ) {
+    constructor(
+        commandGraphFactory: CliCommandGraphFactory,
+        rootDiscovery: CanonicalRootDiscoverer,
+        endpointLocator: RuntimeEndpointLocator,
+        runtimeDemander: RuntimeDemander,
+        wireClient: WireClient,
+        localMetadata: CliLocalMetadata,
+        lifecycle: RuntimeLifecycleController,
+    ) : this(
+        commandGraphFactory,
+        rootDiscovery,
+        LocatedRuntimeDemander(endpointLocator, runtimeDemander),
+        wireClient,
+        localMetadata,
+        lifecycle,
+    )
+
     /**
      * Proof transition: `List<String> + Path -> CliExit`.
      *
@@ -100,12 +116,12 @@ class KastCli(
                 boundaryExit(CliBoundaryExitStatus.ROOT, discovery.failure.name.lowercase()),
             )
         }
-        val endpoint = when (val resolution = endpointLocator.locate(root)) {
-            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
-            is RuntimeEndpointResolution.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
+        val endpoint = when (val admission = runtimeDemander.demand(root)) {
+            is RuntimeAdmission.Ready -> admission.endpoint
+            is RuntimeAdmission.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
                 boundaryExit(
                     CliBoundaryExitStatus.RUNTIME,
-                    resolution.failure.name.lowercase().replace('_', '-'),
+                    admission.failure.name.lowercase().replace('_', '-'),
                 ),
             )
         }
@@ -121,19 +137,9 @@ class KastCli(
         request: PreparedCliRequest,
         boundary: CliRuntimeBoundaryResolution.Resolved,
     ): CliExit {
-        val readyEndpoint = when (
-            val admission = runtimeDemander.demand(boundary.root, boundary.endpoint)
+        val response = when (
+            val exchange = wireClient.exchange(boundary.endpoint, request.document)
         ) {
-            is RuntimeAdmission.Ready -> admission.endpoint
-            is RuntimeAdmission.Rejected -> return boundaryExit(
-                CliBoundaryExitStatus.RUNTIME,
-                admission.failure.name.lowercase().replace('_', '-'),
-            )
-        }
-        if (readyEndpoint != boundary.endpoint) {
-            return boundaryExit(CliBoundaryExitStatus.RUNTIME, "endpoint-mismatch")
-        }
-        val response = when (val exchange = wireClient.exchange(readyEndpoint, request.document)) {
             is WireExchange.Received -> exchange.document
             is WireExchange.Rejected -> return boundaryExit(
                 CliBoundaryExitStatus.TRANSPORT,

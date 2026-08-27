@@ -7,3 +7,5 @@ This directory owns test sources and fixtures under `cli/src/test/kotlin/io/gith
 - KVP-026 endpoint-admission case names must exactly match the canonical graph's named misuse and
   legal path so the Gradle evidence task can bind executed JUnit evidence without manual fields.
 - Keep compatibility, root, socket, process, capability, and reachability fixtures deterministic.
+- KVP-027 IDE-only demand tests must cover closed missing/incompatible evidence and prove the exact
+  descriptor socket becomes the sole wire endpoint.
