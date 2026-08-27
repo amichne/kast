@@ -98,6 +98,11 @@ class TaskProofProtocolTest {
             ),
             packet.receipt.dependencies,
         )
+        assertEquals(
+            setOf("kvp.013.proof", "kvp.024.proof", "kvp.025.proof"),
+            packet.task.inputs.filter { it.getValue("kind") == "taskOutput" }
+                .mapTo(linkedSetOf()) { it.getValue("id") },
+        )
     }
 
     @Test
