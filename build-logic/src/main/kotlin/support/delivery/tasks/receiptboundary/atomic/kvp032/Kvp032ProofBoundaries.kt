@@ -40,6 +40,7 @@ internal class AdmittedKvp032WriteOwnership internal constructor(
     val declaredWrites: List<String>,
     val ownedWrites: List<String>,
     val companionWrites: List<String>,
+    val successorWrites: List<String>,
 )
 
 internal sealed interface Kvp032WriteOwnershipAdmission {
@@ -60,6 +61,9 @@ internal fun admitKvp032WriteOwnership(
     program: ValidatedProgram,
 ): Kvp032WriteOwnershipAdmission {
     val ownedWrites = hostedProductionCompositionOwnedWrites(packet.task.id)
+    val successorWrites = program.program.deliveryBatches
+        .filterNot { it.id == hostedProductionCompositionBatch().id }
+        .flatMap { batch -> batch.tasks.flatMap { it.ownedWrites } }
     return if (ownedWrites.isEmpty()) {
         Kvp032WriteOwnershipAdmission.Rejected(Kvp032BoundaryFailure.EMPTY_OWNED_WRITE_SCOPE)
     } else {
@@ -68,6 +72,7 @@ internal fun admitKvp032WriteOwnership(
                 packet.task.allowedWrites,
                 ownedWrites,
                 hostedProductionCompositionCompanionWrites(packet.task.id),
+                successorWrites,
             ),
         )
     }
@@ -78,10 +83,11 @@ internal fun admitKvp032WriteOwnership(
  * `Kvp032ImplementationScopeAdmission`.
  *
  * Establishes a nonempty ordered KVP-032 commit delta after observing every checkpoint without a
- * pathspec. Only checkpoints containing a KVP-032 physical ownership anchor enter the task delta;
- * shared graph/projection changes owned by successor tasks remain relevant inputs without becoming
- * KVP-032 writes. Every admitted task checkpoint remains wholly within declared writes. Git and
- * scope failures remain finite data.
+ * pathspec. Only checkpoints containing a KVP-032 physical ownership anchor enter the task delta.
+ * A mixed checkpoint is ignored only when it also contains a physical anchor owned by a later
+ * canonical delivery batch; otherwise every out-of-scope write is rejected. Every admitted
+ * KVP-032 checkpoint remains wholly within declared or companion writes. Git and scope failures
+ * remain finite data.
  */
 internal fun admitKvp032ImplementationScope(
     exec: ExecOperations,
@@ -120,12 +126,18 @@ internal fun admitKvp032ImplementationScope(
         val taskPaths = observed.filter { path ->
             ownership.ownedWrites.any { scope -> path.inKvp032Scope(scope) }
         }
-        if (observed.any { path ->
-                (ownership.declaredWrites + ownership.companionWrites).none { scope ->
-                    path.inKvp032Scope(scope)
-                }
+        val outside = observed.filter { path ->
+            (ownership.declaredWrites + ownership.companionWrites).none { scope ->
+                path.inKvp032Scope(scope)
             }
-        ) return scopeRejected(Kvp032BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
+        }
+        if (outside.isNotEmpty()) {
+            val successorCheckpoint = observed.any { path ->
+                ownership.successorWrites.any { scope -> path.inKvp032Scope(scope) }
+            }
+            if (successorCheckpoint) return@forEach
+            return scopeRejected(Kvp032BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
+        }
         commits += Kvp032ImplementationCommit(DeliveryGeneration(revision), taskPaths)
     }
     return if (commits.isEmpty()) {

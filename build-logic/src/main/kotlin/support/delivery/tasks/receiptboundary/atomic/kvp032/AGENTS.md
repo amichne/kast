@@ -6,8 +6,8 @@ admission, write-scope enforcement, content-scoped reuse, and v2 completion rece
 - Preserve the pinned KVP-009 and KVP-023 legacy receipts without regenerating the admitted prefix.
 - Re-admit KVP-011, KVP-027, and current exact-head KVP-031 receipts and physical outputs.
 - Derive commands, cases, forbidden work, paths, and receipt identity only from the Kotlin graph.
-- Derive physical write-ownership anchors from the canonical hosted production-composition batch;
-  endpoint, runtime/workspace, and plugin-classpath companion paths remain owned by their tasks.
+- Derive physical write-ownership anchors from the canonical batch; ignore a mixed checkpoint only
+  when a later canonical batch's physical anchor proves successor ownership of that checkpoint.
 - Observe implementation commits only after that batch's graph-admitted ready frontier.
 - Execute the ASM forbidden-call and archive-classpath fixtures before composing the module,
   compiled-effect, firewall, and transitive archive reports. Never use source grep as sole proof.
