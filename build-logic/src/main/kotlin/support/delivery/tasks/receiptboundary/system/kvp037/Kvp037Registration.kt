@@ -44,11 +44,6 @@ internal fun Project.registerKvp037AtomicProof(): Set<TaskId> {
             generatePacket,
             negative,
             acceptance,
-            "proveKVP025",
-            "proveKVP026",
-            "proveKVP027",
-            "proveKVP031",
-            "proveKVP036",
         )
         repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
         this.packetFile.set(packetFile)
