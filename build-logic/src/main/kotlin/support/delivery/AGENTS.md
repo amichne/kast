@@ -26,9 +26,9 @@ This package owns the typed delivery program and the Gradle task boundaries that
   artifacts are build evidence and must not be checked in.
 - `tasks/ProgramAuthorityNegativeTask.kt` owns the deterministic KVP-001 RED fixtures.
 - `tasks/receiptboundary/` owns generated v1/v2 receipt codecs, the task-packet codec, pinned-prefix
-  observation, and atomic receipt issuance. Its `atomic/kvp025/` and `atomic/kvp026/` children own
-  their sole graph-derived task proofs; KVP-026 revalidates KVP-025 before admitting its three
-  predecessor receipts and uses the KVP-025 observed head as its write-scope baseline.
+  observation, and atomic receipt issuance. Its `atomic/kvp025/`, `atomic/kvp026/`, and
+  `atomic/kvp027/` children own their sole graph-derived task proofs; each revalidates its v2
+  predecessor before using that receipt's observed head as the next write-scope baseline.
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.
@@ -90,6 +90,8 @@ M0 delivery model writes belong under `model/`; focused tests remain under the d
 ./gradlew verifyKVP019CompletionReceipt
 ./gradlew verifyKVP020CompletionReceipt
 ./gradlew proveKVP025
+./gradlew proveKVP026
+./gradlew proveKVP027
 ./gradlew verifyKastVfsPassiveGateGraphNegative verifyKastVfsPassiveGateGraph
 scripts/verify_bundle.sh
 ```

@@ -10,6 +10,8 @@ bounded legacy-prefix observation, and atomic issuance for delivery receipts.
 - `TaskPacketJsonBoundary.kt` projects and re-admits the complete graph-owned atomic task packet.
 - `atomic/kvp025/` owns endpoint-retirement proof. `atomic/kvp026/` owns exact-root CLI endpoint
   admission proof, including graph-named JUnit evidence and topological predecessor re-admission.
+- `atomic/kvp027/` owns the IDE-only default demand proof, including typed misuse/legal gate
+  evidence, successful CLI test observation, KVP-026 re-admission, and content-scoped reuse.
 
 Raw JSON, filesystem paths, time, and current Git head may appear only at these boundaries. Pass admitted receipt capabilities inward; never pass decoded primitives or silently reinterpret a v1 receipt as v2.
 

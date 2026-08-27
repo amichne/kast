@@ -9,8 +9,9 @@ This directory owns Gradle effects for the VFS-passive delivery program.
 - Authority generation observes exact bytes before writing the ledger and contradiction projection. Authority verification re-observes Git HEAD and source bytes and fails closed on movement or mismatch.
 - The negative task uses in-memory fixtures and must not read or write canonical authority sources.
 - `receiptboundary/` owns generated v1/v2 receipt codecs, pinned legacy-prefix admission,
-  graph-derived KVP-025/KVP-026 task packets and named-case evidence, and content-scoped v2
-  issuance. KVP-026 revalidates KVP-025 before using its observed head as the next write baseline.
+  graph-derived KVP-025/KVP-026/KVP-027 task packets and named-case evidence, and content-scoped v2
+  issuance. Each atomic task revalidates its v2 predecessor before using that observed head as the
+  next write baseline.
   `Kvp001ReceiptTaskSupport.kt` refines the authority reports and exact artifact bytes into receipt
   expectations. `Kvp001ReceiptTasks.kt` owns the root RED, GREEN, completion, and re-admission
   boundaries. `receipt/ReceiptIssuanceBoundary.kt` reuses a fully admitted same-expectation receipt;
