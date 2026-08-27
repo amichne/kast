@@ -144,7 +144,8 @@ internal fun prepareKvp025ProofContext(
         predecessor.observedRepositoryHead,
         observedHead,
         packet.packet.task.allowedWrites,
-        canonicalKvp026TaskPacket().task.allowedWrites,
+        canonicalKvp026TaskPacket().task.allowedWrites +
+            canonicalKvp027TaskPacket().task.allowedWrites,
     )) {
         is Kvp025ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp025ImplementationScopeAdmission.Rejected -> return rejectedPreparation(

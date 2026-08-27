@@ -7,8 +7,8 @@ delta admission, deterministic proof report, and single v2 completion receipt.
 - Admit only the pinned KVP-024 legacy frontier receipt; do not reconstruct or rerun it.
 - Hash only declared tracked input roots and reject dirty relevant inputs.
 - Observe every changed path after KVP-024, retain only KVP-025-owned paths, and admit a mixed
-  delivery checkpoint only through the graph-derived KVP-025/KVP-026 write union; never use a Git
-  pathspec to hide the full observation.
+  delivery checkpoint only through the graph-derived KVP-025/KVP-026/KVP-027 write union; never
+  use a Git pathspec to hide the full observation.
 - Preserve one successful named enforcement case for every graph-declared forbidden-work fact;
   suite success alone is not forbidden-work evidence.
 - Decide reuse before test execution. Re-admit unchanged report/receipt bytes, or execute the
