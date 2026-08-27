@@ -28,11 +28,11 @@ class IdeOnlyRuntimeDemanderTest {
         ).demand(fixture.root)
 
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_ENDPOINT_REJECTED),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_DESCRIPTOR_READ_REJECTED),
             missing,
         )
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_ENDPOINT_REJECTED),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_DESCRIPTOR_REJECTED),
             incompatible,
         )
     }

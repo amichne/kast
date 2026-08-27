@@ -284,8 +284,8 @@ private class InstalledKastControlProduct private constructor(
                 SUPPORTED_KOTLIN_PLUGIN_BUILD,
                 manifest.productVersion.value,
                 IDE_RUNTIME_PROTOCOL,
-                digestIdentity(operationRegistry),
-                digestIdentity(wireSchema),
+                InstalledProtocolDigest.derive(operationRegistry).value,
+                InstalledProtocolDigest.derive(wireSchema).value,
                 IDE_CAPABILITIES,
             ),
         )
@@ -347,6 +347,21 @@ private class InstalledKastControlProduct private constructor(
     }
 }
 
-private fun digestIdentity(raw: String): String = "sha256:" + HexFormat.of().formatHex(
-    MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(StandardCharsets.UTF_8)),
-)
+@JvmInline
+private value class InstalledProtocolDigest private constructor(val value: String) {
+    companion object {
+        /**
+         * Proof transition: `installed protocol resource text -> InstalledProtocolDigest`.
+         *
+         * Establishes the lowercase SHA-256 identity of the exact installed resource bytes. The
+         * raw digest string leaves only at the compatibility candidate boundary.
+         */
+        fun derive(raw: String): InstalledProtocolDigest = InstalledProtocolDigest(
+            "sha256:" + HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(
+                    raw.toByteArray(StandardCharsets.UTF_8),
+                ),
+            ),
+        )
+    }
+}

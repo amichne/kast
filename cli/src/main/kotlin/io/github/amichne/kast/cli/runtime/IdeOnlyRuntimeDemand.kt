@@ -48,21 +48,47 @@ class IdeOnlyRuntimeDemander(
      *
      * Establishes that the exact-root IDE descriptor is compatible, live, and reachable before
      * issuing the runtime endpoint used by wire transport. Missing or incompatible IDE evidence
-     * remains [RuntimeAdmissionFailure.IDE_ENDPOINT_REJECTED]. Raw socket extraction is confined
-     * to the endpoint-to-transport boundary.
+     * retains its exact closed [RuntimeAdmissionFailure]. Raw socket extraction is confined to the
+     * endpoint-to-transport boundary.
      */
     override fun demand(root: CanonicalRoot): RuntimeAdmission {
         val admitted = when (val admission = endpointAdmitter.admit(root)) {
             is IdeEndpointAdmission.Complete -> admission.endpoint
             is IdeEndpointAdmission.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.IDE_ENDPOINT_REJECTED,
+                admission.failure.toRuntimeAdmissionFailure(),
             )
         }
         return when (val endpoint = RuntimeEndpoint.at(root, runtimeId, admitted.socketPath)) {
             is RuntimeEndpointResolution.Resolved -> RuntimeAdmission.Ready(endpoint.endpoint)
             is RuntimeEndpointResolution.Rejected -> RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.IDE_ENDPOINT_REJECTED,
+                RuntimeAdmissionFailure.IDE_SOCKET_MISMATCH,
             )
         }
     }
 }
+
+/**
+ * Proof transition: `IdeEndpointAdmissionFailure -> RuntimeAdmissionFailure`.
+ *
+ * Preserves the exact rejected admission stage while refining the IDE adapter's failure into the
+ * CLI runtime boundary's closed failure protocol. Nested evidence remains owned by the endpoint
+ * admitter; only the finite stage leaves that adapter.
+ */
+private fun IdeEndpointAdmissionFailure.toRuntimeAdmissionFailure(): RuntimeAdmissionFailure =
+    when (this) {
+        is IdeEndpointAdmissionFailure.InvalidRoot -> RuntimeAdmissionFailure.IDE_ROOT_INVALID
+        is IdeEndpointAdmissionFailure.LocationRejected ->
+            RuntimeAdmissionFailure.IDE_LOCATION_REJECTED
+        is IdeEndpointAdmissionFailure.DescriptorReadRejected ->
+            RuntimeAdmissionFailure.IDE_DESCRIPTOR_READ_REJECTED
+        is IdeEndpointAdmissionFailure.DescriptorRejected ->
+            RuntimeAdmissionFailure.IDE_DESCRIPTOR_REJECTED
+        IdeEndpointAdmissionFailure.RootMismatch -> RuntimeAdmissionFailure.IDE_ROOT_MISMATCH
+        IdeEndpointAdmissionFailure.SocketMismatch -> RuntimeAdmissionFailure.IDE_SOCKET_MISMATCH
+        IdeEndpointAdmissionFailure.ProcessUnavailable ->
+            RuntimeAdmissionFailure.IDE_PROCESS_UNAVAILABLE
+        IdeEndpointAdmissionFailure.ProcessObservationRejected ->
+            RuntimeAdmissionFailure.IDE_PROCESS_OBSERVATION_REJECTED
+        IdeEndpointAdmissionFailure.EndpointUnreachable ->
+            RuntimeAdmissionFailure.IDE_ENDPOINT_UNREACHABLE
+    }
