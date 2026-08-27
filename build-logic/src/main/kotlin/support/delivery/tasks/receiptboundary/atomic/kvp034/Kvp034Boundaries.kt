@@ -12,6 +12,7 @@ internal enum class Kvp034BoundaryFailure {
     DIRTY_RELEVANT_INPUT,
     EMPTY_RELEVANT_INPUT,
     RELEVANT_INPUT_READ_REJECTED,
+    EMPTY_OWNED_WRITE_SCOPE,
 }
 
 internal class AdmittedKvp034ImplementationScope internal constructor(val commitCount: Int)
@@ -28,20 +29,55 @@ internal sealed interface Kvp034RelevantInputAdmission {
     data class Rejected(val failure: Kvp034BoundaryFailure) : Kvp034RelevantInputAdmission
 }
 
+internal class AdmittedKvp034WriteOwnership internal constructor(
+    val declaredWrites: List<String>,
+    val ownedWrites: List<String>,
+)
+
+internal sealed interface Kvp034WriteOwnershipAdmission {
+    data class Complete(val ownership: AdmittedKvp034WriteOwnership) :
+        Kvp034WriteOwnershipAdmission
+    data class Rejected(val failure: Kvp034BoundaryFailure) :
+        Kvp034WriteOwnershipAdmission
+}
+
 /**
- * Proof transition: `DeliveryGeneration + List<String> ->
+ * Proof transition: `(TaskPacket, ValidatedProgram) -> Kvp034WriteOwnershipAdmission`.
+ *
+ * Establishes KVP-034's complete declared writes and the nonempty physical anchors that no other
+ * canonical task declares. Empty exclusive ownership is closed [Kvp034BoundaryFailure] data. Raw
+ * path strings leave only at the Git write-scope boundary.
+ */
+internal fun admitKvp034WriteOwnership(
+    packet: TaskPacket,
+    program: ValidatedProgram,
+): Kvp034WriteOwnershipAdmission {
+    val otherWrites = program.program.tasks.filter { it.id != packet.task.id }
+        .flatMap { it.allowedWrites }.toSet()
+    val ownedWrites = packet.task.allowedWrites.filterNot(otherWrites::contains)
+    return if (ownedWrites.isEmpty()) {
+        Kvp034WriteOwnershipAdmission.Rejected(Kvp034BoundaryFailure.EMPTY_OWNED_WRITE_SCOPE)
+    } else Kvp034WriteOwnershipAdmission.Complete(
+        AdmittedKvp034WriteOwnership(packet.task.allowedWrites, ownedWrites),
+    )
+}
+
+/**
+ * Proof transition: `DeliveryGeneration + AdmittedKvp034WriteOwnership ->
  * Kvp034ImplementationScopeAdmission`.
  *
- * Establishes an ancestral, nonempty commit delta whose task commits write only graph-owned roots.
- * Git, ancestry, empty-delta, or scope failures remain closed [Kvp034BoundaryFailure] data. Raw
- * Git output is extracted only at this Gradle policy boundary.
+ * Establishes an ancestral, nonempty KVP-034 commit delta. Only commits containing an exclusive
+ * graph-derived physical anchor enter the delta, so dependency-closed delivery checkpoints and
+ * successor edits to shared paths remain valid. Each admitted commit remains wholly within the
+ * task's declared writes. Git, ancestry, empty-delta, or scope failures remain closed
+ * [Kvp034BoundaryFailure] data. Raw Git output exists only at this Gradle policy boundary.
  */
 internal fun admitKvp034ImplementationScope(
     exec: ExecOperations,
     root: Path,
     baseline: DeliveryGeneration,
     head: DeliveryGeneration,
-    allowedWrites: List<String>,
+    ownership: AdmittedKvp034WriteOwnership,
 ): Kvp034ImplementationScopeAdmission {
     if (git034(exec, root, listOf("merge-base", "--is-ancestor", baseline.value, head.value)).code != 0) {
         return scopeRejected(Kvp034BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
@@ -56,9 +92,11 @@ internal fun admitKvp034ImplementationScope(
         )
         if (changed.code != 0) return scopeRejected(Kvp034BoundaryFailure.GIT_COMMAND_REJECTED)
         val paths = changed.text.lineSequence().filter(String::isNotBlank).toList()
-        val taskPaths = paths.filter { path -> allowedWrites.any { path.inScope034(it) } }
+        val taskPaths = paths.filter { path ->
+            ownership.ownedWrites.any { path.inScope034(it) }
+        }
         if (taskPaths.isEmpty()) return@forEach
-        if (paths.any { path -> allowedWrites.none { path.inScope034(it) } }) {
+        if (paths.any { path -> ownership.declaredWrites.none { path.inScope034(it) } }) {
             return scopeRejected(Kvp034BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
         }
         count += 1

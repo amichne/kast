@@ -143,8 +143,16 @@ internal fun prepareKvp034Context(
             Kvp034ProofFailure.RELEVANT_INPUT_REJECTED,
         )
     }
+    val ownership = when (val admitted = admitKvp034WriteOwnership(
+        packet.packet, KastVfsPassiveReusedIndexProgram.validated,
+    )) {
+        is Kvp034WriteOwnershipAdmission.Complete -> admitted.ownership
+        is Kvp034WriteOwnershipAdmission.Rejected -> return rejected(
+            Kvp034ProofFailure.IMPLEMENTATION_SCOPE_REJECTED,
+        )
+    }
     val scope = when (val admitted = admitKvp034ImplementationScope(
-        exec, root, dependencies.implementationBaseline, head, packet.packet.task.allowedWrites,
+        exec, root, dependencies.implementationBaseline, head, ownership,
     )) {
         is Kvp034ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp034ImplementationScopeAdmission.Rejected -> return rejected(
