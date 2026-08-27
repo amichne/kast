@@ -29,6 +29,8 @@ state-specific transitions from that capability to `DetachedIdeWorkspaceModel` a
 - Preserve each Java code/resource source folder's explicit cached `isForGeneratedSources` flag;
   missing or conflicting provenance is a closed capture rejection and must never be inferred from
   a path name.
+- Refine live modules into the closed captured, Gradle-aggregator, or rejected outcome. Exclude only
+  aggregators with no source roots; every source-bearing module remains subject to full admission.
 - Preserve the exact `Project.basePath` match in `ExactObservedWorkspaceRoot`; detached model
   construction must consume that proof instead of recreating or discarding it.
 - Admit classpath URLs only as exact IntelliJ `file://`, `jar://`, or `jrt://` plus raw VFS path.

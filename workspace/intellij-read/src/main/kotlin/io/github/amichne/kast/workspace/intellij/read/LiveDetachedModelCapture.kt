@@ -24,6 +24,12 @@ import org.jetbrains.jps.model.java.JavaSourceRootProperties
 
 /** Live IDEA 262 adapter for one bounded detached-model observation. */
 internal object LiveDetachedModelCapture {
+    private sealed interface LiveModuleObservation {
+        data class Captured(val module: DetachedModuleBoundary) : LiveModuleObservation
+        data object Aggregator : LiveModuleObservation
+        data class Rejected(val failure: DetachedModelCaptureFailure) : LiveModuleObservation
+    }
+
     /**
      * Proof transition: `(Project, CanonicalWorkspaceRoot) -> DetachedModelObservation`.
      *
@@ -122,8 +128,9 @@ internal object LiveDetachedModelCapture {
         for (module in liveModules) {
             ProgressManager.checkCanceled()
             when (val observed = observeModule(module)) {
-                is Refinement.Refined -> modules += observed.value
-                is Refinement.Rejected -> return rejected(observed.failure)
+                is LiveModuleObservation.Captured -> modules += observed.module
+                LiveModuleObservation.Aggregator -> Unit
+                is LiveModuleObservation.Rejected -> return rejected(observed.failure)
             }
         }
         return DetachedModelObservation.Observed(
@@ -173,25 +180,27 @@ internal object LiveDetachedModelCapture {
     }
 
     /**
-     * Proof transition: `Module -> Refinement<DetachedModuleBoundary,
-     * DetachedModelCaptureFailure>`. Establishes bounded primitive module, source-root, SDK, and
-     * classpath observations. The closed expected failure is [DetachedModelCaptureFailure]. Raw
-     * IntelliJ module objects may be extracted only inside this live adapter.
+     * Proof transition: `Module -> LiveModuleObservation`.
+     *
+     * Establishes either one bounded primitive source-bearing module, one closed Gradle aggregator
+     * exclusion, or finite [DetachedModelCaptureFailure]. Raw IntelliJ module objects may be
+     * extracted only inside this live adapter.
      */
     private fun observeModule(
         module: Module,
-    ): Refinement<DetachedModuleBoundary, DetachedModelCaptureFailure> {
+    ): LiveModuleObservation {
         if (module.isDisposed) {
-            return Refinement.Rejected(DetachedModelCaptureFailure.MODULE_DISPOSED)
+            return LiveModuleObservation.Rejected(DetachedModelCaptureFailure.MODULE_DISPOSED)
         }
         val rootManager = ModuleRootManager.getInstance(module)
         val sourceRoots = when (val observed = observeSourceRoots(rootManager)) {
             is Refinement.Refined -> observed.value
-            is Refinement.Rejected -> return observed
+            is Refinement.Rejected -> return LiveModuleObservation.Rejected(observed.failure)
         }
+        if (sourceRoots.isEmpty()) return LiveModuleObservation.Aggregator
         val classpath = when (val observed = observeClasspath(rootManager)) {
             is Refinement.Refined -> observed.value
-            is Refinement.Rejected -> return observed
+            is Refinement.Rejected -> return LiveModuleObservation.Rejected(observed.failure)
         }
         val sdk = rootManager.sdk?.let { liveSdk ->
             DetachedSdkBoundary(
@@ -200,7 +209,7 @@ internal object LiveDetachedModelCapture {
                 version = liveSdk.versionString,
             )
         }
-        return Refinement.Refined(
+        return LiveModuleObservation.Captured(
             DetachedModuleBoundary(
                 disposed = false,
                 name = module.name,
