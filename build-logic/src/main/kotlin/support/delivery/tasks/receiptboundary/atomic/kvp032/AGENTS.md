@@ -12,4 +12,6 @@ admission, write-scope enforcement, content-scoped reuse, and v2 completion rece
 - Observe implementation commits only after that batch's graph-admitted ready frontier.
 - Execute the ASM forbidden-call and archive-classpath fixtures before composing the module,
   compiled-effect, firewall, and transitive archive reports. Never use source grep as sole proof.
+- Use KVP-032's isolated plugin-layout tasks for that composition; shared KVP-011 case tasks must
+  not schedule predecessor proof work inside the KVP-032 command.
 - Emit exactly one KVP-032 completion receipt; no RED/GREEN receipt pair is created.
