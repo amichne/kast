@@ -17,8 +17,9 @@ This package owns one project-scoped Unix-domain endpoint and its descriptor-v2 
   second bind. Project/plugin disposal, service cancellation, serving termination, and disposal
   racing publication must converge on the same idempotent `RetiredIdeEndpoint` transition.
 - Commit initialization, cached Gradle-import, smart-mode, and all-startup-activities completion
-  listeners before issuing the first attempt. The final startup signal observes IntelliJ's cached
-  external-project data only after platform startup owners have published it. Signals during
+  listeners before issuing the first attempt. The final startup signal owns one bounded,
+  suspending re-observation because IntelliJ publishes cached external-project data asynchronously
+  after its startup activities complete. It performs no polling or platform work. Signals during
   installation are coalesced; later signals repeat exact admission only for the four typed
   transient readiness states.
 - Issue the Project endpoint generation only after the admitted Project has produced the complete

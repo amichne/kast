@@ -12,7 +12,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 /** One eagerly registered IntelliJ project-scoped endpoint coordinator. */
 class IdeEndpointService private constructor(
@@ -67,7 +69,13 @@ class IdeEndpointService private constructor(
                 requestAttempt(project)
             }
             startup.allActivitiesPassedFuture.invokeOnCompletion { failure ->
-                if (failure == null) requestAttempt(project)
+                if (failure == null) {
+                    requestAttempt(project)
+                    coroutineScope.launch {
+                        delay(CACHED_MODEL_PUBLICATION_REOBSERVATION_DELAY)
+                        requestAttempt(project)
+                    }
+                }
             }
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
@@ -129,6 +137,8 @@ class IdeEndpointService private constructor(
     }
 
     internal companion object {
+        private val CACHED_MODEL_PUBLICATION_REOBSERVATION_DELAY = 3.seconds
+
         @JvmSynthetic
         fun testing(
             coroutineScope: CoroutineScope,
