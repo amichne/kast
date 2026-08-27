@@ -368,6 +368,7 @@ val verifyReadOnlyGraph = tasks.register<support.delivery.Kvp023ReadOnlyGraphGat
 apply(from = "gradle/kvp028-workspace-inspect.gradle.kts")
 apply(from = "gradle/kvp029-symbol-discover.gradle.kts")
 apply(from = "gradle/kvp030-symbol-resolve.gradle.kts")
+apply(from = "gradle/kvp031-symbol-describe.gradle.kts")
 tasks.named("check") {
     dependsOn(
         "ideHostedWorkspaceInspectNegativeProof",
@@ -376,5 +377,7 @@ tasks.named("check") {
         "ideHostedSymbolDiscoverAcceptance",
         "ideHostedSymbolResolveNegativeProof",
         "ideHostedSymbolResolveAcceptance",
+        "ideHostedSymbolDescribeNegativeProof",
+        "ideHostedSymbolDescribeAcceptance",
     )
 }

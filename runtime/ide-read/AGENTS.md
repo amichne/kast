@@ -40,6 +40,9 @@ remains host-neutral and pure.
 - KVP-030's resolution port admits parsed candidate text only through a batch-owned selector
   capability, performs one exact semantic resolution, and verifies a non-echoed exact operation
   output after same-source epoch equality.
+- KVP-031's description port admits only parsed exact-selector authority, forbids rediscovery,
+  verifies the same selector in detached canonical output, and closes the exact four-port runtime
+  only after the complete journey is constructible at one head.
 
 ## Verification ladder
 

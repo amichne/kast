@@ -8,10 +8,12 @@ This package owns the retained-Project symbol routes introduced by KVP-029 throu
   open, import, refresh, persist, traverse, or fall back to another Project or provider path.
 - KVP-030 refines parsed candidate text through one nominal selector authority before semantic
   work. Only the returned batch-owned capability may resolve exact identity.
+- KVP-031 refines parsed exact-selector text through one nominal authority whose capability can
+  only describe that declaration. It cannot rediscover or weaken selector identity.
 - Propagate platform and coroutine cancellation after terminalizing the exact execution authority.
 - Admit detached output only after same-source epoch equality. Movement, incomparability, bounds,
-  wrong operation evidence, echoed candidate text, and unavailable current state remain closed
-  rejections.
+  wrong operation evidence, echoed candidate text, changed description selectors, and unavailable
+  current state remain closed rejections.
 - Live Project, VFS, PSI, index, search-scope, contributor, and K2 values may exist only inside the
   native adapter call and must never enter this package's results.
 
