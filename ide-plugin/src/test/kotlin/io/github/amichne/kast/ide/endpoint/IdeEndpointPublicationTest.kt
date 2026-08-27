@@ -100,6 +100,7 @@ class IdeEndpointPublicationTest {
             )
         ) {
             is IdeEndpointActivationPlan.Serve -> plan.endpoint
+            is IdeEndpointActivationPlan.Retired -> fail("coordinator retired before serving")
             IdeEndpointActivationPlan.Stop -> fail("coordinator stopped before serving")
         }
         val socketPath = Path.of(endpoint.location.socketPath.value)
@@ -160,10 +161,7 @@ class IdeEndpointPublicationTest {
             )
             consumePositiveReport()
         } finally {
-            endpoint.closeListeningSocketForTest()
-            Files.deleteIfExists(descriptorPath)
-            Files.deleteIfExists(socketPath)
-            Files.deleteIfExists(Path.of(endpoint.location.stateDirectoryPath.value))
+            endpoint.retire(IdeEndpointRetirementCause.TEST_CLEANUP)
             assertFalse(Files.exists(descriptorPath))
             assertFalse(Files.exists(socketPath))
             Files.deleteIfExists(directory)

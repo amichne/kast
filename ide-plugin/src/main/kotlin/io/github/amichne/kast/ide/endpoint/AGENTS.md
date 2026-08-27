@@ -8,14 +8,14 @@ This package owns one project-scoped Unix-domain endpoint and its descriptor-v2 
 - `ReadyIdeEndpoint` is the only readiness capability. Construct it only after atomically creating
   one exact-root exclusive state directory, binding its stable UDS, re-admitting the staged
   descriptor, and atomically moving that same physical file to the required socket-suffix path.
-- Preserve every pre-existing state directory, socket, or descriptor path. Pre-ready rollback may
-  remove only known children of the atomically created exclusive directory; KVP-025 owns READY
-  lifecycle retirement.
+- Preserve every pre-existing state directory, socket, or descriptor path. Pre-ready rollback and
+  READY retirement may remove only paths whose retained physical identities still match.
 - Atomic creation is the cooperating Kast-writer boundary: no Kast publisher may enter, replace,
   or mutate an occupied state directory. Every child mutation must consume the directory-derived
   capability, so pre-ready rollback cannot target another Kast publisher's namespace.
 - `IdeEndpointService` owns at most one ready endpoint. Duplicate publication must fail before a
-  second bind.
+  second bind. Project/plugin disposal, service cancellation, serving termination, and disposal
+  racing publication must converge on the same idempotent `RetiredIdeEndpoint` transition.
 - Commit initialization, cached Gradle-import, and smart-mode listeners before issuing the first
   attempt. Signals during installation are coalesced; later signals repeat exact admission only
   for the four typed transient readiness states.
@@ -26,5 +26,5 @@ This package owns one project-scoped Unix-domain endpoint and its descriptor-v2 
 - Do not add project opening/import, refresh, repository traversal, blocking dispatch, persistence,
   topology, source mutation, isolated-runtime, or automatic fallback behavior.
 
-Run the two `IdeEndpointPublication` selectors, then `:ide-plugin:check`, module/effect gates, and
-the KVP-024 receipt task.
+Run the `IdeEndpointPublication` and `IdeEndpointRetirement` selectors, then
+`:ide-plugin:check`, module/effect gates, and the owning receipt task.

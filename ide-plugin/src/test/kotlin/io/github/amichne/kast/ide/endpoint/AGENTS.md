@@ -1,12 +1,15 @@
-# Endpoint publication tests
+# Endpoint lifecycle tests
 
-These two selectors are the executable KVP-024 product proof.
+The publication selectors are the executable KVP-024 product proof; the retirement selectors own
+KVP-025 lifecycle and cleanup behavior.
 
 - The negative selector names every canonical rejection and verifies occupied artifacts remain
   untouched and duplicate publication occurs before a second bind.
 - The positive selector uses the real JDK Unix-domain socket and atomic descriptor publisher,
   connects physically, reads canonical bytes, and re-admits descriptor v2.
-- Keep shared fixtures private inside the two receipt-bound selector files.
+- Retirement proves exact-once cleanup, pending-accept shutdown, explicit service disposal,
+  identity-mismatch preservation, and disposal racing publication.
+- Shared endpoint fixtures may be package-internal only when both receipt-bound task selectors use
+  the same physical JDK publication boundary.
 
-Run `./gradlew :ide-plugin:verifyIdeEndpointPublicationNegative
-:ide-plugin:verifyIdeEndpointPublication`.
+Run the two canonical selectors for the active endpoint task, followed by `:ide-plugin:check`.

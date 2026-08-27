@@ -28,8 +28,9 @@
   classes into this artifact.
 - `endpoint/` owns KVP-024's exact-root UDS bind and atomic descriptor-v2 publication. It consumes
   only the complete hosted runtime capability, serves bounded framed sessions, and never opens,
-  imports, refreshes, or falls back. The two hosted project JARs remain explicit transitional
-  payload inputs until KVP-011 proves the final classpath closure.
+  imports, refreshes, or falls back. KVP-025 binds its descriptor/socket retirement to the Project
+  service lifecycle and deletes only retained physical identities. The two hosted project JARs
+  remain explicit transitional payload inputs until KVP-011 proves the final classpath closure.
 
 Run `./gradlew :ide-plugin:standalonePluginNegativeProof :ide-plugin:buildPlugin
 :ide-plugin:verifyPluginLayoutNegative`, then the architecture gates and

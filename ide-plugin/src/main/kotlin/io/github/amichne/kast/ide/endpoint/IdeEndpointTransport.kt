@@ -64,11 +64,24 @@ private enum class IdeEndpointSocketClose {
     FAILED,
 }
 
+private sealed interface IdeEndpointTransportState {
+    data object Listening : IdeEndpointTransportState
+    data class Serving(val connection: SocketChannel) : IdeEndpointTransportState
+    data object Closed : IdeEndpointTransportState
+}
+
+private sealed interface IdeEndpointConnectionAdmission {
+    data object Admitted : IdeEndpointConnectionAdmission
+    data object Closed : IdeEndpointConnectionAdmission
+}
+
 /** Bound exact-root transport that can serve only its retained complete hosted runtime. */
 internal class IdeEndpointTransport(
     private val socket: OwnedEndpointPath,
     private val runtime: HostedIdeReadRuntime,
 ) {
+    private var state: IdeEndpointTransportState = IdeEndpointTransportState.Listening
+
     /**
      * Proof transition: `one accepted UDS session -> IdeEndpointConnectionHandling`.
      *
@@ -84,6 +97,12 @@ internal class IdeEndpointTransport(
                 IdeEndpointConnectionFailure.ACCEPT_FAILED,
             )
         }
+        if (admit(connection) == IdeEndpointConnectionAdmission.Closed) {
+            connection.closeQuietly()
+            return IdeEndpointConnectionHandling.Rejected(
+                IdeEndpointConnectionFailure.ACCEPT_FAILED,
+            )
+        }
         return try {
             val handling = serveFrames(connection)
             when (connection.closeObserved()) {
@@ -93,7 +112,36 @@ internal class IdeEndpointTransport(
                 )
             }
         } finally {
+            release(connection)
             connection.closeQuietly()
+        }
+    }
+
+    /** Closes both the listener and the one sequential accepted client retained by this transport. */
+    @Synchronized
+    fun close() {
+        val current = state
+        state = IdeEndpointTransportState.Closed
+        socket.close()
+        if (current is IdeEndpointTransportState.Serving) current.connection.closeQuietly()
+    }
+
+    @Synchronized
+    private fun admit(connection: SocketChannel): IdeEndpointConnectionAdmission = when (state) {
+        IdeEndpointTransportState.Listening -> {
+            state = IdeEndpointTransportState.Serving(connection)
+            IdeEndpointConnectionAdmission.Admitted
+        }
+        IdeEndpointTransportState.Closed,
+        is IdeEndpointTransportState.Serving,
+        -> IdeEndpointConnectionAdmission.Closed
+    }
+
+    @Synchronized
+    private fun release(connection: SocketChannel) {
+        val current = state
+        if (current is IdeEndpointTransportState.Serving && current.connection === connection) {
+            state = IdeEndpointTransportState.Listening
         }
     }
 

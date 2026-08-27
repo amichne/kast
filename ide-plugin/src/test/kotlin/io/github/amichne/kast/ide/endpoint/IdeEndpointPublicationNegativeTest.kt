@@ -283,7 +283,7 @@ class IdeEndpointPublicationNegativeTest {
         }
 }
 
-private fun prepareEndpoint(
+internal fun prepareEndpoint(
     directory: Path,
     projectRoot: IdeEndpointCanonicalRoot = endpointRoot("/workspace/kast"),
     descriptorRoot: IdeEndpointCanonicalRoot = projectRoot,
@@ -347,12 +347,12 @@ private fun <Value, Failure> refined(result: Refinement<Value, Failure>): Value 
     is Refinement.Rejected -> fail("fixture refinement rejected: ${result.failure}")
 }
 
-private fun IdeEndpointPreparation.prepared() = when (this) {
+internal fun IdeEndpointPreparation.prepared() = when (this) {
     is IdeEndpointPreparation.Prepared -> endpoint
     is IdeEndpointPreparation.Rejected -> fail("endpoint preparation rejected: $failure")
 }
 
-private fun IdeEndpointActivation.ready() = when (this) {
+internal fun IdeEndpointActivation.ready() = when (this) {
     is IdeEndpointActivation.Ready -> endpoint
     is IdeEndpointActivation.Rejected -> fail("endpoint publication rejected: $failure")
 }
@@ -373,7 +373,7 @@ private fun assertActivationRejected(
     is IdeEndpointActivation.Rejected -> assertEquals(expected, result.failure)
 }
 
-private inline fun withDirectory(block: (Path) -> Unit) {
+internal inline fun withDirectory(block: (Path) -> Unit) {
     val directory = Files.createTempDirectory(Path.of("/tmp"), "kast-kvp024-")
     try {
         block(directory)
@@ -387,10 +387,7 @@ private fun assertDirectoryEmpty(directory: Path) {
 }
 
 private fun deleteFixture(endpoint: ReadyIdeEndpoint) {
-    endpoint.closeListeningSocketForTest()
-    Files.deleteIfExists(Path.of(endpoint.location.descriptorPath.value))
-    Files.deleteIfExists(Path.of(endpoint.location.socketPath.value))
-    Files.deleteIfExists(Path.of(endpoint.location.stateDirectoryPath.value))
+    endpoint.retire(IdeEndpointRetirementCause.TEST_CLEANUP)
 }
 
 private fun consumeCanonicalReport() {

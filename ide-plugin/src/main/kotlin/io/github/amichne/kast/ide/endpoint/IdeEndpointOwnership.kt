@@ -7,6 +7,7 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
@@ -18,7 +19,7 @@ private value class EndpointPhysicalFileIdentity private constructor(val value: 
         /**
          * Proof transition: `Path -> PhysicalFileIdentity`.
          *
-         * Establishes one retained no-follow physical file key or the closed
+         * Establishes one retained no-follow physical file key, absence, or the closed
          * [PhysicalFileIdentity.Unavailable] state. Raw [Path], attributes, and file keys leave
          * only at this endpoint-filesystem boundary.
          */
@@ -33,6 +34,8 @@ private value class EndpointPhysicalFileIdentity private constructor(val value: 
             } else {
                 PhysicalFileIdentity.Identified(EndpointPhysicalFileIdentity(raw))
             }
+        } catch (_: NoSuchFileException) {
+            PhysicalFileIdentity.Absent
         } catch (_: IOException) {
             PhysicalFileIdentity.Unavailable
         } catch (_: SecurityException) {
@@ -43,6 +46,7 @@ private value class EndpointPhysicalFileIdentity private constructor(val value: 
 
 private sealed interface PhysicalFileIdentity {
     data class Identified(val value: EndpointPhysicalFileIdentity) : PhysicalFileIdentity
+    data object Absent : PhysicalFileIdentity
     data object Unavailable : PhysicalFileIdentity
 }
 
@@ -102,8 +106,19 @@ internal class OwnedEndpointDirectory private constructor(
      * closed [OwnedBoundSocketCreation.Rejected] state. Raw channels and paths leave only here.
      */
     fun bindSocket(channel: ServerSocketChannel): OwnedBoundSocketCreation = try {
-        channel.bind(UnixDomainSocketAddress.of(Path.of(location.socketPath.value)))
-        OwnedBoundSocketCreation.Bound(BoundSocket(channel))
+        val socketPath = Path.of(location.socketPath.value)
+        channel.bind(UnixDomainSocketAddress.of(socketPath))
+        when (val observed = EndpointPhysicalFileIdentity.observe(socketPath)) {
+            is PhysicalFileIdentity.Identified -> OwnedBoundSocketCreation.Bound(
+                BoundSocket(channel, observed.value),
+            )
+            PhysicalFileIdentity.Absent,
+            PhysicalFileIdentity.Unavailable,
+            -> {
+                channel.closeQuietly()
+                OwnedBoundSocketCreation.Rejected
+            }
+        }
     } catch (_: IOException) {
         channel.closeQuietly()
         OwnedBoundSocketCreation.Rejected
@@ -142,20 +157,39 @@ internal class OwnedEndpointDirectory private constructor(
     /** Removes an empty namespace after failure before bind. */
     fun rollbackEmpty() = deleteIfStillExclusive()
 
+    internal fun retireIfStillExclusive(): EndpointArtifactRetirement =
+        deleteRetainedPath(path, identity)
+
     private fun deleteIfStillExclusive() {
-        if (EndpointPhysicalFileIdentity.observe(path) !=
-            PhysicalFileIdentity.Identified(identity)
-        ) return
-        try {
-            Files.delete(path)
+        retireIfStillExclusive()
+    }
+
+    private fun deleteRetainedPath(
+        retainedPath: Path,
+        retainedIdentity: EndpointPhysicalFileIdentity,
+    ): EndpointArtifactRetirement = when (
+        val observed = EndpointPhysicalFileIdentity.observe(retainedPath)
+    ) {
+        PhysicalFileIdentity.Absent -> EndpointArtifactRetirement.ALREADY_ABSENT
+        PhysicalFileIdentity.Unavailable -> EndpointArtifactRetirement.IDENTITY_UNAVAILABLE
+        is PhysicalFileIdentity.Identified -> if (observed.value != retainedIdentity) {
+            EndpointArtifactRetirement.IDENTITY_MISMATCH
+        } else try {
+            Files.delete(retainedPath)
+            EndpointArtifactRetirement.REMOVED
+        } catch (_: NoSuchFileException) {
+            EndpointArtifactRetirement.ALREADY_ABSENT
         } catch (_: IOException) {
+            EndpointArtifactRetirement.DELETE_FAILED
         } catch (_: SecurityException) {
+            EndpointArtifactRetirement.DELETE_FAILED
         }
     }
 
     /** Socket authority whose path can only be derived from this directory's location. */
     private inner class BoundSocket(
         private val channel: ServerSocketChannel,
+        private val identity: EndpointPhysicalFileIdentity,
     ) : OwnedEndpointPath {
         override fun accept(): IdeEndpointSocketAcceptance = try {
             IdeEndpointSocketAcceptance.Accepted(channel.accept())
@@ -167,13 +201,10 @@ internal class OwnedEndpointDirectory private constructor(
 
         override fun close() = channel.closeQuietly()
 
-        override fun deleteFromOwner() {
-            try {
-                Files.deleteIfExists(Path.of(location.socketPath.value))
-            } catch (_: IOException) {
-            } catch (_: SecurityException) {
-            }
-        }
+        override fun deleteFromOwner(): EndpointArtifactRetirement = deleteRetainedPath(
+            Path.of(location.socketPath.value),
+            identity,
+        )
     }
 
     /** Staging authority whose path comes only from createTempFile inside this directory. */
@@ -199,7 +230,9 @@ internal class OwnedEndpointDirectory private constructor(
                 is PhysicalFileIdentity.Identified -> OwnedDescriptorTemporaryIdentity.Identified(
                     IdentifiedDescriptorTemporary(this, observed.value),
                 )
-                PhysicalFileIdentity.Unavailable -> OwnedDescriptorTemporaryIdentity.Unavailable
+                PhysicalFileIdentity.Absent,
+                PhysicalFileIdentity.Unavailable,
+                -> OwnedDescriptorTemporaryIdentity.Unavailable
             }
     }
 
@@ -264,7 +297,9 @@ internal class OwnedEndpointDirectory private constructor(
                 is PhysicalFileIdentity.Identified -> OwnedEndpointDirectoryCreation.Created(
                     OwnedEndpointDirectory(location, observed.value),
                 )
-                PhysicalFileIdentity.Unavailable -> {
+                PhysicalFileIdentity.Absent,
+                PhysicalFileIdentity.Unavailable,
+                -> {
                     try {
                         Files.delete(path)
                     } catch (_: IOException) {
@@ -280,7 +315,7 @@ internal class OwnedEndpointDirectory private constructor(
 internal interface OwnedEndpointPath {
     fun accept(): IdeEndpointSocketAcceptance
     fun close()
-    fun deleteFromOwner()
+    fun deleteFromOwner(): EndpointArtifactRetirement
 }
 
 internal interface OwnedDescriptorTemporary {
@@ -297,19 +332,32 @@ internal interface IdentifiedOwnedDescriptorTemporary {
 /** Retained descriptor ownership for KVP-025's later READY lifecycle retirement. */
 internal sealed interface OwnedPublishedDescriptor {
     val path: Path
+    fun deleteFromOwner(): EndpointArtifactRetirement
 }
 
-private data class RetainedPublishedDescriptor(
+private class RetainedPublishedDescriptor(
     override val path: Path,
-    val identity: EndpointPhysicalFileIdentity,
-) : OwnedPublishedDescriptor
-
-/** READY artifact ownership retained without performing KVP-025 lifecycle cleanup. */
-internal class ReadyEndpointOwnership(
-    val directory: OwnedEndpointDirectory,
-    val socket: OwnedEndpointPath,
-    val descriptor: OwnedPublishedDescriptor,
-)
+    private val identity: EndpointPhysicalFileIdentity,
+) : OwnedPublishedDescriptor {
+    override fun deleteFromOwner(): EndpointArtifactRetirement = when (
+        val observed = EndpointPhysicalFileIdentity.observe(path)
+    ) {
+        PhysicalFileIdentity.Absent -> EndpointArtifactRetirement.ALREADY_ABSENT
+        PhysicalFileIdentity.Unavailable -> EndpointArtifactRetirement.IDENTITY_UNAVAILABLE
+        is PhysicalFileIdentity.Identified -> if (observed.value != identity) {
+            EndpointArtifactRetirement.IDENTITY_MISMATCH
+        } else try {
+            Files.delete(path)
+            EndpointArtifactRetirement.REMOVED
+        } catch (_: NoSuchFileException) {
+            EndpointArtifactRetirement.ALREADY_ABSENT
+        } catch (_: IOException) {
+            EndpointArtifactRetirement.DELETE_FAILED
+        } catch (_: SecurityException) {
+            EndpointArtifactRetirement.DELETE_FAILED
+        }
+    }
+}
 
 internal fun ServerSocketChannel.closeQuietly() {
     try {
