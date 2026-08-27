@@ -342,8 +342,10 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     else:
         assert not any(dependency in build_script for dependency in product_dependencies)
     assert 'implementation(project(":runtime:composition"))' not in build_script
-    for marker in ("generateIdeHostCompatibilitySource", "libs/runtime-ide-read-${project.version}.jar",
-                   "libs/workspace-intellij-read-${project.version}.jar"):
+    for marker in (
+        "generateIdeHostCompatibilitySource",
+        "payloadJars.from(configurations.runtimeClasspath)",
+    ):
         assert marker in build_script
     plugin_descriptor = required_text(root, "ide-plugin/src/main/resources/META-INF/plugin.xml")
     assert 'serviceImplementation="io.github.amichne.kast.ide.endpoint.IdeEndpointService"' in plugin_descriptor

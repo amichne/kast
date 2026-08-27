@@ -33,6 +33,8 @@ This package owns the typed delivery program and the Gradle task boundaries that
   write-scope baseline. KVP-025, KVP-031, KVP-011, and KVP-032 may share the graph-admitted hosted
   production-composition ready frontier and checkpoints while retaining one physical owner per
   changed path. KVP-031 additionally binds its receipt to one exact head.
+- `gradle/kvp038/` owns KVP-038's graph-derived detached clean-checkout orchestration, fresh-cache
+  evidence refinement, predecessor admission, declared-write enforcement, and content receipt.
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.

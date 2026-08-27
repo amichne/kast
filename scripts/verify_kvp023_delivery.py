@@ -174,7 +174,6 @@ def verify_kvp023_delivery(root, program, requirements, normative_plan):
         ":runtime:composition",
         ":workspace:service",
         ":symbol:service",
-        ":symbol:intellij",
         ":evidence:sqlite",
         ":change:",
         ":topology:",
@@ -200,6 +199,7 @@ def verify_kvp023_delivery(root, program, requirements, normative_plan):
         ":protocol:registry",
         ":protocol:wire",
         ":symbol:contract",
+        ":symbol:intellij",
         ":workspace:contract",
         ":workspace:intellij-read",
     ]

@@ -89,7 +89,7 @@ def verify_kvp020_delivery(root, program, normative_plan):
         "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/AGENTS.md",
         (
             "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/"
-            "ProjectReadOutcomes.kt"
+            "admission/ProjectReadOutcomes.kt"
         ),
         (
             "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/"
@@ -159,11 +159,10 @@ def verify_kvp020_delivery(root, program, normative_plan):
         'rootProject.tasks.named("verifyKVP019CompletionReceipt")',
         '"reports/delivery/receipts/KVP-014-COMPLETE.receipt.json"',
         '"reports/delivery/receipts/KVP-019-COMPLETE.receipt.json"',
-        'systemProperty("kast.ide.single.flight.report"',
-        '"kast.ide.single.flight.kvp014.receipt"',
-        '"kast.ide.single.flight.kvp019.receipt"',
-        "mustRunAfter(verifySingleFlightReportNegative)",
-        "dependsOn(verifySingleFlightReportNegative)",
+        "val defaultTest = tasks.named<Test>(\"test\")",
+        "defaultTest.configure {",
+        '"*SingleFlightNegativeTest.generated report binds exact negative policy"',
+        '"*SingleFlightTest.generated report binds exact success evidence"',
     ))
     for forbidden in ("api(project(", ":ide-plugin"):
         assert forbidden not in module_build
@@ -180,7 +179,7 @@ def verify_kvp020_delivery(root, program, normative_plan):
 
     main_root = "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/"
     test_root = "runtime/ide-read/src/test/kotlin/io/github/amichne/kast/runtime/ide/read/"
-    outcomes = sources[main_root + "ProjectReadOutcomes.kt"]
+    outcomes = sources[main_root + "admission/ProjectReadOutcomes.kt"]
     permit = sources[main_root + "ProjectReadPermit.kt"]
     single_flight = sources[main_root + "ProjectReadSingleFlight.kt"]
     fixtures = sources[test_root + "SingleFlightFixtures.kt"]

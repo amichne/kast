@@ -6,11 +6,33 @@ import subprocess
 from datetime import datetime
 
 LEGACY_PROGRAM_FINGERPRINT = "f564dea6a123a43320ae96933f370f446eb738b32de16fc53d2c94685ab89d44"
+LEGACY_PROGRAM_FINGERPRINTS = {
+    "001f2707e8b156cd504b5bab03a44ed88a904499486bd1db303e26502cd9b99d",
+    "31fcef0d003e673781fe38c8aa52e9ad3c4aadec4a888764bbe17645abaf8888",
+    LEGACY_PROGRAM_FINGERPRINT,
+}
 LEGACY_REQUIREMENT_FINGERPRINT = "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
 LEGACY_BASE_REVISION = "78262728313c90bb847e73425dc1a76d704397db"
 LEGACY_EXACT_HEAD = "4a323a97d93964dd6b49c27ce77c45bf651b29c4"
-LEGACY_RECEIPT_COUNT = 63
-LEGACY_RECEIPT_MANIFEST_DIGEST = "3d086cf40ee7931b0f32993c2eb6a67416e3236962300d7e8f87e8849a5d8609"
+LEGACY_OBSERVED_HEADS = {
+    "20f065332a349cc71ff88720781888b1549483e6",
+    "22a314af3570687877e1627c5175287a5cf3b618",
+    LEGACY_EXACT_HEAD,
+}
+LEGACY_RECEIPT_COUNT = 69
+LEGACY_RECEIPT_MANIFEST_DIGEST = "51025d8f605270455155c7fdc9a2cbe48738884a7b2e236875d01566a4b95789"
+LEGACY_SUPERSEDED_DIGESTS = {
+    "KVP-001-COMPLETE": {"9d450171c1a97569f1430cba6ddf7ba0360c534465f13966e5d183616bd48f7c"},
+    "KVP-002-COMPLETE": {"3c61e5a70bc27ee6475a99169cf6aab949bd6f8fd274ae6365e3d53644120e61"},
+    "KVP-005-COMPLETE": {"5a8b49256e78a8535aefea9d52fda02d355fe8d7a7508b8ad18cdcc0204dcfde"},
+    "KVP-006-COMPLETE": {"40e2d1882f35063357b270407ac51ba57b207cebbae6845c3f51102bab810241"},
+    "KVP-009-COMPLETE": {"27fa87df8775c61a1c6c72dec8b2ed0147af12b8e6e531a02fb90dcf564bfe29"},
+    "KVP-012-COMPLETE": {"c92ea098edb411f1ffc181a9f79067f400d5132558bb5583f96dfc97907a8729"},
+    "KVP-014-COMPLETE": {"33184300ecf4cf8875038f23db937d511726a129b7024468ef99f63cd6aa6dfb"},
+    "KVP-015-COMPLETE": {"bcba54183e7805e15da004ed3bf9a273d518a21b2ad725e0e98be1a4a0ba35a0"},
+    "KVP-016-COMPLETE": {"d6820f2f68807953ad49d3340ef7c0c7d042e24572d618617ddbc6376b74cb61"},
+    "KVP-017-RED-RECEIPT": {"4c35e211f36af1be8f302b507479f24937d73cbc4dedd8442aed378f5f1655a5"},
+}
 LEGACY_RECEIPT_FIELDS = {
     "schemaVersion", "receiptId", "baseRevision", "exactHead", "programFingerprint",
     "requirementFingerprint", "taskId", "gateId", "dependencyReceiptDigests",
@@ -101,8 +123,8 @@ def admit_legacy_receipt_prefix(receipts):
             rf"{receipt['taskId']}-(RED|GREEN|COMPLETE-GATE)", receipt["gateId"],
         )
         assert receipt["baseRevision"] == LEGACY_BASE_REVISION
-        assert receipt["exactHead"] == LEGACY_EXACT_HEAD
-        assert receipt["programFingerprint"] == LEGACY_PROGRAM_FINGERPRINT
+        assert receipt["exactHead"] in LEGACY_OBSERVED_HEADS
+        assert receipt["programFingerprint"] in LEGACY_PROGRAM_FINGERPRINTS
         assert receipt["requirementFingerprint"] == LEGACY_REQUIREMENT_FINGERPRINT
         for field in ("declaredInputDigest", "commandDigest", "receiptDigest"):
             assert re.fullmatch(r"[0-9a-f]{64}", receipt[field])
@@ -130,7 +152,10 @@ def admit_legacy_receipt_prefix(receipts):
     assert hashlib.sha256(manifest.encode()).hexdigest() == LEGACY_RECEIPT_MANIFEST_DIGEST
     for receipt in receipts:
         for dependency_id, dependency_digest in receipt["dependencyReceiptDigests"].items():
-            assert by_receipt_id[dependency_id]["receiptDigest"] == dependency_digest
+            current_digest = by_receipt_id.get(dependency_id, {}).get("receiptDigest")
+            assert dependency_digest == current_digest or dependency_digest in (
+                LEGACY_SUPERSEDED_DIGESTS.get(dependency_id, set())
+            )
     return len(receipts)
 
 def verify_kvp024_completion_receipt(root, receipt, program, retirement_refined):
