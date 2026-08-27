@@ -56,4 +56,18 @@ class DeliveryTaskOwnershipTest {
             tasks.getValue("KVP-008").allowedWrites,
         )
     }
+
+    @Test
+    fun `KVP-038 owns its required architecture verifier`() {
+        val task = KastVfsPassiveReusedIndexProgram.definition.tasks.single {
+            it.id == TaskId("KVP-038")
+        }
+
+        assertTrue(
+            "build-logic/src/main/kotlin/support/architecture/gradle" in task.allowedWrites,
+        )
+        assertTrue(
+            "build-logic/src/test/kotlin/support/architecture/gradle" in task.allowedWrites,
+        )
+    }
 }

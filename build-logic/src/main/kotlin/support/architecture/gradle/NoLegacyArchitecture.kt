@@ -71,9 +71,8 @@ internal object NoLegacyArchitectureInspection {
         "(?:Fallback\\w*(?:Backend|Authority|Route|Store|Server|Implementation)|" +
         "(?:Backend|Authority|Route|Store|Server|Implementation)Fallback)",
     )
-    private val compatibilityRoute = Regex(
-        "(?:\\bCompatibilityRoute\\b|\\bLegacy\\w*(?:Route|Binding|Adapter)\\b|" +
-        "io\\.github\\.amichne\\.kast\\.[A-Za-z0-9_.]*compatibility\\.)",
+    private val legacyCompatibilityRoute = Regex(
+        "(?:\\bCompatibilityRoute\\b|\\bLegacy\\w*(?:Route|Binding|Adapter)\\b)",
     )
 
     /**
@@ -96,7 +95,7 @@ internal object NoLegacyArchitectureInspection {
                 add(LegacyArchitectureFinding.AnalysisBackendSymbol(source.path))
             }
             sources.filter { source ->
-                "/compatibility/" in source.path || compatibilityRoute.containsMatchIn(source.content)
+                legacyCompatibilityRoute.containsMatchIn(source.content)
             }.forEach { source ->
                 add(LegacyArchitectureFinding.CompatibilityRoute(source.path))
             }

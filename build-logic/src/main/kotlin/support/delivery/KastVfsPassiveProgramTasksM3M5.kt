@@ -199,7 +199,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
             TaskNode(
                 id = TaskId("KVP-038"), title = "Prove a detached clean checkout", goal = "Create a detached checkout at the exact head, regenerate projections, build assets, run structural gates, and execute installed acceptance without local caches or untracked files.", milestone = "M5",
                 dependencies = DependencyExpression(EdgeKind.REQUIRES_ALL, setOf(TaskId("KVP-008"), TaskId("KVP-036"), TaskId("KVP-037"))),
-                allowedReads = listOf("build-logic", "gradle/delivery", "packaging", "acceptance/ide-hosted", ".github"), allowedWrites = listOf("build-logic/src/main/kotlin/support/delivery/gradle", "packaging", "build/reports/ide-hosted"),
+                allowedReads = listOf("build-logic", "gradle/delivery", "packaging", "acceptance/ide-hosted", ".github"), allowedWrites = listOf("build-logic/src/main/kotlin/support/delivery/gradle", "build-logic/src/main/kotlin/support/architecture/gradle", "build-logic/src/test/kotlin/support/architecture/gradle", "packaging", "build/reports/ide-hosted"),
                 inputs = listOf(mapOf("id" to "CURRENT_HEAD", "kind" to "baseline"), mapOf("id" to "DELIVERY_AUTHORITY", "kind" to "programAuthority"), mapOf("id" to "kvp.008.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.036.proof", "kind" to "taskOutput"), mapOf("id" to "kvp.037.proof", "kind" to "taskOutput"), mapOf("id" to "KVP-REQ-003", "kind" to "requirement"), mapOf("id" to "KVP-REQ-004", "kind" to "requirement"), mapOf("id" to "KVP-REQ-022", "kind" to "requirement"), mapOf("id" to "KVP-REQ-026", "kind" to "requirement")),
                 outputs = listOf(TaskOutput("kvp.038.proof", "PROOF_ARTIFACT", "build/reports/ide-hosted/KVP-038-clean-checkout.json", "A detached exact-head checkout regenerates identical projections and passes all required gates.")),
                 publicInterface = "CleanCheckoutReceipt", internalImplementation = "Detached checkout command, input, artifact, and installed proof digests.",
@@ -207,7 +207,7 @@ internal fun deliveryTasksM3M5(): List<TaskNode> = listOf(
                 forbiddenWork = listOf("Using current worktree output", "Using Gradle task result from another head", "Skipping projection diff", "Depending on untracked fixture"),
                 red = ProofCommand("KVP-038-RED", "./gradlew cleanCheckoutNegativeProof", "A changed untracked input or stale generated artifact can pass."),
                 green = ProofCommand("KVP-038-GREEN", "./gradlew ideHostedCleanCheckoutAcceptance", "A detached exact-head checkout regenerates identical projections and passes all required gates."),
-                reviewBoundary = "Clean-checkout harness only.",
+                reviewBoundary = "Clean-checkout harness and its required structural verifier only.",
                 completionReceipt = CompletionReceiptContract("KVP-038-COMPLETE", setOf("KVP-038-RED", "KVP-038-GREEN"), setOf("KVP-008-COMPLETE", "KVP-036-COMPLETE", "KVP-037-COMPLETE"), "build/reports/delivery/receipts/KVP-038-COMPLETE.receipt.json"),
                 provesRequirements = setOf(RequirementId("KVP-REQ-003"), RequirementId("KVP-REQ-004"), RequirementId("KVP-REQ-022"), RequirementId("KVP-REQ-026")), authorities = setOf(AuthorityId("PROOF_RECEIPT")),
             ),
