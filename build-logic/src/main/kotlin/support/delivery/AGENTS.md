@@ -27,7 +27,7 @@ This package owns the typed delivery program and the Gradle task boundaries that
 - `tasks/ProgramAuthorityNegativeTask.kt` owns the deterministic KVP-001 RED fixtures.
 - `tasks/receiptboundary/` owns generated v1/v2 receipt codecs, the task-packet codec, pinned-prefix
   observation, and atomic receipt issuance. Its `atomic/kvp011/` and `atomic/kvp025/` through
-  `atomic/kvp031/` children own their sole graph-derived task proofs; each revalidates its admitted
+  `atomic/kvp034/` children own their sole graph-derived task proofs; each revalidates its admitted
   predecessor closure before using the last task-owned implementation checkpoint as the next
   write-scope baseline. KVP-031 additionally binds its receipt to one exact head.
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
@@ -52,6 +52,9 @@ This package owns the typed delivery program and the Gradle task boundaries that
   not-yet-built read-only payload.
 - KVP-033 reruns exact production-behavior selectors in two non-cacheable test processes after
   KVP-032 and binds their physical JUnit evidence into one zero-effect dynamic receipt.
+- KVP-034 invokes only the installed CLI against the live exact-root hosted endpoint, combines
+  direct system observations with admitted KVP-032/KVP-033 proof authority, and requires endpoint
+  retirement before issuing its exact-head receipt.
 
 Gate and completion receipt paths are part of the typed program, but their live evidence belongs
 under `build/reports/delivery/receipts`. Never place receipt evidence in tracked projection paths:

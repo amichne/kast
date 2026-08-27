@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
@@ -204,44 +205,35 @@ val installLocalControl by tasks.registering(Sync::class) {
     into(localInstallPrefix.map { it.resolve("share/kast/control") })
 }
 
-val installLocalRuntime by tasks.registering(Sync::class) {
+val purgeLocalSemanticRuntime by tasks.registering(Delete::class) {
     group = "distribution"
-    description = "Installs the matching semantic runtime archive into the local prefix."
-    dependsOn(semanticRuntimeArchive)
-    from(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    into(localInstallPrefix.map { it.resolve("share/kast/runtime") })
+    description = "Removes legacy semantic runtime payloads from the default local install."
+    delete(localInstallPrefix.map { it.resolve("share/kast/runtime") })
 }
 
-val localLauncherContent = semanticRuntimeArchive.flatMap(Zip::getArchiveFileName)
-    .map { runtimeArchiveFileName ->
-        $$"""
+val localLauncherContent = providers.provider {
+    $$"""
         |#!/bin/sh
         |set -eu
         |
         |script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
         |install_prefix="$(CDPATH= cd -- "${script_dir}/.." && pwd -P)"
         |control_executable="${install_prefix}/share/kast/control/bin/kast"
-        |runtime_archive="${install_prefix}/share/kast/runtime/$$runtimeArchiveFileName"
         |
         |if [ ! -x "${control_executable}" ]; then
         |  echo "kast: installed control executable is missing: ${control_executable}" >&2
         |  exit 1
         |fi
-        |if [ ! -f "${runtime_archive}" ]; then
-        |  echo "kast: installed semantic runtime is missing: ${runtime_archive}" >&2
-        |  exit 1
-        |fi
         |
-        |export KAST_RUNTIME_ARCHIVE="${runtime_archive}"
         |exec "${control_executable}" "$@"
         """.trimMargin()
-    }
+}
 
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val installLocalLauncher = tasks.register<Exec>("installLocalLauncher") {
     group = "distribution"
     description = "Installs the relocatable local Kast launcher."
-    dependsOn(installLocalControl, installLocalRuntime)
+    dependsOn(installLocalControl, purgeLocalSemanticRuntime)
     inputs.property("launcherContent", localLauncherContent)
     outputs.file(localLauncherFile)
     outputs.upToDateWhen { false }

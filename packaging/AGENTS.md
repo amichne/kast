@@ -20,6 +20,8 @@ published Kast distributions through their public boundaries.
   finite failures through its exit status.
 - Keep `test-installer.sh` as the isolated contract for the public installer's
   install, purge-first, complete uninstall, path-safety, and idempotence flows.
+- `installLocal` installs only the control product and removes any legacy runtime payload from its
+  exact prefix; its launcher must carry no archive-read or isolated-indexer authority.
 - `pr633-final-gate.sh` invokes only `pr633MergeCandidateAcceptance` and rejects tracked changes
   both before and after the clean-checkout GATE-060 run.
 - `test-public-installer.sh` exercises installer presentation and failure output

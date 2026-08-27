@@ -22,6 +22,7 @@ import support.delivery.registerKvp030AtomicProof
 import support.delivery.registerKvp031AtomicProof
 import support.delivery.registerKvp032AtomicProof
 import support.delivery.registerKvp033AtomicProof
+import support.delivery.registerKvp034AtomicProof
 import support.delivery.GradleGateTaskNameRefinement
 import support.delivery.TaskProofProtocol
 import support.delivery.refineGradleGateTaskName
@@ -128,7 +129,8 @@ val typedReceiptTaskIds = registerDeliveryReceiptProgression() +
     registerKvp011AtomicProof() + registerKvp025AtomicProof() + registerKvp026AtomicProof() +
     registerKvp027AtomicProof() +
     registerKvp028AtomicProof() + registerKvp029AtomicProof() + registerKvp030AtomicProof() +
-        registerKvp031AtomicProof() + registerKvp032AtomicProof() + registerKvp033AtomicProof()
+        registerKvp031AtomicProof() + registerKvp032AtomicProof() + registerKvp033AtomicProof() +
+        registerKvp034AtomicProof()
 program.program.tasks.sortedBy { it.id }.filterNot {
     it.id in typedReceiptTaskIds
 }.forEach { node ->

@@ -17,6 +17,8 @@ bounded legacy-prefix observation, and atomic issuance for delivery receipts.
   forbidden JVM effects, IDE-read firewall, and physical transitive plugin classpath.
 - `atomic/kvp033/` owns non-cacheable contention, cancellation, movement, VFS-storm, EDT-surface,
   dependency-closure, and content-receipt proof.
+- `atomic/kvp034/` owns graph-derived installed metrics, live exact-root CLI acceptance, predecessor
+  closure, declared-write enforcement, and the exact-head installed receipt.
 
 Raw JSON, filesystem paths, time, and current Git head may appear only at these boundaries. Pass admitted receipt capabilities inward; never pass decoded primitives or silently reinterpret a v1 receipt as v2.
 
