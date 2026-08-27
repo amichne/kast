@@ -184,13 +184,16 @@ internal fun admitKvp027ReportAndReceipt(
     }
     return when (val admitted = admitTaskProofReceipt(
         receiptRaw,
-        context.receiptExpectation(),
+        context.receiptExpectation(report),
         currentHead,
     )) {
-        is TaskProofReceiptAdmission.Complete -> Kvp027ExistingProofAdmission.Complete(
-            report,
-            admitted.receipt,
-        )
+        is TaskProofReceiptAdmission.Complete -> if (
+            admitted.receipt.observedRepositoryHead == report.observedRepositoryHead
+        ) {
+            Kvp027ExistingProofAdmission.Complete(report, admitted.receipt)
+        } else {
+            Kvp027ExistingProofAdmission.Rejected
+        }
         is TaskProofReceiptAdmission.Rejected -> Kvp027ExistingProofAdmission.Rejected
     }
 }

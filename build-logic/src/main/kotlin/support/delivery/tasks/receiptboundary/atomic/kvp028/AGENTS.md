@@ -7,8 +7,11 @@ dependency admission, content-scoped report, and v2 completion receipt.
   exact output digest before observing KVP-028 work.
 - Derive commands, case names, forbidden-work obligations, paths, and receipt identity only from
   the canonical Kotlin graph packet.
-- Observe from the admitted KVP-026 receipt head and retain only commits with
-  KVP-028-owned paths; a checkpoint touching any other path rejects.
+- Observe from the last task-owned KVP-026 implementation checkpoint, skip admitted KVP-025 and
+  KVP-027 checkpoints, then retain the dependency-closed delta from the first KVP-028-exclusive
+  path.
 - Skip the named gate-evidence task only after the complete relevant-input and dependency closure
   admits.
+- Preserve the report and receipt's original observed head when that closure is unchanged at a
+  later unrelated repository head; require the two observations to match before reuse.
 - Emit exactly one KVP-028 report and one KVP-028 completion receipt.

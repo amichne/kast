@@ -11,4 +11,6 @@ dependency admission, content-scoped report, and v2 completion receipt.
   KVP-027-owned paths; a checkpoint touching any other path rejects.
 - Skip the named gate-evidence task only after the complete relevant-input and dependency closure
   admits.
+- Preserve the report and receipt's original observed head when that closure is unchanged at a
+  later unrelated repository head; require the two observations to match before reuse.
 - Emit exactly one KVP-027 report and one KVP-027 completion receipt.

@@ -60,6 +60,7 @@ internal data class Kvp026ProofContext(
 
 internal enum class Kvp026ProofReportFailure {
     MALFORMED_DOCUMENT,
+    MALFORMED_OBSERVED_HEAD,
     NON_CANONICAL_DOCUMENT,
     REPORT_MISMATCH,
 }
@@ -67,6 +68,7 @@ internal enum class Kvp026ProofReportFailure {
 internal class AdmittedKvp026ProofReport internal constructor(
     val outputDigest: TaskProofOutputDigest,
     val observations: Map<String, String>,
+    val observedRepositoryHead: DeliveryGeneration,
 )
 
 internal sealed interface Kvp026ProofReportAdmission {
@@ -95,14 +97,15 @@ private val kvp026ProofReportJson = Json {
  * report boundary.
  */
 internal fun canonicalKvp026ProofReport(context: Kvp026ProofContext): String =
-    encode(context.document())
+    encode(context.document(context.observedHead))
 
 /**
  * Proof transition: KVP-026 report JSON plus complete context ->
  * `Kvp026ProofReportAdmission`.
  *
- * Generated decoding and canonical equality establish the exact proof closure. Expected malformed
- * or mismatched evidence remains finite rejection.
+ * Generated decoding and canonical equality establish the exact content closure while preserving
+ * the report's original observed head across unrelated later heads. Expected malformed or
+ * mismatched evidence remains finite rejection.
  */
 internal fun admitKvp026ProofReport(
     raw: String,
@@ -115,7 +118,15 @@ internal fun admitKvp026ProofReport(
     } catch (_: IllegalArgumentException) {
         return reportRejected(Kvp026ProofReportFailure.MALFORMED_DOCUMENT)
     }
-    val expected = context.document()
+    val reportHead = when (val refined = refineDeliveryGeneration(
+        document.observedRepositoryHead,
+    )) {
+        is DeliveryRefinement.Complete -> refined.value
+        is DeliveryRefinement.Rejected -> return reportRejected(
+            Kvp026ProofReportFailure.MALFORMED_OBSERVED_HEAD,
+        )
+    }
+    val expected = context.document(reportHead)
     if (document != expected) return reportRejected(Kvp026ProofReportFailure.REPORT_MISMATCH)
     if (raw != encode(expected)) {
         return reportRejected(Kvp026ProofReportFailure.NON_CANONICAL_DOCUMENT)
@@ -124,6 +135,7 @@ internal fun admitKvp026ProofReport(
         AdmittedKvp026ProofReport(
             TaskProofOutputDigest(sha256(raw).value),
             context.completeObservations(),
+            reportHead,
         ),
     )
 }
@@ -158,17 +170,10 @@ internal fun admitKvp026ImplementationBaseline(
     )
 }
 
-internal fun Kvp026ProofContext.receiptExpectation(): TaskProofReceiptExpectation {
+internal fun Kvp026ProofContext.receiptExpectation(
+    report: AdmittedKvp026ProofReport,
+): TaskProofReceiptExpectation {
     val outputPath = packet.packet.task.outputs.single().path
-    val outputDigest = when (val admitted = admitKvp026ProofReport(
-        canonicalKvp026ProofReport(this),
-        this,
-    )) {
-        is Kvp026ProofReportAdmission.Complete -> admitted.report.outputDigest.value
-        is Kvp026ProofReportAdmission.Rejected -> error(
-            "canonical KVP-026 report rejected: ${admitted.failure}",
-        )
-    }
     return when (val refined = TaskProofReceiptExpectation.refine(
         programVersion.value,
         packet.packet.receipt.receiptId.value,
@@ -179,7 +184,7 @@ internal fun Kvp026ProofContext.receiptExpectation(): TaskProofReceiptExpectatio
         commandDigest.value,
         toolchainDigest.value,
         completeObservations(),
-        mapOf(outputPath to outputDigest),
+        mapOf(outputPath to report.outputDigest.value),
         packet.packet.receipt.headPolicy.name,
     )) {
         is TaskProofReceiptExpectationRefinement.Complete -> refined.expectation
@@ -199,7 +204,9 @@ internal fun Kvp026ProofContext.completeObservations() = linkedMapOf(
     "predecessorReceiptCount" to dependencies.digests.size.toString(),
 )
 
-private fun Kvp026ProofContext.document(): Kvp026ProofReportDocument {
+private fun Kvp026ProofContext.document(
+    reportHead: DeliveryGeneration,
+): Kvp026ProofReportDocument {
     val task = packet.packet.task
     return Kvp026ProofReportDocument(
         1,
@@ -222,7 +229,7 @@ private fun Kvp026ProofContext.document(): Kvp026ProofReportDocument {
             Kvp026ForbiddenWorkDocument(it.description, it.enforcementCaseName, it.testResult)
         },
         cases.executedTestCount,
-        observedHead.value,
+        reportHead.value,
     )
 }
 

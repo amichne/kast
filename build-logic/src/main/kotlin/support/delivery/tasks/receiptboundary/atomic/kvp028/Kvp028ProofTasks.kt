@@ -107,7 +107,7 @@ abstract class ProveKvp028Task : DefaultTask() {
         val receipt = issueTaskProofReceiptAtBoundary(
             root,
             observedHead,
-            context.receiptExpectation(),
+            context.receiptExpectation(report),
             receiptFile.get().asFile.toPath(),
         )
         revalidateExactHead(root, AuthorityGitRevision(observedHead.value))

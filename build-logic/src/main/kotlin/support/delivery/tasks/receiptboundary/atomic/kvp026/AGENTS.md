@@ -12,4 +12,6 @@ dependency admission, content-scoped report, and v2 completion receipt.
   close the delta at the first KVP-027-exclusive checkpoint so overlapping later paths cannot be
   absorbed.
 - Skip the named test task only after the complete relevant-input and dependency closure admits.
+- Preserve the report and receipt's original observed head when that closure is unchanged at a
+  later unrelated repository head; require the two observations to match before reuse.
 - Emit exactly one KVP-026 report and one KVP-026 completion receipt.
