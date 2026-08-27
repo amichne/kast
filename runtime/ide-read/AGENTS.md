@@ -26,6 +26,8 @@ remains host-neutral and pure.
   generated decoding or port invocation; no collection or service locator may hold the ports.
 - `preparation/HostedIdeReadRuntime` is the sole exact-four-port construction capability consumed
   by the IDE endpoint. Partial route assembly remains a closed rejection and exposes no dispatch.
+- KVP-028's workspace port is the first concrete route. It returns READY only after a same-root
+  current epoch is re-admitted from the retained IDE Project and has no repair authority.
 
 ## Verification ladder
 

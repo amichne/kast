@@ -374,7 +374,6 @@ val verifyReadOnlyGraphNegative = tasks.register<support.delivery.Kvp023ReadOnly
             "reports/KVP-023-red-gate.json",
         )
     }
-
 val verifyReadOnlyGraph = tasks.register<support.delivery.Kvp023ReadOnlyGraphGateTask>(
     "verifyReadOnlyGraph",
 ) {
@@ -385,7 +384,7 @@ val verifyReadOnlyGraph = tasks.register<support.delivery.Kvp023ReadOnlyGraphGat
     )
     mustRunAfter(defaultTest, verifyReadOnlyGraphNegative, ":recordKVP023RedReceipt")
 }
-
+apply(from = "gradle/kvp028-workspace-inspect.gradle.kts")
 tasks.named("check") {
     dependsOn(verifySingleFlightReportNegative)
     dependsOn(verifyCancellableReadReportNegative)
@@ -397,4 +396,5 @@ tasks.named("check") {
     dependsOn(verifyReadRuntimeReportNegative)
     dependsOn(verifyReadOnlyGraphNegative)
     dependsOn(verifyReadOnlyGraph)
+    dependsOn("ideHostedWorkspaceInspectNegativeProof", "ideHostedWorkspaceInspectAcceptance")
 }

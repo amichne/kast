@@ -2,6 +2,13 @@ package io.github.amichne.kast.runtime.ide.read.preparation
 
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
+import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
+import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
+import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission
+import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatch
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
 import io.github.amichne.kast.runtime.ide.read.dispatch.SymbolDescribeReadPort
@@ -10,6 +17,7 @@ import io.github.amichne.kast.runtime.ide.read.dispatch.SymbolResolveReadPort
 import io.github.amichne.kast.runtime.ide.read.dispatch.WorkspaceInspectReadPort
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFailure
+import java.nio.file.Path
 
 /** Closed result of retaining one admitted exact-root IntelliJ Project for hosted composition. */
 sealed interface HostedIdeReadProjectAdmission {
@@ -37,6 +45,15 @@ class HostedIdeReadProject private constructor(
     val canonicalRoot: IdeEndpointCanonicalRoot,
     val compatibility: AdmittedIdeHostCompatibility,
 ) {
+    /**
+     * Proof transition: `HostedIdeReadProject -> HostedProjectCurrentRead`.
+     *
+     * Observes one opaque epoch and immediately re-admits it against the same retained Project.
+     * Success issues only a same-root current read capability; observation and freshness failures
+     * remain closed [HostedProjectCurrentRead]. The raw Project never leaves its physical owner.
+     */
+    internal fun admitCurrentRead(): HostedProjectCurrentRead = retainedProject.admitCurrentRead()
+
     companion object {
         /**
          * Proof transition: `(AdmittedIdeProject, IdeEndpointCanonicalRoot) ->
@@ -70,8 +87,11 @@ class HostedIdeReadProject private constructor(
         internal fun testing(
             canonicalRoot: IdeEndpointCanonicalRoot,
             compatibility: AdmittedIdeHostCompatibility,
+            read: HostedIdeReadProjectTestRead = HostedIdeReadProjectTestRead.CURRENT,
         ): HostedIdeReadProject = HostedIdeReadProject(
-            RetainedHostedIdeProject.TestFixture,
+            RetainedHostedIdeProject.TestFixture(
+                testingCurrentRead(canonicalRoot, read),
+            ),
             canonicalRoot,
             compatibility,
         )
@@ -80,11 +100,87 @@ class HostedIdeReadProject private constructor(
 
 /** Retains the live admitted Project proof; the fixture variant is invisible outside friend tests. */
 private sealed interface RetainedHostedIdeProject {
+    fun admitCurrentRead(): HostedProjectCurrentRead
+
     data class Live(
         val project: AdmittedIdeProject,
-    ) : RetainedHostedIdeProject
+    ) : RetainedHostedIdeProject {
+        override fun admitCurrentRead(): HostedProjectCurrentRead = when (
+            val observed = project.observeReadEpoch()
+        ) {
+            is ProjectReadEpochObservation.Observed -> when (
+                val admission = project.admitVfsPassiveRead(observed.epoch)
+            ) {
+                is VfsPassiveReadAdmission.Admitted ->
+                    HostedProjectCurrentRead.Admitted(admission.capability)
+                is VfsPassiveReadAdmission.Rejected ->
+                    HostedProjectCurrentRead.FreshnessRejected(admission.failure)
+            }
+            is ProjectReadEpochObservation.Rejected ->
+                HostedProjectCurrentRead.EpochRejected(observed.failure)
+        }
+    }
 
-    data object TestFixture : RetainedHostedIdeProject
+    data class TestFixture(
+        val read: HostedProjectCurrentRead,
+    ) : RetainedHostedIdeProject {
+        override fun admitCurrentRead(): HostedProjectCurrentRead = read
+    }
+}
+
+/** Friend-test epoch states; production construction cannot select one. */
+internal enum class HostedIdeReadProjectTestRead {
+    CURRENT,
+    READ_PREEMPTED,
+}
+
+/** Closed result of observing and re-admitting the retained Project's current opaque epoch. */
+internal sealed interface HostedProjectCurrentRead {
+    data class Admitted(
+        val capability: VfsPassiveReadCapability,
+    ) : HostedProjectCurrentRead
+
+    data class EpochRejected(
+        val failure: ProjectReadEpochObservationFailure,
+    ) : HostedProjectCurrentRead
+
+    data class FreshnessRejected(
+        val failure: io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure,
+    ) : HostedProjectCurrentRead
+}
+
+/**
+ * Proof transition: `(IdeEndpointCanonicalRoot, HostedIdeReadProjectTestRead) ->
+ * HostedProjectCurrentRead`.
+ *
+ * Constructs only friend-test current or preempted evidence. Root parsing and opaque epoch
+ * construction remain inside this test boundary; production callers cannot select either state.
+ */
+private fun testingCurrentRead(
+    root: IdeEndpointCanonicalRoot,
+    read: HostedIdeReadProjectTestRead,
+): HostedProjectCurrentRead {
+    if (read == HostedIdeReadProjectTestRead.READ_PREEMPTED) {
+        return HostedProjectCurrentRead.EpochRejected(
+            ProjectReadEpochObservationFailure.ReadPreempted,
+        )
+    }
+    val workspaceRoot = when (val parsed = CanonicalWorkspaceRoot.fromCanonicalPath(
+        Path.of(root.value),
+    )) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> return HostedProjectCurrentRead.EpochRejected(
+            ProjectReadEpochObservationFailure.ProjectRootMalformed,
+        )
+    }
+    val source = ProjectReadEpoch.Source.create<Unit> { Refinement.Refined(Unit) }
+    return when (val observed = source.observe()) {
+        is ProjectReadEpochObservation.Observed -> HostedProjectCurrentRead.Admitted(
+            VfsPassiveReadCapability.issue(workspaceRoot, observed.epoch),
+        )
+        is ProjectReadEpochObservation.Rejected ->
+            HostedProjectCurrentRead.EpochRejected(observed.failure)
+    }
 }
 
 /** Module-internal hosted-runtime construction state. */

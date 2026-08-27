@@ -8,3 +8,6 @@
 - Use the production generated wire bindings to create request documents and decode responses.
   Do not hand-build JSON for a closed schema; literal replacement is permitted only to inject an
   invalid identity or unsupported canonical operation into an already generated envelope.
+- `IdeHostedWorkspaceInspectNegativeProof` rejects the isolated-host candidate and unavailable
+  epoch without repair. `IdeHostedWorkspaceInspectAcceptance` proves exact root, IDE host,
+  admitted capabilities, and current-epoch success through the production KVP-028 port.

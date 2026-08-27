@@ -8,6 +8,8 @@ dispatch consumed by the project endpoint.
 - A `HostedIdeReadRuntime` exists only after all four nominal ports are supplied and retains that
   Project's endpoint root and compatibility.
 - Partial construction remains a closed rejection and must never expose a dispatch capability.
+- `HostedIdeReadProject.admitCurrentRead` is the only retained-Project epoch bridge. It observes an
+  opaque epoch and immediately re-admits it against the same Project without exposing either.
 - Keep transport, filesystem, lifecycle, service lookup, and endpoint publication effects out of
   this package.
 
