@@ -136,6 +136,9 @@ internal class HostedSymbolResolution private constructor(
         } catch (cancelled: CancellationException) {
             cancelExecution(execution)
             throw cancelled
+        } catch (defect: RuntimeException) {
+            cancelExecution(execution)
+            throw defect
         }
         val admitted = when (val after = project.admitCurrentRead()) {
             is HostedProjectCurrentRead.Admitted -> when (

@@ -83,6 +83,17 @@ class IdeHostedSymbolResolveNegativeProof {
             runSuspend { cancellable.execute(request()) }
         }
         assertTrue(runSuspend { cancellable.execute(request()) } is OperationOutcome.Complete)
+
+        var defectAttempts = 0
+        val defective = preparedResolution { _, _ -> admitted {
+            defectAttempts += 1
+            if (defectAttempts == 1) error("native defect")
+            completeOutcome("exact:Widget")
+        } }
+        assertThrows(IllegalStateException::class.java) {
+            runSuspend { defective.execute(request()) }
+        }
+        assertTrue(runSuspend { defective.execute(request()) } is OperationOutcome.Complete)
     }
 }
 
