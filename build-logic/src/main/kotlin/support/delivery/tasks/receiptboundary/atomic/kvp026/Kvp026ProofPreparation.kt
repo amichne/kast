@@ -8,7 +8,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
@@ -49,8 +49,8 @@ abstract class PrepareKvp026ProofTask : DefaultTask() {
     @get:InputFile abstract val kvp024ReceiptFile: RegularFileProperty
     @get:InputFile abstract val kvp025ReceiptFile: RegularFileProperty
     @get:InputFile abstract val kvp025ReportFile: RegularFileProperty
-    @get:Optional @get:InputFile abstract val proofReportFile: RegularFileProperty
-    @get:Optional @get:InputFile abstract val receiptFile: RegularFileProperty
+    @get:Internal abstract val proofReportFile: RegularFileProperty
+    @get:Internal abstract val receiptFile: RegularFileProperty
     @get:OutputFile abstract val decisionFile: RegularFileProperty
 
     @TaskAction fun prepare() {
