@@ -27,7 +27,7 @@ This package owns the typed delivery program and the Gradle task boundaries that
   artifacts are build evidence and must not be checked in.
 - `tasks/ProgramAuthorityNegativeTask.kt` owns the deterministic KVP-001 RED fixtures.
 - `tasks/receiptboundary/` owns generated v1/v2 receipt codecs, the task-packet codec, pinned-prefix
-  observation, and atomic receipt issuance. Its `atomic/kvp011/` and `atomic/kvp025/` through
+  observation, and atomic receipt issuance. Its `plugin/kvp011/` and `atomic/kvp025/` through
   `atomic/kvp034/` children own their sole graph-derived task proofs; each revalidates its admitted
   predecessor closure before using the last task-owned implementation checkpoint as the next
   write-scope baseline. KVP-025, KVP-031, KVP-011, and KVP-032 may share the graph-admitted hosted
