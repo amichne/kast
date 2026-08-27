@@ -75,31 +75,35 @@ val architectureVerifications = listOf(
     verifyKastModuleGraph,
     verifyForbiddenEffects,
 )
-val idePluginProject = project(":ide-plugin")
-val verifyKvp032PluginLayoutNegative = idePluginProject.tasks.register(
-    "verifyKvp032PluginLayoutNegative",
-    VerifyIdeHostedPluginLayoutNegativeTask::class.java,
-) {
-    group = "verification"
-    description = "Runs KVP-032's isolated hosted-plugin layout misuse proof."
-}
-val verifyKvp032PluginLayout = idePluginProject.tasks.register(
-    "verifyKvp032PluginLayout",
-    VerifyIdeHostedPluginLayoutTask::class.java,
-) {
-    group = "verification"
-    description = "Writes KVP-032's isolated hosted-plugin layout observation."
-    dependsOn(":ide-plugin:buildPlugin", verifyKvp032PluginLayoutNegative)
-    pluginArchive.set(idePluginProject.layout.buildDirectory.file(
-        "distributions/kast-ide-plugin-${idePluginProject.version}.zip",
-    ))
-    repositoryRoot.set(rootProject.layout.projectDirectory)
-    reportFile.set(idePluginProject.layout.buildDirectory.file("reports/KVP-032-layout.json"))
+val kvp032PluginLayoutTasks = findProject(":ide-plugin")?.let { idePluginProject ->
+    val report = idePluginProject.layout.buildDirectory.file("reports/KVP-032-layout.json")
+    val negative = idePluginProject.tasks.register(
+        "verifyKvp032PluginLayoutNegative",
+        VerifyIdeHostedPluginLayoutNegativeTask::class.java,
+    ) {
+        group = "verification"
+        description = "Runs KVP-032's isolated hosted-plugin layout misuse proof."
+    }
+    val legal = idePluginProject.tasks.register(
+        "verifyKvp032PluginLayout",
+        VerifyIdeHostedPluginLayoutTask::class.java,
+    ) {
+        group = "verification"
+        description = "Writes KVP-032's isolated hosted-plugin layout observation."
+        dependsOn(":ide-plugin:buildPlugin", negative)
+        pluginArchive.set(idePluginProject.layout.buildDirectory.file(
+            "distributions/kast-ide-plugin-${idePluginProject.version}.zip",
+        ))
+        repositoryRoot.set(rootProject.layout.projectDirectory)
+        reportFile.set(report)
+    }
+    Triple(negative, legal, report)
 }
 val verifyVfsPassiveReadNegative = tasks.register("verifyVfsPassiveReadNegative") {
     group = "verification"
     description = "Rejects injected hosted forbidden calls and transitive classpath content."
-    dependsOn("verifyKastVfsPassiveFirewallNegative", verifyKvp032PluginLayoutNegative)
+    dependsOn("verifyKastVfsPassiveFirewallNegative")
+    kvp032PluginLayoutTasks?.first?.let { dependsOn(it) }
 }
 val verifyVfsPassiveRead = tasks.register<VerifyVfsPassiveReadTask>("verifyVfsPassiveRead") {
     group = "verification"
@@ -109,8 +113,8 @@ val verifyVfsPassiveRead = tasks.register<VerifyVfsPassiveReadTask>("verifyVfsPa
         verifyKastModuleGraph,
         verifyForbiddenEffects,
         "verifyKastVfsPassiveFirewall",
-        verifyKvp032PluginLayout,
     )
+    kvp032PluginLayoutTasks?.second?.let { dependsOn(it) }
     moduleGraphReport.set(
         layout.buildDirectory.file("reports/kast-architecture/verifyKastModuleGraph.json"),
     )
@@ -119,7 +123,8 @@ val verifyVfsPassiveRead = tasks.register<VerifyVfsPassiveReadTask>("verifyVfsPa
     )
     firewallReport.set(layout.buildDirectory.file("reports/delivery/KVP-009-firewall.json"))
     pluginLayoutReport.set(
-        idePluginProject.layout.buildDirectory.file("reports/KVP-032-layout.json"),
+        kvp032PluginLayoutTasks?.third
+            ?: layout.buildDirectory.file("reports/ide-hosted/KVP-032-layout-unavailable.json"),
     )
     reportFile.set(layout.buildDirectory.file("reports/ide-hosted/KVP-032-static-safety.json"))
 }
