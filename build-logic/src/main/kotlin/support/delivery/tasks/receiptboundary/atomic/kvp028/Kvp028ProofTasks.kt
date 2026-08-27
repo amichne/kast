@@ -59,6 +59,7 @@ abstract class ProveKvp028Task : DefaultTask() {
             kvp023ReceiptFile.get().asFile.toPath(),
             kvp026ReceiptFile.get().asFile.toPath(),
             kvp026ReportFile.get().asFile.toPath(),
+            readRequiredKvp028File(proofReportFile.get().asFile.toPath()),
         )) {
             is Kvp028ProofContextPreparation.Complete -> prepared.context
             is Kvp028ProofContextPreparation.Rejected -> reject("context", prepared.failure)
