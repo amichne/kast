@@ -8,3 +8,5 @@ This directory owns production sources under `build-logic/src/main/kotlin/suppor
 - Add local rules only when this directory gains a distinct durable boundary.
 - `vfspassive/` owns the KVP-032 source, bytecode, graph, firewall, and transitive-classpath
   composition task; follow its local guide for that typed report boundary.
+- `verification/` owns reusable distribution-layout and generated-serialization verification
+  task types.

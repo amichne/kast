@@ -13,6 +13,8 @@ and receipt admission tests.
   instead of an absent legacy completion.
 - `TaskProofReceiptTest.kt` proves every v2 content field, self digest, content-scoped replay, and
   exact-head rejection.
+- `Kvp038ImplementationBaselineTest.kt` and `Kvp038LegacyDependencyAdmissionTest.kt` prove the
+  clean-checkout implementation baseline and its admitted legacy dependency seam.
 
 Keep the canonical `*DeliveryProof{Negative,}Test` and `*DeliveryState{Negative,}Test` selectors
 stable because the typed delivery program binds their exact commands.
