@@ -1,0 +1,31 @@
+<idea-plugin>
+    <id>io.github.amichne.kast.indexer</id>
+    <name>Kast</name>
+    <vendor url="https://github.com/amichne/kast">amichne</vendor>
+    <description>VFS-passive semantic reads hosted by the already-open IntelliJ project.</description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.gradle</depends>
+    <depends>org.jetbrains.plugins.gradle</depends>
+
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK1="false" supportsK2="true"/>
+    </extensions>
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService
+            serviceImplementation="io.github.amichne.kast.ide.endpoint.IdeEndpointService"
+            preload="true"/>
+        <postStartupActivity
+            implementation="io.github.amichne.kast.ide.endpoint.IdeEndpointProjectActivity"/>
+        <appStarter
+            id="kast-indexer"
+            implementation="io.github.amichne.kast.indexer.KastIndexerApplicationStarter"/>
+    </extensions>
+    <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
+        <projectResolve
+            implementation="io.github.amichne.kast.workspace.intellij.provenance.KastGradleSourceRootProvenanceResolver"
+            order="first"/>
+    </extensions>
+</idea-plugin>

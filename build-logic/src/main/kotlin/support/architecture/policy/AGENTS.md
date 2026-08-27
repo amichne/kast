@@ -11,10 +11,11 @@ This directory owns the canonical module-policy declarations.
   predecessor module or return an active module to planned state.
 - IDE-read modules may depend only on declared inward contracts or another IDE-read module.
   Workspace and runtime read owners allow only the generic IntelliJ platform read effect. The IDE
-  plugin additionally owns the named UDS bind and endpoint-descriptor write effects; these remain
-  confined to `io.github.amichne.kast.ide.endpoint` and grant no source-write authority.
-- `ide-plugin` may additionally consume `protocol:wire` as the sole canonical endpoint-descriptor
-  codec boundary; this does not authorize protocol routing or another runtime composition.
+  plugin additionally owns the named UDS bind and endpoint-descriptor write effects; classify only
+  their exact endpoint members, never a package prefix, and grant no source-write authority.
+- `ide-plugin` may additionally consume `protocol:wire` for the canonical endpoint descriptor and
+  `workspace:contract` for exact-root Project admission. Neither edge authorizes protocol routing
+  or another runtime composition.
 - KVP-018's added walk, read, hash, network, wait, refresh, and indexing classifiers apply only to
   `IDE_READ_ONLY`; do not reclassify legitimate legacy `INTELLIJ_READ_ADAPTER` effects. The
   inherited VFS mark-dirty and Gradle-import rules retain their existing broader role scopes. Its

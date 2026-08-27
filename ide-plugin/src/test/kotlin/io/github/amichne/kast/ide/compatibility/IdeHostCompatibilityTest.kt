@@ -65,6 +65,28 @@ class IdeHostCompatibilityTest {
         assertEquals(OPERATION_REGISTRY_DIGEST, admitted.operationRegistryDigest.value)
         assertEquals(WIRE_SCHEMA_DIGEST, admitted.wireSchemaDigest.value)
     }
+
+    @Test
+    fun `live hosted admission derives only from the generated compatibility authority`() {
+        val metadata = when (val result =
+            AdmittedIdeHostCompatibilityMetadata.admitGenerated()
+        ) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> fail("generated authority rejected: ${result.failure}")
+        }
+        val admitted = when (val result =
+            metadata.compatibilityPolicy.admit(metadata.candidate)
+        ) {
+            is IdeHostCompatibilityAdmission.Admitted -> result.compatibility
+            is IdeHostCompatibilityAdmission.Rejected -> fail(
+                "generated candidate-policy relation rejected: ${result.failure}",
+            )
+        }
+
+        assertEquals(metadata.candidate.kastPluginVersion, admitted.kastPluginVersion.value)
+        assertEquals(HOSTED_RUNTIME_PROTOCOL, admitted.runtimeProtocolIdentity.value)
+        assertEquals(IdeHostCapability.entries, admitted.capabilities.capabilities)
+    }
 }
 
 internal const val HOSTED_IDE_BUILD = "262.9437.185"

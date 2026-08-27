@@ -1,13 +1,23 @@
 package support.architecture
 
 internal object EffectRules {
-    private const val IDE_ENDPOINT_OWNER_PREFIX = "io/github/amichne/kast/ide/endpoint/"
+    private const val ENDPOINT_PUBLISHER_OWNER =
+        "io/github/amichne/kast/ide/endpoint/JdkIdeEndpointPublisher"
+    private val endpointFilesystemOwners = setOf(
+        ENDPOINT_PUBLISHER_OWNER,
+        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory",
+        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$Companion",
+        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$BoundSocket",
+        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$DescriptorTemporary",
+        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$IdentifiedDescriptorTemporary",
+    )
 
     private val filesystemMutators = setOf(
         "copy",
         "createDirectories",
         "createDirectory",
         "createFile",
+        "createTempFile",
         "delete",
         "deleteIfExists",
         "move",
@@ -59,18 +69,14 @@ internal object EffectRules {
             (owner == "java/nio/file/Files" && name in filesystemMutators) ||
             (owner.startsWith("kotlin/io/path/") && filesystemMutators.any(name::startsWith))
         ) {
-            if (caller.owner.internalName.startsWith(IDE_ENDPOINT_OWNER_PREFIX)) {
+            if (caller.owner.internalName in endpointFilesystemOwners) {
                 add(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE)
             } else {
                 add(ForbiddenEffect.FILESYSTEM_WRITE)
                 if (caller.isSourceMutationSurface()) add(ForbiddenEffect.SOURCE_FILESYSTEM_WRITE)
             }
         }
-        if (
-            caller.owner.internalName.startsWith(IDE_ENDPOINT_OWNER_PREFIX) &&
-            owner == "java/nio/channels/ServerSocketChannel" &&
-            name in setOf("open", "bind")
-        ) {
+        if (isEndpointUdsAuthority(caller, target)) {
             add(ForbiddenEffect.UDS_BIND)
         }
         if (owner.startsWith("java/sql/") || owner.startsWith("org/sqlite/")) {
@@ -79,7 +85,13 @@ internal object EffectRules {
         if (moduleRole != ModuleRole.LEGACY_HOST && owner.startsWith("org/gradle/")) {
             add(ForbiddenEffect.GRADLE_PLATFORM)
         }
-        addAll(HostedReadForbiddenAuthority.classify(moduleRole, target))
+        val hostedReadEffects = HostedReadForbiddenAuthority.classify(moduleRole, target)
+        if (isEndpointDescriptorReadBack(caller, target)) {
+            add(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE)
+            addAll(hostedReadEffects - ForbiddenEffect.PHYSICAL_SOURCE_READ)
+        } else {
+            addAll(hostedReadEffects)
+        }
         if (
             moduleRole in setOf(ModuleRole.IDE_READ_ONLY, ModuleRole.INTELLIJ_READ_ADAPTER) &&
             isWorkspaceTransitionAuthority(owner, name)
@@ -120,6 +132,30 @@ internal object EffectRules {
 
     private fun JvmMember.isSourceMutationSurface(): Boolean = owner.internalName.let { callerOwner ->
         callerOwner == "io/github/amichne/kast/api/io/LocalDiskFileOperations"
+    }
+
+    private fun isEndpointDescriptorReadBack(caller: JvmMember, target: JvmMember): Boolean =
+        caller.owner.internalName == ENDPOINT_PUBLISHER_OWNER &&
+            caller.name.value == "readBack" &&
+            target.owner.internalName == "java/nio/file/Files" &&
+            target.name.value == "readString"
+
+    private fun isEndpointUdsAuthority(caller: JvmMember, target: JvmMember): Boolean = when (
+        caller.owner.internalName
+    ) {
+        ENDPOINT_PUBLISHER_OWNER ->
+            target.owner.internalName == "java/nio/channels/ServerSocketChannel" &&
+                target.name.value == "open"
+        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory" ->
+            target.owner.internalName == "java/nio/channels/ServerSocketChannel" &&
+                target.name.value == "bind"
+        "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$BoundSocket" ->
+            target.owner.internalName == "java/nio/channels/ServerSocketChannel" &&
+                target.name.value == "accept"
+        "io/github/amichne/kast/ide/endpoint/IdeEndpointFrameCodec" ->
+            target.owner.internalName == "java/nio/channels/SocketChannel" &&
+                target.name.value in setOf("read", "write")
+        else -> false
     }
 
     private fun isProjectOpenAuthority(owner: String, name: String): Boolean =

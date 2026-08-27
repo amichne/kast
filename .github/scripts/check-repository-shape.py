@@ -52,6 +52,8 @@ RETIREMENT_CONTRACT_PATHS = frozenset(
 )
 RETIRED_TEXT_EXEMPT_PATHS = frozenset(
     {
+        # The independently installed hosted plugin requires IntelliJ's native descriptor root.
+        Path("ide-plugin/src/main/resources/META-INF/plugin.xml"),
         # The private indexer runs inside the IntelliJ platform and requires its
         # native descriptor root. It is not a published plugin product.
         Path("indexer/src/main/resources/META-INF/plugin.xml"),

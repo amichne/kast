@@ -5,8 +5,9 @@ This directory owns generated wire metadata and the IDE endpoint descriptor cont
 - `CanonicalOperationWireBindings` projects the permanent operation registry.
 - `IdeEndpointDescriptorV2` is the sole public refinement boundary for the closed v2 endpoint
   document. Keep raw JSON and primitive endpoint fields inside its codec.
-- `IdeEndpointLocation` is the pure shared authority for the deterministic exact-root UDS name and
-  adjacent `.endpoint.json` path. Keep filesystem effects in the IDE publisher and CLI reader.
+- `IdeEndpointLocation` is the pure shared authority for one exact-root exclusive state directory
+  containing the stable bounded UDS and its adjacent `.endpoint.json` descriptor. Keep filesystem
+  effects in the IDE publisher and CLI reader.
 - `IdeEndpointDescriptorProjection` emits the deterministic KVP-013 descriptor report through a
   generated serializer. The artifact is a self-contained schema/codec fixture descriptor, not the
   KVP-012 supported host tuple; the predecessor receipt binds that physical compatibility evidence.

@@ -8,26 +8,29 @@ import org.junit.jupiter.api.Test
 
 class IdeEndpointLocationTest {
     @Test
-    fun `exact root deterministically owns one adjacent endpoint pair`() {
+    fun `exact root deterministically owns one exclusive endpoint location`() {
         val directory = directory("/tmp/kast-ide")
         val root = root("/Users/example/code/kast")
 
         val first = location(directory, root)
         val repeated = location(directory, root)
 
+        assertEquals(first.stateDirectoryPath, repeated.stateDirectoryPath)
         assertEquals(first.socketPath, repeated.socketPath)
         assertEquals(first.descriptorPath, repeated.descriptorPath)
+        assertTrue(first.socketPath.value.startsWith(first.stateDirectoryPath.value))
         assertEquals("${first.socketPath.value}.endpoint.json", first.descriptorPath.value)
         assertTrue(first.socketPath.value.toByteArray().size <= 103)
     }
 
     @Test
-    fun `different exact roots cannot select the same socket`() {
+    fun `different exact roots cannot select the same endpoint namespace`() {
         val directory = directory("/tmp/kast-ide")
 
         val first = location(directory, root("/workspace/first"))
         val second = location(directory, root("/workspace/second"))
 
+        assertNotEquals(first.stateDirectoryPath, second.stateDirectoryPath)
         assertNotEquals(first.socketPath, second.socketPath)
         assertNotEquals(first.descriptorPath, second.descriptorPath)
     }

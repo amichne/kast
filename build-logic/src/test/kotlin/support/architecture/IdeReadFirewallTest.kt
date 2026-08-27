@@ -49,6 +49,7 @@ class IdeReadFirewallTest {
                 ModuleId.PROTOCOL_CONTRACT,
                 ModuleId.PROTOCOL_WIRE,
                 ModuleId.RUNTIME_IDE_READ,
+                ModuleId.WORKSPACE_CONTRACT,
                 ModuleId.WORKSPACE_INTELLIJ_READ,
             ),
             proof.modules.single { it.id == ModuleId.IDE_PLUGIN }.allowedProjectDependencies,
@@ -264,7 +265,7 @@ class Kvp024EndpointAuthorityTest {
     @Test
     fun `endpoint package receives named effects instead of generic write authority`() {
         val caller = JvmMember.of(
-            "io/github/amichne/kast/ide/endpoint/NioIdeEndpointPublicationBoundary",
+            "io/github/amichne/kast/ide/endpoint/JdkIdeEndpointPublisher",
             "publish",
             "()V",
         )
@@ -273,20 +274,118 @@ class Kvp024EndpointAuthorityTest {
             setOf(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
             EffectRules.classify(
                 ModuleRole.IDE_READ_ONLY,
-                caller,
+                JvmMember.of(
+                    "io/github/amichne/kast/ide/endpoint/" +
+                        "OwnedEndpointDirectory\$IdentifiedDescriptorTemporary",
+                    "publishAtomically",
+                    "()V",
+                ),
                 JvmMember.of("java/nio/file/Files", "move", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                caller,
+                JvmMember.of("java/nio/file/Files", "createTempFile", "()V"),
             ),
         )
         assertEquals(
             setOf(ForbiddenEffect.UDS_BIND),
             EffectRules.classify(
                 ModuleRole.IDE_READ_ONLY,
-                caller,
+                JvmMember.of(
+                    "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory",
+                    "bindSocket",
+                    "()V",
+                ),
                 JvmMember.of("java/nio/channels/ServerSocketChannel", "bind", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.UDS_BIND),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                JvmMember.of(
+                    "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory\$BoundSocket",
+                    "accept",
+                    "()V",
+                ),
+                JvmMember.of("java/nio/channels/ServerSocketChannel", "accept", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.UDS_BIND),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                JvmMember.of(
+                    "io/github/amichne/kast/ide/endpoint/IdeEndpointFrameCodec",
+                    "readCompletely",
+                    "()V",
+                ),
+                JvmMember.of("java/nio/channels/SocketChannel", "read", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.UDS_BIND),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                JvmMember.of(
+                    "io/github/amichne/kast/ide/endpoint/IdeEndpointFrameCodec",
+                    "write",
+                    "()V",
+                ),
+                JvmMember.of("java/nio/channels/SocketChannel", "write", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                JvmMember.of(
+                    "io/github/amichne/kast/ide/endpoint/JdkIdeEndpointPublisher",
+                    "readBack",
+                    "()V",
+                ),
+                JvmMember.of("java/nio/file/Files", "readString", "()V"),
             ),
         )
     }
 
+    @Test
+    fun `lookalike endpoint owners receive no privileged filesystem classification`() {
+        val caller = JvmMember.of("io/github/amichne/kast/ide/endpoint/LookalikeEndpointPublisher", "readBack", "()V")
+
+        assertEquals(
+            setOf(ForbiddenEffect.FILESYSTEM_WRITE),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                caller,
+                JvmMember.of("java/nio/file/Files", "writeString", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.PHYSICAL_SOURCE_READ),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                caller,
+                JvmMember.of("java/nio/file/Files", "readString", "()V"),
+            ),
+        )
+        assertEquals(
+            emptySet<ForbiddenEffect>(),
+            EffectRules.classify(
+                ModuleRole.IDE_READ_ONLY,
+                JvmMember.of(
+                    "io/github/amichne/kast/ide/endpoint/LookalikeEndpointTransport",
+                    "read",
+                    "()V",
+                ),
+                JvmMember.of("java/nio/channels/SocketChannel", "read", "()V"),
+            ),
+        )
+    }
     @Test
     fun `filesystem writes outside endpoint package remain generic`() {
         assertEquals(

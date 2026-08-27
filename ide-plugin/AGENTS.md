@@ -5,13 +5,14 @@
 ## Boundary
 
 - Apply the `IDE_READ_ONLY` role and declare no dependency on the isolated indexer runtime.
-- Depend inward on `:protocol:contract`, `:protocol:wire`, `:runtime:ide-read`, and
-  `:workspace:intellij-read` for the hosted endpoint. Keep those dependencies behind
+- Depend inward on `:protocol:contract`, `:protocol:wire`, `:runtime:ide-read`,
+  `:workspace:contract`, and `:workspace:intellij-read` for the hosted endpoint. Keep them behind
   module-internal adapters so the plugin does not export them. Do not depend on
   `:runtime:composition` or any isolated-indexer implementation.
-- The module JAR owns delivery of `META-INF/plugin.xml` from the canonical indexer registration
-  source; the staged legacy Kast payload is a build input only while later delivery tasks refine
-  runtime and workspace implementations into read-only modules.
+- The module JAR owns the local `META-INF/plugin.xml`; it adds one preloaded project-scoped
+  `IdeEndpointService` and one post-startup activity that supplies the already-open Project. The
+  staged legacy starter/resolver registrations and payload remain build inputs only until later
+  delivery tasks remove the transitional isolated-runtime path.
 - `buildPlugin` is the KVP-010 artifact and report authority. It consumes private non-platform JARs,
   emits one deterministic ZIP under `build/distributions`, and writes
   `build/reports/KVP-010-plugin.json`.
@@ -25,6 +26,10 @@
   `CanonicalOperation` capabilities without a Boolean compatibility flag.
 - Never copy an IDEA home or bundle platform-owned IntelliJ, Kotlin-plugin, Gradle-plugin, or JBR
   classes into this artifact.
+- `endpoint/` owns KVP-024's exact-root UDS bind and atomic descriptor-v2 publication. It consumes
+  only the complete hosted runtime capability, serves bounded framed sessions, and never opens,
+  imports, refreshes, or falls back. The two hosted project JARs remain explicit transitional
+  payload inputs until KVP-011 proves the final classpath closure.
 
 Run `./gradlew :ide-plugin:standalonePluginNegativeProof :ide-plugin:buildPlugin
 :ide-plugin:verifyPluginLayoutNegative`, then the architecture gates and

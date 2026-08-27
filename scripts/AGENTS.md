@@ -19,7 +19,8 @@ This directory owns the dependency-free verifier for the VFS-passive delivery bu
   canonical graph gates, read-only runtime boundary, future dispatch ownership, and generated
   projections before the four-operation product or receipt closure exists.
 - `verify_kvp024_delivery.py` independently checks KVP-024's endpoint-publication authority,
-  canonical graph gates, hosted-plugin dependency boundary, and deliberate pre-product state.
+  canonical graph gates, hosted-plugin dependency boundary, product surface, generated report,
+  and admitted completion receipt.
 - `verify_bundle.sh` compiles the canonical Kotlin authority in isolation, regenerates both projections in a temporary directory, and compares their bytes with the checked-in artifacts.
 
 Do not add host-package installation as a prerequisite. Run `scripts/verify_bundle.sh` from the repository root.

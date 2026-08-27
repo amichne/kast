@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
-"""Verify KVP-024 authority without assuming its product exists."""
-
-import json
-import pathlib
-
+"""Verify the complete KVP-024 authority, product, report, and receipt boundary."""
+import io, json
+import pathlib, subprocess
+import zipfile
 REPORT_PATH = "ide-plugin/build/reports/KVP-024-endpoint.json"
 RECEIPT_PATH = "build/reports/delivery/receipts/KVP-024-COMPLETE.receipt.json"
 RECEIPT_ROOT = (
     "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/"
     "plugin/project/epoch/model/freshness/singleflight/revalidation/dispatch/"
 )
-
-
 def required_text(root, relative_path):
     path = root / relative_path
     assert path.is_file(), relative_path
     return path.read_text()
-
 def verify_kvp024_delivery(root, program, requirements, normative_plan):
     task = next(item for item in program["tasks"] if item["id"] == "KVP-024")
     assert task["dependencyExpression"] == {
@@ -25,15 +21,9 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     }
     assert task["authorities"] == ["IDE_ENDPOINT"]
     assert task["publicInterface"] == "ReadyIdeEndpoint"
-    assert task["provesRequirements"] == [
-        "KVP-REQ-005",
-        "KVP-REQ-017",
-        "KVP-REQ-019",
-    ]
+    assert task["provesRequirements"] == ["KVP-REQ-005", "KVP-REQ-017", "KVP-REQ-019"]
     assert task["outputs"] == [{
-        "description": (
-            "One exact endpoint becomes reachable only after complete runtime construction."
-        ),
+        "description": "One exact endpoint becomes reachable only after complete runtime construction.",
         "id": "kvp.024.proof",
         "kind": "PROOF_ARTIFACT",
         "path": REPORT_PATH,
@@ -50,7 +40,6 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "requiredDependencyReceipts": ["KVP-013-COMPLETE", "KVP-023-COMPLETE"],
         "requiredGateIds": ["KVP-024-GREEN", "KVP-024-RED"],
     }
-
     expected_reads = {
         "AGENTS.md",
         "settings.gradle.kts",
@@ -69,7 +58,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "build/reports/delivery/receipts",
         "gradle/architecture",
         "gradle/delivery",
-        "docs/AGENTS.md",
+        ".github/scripts/AGENTS.md", ".github/scripts/check-repository-shape.py", "docs/AGENTS.md",
         "docs/kast-vfs-passive-reused-index-delivery-program.md",
         "scripts/AGENTS.md",
         "scripts/verify_bundle.py",
@@ -80,7 +69,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocation.kt",
         "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/AGENTS.md",
         "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocationTest.kt",
-        "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt",
+        ".github/scripts/AGENTS.md", ".github/scripts/check-repository-shape.py", "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt",
         "build-logic/src/main/kotlin/support/architecture/IdeReadFirewall.kt",
         "build-logic/src/main/kotlin/support/architecture/policy/AGENTS.md",
         "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
@@ -131,10 +120,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     assert set(task["allowedReads"]) == expected_reads
     assert set(task["allowedWrites"]) == expected_writes
     assert "settings.gradle.kts" not in expected_writes
-    for forbidden_write_root in (
-        "indexer/",
-        "workspace/",
-    ):
+    for forbidden_write_root in ("indexer/", "workspace/"):
         assert not any(path.startswith(forbidden_write_root) for path in expected_writes)
     assert not any(
         path.startswith("protocol/") and not path.startswith("protocol/wire/")
@@ -170,7 +156,6 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     assert set(gates["KVP-024-COMPLETE-GATE"]["dependsOnReceiptIds"]) == (
         direct_receipts | {"KVP-024-GREEN-RECEIPT", "KVP-024-RED-RECEIPT"}
     )
-
     assert requirements["programFingerprint"] == program["programFingerprint"]
     traced = {
         entry["requirementId"]: entry
@@ -181,15 +166,8 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     for entry in traced.values():
         assert "KVP-024" in entry["implementationTaskIds"]
         assert {"KVP-024-RED", "KVP-024-GREEN"} <= set(entry["enforcementGateIds"])
-
-    architecture = json.loads(required_text(
-        root,
-        "gradle/architecture/kast-architecture-policy.json",
-    ))
-    ide_plugin = next(
-        module for module in architecture["modules"]
-        if module["id"] == "IDE_PLUGIN"
-    )
+    architecture = json.loads(required_text(root, "gradle/architecture/kast-architecture-policy.json"))
+    ide_plugin = next(module for module in architecture["modules"] if module["id"] == "IDE_PLUGIN")
     assert ide_plugin["projectPath"] == ":ide-plugin"
     assert ide_plugin["role"] == "IDE_READ_ONLY"
     assert ide_plugin["allowedEffects"] == [
@@ -201,12 +179,10 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         ":protocol:contract",
         ":protocol:wire",
         ":runtime:ide-read",
+        ":workspace:contract",
         ":workspace:intellij-read",
     ]
-    policy = required_text(
-        root,
-        "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-    )
+    policy = required_text(root, "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt")
     plugin_policy = policy.split(
         "ideRead(\n            ModuleId.IDE_PLUGIN,",
         maxsplit=1,
@@ -215,23 +191,19 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "ModuleId.PROTOCOL_CONTRACT",
         "ModuleId.PROTOCOL_WIRE",
         "ModuleId.RUNTIME_IDE_READ",
+        "ModuleId.WORKSPACE_CONTRACT",
         "ModuleId.WORKSPACE_INTELLIJ_READ",
     ):
         assert dependency in plugin_policy
     assert "ForbiddenEffect.UDS_BIND" in plugin_policy
     assert "ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE" in plugin_policy
-
-    location = required_text(
-        root,
-        "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocation.kt",
-    )
+    assert 'Path("ide-plugin/src/main/resources/META-INF/plugin.xml")' in required_text(root, ".github/scripts/check-repository-shape.py")
+    location = required_text(root, "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/IdeEndpointLocation.kt")
     assert "class IdeEndpointLocation private constructor" in location
     assert "IdeEndpointDescriptorPath" in location
-
     bundle = required_text(root, "scripts/verify_bundle.py")
     assert "from verify_kvp024_delivery import verify_kvp024_delivery" in bundle
     assert "verify_kvp024_delivery(root, program, requirements, normative_plan)" in bundle
-
     endpoint_receipt_root = RECEIPT_ROOT + "endpoint/"
     receipt_files = {
         "AGENTS.md",
@@ -247,11 +219,7 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     }
     for filename in receipt_files:
         required_text(root, endpoint_receipt_root + filename)
-
-    report = required_text(
-        root,
-        endpoint_receipt_root + "Kvp024EndpointPublicationReport.kt",
-    )
+    report = required_text(root, endpoint_receipt_root + "Kvp024EndpointPublicationReport.kt")
     lifecycle = "enum class Kvp024ServiceState { UNPUBLISHED, BOUND, READY }"
     assert lifecycle in report, "KVP-024 lifecycle must be UNPUBLISHED -> BOUND -> READY"
     occupied = "Kvp024RejectionCase.OCCUPIED_DESCRIPTOR_PATH,\n    -> Kvp024RejectionDecision.PRESERVE_AND_REJECT"
@@ -275,23 +243,18 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         "DELETE_UNOWNED_PATH",
     ):
         assert claim in report, claim
-    dependencies = required_text(
-        root,
-        endpoint_receipt_root + "Kvp024ReceiptDependencies.kt",
-    )
+    dependencies = required_text(root, endpoint_receipt_root + "Kvp024ReceiptDependencies.kt")
     assert dependencies.index("KVP_013_COMPLETE") < dependencies.index("KVP_023_COMPLETE")
     registration = required_text(
         root, endpoint_receipt_root + "Kvp024ReceiptRegistration.kt",
     ).replace('" +\n            "', "")
     receipt_artifacts = corrected_authority_artifacts | runtime_preparation_artifacts | {
-        "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityMetadata.kt",
+        "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/AGENTS.md", "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityMetadata.kt",
+        "ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/compatibility/AGENTS.md", "ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/compatibility/IdeHostCompatibilityTest.kt", "ide-plugin/src/main/resources/META-INF/AGENTS.md",
     }
     for artifact in receipt_artifacts:
         assert f'"{artifact}"' in registration, f"KVP-024 receipt does not bind {artifact}"
-    descriptor_bindings = required_text(
-        root,
-        endpoint_receipt_root + "Kvp024DescriptorBindings.kt",
-    )
+    descriptor_bindings = required_text(root, endpoint_receipt_root + "Kvp024DescriptorBindings.kt")
     for field in (
         "SCHEMA",
         "CANONICAL_ROOT",
@@ -325,55 +288,42 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     assert "*IdeEndpointPublicationNegativeTest" in gate_source
     assert "*IdeEndpointPublicationTest" in gate_source
     assert "tasks.named<Test>(\"test\")" in build_script
-    parent_registration = required_text(
-        root,
-        RECEIPT_ROOT + "Kvp023ReceiptRegistration.kt",
-    )
+    parent_registration = required_text(root, RECEIPT_ROOT + "Kvp023ReceiptRegistration.kt")
     assert "registerKvp024ReceiptProgression(program)" in parent_registration
 
     product_root = root / "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/endpoint"
-    product_files = {
-        "AGENTS.md",
-        "ReadyIdeEndpoint.kt",
-        "PreparedIdeEndpoint.kt",
-        "IdeEndpointPreparation.kt",
-        "IdeEndpointPublication.kt",
-        "IdeEndpointPublicationFailure.kt",
-        "IdeEndpointService.kt",
-    }
-    present_product_files = {
-        path.name for path in product_root.iterdir()
-    } if product_root.is_dir() else set()
-    assert not present_product_files or product_files <= present_product_files
+    product_files = set("""AGENTS.md ReadyIdeEndpoint.kt PreparedIdeEndpoint.kt
+        IdeEndpointPreparation.kt IdeEndpointPublication.kt IdeEndpointOwnership.kt
+        IdeEndpointPublicationFailure.kt IdeEndpointService.kt IdeEndpointTransport.kt
+        ProjectEndpointGeneration.kt""".split())
+    present_product_files = {path.name for path in product_root.iterdir()} if product_root.is_dir() else set()
+    assert not present_product_files or product_files == present_product_files
     test_root = root / "ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/endpoint"
-    test_files = {
-        "AGENTS.md",
-        "IdeEndpointPublicationNegativeTest.kt",
-        "IdeEndpointPublicationTest.kt",
-    }
-    present_test_files = {
-        path.name for path in test_root.iterdir()
-    } if test_root.is_dir() else set()
+    test_files = set("""AGENTS.md IdeEndpointPublicationNegativeTest.kt
+        IdeEndpointPublicationTest.kt""".split())
+    present_test_files = {path.name for path in test_root.iterdir()} if test_root.is_dir() else set()
     assert bool(present_product_files) == bool(present_test_files)
     if present_product_files:
-        assert test_files <= present_test_files
+        assert test_files == present_test_files
+        for name in product_files:
+            assert f'mainRoot + "{name}"' in registration
+        for name in test_files:
+            assert f'testRoot + "{name}"' in registration
         product_source = "\n".join(
             required_text(root, f"ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/endpoint/{name}")
             for name in sorted(product_files - {"AGENTS.md"})
         )
-        for marker in (
-            "ReadyIdeEndpoint",
-            "PreparedIdeEndpoint",
-            "IdeEndpointPublicationFailure",
-            "IdeEndpointService",
-        ):
+        for marker in ("ReadyIdeEndpoint", "PreparedIdeEndpoint", "IdeEndpointPublicationFailure",
+                       "IdeEndpointService", "serveUntilClosed", "ProjectEndpointGenerationSource",
+                       "createDescriptorTemporary", "StandardCopyOption.ATOMIC_MOVE"):
             assert marker in product_source
     product_dependencies = tuple(
         f'implementation(project("{dependency}"))'
         for dependency in (
-        ":protocol:wire",
-        ":runtime:ide-read",
-        ":workspace:intellij-read",
+            ":protocol:wire",
+            ":runtime:ide-read",
+            ":workspace:contract",
+            ":workspace:intellij-read",
         )
     )
     if present_product_files:
@@ -381,9 +331,56 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
     else:
         assert not any(dependency in build_script for dependency in product_dependencies)
     assert 'implementation(project(":runtime:composition"))' not in build_script
-    assert not (root / REPORT_PATH).exists()
-    assert not (root / RECEIPT_PATH).exists()
-
+    for marker in ("generateIdeHostCompatibilitySource", "libs/runtime-ide-read-${project.version}.jar",
+                   "libs/workspace-intellij-read-${project.version}.jar"):
+        assert marker in build_script
+    plugin_descriptor = required_text(root, "ide-plugin/src/main/resources/META-INF/plugin.xml")
+    assert 'serviceImplementation="io.github.amichne.kast.ide.endpoint.IdeEndpointService"' in plugin_descriptor
+    assert 'implementation="io.github.amichne.kast.ide.endpoint.IdeEndpointProjectActivity"' in plugin_descriptor
+    plugin_report = json.loads(required_text(root, "ide-plugin/build/reports/KVP-010-plugin.json"))
+    plugin_archive = root / plugin_report["artifact"]["path"]
+    payload_entries = {payload["entry"] for payload in plugin_report["payloadJars"]}
+    for prefix in ("runtime-ide-read-", "workspace-intellij-read-"):
+        assert len([entry for entry in payload_entries if pathlib.PurePosixPath(entry).name.startswith(prefix)]) == 1
+    with zipfile.ZipFile(plugin_archive) as archive:
+        assert payload_entries <= set(archive.namelist())
+        descriptor_jar = archive.read(plugin_report["descriptorJarEntry"])
+    with zipfile.ZipFile(io.BytesIO(descriptor_jar)) as archive:
+        packaged_descriptor = archive.read("META-INF/plugin.xml").decode()
+    assert 'serviceImplementation="io.github.amichne.kast.ide.endpoint.IdeEndpointService"' in packaged_descriptor
+    assert 'implementation="io.github.amichne.kast.ide.endpoint.IdeEndpointProjectActivity"' in packaged_descriptor
+    generated_report = json.loads(required_text(root, REPORT_PATH))
+    assert generated_report["schemaVersion"] == 1
+    assert generated_report["taskId"] == "KVP-024"
+    assert generated_report["descriptorRules"] == [
+        "EXCLUSIVE_ROOT_DIRECTORY", "SOCKET_SUFFIX_ENDPOINT_JSON", "SAME_PARENT_TEMPORARY",
+        "ATOMIC_MOVE_REQUIRED", "NO_MOVE_FALLBACK",
+    ]
+    assert generated_report["rollbackArtifacts"] == [
+        "OWNED_BOUND_SOCKET_NAMESPACE", "OWNED_TEMPORARY_DESCRIPTOR",
+    ]
+    assert [(case["case"], case["decision"]) for case in generated_report["rejectionCases"]] == [
+        ("WRONG_ROOT", "REJECT_BEFORE_BIND"), ("PARTIAL_RUNTIME", "REJECT_BEFORE_BIND"),
+        ("DUPLICATE_ENDPOINT", "REJECT_BEFORE_SECOND_BIND"),
+        ("OCCUPIED_NON_SOCKET_PATH", "PRESERVE_AND_REJECT"),
+        ("REACHABLE_OR_OCCUPIED_SOCKET", "PRESERVE_AND_REJECT"),
+        ("OCCUPIED_DESCRIPTOR_PATH", "PRESERVE_AND_REJECT"),
+        ("SOCKET_BIND_FAILED", "REJECT_WITHOUT_PUBLISH"),
+        ("DESCRIPTOR_PUBLICATION_FAILED", "RETIRE_OWNED_AND_REJECT"),
+    ]
+    completion_receipt = json.loads(required_text(root, RECEIPT_PATH))
+    assert completion_receipt["receiptId"] == "KVP-024-COMPLETE"
+    assert completion_receipt["taskId"] == "KVP-024"
+    assert completion_receipt["gateId"] == "KVP-024-COMPLETE-GATE"
+    assert completion_receipt["programFingerprint"] == program["programFingerprint"]
+    assert completion_receipt["requirementFingerprint"] == requirements["requirementFingerprint"]
+    assert set(completion_receipt["dependencyReceiptDigests"]) == {
+        "KVP-013-COMPLETE", "KVP-023-COMPLETE", "KVP-024-RED-RECEIPT",
+        "KVP-024-GREEN-RECEIPT",
+    }
+    assert completion_receipt["exactHead"] == subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=root, text=True,
+    ).strip()
 
 if __name__ == "__main__":
     repository = pathlib.Path(__file__).resolve().parents[1]

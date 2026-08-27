@@ -43,7 +43,54 @@ internal sealed interface IdeHostCompatibilityMetadataFailure {
     ) : IdeHostCompatibilityMetadataFailure
 }
 
+/** Non-forgeable generated compatibility candidate and its exact admitting policy. */
+internal class AdmittedIdeHostCompatibilityMetadata private constructor(
+    val candidate: IdeHostCompatibilityCandidate,
+    val compatibilityPolicy: IdeHostCompatibilityPolicy,
+) {
+    companion object {
+        /**
+         * Proof transition: `GeneratedIdeHostCompatibilityMetadata ->
+         * Refinement<AdmittedIdeHostCompatibilityMetadata, IdeHostCompatibilityMetadataFailure>`.
+         *
+         * Establishes the closed KVP-012 report identity and retains the exact policy derived from
+         * its candidate. Expected metadata or compatibility rejection remains finite
+         * [IdeHostCompatibilityMetadataFailure]. Raw JSON leaves only at this generated boundary.
+         */
+        internal fun admitGenerated(): Refinement<
+            AdmittedIdeHostCompatibilityMetadata,
+            IdeHostCompatibilityMetadataFailure,
+        > {
+            val candidate = when (val parsed = IdeHostCompatibilityMetadata.parseGenerated()) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return parsed
+            }
+            return when (val definition = IdeHostCompatibilityPolicy.define(candidate)) {
+                is Refinement.Refined -> Refinement.Refined(
+                    AdmittedIdeHostCompatibilityMetadata(candidate, definition.value),
+                )
+                is Refinement.Rejected -> Refinement.Rejected(
+                    IdeHostCompatibilityMetadataFailure.CompatibilityRejected(definition.failure),
+                )
+            }
+        }
+    }
+}
+
 internal object IdeHostCompatibilityMetadata {
+    /**
+     * Proof transition: `GeneratedIdeHostCompatibilityMetadata ->
+     * Refinement<IdeHostCompatibilityCandidate, IdeHostCompatibilityMetadataFailure>`.
+     *
+     * Establishes the closed report schema and exact task identity for the sole compiled KVP-012
+     * document. Expected metadata rejection remains [IdeHostCompatibilityMetadataFailure]. Raw
+     * JSON leaves only at this generated compile-time metadata boundary.
+     */
+    internal fun parseGenerated(): Refinement<
+        IdeHostCompatibilityCandidate,
+        IdeHostCompatibilityMetadataFailure,
+    > = parse(GeneratedIdeHostCompatibilityMetadata.document)
+
     /**
      * Proof transition: `String + IdeHostCompatibilityPolicy ->
      * Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityMetadataFailure>`.
@@ -57,6 +104,30 @@ internal object IdeHostCompatibilityMetadata {
         raw: String,
         policy: IdeHostCompatibilityPolicy,
     ): Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityMetadataFailure> {
+        val candidate = when (val parsed = parse(raw)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return parsed
+        }
+        return when (val admission = policy.admit(candidate)) {
+            is IdeHostCompatibilityAdmission.Admitted -> Refinement.Refined(admission.compatibility)
+            is IdeHostCompatibilityAdmission.Rejected -> Refinement.Rejected(
+                IdeHostCompatibilityMetadataFailure.CompatibilityRejected(admission.failure),
+            )
+        }
+    }
+
+    /**
+     * Proof transition: `String ->
+     * Refinement<IdeHostCompatibilityCandidate, IdeHostCompatibilityMetadataFailure>`.
+     *
+     * Establishes the closed KVP-012 document schema and exact schema/task identities before
+     * projecting its candidate. Malformed, unsupported, or wrong-task documents remain finite
+     * [IdeHostCompatibilityMetadataFailure]. Raw JSON and document fields leave only at this
+     * generated compatibility boundary.
+     */
+    private fun parse(
+        raw: String,
+    ): Refinement<IdeHostCompatibilityCandidate, IdeHostCompatibilityMetadataFailure> {
         val document = try {
             compatibilityMetadataJson.decodeFromString(
                 IdeHostCompatibilityReportDocument.serializer(),
@@ -75,20 +146,16 @@ internal object IdeHostCompatibilityMetadata {
         if (document.taskId != COMPATIBILITY_TASK_ID) {
             return Refinement.Rejected(IdeHostCompatibilityMetadataFailure.WrongTaskIdentity)
         }
-        val candidate = IdeHostCompatibilityCandidate(
-            document.ideBuild,
-            document.kotlinPluginBuild,
-            document.kastPluginVersion,
-            document.runtimeProtocolIdentity,
-            document.operationRegistryDigest,
-            document.wireSchemaDigest,
-            document.capabilities,
+        return Refinement.Refined(
+            IdeHostCompatibilityCandidate(
+                document.ideBuild,
+                document.kotlinPluginBuild,
+                document.kastPluginVersion,
+                document.runtimeProtocolIdentity,
+                document.operationRegistryDigest,
+                document.wireSchemaDigest,
+                document.capabilities,
+            ),
         )
-        return when (val admission = policy.admit(candidate)) {
-            is IdeHostCompatibilityAdmission.Admitted -> Refinement.Refined(admission.compatibility)
-            is IdeHostCompatibilityAdmission.Rejected -> Refinement.Rejected(
-                IdeHostCompatibilityMetadataFailure.CompatibilityRejected(admission.failure),
-            )
-        }
     }
 }

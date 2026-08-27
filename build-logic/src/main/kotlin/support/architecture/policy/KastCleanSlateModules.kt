@@ -271,6 +271,7 @@ internal object KastCleanSlateModules {
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_WIRE,
             ModuleId.RUNTIME_IDE_READ,
+            ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_INTELLIJ_READ,
             lifecycle = ModuleLifecycle.ACTIVE,
             additionalEffects = setOf(

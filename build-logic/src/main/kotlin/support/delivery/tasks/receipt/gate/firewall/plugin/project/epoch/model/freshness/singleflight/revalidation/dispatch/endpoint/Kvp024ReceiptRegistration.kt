@@ -15,10 +15,15 @@ internal fun Project.registerKvp024ReceiptProgression(
         "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/" +
             "project/epoch/model/freshness/singleflight/revalidation/dispatch/endpoint/"
     val sharedArtifacts = listOf(
+        ".github/scripts/AGENTS.md",
+        ".github/scripts/check-repository-shape.py",
         "AGENTS.md",
         "ide-plugin/AGENTS.md",
         "ide-plugin/build.gradle.kts",
+        "ide-plugin/src/main/resources/META-INF/AGENTS.md",
         "ide-plugin/src/main/resources/META-INF/plugin.xml",
+        "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/" +
+            "AGENTS.md",
         "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/" +
             "IdeHostCompatibilityMetadata.kt",
         "runtime/ide-read/AGENTS.md",
@@ -26,13 +31,17 @@ internal fun Project.registerKvp024ReceiptProgression(
             "AGENTS.md",
         "runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/" +
             "HostedIdeReadRuntime.kt",
+        "ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/compatibility/AGENTS.md",
         mainRoot + "AGENTS.md",
         mainRoot + "ReadyIdeEndpoint.kt",
         mainRoot + "PreparedIdeEndpoint.kt",
         mainRoot + "IdeEndpointPreparation.kt",
         mainRoot + "IdeEndpointPublication.kt",
+        mainRoot + "IdeEndpointOwnership.kt",
+        mainRoot + "IdeEndpointTransport.kt",
         mainRoot + "IdeEndpointPublicationFailure.kt",
         mainRoot + "IdeEndpointService.kt",
+        mainRoot + "ProjectEndpointGeneration.kt",
         testRoot + "AGENTS.md",
         "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/" +
             "AGENTS.md",
@@ -98,7 +107,11 @@ internal fun Project.registerKvp024ReceiptProgression(
         "scripts/verify_kvp024_delivery.py",
     )
     val redArtifacts = sharedArtifacts + testRoot + "IdeEndpointPublicationNegativeTest.kt"
-    val greenArtifacts = redArtifacts + testRoot + "IdeEndpointPublicationTest.kt"
+    val greenArtifacts = redArtifacts + listOf(
+        testRoot + "IdeEndpointPublicationTest.kt",
+        "ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/compatibility/" +
+            "IdeHostCompatibilityTest.kt",
+    )
     val redEvidence = layout.projectDirectory.file(
         "ide-plugin/build/reports/KVP-024-red-gate.json",
     )

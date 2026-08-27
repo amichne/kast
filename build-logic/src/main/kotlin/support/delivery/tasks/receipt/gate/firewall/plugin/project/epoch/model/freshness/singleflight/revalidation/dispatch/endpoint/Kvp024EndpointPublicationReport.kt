@@ -76,6 +76,7 @@ private data class Kvp024ForbiddenWorkDocument(
 }
 
 @Serializable private enum class Kvp024DescriptorRule {
+    EXCLUSIVE_ROOT_DIRECTORY,
     SOCKET_SUFFIX_ENDPOINT_JSON,
     SAME_PARENT_TEMPORARY,
     ATOMIC_MOVE_REQUIRED,
@@ -101,7 +102,7 @@ private data class Kvp024ForbiddenWorkDocument(
     REJECT_BEFORE_SECOND_BIND,
 }
 @Serializable private enum class Kvp024RollbackArtifact {
-    OWNED_BOUND_SOCKET,
+    OWNED_BOUND_SOCKET_NAMESPACE,
     OWNED_TEMPORARY_DESCRIPTOR,
 }
 

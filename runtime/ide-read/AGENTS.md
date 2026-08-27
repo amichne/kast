@@ -24,6 +24,8 @@ remains host-neutral and pure.
 - KVP-021 owns cancellable read execution; KVP-022 owns post-read epoch revalidation.
 - KVP-023 owns four statically named dispatch ports. Unsupported canonical operations fail before
   generated decoding or port invocation; no collection or service locator may hold the ports.
+- `preparation/HostedIdeReadRuntime` is the sole exact-four-port construction capability consumed
+  by the IDE endpoint. Partial route assembly remains a closed rejection and exposes no dispatch.
 
 ## Verification ladder
 

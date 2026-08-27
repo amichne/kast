@@ -8,6 +8,9 @@ This directory owns executable checks and the tests that prove them.
   plumbing rather than parsing human-formatted command output.
 - Expected failures must map to a finite result and a nonzero exit status with
   an actionable message.
+- `check-repository-shape.py` exempts only the two native IntelliJ descriptor roots from the
+  retired plugin-root text marker: the private indexer descriptor and the independently installed
+  hosted plugin descriptor. All other occurrences remain violations.
 - `agents_md_turn_refresh.py` computes guide work but does not synthesize
   semantic Markdown. The active turn must inspect the changed files and own the
   resulting guidance.

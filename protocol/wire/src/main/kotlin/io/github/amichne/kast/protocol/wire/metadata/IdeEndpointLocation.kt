@@ -55,39 +55,65 @@ value class IdeEndpointDescriptorPath private constructor(val value: String) {
     }
 }
 
-/** One deterministic UDS and descriptor pair for an exact root in an admitted state directory. */
+@JvmInline
+value class IdeEndpointStateDirectoryPath private constructor(val value: String) {
+    companion object {
+        internal fun from(
+            directory: IdeEndpointSocketDirectory,
+            rootStateDigest: String,
+        ): IdeEndpointStateDirectoryPath = IdeEndpointStateDirectoryPath(
+            directory.child(".k$rootStateDigest"),
+        )
+    }
+}
+
+/** One root-exclusive state directory containing its stable UDS and suffix descriptor. */
 class IdeEndpointLocation private constructor(
+    val stateDirectoryPath: IdeEndpointStateDirectoryPath,
     val socketPath: IdeUnixSocketPath,
     val descriptorPath: IdeEndpointDescriptorPath,
 ) {
     companion object {
         /**
-         * Proof transition: `IdeEndpointSocketDirectory + IdeEndpointCanonicalRoot ->
+         * Proof transition: `(IdeEndpointSocketDirectory, IdeEndpointCanonicalRoot) ->
          * Refinement<IdeEndpointLocation, IdeEndpointPathFailure>`.
          *
-         * Establishes the sole bounded UDS name and adjacent descriptor path for the exact root.
-         * [IdeEndpointPathFailure] is the closed expected failure if the construction bound ever
-         * stops implying a valid UDS path. Raw path text may leave only at the CLI descriptor-read
-         * or hosted publication boundaries.
+         * Establishes one exact-root exclusive state directory containing its bounded stable UDS
+         * and adjacent suffix descriptor. Atomic directory creation serializes cooperating
+         * publishers for the root, so staging, publication, and pre-ready rollback operate only
+         * under that capability. [IdeEndpointPathFailure] is the closed expected failure. Raw path
+         * text may leave only at CLI descriptor-read or hosted publication boundaries.
          */
         fun locate(
             directory: IdeEndpointSocketDirectory,
             root: IdeEndpointCanonicalRoot,
         ): Refinement<IdeEndpointLocation, IdeEndpointPathFailure> {
-            val digest = HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256")
-                    .digest(root.value.toByteArray(StandardCharsets.UTF_8)),
-                0,
-                ROOT_DIGEST_BYTES,
+            val rootDigest = digest(root.value, ROOT_DIGEST_BYTES)
+            val stateDirectory = IdeEndpointStateDirectoryPath.from(
+                directory,
+                rootDigest,
             )
-            val separator = if (directory.value == "/") "" else "/"
-            val rawSocket = "${directory.value}${separator}kast-ide-$digest.sock"
+            val rawSocket = "${stateDirectory.value}/s"
             return when (val parsed = IdeUnixSocketPath.parse(rawSocket)) {
                 is Refinement.Refined -> Refinement.Refined(
-                    IdeEndpointLocation(parsed.value, IdeEndpointDescriptorPath.from(parsed.value)),
+                    IdeEndpointLocation(
+                        stateDirectory,
+                        parsed.value,
+                        IdeEndpointDescriptorPath.from(parsed.value),
+                    ),
                 )
                 is Refinement.Rejected -> Refinement.Rejected(parsed.failure)
             }
         }
+
+        private fun digest(value: String, bytes: Int): String = HexFormat.of().formatHex(
+            MessageDigest.getInstance("SHA-256")
+                .digest(value.toByteArray(StandardCharsets.UTF_8)),
+            0,
+            bytes,
+        )
     }
 }
+
+private fun IdeEndpointSocketDirectory.child(name: String): String =
+    if (value == "/") "/$name" else "$value/$name"

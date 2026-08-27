@@ -8,6 +8,8 @@ compatibility contract.
 - Keep the adapter module-internal so `:ide-plugin` does not export `:protocol:contract` types.
 - Refine decoded primitives through `IdeHostCompatibilityPolicy`; malformed schema, task identity,
   and compatibility failures remain finite typed data.
+- Issue live compatibility only through the no-argument generated-document admission. Do not
+  expose a factory from an arbitrary candidate or raw report.
 - Extract raw JSON and field strings only in this adapter.
 
 Run `./gradlew :ide-plugin:generateIdeHostCompatibilityReport :ide-plugin:test --tests
