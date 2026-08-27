@@ -122,9 +122,9 @@ private sealed interface RetainedHostedIdeProject {
     }
 
     data class TestFixture(
-        val read: HostedProjectCurrentRead,
+        val read: () -> HostedProjectCurrentRead,
     ) : RetainedHostedIdeProject {
-        override fun admitCurrentRead(): HostedProjectCurrentRead = read
+        override fun admitCurrentRead(): HostedProjectCurrentRead = read()
     }
 }
 
@@ -132,6 +132,7 @@ private sealed interface RetainedHostedIdeProject {
 internal enum class HostedIdeReadProjectTestRead {
     CURRENT,
     READ_PREEMPTED,
+    MOVED_AFTER_SEMANTIC_READ,
 }
 
 /** Closed result of observing and re-admitting the retained Project's current opaque epoch. */
@@ -151,35 +152,48 @@ internal sealed interface HostedProjectCurrentRead {
 
 /**
  * Proof transition: `(IdeEndpointCanonicalRoot, HostedIdeReadProjectTestRead) ->
- * HostedProjectCurrentRead`.
+ * (() -> HostedProjectCurrentRead)`.
  *
- * Constructs only friend-test current or preempted evidence. Root parsing and opaque epoch
- * construction remain inside this test boundary; production callers cannot select either state.
+ * Constructs only friend-test current, preempted, or post-semantic moved observations from one
+ * retained opaque source. Root parsing and epoch construction remain inside this boundary;
+ * production callers cannot select any fixture state.
  */
 private fun testingCurrentRead(
     root: IdeEndpointCanonicalRoot,
     read: HostedIdeReadProjectTestRead,
-): HostedProjectCurrentRead {
-    if (read == HostedIdeReadProjectTestRead.READ_PREEMPTED) {
-        return HostedProjectCurrentRead.EpochRejected(
-            ProjectReadEpochObservationFailure.ReadPreempted,
-        )
+): () -> HostedProjectCurrentRead {
+    if (read == HostedIdeReadProjectTestRead.READ_PREEMPTED) return {
+        HostedProjectCurrentRead.EpochRejected(ProjectReadEpochObservationFailure.ReadPreempted)
     }
     val workspaceRoot = when (val parsed = CanonicalWorkspaceRoot.fromCanonicalPath(
         Path.of(root.value),
     )) {
         is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return HostedProjectCurrentRead.EpochRejected(
-            ProjectReadEpochObservationFailure.ProjectRootMalformed,
-        )
+        is Refinement.Rejected -> return {
+            HostedProjectCurrentRead.EpochRejected(
+                ProjectReadEpochObservationFailure.ProjectRootMalformed,
+            )
+        }
     }
-    val source = ProjectReadEpoch.Source.create<Unit> { Refinement.Refined(Unit) }
-    return when (val observed = source.observe()) {
-        is ProjectReadEpochObservation.Observed -> HostedProjectCurrentRead.Admitted(
-            VfsPassiveReadCapability.issue(workspaceRoot, observed.epoch),
-        )
-        is ProjectReadEpochObservation.Rejected ->
-            HostedProjectCurrentRead.EpochRejected(observed.failure)
+    var observationCount = 0
+    val source = ProjectReadEpoch.Source.create<Int> {
+        val state = when (read) {
+            HostedIdeReadProjectTestRead.CURRENT -> 0
+            HostedIdeReadProjectTestRead.MOVED_AFTER_SEMANTIC_READ ->
+                if (observationCount < 2) 0 else 1
+            HostedIdeReadProjectTestRead.READ_PREEMPTED -> error("handled above")
+        }
+        observationCount += 1
+        Refinement.Refined(state)
+    }
+    return {
+        when (val observed = source.observe()) {
+            is ProjectReadEpochObservation.Observed -> HostedProjectCurrentRead.Admitted(
+                VfsPassiveReadCapability.issue(workspaceRoot, observed.epoch),
+            )
+            is ProjectReadEpochObservation.Rejected ->
+                HostedProjectCurrentRead.EpochRejected(observed.failure)
+        }
     }
 }
 

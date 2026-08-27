@@ -366,6 +366,12 @@ val verifyReadOnlyGraph = tasks.register<support.delivery.Kvp023ReadOnlyGraphGat
     mustRunAfter(defaultTest, verifyReadOnlyGraphNegative, ":recordKVP023RedReceipt")
 }
 apply(from = "gradle/kvp028-workspace-inspect.gradle.kts")
+apply(from = "gradle/kvp029-symbol-discover.gradle.kts")
 tasks.named("check") {
-    dependsOn("ideHostedWorkspaceInspectNegativeProof", "ideHostedWorkspaceInspectAcceptance")
+    dependsOn(
+        "ideHostedWorkspaceInspectNegativeProof",
+        "ideHostedWorkspaceInspectAcceptance",
+        "ideHostedSymbolDiscoverNegativeProof",
+        "ideHostedSymbolDiscoverAcceptance",
+    )
 }

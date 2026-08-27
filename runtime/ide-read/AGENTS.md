@@ -10,8 +10,9 @@ remains host-neutral and pure.
   evidence. KVP-021 and KVP-022 add the narrow `:workspace:intellij-read` execution boundary.
 - KVP-023 depends internally on `:protocol:wire` for the exact four generated read-operation
   bindings. Its intended KVP-024 composition consumer already owns the protocol boundary.
-- Do not depend on `:ide-plugin`, runtime server/composition, workspace or symbol services,
-  persistence, change, topology, runtime acquisition, coroutines, or channels.
+- KVP-029 observes the existing symbol adapter through its nominal hosted route and named native
+  adapter gate; keep the product dependency edge indirect until its exact composition task. Do not
+  depend on `:ide-plugin`, runtime composition, persistence, change, topology, or acquisition.
 - Keep the workspace contract edge internal; the public permit API must not export it.
 
 ## Contract invariants
@@ -31,6 +32,9 @@ remains host-neutral and pure.
   by the IDE endpoint. Partial route assembly remains a closed rejection and exposes no dispatch.
 - KVP-028's workspace port is the first concrete route. It returns READY only after a same-root
   current epoch is re-admitted from the retained IDE Project and has no repair authority.
+- KVP-029's discovery port enters the existing single-flight controller, invokes only the nominal
+  native adapter authority, and admits detached bounded output only after same-source epoch
+  equality.
 
 ## Verification ladder
 

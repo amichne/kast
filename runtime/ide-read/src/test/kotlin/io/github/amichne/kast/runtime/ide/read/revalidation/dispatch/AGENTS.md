@@ -11,3 +11,7 @@
 - `IdeHostedWorkspaceInspectNegativeProof` rejects the isolated-host candidate and unavailable
   epoch without repair. `IdeHostedWorkspaceInspectAcceptance` proves exact root, IDE host,
   admitted capabilities, and current-epoch success through the production KVP-028 port.
+- `IdeHostedSymbolDiscoverNegativeProof` proves isolated host, movement, excess results, dumb-mode
+  qualification, and cancellation cannot appear as complete KVP-029 discovery.
+- `IdeHostedSymbolDiscoverAcceptance` proves the current exact Project capability reaches one
+  bounded detached native discovery outcome and remains current through projection.
