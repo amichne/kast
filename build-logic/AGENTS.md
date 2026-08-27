@@ -17,7 +17,8 @@ the consuming projects.
   runtime library synchronization, classpath layout proof, indexer-version
   generation, generated-serialization source guards, and wrapper scripts.
 - `support/plugin` owns standalone IntelliJ plugin payload refinement, deterministic ZIP assembly,
-  generated build-report serialization, and independent report/archive admission for receipts.
+  hosted read-only bytecode/layout proof, generated build-report serialization, and independent
+  report/archive admission for receipts.
 - `support/pr633` owns reusable exact-head, bytecode, API, and gate-evidence task types.
 - `support/architecture` owns the typed clean-slate module graph, effect policy,
   and checked-in architecture projection.
@@ -36,9 +37,9 @@ the consuming projects.
 - Convention-plugin IDs and registered task names are consumed across project
   boundaries. Renaming or changing their output layout is a repository-wide
   contract change.
-- `kast.runtime-app` provides generic application packaging. `:ide-plugin` owns the standalone
-  plugin artifact; `:indexer` stages its current private payload inputs and consumes that artifact
-  in the isolated distribution.
+- `kast.runtime-app` provides generic application packaging. `:ide-plugin` owns the final hosted
+  plugin artifact. The explicit `:indexer` fixture stages its own descriptor and private runtime
+  payload; it never supplies or consumes the hosted artifact.
 
 ## Shared invariants
 

@@ -8,7 +8,8 @@ bounded legacy-prefix observation, and atomic issuance for delivery receipts.
 - `TaskProofReceiptJsonBoundary.kt` is the generated v2 `TaskProofReceipt` codec.
 - `TaskProofReceiptIssuanceBoundary.kt` reuses content-scoped v2 receipts and enforces exact head only for graph-declared milestone policy.
 - `TaskPacketJsonBoundary.kt` projects and re-admits the complete graph-owned atomic task packet.
-- `atomic/kvp025/` owns endpoint-retirement proof. `atomic/kvp026/` owns exact-root CLI endpoint
+- `atomic/kvp011/` owns final hosted-plugin archive/classpath proof. `atomic/kvp025/` owns
+  endpoint-retirement proof. `atomic/kvp026/` owns exact-root CLI endpoint
   admission proof, including graph-named JUnit evidence and topological predecessor re-admission.
 - `atomic/kvp027/` owns the IDE-only default demand proof, including typed misuse/legal gate
   evidence, successful CLI test observation, KVP-026 re-admission, and content-scoped reuse.

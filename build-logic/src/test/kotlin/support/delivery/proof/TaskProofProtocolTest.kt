@@ -10,15 +10,19 @@ class TaskProofProtocolTest {
     private val program = KastVfsPassiveReusedIndexProgram.validated
 
     @Test
-    fun `legacy receipts stop at the admitted prefix and atomic proofs begin at KVP 025`() {
-        val legacy = program.program.tasks.filter { it.id < TaskId("KVP-025") }
-        val atomic = program.program.tasks.filter { it.id >= TaskId("KVP-025") }
+    fun `legacy receipts preserve the admitted prefix and ready tasks use atomic proofs`() {
+        val legacy = program.program.tasks.filter { it.proof is TaskProofProtocol.Legacy }
+        val atomic = program.program.tasks.filter { it.proof is TaskProofProtocol.Atomic }
 
-        assertEquals(24, legacy.size)
-        assertTrue(legacy.all { it.proof is TaskProofProtocol.Legacy })
-        assertEquals(19, atomic.size)
-        assertTrue(atomic.all { it.proof is TaskProofProtocol.Atomic })
-        assertEquals(24 * 3 + 19, program.gates.size)
+        assertEquals(23, legacy.size)
+        assertEquals(20, atomic.size)
+        assertEquals(23 * 3 + 20, program.gates.size)
+        val late = assertInstanceOf(
+            TaskProofProtocol.Atomic::class.java,
+            program.program.tasks.single { it.id == TaskId("KVP-011") }.proof,
+        )
+        assertEquals("./gradlew proveKVP011", late.command.command)
+        assertFalse(late.receipt.requiresExactHead)
     }
 
     @Test

@@ -47,7 +47,7 @@ data class TaskProofReceiptContract internal constructor(
 }
 
 internal fun deriveTaskProofProtocol(task: TaskNode): TaskProofProtocol =
-    if (task.id < ATOMIC_TASK_PROOF_FRONTIER) {
+    if (task.id < ATOMIC_TASK_PROOF_FRONTIER && task.id !in LATE_ATOMIC_TASKS) {
         TaskProofProtocol.Legacy(
             task.red,
             task.green,
@@ -117,6 +117,7 @@ private fun legacyGates(task: TaskNode): List<GateNode> {
 }
 
 private val ATOMIC_TASK_PROOF_FRONTIER = TaskId("KVP-025")
+private val LATE_ATOMIC_TASKS = setOf(TaskId("KVP-011"))
 private val EXACT_HEAD_TASKS = setOf(
     TaskId("KVP-031"),
     TaskId("KVP-034"),

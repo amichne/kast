@@ -3,7 +3,7 @@
 **Status:** Normative reader plan. The canonical Kotlin graph and its deterministic projections are the sole task-field authority.
 **Tooling authority:** `amichne/kast@78262728313c90bb847e73425dc1a76d704397db`
 **Delivery authority digest:** `de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c`
-**Program fingerprint:** `edab94e60e3df946140793d5cdd615ff6becfecb9dc9bc98eaad486e386fed6d`
+**Program fingerprint:** `bdca2d49f81d0434fea370cd11a511dadc13bbbbb8d7d120a20df896ce09856c`
 
 ## Terminal outcome
 
@@ -1052,9 +1052,13 @@ and receipt emission.
 
 **Dependencies.** `KVP-010`, `KVP-025`, `KVP-031`. Computed wave: `24`.
 
-**Allowed reads.** `ide-plugin/build.gradle.kts`, `ide-plugin/src`, `indexer/build.gradle.kts`, `runtime/ide-read`, `workspace/intellij-read`.
+**Allowed reads.** The generated graph packet is the sole relevant-input authority. It closes over
+the hosted plugin/indexer separation, read runtime, layout policy, proof boundary, guides, and
+deterministic projections needed by this task.
 
-**Allowed writes.** `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginArchiveFile.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginBytecodePolicy.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayout.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayoutFixtures.kt`, `build-logic/src/main/kotlin/support/plugin/IdeHostedPluginLayoutTasks.kt`, `ide-plugin/build.gradle.kts`, `ide-plugin/src/main/resources`, `ide-plugin/src/test`, `indexer/build.gradle.kts`.
+**Allowed writes.** The generated graph packet is the sole write-scope authority. It admits only
+the hosted archive/classpath policy, package split, graph-derived atomic proof, projections, tests,
+and owning guides.
 
 **Inputs.** `baseline:CURRENT_HEAD`, `programAuthority:DELIVERY_AUTHORITY`, `taskOutput:kvp.010.proof`, `taskOutput:kvp.025.proof`, `taskOutput:kvp.031.proof`, `requirement:KVP-REQ-007`, `requirement:KVP-REQ-016`.
 
@@ -1068,13 +1072,18 @@ and receipt emission.
 
 **Forbidden work.** Size-only verification; Filename-only verification; Allowing hidden shaded platform classes.
 
-**RED.** `./gradlew :ide-plugin:verifyPluginLayoutNegative`. Expected failure: Injected IntelliJ, Kotlin, Gradle, JBR, bootstrap, change, topology, JDBC, runtime-acquisition, or process-launch content is not detected.
+**Atomic proof.** `./gradlew proveKVP011`.
 
-**GREEN.** `./gradlew :ide-plugin:verifyPluginLayout`. Expected proof: Plugin contents and transitive classpath satisfy the read-only policy and size ceiling.
+**Named misuse.** `./gradlew :ide-plugin:verifyPluginLayoutNegative` rejects the fixed IntelliJ,
+Kotlin, Gradle, JBR, bootstrap, mutation, topology, JDBC, runtime-acquisition, and process-launch
+fixtures.
+
+**Named legal path.** `./gradlew :ide-plugin:verifyPluginLayout` proves the physical hosted plugin
+ZIP and every nested JAR satisfy the read-only policy and size ceiling.
 
 **Review boundary.** Read-only payload ownership, layout verifier, and plugin tests only.
 
-**Completion receipt.** `KVP-011-COMPLETE` at `build/reports/delivery/receipts/KVP-011-COMPLETE.receipt.json`. It consumes `KVP-011-RED`, `KVP-011-GREEN`, `KVP-010-COMPLETE`, `KVP-025-COMPLETE`, and `KVP-031-COMPLETE`.
+**Completion receipt.** `KVP-011-COMPLETE` at `build/reports/delivery/receipts/KVP-011-COMPLETE.receipt.json`. It is content-scoped and consumes `KVP-010-COMPLETE`, `KVP-025-COMPLETE`, and the current exact-head `KVP-031-COMPLETE`.
 
 ### KVP-032: Enforce static VFS-passive safety
 
