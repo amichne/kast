@@ -66,7 +66,7 @@ internal fun Project.registerKvp032AtomicProof(): Set<TaskId> {
 }
 
 private fun PrepareKvp032ProofTask.configureDependencies() {
-    kvp009ReceiptFile.set(receipt("KVP-009"))
+    kvp010WitnessReceiptFile.set(receipt("KVP-010"))
     kvp011ReceiptFile.set(receipt("KVP-011"))
     kvp011ReportFile.set(project.layout.projectDirectory.file(
         canonicalKvp011TaskPacket().task.outputs.single().path,
@@ -83,7 +83,7 @@ private fun PrepareKvp032ProofTask.configureDependencies() {
 }
 
 private fun ProveKvp032Task.configureDependencies() {
-    kvp009ReceiptFile.set(receipt("KVP-009"))
+    kvp010WitnessReceiptFile.set(receipt("KVP-010"))
     kvp011ReceiptFile.set(receipt("KVP-011"))
     kvp011ReportFile.set(project.layout.projectDirectory.file(
         canonicalKvp011TaskPacket().task.outputs.single().path,

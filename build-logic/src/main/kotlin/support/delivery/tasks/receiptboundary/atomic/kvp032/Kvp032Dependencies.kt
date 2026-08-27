@@ -20,6 +20,25 @@ internal sealed interface Kvp032DependencyAdmission {
     data class Rejected(val failure: Kvp032DependencyFailure) : Kvp032DependencyAdmission
 }
 
+internal enum class Kvp032LegacyKvp009WitnessFailure {
+    MALFORMED_RECEIPT,
+    IDENTITY_MISMATCH,
+    CLOSURE_MISMATCH,
+    DIGEST_MISMATCH,
+    NON_CANONICAL_RECEIPT,
+}
+
+internal class AdmittedKvp032LegacyKvp009Witness internal constructor(
+    val dependencyDigest: TaskProofDependencyDigest,
+)
+
+internal sealed interface Kvp032LegacyKvp009WitnessAdmission {
+    data class Complete(val witness: AdmittedKvp032LegacyKvp009Witness) :
+        Kvp032LegacyKvp009WitnessAdmission
+    data class Rejected(val failure: Kvp032LegacyKvp009WitnessFailure) :
+        Kvp032LegacyKvp009WitnessAdmission
+}
+
 private sealed interface Kvp032DependencyTextRead {
     data class Complete(val text: String) : Kvp032DependencyTextRead
     data object Rejected : Kvp032DependencyTextRead
@@ -34,15 +53,16 @@ private sealed interface Kvp032ReceiptAdmission {
  * Proof transition: canonical KVP-032 packet plus five predecessor receipt closures ->
  * `Kvp032DependencyAdmission`.
  *
- * Establishes the admitted KVP-009/KVP-023 legacy prefix, exact KVP-011/KVP-027 v2 outputs, and
- * current exact-head KVP-031 v2 output without rerunning unchanged legacy work. The recorded ready
- * frontier is retained as KVP-032's implementation-scope baseline. Expected read, schema, closure,
- * or digest failure remains finite [Kvp032DependencyFailure] data; raw JSON exists only here.
+ * Establishes KVP-009 through its admitted KVP-010 successor witness, the pinned KVP-023 legacy
+ * receipt, exact KVP-011/KVP-027 v2 outputs, and current exact-head KVP-031 v2 output without
+ * rerunning unchanged legacy work. The recorded ready frontier is retained as KVP-032's
+ * implementation-scope baseline. Expected read, schema, closure, or digest failure remains finite
+ * [Kvp032DependencyFailure] data; raw JSON exists only here.
  */
 internal fun admitKvp032Dependencies(
     packet: TaskPacket,
     observedHead: DeliveryGeneration,
-    kvp009Path: Path,
+    kvp010WitnessPath: Path,
     kvp011Path: Path,
     kvp011ReportPath: Path,
     kvp023Path: Path,
@@ -55,12 +75,15 @@ internal fun admitKvp032Dependencies(
         return rejected(Kvp032DependencyFailure.CLOSURE_MISMATCH)
     }
     val dependencies = linkedMapOf<String, String>()
-    dependencies[KVP009_RECEIPT_ID] = when (val admitted = admitLegacy(
-        read(kvp009Path), KVP009_RECEIPT_ID, KVP009_TASK_ID, KVP009_GATE_ID,
-        KVP009_PROGRAM_FINGERPRINT, KVP009_RECEIPT_DIGEST,
-    )) {
-        is Kvp032ReceiptAdmission.Complete -> admitted.digest
-        Kvp032ReceiptAdmission.Rejected -> return closureRejected()
+    dependencies[KVP009_RECEIPT_ID] = when (val raw = read(kvp010WitnessPath)) {
+        is Kvp032DependencyTextRead.Complete -> when (
+            val admitted = admitKvp009ViaKvp010Witness(raw.text)
+        ) {
+            is Kvp032LegacyKvp009WitnessAdmission.Complete ->
+                admitted.witness.dependencyDigest.value
+            is Kvp032LegacyKvp009WitnessAdmission.Rejected -> return closureRejected()
+        }
+        Kvp032DependencyTextRead.Rejected -> return closureRejected()
     }
     dependencies[KVP011_RECEIPT_ID] = when (val admitted = admitV2Output(
         read(kvp011Path), canonicalKvp011Packet(), TaskProofHeadPolicy.CONTENT_SCOPED,
@@ -94,6 +117,52 @@ internal fun admitKvp032Dependencies(
         AdmittedKvp032Dependencies(
             dependencies,
             hostedProductionCompositionBatch().readyFrontier,
+        ),
+    )
+}
+
+/**
+ * Proof transition: canonical raw KVP-010 receipt ->
+ * `Kvp032LegacyKvp009WitnessAdmission`.
+ *
+ * Establishes that the exact admitted KVP-010 receipt canonically self-digests and carries the
+ * required KVP-009 dependency digest together with its two gate receipts. The stronger witness
+ * exposes only KVP-009 dependency authority. Expected schema, identity, closure, digest, and
+ * canonical-encoding failures remain closed [Kvp032LegacyKvp009WitnessFailure] data; raw JSON may
+ * be extracted only by [admitKvp032Dependencies].
+ */
+internal fun admitKvp009ViaKvp010Witness(
+    raw: String,
+): Kvp032LegacyKvp009WitnessAdmission {
+    fun rejected(failure: Kvp032LegacyKvp009WitnessFailure) =
+        Kvp032LegacyKvp009WitnessAdmission.Rejected(failure)
+    val document = when (val decoded = decodeProofReceiptDocument(raw)) {
+        is ProofReceiptDocumentResult.Complete -> decoded.document
+        is ProofReceiptDocumentResult.Rejected -> return rejected(
+            Kvp032LegacyKvp009WitnessFailure.MALFORMED_RECEIPT,
+        )
+    }
+    if (
+        document.receiptId.value != KVP010_RECEIPT_ID ||
+        document.taskId.value != KVP010_TASK_ID ||
+        document.gateId.value != KVP010_GATE_ID ||
+        document.programFingerprint.value != KVP010_PROGRAM_FINGERPRINT ||
+        document.requirementFingerprint.value != LEGACY_PREFIX_REQUIREMENT_FINGERPRINT
+    ) return rejected(Kvp032LegacyKvp009WitnessFailure.IDENTITY_MISMATCH)
+    if (
+        document.dependencyReceiptDigests.mapKeys { it.key.value }
+            .mapValues { it.value.value } != KVP010_DEPENDENCY_DIGESTS
+    ) return rejected(Kvp032LegacyKvp009WitnessFailure.CLOSURE_MISMATCH)
+    if (
+        document.receiptDigest.value != KVP010_RECEIPT_DIGEST ||
+        document.receiptDigest != document.derivedDigest()
+    ) return rejected(Kvp032LegacyKvp009WitnessFailure.DIGEST_MISMATCH)
+    if (encodeProofReceiptDocument(document) != raw) {
+        return rejected(Kvp032LegacyKvp009WitnessFailure.NON_CANONICAL_RECEIPT)
+    }
+    return Kvp032LegacyKvp009WitnessAdmission.Complete(
+        AdmittedKvp032LegacyKvp009Witness(
+            TaskProofDependencyDigest(KVP009_RECEIPT_DIGEST),
         ),
     )
 }
@@ -176,12 +245,22 @@ private val KVP032_DEPENDENCY_IDS = listOf(
     "KVP-027-COMPLETE", "KVP-031-COMPLETE",
 )
 private const val KVP009_RECEIPT_ID = "KVP-009-COMPLETE"
-private const val KVP009_TASK_ID = "KVP-009"
-private const val KVP009_GATE_ID = "KVP-009-COMPLETE-GATE"
-private const val KVP009_PROGRAM_FINGERPRINT =
-    "31fcef0d003e673781fe38c8aa52e9ad3c4aadec4a888764bbe17645abaf8888"
 private const val KVP009_RECEIPT_DIGEST =
     "64efc0e33344ccc55f2436a6dab19e828d52d3f25a9e839ab905600e894da7ea"
+private const val KVP010_RECEIPT_ID = "KVP-010-COMPLETE"
+private const val KVP010_TASK_ID = "KVP-010"
+private const val KVP010_GATE_ID = "KVP-010-COMPLETE-GATE"
+private const val KVP010_PROGRAM_FINGERPRINT =
+    "31fcef0d003e673781fe38c8aa52e9ad3c4aadec4a888764bbe17645abaf8888"
+private const val KVP010_RECEIPT_DIGEST =
+    "7d532dba031c394693dfd828c92be3f3b38c6096cc1d39d0864e5d9bac680685"
+private val KVP010_DEPENDENCY_DIGESTS = linkedMapOf(
+    KVP009_RECEIPT_ID to KVP009_RECEIPT_DIGEST,
+    "KVP-010-GREEN-RECEIPT" to
+        "45d83ea3b78bd28f05412f4a53e503e9a67845d34607878449456efd4f17fe85",
+    "KVP-010-RED-RECEIPT" to
+        "034113e88b6e4c1a93a9fd08943d83dbfff1239ad95109f8b55fa527625f2803",
+)
 private const val KVP011_RECEIPT_ID = "KVP-011-COMPLETE"
 private const val KVP023_RECEIPT_ID = "KVP-023-COMPLETE"
 private const val KVP023_TASK_ID = "KVP-023"

@@ -63,7 +63,7 @@ abstract class PrepareKvp032ProofTask : DefaultTask() {
 
     @get:Input abstract val repositoryRootPath: Property<String>
     @get:InputFile abstract val packetFile: RegularFileProperty
-    @get:InputFile abstract val kvp009ReceiptFile: RegularFileProperty
+    @get:InputFile abstract val kvp010WitnessReceiptFile: RegularFileProperty
     @get:InputFile abstract val kvp011ReceiptFile: RegularFileProperty
     @get:InputFile abstract val kvp011ReportFile: RegularFileProperty
     @get:InputFile abstract val kvp023ReceiptFile: RegularFileProperty
@@ -98,7 +98,7 @@ abstract class PrepareKvp032ProofTask : DefaultTask() {
             root,
             head,
             packetFile.get().asFile.toPath(),
-            kvp009ReceiptFile.get().asFile.toPath(),
+            kvp010WitnessReceiptFile.get().asFile.toPath(),
             kvp011ReceiptFile.get().asFile.toPath(),
             kvp011ReportFile.get().asFile.toPath(),
             kvp023ReceiptFile.get().asFile.toPath(),
@@ -127,7 +127,7 @@ internal fun prepareKvp032ProofContext(
     root: Path,
     observedHead: DeliveryGeneration,
     packetPath: Path,
-    kvp009Path: Path,
+    kvp010WitnessPath: Path,
     kvp011Path: Path,
     kvp011ReportPath: Path,
     kvp023Path: Path,
@@ -152,7 +152,7 @@ internal fun prepareKvp032ProofContext(
     val dependencies = when (val admitted = admitKvp032Dependencies(
         packet.packet,
         observedHead,
-        kvp009Path,
+        kvp010WitnessPath,
         kvp011Path,
         kvp011ReportPath,
         kvp023Path,
@@ -220,7 +220,7 @@ abstract class ProveKvp032Task : DefaultTask() {
 
     @get:Input abstract val repositoryRootPath: Property<String>
     @get:InputFile abstract val packetFile: RegularFileProperty
-    @get:InputFile abstract val kvp009ReceiptFile: RegularFileProperty
+    @get:InputFile abstract val kvp010WitnessReceiptFile: RegularFileProperty
     @get:InputFile abstract val kvp011ReceiptFile: RegularFileProperty
     @get:InputFile abstract val kvp011ReportFile: RegularFileProperty
     @get:InputFile abstract val kvp023ReceiptFile: RegularFileProperty
@@ -241,7 +241,7 @@ abstract class ProveKvp032Task : DefaultTask() {
             root,
             head,
             packetFile.get().asFile.toPath(),
-            kvp009ReceiptFile.get().asFile.toPath(),
+            kvp010WitnessReceiptFile.get().asFile.toPath(),
             kvp011ReceiptFile.get().asFile.toPath(),
             kvp011ReportFile.get().asFile.toPath(),
             kvp023ReceiptFile.get().asFile.toPath(),
