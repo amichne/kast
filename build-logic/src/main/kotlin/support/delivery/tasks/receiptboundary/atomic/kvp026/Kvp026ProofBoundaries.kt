@@ -41,8 +41,9 @@ internal sealed interface Kvp026RelevantInputAdmission {
  *
  * Establishes a nonempty, ordered KVP-026 commit delta after observing every checkpoint without a
  * pathspec. Mixed delivery checkpoints must lie in the dependency-closed companion/task write
- * union, while the preserved delta contains only KVP-026-owned paths. Git or scope failure remains
- * finite rejection. Raw Git output exists only here.
+ * union until the first successor-exclusive checkpoint; that checkpoint closes the KVP-026 delta
+ * and later commits cannot be absorbed through overlapping write roots. Git or scope failure
+ * remains finite rejection. Raw Git output exists only here.
  */
 internal fun admitKvp026ImplementationScope(
     exec: ExecOperations,
@@ -51,6 +52,7 @@ internal fun admitKvp026ImplementationScope(
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
     companionWrites: List<String>,
+    successorWrites: List<String>,
 ): Kvp026ImplementationScopeAdmission {
     if (git(exec, repositoryRoot, listOf(
             "merge-base", "--is-ancestor", predecessorHead.value, currentHead.value,
@@ -65,6 +67,7 @@ internal fun admitKvp026ImplementationScope(
         return scopeRejected(Kvp026BoundaryFailure.GIT_COMMAND_REJECTED)
     }
     val commits = mutableListOf<Kvp026ImplementationCommit>()
+    var successorStarted = false
     revisions.text.lineSequence().filter(String::isNotBlank).forEach { revision ->
         val changed = git(
             exec,
@@ -75,13 +78,19 @@ internal fun admitKvp026ImplementationScope(
             return scopeRejected(Kvp026BoundaryFailure.GIT_COMMAND_REJECTED)
         }
         val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        val predecessorAndTaskWrites = allowedWrites + companionWrites
+        if (observedPaths.any { path ->
+                successorWrites.any { scope -> path.inScope(scope) } &&
+                    predecessorAndTaskWrites.none { scope -> path.inScope(scope) }
+            }
+        ) successorStarted = true
+        if (successorStarted) return@forEach
         val taskPaths = observedPaths.filter { path ->
             allowedWrites.any { scope -> path.inScope(scope) }
         }
         if (taskPaths.isEmpty()) return@forEach
-        val dependencyClosedBatchWrites = allowedWrites + companionWrites
         if (observedPaths.any { path ->
-                dependencyClosedBatchWrites.none { scope -> path.inScope(scope) }
+                predecessorAndTaskWrites.none { scope -> path.inScope(scope) }
             }
         ) return scopeRejected(Kvp026BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
         commits += Kvp026ImplementationCommit(DeliveryGeneration(revision), taskPaths)

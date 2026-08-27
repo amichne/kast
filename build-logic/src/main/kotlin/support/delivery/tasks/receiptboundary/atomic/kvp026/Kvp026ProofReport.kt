@@ -74,6 +74,12 @@ internal sealed interface Kvp026ProofReportAdmission {
     data class Rejected(val failure: Kvp026ProofReportFailure) : Kvp026ProofReportAdmission
 }
 
+internal sealed interface Kvp026ImplementationBaselineAdmission {
+    data class Complete(val baseline: DeliveryGeneration) :
+        Kvp026ImplementationBaselineAdmission
+    data object Rejected : Kvp026ImplementationBaselineAdmission
+}
+
 private val kvp026ProofReportJson = Json {
     encodeDefaults = true
     ignoreUnknownKeys = false
@@ -119,6 +125,36 @@ internal fun admitKvp026ProofReport(
             TaskProofOutputDigest(sha256(raw).value),
             context.completeObservations(),
         ),
+    )
+}
+
+/**
+ * Proof transition: canonical KVP-026 proof report JSON ->
+ * `Kvp026ImplementationBaselineAdmission`.
+ *
+ * Establishes the last ordered KVP-026 implementation checkpoint from the same generated report
+ * schema used by receipt issuance. Malformed, noncanonical, wrong-task, incomplete, or empty
+ * reports remain closed rejection. Raw JSON exists only at this dependency boundary.
+ */
+internal fun admitKvp026ImplementationBaseline(
+    raw: String,
+): Kvp026ImplementationBaselineAdmission {
+    val document = try {
+        kvp026ProofReportJson.decodeFromString(Kvp026ProofReportDocument.serializer(), raw)
+    } catch (_: SerializationException) {
+        return Kvp026ImplementationBaselineAdmission.Rejected
+    } catch (_: IllegalArgumentException) {
+        return Kvp026ImplementationBaselineAdmission.Rejected
+    }
+    if (
+        document.schemaVersion != 1 ||
+        document.taskId != "KVP-026" ||
+        document.outcome != Kvp026ReportOutcome.COMPLETE ||
+        document.implementationCommits.isEmpty() ||
+        raw != encode(document)
+    ) return Kvp026ImplementationBaselineAdmission.Rejected
+    return Kvp026ImplementationBaselineAdmission.Complete(
+        DeliveryGeneration(document.implementationCommits.last().revision),
     )
 }
 
