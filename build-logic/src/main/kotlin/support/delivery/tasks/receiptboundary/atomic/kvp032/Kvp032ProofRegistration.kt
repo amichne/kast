@@ -23,6 +23,9 @@ internal fun Project.registerKvp032AtomicProof(): Set<TaskId> {
         description = "Generates KVP-032's complete packet from the canonical Kotlin graph."
         packetFile.set(packetOutput)
     }
+    tasks.named("prepareKVP011Proof").configure {
+        dependsOn("proveKVP025")
+    }
     val prepare = tasks.register("prepareKVP032Proof", PrepareKvp032ProofTask::class.java) {
         group = "verification"
         description = "Revalidates KVP-032's closure and selects receipt reuse or execution."
