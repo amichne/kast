@@ -6,19 +6,53 @@ fail() {
   exit 1
 }
 
+count_generated_build_outputs() {
+  local root="$1"
+  local candidate relative
+  local count=0
+  while IFS= read -r -d '' candidate; do
+    relative="${candidate#"${root}/"}"
+    if ! git -C "${root}" ls-files --error-unmatch -- "${relative}" >/dev/null 2>&1; then
+      count=$((count + 1))
+    fi
+  done < <(find "${root}" -type d -name build -prune -print0)
+  printf '%s\n' "${count}"
+}
+
 repository=""
 expected_head=""
 evidence=""
 self_test=false
+output_scan_self_test=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --self-test) self_test=true; shift ;;
+    --output-scan-self-test) output_scan_self_test=true; shift ;;
     --root) repository="${2:?}"; shift 2 ;;
     --head) expected_head="${2:?}"; shift 2 ;;
     --evidence) evidence="${2:?}"; shift 2 ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
+
+if [[ "${output_scan_self_test}" == true ]]; then
+  scan_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-kvp038-output-scan.XXXXXX")"
+  cleanup_scan() { find "${scan_root}" -depth -delete 2>/dev/null || true; }
+  trap cleanup_scan EXIT
+  git -C "${scan_root}" init -q
+  mkdir -p "${scan_root}/topology/build"
+  printf 'tracked module\n' >"${scan_root}/topology/build/module.txt"
+  git -C "${scan_root}" add topology/build/module.txt
+  git -C "${scan_root}" -c user.name=Kast -c user.email=proof@invalid commit -qm initial
+  tracked_count="$(count_generated_build_outputs "${scan_root}")"
+  [[ "${tracked_count}" == 0 ]] || fail "tracked build directory classified as generated output"
+  mkdir -p "${scan_root}/generated/module/build"
+  printf 'generated output\n' >"${scan_root}/generated/module/build/output.txt"
+  generated_count="$(count_generated_build_outputs "${scan_root}")"
+  [[ "${generated_count}" == 1 ]] || fail "generated build output was not detected exactly once"
+  printf 'KVP-038 build-output scan self-test: COMPLETE\n'
+  exit 0
+fi
 
 if [[ "${self_test}" == true ]]; then
   [[ -n "${evidence}" ]] || fail "self-test evidence output is required"
@@ -65,9 +99,7 @@ mkdir -p "${gradle_home}"
 detached_head="$(git -C "${checkout}" rev-parse HEAD)"
 [[ "${detached_head}" == "${expected_head}" ]] || fail "detached head mismatch"
 
-current_worktree_output_count="$(
-  find "${checkout}" -type d -name build -prune -print | wc -l | tr -d ' '
-)"
+current_worktree_output_count="$(count_generated_build_outputs "${checkout}")"
 [[ "${current_worktree_output_count}" == 0 ]] || fail "checkout reused build output"
 reused_gradle_cache_count="$(find "${gradle_home}" -mindepth 1 -print | wc -l | tr -d ' ')"
 [[ "${reused_gradle_cache_count}" == 0 ]] || fail "fresh Gradle home is not empty"
