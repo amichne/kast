@@ -50,6 +50,7 @@ internal fun admitKvp031ImplementationScope(
     predecessorHead: DeliveryGeneration,
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
+    ownedWrites: List<String>,
     companionWrites: List<String>,
 ): Kvp031ImplementationScopeAdmission {
     if (git(exec, repositoryRoot, listOf(
@@ -78,13 +79,13 @@ internal fun admitKvp031ImplementationScope(
         val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
         if (!taskStarted) {
             taskStarted = observedPaths.any { path ->
-                allowedWrites.any { scope -> path.inScope(scope) } &&
+                ownedWrites.any { scope -> path.inScope(scope) } &&
                     companionWrites.none { scope -> path.inScope(scope) }
             }
             if (!taskStarted) return@forEach
         }
         val taskPaths = observedPaths.filter { path ->
-            allowedWrites.any { scope -> path.inScope(scope) }
+            ownedWrites.any { scope -> path.inScope(scope) }
         }
         if (taskPaths.isEmpty()) return@forEach
         val dependencyClosedBatchWrites = allowedWrites + companionWrites
@@ -119,6 +120,7 @@ internal fun admitPriorKvp031ImplementationScope(
     currentHead: DeliveryGeneration,
     candidate: Kvp031PriorProofScopeCandidate,
     allowedWrites: List<String>,
+    ownedWrites: List<String>,
     companionWrites: List<String>,
 ): Kvp031ImplementationScopeAdmission {
     if (git(exec, repositoryRoot, listOf(
@@ -131,6 +133,7 @@ internal fun admitPriorKvp031ImplementationScope(
         predecessorHead,
         candidate.commits.last().revision,
         allowedWrites,
+        ownedWrites,
         companionWrites,
     )) {
         is Kvp031ImplementationScopeAdmission.Complete -> if (

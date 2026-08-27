@@ -167,6 +167,8 @@ internal fun prepareKvp011ProofContext(
         dependencies.implementationBaseline,
         observedHead,
         packet.packet.task.allowedWrites,
+        hostedProductionCompositionOwnedWrites(packet.packet.task.id),
+        hostedProductionCompositionCompanionWrites(packet.packet.task.id),
     )) {
         is Kvp011ImplementationScopeAdmission.Complete -> admitted.scope
         is Kvp011ImplementationScopeAdmission.Rejected -> return preparationRejected(

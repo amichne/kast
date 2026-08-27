@@ -249,5 +249,5 @@ object HostedIdeReadProductionComposition {
 
 private fun unavailableRuntime(): HostedIdeReadRuntimePreparation =
     HostedIdeReadRuntimePreparation.Rejected(
-        HostedIdeReadRuntimePreparationFailure.ROUTE_UNAVAILABLE,
+        HostedIdeReadRuntimePreparationFailure.PARTIAL_RUNTIME,
     )

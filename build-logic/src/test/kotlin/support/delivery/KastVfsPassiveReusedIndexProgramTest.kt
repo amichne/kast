@@ -25,6 +25,25 @@ class KastVfsPassiveReusedIndexProgramTest {
         assertEquals(validated.waves.values.maxOrNull(), validated.waves.getValue(TaskId("KVP-043")))
     }
 
+    @Test fun `production composition batch derives order dependencies and physical owners`() {
+        val projection = validated.projection()
+        @Suppress("UNCHECKED_CAST")
+        val batches = projection.getValue("deliveryBatches") as List<Map<String, Any?>>
+        val batch = batches.single { it["id"] == "hosted-production-composition" }
+
+        assertEquals(
+            listOf("KVP-025", "KVP-031", "KVP-011", "KVP-032"),
+            batch["taskOrder"],
+        )
+        assertEquals(
+            listOf("KVP-009", "KVP-010", "KVP-023", "KVP-024", "KVP-027", "KVP-030"),
+            batch["externalDependencyTaskIds"],
+        )
+        val owners = hostedProductionCompositionBatch().tasks
+        val ownedScopes = owners.flatMap { it.ownedWrites }
+        assertEquals(ownedScopes.size, ownedScopes.toSet().size)
+    }
+
     @Test fun `final plugin layout follows hosted runtime and compatibility remains actionable`() {
         val tasks = validated.program.tasks.associateBy { it.id }
         val layout = tasks.getValue(TaskId("KVP-011"))
@@ -208,6 +227,34 @@ class KastVfsPassiveProgramNegativeTest {
         assertEquals(
             CanonicalProgramAdmission.Rejected(CanonicalProgramFailure.CYCLE),
             admitCanonicalProgram(cyclic),
+        )
+    }
+
+    @Test fun `overlapping delivery batch ownership rejects as finite failure`() {
+        val batch = program.deliveryBatches.single()
+        val conflicting = program.copy(
+            deliveryBatches = listOf(
+                batch.copy(
+                    tasks = batch.tasks.map { owned ->
+                        if (owned.taskId == TaskId("KVP-025")) {
+                            owned.copy(
+                                ownedWrites = listOf(
+                                    "build-logic/src/main/kotlin/support/delivery",
+                                ),
+                            )
+                        } else {
+                            owned
+                        }
+                    },
+                ),
+            ),
+        )
+
+        assertEquals(
+            CanonicalProgramAdmission.Rejected(
+                CanonicalProgramFailure.DELIVERY_BATCH_WRITE_SCOPE_CONFLICT,
+            ),
+            admitCanonicalProgram(conflicting),
         )
     }
 }

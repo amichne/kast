@@ -51,6 +51,8 @@ internal fun admitKvp011ImplementationScope(
     predecessorHead: DeliveryGeneration,
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
+    ownedWrites: List<String>,
+    companionWrites: List<String>,
 ): Kvp011ImplementationScopeAdmission {
     if (git(exec, repositoryRoot, listOf(
             "merge-base", "--is-ancestor", predecessorHead.value, currentHead.value,
@@ -59,7 +61,7 @@ internal fun admitKvp011ImplementationScope(
     val revisions = git(
         exec,
         repositoryRoot,
-        listOf("rev-list", "--reverse", "${predecessorHead.value}..${currentHead.value}"),
+        listOf("rev-list", "--reverse", "${predecessorHead.value}^..${currentHead.value}"),
     )
     if (revisions.exitCode != 0) {
         return scopeRejected(Kvp011BoundaryFailure.GIT_COMMAND_REJECTED)
@@ -76,14 +78,14 @@ internal fun admitKvp011ImplementationScope(
         }
         val observed = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
         val taskPaths = observed.filter { path ->
-            allowedWrites.any { scope -> path.inKvp011Scope(scope) }
+            ownedWrites.any { scope -> path.inKvp011Scope(scope) }
         }
         val ownsCheckpoint = observed.any { path ->
-            KVP011_EXCLUSIVE_WRITE_ROOTS.any { scope -> path.inKvp011Scope(scope) }
+            ownedWrites.any { scope -> path.inKvp011Scope(scope) }
         }
         if (!ownsCheckpoint) return@forEach
         if (observed.any { path ->
-                allowedWrites.none { scope -> path.inKvp011Scope(scope) }
+                (allowedWrites + companionWrites).none { scope -> path.inKvp011Scope(scope) }
             }
         ) return scopeRejected(Kvp011BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
         commits += Kvp011ImplementationCommit(DeliveryGeneration(revision), taskPaths)
@@ -174,13 +176,6 @@ private fun git(
 }
 
 private fun String.inKvp011Scope(scope: String) = this == scope || startsWith("$scope/")
-private val KVP011_EXCLUSIVE_WRITE_ROOTS = listOf(
-    "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/atomic/kvp011",
-    "build-logic/src/main/kotlin/support/plugin",
-    "build-logic/src/test/kotlin/support/plugin",
-    "ide-plugin",
-    "indexer",
-)
 private fun scopeRejected(failure: Kvp011BoundaryFailure) =
     Kvp011ImplementationScopeAdmission.Rejected(failure)
 private fun inputRejected(failure: Kvp011BoundaryFailure) =

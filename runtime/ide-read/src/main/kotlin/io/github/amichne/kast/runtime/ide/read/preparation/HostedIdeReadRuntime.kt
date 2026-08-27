@@ -215,7 +215,6 @@ internal sealed interface HostedIdeReadRuntimeCandidate {
 
 enum class HostedIdeReadRuntimePreparationFailure {
     PARTIAL_RUNTIME,
-    ROUTE_UNAVAILABLE,
 }
 
 sealed interface HostedIdeReadRuntimePreparation {

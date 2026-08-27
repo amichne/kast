@@ -6,7 +6,8 @@ This package owns the typed delivery program and the Gradle task boundaries that
 
 - `KastVfsPassiveReusedIndexProgram` composes and finitely admits the canonical program from the
   foundation, milestone-task, and runtime-graph files. Admission proves complete contracts, closed
-  ownership/classification references, deterministic graph order and waves, and one terminal sink.
+  ownership/classification references, deterministic graph order and waves, non-overlapping
+  physical ownership for explicit dependency-closed delivery batches, and one terminal sink.
 - `model/DeliveryProgramModel.kt` owns checked identities, task/program structure, and graph validation. `model/projection/ValidatedProgramProjection.kt` owns derived waves, task packets, and deterministic program/requirement projection.
 - `model/ProgramAuthorityModel.kt` owns parsed expectations and authority admission.
 - `model/ProgramAuthorityGeneration.kt` binds source IDs to paths only through exact declared digests and returns finite failures for incomplete or ambiguous evidence.
@@ -29,7 +30,9 @@ This package owns the typed delivery program and the Gradle task boundaries that
   observation, and atomic receipt issuance. Its `atomic/kvp011/` and `atomic/kvp025/` through
   `atomic/kvp034/` children own their sole graph-derived task proofs; each revalidates its admitted
   predecessor closure before using the last task-owned implementation checkpoint as the next
-  write-scope baseline. KVP-031 additionally binds its receipt to one exact head.
+  write-scope baseline. KVP-025, KVP-031, KVP-011, and KVP-032 may share the graph-admitted hosted
+  production-composition checkpoint while retaining one physical owner per changed path. KVP-031
+  additionally binds its receipt to one exact head.
 - `tasks/Kvp001ReceiptTasks.kt` and its support file own the typed root-task recorder and completion
   bootstrap. KVP-001 GREEN consumes the admitted RED receipt; completion consumes both gate
   receipts. The later KVP-007 task generalizes and proves this boundary for the remaining graph.

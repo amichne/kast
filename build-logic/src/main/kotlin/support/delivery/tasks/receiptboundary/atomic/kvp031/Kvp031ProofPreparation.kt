@@ -166,7 +166,8 @@ internal fun prepareKvp031ProofContext(
             observedHead,
             priorScope.candidate,
             packet.packet.task.allowedWrites,
-            emptyList(),
+            hostedProductionCompositionOwnedWrites(packet.packet.task.id),
+            hostedProductionCompositionCompanionWrites(packet.packet.task.id),
         )
         Kvp031PriorProofScopeAdmission.Rejected,
         null,
@@ -176,7 +177,8 @@ internal fun prepareKvp031ProofContext(
                 dependencies.implementationBaseline,
                 observedHead,
                 packet.packet.task.allowedWrites,
-                emptyList(),
+                hostedProductionCompositionOwnedWrites(packet.packet.task.id),
+                hostedProductionCompositionCompanionWrites(packet.packet.task.id),
             )
     }
     val scope = when (scopeAdmission) {

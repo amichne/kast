@@ -144,7 +144,9 @@ internal fun prepareKvp025ProofContext(
         predecessor.observedRepositoryHead,
         observedHead,
         packet.packet.task.allowedWrites,
-        canonicalKvp026TaskPacket().task.allowedWrites +
+        hostedProductionCompositionOwnedWrites(packet.packet.task.id),
+        hostedProductionCompositionCompanionWrites(packet.packet.task.id) +
+            canonicalKvp026TaskPacket().task.allowedWrites +
             canonicalKvp027TaskPacket().task.allowedWrites,
         canonicalKvp026TaskPacket().task.allowedWrites,
     )) {

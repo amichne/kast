@@ -95,9 +95,10 @@ private val kvp011DependencyJson = Json {
  * `Kvp011DependencyAdmission`.
  *
  * Establishes the pinned canonical KVP-010 v1 receipt, canonical KVP-025 v2 output, and current
- * exact-head KVP-031 v2 output. KVP-031's last task-owned implementation checkpoint becomes the
- * sole write-scope baseline. Expected read, schema, closure, or digest failure is finite data;
- * raw JSON and paths exist only at this boundary.
+ * exact-head KVP-031 v2 output. KVP-031's first task-owned checkpoint becomes the inclusive batch
+ * baseline so a later task can retain its distinct physical paths from that same checkpoint.
+ * Expected read, schema, closure, or digest failure is finite data; raw JSON and paths exist only
+ * at this boundary.
  */
 internal fun admitKvp011Dependencies(
     packet: TaskPacket,
@@ -263,7 +264,7 @@ private fun admitKvp031Baseline(
         ) + "\n"
     ) return Kvp011BaselineAdmission.Rejected
     return when (val refined = refineDeliveryGeneration(
-        document.implementationCommits.last().revision,
+        document.implementationCommits.first().revision,
     )) {
         is DeliveryRefinement.Complete -> Kvp011BaselineAdmission.Complete(refined.value)
         is DeliveryRefinement.Rejected -> Kvp011BaselineAdmission.Rejected

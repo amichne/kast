@@ -39,6 +39,7 @@ internal sealed interface Kvp032RelevantInputAdmission {
 internal class AdmittedKvp032WriteOwnership internal constructor(
     val declaredWrites: List<String>,
     val ownedWrites: List<String>,
+    val companionWrites: List<String>,
 )
 
 internal sealed interface Kvp032WriteOwnershipAdmission {
@@ -50,24 +51,24 @@ internal sealed interface Kvp032WriteOwnershipAdmission {
 /**
  * Proof transition: `(TaskPacket, ValidatedProgram) -> Kvp032WriteOwnershipAdmission`.
  *
- * Establishes KVP-032's declared write closure and its graph-derived physical ownership anchors:
- * exact roots no other canonical task declares. An empty ownership set is a finite rejection. Raw
- * path strings may be extracted only by the Git write-scope boundary.
+ * Establishes KVP-032's declared write closure and the canonical delivery batch's non-overlapping
+ * physical ownership anchors. An empty ownership set is a finite rejection. Raw path strings may
+ * be extracted only by the Git write-scope boundary.
  */
 internal fun admitKvp032WriteOwnership(
     packet: TaskPacket,
     program: ValidatedProgram,
 ): Kvp032WriteOwnershipAdmission {
-    val otherDeclaredWrites = program.program.tasks
-        .filter { task -> task.id != packet.task.id }
-        .flatMap { task -> task.allowedWrites }
-        .toSet()
-    val ownedWrites = packet.task.allowedWrites.filterNot(otherDeclaredWrites::contains)
+    val ownedWrites = hostedProductionCompositionOwnedWrites(packet.task.id)
     return if (ownedWrites.isEmpty()) {
         Kvp032WriteOwnershipAdmission.Rejected(Kvp032BoundaryFailure.EMPTY_OWNED_WRITE_SCOPE)
     } else {
         Kvp032WriteOwnershipAdmission.Complete(
-            AdmittedKvp032WriteOwnership(packet.task.allowedWrites, ownedWrites),
+            AdmittedKvp032WriteOwnership(
+                packet.task.allowedWrites,
+                ownedWrites,
+                hostedProductionCompositionCompanionWrites(packet.task.id),
+            ),
         )
     }
 }
@@ -117,10 +118,12 @@ internal fun admitKvp032ImplementationScope(
         }
         if (ownedPaths.isEmpty()) return@forEach
         val taskPaths = observed.filter { path ->
-            ownership.declaredWrites.any { scope -> path.inKvp032Scope(scope) }
+            ownership.ownedWrites.any { scope -> path.inKvp032Scope(scope) }
         }
         if (observed.any { path ->
-                ownership.declaredWrites.none { scope -> path.inKvp032Scope(scope) }
+                (ownership.declaredWrites + ownership.companionWrites).none { scope ->
+                    path.inKvp032Scope(scope)
+                }
             }
         ) return scopeRejected(Kvp032BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
         commits += Kvp032ImplementationCommit(DeliveryGeneration(revision), taskPaths)

@@ -4,7 +4,7 @@ This directory owns pure Kotlin representations for the VFS-passive delivery pro
 authority refinement, and proof-receipt admission.
 
 - `DeliveryProgramModel.kt` owns checked delivery identities, closed refinement/outcome/progression
-  types, task/program structure, and graph validation.
+  types, task/program structure, dependency-closed batch ownership, and graph validation.
 - `ProgramAuthorityModel.kt` refines raw configuration into expectations and admits complete exact-head authority documents.
 - `ProgramAuthorityGeneration.kt` derives source identity from declared SHA-256 evidence. It must not read files, inspect paths, start processes, or choose identity by candidate order.
 - `proof/` owns legacy receipt admission, the pinned KVP-024 prefix, atomic task-proof derivation,
@@ -16,7 +16,7 @@ Expected authority failure stays in closed sealed data. Raw strings may reappear
 dedicated generated JSON Schema documents, and closed admission result. Generic JSON traversal is
 restricted to applying those schema documents at the projection boundary.
 
-`DeliveryGateGraph.kt` owns the KVP-006 bijection between the 91 typed gates and program-derived
+`DeliveryGateGraph.kt` owns the KVP-006 bijection between the 89 typed gates and program-derived
 Gradle receipt-task names, including exact predecessor inputs and unique receipt outputs.
 
 `DeliveryState.kt` owns KVP-008's pure admitted-completion fold. It derives closed task and

@@ -6,6 +6,7 @@ import java.security.MessageDigest
 annotation class DeliveryProgramDsl
 
 private val programIdPattern = Regex("[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
+private val deliveryBatchIdPattern = Regex("[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 private val taskIdPattern = Regex("KVP-[0-9]{3}")
 private val requirementIdPattern = Regex("KVP-REQ-[0-9]{3}")
 private val moduleIdPattern = Regex(":[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)*")
@@ -18,7 +19,7 @@ private val sha256Pattern = Regex("[0-9a-f]{64}")
 sealed interface DeliveryFailure
 
 enum class DeliveryModelFailure : DeliveryFailure {
-    INVALID_PROGRAM_ID, INVALID_TASK_ID, INVALID_REQUIREMENT_ID,
+    INVALID_PROGRAM_ID, INVALID_DELIVERY_BATCH_ID, INVALID_TASK_ID, INVALID_REQUIREMENT_ID,
     INVALID_MODULE_ID, INVALID_AUTHORITY_ID, INVALID_EFFECT_ID,
     INVALID_COST_ID, INVALID_GATE_ID, INVALID_RECEIPT_ID,
     INVALID_GENERATION, INVALID_SHA256, EMPTY_EVIDENCE, EMPTY_LIMITATIONS, UNKNOWN_TASK,
@@ -31,6 +32,8 @@ sealed interface DeliveryRefinement<out T> {
 
 /** Proof transition: authored `String -> ProgramId`; establishes canonical identity; rejects invalid authoring; raw text exits only at projections. */
 @JvmInline value class ProgramId internal constructor(val value: String) { init { require(programIdPattern.matches(value)) } }
+/** Proof transition: authored `String -> DeliveryBatchId`; establishes canonical batch identity; rejects invalid authoring; raw text exits only at projections. */
+@JvmInline value class DeliveryBatchId internal constructor(val value: String) { init { require(deliveryBatchIdPattern.matches(value)) } }
 /** Proof transition: authored `String -> TaskId`; establishes `KVP-NNN`; expected raw failure uses [refineTaskId]; raw text exits only at boundaries. */
 @JvmInline value class TaskId internal constructor(val value: String) : Comparable<TaskId> {
     init { require(taskIdPattern.matches(value)) }
@@ -250,6 +253,16 @@ data class GateNode(val id: String, val taskId: TaskId, val kind: GateKind, val 
 }
 data class MetricRequirement(val id: String, val predicate: String, val value: Any)
 
+data class DeliveryBatchTask(
+    val taskId: TaskId,
+    val ownedWrites: List<String>,
+)
+
+data class DeliveryBatch(
+    val id: DeliveryBatchId,
+    val tasks: List<DeliveryBatchTask>,
+)
+
 data class DeliveryProgram(
     val schemaVersion: Int,
     val id: ProgramId,
@@ -266,6 +279,7 @@ data class DeliveryProgram(
     val processNodes: List<ProcessNode>,
     val processTransitions: List<ProcessTransition>,
     val installedMetrics: List<MetricRequirement>,
+    val deliveryBatches: List<DeliveryBatch>,
     val terminalTask: TaskId,
 ) {
     val generation = DeliveryGeneration(targetHead)

@@ -66,6 +66,7 @@ object KastVfsPassiveReusedIndexProgram {
         processNodes = deliveryProcessNodes(),
         processTransitions = deliveryProcessTransitions(),
         installedMetrics = deliveryInstalledMetrics(),
+        deliveryBatches = listOf(hostedProductionCompositionDeliveryBatch()),
         terminalTask = TaskId("KVP-043"),
     )
 
@@ -76,6 +77,24 @@ object KastVfsPassiveReusedIndexProgram {
                 error("canonical delivery program rejected: ${admission.failure}")
         }
     }
+}
+
+internal fun hostedProductionCompositionBatch(): DeliveryBatch =
+    KastVfsPassiveReusedIndexProgram.validated.program.deliveryBatches.single {
+        it.id == DeliveryBatchId("hosted-production-composition")
+    }
+
+internal fun hostedProductionCompositionOwnedWrites(taskId: TaskId): List<String> =
+    hostedProductionCompositionBatch().tasks.single { it.taskId == taskId }.ownedWrites
+
+internal fun hostedProductionCompositionCompanionWrites(taskId: TaskId): List<String> {
+    val program = KastVfsPassiveReusedIndexProgram.validated.program
+    return hostedProductionCompositionBatch().tasks
+        .filterNot { it.taskId == taskId }
+        .flatMap { owned ->
+            program.tasks.single { it.id == owned.taskId }.allowedWrites
+        }
+        .distinct()
 }
 
 enum class CanonicalProgramFailure : DeliveryFailure {
@@ -107,6 +126,11 @@ enum class CanonicalProgramFailure : DeliveryFailure {
     UNKNOWN_TASK_CLASSIFICATION,
     UNKNOWN_PROCESS_NODE,
     GATE_CONTRACT_MISMATCH,
+    DUPLICATE_DELIVERY_BATCH,
+    INCOMPLETE_DELIVERY_BATCH,
+    UNKNOWN_DELIVERY_BATCH_TASK,
+    DELIVERY_BATCH_WRITE_OUTSIDE_TASK_SCOPE,
+    DELIVERY_BATCH_WRITE_SCOPE_CONFLICT,
 }
 
 sealed interface CanonicalProgramAdmission {
@@ -198,6 +222,33 @@ fun admitCanonicalProgram(candidate: DeliveryProgram): CanonicalProgramAdmission
     if (candidate.tasks.any { it.id in it.dependencies.taskIds }) {
         return rejected(CanonicalProgramFailure.SELF_DEPENDENCY)
     }
+    if (candidate.deliveryBatches.map { it.id }.toSet().size != candidate.deliveryBatches.size) {
+        return rejected(CanonicalProgramFailure.DUPLICATE_DELIVERY_BATCH)
+    }
+    val tasksById = candidate.tasks.associateBy { it.id }
+    candidate.deliveryBatches.forEach { batch ->
+        if (batch.tasks.isEmpty() || batch.tasks.map { it.taskId }.toSet().size != batch.tasks.size ||
+            batch.tasks.any { it.ownedWrites.isEmpty() || it.ownedWrites.any(String::isBlank) }
+        ) return rejected(CanonicalProgramFailure.INCOMPLETE_DELIVERY_BATCH)
+        if (batch.tasks.any { it.taskId !in taskIds }) {
+            return rejected(CanonicalProgramFailure.UNKNOWN_DELIVERY_BATCH_TASK)
+        }
+        if (batch.tasks.any { owned ->
+                val declared = tasksById.getValue(owned.taskId).allowedWrites
+                owned.ownedWrites.any { scope -> declared.none { scope.inDeliveryScope(it) } }
+            }
+        ) return rejected(CanonicalProgramFailure.DELIVERY_BATCH_WRITE_OUTSIDE_TASK_SCOPE)
+        val ownership = batch.tasks.flatMap { owned ->
+            owned.ownedWrites.map { scope -> owned.taskId to scope }
+        }
+        if (ownership.indices.any { left ->
+                (left + 1 until ownership.size).any { right ->
+                    ownership[left].first != ownership[right].first &&
+                        ownership[left].second.overlapsDeliveryScope(ownership[right].second)
+                }
+            }
+        ) return rejected(CanonicalProgramFailure.DELIVERY_BATCH_WRITE_SCOPE_CONFLICT)
+    }
     if (candidate.terminalTask !in taskIds) {
         return rejected(CanonicalProgramFailure.UNKNOWN_TERMINAL)
     }
@@ -283,6 +334,9 @@ fun admitCanonicalProgram(candidate: DeliveryProgram): CanonicalProgramAdmission
         ValidatedProgram(candidate, ordering.order, waves),
     )
 }
+
+private fun String.inDeliveryScope(parent: String) = this == parent || startsWith("$parent/")
+private fun String.overlapsDeliveryScope(other: String) = inDeliveryScope(other) || other.inDeliveryScope(this)
 
 private fun rejected(failure: CanonicalProgramFailure) =
     CanonicalProgramAdmission.Rejected(failure)

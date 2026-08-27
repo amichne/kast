@@ -69,6 +69,7 @@ internal fun admitKvp025ImplementationScope(
     predecessorHead: DeliveryGeneration,
     currentHead: DeliveryGeneration,
     allowedWrites: List<String>,
+    ownedWrites: List<String>,
     companionWrites: List<String>,
     successorWrites: List<String>,
 ): Kvp025ImplementationScopeAdmission {
@@ -114,7 +115,7 @@ internal fun admitKvp025ImplementationScope(
         ) successorStarted = true
         if (successorStarted) continue
         val taskPaths = observedPaths.filter { path ->
-            allowedWrites.any { path.inScope(it) }
+            ownedWrites.any { path.inScope(it) }
         }
         if (taskPaths.isEmpty()) continue
         if (observedPaths.any { path ->

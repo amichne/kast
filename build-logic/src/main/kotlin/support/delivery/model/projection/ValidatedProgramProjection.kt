@@ -55,6 +55,22 @@ data class ValidatedProgram(
             },
             "taskOrder" to order.map { it.value },
             "waveCount" to (waves.values.maxOrNull()!! + 1),
+            "deliveryBatches" to program.deliveryBatches.sortedBy { it.id.value }.map { batch ->
+                val selected = batch.tasks.mapTo(linkedSetOf()) { it.taskId }
+                mapOf(
+                    "id" to batch.id.value,
+                    "taskOrder" to order.filter(selected::contains).map { it.value },
+                    "externalDependencyTaskIds" to batch.tasks.flatMap { owned ->
+                        program.tasks.single { it.id == owned.taskId }.dependencies.taskIds
+                    }.filterNot(selected::contains).map { it.value }.distinct().sorted(),
+                    "writeOwnership" to batch.tasks.sortedBy { it.taskId }.map { owned ->
+                        mapOf(
+                            "taskId" to owned.taskId.value,
+                            "ownedWrites" to owned.ownedWrites,
+                        )
+                    },
+                )
+            },
             "specialEdges" to program.specialEdges.map {
                 mapOf(
                     "kind" to it.kind.name.lowercase(),

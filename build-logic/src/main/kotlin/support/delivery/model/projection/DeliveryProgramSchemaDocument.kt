@@ -30,6 +30,7 @@ internal data class DeliveryProgramSchemaDefinitions(
 internal data class DeliveryProgramSchemaProperties(
     val authorities: SchemaObjectArray = SchemaObjectArray(),
     val authority: SchemaObject = SchemaObject(),
+    val deliveryBatches: SchemaObjectArray = SchemaObjectArray(),
     val effects: SchemaObjectArray = SchemaObjectArray(),
     val gateGraph: SchemaObjectArray = SchemaObjectArray(),
     val installedAcceptance: SchemaObject = SchemaObject(),
@@ -145,6 +146,7 @@ private val deliveryProgramRequiredProperties = listOf(
     "requirementFingerprint",
     "requirements",
     "modules",
+    "deliveryBatches",
     "tasks",
     "gateGraph",
     "terminal",
