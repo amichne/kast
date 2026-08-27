@@ -7,6 +7,7 @@ import support.architecture.gradle.VerifyKastArchitectureTask
 import support.architecture.gradle.VerifyKastVfsPassiveFirewallNegativeTask
 import support.architecture.gradle.VerifyKastVfsPassiveFirewallTask
 import support.architecture.gradle.VerifyNoLegacyArchitectureTask
+import support.tasks.VerifyVfsPassiveReadTask
 
 plugins {
     base
@@ -72,6 +73,33 @@ val architectureVerifications = listOf(
     verifyKastModuleGraph,
     verifyForbiddenEffects,
 )
+val verifyVfsPassiveReadNegative = tasks.register("verifyVfsPassiveReadNegative") {
+    group = "verification"
+    description = "Rejects injected hosted forbidden calls and transitive classpath content."
+    dependsOn("verifyKastVfsPassiveFirewallNegative", ":ide-plugin:verifyPluginLayoutNegative")
+}
+val verifyVfsPassiveRead = tasks.register<VerifyVfsPassiveReadTask>("verifyVfsPassiveRead") {
+    group = "verification"
+    description = "Composes the complete compiled and transitive KVP-032 VFS-passive proof."
+    dependsOn(
+        verifyVfsPassiveReadNegative,
+        verifyKastModuleGraph,
+        verifyForbiddenEffects,
+        "verifyKastVfsPassiveFirewall",
+        ":ide-plugin:verifyPluginLayout",
+    )
+    moduleGraphReport.set(
+        layout.buildDirectory.file("reports/kast-architecture/verifyKastModuleGraph.json"),
+    )
+    forbiddenEffectsReport.set(
+        layout.buildDirectory.file("reports/kast-architecture/verifyForbiddenEffects.json"),
+    )
+    firewallReport.set(layout.buildDirectory.file("reports/delivery/KVP-009-firewall.json"))
+    pluginLayoutReport.set(
+        project(":ide-plugin").layout.buildDirectory.file("reports/KVP-011-layout.json"),
+    )
+    reportFile.set(layout.buildDirectory.file("reports/ide-hosted/KVP-032-static-safety.json"))
+}
 tasks.register("verifyKastArchitectureProjection") {
     group = "verification"
     description = "Verifies the checked architecture projection against membership, edges, and effects."
@@ -82,6 +110,16 @@ subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
         val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
+        if (modulePath in setOf(
+                ":ide-plugin",
+                ":runtime:ide-read",
+                ":workspace:intellij-read",
+            )
+        ) {
+            verifyVfsPassiveRead.configure {
+                hostedSourceFiles.from(mainSourceSet.map { it.allSource })
+            }
+        }
         verifyNoLegacyArchitecture.configure {
             observedProjectPaths.add(modulePath)
             productionSourceFiles.from(
