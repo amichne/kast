@@ -17,6 +17,7 @@ import support.delivery.registerKvp026AtomicProof
 import support.delivery.registerKvp027AtomicProof
 import support.delivery.registerKvp028AtomicProof
 import support.delivery.registerKvp029AtomicProof
+import support.delivery.registerKvp030AtomicProof
 import support.delivery.GradleGateTaskNameRefinement
 import support.delivery.TaskProofProtocol
 import support.delivery.refineGradleGateTaskName
@@ -121,7 +122,7 @@ tasks.register<VerifyKastVfsPassiveAuthorityTask>("verifyKastVfsPassiveAuthority
 
 val typedReceiptTaskIds = registerDeliveryReceiptProgression() +
     registerKvp025AtomicProof() + registerKvp026AtomicProof() + registerKvp027AtomicProof() +
-    registerKvp028AtomicProof() + registerKvp029AtomicProof()
+    registerKvp028AtomicProof() + registerKvp029AtomicProof() + registerKvp030AtomicProof()
 program.program.tasks.sortedBy { it.id }.filterNot {
     it.id in typedReceiptTaskIds
 }.forEach { node ->
