@@ -15,6 +15,8 @@ and receipt admission tests.
   exact-head rejection.
 - `Kvp038ImplementationBaselineTest.kt` and `Kvp038LegacyDependencyAdmissionTest.kt` prove the
   clean-checkout implementation baseline and its admitted legacy dependency seam.
+- `Kvp040ReviewAdmissionTest.kt` proves exact-head review admission, complete authority coverage,
+  stale-head rejection, and unsupported-digest rejection.
 
 Keep the canonical `*DeliveryProof{Negative,}Test` and `*DeliveryState{Negative,}Test` selectors
 stable because the typed delivery program binds their exact commands.
