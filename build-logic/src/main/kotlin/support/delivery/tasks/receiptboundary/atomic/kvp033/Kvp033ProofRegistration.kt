@@ -53,14 +53,7 @@ internal fun Project.registerKvp033AtomicProof(): Set<TaskId> {
     tasks.register("proveKVP033", ProveKvp033Task::class.java) {
         group = "verification"
         description = "Executes KVP-033 misuse/legal proof and emits one content receipt."
-        dependsOn(
-            generatePacket,
-            negative,
-            acceptance,
-            "proveKVP025",
-            "proveKVP031",
-            "proveKVP032",
-        )
+        dependsOn(generatePacket, negative, acceptance)
         repositoryRootPath.set(layout.projectDirectory.asFile.absolutePath)
         packetFile.set(packetOutput)
         configureDependencies()
