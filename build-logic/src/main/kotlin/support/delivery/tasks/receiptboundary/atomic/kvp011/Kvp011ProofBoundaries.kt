@@ -40,9 +40,10 @@ internal sealed interface Kvp011RelevantInputAdmission {
  * `Kvp011ImplementationScopeAdmission`.
  *
  * Establishes a nonempty ordered KVP-011 commit delta after observing every checkpoint without a
- * pathspec. Checkpoints before the first KVP-011-owned path and later unrelated checkpoints are
- * excluded; every mixed task checkpoint must remain wholly within declared writes. Git and scope
- * failures remain finite data.
+ * pathspec. A checkpoint belongs to KVP-011 only when it changes one exclusive physical owner;
+ * shared graph/projection paths alone cannot recover KVP-011 implementation ownership. Every
+ * admitted checkpoint must remain wholly within declared writes. Git and scope failures remain
+ * finite data.
  */
 internal fun admitKvp011ImplementationScope(
     exec: ExecOperations,
@@ -64,7 +65,6 @@ internal fun admitKvp011ImplementationScope(
         return scopeRejected(Kvp011BoundaryFailure.GIT_COMMAND_REJECTED)
     }
     val commits = mutableListOf<Kvp011ImplementationCommit>()
-    var taskStarted = false
     revisions.text.lineSequence().filter(String::isNotBlank).forEach { revision ->
         val changed = git(
             exec,
@@ -78,11 +78,10 @@ internal fun admitKvp011ImplementationScope(
         val taskPaths = observed.filter { path ->
             allowedWrites.any { scope -> path.inKvp011Scope(scope) }
         }
-        if (!taskStarted) {
-            taskStarted = taskPaths.isNotEmpty()
-            if (!taskStarted) return@forEach
+        val ownsCheckpoint = observed.any { path ->
+            KVP011_EXCLUSIVE_WRITE_ROOTS.any { scope -> path.inKvp011Scope(scope) }
         }
-        if (taskPaths.isEmpty()) return@forEach
+        if (!ownsCheckpoint) return@forEach
         if (observed.any { path ->
                 allowedWrites.none { scope -> path.inKvp011Scope(scope) }
             }
@@ -175,6 +174,13 @@ private fun git(
 }
 
 private fun String.inKvp011Scope(scope: String) = this == scope || startsWith("$scope/")
+private val KVP011_EXCLUSIVE_WRITE_ROOTS = listOf(
+    "build-logic/src/main/kotlin/support/delivery/tasks/receiptboundary/atomic/kvp011",
+    "build-logic/src/main/kotlin/support/plugin",
+    "build-logic/src/test/kotlin/support/plugin",
+    "ide-plugin",
+    "indexer",
+)
 private fun scopeRejected(failure: Kvp011BoundaryFailure) =
     Kvp011ImplementationScopeAdmission.Rejected(failure)
 private fun inputRejected(failure: Kvp011BoundaryFailure) =
