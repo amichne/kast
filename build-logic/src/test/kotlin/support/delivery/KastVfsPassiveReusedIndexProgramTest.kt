@@ -47,6 +47,14 @@ class KastVfsPassiveReusedIndexProgramTest {
             listOf("install.sh", "packaging"),
             defaultIsolatedRuntimeRetirementBatch().tasks.single().ownedWrites,
         )
+        assertTrue(
+            validated.program.tasks.single { it.id == TaskId("KVP-032") }.allowedWrites.containsAll(
+                listOf(
+                    "build-logic/src/main/kotlin/support/tasks/VerifyDistributionTasks.kt",
+                    "build-logic/src/main/kotlin/support/tasks/VerifyGeneratedSerializationSourcesTask.kt",
+                ),
+            ),
+        )
     }
 
     @Test fun `final plugin layout follows hosted runtime and compatibility remains actionable`() {
