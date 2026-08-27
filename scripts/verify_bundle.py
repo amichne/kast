@@ -29,7 +29,7 @@ program = json.loads(program_path.read_text())
 assert program["targetHead"] == "78262728313c90bb847e73425dc1a76d704397db"
 assert program["requirementFingerprint"] == "de2565f0efb71373758bcf89279f4dcc61f9251e44d425bc9559067e2baac11c"
 assert len(program["tasks"]) == 43
-assert len(program["gateGraph"]) == 91
+assert len(program["gateGraph"]) == 89
 assert program["terminal"]["taskId"] == "KVP-043"
 for task in program["tasks"]:
     expected_receipt_path = (
@@ -52,11 +52,11 @@ assert all("status" not in task for task in program["tasks"])
 by_id = {t["id"]: t for t in program["tasks"]}
 assert all(
     by_id[f"KVP-{number:03d}"]["proof"]["protocol"] == "LEGACY_GATE_RECEIPTS"
-    for number in range(1, 25)
+    for number in list(range(1, 11)) + list(range(12, 25))
 )
 assert all(
     by_id[f"KVP-{number:03d}"]["proof"]["protocol"] == "ATOMIC_TASK_PROOF"
-    for number in range(25, 44)
+    for number in [11] + list(range(25, 44))
 )
 assert {
     task["id"]
@@ -235,7 +235,10 @@ assert "registerKvp018ReceiptProgression" in (
     / "build-logic/src/main/kotlin/support/delivery/tasks/receipt/gate/firewall/plugin/project/epoch/Kvp015ReceiptRegistration.kt"
 ).read_text()
 legacy_program = json.loads(json.dumps(program))
-for legacy_task in legacy_program["tasks"][:24]:
+for legacy_task in (
+    task for task in legacy_program["tasks"]
+    if task["proof"]["protocol"] == "LEGACY_GATE_RECEIPTS"
+):
     legacy_proof = legacy_task["proof"]
     legacy_task["red"] = dict(legacy_proof["red"])
     legacy_task["red"]["gateId"] = legacy_task["red"]["caseId"]
