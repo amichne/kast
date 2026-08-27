@@ -15,3 +15,7 @@
   qualification, and cancellation cannot appear as complete KVP-029 discovery.
 - `IdeHostedSymbolDiscoverAcceptance` proves the current exact Project capability reaches one
   bounded detached native discovery outcome and remains current through projection.
+- `IdeHostedSymbolResolveNegativeProof` proves raw, stale, ambiguous, echoed, moved, and cancelled
+  candidate input cannot appear as exact KVP-030 identity.
+- `IdeHostedSymbolResolveAcceptance` proves an admitted candidate capability reaches one verified
+  exact-selector output through the current retained Project.

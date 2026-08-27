@@ -37,6 +37,9 @@ remains host-neutral and pure.
 - KVP-029's discovery port enters the existing single-flight controller, invokes only the nominal
   native adapter authority, and admits detached bounded output only after same-source epoch
   equality.
+- KVP-030's resolution port admits parsed candidate text only through a batch-owned selector
+  capability, performs one exact semantic resolution, and verifies a non-echoed exact operation
+  output after same-source epoch equality.
 
 ## Verification ladder
 
