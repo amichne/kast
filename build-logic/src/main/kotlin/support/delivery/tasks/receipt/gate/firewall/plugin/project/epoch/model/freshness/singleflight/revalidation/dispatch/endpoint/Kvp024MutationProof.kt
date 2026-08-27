@@ -1,5 +1,8 @@
 package support.delivery
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
 internal sealed interface Kvp024ReportMutationFailure {
     data class MutationAdmitted(
         val index: Int,
@@ -209,7 +212,7 @@ private fun kvp024ReportMutations(canonical: String) = listOf(
     ),
     reportMutation(
         canonical.replaceFirst(
-            "\"OWNED_BOUND_SOCKET\"",
+            "\"OWNED_BOUND_SOCKET_NAMESPACE\"",
             "\"OWNED_TEMPORARY_DESCRIPTOR\"",
         ),
         Kvp024EndpointPublicationReportFailure.ROLLBACK_ARTIFACT_SET_MISMATCH,
@@ -251,8 +254,8 @@ private fun kvp024GateMutations(
     ),
     gateMutation(
         canonical.replaceFirst(
-            "\"declaredCommand\": \"${command.declaredCommand}\"",
-            "\"declaredCommand\": \"./gradlew check\"",
+            "\"declaredCommand\": ${Json.encodeToString(command.declaredCommand)}",
+            "\"declaredCommand\": ${Json.encodeToString("./gradlew check")}",
         ),
         Kvp024GateExecutionFailure.COMMAND_MISMATCH,
     ),
