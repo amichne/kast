@@ -54,6 +54,9 @@ already supplied by the hosted plugin. It is an `IDE_READ_ONLY` module and depen
   closed admission case and retained capability field, and keeps all five forbidden-work counts
   at zero. The KVP-019 receipt dependency generates and mutation-checks those bytes before both
   focused selectors consume them, without adding that producer to the shared predecessor test.
+  The ordinary clean-checkout `test` lifecycle skips only the two report-closure assertions when
+  that proof-only report is absent; behavioral admission cases still execute, while the KVP-019
+  proof lifecycle remains the sole authority that generates and binds the report.
 - `kvp033WorkspaceEventStorm` is the non-cacheable exact selector for bounded root-filtered VFS
   batches, lifecycle/dumb-mode movement, listener non-scheduling, and EDT-surface exclusion. It
   emits JUnit evidence only; the root KVP-033 task remains the physical report owner.
