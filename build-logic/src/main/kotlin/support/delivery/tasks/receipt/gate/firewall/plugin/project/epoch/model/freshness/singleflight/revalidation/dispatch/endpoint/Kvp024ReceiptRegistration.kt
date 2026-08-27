@@ -106,7 +106,7 @@ internal fun Project.registerKvp024ReceiptProgression(
         "scripts/verify_bundle.py",
         "scripts/verify_kvp024_delivery.py",
     )
-    val redArtifacts = sharedArtifacts + testRoot + "IdeEndpointPublicationNegativeTest.kt"
+    val redArtifacts = sharedArtifacts + listOf(testRoot + "IdeEndpointPublicationNegativeTest.kt")
     val greenArtifacts = redArtifacts + listOf(
         testRoot + "IdeEndpointPublicationTest.kt",
         "ide-plugin/src/test/kotlin/io/github/amichne/kast/ide/compatibility/" +

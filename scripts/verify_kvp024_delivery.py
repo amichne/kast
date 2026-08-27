@@ -307,8 +307,8 @@ def verify_kvp024_delivery(root, program, requirements, normative_plan):
         assert test_files == present_test_files
         for name in product_files:
             assert f'mainRoot + "{name}"' in registration
-        for name in test_files:
-            assert f'testRoot + "{name}"' in registration
+        for marker in ('sharedArtifacts + listOf(testRoot + "IdeEndpointPublicationNegativeTest.kt")', 'testRoot + "IdeEndpointPublicationTest.kt"'):
+            assert marker in registration
         product_source = "\n".join(
             required_text(root, f"ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/endpoint/{name}")
             for name in sorted(product_files - {"AGENTS.md"})
