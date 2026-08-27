@@ -24,6 +24,8 @@ state-specific transitions from that capability to `DetachedIdeWorkspaceModel` a
   conflicting source roots, cross-module ownership ambiguity, and duplicate classpath URLs.
 - Admit at most 256 detached IntelliJ modules. This covers the canonical Kast model's 132 cached
   Gradle modules while preserving a finite rejection above the evidence-backed capacity.
+- Admit at most 2,048 detached classpath identities per module. This bounds the supported IDEA
+  host's 1,785 physical JAR surface plus module outputs without truncating the canonical model.
 - Preserve each Java code/resource source folder's explicit cached `isForGeneratedSources` flag;
   missing or conflicting provenance is a closed capture rejection and must never be inferred from
   a path name.

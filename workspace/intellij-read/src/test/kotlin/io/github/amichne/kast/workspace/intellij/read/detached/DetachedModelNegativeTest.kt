@@ -79,7 +79,7 @@ class DetachedModelNegativeTest {
         assertFailures(
             observationWithModule(
                 detachedModuleBoundary(
-                    classpath = (0..512).map(::detachedClasspathBoundary),
+                    classpath = (0..2_048).map(::detachedClasspathBoundary),
                 ),
             ),
             DetachedModelCaptureFailure.TOO_MANY_CLASSPATH_ENTRIES,

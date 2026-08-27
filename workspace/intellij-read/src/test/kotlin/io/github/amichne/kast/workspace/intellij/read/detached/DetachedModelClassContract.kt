@@ -223,7 +223,7 @@ internal object DetachedModelClassContract {
     private const val JAVA_21_CLASS_VERSION = 65
 
     private val EXPECTED_FINGERPRINTS = linkedMapOf(
-        MAIN_RESOURCE to "ecb42d98ad28f393079e7f876cba3a3038361930ce3c545c72a70d656785840c",
+        MAIN_RESOURCE to "8e6af06b25e380b6710808b51757fcdf0a6831af54413d3c7bba1f84dda7958d",
         MAPPINGS_RESOURCE to "2e9b61f95ae2cd3b53ed39b6f41f8dcb6153f10fb3bb9539aea27b1bb14ea415",
     )
 
