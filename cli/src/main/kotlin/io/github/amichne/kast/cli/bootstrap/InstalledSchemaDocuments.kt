@@ -53,6 +53,7 @@ internal fun installedSchema(
                     lifecycleCommands = commandSurface.lifecycleCommands.map { it.command },
                     commands = commandSurface.semanticCommands.map { it.usage },
                 ),
+                serverProjection = installedServerProjection(commandSurface),
             ),
         ),
     )
@@ -64,6 +65,7 @@ private data class InstalledSchemaDocument(
     val operationRegistry: CliOpenJsonObject,
     val wireSchema: CliOpenJsonObject,
     val cliProjection: InstalledCliProjectionDocument,
+    val serverProjection: InstalledServerProjectionDocument,
 )
 
 @Serializable
