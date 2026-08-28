@@ -1,5 +1,6 @@
 package io.github.amichne.kast.evidence.sqlite
 
+import io.github.amichne.kast.evidence.contract.MutationDatabaseLocation
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceFailure
 import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceStore
@@ -208,6 +209,15 @@ class SqliteMutationRecoveryJournal private constructor(
     }
 
     companion object {
+        /** Opens one exact-root durable location without exposing a raw path to composition. */
+        fun open(location: MutationDatabaseLocation): SqliteMutationRecoveryJournalOpenResult {
+            val path = prepareHostedDatabasePath(location.valueAtSqliteBoundary())
+                ?: return SqliteMutationRecoveryJournalOpenResult.Rejected(
+                    SqliteMutationRecoveryJournalOpenFailure.STORAGE_UNAVAILABLE,
+                )
+            return open(path)
+        }
+
         /**
          * Proof transition: `Path -> SqliteMutationRecoveryJournalOpenResult`.
          *

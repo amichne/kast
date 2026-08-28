@@ -261,6 +261,7 @@ private object ModuleRoleBoundaries {
             safeReadCosts,
             allowedEffects = setOf(
                 ForbiddenEffect.JDBC,
+                ForbiddenEffect.FILESYSTEM_WRITE,
                 ForbiddenEffect.TOPOLOGY_PUBLICATION,
             ),
         )

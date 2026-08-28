@@ -231,6 +231,7 @@ internal object KastCleanSlateModules {
             ModuleId.SYMBOL_CONTRACT,
             effects = setOf(
                 ForbiddenEffect.JDBC,
+                ForbiddenEffect.FILESYSTEM_WRITE,
                 ForbiddenEffect.TOPOLOGY_PUBLICATION,
             ),
         ),
