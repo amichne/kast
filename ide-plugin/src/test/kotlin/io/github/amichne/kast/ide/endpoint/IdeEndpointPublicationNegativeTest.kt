@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test
 class IdeEndpointPublicationNegativeTest {
     @Test
     fun `wrong root rejects before bind`() = withDirectory { directory ->
-        consumeCanonicalReport()
         val result = prepareEndpoint(
             directory,
             projectRoot = endpointRoot("/workspace/kast"),
@@ -374,7 +373,7 @@ private fun assertActivationRejected(
 }
 
 internal inline fun withDirectory(block: (Path) -> Unit) {
-    val directory = Files.createTempDirectory(Path.of("/tmp"), "kast-kvp024-")
+    val directory = Files.createTempDirectory(Path.of("/tmp"), "kast-endpoint-")
     try {
         block(directory)
     } finally {
@@ -388,10 +387,4 @@ private fun assertDirectoryEmpty(directory: Path) {
 
 private fun deleteFixture(endpoint: ReadyIdeEndpoint) {
     endpoint.retire(IdeEndpointRetirementCause.TEST_CLEANUP)
-}
-
-private fun consumeCanonicalReport() {
-    val reportPath = System.getProperty("kast.ide.endpoint.report") ?: return
-    val path = Path.of(reportPath)
-    assertTrue(Files.readString(path).contains("\"taskId\": \"KVP-024\""))
 }

@@ -1,7 +1,5 @@
 package support.plugin
 
-import java.nio.file.Path
-
 @kotlinx.serialization.Serializable
 @JvmInline
 internal value class StandalonePluginId private constructor(val value: String) {
@@ -31,17 +29,6 @@ internal data class PluginPayloadObservation(
 @JvmInline
 internal value class PluginArchiveEntry internal constructor(val value: String)
 
-@kotlinx.serialization.Serializable
-@JvmInline
-internal value class RepositoryRelativeArtifactPath internal constructor(val value: String)
-
-internal sealed interface RepositoryRelativeArtifactPathResult {
-    data class Complete(val path: RepositoryRelativeArtifactPath) :
-        RepositoryRelativeArtifactPathResult
-    data class Rejected(val failure: StandalonePluginFailure) :
-        RepositoryRelativeArtifactPathResult
-}
-
 internal enum class StandalonePluginFailure {
     MISSING_PAYLOAD,
     DUPLICATE_ARCHIVE_ENTRY,
@@ -55,35 +42,6 @@ internal enum class StandalonePluginFailure {
     STARTUP_ACTIVITY_MISSING,
     MALFORMED_JAR,
     MALFORMED_DESCRIPTOR,
-    ARTIFACT_OUTSIDE_REPOSITORY,
-}
-
-/**
- * Proof transition: `(Path, Path) -> RepositoryRelativeArtifactPathResult`.
- * Establishes that the artifact is a non-empty normalized descendant of the repository root.
- * Expected cross-root or escaping paths are finite
- * [StandalonePluginFailure.ARTIFACT_OUTSIDE_REPOSITORY]. Raw paths remain at the Gradle task
- * boundary.
- */
-internal fun admitRepositoryRelativeArtifactPath(
-    repositoryRoot: Path,
-    artifact: Path,
-): RepositoryRelativeArtifactPathResult {
-    val relative = try {
-        repositoryRoot.toAbsolutePath().normalize().relativize(artifact.toAbsolutePath().normalize())
-    } catch (_: IllegalArgumentException) {
-        return RepositoryRelativeArtifactPathResult.Rejected(
-            StandalonePluginFailure.ARTIFACT_OUTSIDE_REPOSITORY,
-        )
-    }
-    if (relative.nameCount == 0 || relative.startsWith("..")) {
-        return RepositoryRelativeArtifactPathResult.Rejected(
-            StandalonePluginFailure.ARTIFACT_OUTSIDE_REPOSITORY,
-        )
-    }
-    return RepositoryRelativeArtifactPathResult.Complete(
-        RepositoryRelativeArtifactPath(relative.joinToString("/")),
-    )
 }
 
 internal class ValidatedStandalonePluginPayload internal constructor(
@@ -95,56 +53,6 @@ internal sealed interface StandalonePluginPayloadResult {
     data class Complete(val payload: ValidatedStandalonePluginPayload) :
         StandalonePluginPayloadResult
     data class Rejected(val failure: StandalonePluginFailure) : StandalonePluginPayloadResult
-}
-
-internal data class StandalonePluginNegativeProof(
-    val failures: List<StandalonePluginFailure>,
-)
-
-internal enum class StandalonePluginNegativeProofFailure { EXPECTED_REJECTION_MISSING }
-
-internal sealed interface StandalonePluginNegativeProofResult {
-    data class Complete(val proof: StandalonePluginNegativeProof) :
-        StandalonePluginNegativeProofResult
-    data class Rejected(val failure: StandalonePluginNegativeProofFailure) :
-        StandalonePluginNegativeProofResult
-}
-
-/**
- * Proof transition: fixed KVP-010 rejection fixtures -> `StandalonePluginNegativeProofResult`.
- * Establishes that missing payload, private IDEA-home layout, and platform-owned classes remain
- * independently rejected by their exact finite [StandalonePluginFailure]. Expected proof drift is
- * [StandalonePluginNegativeProofFailure]; fixture primitives do not leave this build boundary.
- */
-internal fun deriveStandalonePluginNegativeProof(): StandalonePluginNegativeProofResult {
-    val descriptor = PluginDescriptorObservation.Present(
-        KastStandalonePlugin.id.value,
-        RegistrationObservation.PRESENT,
-        RegistrationObservation.PRESENT,
-    )
-    val cases = listOf(
-        emptyList<PluginPayloadObservation>() to StandalonePluginFailure.MISSING_PAYLOAD,
-        listOf(PluginPayloadObservation("idea-home/lib/payload.jar", emptySet(), descriptor)) to
-            StandalonePluginFailure.PRIVATE_IDEA_HOME_LAYOUT,
-        listOf(
-            PluginPayloadObservation(
-                "${KastStandalonePlugin.root}/lib/platform.jar",
-                setOf("com/intellij/idea/Main.class"),
-                descriptor,
-            ),
-        ) to StandalonePluginFailure.PLATFORM_CLASS_PRESENT,
-    )
-    if (cases.any { (input, expected) ->
-            KastStandalonePlugin.admit(input) != StandalonePluginPayloadResult.Rejected(expected)
-        }
-    ) {
-        return StandalonePluginNegativeProofResult.Rejected(
-            StandalonePluginNegativeProofFailure.EXPECTED_REJECTION_MISSING,
-        )
-    }
-    return StandalonePluginNegativeProofResult.Complete(
-        StandalonePluginNegativeProof(cases.map { it.second }),
-    )
 }
 
 internal object KastStandalonePlugin {

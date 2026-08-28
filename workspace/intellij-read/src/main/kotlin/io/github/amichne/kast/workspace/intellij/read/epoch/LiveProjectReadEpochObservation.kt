@@ -21,7 +21,7 @@ import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationStage
 
-/** Typed installation of the one KVP-017 source retained by an admitted Project/runtime. */
+/** Typed installation of the one project-read epoch source retained by an admitted Project/runtime. */
 internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSourceFactory {
     /**
      * Proof transition: `(Project, CanonicalWorkspaceRoot) ->
@@ -99,7 +99,7 @@ internal class LiveProjectReadEpochSource(
      * Proof transition: `LiveProjectReadEpochSource ->
      * Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>`.
      *
-     * Establishes a smart, lifecycle-current, constant-size sample of every KVP-015 authority
+     * Establishes a smart, lifecycle-current, constant-size sample of every epoch-signal policy authority
      * inside one cancellable IDEA 262 read. Raw platform extraction remains in the live port.
      * Exact `CannotReadException` becomes finite [ProjectReadEpochObservationFailure.ReadPreempted]
      * data; all other cancellation propagates.

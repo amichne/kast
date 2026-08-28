@@ -5,8 +5,6 @@ import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochRelation
-import java.nio.file.Files
-import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
@@ -56,17 +54,6 @@ class ProjectReadEpochIdentityTest {
 }
 
 class ReportedProjectReadEpochTest {
-    @Test
-    fun `generated report has the exact independently owned product bytes`() {
-        val report = System.getProperty(REPORT_PROPERTY)?.let(Path::of)
-            ?: fail("missing generated KVP-017 report property $REPORT_PROPERTY")
-        val expected = requireNotNull(javaClass.getResource(EXPECTED_REPORT_RESOURCE)) {
-            "missing expected KVP-017 report resource $EXPECTED_REPORT_RESOURCE"
-        }.readText()
-
-        assertEquals(expected, Files.readString(report))
-    }
-
     @Test
     fun `report case order is observed through retained product sources`() {
         val stable = reportedEpochBoundary()
@@ -119,10 +106,6 @@ class ReportedProjectReadEpochTest {
         )
     }
 
-    private companion object {
-        const val REPORT_PROPERTY = "kast.ide.project.read.epoch.report"
-        const val EXPECTED_REPORT_RESOURCE = "/KVP-017-read-epoch.expected.json"
-    }
 }
 
 class ProjectReadEpochTraversalGuardTest {

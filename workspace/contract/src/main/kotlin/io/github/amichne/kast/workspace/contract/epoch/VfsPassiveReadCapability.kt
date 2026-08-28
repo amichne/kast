@@ -16,7 +16,7 @@ class VfsPassiveReadCapability private constructor(
          * Proof transition: `(CanonicalWorkspaceRoot, ProjectReadEpoch<*>) ->
          * VfsPassiveReadCapability`.
          *
-         * Preserves the exact root and current same-source epoch established by KVP-019 freshness
+         * Preserves the exact root and current same-source epoch established by freshness admission freshness
          * admission. Construction is permitted only from the friend hosted adapter after its sole
          * live epoch observation; raw IDE state is never accepted or retained here.
          */
@@ -39,7 +39,7 @@ sealed interface VfsPassiveReadAdmission {
     ) : VfsPassiveReadAdmission
 }
 
-/** Finite freshness failures before KVP-020 queue admission or semantic execution begins. */
+/** Finite freshness failures before single-flight admission queue admission or semantic execution begins. */
 sealed interface VfsPassiveReadAdmissionFailure {
     data object ProjectDisposed : VfsPassiveReadAdmissionFailure
     data object DumbMode : VfsPassiveReadAdmissionFailure

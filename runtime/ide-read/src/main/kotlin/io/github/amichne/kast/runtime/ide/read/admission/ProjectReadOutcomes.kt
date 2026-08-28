@@ -63,7 +63,7 @@ internal sealed interface ProjectReadExecutionAdmissionFailure {
 /** Non-forgeable proof that one active permit is currently executing. */
 internal sealed interface ExecutingProjectRead
 
-/** Closed outcome of requesting cancellation through the KVP-021 executor boundary. */
+/** Closed outcome of requesting cancellation through the cancellable-read executor boundary. */
 internal sealed interface ProjectReadExecutionCancellation {
     data class Ended(
         val terminal: ProjectReadPermitTerminal,

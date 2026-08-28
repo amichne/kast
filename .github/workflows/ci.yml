@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  checks: read
-  pull-requests: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -19,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  repository-contracts:
-    name: Repository contracts
+  installer:
+    name: Installer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -28,17 +26,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Enforce repository shape
-        run: python3 .github/scripts/check-repository-shape.py --root .
-
-      - name: Verify release flow
-        run: python3 .github/scripts/release/verify-release-contract.py --root .
-
       - name: Verify installer recovery flow
         run: bash packaging/test-installer.sh
 
   kotlin:
-    name: Kotlin and runtime delivery
+    name: Kotlin product
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -57,129 +49,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Verify Kotlin product and runtime delivery
-        if: github.event.pull_request.number != 633
         run: >-
           ./gradlew
           -Dorg.gradle.jvmargs=-Xmx5g
-          test
-          verifyKastModuleGraph
-          verifyForbiddenEffects
-          runtimeDeliveryMvpAcceptance
-
-      - name: Verify legacy architecture retirement
-        # Keep this consumer separate from generated compatibility-source producers.
-        if: github.event.pull_request.number != 633
-        run: >-
-          ./gradlew
-          -Dorg.gradle.jvmargs=-Xmx5g
-          verifyNoLegacyArchitecture
-
-      - name: Collect merged cleanup evidence
-        if: github.event.pull_request.number == 633
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: >-
-          python3 .github/scripts/collect_pr633_delivery_evidence.py
-          --repository ${{ github.repository }}
-          --output build/reports/pr633/external/cleanup.json
-          merged-pull-request
-          --pull-request 635
-          --expected-base main
-          --path-policy gradle/pr633/policies/cleanup-path-policy.json
-
-      - name: Verify exact PR 633 merge candidate
-        if: github.event.pull_request.number == 633
-        run: >-
-          packaging/pr633-final-gate.sh
-          -Dorg.gradle.jvmargs=-Xmx5g
-          -Ppr633CleanupMergedEvidence=build/reports/pr633/external/cleanup.json
-          -Ppr633EventFile=${{ github.event_path }}
-
-      - name: Upload PR 633 merge-candidate evidence
-        if: github.event.pull_request.number == 633
-        uses: actions/upload-artifact@v6
-        with:
-          name: pr633-gate-060-${{ github.event.pull_request.head.sha }}
-          path: build/reports/pr633/gates/merge-candidate.json
-          if-no-files-found: error
-
-  pr633-merge-candidate:
-    name: pr633-merge-candidate
-    if: github.event.pull_request.number == 633
-    needs:
-      - repository-contracts
-      - kotlin
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - uses: actions/download-artifact@v6
-        with:
-          name: pr633-gate-060-${{ github.event.pull_request.head.sha }}
-          path: build/reports/pr633/gates
-
-      - name: Verify exact-head GATE-060 evidence
-        run: >-
-          python3 .github/scripts/verify_pr633_program.py
-          ci-artifact
-          --report build/reports/pr633/gates/merge-candidate.json
-          --expected-head ${{ github.event.pull_request.head.sha }}
-
-  pr633-exact-head-ci:
-    name: pr633-exact-head-ci
-    if: github.event.pull_request.number == 633
-    needs:
-      - pr633-merge-candidate
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Set up Java 21
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-
-      - uses: actions/download-artifact@v6
-        with:
-          name: pr633-gate-060-${{ github.event.pull_request.head.sha }}
-          path: build/reports/pr633/gates
-
-      - name: Collect completed merge-candidate check evidence
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: >-
-          python3 .github/scripts/collect_pr633_delivery_evidence.py
-          --repository ${{ github.repository }}
-          --output build/reports/pr633/external/exact-head-ci.json
-          exact-head-ci
-          --pull-request 633
-          --expected-base main
-          --expected-head ${{ github.event.pull_request.head.sha }}
-          --check-name pr633-merge-candidate
-
-      - name: Materialize exact-head GATE-070 evidence
-        run: >-
-          ./gradlew
-          pr633ExactHeadCiAcceptance
-          -Ppr633Gate060Evidence=build/reports/pr633/gates/merge-candidate.json
-          -Ppr633ExactHeadCiEvidence=build/reports/pr633/external/exact-head-ci.json
-
-      - name: Upload PR 633 exact-head CI evidence
-        uses: actions/upload-artifact@v6
-        with:
-          name: pr633-gate-070-${{ github.event.pull_request.head.sha }}
-          path: |
-            build/reports/pr633/external/exact-head-ci.json
-            build/reports/pr633/gates/exact-head-ci.json
-          if-no-files-found: error
+          build
+          installedProductTest
+          verifyKastArchitecture

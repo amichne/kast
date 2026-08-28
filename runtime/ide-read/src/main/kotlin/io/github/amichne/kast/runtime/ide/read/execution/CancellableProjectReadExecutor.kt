@@ -48,7 +48,7 @@ class CancellableProjectReadExecutor private constructor(
      * Proof transition: `VfsPassiveReadCapability -> ProjectReadAdmission`.
      *
      * Refines comparable exact-root freshness into one active permit, one queued request, or the
-     * finite KVP-020 failure set. No live IntelliJ authority crosses this boundary.
+     * finite single-flight failure set. No live IntelliJ authority crosses this boundary.
      */
     internal fun admit(freshness: VfsPassiveReadCapability): ProjectReadAdmission =
         singleFlight.admit(freshness)

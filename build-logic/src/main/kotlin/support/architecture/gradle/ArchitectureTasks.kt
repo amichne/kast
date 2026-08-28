@@ -10,7 +10,6 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -28,33 +27,12 @@ import support.architecture.JvmEffectScanner
 import support.architecture.KastArchitecturePolicy
 import support.architecture.ObservedArchitecture
 import support.architecture.ValidatedArchitecturePolicy
-import support.architecture.projection.ArchitectureProjection
 import java.nio.file.Files
 import java.nio.file.Path
 
 @CacheableTask
-abstract class GenerateKastArchitectureProjectionTask : DefaultTask() {
-    @get:OutputFile
-    abstract val projectionFile: RegularFileProperty
-
-    @TaskAction
-    fun generate() {
-        val architecture = when (val policy = canonicalArchitecturePolicy()) {
-            is ArchitecturePolicyValidation.Valid -> policy.architecture
-            is ArchitecturePolicyValidation.Invalid -> throw GradleException(
-                "Canonical Kast repository architecture policy is invalid: ${policy.failures}",
-            )
-        }
-        val target = projectionFile.get().asFile.toPath()
-        Files.createDirectories(target.parent)
-        Files.writeString(target, ArchitectureProjection.render(architecture))
-    }
-}
-
-@CacheableTask
 abstract class VerifyKastArchitectureTask : DefaultTask() {
     init {
-        mustRunAfter("generateKastArchitectureProjection")
         observedProjectPaths.convention(emptyList())
         observedProjectDependencies.convention(emptyList())
         observedExportedProjectDependencies.convention(emptyList())
@@ -81,10 +59,6 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val compiledClassDirectories: ConfigurableFileCollection
 
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val projectionFile: RegularFileProperty
-
     @get:Internal
     abstract val rootDirectory: DirectoryProperty
 
@@ -99,7 +73,6 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
                 "Canonical Kast repository architecture policy is invalid: ${policy.failures}",
             )
         }
-        verifyProjection(canonical)
         val policy = canonical
         val graph = when (
             val parsed = ArchitectureObservationParser.parse(
@@ -133,23 +106,6 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
             is ArchitectureAdmission.Rejected -> fail(
                 "REJECTED",
                 admission.violations.map(::renderViolation).sortedBy(ArchitectureReportFinding::message),
-            )
-        }
-    }
-
-    private fun verifyProjection(policy: ValidatedArchitecturePolicy) {
-        val projection = projectionFile.get().asFile.toPath()
-        val expected = ArchitectureProjection.render(policy)
-        val observed = if (Files.isRegularFile(projection)) Files.readString(projection) else ""
-        if (observed != expected) {
-            fail(
-                "PROJECTION_DRIFT",
-                listOf(
-                    finding(
-                        "PROJECTION_DRIFT",
-                        "Run ./gradlew generateKastArchitectureProjection and commit the result.",
-                    ),
-                ),
             )
         }
     }

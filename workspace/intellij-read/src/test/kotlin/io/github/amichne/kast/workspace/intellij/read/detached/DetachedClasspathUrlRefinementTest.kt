@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 
 class DetachedClasspathUrlRefinementTest {
     @Test
-    fun `classpath URL refinement matches the KVP-016 contract`() {
+    fun `classpath URL refinement matches the detached-model boundary contract`() {
         DetachedClasspathUrlRefinementContract.verify()
     }
 }

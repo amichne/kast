@@ -203,7 +203,7 @@ internal object LiveIdeEndpointStartup {
     /**
      * Proof transition: `(Project, ProjectEndpointGenerationSource) -> IdeEndpointStartup`.
      *
-     * Refines the existing Project through the compiled KVP-012 tuple and [HostedIdeReadProject],
+     * Refines the existing Project through the compiled host-compatibility tuple and [HostedIdeReadProject],
      * preserves transient cached-readiness failures as [IdeEndpointStartup.Deferred], and consumes
      * a generation only after complete four-operation runtime construction. All other expected
      * failures remain finite [IdeEndpointStartupFailure]. Raw Project metadata, PID, and endpoint

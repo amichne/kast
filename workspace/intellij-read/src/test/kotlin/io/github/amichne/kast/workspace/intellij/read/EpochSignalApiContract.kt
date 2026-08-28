@@ -19,7 +19,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Compile-only contract for the exact public IDEA 262 signal APIs characterized by KVP-015.
+ * Compile-only contract for the exact public IDEA 262 signal APIs characterized by epoch-signal policy.
  *
  * This type must never be classloaded by the Java-21 characterization task. The positive test
  * instead reads its class resource and verifies the exact constant-pool owners and members.
@@ -209,7 +209,7 @@ internal object EpochSignalLedgerContract {
     /**
      * Proof transition: `String -> EpochLedgerAdmission`.
      *
-     * Establishes the exact generated KVP-015 READ_EPOCH document, ordered signals and cases,
+     * Establishes the exact generated epoch-signal policy READ_EPOCH document, ordered signals and cases,
      * 22 total samples, rejected constant-zero authorities, and zero forbidden work. Raw JSON is
      * permitted only at the generated report boundary; [EpochLedgerFailure] closes rejection.
      */

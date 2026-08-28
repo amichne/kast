@@ -1,10 +1,8 @@
 package support.plugin
 
-import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
-import org.junit.jupiter.api.io.TempDir
 
 class StandalonePluginModelTest {
     @Test
@@ -102,21 +100,6 @@ class StandalonePluginModelTest {
                 ),
             ),
             StandalonePluginFailure.STARTUP_ACTIVITY_MISSING,
-        )
-    }
-
-    @Test
-    fun `artifact path refines only beneath repository root`(@TempDir root: Path) {
-        val admitted = assertInstanceOf<RepositoryRelativeArtifactPathResult.Complete>(
-            admitRepositoryRelativeArtifactPath(root, root.resolve("ide-plugin/build/plugin.zip")),
-        )
-        assertEquals("ide-plugin/build/plugin.zip", admitted.path.value)
-
-        assertEquals(
-            RepositoryRelativeArtifactPathResult.Rejected(
-                StandalonePluginFailure.ARTIFACT_OUTSIDE_REPOSITORY,
-            ),
-            admitRepositoryRelativeArtifactPath(root, root.resolveSibling("plugin.zip")),
         )
     }
 

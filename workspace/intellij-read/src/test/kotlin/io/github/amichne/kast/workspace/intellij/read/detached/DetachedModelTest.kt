@@ -12,8 +12,6 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
-import java.nio.file.Files
-import java.nio.file.Path
 import java.util.ArrayDeque
 
 class DetachedModelTest {
@@ -90,14 +88,6 @@ class DetachedModelTest {
     }
 
     @Test
-    fun `generated report is the exact canonical detached model contract`() {
-        val report = requireNotNull(System.getProperty(REPORT_PROPERTY)) {
-            "missing generated detached-model report property $REPORT_PROPERTY"
-        }
-        assertEquals(EXPECTED_DETACHED_MODEL_REPORT, Files.readString(Path.of(report)))
-    }
-
-    @Test
     fun `compiled live adapter matches the pinned IDEA 262 contract`() {
         assertEquals(
             emptyList<DetachedModelClassContractFailure>(),
@@ -106,7 +96,7 @@ class DetachedModelTest {
     }
 
     @Test
-    fun `classpath URL refinement matches the KVP-016 contract`() {
+    fun `classpath URL refinement matches the detached-model contract`() {
         DetachedClasspathUrlRefinementContract.verify()
     }
 

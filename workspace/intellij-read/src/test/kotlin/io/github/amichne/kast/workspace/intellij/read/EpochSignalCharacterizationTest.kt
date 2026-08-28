@@ -8,7 +8,6 @@ import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationStage
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochRelation
-import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -134,22 +133,6 @@ class EpochSignalCharacterizationTest {
                 },
             ),
         )
-    }
-
-    @Test
-    fun `generated epoch ledger decodes and has the exact canonical bytes`() {
-        val report = System.getProperty("kast.ide.epoch.ledger.report")
-            ?.let(Path::of)
-            ?: fail("missing generated KVP-015 epoch-ledger report path")
-        val raw = Files.readString(report)
-
-        val admission = EpochSignalLedgerContract.admit(raw)
-
-        assertEquals(
-            EpochLedgerAdmission.Admitted(EpochSignalLedgerContract.document, 22),
-            admission,
-        )
-        assertEquals(EpochSignalLedgerContract.canonicalBytes, raw)
     }
 
     private fun rootFilteredBatchCount(events: List<EpochVfsObservedEvent>): Long {

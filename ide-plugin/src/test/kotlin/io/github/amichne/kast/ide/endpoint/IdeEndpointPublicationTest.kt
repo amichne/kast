@@ -45,7 +45,7 @@ import org.junit.jupiter.api.Test
 class IdeEndpointPublicationTest {
     @Test
     fun `complete runtime binds one reachable socket and atomically publishes an admitted descriptor`() {
-        val directory = Files.createTempDirectory(Path.of("/tmp"), "kast-kvp024-")
+        val directory = Files.createTempDirectory(Path.of("/tmp"), "kast-endpoint-")
         val compatibilityCandidate = positiveCompatibilityCandidate()
         val policy = positiveRefined(IdeHostCompatibilityPolicy.define(compatibilityCandidate))
         val compatibility = when (val admission = policy.admit(compatibilityCandidate)) {
@@ -159,7 +159,6 @@ class IdeEndpointPublicationTest {
                 compatibility.capabilities.capabilities.map { it.operation.id.value },
                 admitted.compatibility.capabilities.capabilities.map { it.operation.id.value },
             )
-            consumePositiveReport()
         } finally {
             endpoint.retire(IdeEndpointRetirementCause.TEST_CLEANUP)
             assertFalse(Files.exists(descriptorPath))
@@ -233,11 +232,4 @@ private fun <Value, Failure> positiveRefined(result: Refinement<Value, Failure>)
 private fun IdeEndpointPreparation.positivePrepared() = when (this) {
     is IdeEndpointPreparation.Prepared -> endpoint
     is IdeEndpointPreparation.Rejected -> fail("endpoint preparation rejected: $failure")
-}
-
-private fun consumePositiveReport() {
-    val reportPath = System.getProperty("kast.ide.endpoint.report") ?: return
-    val report = Files.readString(Path.of(reportPath))
-    assertTrue(report.contains("\"taskId\": \"KVP-024\""))
-    assertTrue(report.contains("\"publicInterface\": \"ReadyIdeEndpoint\""))
 }

@@ -21,7 +21,7 @@ enum class HostedWorkspaceKind {
     IDE_PROJECT,
 }
 
-/** Closed KVP-028 construction failures. */
+/** Closed workspace inspection construction failures. */
 enum class HostedWorkspaceInspectionPreparationFailure {
     NON_IDE_PROJECT_HOST,
     ROOT_UNREPRESENTABLE,
@@ -38,7 +38,7 @@ sealed interface HostedWorkspaceInspectionPreparation {
     ) : HostedWorkspaceInspectionPreparation
 }
 
-/** Boundary candidates used to exercise the named KVP-028 misuse without widening production. */
+/** Boundary candidates used to exercise the named workspace inspection misuse without widening production. */
 internal sealed interface HostedWorkspaceInspectionCandidate {
     data class ExistingProject(
         val project: HostedIdeReadProject,

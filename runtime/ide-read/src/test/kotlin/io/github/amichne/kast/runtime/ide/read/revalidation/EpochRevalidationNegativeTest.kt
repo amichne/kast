@@ -132,7 +132,7 @@ class EpochRevalidationNegativeTest {
     }
 
     @Test
-    fun `permit and host rejection preserve the KVP 021 outer result`() {
+    fun `permit and host rejection preserve the cancellable-read outer result`() {
         val fixture = EpochRevalidationFixture("/tmp/kast-epoch-outer-results")
         val controller = controller(fixture.capability())
         val port = InvokingReadPort()

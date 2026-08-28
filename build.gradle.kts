@@ -5,15 +5,10 @@ import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
 import support.tasks.GenerateHostedControlMetadataTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
-import support.tasks.registerGeneratedBuildLogicSerializationVerification
 
 plugins {
     base
     id("kast.architecture")
-    id("kast.pr633-stack")
-    id("kast.pr633-topology")
-    id("kast.pr633-delivery")
-    id("kast.vfs-passive-delivery")
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
@@ -42,8 +37,6 @@ subprojects {
     group = rootProject.group
     version = rootProject.version
 }
-
-registerGeneratedBuildLogicSerializationVerification()
 
 tasks.register("stageIndexerDist") {
     group = "distribution"
@@ -145,7 +138,6 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
 }
 
 apply(from = "distribution/release/ide-hosted-release.gradle.kts")
-apply(from = "packaging/ide-hosted-retirement.gradle.kts")
 
 val verifyLegacyIsolatedRuntimeFixtureLayout by tasks.registering(
     VerifySemanticRuntimeDistributionTask::class,
@@ -291,9 +283,7 @@ tasks.register<Exec>("legacyIsolatedRuntimeFixtureAcceptance") {
         ":traversal:contract:test",
         ":traversal:service:test",
         ":workspace:service:test",
-        "verifyForbiddenEffects",
-        "verifyKastModuleGraph",
-        "verifyNoLegacyArchitecture",
+        "verifyKastArchitecture",
     )
     inputs.dir(installedProductDirectory)
     inputs.file(layout.projectDirectory.file("integration-tests/enterprise_acceptance.py"))
@@ -312,54 +302,4 @@ tasks.register<Exec>("legacyIsolatedRuntimeFixtureAcceptance") {
         "--runtime-archive",
         legacyIsolatedRuntimeFixtureArchive.get().archiveFile.get().asFile.absolutePath,
     )
-}
-
-val buildLogicTests = gradle.includedBuild("build-logic").task(":test")
-val topologyAcceptanceChecks: Map<String, List<Any>> = mapOf(
-    "topologyEnumerationAcceptance" to listOf(":topology:intellij:test"),
-    "topologyCoverageAcceptance" to listOf(
-        ":topology:contract:test",
-        ":topology:build:test",
-        ":protocol:registry:test",
-        ":protocol:wire:test",
-        ":cli:test",
-    ),
-    "topologyFailureAtomicityAcceptance" to listOf(
-        ":topology:build:test",
-        ":evidence:sqlite:test",
-    ),
-    "topologyRestartAcceptance" to listOf(":evidence:sqlite:test"),
-    "topologyReuseAcceptance" to listOf(":topology:build:test", ":evidence:sqlite:test"),
-    "topologyStalenessAcceptance" to listOf(
-        ":topology:build:test",
-        ":workspace:intellij:test",
-        ":evidence:sqlite:test",
-    ),
-    "topologyRebuildRollbackAcceptance" to listOf(":evidence:sqlite:test"),
-    "topologyGraphReadAcceptance" to listOf(
-        ":topology:service:test",
-        ":traversal:service:test",
-        ":runtime:composition:test",
-    ),
-    "topologyDeterminismAcceptance" to listOf(":topology:service:test", ":evidence:sqlite:test"),
-    "verifyTopologyAuthority" to listOf(
-        buildLogicTests,
-        "verifyKastModuleGraph",
-        "verifyForbiddenEffects",
-    ),
-    "topologyScaleAcceptance" to listOf("legacyIsolatedRuntimeFixtureAcceptance"),
-)
-
-topologyAcceptanceChecks.forEach { (name, dependencies) ->
-    tasks.register(name) {
-        group = "verification"
-        description = "Runs the $name proof ring."
-        dependsOn(dependencies)
-    }
-}
-
-tasks.register("topologyAcceptance") {
-    group = "verification"
-    description = "Proves the explicit generation-bound topology snapshot contract."
-    dependsOn(topologyAcceptanceChecks.keys)
 }

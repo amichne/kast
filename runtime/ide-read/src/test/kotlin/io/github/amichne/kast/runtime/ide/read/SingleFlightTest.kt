@@ -7,11 +7,6 @@ import org.junit.jupiter.api.Test
 
 class SingleFlightTest {
     @Test
-    fun `generated report binds exact success evidence`() {
-        assertExactSingleFlightReport()
-    }
-
-    @Test
     fun `release and cancellation return one active permit to idle`() {
         val fixture = FreshnessFixture()
         val controller = controller(fixture.capability())

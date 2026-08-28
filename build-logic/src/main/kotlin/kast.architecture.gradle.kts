@@ -2,176 +2,38 @@ import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.tasks.SourceSetContainer
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
-import support.architecture.gradle.GenerateKastArchitectureProjectionTask
 import support.architecture.gradle.VerifyKastArchitectureTask
-import support.architecture.gradle.VerifyKastVfsPassiveFirewallNegativeTask
-import support.architecture.gradle.VerifyKastVfsPassiveFirewallTask
-import support.architecture.gradle.VerifyNoLegacyArchitectureTask
-import support.plugin.VerifyIdeHostedPluginLayoutNegativeTask
-import support.plugin.VerifyIdeHostedPluginLayoutTask
-import support.tasks.vfspassive.VerifyVfsPassiveReadTask
 
 plugins {
     base
 }
 
-val architectureProjection = layout.projectDirectory.file(
-    "gradle/architecture/kast-architecture-policy.json",
-)
-
-tasks.register<GenerateKastArchitectureProjectionTask>("generateKastArchitectureProjection") {
+val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyKastArchitecture") {
     group = "verification"
-    description = "Generates the checked-in JSON projection of the canonical typed Kotlin architecture policy."
-    projectionFile.set(architectureProjection)
-}
-
-fun registerArchitectureVerification(
-    name: String,
-    descriptionText: String,
-) = tasks.register<VerifyKastArchitectureTask>(name) {
-    group = "verification"
-    description = descriptionText
-    projectionFile.set(architectureProjection)
+    description = "Verifies module dependencies, exports, roles, and permitted effect owners."
     rootDirectory.set(layout.projectDirectory)
-    reportFile.set(layout.buildDirectory.file("reports/kast-architecture/$name.json"))
-}
-
-val verifyKastModuleGraph = registerArchitectureVerification(
-    "verifyKastModuleGraph",
-    "Verifies the clean-slate target module graph against observed project membership and edges.",
-)
-val verifyForbiddenEffects = registerArchitectureVerification(
-    "verifyForbiddenEffects",
-    "Verifies compiled references against the sole clean-slate effect owners.",
-)
-tasks.register<VerifyKastVfsPassiveFirewallNegativeTask>(
-    "verifyKastVfsPassiveFirewallNegative",
-) {
-    group = "verification"
-    description = "Proves every fixed IDE-hosted read forbidden authority is rejected."
-}
-tasks.register<VerifyKastVfsPassiveFirewallTask>("verifyKastVfsPassiveFirewall") {
-    group = "verification"
-    description = "Proves the staged IDE-hosted read graph and writes its firewall report."
-    reportFile.set(layout.buildDirectory.file("reports/delivery/KVP-009-firewall.json"))
-}
-val verifyNoLegacyArchitecture = tasks.register<VerifyNoLegacyArchitectureTask>(
-    "verifyNoLegacyArchitecture",
-) {
-    group = "verification"
-    description = "Rejects every legacy aggregate, backend, compatibility route, and authority."
-    rootDirectory.set(layout.projectDirectory)
-    reportFile.set(
-        layout.buildDirectory.file("reports/kast-architecture/verifyNoLegacyArchitecture.txt"),
-    )
-    observedLegacyModuleRoots.set(
-        providers.provider {
-            listOf("analysis-api", "analysis-server", "index-store")
-                .filter { root -> layout.projectDirectory.dir(root).asFile.isDirectory }
-        },
-    )
-}
-val architectureVerifications = listOf(
-    verifyKastModuleGraph,
-    verifyForbiddenEffects,
-)
-val kvp032PluginLayoutTasks = findProject(":ide-plugin")?.let { idePluginProject ->
-    val report = idePluginProject.layout.buildDirectory.file("reports/KVP-032-layout.json")
-    val negative = idePluginProject.tasks.register(
-        "verifyKvp032PluginLayoutNegative",
-        VerifyIdeHostedPluginLayoutNegativeTask::class.java,
-    ) {
-        group = "verification"
-        description = "Runs KVP-032's isolated hosted-plugin layout misuse proof."
-    }
-    val legal = idePluginProject.tasks.register(
-        "verifyKvp032PluginLayout",
-        VerifyIdeHostedPluginLayoutTask::class.java,
-    ) {
-        group = "verification"
-        description = "Writes KVP-032's isolated hosted-plugin layout observation."
-        dependsOn(":ide-plugin:buildPlugin", negative)
-        pluginArchive.set(idePluginProject.layout.buildDirectory.file(
-            "distributions/kast-ide-plugin-${idePluginProject.version}.zip",
-        ))
-        repositoryRoot.set(rootProject.layout.projectDirectory)
-        reportFile.set(report)
-    }
-    Triple(negative, legal, report)
-}
-val verifyVfsPassiveReadNegative = tasks.register("verifyVfsPassiveReadNegative") {
-    group = "verification"
-    description = "Rejects injected hosted forbidden calls and transitive classpath content."
-    dependsOn("verifyKastVfsPassiveFirewallNegative")
-    kvp032PluginLayoutTasks?.first?.let { dependsOn(it) }
-}
-val verifyVfsPassiveRead = tasks.register<VerifyVfsPassiveReadTask>("verifyVfsPassiveRead") {
-    group = "verification"
-    description = "Composes the complete compiled and transitive KVP-032 VFS-passive proof."
-    dependsOn(
-        verifyVfsPassiveReadNegative,
-        verifyKastModuleGraph,
-        verifyForbiddenEffects,
-        "verifyKastVfsPassiveFirewall",
-    )
-    kvp032PluginLayoutTasks?.second?.let { dependsOn(it) }
-    moduleGraphReport.set(
-        layout.buildDirectory.file("reports/kast-architecture/verifyKastModuleGraph.json"),
-    )
-    forbiddenEffectsReport.set(
-        layout.buildDirectory.file("reports/kast-architecture/verifyForbiddenEffects.json"),
-    )
-    firewallReport.set(layout.buildDirectory.file("reports/delivery/KVP-009-firewall.json"))
-    pluginLayoutReport.set(
-        kvp032PluginLayoutTasks?.third
-            ?: layout.buildDirectory.file("reports/ide-hosted/KVP-032-layout-unavailable.json"),
-    )
-    reportFile.set(layout.buildDirectory.file("reports/ide-hosted/KVP-032-static-safety.json"))
-}
-tasks.register("verifyKastArchitectureProjection") {
-    group = "verification"
-    description = "Verifies the checked architecture projection against membership, edges, and effects."
-    dependsOn(architectureVerifications)
+    reportFile.set(layout.buildDirectory.file("reports/kast-architecture/verifyKastArchitecture.json"))
 }
 
 subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
         val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
-        if (modulePath in setOf(
-                ":ide-plugin",
-                ":runtime:ide-read",
-                ":workspace:intellij-read",
-            )
-        ) {
-            verifyVfsPassiveRead.configure {
-                hostedSourceFiles.from(mainSourceSet.map { it.allSource })
-            }
-        }
-        verifyNoLegacyArchitecture.configure {
+        verifyKastArchitecture.configure {
             observedProjectPaths.add(modulePath)
-            productionSourceFiles.from(
+            compiledClassDirectories.from(mainSourceSet.map { it.output.classesDirs })
+            classDirectoryOwners.addAll(
                 mainSourceSet.map { sourceSet ->
-                    sourceSet.allSource.matching {
-                        include("**/*.java", "**/*.kt")
+                    sourceSet.output.classesDirs.files.map { directory ->
+                        val relative = rootProject.projectDir.toPath().relativize(
+                            directory.toPath(),
+                        )
+                        "$modulePath${VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR}" +
+                            relative.joinToString("/")
                     }
                 },
             )
-        }
-        architectureVerifications.forEach { verification ->
-            verification.configure {
-                observedProjectPaths.add(modulePath)
-                compiledClassDirectories.from(mainSourceSet.map { it.output.classesDirs })
-                classDirectoryOwners.addAll(
-                    mainSourceSet.map { sourceSet ->
-                        sourceSet.output.classesDirs.files.map { directory ->
-                            val relative = rootProject.projectDir.toPath().relativize(directory.toPath())
-                            "$modulePath${VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR}${relative.joinToString("/")}"
-                        }
-                    },
-                )
-                dependsOn(tasks.named("classes"))
-            }
+            dependsOn(tasks.named("classes"))
         }
     }
 
@@ -199,12 +61,10 @@ subprojects {
             .map { convention ->
                 "$path${ArchitectureObservationParser.ROLE_SEPARATOR}${convention.pluginId}"
             }
-        architectureVerifications.forEach { verification ->
-            verification.configure {
-                observedProjectDependencies.addAll(dependencies)
-                observedExportedProjectDependencies.addAll(exportedDependencies)
-                observedModuleRoleConventions.addAll(roleConventions)
-            }
+        verifyKastArchitecture.configure {
+            observedProjectDependencies.addAll(dependencies)
+            observedExportedProjectDependencies.addAll(exportedDependencies)
+            observedModuleRoleConventions.addAll(roleConventions)
         }
     }
 }

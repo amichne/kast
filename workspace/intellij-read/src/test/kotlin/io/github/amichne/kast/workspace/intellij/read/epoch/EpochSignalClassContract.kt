@@ -53,7 +53,7 @@ internal object EpochSignalClassContract {
         }
     }
 
-    /** Byte-only all-class contract for the production KVP-017 epoch observer and listener. */
+    /** Byte-only all-class contract for the production project-read epoch epoch observer and listener. */
     fun verifyProductionEpoch(): List<EpochClassContractFailure> {
         val admitted = PRODUCTION_RESOURCES.associateWith(::readClassView)
         val rejected = admitted.mapNotNull { (resource, result) ->

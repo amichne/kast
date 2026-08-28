@@ -1,6 +1,6 @@
 package io.github.amichne.kast.workspace.intellij.read
 
-/** Exhaustive emitted-class inventory for every KVP-017 production type and changed bridge. */
+/** Exhaustive emitted-class inventory for every project-read epoch production type and changed bridge. */
 internal fun productionEpochResources(): List<String> = contractEpochResources() +
     adapterEpochResources() + admissionBridgeResources()
 

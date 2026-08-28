@@ -130,7 +130,10 @@ def verify(directory: Path, release: str, report: Path | None) -> dict[str, obje
     if plugin_version(plugin) != version:
         reject("plugin archive version does not match control release")
     document: dict[str, object] = {
-        "schemaVersion": 1, "taskId": "KVP-035", "outcome": "COMPLETE", "release": release,
+        "schemaVersion": 1,
+        "taskId": "IDE-HOSTED-RELEASE",
+        "outcome": "COMPLETE",
+        "release": release,
         "assets": [
             {"kind": "CONTROL", "name": control.name, "bytes": control.stat().st_size,
              "sha256": sha256(control)},
@@ -214,13 +217,13 @@ def self_test() -> None:
                 output.truncate(MAXIMUM_COMBINED_BYTES + 1)
             write_checksum(plugin)
         expect_rejected(valid, exceed_size)
-    print("KVP-035 rejected all 5 hosted-release misuses")
+    print("Rejected all 5 hosted-release misuses")
 
 
 def write_negative_report(path: Path) -> None:
     document = {
         "schemaVersion": 1,
-        "taskId": "KVP-035",
+        "taskId": "IDE-HOSTED-RELEASE",
         "outcome": "REJECTED",
         "rejectedFixtureCount": 5,
     }

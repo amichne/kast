@@ -75,11 +75,11 @@ class GenerateIdeHostCompatibilityReportTaskTest {
     }
 
     @Test
-    fun `receipt admission rejects every compatibility report mismatch as finite data`() {
+    fun `metadata admission rejects every compatibility report mismatch as finite data`() {
         val registryBytes = "registry".toByteArray()
         val exact = IdeHostCompatibilityReportDocument(
             schemaVersion = 1,
-            taskId = "KVP-012",
+            taskId = "IDE-HOST-COMPATIBILITY",
             ideBuild = "262.9437.185",
             kotlinPluginBuild = "262.9437.185-IJ",
             kastPluginVersion = "0.28.1-31-g25995e3fd",
@@ -91,7 +91,7 @@ class GenerateIdeHostCompatibilityReportTaskTest {
         val cases = listOf(
             exact.copy(schemaVersion = 2) to
                 IdeHostCompatibilityReportFailure.SCHEMA_VERSION_MISMATCH,
-            exact.copy(taskId = "KVP-999") to
+            exact.copy(taskId = "WRONG-TASK") to
                 IdeHostCompatibilityReportFailure.TASK_ID_MISMATCH,
             exact.copy(ideBuild = "262.9437.186") to
                 IdeHostCompatibilityReportFailure.IDE_BUILD_MISMATCH,

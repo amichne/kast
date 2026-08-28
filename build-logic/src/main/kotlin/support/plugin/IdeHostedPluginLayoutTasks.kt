@@ -10,47 +10,19 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
-import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
-import org.gradle.api.tasks.UntrackedTask
 import support.tasks.CanonicalWireSchema
 
 private val REPORT_JSON = Json { prettyPrint = true; prettyPrintIndent = "    " }
-
-@Serializable
-private data class IdePluginLayoutReport(
-    val schemaVersion: Int,
-    val taskId: String,
-    val policyId: String,
-    val pluginSizeCeilingBytes: Long,
-    val artifact: LayoutArtifactDocument,
-    val scannedClassCount: Int,
-    val violationCount: Int,
-    val nestedJars: List<LayoutJarDocument>,
-)
-
-@Serializable
-private data class LayoutArtifactDocument(val path: String, val sha256: String, val sizeBytes: Long)
-
-@Serializable
-private data class LayoutJarDocument(
-    val entry: String,
-    val sha256: String,
-    val sizeBytes: Long,
-    val classCount: Int,
-    val classOwnerDigest: String,
-)
 
 @Serializable
 internal data class IdeHostCompatibilityReportDocument(
@@ -81,7 +53,7 @@ internal enum class IdeHostCompatibilityReportFailure {
 }
 
 internal enum class IdeHostReportSchemaVersion(val value: Int) { V1(1) }
-internal enum class IdeHostReportTaskId(val value: String) { KVP_012("KVP-012") }
+internal enum class IdeHostReportTaskId(val value: String) { HOST_COMPATIBILITY("IDE-HOST-COMPATIBILITY") }
 internal enum class SupportedIdeBuild(val value: String) { IDEA_262("262.9437.185") }
 internal enum class SupportedKotlinPluginBuild(val value: String) {
     IDEA_262("262.9437.185-IJ"),
@@ -138,7 +110,7 @@ internal class AdmittedIdeHostCompatibilityReport private constructor(
          * Proof transition: report JSON, physical registry bytes, and declared Kast version ->
          * `IdeHostCompatibilityReportAdmission`.
          *
-         * Establishes the exact KVP-012 schema, task, supported host tuple, canonical capability
+         * Establishes the exact IDE-HOST-COMPATIBILITY schema, task, supported host tuple, canonical capability
          * order, physical registry digest, and sole canonical wire digest. Expected malformed or
          * mismatched evidence is finite [IdeHostCompatibilityReportFailure]. Raw values are
          * permitted only at this build-report boundary.
@@ -158,7 +130,7 @@ internal class AdmittedIdeHostCompatibilityReport private constructor(
             if (document.schemaVersion != IdeHostReportSchemaVersion.V1.value) {
                 return reportRejected(IdeHostCompatibilityReportFailure.SCHEMA_VERSION_MISMATCH)
             }
-            if (document.taskId != IdeHostReportTaskId.KVP_012.value) return reportRejected(
+            if (document.taskId != IdeHostReportTaskId.HOST_COMPATIBILITY.value) return reportRejected(
                 IdeHostCompatibilityReportFailure.TASK_ID_MISMATCH,
             )
             if (document.ideBuild != SupportedIdeBuild.IDEA_262.value) return reportRejected(
@@ -207,7 +179,7 @@ internal class AdmittedIdeHostCompatibilityReport private constructor(
             return IdeHostCompatibilityReportAdmission.Complete(
                 AdmittedIdeHostCompatibilityReport(
                     IdeHostReportSchemaVersion.V1,
-                    IdeHostReportTaskId.KVP_012,
+                    IdeHostReportTaskId.HOST_COMPATIBILITY,
                     SupportedIdeBuild.IDEA_262,
                     SupportedKotlinPluginBuild.IDEA_262,
                     pluginVersion,
@@ -251,7 +223,7 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
     @get:OutputFile abstract val reportFile: RegularFileProperty
 
     /**
-     * Proof transition: declared pins and exact registry/wire bytes `->` KVP-012 report.
+     * Proof transition: declared pins and exact registry/wire bytes `->` IDE-HOST-COMPATIBILITY report.
      *
      * Computes both artifact digests from their canonical bytes and projects the closed report via
      * its generated serializer. Filesystem failures cross into Gradle only at this task boundary.
@@ -262,7 +234,7 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
         val wireBytes = CanonicalWireSchema.encodedBytes()
         val report = IdeHostCompatibilityReportDocument(
             schemaVersion = 1,
-            taskId = "KVP-012",
+            taskId = "IDE-HOST-COMPATIBILITY",
             ideBuild = ideBuild.get(),
             kotlinPluginBuild = kotlinPluginBuild.get(),
             kastPluginVersion = kastPluginVersion.get(),
@@ -278,96 +250,6 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
         )
     }
 }
-
-@UntrackedTask(
-    because = "Rechecks canonical path, symlink state, and exact archive bytes at execution time",
-)
-abstract class VerifyIdeHostedPluginLayoutTask : DefaultTask() {
-    @get:InputFile @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val pluginArchive: RegularFileProperty
-    @get:Internal abstract val repositoryRoot: DirectoryProperty
-    @get:OutputFile abstract val reportFile: RegularFileProperty
-
-    /**
-     * Proof transition: Gradle archive/root properties `->` emitted KVP-011 layout report.
-     *
-     * Establishes repository-bound archive admission and the complete hosted-plugin layout policy.
-     * Finite [IdePluginLayoutFailure] values become [GradleException] only at this task adapter.
-     */
-    @TaskAction
-    fun verify() {
-        val archive = when (val result = RepositoryBoundPluginArchive.read(
-            repositoryRoot.get().asFile.toPath(),
-            pluginArchive.get().asFile.toPath(),
-        )) {
-            is RepositoryPluginArchiveReadResult.Complete -> result.archive
-            is RepositoryPluginArchiveReadResult.Rejected -> throw renderFailure(result.failure)
-        }
-        val layout = when (val result = admitIdePluginLayout(archive)) {
-            is IdePluginLayoutResult.Complete -> result.layout
-            is IdePluginLayoutResult.Rejected -> throw renderFailure(result.failure)
-        }
-        val report = reportFor(archive.relativePathForReport(), layout)
-        try {
-            writeAtomically(
-                reportFile.get().asFile.toPath(),
-                REPORT_JSON.encodeToString(IdePluginLayoutReport.serializer(), report) + "\n",
-            )
-        } catch (_: Exception) {
-            throw renderFailure(IdePluginLayoutFailure.REPORT_WRITE_FAILURE)
-        }
-    }
-}
-
-@UntrackedTask(because = "Re-derives fixed KVP-011 forbidden nested-class fixtures")
-abstract class VerifyIdeHostedPluginLayoutNegativeTask : DefaultTask() {
-    /**
-     * Proof transition: fixed negative fixtures `->` complete KVP-011 rejection proof.
-     *
-     * Establishes exact rejection for all ten forbidden layout cases. Any mismatched finite failure
-     * becomes [GradleException] only at this task adapter.
-     */
-    @TaskAction
-    fun verify() {
-        val cases = ideHostedNegativeCases()
-        cases.forEach { fixture ->
-            val result = fixture.inspect()
-            if (result != IdePluginLayoutResult.Rejected(fixture.expected)) {
-                throw renderFailure(fixture.expected)
-            }
-        }
-        logger.lifecycle("KVP-011 rejected all {} plugin-layout negative cases", cases.size)
-    }
-}
-
-private fun renderFailure(failure: IdePluginLayoutFailure): GradleException = GradleException(
-    "KVP-011 plugin layout rejected: ${failure.name}",
-)
-
-private fun reportFor(path: String, layout: VerifiedIdePluginLayout) = IdePluginLayoutReport(
-    schemaVersion = 1,
-    taskId = "KVP-011",
-    policyId = IDE_HOSTED_PLUGIN_POLICY_ID.value,
-    pluginSizeCeilingBytes = IDE_HOSTED_PLUGIN_SIZE_CEILING_BYTES.value,
-    artifact = LayoutArtifactDocument(
-        path,
-        layout.archiveDigest.value,
-        layout.archiveSizeBytes.value,
-    ),
-    scannedClassCount = layout.jars.sumOf { it.classOwners.size },
-    violationCount = 0,
-    nestedJars = layout.jars.map { jar ->
-        LayoutJarDocument(
-            jar.entry.value,
-            jar.digest.value,
-            jar.sizeBytes.value,
-            jar.classOwners.size,
-            support.plugin.IdeHostedDigest.observe(
-                jar.classOwners.joinToString("\n") { it.value }.toByteArray(),
-            ).value,
-        )
-    },
-)
 
 private fun writeAtomically(target: Path, content: String) {
     Files.createDirectories(target.parent)

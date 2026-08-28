@@ -11,11 +11,6 @@ import org.junit.jupiter.api.Test
 
 class SingleFlightNegativeTest {
     @Test
-    fun `generated report binds exact negative policy`() {
-        assertExactSingleFlightReport()
-    }
-
-    @Test
     fun `simultaneous demand cannot exceed one active and one queued`() {
         val fixture = FreshnessFixture()
         val controller = controller(fixture.capability())

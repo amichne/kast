@@ -201,7 +201,7 @@ internal class ProjectReadEpochState private constructor(
          * Proof transition: `ProjectReadEpochBoundary -> Refinement<ProjectReadEpochState,
          * ProjectReadEpochObservationFailure>`.
          *
-         * Establishes a smart, constant-size, immutable snapshot containing every KVP-015
+         * Establishes a smart, constant-size, immutable snapshot containing every epoch-signal policy
          * movement signal. The finite expected failure is
          * [ProjectReadEpochObservationFailure]. Raw platform values may enter only from the live
          * IntelliJ observation adapter or portable contract fixtures in this module.

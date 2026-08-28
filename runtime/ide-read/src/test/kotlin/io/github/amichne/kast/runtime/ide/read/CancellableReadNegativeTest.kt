@@ -256,7 +256,7 @@ class CancellableReadNegativeTest {
     }
 
     @Test
-    fun `live adapter bytecode and public surface enforce the KVP 021 boundary`() {
+    fun `live adapter bytecode and public surface enforce the cancellable-read boundary`() {
         val resource = AdmittedProjectReadExecution::class.java.name.replace('.', '/') + ".class"
         val bytes = checkNotNull(
             AdmittedProjectReadExecution::class.java.classLoader.getResourceAsStream(resource),

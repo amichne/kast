@@ -112,7 +112,7 @@ class IdeHostCompatibilityNegativeTest {
     fun `metadata boundary rejects malformed schema and task documents as finite data`() {
         val document = IdeHostCompatibilityReportDocument(
             schemaVersion = 1,
-            taskId = "KVP-012",
+            taskId = "IDE-HOST-COMPATIBILITY",
             ideBuild = expected.ideBuild,
             kotlinPluginBuild = expected.kotlinPluginBuild,
             kastPluginVersion = expected.kastPluginVersion,
@@ -132,7 +132,7 @@ class IdeHostCompatibilityNegativeTest {
         assertMetadataRejected(
             metadataJson.encodeToString(
                 IdeHostCompatibilityReportDocument.serializer(),
-                document.copy(taskId = "KVP-999"),
+                document.copy(taskId = "WRONG-TASK"),
             ),
             IdeHostCompatibilityMetadataFailure.WrongTaskIdentity,
         )

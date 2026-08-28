@@ -27,9 +27,7 @@ cd "${repository_root}"
 ./gradlew \
   -Dorg.gradle.jvmargs=-Xmx5g \
   -Pversion="${version}" \
-  verifyIdeHostedReleaseNegative \
-  assembleIdeHostedRelease \
-  verifyIdeHostedRelease
+  assembleIdeHostedRelease
 
 control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 plugin_name="kast-ide-plugin-${version}.zip"
@@ -57,4 +55,4 @@ python3 distribution/release/verify_assets.py \
   --directory "${output_directory}" \
   --release "v${version}" \
   --repository "${GITHUB_REPOSITORY:-amichne/kast}" \
-  --report "${repository_root}/build/reports/ide-hosted/KVP-035-release.json"
+  --report "${repository_root}/build/reports/ide-hosted/release-assets.json"

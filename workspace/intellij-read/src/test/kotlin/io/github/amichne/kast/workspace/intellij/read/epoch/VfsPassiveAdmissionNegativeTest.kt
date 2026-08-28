@@ -19,11 +19,6 @@ import org.junit.jupiter.api.Test
 
 class VfsPassiveAdmissionNegativeTest {
     @Test
-    fun `generated report binds exact closed failure policy`() {
-        assertExactVfsPassiveReport()
-    }
-
-    @Test
     fun `admitted project owns the typed freshness transition`() {
         val transitions = AdmittedIdeProject::class.java.declaredMethods.filter { method ->
             Modifier.isPublic(method.modifiers) &&
@@ -36,7 +31,7 @@ class VfsPassiveAdmissionNegativeTest {
             transition.returnType.name !=
             "io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission"
         ) {
-            fail<Unit>("KVP-019 missing VfsPassiveReadCapability admission transition")
+            fail<Unit>("Missing VfsPassiveReadCapability admission transition")
         }
     }
 

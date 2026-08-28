@@ -36,7 +36,7 @@ internal interface ExistingProjectObservationPort {
     fun hostIdentity(): ExistingProjectHostIdentityObservation
 }
 
-/** Non-forgeable package proof that KVP-014 retained the exact live Project. */
+/** Non-forgeable package proof that project admission retained the exact live Project. */
 internal sealed interface AdmittedProjectReadExecutionProof
 private data object RetainedAdmittedProjectProof : AdmittedProjectReadExecutionProof
 

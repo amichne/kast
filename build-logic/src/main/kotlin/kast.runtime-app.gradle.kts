@@ -114,12 +114,8 @@ val portableDistZip by tasks.registering(Zip::class) {
 }
 
 writeWrapperScript.configure {
+    // Both tasks write build/scripts; the Kast launcher must replace Gradle's default Unix script.
     mustRunAfter(tasks.named("startScripts"))
-}
-
-tasks.matching {
-    it.name == "sourcesJar"
-}.configureEach {
 }
 
 tasks.matching {

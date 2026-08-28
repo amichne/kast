@@ -3,8 +3,6 @@ package io.github.amichne.kast.workspace.intellij.read
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
 import java.lang.reflect.Modifier
-import java.nio.file.Files
-import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.fail
@@ -108,12 +106,4 @@ class ExistingProjectAdmissionTest {
         )
     }
 
-    @Test
-    fun `generated project admission report is the exact canonical document`() {
-        val reportPath = System.getProperty("kast.existing.project.admission.report")
-            ?.let(Path::of)
-            ?: fail("missing generated KVP-014 report path")
-
-        assertEquals(EXPECTED_PROJECT_ADMISSION_REPORT, Files.readString(reportPath))
-    }
 }

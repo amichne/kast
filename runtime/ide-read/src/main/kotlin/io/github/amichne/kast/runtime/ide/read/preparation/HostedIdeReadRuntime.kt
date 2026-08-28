@@ -249,7 +249,7 @@ class HostedIdeReadRuntime private constructor(
         /**
          * Proof transition: `HostedIdeReadProject -> HostedIdeReadRuntimePreparation`.
          *
-         * KVP-024 retains the admitted live Project but fails closed until KVP-028 through KVP-031
+         * The endpoint retains the admitted live Project but fails closed until its operation handlers
          * provide all four concrete route capabilities. The returned partial failure cannot bind
          * or publish an endpoint. Expected incomplete construction is finite
          * [HostedIdeReadRuntimePreparationFailure].

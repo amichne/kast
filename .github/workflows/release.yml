@@ -40,9 +40,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Verify release workflow contract
-        run: python3 .github/scripts/release/verify-release-contract.py --root .
-
       - name: Verify installer recovery flow
         run: bash packaging/test-installer.sh
 

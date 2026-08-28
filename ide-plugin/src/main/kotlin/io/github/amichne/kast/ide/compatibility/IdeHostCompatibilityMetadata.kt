@@ -11,7 +11,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 private const val COMPATIBILITY_SCHEMA_VERSION = 1
-private const val COMPATIBILITY_TASK_ID = "KVP-012"
+private const val COMPATIBILITY_TASK_ID = "IDE-HOST-COMPATIBILITY"
 
 private val compatibilityMetadataJson = Json {
     encodeDefaults = true
@@ -53,7 +53,7 @@ internal class AdmittedIdeHostCompatibilityMetadata private constructor(
          * Proof transition: `GeneratedIdeHostCompatibilityMetadata ->
          * Refinement<AdmittedIdeHostCompatibilityMetadata, IdeHostCompatibilityMetadataFailure>`.
          *
-         * Establishes the closed KVP-012 report identity and retains the exact policy derived from
+         * Establishes the closed IDE-HOST-COMPATIBILITY report identity and retains the exact policy derived from
          * its candidate. Expected metadata or compatibility rejection remains finite
          * [IdeHostCompatibilityMetadataFailure]. Raw JSON leaves only at this generated boundary.
          */
@@ -82,7 +82,7 @@ internal object IdeHostCompatibilityMetadata {
      * Proof transition: `GeneratedIdeHostCompatibilityMetadata ->
      * Refinement<IdeHostCompatibilityCandidate, IdeHostCompatibilityMetadataFailure>`.
      *
-     * Establishes the closed report schema and exact task identity for the sole compiled KVP-012
+     * Establishes the closed report schema and exact task identity for the sole compiled IDE-HOST-COMPATIBILITY
      * document. Expected metadata rejection remains [IdeHostCompatibilityMetadataFailure]. Raw
      * JSON leaves only at this generated compile-time metadata boundary.
      */
@@ -95,7 +95,7 @@ internal object IdeHostCompatibilityMetadata {
      * Proof transition: `String + IdeHostCompatibilityPolicy ->
      * Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityMetadataFailure>`.
      *
-     * Decodes the closed KVP-012 report schema and establishes that its complete tuple is admitted
+     * Decodes the closed IDE-HOST-COMPATIBILITY report schema and establishes that its complete tuple is admitted
      * by the supplied exact policy. Malformed documents, unsupported schema/task identities, and
      * finite compatibility rejections remain [IdeHostCompatibilityMetadataFailure] data. Raw JSON
      * and field text are extracted only here, at the generated build-report boundary.
@@ -120,7 +120,7 @@ internal object IdeHostCompatibilityMetadata {
      * Proof transition: `String ->
      * Refinement<IdeHostCompatibilityCandidate, IdeHostCompatibilityMetadataFailure>`.
      *
-     * Establishes the closed KVP-012 document schema and exact schema/task identities before
+     * Establishes the closed IDE-HOST-COMPATIBILITY document schema and exact schema/task identities before
      * projecting its candidate. Malformed, unsupported, or wrong-task documents remain finite
      * [IdeHostCompatibilityMetadataFailure]. Raw JSON and document fields leave only at this
      * generated compatibility boundary.

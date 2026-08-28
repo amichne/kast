@@ -19,8 +19,8 @@ class WriteProcessOutputTaskTest {
             WriteProcessOutputTask::class.java,
         ).get().apply {
             executableFile.set(Path.of("/bin/sh").toFile())
-            arguments.set(listOf("-c", "printf '%s\\n' \"${'$'}PR633_PROJECTION\""))
-            environmentVariables.set(mapOf("PR633_PROJECTION" to "{\"projection\":true}"))
+            arguments.set(listOf("-c", "printf '%s\\n' \"${'$'}TASK_OUTPUT\""))
+            environmentVariables.set(mapOf("TASK_OUTPUT" to "{\"projection\":true}"))
             outputFile.set(target.toFile())
         }
 

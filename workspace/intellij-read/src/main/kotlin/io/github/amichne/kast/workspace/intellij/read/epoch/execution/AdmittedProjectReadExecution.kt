@@ -117,7 +117,7 @@ internal class AdmittedProjectReadExecution private constructor(
          * AdmittedProjectReadExecution`.
          *
          * Retains the already-admitted exact Project without revalidating or exposing it. Only
-         * `AdmittedIdeProject` may call this after KVP-014 admission.
+         * `AdmittedIdeProject` may call this after project admission admission.
          */
         fun bind(
             project: Project,

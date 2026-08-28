@@ -62,7 +62,7 @@ import sys
 
 document = {
     "schemaVersion": 1,
-    "taskId": "KVP-036",
+    "taskId": "INSTALLED-PRODUCT",
     "outcome": "COMPLETE",
     "product": sys.argv[2],
     "semanticRuntimeManifest": "ABSENT",

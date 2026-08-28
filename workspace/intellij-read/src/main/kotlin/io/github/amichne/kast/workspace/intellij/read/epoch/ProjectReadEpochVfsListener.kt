@@ -6,7 +6,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 
-/** KVP-017 root-filtered, batch-bounded VFS observer with no semantic authority. */
+/** project-read epoch root-filtered, batch-bounded VFS observer with no semantic authority. */
 internal class RootFilteredProjectEpochVfsListener(
     private val root: ProjectReadEpochVfsRoot,
     private val counter: ProjectReadEpochMetadataCounter,

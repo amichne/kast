@@ -141,7 +141,7 @@ internal val testProject: Project = Proxy.newProxyInstance(
     when (method.name) {
         "equals" -> proxy === arguments?.single()
         "hashCode" -> System.identityHashCode(proxy)
-        "toString" -> "KVP-021-test-project"
+        "toString" -> "cancellable-read-test-project"
         else -> when (method.returnType) {
             java.lang.Boolean.TYPE -> false
             java.lang.Byte.TYPE -> 0.toByte()

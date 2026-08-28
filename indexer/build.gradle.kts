@@ -95,44 +95,6 @@ dependencies {
     testRuntimeOnly(ideaLibs)
 }
 
-val verifyGeneratedIndexerSerialization =
-    tasks.register<support.tasks.VerifyGeneratedSerializationSourcesTask>(
-        "verifyGeneratedIndexerSerialization",
-    ) {
-        group = "verification"
-        description = "Rejects hand-written JSON structure for closed indexer documents."
-        sourceFiles.from(
-            layout.projectDirectory.file(
-                "src/main/kotlin/io/github/amichne/kast/indexer/IndexerEndpointDescriptor.kt",
-            ),
-        )
-        forbiddenTokens.set(
-            listOf(
-                "JsonElement",
-                "JsonObject",
-                "JsonPrimitive",
-                "KSerializer",
-                "MapSerializer",
-                "appendJsonField",
-                "buildJsonObject",
-                "jsonEscaped",
-                "mapOf(",
-                "parseToJsonElement",
-            ),
-        )
-        generatedAdapterNamePrefixes.set(listOf("IndexerEndpoint"))
-        generatedAdapterNameSuffixes.set(listOf("Descriptor.kt"))
-        requiredGeneratedAdapterTokens.set(
-            listOf("@Serializable", "IndexerEndpointDescriptorDocument.serializer()"),
-        )
-        reportingRoot.set(layout.projectDirectory)
-        reportFile.set(layout.buildDirectory.file("reports/generated-indexer-serialization.txt"))
-    }
-
-tasks.named("check") {
-    dependsOn(verifyGeneratedIndexerSerialization)
-}
-
 @Suppress("UNCHECKED_CAST")
 val buildVersion: Provider<String> = extra["buildVersion"] as Provider<String>
 

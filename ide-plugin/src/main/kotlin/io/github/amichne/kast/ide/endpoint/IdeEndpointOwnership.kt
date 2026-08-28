@@ -329,7 +329,7 @@ internal interface IdentifiedOwnedDescriptorTemporary {
     fun publishAtomically(): OwnedDescriptorAtomicPublication
 }
 
-/** Retained descriptor ownership for KVP-025's later READY lifecycle retirement. */
+/** Retained descriptor ownership for the endpoint lifecycle.s later READY retirement. */
 internal sealed interface OwnedPublishedDescriptor {
     val path: Path
     fun deleteFromOwner(): EndpointArtifactRetirement
