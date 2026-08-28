@@ -23,6 +23,10 @@ import io.github.amichne.kast.protocol.contract.ChangePlanResult
 import io.github.amichne.kast.runtime.composition.ChangePlanningOperations
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.change.verify.ChangePlanIssuance
+import io.github.amichne.kast.change.verify.DurableChangeAuthority
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolText
 
 /** Public change intent strengthened with selector authority before semantic admission. */
 internal sealed interface AuthorizedChangeIntent {
@@ -85,7 +89,7 @@ internal class CanonicalChangePlanHandler(
     private val operations: ChangePlanningOperations,
     private val admission: ChangePlanAdmissionOperations,
     private val protocolAuthority: CanonicalProtocolAuthority,
-    private val authority: CanonicalChangeAuthority,
+    private val authority: DurableChangeAuthority,
 ) : OperationHandler<
     ChangePlanRequest,
     ChangePlanResult,
@@ -169,13 +173,19 @@ internal class CanonicalChangePlanHandler(
             EvidenceEnvelope(
                 CanonicalOperation.CHANGE_PLAN.id,
                 plan.priorLease.generation,
-                ChangePlanResult(issued.identity),
+                ChangePlanResult(issued.identity.protocolText()),
             ),
         )
         is ChangePlanIssuance.Rejected ->
             OperationOutcome.Rejected(ChangePlanRejection.INTENT_REJECTED)
     }
 }
+
+private fun io.github.amichne.kast.change.verify.ChangePlanIdentity.protocolText(): ProtocolText =
+    when (val parsed = ProtocolText.parse(value)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("canonical change plan identity is protocol text")
+    }
 
 private sealed interface ChangeIntentAuthorization {
     data class Authorized(

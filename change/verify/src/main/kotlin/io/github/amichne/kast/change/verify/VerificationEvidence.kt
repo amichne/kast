@@ -2,6 +2,7 @@ package io.github.amichne.kast.change.verify
 
 import io.github.amichne.kast.change.apply.AppliedUnverified
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.matches
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationObligation
 import io.github.amichne.kast.change.contract.ChangePlan
@@ -10,11 +11,7 @@ import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.relation.contract.RelationFact
-import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadResult
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 
@@ -261,12 +258,15 @@ class CompleteAddDeclarationVerification private constructor(
                     ) {
                         failures += AddDeclarationProofFailure.RELATION_TARGET_MISMATCH
                     }
-                    val planned = plan.evidence.relations.map(::stableRelationBatch).toSet()
-                    val observed = completeRelations.map(::stableRelationBatch).toSet()
+                    val planned = plan.evidence.relations
                     if (
-                        planned.size != plan.evidence.relations.size ||
-                        observed.size != completeRelations.size ||
-                        planned != observed
+                        planned.size != completeRelations.size ||
+                        planned.any { expected ->
+                            completeRelations.count(expected::matches) != 1
+                        } ||
+                        completeRelations.any { observed ->
+                            planned.count { expected -> expected.matches(observed) } != 1
+                        }
                     ) {
                         failures += AddDeclarationProofFailure.RELATION_DELTA_REJECTED
                     }
@@ -330,42 +330,3 @@ class CompleteAddDeclarationVerification private constructor(
         }
     }
 }
-
-private data class StableRelationBatch(
-    val meaning: RelationMeaning,
-    val facts: Set<StableRelationFact>,
-)
-
-private data class StableRelationFact(
-    val meaning: RelationMeaning,
-    val sourceIdentity: ExactDeclarationQualifiedIdentity,
-    val sourceKind: CompilerSymbolKind,
-    val sourceFile: SymbolDiscoveryFileIdentity,
-    val targetIdentity: ExactDeclarationQualifiedIdentity,
-    val targetKind: CompilerSymbolKind,
-    val targetFile: SymbolDiscoveryFileIdentity,
-    val occurrenceFile: SymbolDiscoveryFileIdentity,
-    val occurrenceStart: Int,
-    val occurrenceEnd: Int,
-    val provenance: io.github.amichne.kast.relation.contract.RelationProvenance,
-)
-
-private fun stableRelationBatch(result: RelationReadResult.Complete): StableRelationBatch =
-    StableRelationBatch(
-        result.batch.request.meaning,
-        result.batch.facts.mapTo(linkedSetOf(), ::stableRelationFact),
-    )
-
-private fun stableRelationFact(fact: RelationFact): StableRelationFact = StableRelationFact(
-    fact.meaning,
-    fact.source.qualifiedIdentity,
-    fact.source.kind,
-    fact.source.file,
-    fact.target.qualifiedIdentity,
-    fact.target.kind,
-    fact.target.file,
-    fact.occurrence.file,
-    fact.occurrence.range.startInclusive,
-    fact.occurrence.range.endExclusive,
-    fact.provenance,
-)

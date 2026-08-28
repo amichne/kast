@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.GradleProjectIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import java.nio.file.Path
@@ -100,6 +101,151 @@ sealed interface SymbolSearchScope {
         override val generatedSources: SymbolGeneratedSourcePolicy,
         val libraries: SymbolLibraryPolicy,
     ) : SymbolSearchScope
+
+    companion object {
+        fun snapshot(scope: SymbolSearchScope): SymbolSearchScopeSnapshot = when (scope) {
+            is ExactFile -> SymbolSearchScopeSnapshot(
+                SymbolSearchScopeKind.EXACT_FILE,
+                scope.file.value,
+                null,
+                scope.sourceKinds,
+                scope.generatedSources,
+                null,
+            )
+            is Module -> SymbolSearchScopeSnapshot(
+                SymbolSearchScopeKind.MODULE,
+                scope.module.value,
+                null,
+                scope.sourceKinds,
+                scope.generatedSources,
+                null,
+            )
+            is SourceSet -> SymbolSearchScopeSnapshot(
+                SymbolSearchScopeKind.SOURCE_SET,
+                scope.project.buildRoot.value,
+                "${scope.project.projectPath.value}\u0000${scope.sourceSet.value}",
+                scope.sourceKinds,
+                scope.generatedSources,
+                null,
+            )
+            is GradleProject -> SymbolSearchScopeSnapshot(
+                SymbolSearchScopeKind.GRADLE_PROJECT,
+                scope.project.buildRoot.value,
+                scope.project.projectPath.value,
+                scope.sourceKinds,
+                scope.generatedSources,
+                null,
+            )
+            is Workspace -> SymbolSearchScopeSnapshot(
+                SymbolSearchScopeKind.WORKSPACE,
+                null,
+                null,
+                scope.sourceKinds,
+                scope.generatedSources,
+                scope.libraries,
+            )
+        }
+
+        fun restore(
+            root: CanonicalWorkspaceRoot,
+            sourceRoot: SourceRoot,
+            captured: SymbolSearchScopeSnapshot,
+        ): Refinement<SymbolSearchScope, SymbolSearchScopeRestorationFailure> {
+            val scope = when (captured.kind) {
+                SymbolSearchScopeKind.EXACT_FILE -> {
+                    val value = captured.primary
+                        ?: return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
+                    val path = runCatching { Path.of(value) }.getOrNull()
+                        ?: return Refinement.Rejected(
+                            SymbolSearchScopeRestorationFailure.MALFORMED,
+                        )
+                    val file = when (val parsed = CanonicalWorkspaceFilePath.fromCanonicalPath(
+                        root,
+                        path,
+                    )) {
+                        is Refinement.Refined -> parsed.value
+                        is Refinement.Rejected -> return Refinement.Rejected(
+                            SymbolSearchScopeRestorationFailure.MALFORMED,
+                        )
+                    }
+                    ExactFile(file, captured.sourceKinds, captured.generatedSources)
+                }
+                SymbolSearchScopeKind.MODULE -> {
+                    if (captured.primary != sourceRoot.owner.module.value) {
+                        return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
+                    }
+                    Module(
+                        sourceRoot.owner.module,
+                        captured.sourceKinds,
+                        captured.generatedSources,
+                    )
+                }
+                SymbolSearchScopeKind.SOURCE_SET -> {
+                    val parts = captured.secondary?.split('\u0000')
+                        ?: return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
+                    if (
+                        captured.primary != sourceRoot.owner.project.buildRoot.value ||
+                        parts.size != 2 ||
+                        parts[0] != sourceRoot.owner.project.projectPath.value ||
+                        parts[1] != sourceRoot.owner.sourceSet.value
+                    ) {
+                        return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
+                    }
+                    SourceSet(
+                        sourceRoot.owner.project,
+                        sourceRoot.owner.sourceSet,
+                        captured.sourceKinds,
+                        captured.generatedSources,
+                    )
+                }
+                SymbolSearchScopeKind.GRADLE_PROJECT -> {
+                    if (
+                        captured.primary != sourceRoot.owner.project.buildRoot.value ||
+                        captured.secondary != sourceRoot.owner.project.projectPath.value
+                    ) {
+                        return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
+                    }
+                    GradleProject(
+                        sourceRoot.owner.project,
+                        captured.sourceKinds,
+                        captured.generatedSources,
+                    )
+                }
+                SymbolSearchScopeKind.WORKSPACE -> Workspace(
+                    captured.sourceKinds,
+                    captured.generatedSources,
+                    captured.libraries
+                        ?: return Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED),
+                )
+            }
+            return if (snapshot(scope) == captured) {
+                Refinement.Refined(scope)
+            } else {
+                Refinement.Rejected(SymbolSearchScopeRestorationFailure.MALFORMED)
+            }
+        }
+    }
+}
+
+enum class SymbolSearchScopeKind {
+    EXACT_FILE,
+    MODULE,
+    SOURCE_SET,
+    GRADLE_PROJECT,
+    WORKSPACE,
+}
+
+data class SymbolSearchScopeSnapshot(
+    val kind: SymbolSearchScopeKind,
+    val primary: String?,
+    val secondary: String?,
+    val sourceKinds: SymbolSourceKindPolicy,
+    val generatedSources: SymbolGeneratedSourcePolicy,
+    val libraries: SymbolLibraryPolicy?,
+)
+
+enum class SymbolSearchScopeRestorationFailure {
+    MALFORMED,
 }
 
 /**

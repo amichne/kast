@@ -6,6 +6,7 @@ import io.github.amichne.kast.change.contract.AddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.AddDeclarationPlannedEdit
 import io.github.amichne.kast.change.contract.AddDeclarationPlanningFailure
+import io.github.amichne.kast.change.contract.HostedAddDeclarationPlanCodec
 import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -59,6 +60,25 @@ class AddDeclarationPlanTest {
             SourceTextMutation.InsertIntoClassBody::class.java,
             plan.writes.entries.single().mutations.single(),
         )
+    }
+
+    @Test
+    fun `hosted plan survives canonical encode and decode`() {
+        val planned = planner.plan(fixture.request()).planned()
+
+        val reopened = HostedAddDeclarationPlanCodec.decode(
+            HostedAddDeclarationPlanCodec.encode(planned),
+        ).let { decoded ->
+            when (decoded) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> decoded.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> error(decoded.failure.toString())
+            }
+        }
+
+        assertEquals(planned.planId, reopened.planId)
+        assertEquals(planned.target.selector.fingerprint, reopened.target.selector.fingerprint)
+        assertEquals(planned.writes.entries.single().source, reopened.writes.entries.single().source)
+        assertEquals(planned.evidence, reopened.evidence)
     }
 
     @Test

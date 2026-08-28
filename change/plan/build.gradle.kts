@@ -11,4 +11,9 @@ base {
 
 dependencies {
     implementation(project(":change:contract"))
+    testImplementation(project(":change:apply"))
+    testImplementation(project(":change:recovery"))
+    testImplementation(project(":change:verify"))
+    testImplementation(project(":evidence:contract"))
+    testImplementation(project(":evidence:sqlite"))
 }

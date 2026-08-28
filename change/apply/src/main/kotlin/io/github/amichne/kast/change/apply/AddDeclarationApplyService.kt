@@ -12,6 +12,8 @@ import io.github.amichne.kast.change.recovery.PreparedAddDeclarationRecovery
 import io.github.amichne.kast.change.recovery.RecordAppliedAddDeclarationResult
 import io.github.amichne.kast.change.recovery.RecoveryRequiredEvidence
 import io.github.amichne.kast.change.recovery.UndurableRecoveryRequirement
+import io.github.amichne.kast.change.contract.ChangePlan
+import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -65,7 +67,7 @@ class AppliedUnverified private constructor(
     val source: SymbolDiscoveryFileIdentity.Workspace,
     val priorLease: SemanticReadLease,
     val postimage: WorkspaceSourceContentHash,
-    internal val recovery: AppliedAddDeclarationRecovery,
+    val recoveryBinding: MutationPlanBinding,
 ) : AddDeclarationApplyResult {
     companion object {
         /**
@@ -86,9 +88,39 @@ class AppliedUnverified private constructor(
             authority.source,
             authority.priorLease,
             write.content,
-            recovery,
+            recovery.record.binding,
         )
+
+        fun restore(
+            plan: ChangePlan,
+            postimage: WorkspaceSourceContentHash,
+            recoveryBinding: MutationPlanBinding,
+        ): Refinement<AppliedUnverified, AppliedUnverifiedRestorationFailure> {
+            val source = plan.writes.entries.singleOrNull()?.source
+                ?: return Refinement.Rejected(
+                    AppliedUnverifiedRestorationFailure.WRITE_SET_NOT_SINGLETON,
+                )
+            if (recoveryBinding.value != plan.planId.value) {
+                return Refinement.Rejected(
+                    AppliedUnverifiedRestorationFailure.RECOVERY_BINDING_MISMATCH,
+                )
+            }
+            return Refinement.Refined(
+                AppliedUnverified(
+                    plan.planId,
+                    source,
+                    plan.priorLease,
+                    postimage,
+                    recoveryBinding,
+                ),
+            )
+        }
     }
+}
+
+enum class AppliedUnverifiedRestorationFailure {
+    WRITE_SET_NOT_SINGLETON,
+    RECOVERY_BINDING_MISMATCH,
 }
 
 /** Public `change.apply` boundary for the one KCS-017 AddDeclaration mutation. */

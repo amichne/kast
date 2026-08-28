@@ -24,7 +24,7 @@ internal fun VerifiedMutationFixture.replaceDeclarationPlan(): ReplaceDeclaratio
         plan.target,
         ExistingDeclarationSourceText.parse(current).refined(),
     ).refined()
-    val evidence = plan.evidence
+    val evidence = planRequest().evidence
     val result = PureReplaceDeclarationPlanningService().plan(
         ReplaceDeclarationPlanRequest(
             target,

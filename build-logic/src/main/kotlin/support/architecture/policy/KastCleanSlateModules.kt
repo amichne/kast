@@ -226,6 +226,8 @@ internal object KastCleanSlateModules {
             ModuleId.EVIDENCE_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_VERIFY,
             ModuleId.TOPOLOGY_CONTRACT,
             ModuleId.RELATION_CONTRACT,
             ModuleId.SYMBOL_CONTRACT,
