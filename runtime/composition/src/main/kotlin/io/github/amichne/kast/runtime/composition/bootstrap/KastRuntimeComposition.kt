@@ -43,6 +43,8 @@ class KastRuntimeComposition private constructor(
             when (dispatch.failure) {
                 is io.github.amichne.kast.runtime.server.ServerDispatchFailure.RequestAdmissionFailed ->
                     KastRuntimeDispatchFailure.REQUEST_ADMISSION_FAILED
+                is io.github.amichne.kast.runtime.server.ServerDispatchFailure.UnsupportedOperation ->
+                    KastRuntimeDispatchFailure.UNSUPPORTED_OPERATION
                 is io.github.amichne.kast.runtime.server.ServerDispatchFailure.RequestDecodingFailed ->
                     KastRuntimeDispatchFailure.REQUEST_DECODING_FAILED
                 is io.github.amichne.kast.runtime.server.ServerDispatchFailure.ResponseEncodingFailed ->
@@ -265,6 +267,7 @@ sealed interface KastRuntimeDispatch {
 /** Closed transport failure projection that does not export runtime-server implementation types. */
 enum class KastRuntimeDispatchFailure {
     REQUEST_ADMISSION_FAILED,
+    UNSUPPORTED_OPERATION,
     REQUEST_DECODING_FAILED,
     RESPONSE_ENCODING_FAILED,
 }

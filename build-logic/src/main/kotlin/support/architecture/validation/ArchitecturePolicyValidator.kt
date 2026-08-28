@@ -51,13 +51,21 @@ object ArchitecturePolicyValidator {
         )
         val compositionFailures = buildList {
             definition.modules
-                .filter { it.role == ModuleRole.COMPOSITION && it.id != ModuleId.RUNTIME_COMPOSITION }
+                .filter {
+                    it.role == ModuleRole.COMPOSITION &&
+                        it.id !in setOf(ModuleId.RUNTIME_COMPOSITION, ModuleId.RUNTIME_IDE_HOST)
+                }
                 .forEach { add(ArchitecturePolicyFailure.UnexpectedCompositionOwner(it.id)) }
             val composition = modules[ModuleId.RUNTIME_COMPOSITION]
             if (composition?.role != ModuleRole.COMPOSITION) {
                 add(ArchitecturePolicyFailure.MissingRuntimeComposition)
             } else {
-                val excluded = setOf(ModuleId.CLI, ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION)
+                val excluded = setOf(
+                    ModuleId.CLI,
+                    ModuleId.INDEXER,
+                    ModuleId.RUNTIME_COMPOSITION,
+                    ModuleId.RUNTIME_IDE_HOST,
+                )
                 val expectedDependencies = modules.keys - excluded
                 val missing = expectedDependencies - composition.allowedProjectDependencies
                 val unexpected = composition.allowedProjectDependencies - expectedDependencies
