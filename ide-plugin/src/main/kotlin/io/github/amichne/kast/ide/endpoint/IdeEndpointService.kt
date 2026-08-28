@@ -15,18 +15,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import io.github.amichne.kast.topology.intellij.HostedWorkspaceColdStartIdentity
+import io.github.amichne.kast.topology.intellij.HostedWorkspaceSourceStateSession
 import kotlin.time.Duration.Companion.seconds
 
 /** One eagerly registered IntelliJ project-scoped endpoint coordinator. */
 class IdeEndpointService private constructor(
+    private val serviceProject: Project?,
     private val coroutineScope: CoroutineScope,
     private val coordinator: IdeEndpointCoordinator,
     private val generations: ProjectEndpointGenerationSource,
+    private val coldStart: HostedWorkspaceColdStartIdentity,
 ) : Disposable {
-    constructor(coroutineScope: CoroutineScope) : this(
+    private val sourceStates = HostedWorkspaceSourceStateSession(coldStart, this)
+
+    constructor(project: Project, coroutineScope: CoroutineScope) : this(
+        project,
         coroutineScope,
         IdeEndpointCoordinator(JdkIdeEndpointPublisher),
         ProjectEndpointGenerationSource(),
+        HostedWorkspaceColdStartIdentity.issue(),
     )
 
     init {
@@ -44,7 +52,8 @@ class IdeEndpointService private constructor(
      * Gradle import completion, smart-mode entry, and all-startup-activities completion each only
      * trigger a fresh admission; they never wait, import, refresh, or manufacture readiness.
      */
-    internal fun start(project: Project): IdeEndpointServiceStart {
+    internal fun start(requestedProject: Project): IdeEndpointServiceStart {
+        val project = serviceProject ?: requestedProject
         when (val beginning = coordinator.begin()) {
             IdeEndpointServiceStart.Started -> Unit
             IdeEndpointServiceStart.AlreadyStarted -> return beginning
@@ -97,7 +106,11 @@ class IdeEndpointService private constructor(
     ) {
         when (plan) {
             is IdeEndpointSignalPlan.Launch -> coroutineScope.launch(Dispatchers.IO) {
-                val startup = LiveIdeEndpointStartup.prepare(project, generations)
+                val startup = LiveIdeEndpointStartup.prepare(
+                    project,
+                    generations,
+                    sourceStates,
+                )
                 LOG.info("Kast hosted endpoint startup outcome: $startup")
                 complete(
                     project,
@@ -148,9 +161,11 @@ class IdeEndpointService private constructor(
             coroutineScope: CoroutineScope,
             coordinator: IdeEndpointCoordinator,
         ): IdeEndpointService = IdeEndpointService(
+            null,
             coroutineScope,
             coordinator,
             ProjectEndpointGenerationSource(),
+            HostedWorkspaceColdStartIdentity.issue(),
         )
     }
 }

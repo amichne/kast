@@ -1,6 +1,8 @@
 package io.github.amichne.kast.ide.endpoint
 
+import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
@@ -18,6 +20,8 @@ import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProject
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparation
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparationFailure
 import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntime as HostedEffectsRuntime
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.ServerSocketChannel
@@ -47,7 +51,7 @@ class IdeEndpointPublicationNegativeTest {
         assertTrue(
             IdeEndpointService::class.java.constructors.any { constructor ->
                 constructor.parameterTypes.contentEquals(
-                    arrayOf(CoroutineScope::class.java),
+                    arrayOf(Project::class.java, CoroutineScope::class.java),
                 )
             },
         )
@@ -311,6 +315,10 @@ private fun completeRuntime(
     val preparation = HostedIdeReadRuntime.prepare(
         HostedIdeReadRuntimeCandidate.Complete(
             HostedIdeReadProject.testing(root, compatibility),
+            SemanticReadLease(
+                refined(CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(root.value))),
+                refined(EvidenceGeneration.parse(0)),
+            ),
             WorkspaceInspectReadPort { fail("workspace port must not run during publication") },
             SymbolDiscoverReadPort { fail("discover port must not run during publication") },
             SymbolResolveReadPort { fail("resolve port must not run during publication") },

@@ -54,10 +54,11 @@ import io.github.amichne.kast.runtime.server.TypedOperationBinding
 internal object HostedMutationProtocol {
     fun bindings(
         state: HostedMutationState,
+        admission: HostedMutationAdmissionOperations,
         selectors: HostedExactSelectorOperations,
         authority: DurableChangeAuthority,
     ): List<TypedOperationBinding<*, *, *, *>> {
-        val runtimeState = HostedMutationRuntimeState(state)
+        val runtimeState = HostedMutationRuntimeState(state, admission)
         return listOf(
             TypedOperationBinding(
                 CanonicalOperationWireBindings.changePlan,
@@ -82,6 +83,7 @@ internal object HostedMutationProtocol {
 /** Drops clean writer authority immediately after the physical protocol requires recovery. */
 internal class HostedMutationRuntimeState(
     initial: HostedMutationState,
+    private val admission: HostedMutationAdmissionOperations,
 ) {
     @Volatile
     private var state: HostedMutationState = initial
@@ -92,9 +94,39 @@ internal class HostedMutationRuntimeState(
     fun requireRecovery() {
         val current = state
         if (current is HostedMutationState.Clean) {
-            state = HostedMutationState.RecoveryRequired(current.recovery)
+            state = HostedMutationState.RecoveryRequired(
+                current.recovery,
+                current.publication,
+            )
         }
     }
+
+    @Synchronized
+    fun restoreAfterRecovery(): HostedMutationRestoration {
+        if (state !is HostedMutationState.RecoveryRequired) {
+            return HostedMutationRestoration.Rejected
+        }
+        return when (val restored = admission.admit()) {
+            is HostedMutationState.Clean -> {
+                state = restored
+                HostedMutationRestoration.Restored
+            }
+            is HostedMutationState.RecoveryRequired -> {
+                state = restored
+                HostedMutationRestoration.RecoveryStillRequired
+            }
+            is HostedMutationState.Rejected -> {
+                state = restored
+                HostedMutationRestoration.Rejected
+            }
+        }
+    }
+}
+
+internal sealed interface HostedMutationRestoration {
+    data object Restored : HostedMutationRestoration
+    data object RecoveryStillRequired : HostedMutationRestoration
+    data object Rejected : HostedMutationRestoration
 }
 
 private class HostedChangePlanHandler(
@@ -148,8 +180,9 @@ private class HostedChangeApplyHandler(
         ChangeApplyQualification,
         ChangeApplyRejection,
         > {
-        val operation = (state.current() as? HostedMutationState.Clean)?.application
+        val clean = state.current() as? HostedMutationState.Clean
             ?: return OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
+        val operation = clean.application
         val identity = ChangePlanIdentity.parse(request.planIdentity.value)
             ?: return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
         val plan = when (val lookup = authority.loadPlan(identity)) {
@@ -160,21 +193,41 @@ private class HostedChangeApplyHandler(
                 return OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
         }
         return when (val result = operation.apply(plan)) {
-            is AppliedUnverified -> when (val issued = authority.issueApplication(plan, result)) {
-                is ChangeApplicationIssuance.Issued -> OperationOutcome.Complete(
-                    EvidenceEnvelope(
-                        CanonicalOperation.CHANGE_APPLY.id,
-                        result.priorLease.generation,
-                        ChangeApplyResult(issued.identity.protocolText()),
-                    ),
-                )
-                is ChangeApplicationIssuance.Rejected ->
+            is AppliedUnverified -> {
+                val issued = authority.issueApplication(plan, result)
+                val publication = clean.publication.publishAfter(result.priorLease)
+                if (
+                    issued is ChangeApplicationIssuance.Issued &&
+                    publication is io.github.amichne.kast.change.verify.ResultingGenerationPublication.Published
+                ) {
+                    OperationOutcome.Complete(
+                        EvidenceEnvelope(
+                            CanonicalOperation.CHANGE_APPLY.id,
+                            result.priorLease.generation,
+                            ChangeApplyResult(issued.identity.protocolText()),
+                        ),
+                    )
+                } else {
+                    state.requireRecovery()
                     OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
+                }
             }
-            is AddDeclarationApplyResult.Rejected ->
+            is AddDeclarationApplyResult.Rejected -> {
+                if (result.failure.provesSourceTransition()) {
+                    clean.publication.publishAfter(plan.priorLease)
+                }
                 OperationOutcome.Rejected(result.failure.applyRejection())
-            is AddDeclarationApplyResult.RolledBack ->
-                OperationOutcome.Rejected(ChangeApplyRejection.ROLLED_BACK)
+            }
+            is AddDeclarationApplyResult.RolledBack -> when (
+                clean.publication.publishCurrentTransition()
+            ) {
+                is io.github.amichne.kast.change.verify.ResultingGenerationPublication.Published ->
+                    OperationOutcome.Rejected(ChangeApplyRejection.ROLLED_BACK)
+                is io.github.amichne.kast.change.verify.ResultingGenerationPublication.Rejected -> {
+                    state.requireRecovery()
+                    OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
+                }
+            }
             is AddDeclarationApplyResult.RecoveryRequired -> {
                 state.requireRecovery()
                 OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
@@ -249,7 +302,7 @@ private class HostedChangeRecoverHandler(
         ChangeRecoverQualification,
         ChangeRecoverRejection,
         > {
-        val operation = state.current().recoveryOrNull()
+        val capabilities = state.current().recoveryOrNull()
             ?: return OperationOutcome.Rejected(ChangeRecoverRejection.JOURNAL_UNAVAILABLE)
         val identity = ChangePlanIdentity.parse(request.planIdentity.value)
             ?: return OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND)
@@ -263,15 +316,54 @@ private class HostedChangeRecoverHandler(
             is Refinement.Rejected ->
                 return OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
         }
-        return when (operation.recover(binding)) {
-            is AddDeclarationRecoveryOutcome.PriorState -> complete(plan.priorLease.generation, ChangeRecoveryDocumentState.PRIOR_STATE)
-            is AddDeclarationRecoveryOutcome.RolledBack -> complete(plan.priorLease.generation, ChangeRecoveryDocumentState.ROLLED_BACK)
-            is AddDeclarationRecoveryOutcome.RecoveryRequired -> OperationOutcome.Qualified(
-                envelope(plan.priorLease.generation, ChangeRecoveryDocumentState.RECOVERY_REQUIRED),
-                ChangeRecoverQualification.MANUAL_RECOVERY_REQUIRED,
+        return when (capabilities.recovery.recover(binding)) {
+            is AddDeclarationRecoveryOutcome.PriorState -> completeAfterRestoration(
+                capabilities,
+                plan.priorLease.generation,
+                ChangeRecoveryDocumentState.PRIOR_STATE,
             )
+            is AddDeclarationRecoveryOutcome.RolledBack -> completeAfterRestoration(
+                capabilities,
+                plan.priorLease.generation,
+                ChangeRecoveryDocumentState.ROLLED_BACK,
+            )
+            is AddDeclarationRecoveryOutcome.RecoveryRequired -> {
+                state.requireRecovery()
+                recoveryStillRequired(plan.priorLease.generation)
+            }
         }
     }
+
+    private fun completeAfterRestoration(
+        capabilities: HostedRecoveryCapabilities,
+        fallbackGeneration: EvidenceGeneration,
+        recovered: ChangeRecoveryDocumentState,
+    ): OperationOutcome<ChangeRecoverResult, ChangeRecoverQualification, ChangeRecoverRejection> {
+        val publication = capabilities.publication.publishCurrentTransition()
+        if (publication !is io.github.amichne.kast.change.verify.ResultingGenerationPublication.Published) {
+            state.requireRecovery()
+            return recoveryStillRequired(fallbackGeneration)
+        }
+        return when (state.restoreAfterRecovery()) {
+            HostedMutationRestoration.Restored -> complete(
+                publication.workspace.generation,
+                recovered,
+            )
+            HostedMutationRestoration.RecoveryStillRequired -> recoveryStillRequired(
+                publication.workspace.generation,
+            )
+            HostedMutationRestoration.Rejected ->
+                OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
+        }
+    }
+
+    private fun recoveryStillRequired(
+        generation: EvidenceGeneration,
+    ): OperationOutcome<ChangeRecoverResult, ChangeRecoverQualification, ChangeRecoverRejection> =
+        OperationOutcome.Qualified(
+            envelope(generation, ChangeRecoveryDocumentState.RECOVERY_REQUIRED),
+            ChangeRecoverQualification.MANUAL_RECOVERY_REQUIRED,
+        )
 
     private fun complete(
         generation: EvidenceGeneration,
@@ -285,9 +377,14 @@ private class HostedChangeRecoverHandler(
     ) = EvidenceEnvelope(CanonicalOperation.CHANGE_RECOVER.id, generation, ChangeRecoverResult(state))
 }
 
-private fun HostedMutationState.recoveryOrNull(): ChangeRecoveryOperations? = when (this) {
-    is HostedMutationState.Clean -> recovery
-    is HostedMutationState.RecoveryRequired -> recovery
+private data class HostedRecoveryCapabilities(
+    val recovery: ChangeRecoveryOperations,
+    val publication: HostedMutationPublicationOperations,
+)
+
+private fun HostedMutationState.recoveryOrNull(): HostedRecoveryCapabilities? = when (this) {
+    is HostedMutationState.Clean -> HostedRecoveryCapabilities(recovery, publication)
+    is HostedMutationState.RecoveryRequired -> HostedRecoveryCapabilities(recovery, publication)
     is HostedMutationState.Rejected -> null
 }
 
@@ -341,6 +438,45 @@ private fun AddDeclarationApplyFailure.applyRejection(): ChangeApplyRejection = 
         -> ChangeApplyRejection.RECOVERY_REQUIRED
         else -> ChangeApplyRejection.WRITE_SCOPE_REJECTED
     }
+}
+
+private fun AddDeclarationApplyFailure.provesSourceTransition(): Boolean = when (this) {
+    is AddDeclarationApplyFailure.Observation -> when (failure) {
+        SourceObservationFailure.TARGET_NOT_FOUND,
+        SourceObservationFailure.TARGET_INVALIDATED,
+        SourceObservationFailure.SOURCE_BYTES_UNAVAILABLE,
+        SourceObservationFailure.INVALID_SOURCE_CONTENT,
+        -> true
+        SourceObservationFailure.DUMB_MODE,
+        SourceObservationFailure.TARGET_NOT_KOTLIN,
+        SourceObservationFailure.DOCUMENT_UNAVAILABLE,
+        -> false
+    }
+    is AddDeclarationApplyFailure.Admission -> when (failure) {
+        MutationAdmissionFailure.STALE_GENERATION,
+        MutationAdmissionFailure.STALE_SOURCE_STATE,
+        MutationAdmissionFailure.SOURCE_CONTENT_CHANGED,
+        MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH,
+        MutationAdmissionFailure.SOURCE_PRECONDITION_MISMATCH,
+        -> true
+        MutationAdmissionFailure.WRONG_ROOT,
+        MutationAdmissionFailure.OUT_OF_SCOPE,
+        MutationAdmissionFailure.GENERATED_TARGET,
+        MutationAdmissionFailure.UNKNOWN_TARGET_PROVENANCE,
+        MutationAdmissionFailure.WRONG_SOURCE_ROOT_OWNER,
+        MutationAdmissionFailure.TARGET_READ_ONLY,
+        MutationAdmissionFailure.UNPLANNED_WRITE_SET,
+        MutationAdmissionFailure.EMPTY_MUTATION_SET,
+        MutationAdmissionFailure.MUTATION_OVERLAP,
+        MutationAdmissionFailure.MUTATION_OUT_OF_BOUNDS,
+        MutationAdmissionFailure.MUTATION_KIND_MISMATCH,
+        MutationAdmissionFailure.SOURCE_HASH_UNREPRESENTABLE,
+        -> false
+    }
+    is AddDeclarationApplyFailure.Write -> failure == SourceWriteFailure.PREIMAGE_CHANGED
+    is AddDeclarationApplyFailure.RecoveryPreparation,
+    is AddDeclarationApplyFailure.RecoveryEvidence,
+    -> false
 }
 
 private fun Set<ChangeProofFailure>.verifyRejection(): ChangeVerifyRejection = when {

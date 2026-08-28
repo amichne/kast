@@ -70,6 +70,7 @@ idea_pid=
 current_root=
 recovery_acl_target=
 recovery_database=
+application_fault_database=
 fault_apply_pid=
 
 root_digest() {
@@ -203,6 +204,10 @@ cleanup() {
   fi
   if test -n "${recovery_database}" && test -e "${recovery_database}"; then
     sqlite3 "${recovery_database}" 'DROP TRIGGER IF EXISTS kast_installed_save_fault;' || true
+  fi
+  if test -n "${application_fault_database}" && test -e "${application_fault_database}"; then
+    sqlite3 "${application_fault_database}" \
+      'DROP TRIGGER IF EXISTS kast_installed_application_fault;' || true
   fi
   shutdown_idea
 }
@@ -374,35 +379,62 @@ run_cli "${positive_root}" "${run_directory}/observations/positive-plan.json" \
 positive_plan=$(jq -er .planIdentity "${run_directory}/observations/positive-plan.json")
 record_observation "${positive_jsonl}" change.plan COMPLETE "${run_directory}/observations/positive-plan.json"
 
-close_project
-open_project "${positive_root}"
-capture_restart "${positive_root}" "${run_directory}/observations/restart-before-apply.json"
-record_observation "${positive_jsonl}" restart.before-apply COMPLETE "${run_directory}/observations/restart-before-apply.json"
 run_cli "${positive_root}" "${run_directory}/observations/positive-apply.json" change apply --plan "${positive_plan}"
 positive_application=$(jq -er .applicationIdentity "${run_directory}/observations/positive-apply.json")
 record_observation "${positive_jsonl}" change.apply COMPLETE "${run_directory}/observations/positive-apply.json"
-
-close_project
-open_project "${positive_root}"
-capture_restart "${positive_root}" "${run_directory}/observations/restart-before-verify.json"
-record_observation "${positive_jsonl}" restart.before-verify COMPLETE "${run_directory}/observations/restart-before-verify.json"
-run_cli "${positive_root}" "${run_directory}/observations/positive-verify.json" \
-  change verify --application "${positive_application}"
-record_observation "${positive_jsonl}" change.verify COMPLETE "${run_directory}/observations/positive-verify.json"
-
-close_project
-open_project "${positive_root}"
-capture_restart "${positive_root}" "${run_directory}/observations/restart-before-traversal.json"
-record_observation "${positive_jsonl}" restart.before-traversal COMPLETE "${run_directory}/observations/restart-before-traversal.json"
-positive_result_selector=$(resolve_target "${positive_root}" "${run_directory}/observations/positive-result")
-run_cli "${positive_root}" "${run_directory}/observations/positive-durable-traversal.json" \
-  traversal run --selector "${positive_result_selector}" --relation references \
-  --maximum-depth 3 --maximum-results 50
-record_observation "${positive_jsonl}" traversal.run.durable COMPLETE "${run_directory}/observations/positive-durable-traversal.json"
 run_cli_rejected "${positive_root}" "${run_directory}/observations/stale-selector.json" \
   selector-stale traversal run --selector "${positive_selector}" --relation references \
   --maximum-depth 3 --maximum-results 50
-record_observation "${negative_jsonl}" stale-selector REJECTED "${run_directory}/observations/stale-selector.json"
+record_observation "${negative_jsonl}" stale-selector-after-live-publication REJECTED \
+  "${run_directory}/observations/stale-selector.json"
+run_cli "${positive_root}" "${run_directory}/observations/positive-verify.json" \
+  change verify --application "${positive_application}"
+record_observation "${positive_jsonl}" change.verify COMPLETE "${run_directory}/observations/positive-verify.json"
+positive_result_selector=$(resolve_target "${positive_root}" "${run_directory}/observations/positive-result")
+run_cli "${positive_root}" "${run_directory}/observations/positive-result-traversal.json" \
+  traversal run --selector "${positive_result_selector}" --relation references \
+  --maximum-depth 3 --maximum-results 50
+record_observation "${positive_jsonl}" traversal.run.resulting-generation COMPLETE \
+  "${run_directory}/observations/positive-result-traversal.json"
+positive_pre_restart_remainder=${positive_result_selector#exact:v1:}
+positive_pre_restart_generation=${positive_pre_restart_remainder%%:*}
+[[ "${positive_pre_restart_generation}" =~ ^[0-9]+$ ]] || \
+  fail "resulting selector did not retain a numeric generation"
+
+close_project
+open_project "${positive_root}"
+capture_restart "${positive_root}" "${run_directory}/observations/restart-after-lifecycle.json"
+record_observation "${positive_jsonl}" restart.after-lifecycle COMPLETE \
+  "${run_directory}/observations/restart-after-lifecycle.json"
+run_cli "${positive_root}" "${run_directory}/observations/positive-restart-inspect.json" \
+  workspace inspect
+run_cli_rejected "${positive_root}" "${run_directory}/observations/restart-stale-selector.json" \
+  selector-stale traversal run --selector "${positive_result_selector}" --relation references \
+  --maximum-depth 3 --maximum-results 50
+record_observation "${negative_jsonl}" stale-selector-after-cold-restart REJECTED \
+  "${run_directory}/observations/restart-stale-selector.json"
+positive_restart_selector=$(resolve_target "${positive_root}" \
+  "${run_directory}/observations/positive-restart")
+positive_restart_remainder=${positive_restart_selector#exact:v1:}
+positive_restart_generation=${positive_restart_remainder%%:*}
+[[ "${positive_restart_generation}" =~ ^[0-9]+$ ]] || \
+  fail "restart selector did not retain a numeric generation"
+if test "${positive_restart_generation}" -le "${positive_pre_restart_generation}"; then
+  fail "cold project restart did not conservatively advance semantic generation"
+fi
+run_cli "${positive_root}" "${run_directory}/observations/positive-restart-topology.json" \
+  topology build
+if ! jq -e '.snapshotStatus == "reused"' \
+  "${run_directory}/observations/positive-restart-topology.json" >/dev/null 2>&1; then
+  cat "${run_directory}/observations/positive-restart-topology.json" >&2
+  fail "unchanged durable topology was not rebound after cold restart"
+fi
+record_observation "${positive_jsonl}" topology.build.after-restart REUSED \
+  "${run_directory}/observations/positive-restart-topology.json"
+run_cli "${positive_root}" "${run_directory}/observations/positive-durable-traversal.json" \
+  traversal run --selector "${positive_restart_selector}" --relation references \
+  --maximum-depth 3 --maximum-results 50
+record_observation "${positive_jsonl}" traversal.run.durable COMPLETE "${run_directory}/observations/positive-durable-traversal.json"
 close_project
 
 negative_root=$(new_workspace negative-workspace)
@@ -427,8 +459,6 @@ sleep 3
 run_cli_rejected "${negative_root}" "${run_directory}/observations/source-changed.json" \
   content-changed change apply --plan "${negative_plan}"
 record_observation "${negative_jsonl}" source-changed-between-plan-and-apply REJECTED "${run_directory}/observations/source-changed.json"
-close_project
-open_project "${negative_root}"
 run_cli_rejected "${negative_root}" "${run_directory}/observations/stale-plan-selector.json" \
   symbol-resolve-required change plan --intent add-declaration --target "${negative_selector}" \
   --declaration 'fun staleSelector(): Unit = Unit'
@@ -457,6 +487,69 @@ open_project "${authority_root}"
 run_cli_rejected "${authority_root}" "${run_directory}/observations/corrupt-authority.json" \
   recovery-required change apply --plan "${authority_plan}"
 record_observation "${negative_jsonl}" corrupt-change-authority-record REJECTED "${run_directory}/observations/corrupt-authority.json"
+close_project
+
+successful_recovery_root=$(new_workspace successful-recovery-workspace)
+open_project "${successful_recovery_root}"
+successful_recovery_selector=$(resolve_target \
+  "${successful_recovery_root}" "${run_directory}/observations/successful-recovery")
+run_cli "${successful_recovery_root}" \
+  "${run_directory}/observations/successful-recovery-topology.json" topology build
+run_cli "${successful_recovery_root}" \
+  "${run_directory}/observations/successful-recovery-plan.json" \
+  change plan --intent add-declaration --target "${successful_recovery_selector}" \
+  --declaration 'fun rollsBackAfterAuthorityFailure(): Unit = Unit'
+successful_recovery_plan=$(jq -er .planIdentity \
+  "${run_directory}/observations/successful-recovery-plan.json")
+application_fault_database=$(state_directory "${successful_recovery_root}")/mutation.sqlite
+sqlite3 "${application_fault_database}" <<'SQL'
+CREATE TRIGGER kast_installed_application_fault
+BEFORE INSERT ON hosted_change_application
+BEGIN
+  SELECT RAISE(ABORT, 'forced application authority failure');
+END;
+SQL
+run_cli_rejected "${successful_recovery_root}" \
+  "${run_directory}/observations/application-authority-failure.json" \
+  recovery-required change apply --plan "${successful_recovery_plan}"
+grep -q 'rollsBackAfterAuthorityFailure' "$(target_file "${successful_recovery_root}")" || \
+  fail "application authority fault did not follow a physical write"
+run_cli_rejected "${successful_recovery_root}" \
+  "${run_directory}/observations/post-write-failure-plan.json" \
+  recovery-required change plan --intent add-declaration --target "${successful_recovery_selector}" \
+  --declaration 'fun mustNotPlanAfterAuthorityFailure(): Unit = Unit'
+run_cli_rejected "${successful_recovery_root}" \
+  "${run_directory}/observations/post-write-failure-apply.json" \
+  recovery-required change apply --plan "${successful_recovery_plan}"
+run_cli_rejected "${successful_recovery_root}" \
+  "${run_directory}/observations/post-write-failure-verify.json" \
+  obligation-failed change verify --application "application:$(printf '0%.0s' {1..64})"
+cat "${run_directory}/observations/post-write-failure-apply.json" \
+  "${run_directory}/observations/post-write-failure-verify.json" >> \
+  "${run_directory}/observations/post-write-failure-plan.json"
+record_observation "${negative_jsonl}" post-write-authority-failure-withdraws-writer REJECTED \
+  "${run_directory}/observations/post-write-failure-plan.json"
+sqlite3 "${application_fault_database}" \
+  'DROP TRIGGER kast_installed_application_fault;'
+application_fault_database=
+run_cli "${successful_recovery_root}" \
+  "${run_directory}/observations/successful-live-recover.json" \
+  change recover --plan "${successful_recovery_plan}"
+if grep -q 'rollsBackAfterAuthorityFailure' "$(target_file "${successful_recovery_root}")"; then
+  fail "successful recovery did not restore the prior source"
+fi
+record_observation "${positive_jsonl}" change.recover.live COMPLETE \
+  "${run_directory}/observations/successful-live-recover.json"
+successful_recovery_result_selector=$(resolve_target \
+  "${successful_recovery_root}" "${run_directory}/observations/successful-recovery-result")
+run_cli "${successful_recovery_root}" \
+  "${run_directory}/observations/successful-recovery-result-topology.json" topology build
+run_cli "${successful_recovery_root}" \
+  "${run_directory}/observations/plan-after-live-recovery.json" \
+  change plan --intent add-declaration --target "${successful_recovery_result_selector}" \
+  --declaration 'fun plannedAfterLiveRecovery(): Unit = Unit'
+record_observation "${positive_jsonl}" change.plan.after-live-recovery COMPLETE \
+  "${run_directory}/observations/plan-after-live-recovery.json"
 close_project
 
 recovery_root=$(new_workspace recovery-workspace)
@@ -493,7 +586,12 @@ record_observation "${negative_jsonl}" forced-save-failure-restart-recover REJEC
 close_project
 
 shutdown_idea
-for root in "${positive_root}" "${negative_root}" "${authority_root}" "${recovery_root}"; do
+for root in \
+  "${positive_root}" \
+  "${negative_root}" \
+  "${authority_root}" \
+  "${successful_recovery_root}" \
+  "${recovery_root}"; do
   retire_state "${root}"
 done
 

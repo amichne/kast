@@ -2,6 +2,7 @@ package io.github.amichne.kast.ide.endpoint
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
@@ -27,6 +28,8 @@ import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimeC
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProject
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparation
 import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntime as HostedEffectsRuntime
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.ByteBuffer
@@ -65,6 +68,10 @@ class IdeEndpointPublicationTest {
         val readRuntime = HostedIdeReadRuntime.prepare(
             HostedIdeReadRuntimeCandidate.Complete(
                 HostedIdeReadProject.testing(root, compatibility),
+                SemanticReadLease(
+                    positiveRefined(CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(root.value))),
+                    positiveRefined(EvidenceGeneration.parse(0)),
+                ),
                 WorkspaceInspectReadPort {
                     workspaceCalls += 1
                     workspaceOutcome

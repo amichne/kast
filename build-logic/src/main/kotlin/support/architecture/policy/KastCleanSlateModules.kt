@@ -287,6 +287,7 @@ internal object KastCleanSlateModules {
             ModuleId.RUNTIME_IDE_READ,
             ModuleId.RUNTIME_SERVER,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_SERVICE,
             ModuleId.TOPOLOGY_CONTRACT,
             ModuleId.TOPOLOGY_BUILD,
             ModuleId.TOPOLOGY_SERVICE,

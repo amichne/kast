@@ -4,8 +4,11 @@ import io.github.amichne.kast.evidence.contract.HostedWorkspaceStateLocation
 import io.github.amichne.kast.evidence.contract.KastUserStateRoot
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStore
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
+import io.github.amichne.kast.change.verify.ResultingGenerationPublication
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchFailure
+import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.TopologyBuildResult
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
@@ -22,20 +25,208 @@ import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
+import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
+import io.github.amichne.kast.workspace.contract.WorkspacePublicationSerialization
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import io.github.amichne.kast.workspace.contract.SemanticReadLeaseUse
+import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.service.ResultingWorkspacePublication
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class HostedTopologyLifecycleTest {
     @TempDir
     lateinit var temporary: Path
+
+    @Test
+    fun `live workspace publication advances generation and stales the prior lease`() {
+        val fixture = fixture()
+        val resulting = PublishedWorkspace.publish(
+            ReconciledWorkspace.admit(
+                WorkspaceCandidate(
+                    fixture.workspace.root,
+                    WorkspaceStateIdentity.parse("state-v2").refined(),
+                ),
+                WorkspaceEvidenceKind.entries.toSet(),
+                fixture.workspace.sourceRoots,
+            ).refined(),
+            EvidenceGeneration.parse(2).refined(),
+        )
+        val workspaces = HostedWorkspaceOperations(
+            fixture.workspace,
+            HostedWorkspaceTransitionOperations { current, cause ->
+                if (
+                    current.readLease == fixture.workspace.readLease &&
+                    cause == HostedWorkspaceTransitionCause.PROVEN_SOURCE_TRANSITION
+                ) {
+                    HostedWorkspaceTransition.Published(
+                        ResultingWorkspacePublication.admit(
+                            current.readLease,
+                            resulting,
+                        ).refined(),
+                    )
+                } else {
+                    HostedWorkspaceTransition.Unchanged
+                }
+            },
+        )
+
+        assertEquals(
+            ResultingGenerationPublication.Published(resulting),
+            workspaces.publishAfter(fixture.workspace.readLease),
+        )
+        val observed = assertInstanceOf(
+            WorkspaceRuntimeState.Ready::class.java,
+            workspaces.inspect(),
+        )
+
+        assertEquals(resulting.readLease, observed.workspace.readLease)
+        assertInstanceOf(
+            SemanticReadLeaseUse.Moved::class.java,
+            workspaces.whileCurrent(fixture.workspace.readLease) { "stale" },
+        )
+        assertEquals(
+            SemanticReadLeaseUse.Completed("current"),
+            workspaces.whileCurrent(resulting.readLease) { "current" },
+        )
+    }
+
+    @Test
+    fun `lease guarded effect excludes a source invalidation sharing its serialization`() {
+        val fixture = fixture()
+        val serialization = WorkspacePublicationSerialization()
+        val workspaces = HostedWorkspaceOperations(
+            fixture.workspace,
+            serialization = serialization,
+        )
+        val effectEntered = CountDownLatch(1)
+        val releaseEffect = CountDownLatch(1)
+        val invalidationAttempted = CountDownLatch(1)
+        val invalidationEntered = CountDownLatch(1)
+        val guarded = AtomicReference<SemanticReadLeaseUse<String>>()
+        val effectThread = thread(start = true) {
+            guarded.set(workspaces.whileCurrent(fixture.workspace.readLease) {
+                effectEntered.countDown()
+                check(releaseEffect.await(5, TimeUnit.SECONDS))
+                "completed"
+            })
+        }
+        assertTrue(effectEntered.await(5, TimeUnit.SECONDS))
+        val invalidationThread = thread(start = true) {
+            invalidationAttempted.countDown()
+            serialization.serialized { invalidationEntered.countDown() }
+        }
+        assertTrue(invalidationAttempted.await(5, TimeUnit.SECONDS))
+        assertFalse(invalidationEntered.await(100, TimeUnit.MILLISECONDS))
+
+        releaseEffect.countDown()
+        effectThread.join(5_000)
+        invalidationThread.join(5_000)
+
+        assertEquals(SemanticReadLeaseUse.Completed("completed"), guarded.get())
+        assertTrue(invalidationEntered.await(1, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun `live read dispatch promotes only the runtime staged for the published generation`() =
+        runTest {
+            val fixture = fixture()
+            val resulting = PublishedWorkspace.publish(
+                ReconciledWorkspace.admit(
+                    WorkspaceCandidate(
+                        fixture.workspace.root,
+                        WorkspaceStateIdentity.parse("state-v2").refined(),
+                    ),
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    fixture.workspace.sourceRoots,
+                ).refined(),
+                EvidenceGeneration.parse(2).refined(),
+            )
+            var current: WorkspaceRuntimeState = WorkspaceRuntimeState.Ready(fixture.workspace)
+            val dispatch = HostedGenerationReadDispatch(
+                fixture.workspace.readLease.generation,
+                HostedReadDispatchOperations {
+                    IdeReadRuntimeDispatchResult.Responded("generation-one")
+                },
+                WorkspaceInspectionOperations { current },
+            )
+
+            assertEquals(
+                IdeReadRuntimeDispatchResult.Responded("generation-one"),
+                dispatch.dispatch("request"),
+            )
+            assertEquals(
+                HostedReadRuntimeStaging.Staged,
+                dispatch.stage(
+                    fixture.workspace.readLease.generation,
+                    resulting.readLease.generation,
+                    HostedReadDispatchOperations {
+                        IdeReadRuntimeDispatchResult.Responded("generation-two")
+                    },
+                ),
+            )
+            current = WorkspaceRuntimeState.Ready(resulting)
+
+            assertEquals(
+                IdeReadRuntimeDispatchResult.Responded("generation-two"),
+                dispatch.dispatch("request"),
+            )
+        }
+
+    @Test
+    fun `live read dispatch rejects a result when workspace moves during dispatch`() = runTest {
+        val fixture = fixture()
+        val resulting = PublishedWorkspace.publish(
+            ReconciledWorkspace.admit(
+                WorkspaceCandidate(
+                    fixture.workspace.root,
+                    WorkspaceStateIdentity.parse("state-v2").refined(),
+                ),
+                WorkspaceEvidenceKind.entries.toSet(),
+                fixture.workspace.sourceRoots,
+            ).refined(),
+            EvidenceGeneration.parse(2).refined(),
+        )
+        var current: WorkspaceRuntimeState = WorkspaceRuntimeState.Ready(fixture.workspace)
+        val dispatch = HostedGenerationReadDispatch(
+            fixture.workspace.readLease.generation,
+            HostedReadDispatchOperations {
+                current = WorkspaceRuntimeState.Ready(resulting)
+                IdeReadRuntimeDispatchResult.Responded("stale-generation-one")
+            },
+            WorkspaceInspectionOperations { current },
+        )
+        assertEquals(
+            HostedReadRuntimeStaging.Staged,
+            dispatch.stage(
+                fixture.workspace.readLease.generation,
+                resulting.readLease.generation,
+                HostedReadDispatchOperations {
+                    IdeReadRuntimeDispatchResult.Responded("generation-two")
+                },
+            ),
+        )
+
+        assertEquals(
+            IdeReadRuntimeDispatchResult.Rejected(
+                IdeReadRuntimeDispatchFailure.RuntimeGenerationUnavailable,
+            ),
+            dispatch.dispatch("request"),
+        )
+    }
 
     @Test
     fun `topology build survives host restart and is reused without extraction`() = runTest {

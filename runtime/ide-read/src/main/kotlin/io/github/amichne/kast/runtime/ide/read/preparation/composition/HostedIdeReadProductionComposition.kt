@@ -117,6 +117,7 @@ class PreparedHostedIdeReadProductionComposition internal constructor(
         return HostedIdeReadRuntime.prepare(
             HostedIdeReadRuntimeCandidate.Complete(
                 project,
+                lease,
                 workspace,
                 discovery,
                 resolution,

@@ -9,8 +9,8 @@ import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStore
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
 import io.github.amichne.kast.evidence.sqlite.SqliteHostedWorkspaceGenerationAuthority
 import io.github.amichne.kast.evidence.sqlite.HostedWorkspaceGenerationIssuance
+import io.github.amichne.kast.evidence.sqlite.HostedWorkspaceGenerationResumption
 import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntime
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.build.VerifiedTopologyDeltaPublicationService
@@ -39,15 +39,44 @@ sealed interface HostedSemanticGenerationIssuance {
     data object Rejected : HostedSemanticGenerationIssuance
 }
 
+sealed interface HostedSemanticGenerationResumption {
+    data class Resumed(
+        val sourceState: WorkspaceStateIdentity,
+        val generation: EvidenceGeneration,
+    ) : HostedSemanticGenerationResumption
+
+    data object Rejected : HostedSemanticGenerationResumption
+}
+
 /** Opens durable adapters and publishes one runtime only after every hosted effect is admitted. */
 object HostedIdeRuntimeComposition {
-    fun issueSemanticGeneration(
+    fun resumeSemanticGeneration(
         location: HostedWorkspaceStateLocation,
-        state: WorkspaceStateIdentity,
-    ): HostedSemanticGenerationIssuance = when (
-        val issuance = SqliteHostedWorkspaceGenerationAuthority.issue(
+        basis: WorkspaceStateIdentity,
+    ): HostedSemanticGenerationResumption = when (
+        val resumption = SqliteHostedWorkspaceGenerationAuthority.resume(
             location.mutationDatabase,
-            state,
+            basis,
+        )
+    ) {
+        is HostedWorkspaceGenerationResumption.Resumed ->
+            HostedSemanticGenerationResumption.Resumed(
+                resumption.sourceState,
+                resumption.generation,
+            )
+        is HostedWorkspaceGenerationResumption.Rejected ->
+            HostedSemanticGenerationResumption.Rejected
+    }
+
+    fun advanceSemanticGeneration(
+        location: HostedWorkspaceStateLocation,
+        prior: WorkspaceStateIdentity,
+        next: WorkspaceStateIdentity,
+    ): HostedSemanticGenerationIssuance = when (
+        val issuance = SqliteHostedWorkspaceGenerationAuthority.advance(
+            location.mutationDatabase,
+            prior,
+            next,
         )
     ) {
         is HostedWorkspaceGenerationIssuance.Issued -> HostedSemanticGenerationIssuance.Issued(
@@ -57,7 +86,7 @@ object HostedIdeRuntimeComposition {
     }
 
     fun create(
-        reads: HostedIdeReadRuntime,
+        reads: HostedReadRuntimeOperations,
         workspace: HostedWorkspaceOperations,
         location: HostedWorkspaceStateLocation,
         topologyPorts: HostedTopologyAdapterPorts,
@@ -96,19 +125,23 @@ object HostedIdeRuntimeComposition {
             ),
         )
         val selectors = HostedSelectorAuthority.from(reads, workspace, snapshots, snapshots)
-        val mutation = HostedMutationComposition.admit(
+        val topologyPublisher = VerifiedTopologyDeltaPublicationService(
             workspace,
-            topology,
-            changePorts,
-            journal,
-            authority,
-            VerifiedTopologyDeltaPublicationService(
-                workspace,
-                topologyPorts.candidates,
-                topologyPorts.extractor,
-                snapshots,
-            ),
+            topologyPorts.candidates,
+            topologyPorts.extractor,
+            snapshots,
         )
+        val mutationAdmission = HostedMutationAdmissionOperations {
+            HostedMutationComposition.admit(
+                workspace,
+                topology,
+                changePorts,
+                journal,
+                authority,
+                topologyPublisher,
+            )
+        }
+        val mutation = mutationAdmission.admit()
         if (mutation is HostedMutationState.Rejected) {
             return rejected(HostedIdeRuntimeCompositionFailure.MUTATION_RECOVERY_REJECTED)
         }
@@ -117,6 +150,7 @@ object HostedIdeRuntimeComposition {
             topology,
             selectors,
             mutation,
+            mutationAdmission,
             authority,
         )) {
             is HostedIdeRuntimeConstruction.Created -> HostedIdeRuntimeCompositionResult.Created(
