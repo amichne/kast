@@ -53,8 +53,10 @@ private val kotlinPluginLibs: ConfigurableFileCollection = files(
 ).builtBy(extractDiagnosticKotlinPlugin)
 
 dependencies {
+    implementation(project(":protocol:contract"))
     implementation(project(":diagnostic:contract"))
     implementation(project(":workspace:contract"))
+    implementation(project(":workspace:intellij-read"))
 
     diagnosticIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false

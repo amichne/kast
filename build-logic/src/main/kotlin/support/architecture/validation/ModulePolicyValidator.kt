@@ -135,6 +135,10 @@ internal object KastCleanSlateCrossRoleDependencies {
         ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_RECOVERY),
+        ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
+        ProjectDependencyObservation(ModuleId.RELATION_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
+        ProjectDependencyObservation(ModuleId.TOPOLOGY_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
+        ProjectDependencyObservation(ModuleId.DIAGNOSTIC_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
     )
 }
 

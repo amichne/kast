@@ -123,9 +123,11 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.RELATION_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
+            ModuleId.PROTOCOL_CONTRACT,
             ModuleId.RELATION_CONTRACT,
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         ),
         target(
@@ -149,8 +151,10 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.TOPOLOGY_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
+            ModuleId.PROTOCOL_CONTRACT,
             ModuleId.TOPOLOGY_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
             ModuleId.SYMBOL_CONTRACT,
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         ),
@@ -163,8 +167,10 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.DIAGNOSTIC_INTELLIJ,
             ModuleRole.INTELLIJ_READ_ADAPTER,
+            ModuleId.PROTOCOL_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
         ),
         target(
@@ -202,10 +208,13 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CHANGE_INTELLIJ,
             ModuleRole.INTELLIJ_WRITE_ADAPTER,
+            ModuleId.PROTOCOL_CONTRACT,
             ModuleId.CHANGE_APPLY,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_RECOVERY,
             ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.INTELLIJ_WRITE,

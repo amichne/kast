@@ -131,6 +131,15 @@ private fun compileIntent(
     val project = exactProject(root) ?: return rejected(
         InstalledAddDeclarationIntentFailure.PROJECT_UNAVAILABLE,
     )
+    return compileIntent(project, root, selector, rawDeclaration)
+}
+
+internal fun compileIntent(
+    project: Project,
+    root: CanonicalWorkspaceRoot,
+    selector: SymbolSelector,
+    rawDeclaration: String,
+): InstalledAddDeclarationIntentCompilation {
     if (selector.lease.workspaceRoot != root) {
         return rejected(InstalledAddDeclarationIntentFailure.GENERATION_MOVED)
     }
@@ -226,11 +235,11 @@ private fun rejected(
     failure,
 )
 
-private fun unavailableObservation() = io.github.amichne.kast.change.apply.SourceObservationResult
+internal fun unavailableObservation() = io.github.amichne.kast.change.apply.SourceObservationResult
     .Rejected(io.github.amichne.kast.change.apply.SourceObservationFailure.TARGET_INVALIDATED)
 
-private fun unavailableWrite() = io.github.amichne.kast.change.apply.SourceWriteResult
+internal fun unavailableWrite() = io.github.amichne.kast.change.apply.SourceWriteResult
     .RejectedBeforeMutation(io.github.amichne.kast.change.apply.SourceWriteFailure.TARGET_INVALIDATED)
 
-private fun unavailableRollback(): AddDeclarationRollbackResult = AddDeclarationRollbackResult
+internal fun unavailableRollback(): AddDeclarationRollbackResult = AddDeclarationRollbackResult
     .Rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
