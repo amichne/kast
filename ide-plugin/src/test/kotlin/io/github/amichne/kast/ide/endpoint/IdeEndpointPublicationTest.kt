@@ -215,12 +215,9 @@ private fun positiveCompatibilityCandidate() = IdeHostCompatibilityCandidate(
     runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
     operationRegistryDigest = "sha256:" + "1".repeat(64),
     wireSchemaDigest = "sha256:" + "2".repeat(64),
-    capabilities = listOf(
-        "workspace.inspect",
-        "symbol.discover",
-        "symbol.resolve",
-        "symbol.describe",
-    ),
+    capabilities = io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
+        .candidates
+        .map { it.operationId },
 )
 
 private fun <Value, Failure> positiveRefined(result: Refinement<Value, Failure>): Value =

@@ -1,6 +1,15 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.wire.metadata.HostedCapabilityIntent
+
+sealed interface HostedRuntimeDemand {
+    data class Operation(val operation: CanonicalOperation) : HostedRuntimeDemand
+    data class ChangePlan(val intent: ChangeIntentDocument) : HostedRuntimeDemand
+    data object Lifecycle : HostedRuntimeDemand
+}
 
 fun interface RootRuntimeDemander {
     /**
@@ -9,7 +18,7 @@ fun interface RootRuntimeDemander {
      * Establishes one reachable endpoint for the exact root without requiring a caller-provided
      * endpoint. [RuntimeAdmissionFailure] is the closed expected failure.
      */
-    fun demand(root: CanonicalRoot): RuntimeAdmission
+    fun demand(root: CanonicalRoot, demand: HostedRuntimeDemand): RuntimeAdmission
 }
 
 /** Adapts the explicit legacy locator/demander pair behind one root-level admission boundary. */
@@ -17,7 +26,7 @@ internal class LocatedRuntimeDemander(
     private val locator: RuntimeEndpointLocator,
     private val demander: RuntimeDemander,
 ) : RootRuntimeDemander {
-    override fun demand(root: CanonicalRoot): RuntimeAdmission {
+    override fun demand(root: CanonicalRoot, demand: HostedRuntimeDemand): RuntimeAdmission {
         val requested = when (val resolution = locator.locate(root)) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(
@@ -51,11 +60,22 @@ class IdeOnlyRuntimeDemander(
      * retains its exact closed [RuntimeAdmissionFailure]. Raw socket extraction is confined to the
      * endpoint-to-transport boundary.
      */
-    override fun demand(root: CanonicalRoot): RuntimeAdmission {
+    override fun demand(root: CanonicalRoot, demand: HostedRuntimeDemand): RuntimeAdmission {
         val admitted = when (val admission = endpointAdmitter.admit(root)) {
             is IdeEndpointAdmission.Complete -> admission.endpoint
             is IdeEndpointAdmission.Rejected -> return RuntimeAdmission.Rejected(
                 admission.failure.toRuntimeAdmissionFailure(),
+            )
+        }
+        if (!admitted.supports(demand)) {
+            return RuntimeAdmission.Rejected(
+                when (demand) {
+                    is HostedRuntimeDemand.ChangePlan ->
+                        RuntimeAdmissionFailure.IDE_VARIANT_UNAVAILABLE
+                    HostedRuntimeDemand.Lifecycle,
+                    is HostedRuntimeDemand.Operation,
+                        -> RuntimeAdmissionFailure.IDE_CAPABILITY_UNAVAILABLE
+                },
             )
         }
         return when (val endpoint = RuntimeEndpoint.at(root, runtimeId, admitted.socketPath)) {
@@ -64,6 +84,21 @@ class IdeOnlyRuntimeDemander(
                 RuntimeAdmissionFailure.IDE_SOCKET_MISMATCH,
             )
         }
+    }
+}
+
+private fun AdmittedIdeEndpoint.supports(demand: HostedRuntimeDemand): Boolean = when (demand) {
+    HostedRuntimeDemand.Lifecycle -> true
+    is HostedRuntimeDemand.Operation -> descriptor.capabilities.supports(demand.operation)
+    is HostedRuntimeDemand.ChangePlan -> when (demand.intent) {
+        is ChangeIntentDocument.AddDeclaration -> descriptor.capabilities.supports(
+            CanonicalOperation.CHANGE_PLAN,
+            HostedCapabilityIntent.ADD_DECLARATION,
+        )
+        is ChangeIntentDocument.AddFile,
+        is ChangeIntentDocument.RenameSymbol,
+        is ChangeIntentDocument.ReplaceDeclaration,
+            -> false
     }
 }
 

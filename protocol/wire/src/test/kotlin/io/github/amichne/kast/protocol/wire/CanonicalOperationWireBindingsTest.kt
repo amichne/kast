@@ -81,6 +81,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
+import io.github.amichne.kast.protocol.registry.HostedVariants
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -95,12 +96,19 @@ class CanonicalOperationWireBindingsTest {
 
     @Test
     fun `generated registry document preserves the typed definition order`() {
-        val operationIds = CanonicalOperationDefinitions.registry.definitions.joinToString(",") {
-            "\"${it.id.value}\""
+        val operations = CanonicalOperationDefinitions.registry.definitions.joinToString(",") {
+            val intents = when (val variants = it.hostedVariants) {
+                is HostedVariants.Intents -> variants.intents.joinToString(",") { intent ->
+                    "\"${intent.identity}\""
+                }
+                HostedVariants.None -> ""
+            }
+            "{\"operationId\":\"${it.id.value}\",\"hostedExposure\":" +
+                "\"${it.hostedExposure.name.lowercase()}\",\"intents\":[$intents]}"
         }
 
         assertEquals(
-            "{\"schemaVersion\":1,\"operationIds\":[$operationIds]}\n",
+            "{\"schemaVersion\":2,\"operations\":[$operations]}\n",
             CanonicalOperationWireBindings.operationRegistryDocument,
         )
     }

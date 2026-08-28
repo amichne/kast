@@ -1,7 +1,7 @@
 package io.github.amichne.kast.protocol.wire.metadata
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.IdeHostCapability
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import java.nio.charset.StandardCharsets
@@ -45,7 +45,16 @@ class IdeEndpointDescriptorTest {
         assertEquals("/tmp/kast-ide.sock", descriptor.socketPath.value)
         assertEquals(IdeEndpointFraming.LENGTH_PREFIXED_JSON_V1, descriptor.framing)
         assertEquals(0L, descriptor.runtimeEpoch.value)
-        assertEquals(IdeHostCapability.entries, descriptor.compatibility.capabilities.capabilities)
+        assertEquals(
+            CanonicalHostedCapabilities.capabilities,
+            descriptor.capabilities.capabilities,
+        )
+        assertEquals(
+            setOf(HostedCapabilityIntent.ADD_DECLARATION),
+            descriptor.capabilities.capabilities
+                .single { it.operation == CanonicalOperation.CHANGE_PLAN }
+                .intents,
+        )
     }
 
     @Test
@@ -84,12 +93,7 @@ internal fun fixtureEndpointCandidate() = IdeEndpointDescriptorCandidate(
     socketPath = "/tmp/kast-ide.sock",
     framing = "length-prefixed-json-v1",
     runtimeEpoch = 0,
-    capabilities = listOf(
-        "workspace.inspect",
-        "symbol.discover",
-        "symbol.resolve",
-        "symbol.describe",
-    ),
+    capabilities = CanonicalHostedCapabilities.candidates,
 )
 
 internal fun fixtureEndpointPolicy(): IdeHostCompatibilityPolicy = when (
@@ -101,7 +105,9 @@ internal fun fixtureEndpointPolicy(): IdeHostCompatibilityPolicy = when (
             runtimeProtocolIdentity = FIXTURE_RUNTIME_PROTOCOL,
             operationRegistryDigest = FIXTURE_REGISTRY_DIGEST,
             wireSchemaDigest = FIXTURE_WIRE_DIGEST,
-            capabilities = fixtureEndpointCandidate().capabilities,
+            capabilities = fixtureEndpointCandidate().capabilities.map(
+                HostedCapabilityCandidate::operationId,
+            ),
         ),
     )
 ) {

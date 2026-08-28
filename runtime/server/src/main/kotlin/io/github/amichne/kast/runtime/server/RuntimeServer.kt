@@ -3,6 +3,7 @@ package io.github.amichne.kast.runtime.server
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
+import io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
 
 /**
  * Contract-only request-frame server for the canonical wire protocol.
@@ -27,8 +28,11 @@ class RuntimeServer private constructor(
         is WireRequestAdmission.Rejected -> ServerDispatch.Rejected(
             ServerDispatchFailure.RequestAdmissionFailed(admission.failure),
         )
-        is WireRequestAdmission.Admitted ->
-            bindingsByOperation.getValue(admission.request.operation).dispatch(admission.request)
+        is WireRequestAdmission.Admitted -> bindingsByOperation[admission.request.operation]
+            ?.dispatch(admission.request)
+            ?: ServerDispatch.Rejected(
+                ServerDispatchFailure.UnsupportedOperation(admission.request.operation),
+            )
     }
 
     companion object {
@@ -42,6 +46,19 @@ class RuntimeServer private constructor(
          */
         fun create(
             bindings: Iterable<TypedOperationBinding<*, *, *, *>>,
+        ): RuntimeServerConstruction = create(
+            bindings,
+            CanonicalOperation.entries.toSet(),
+        )
+
+        /** Establishes the exact generated IDE-hosted public route table. */
+        fun createHosted(
+            bindings: Iterable<TypedOperationBinding<*, *, *, *>>,
+        ): RuntimeServerConstruction = create(bindings, CanonicalHostedCapabilities.operations)
+
+        private fun create(
+            bindings: Iterable<TypedOperationBinding<*, *, *, *>>,
+            requiredOperations: Set<CanonicalOperation>,
         ): RuntimeServerConstruction {
             val materialized = bindings.map(TypedOperationBinding<*, *, *, *>::dispatchBinding)
             val failures = buildSet {
@@ -54,9 +71,14 @@ class RuntimeServer private constructor(
                     .forEach { add(RuntimeServerConstructionFailure.DuplicateBinding(it)) }
 
                 val present = materialized.mapTo(mutableSetOf(), RuntimeDispatchBinding::operation)
-                CanonicalOperation.entries
+                requiredOperations
                     .filterNot(present::contains)
+                    .sortedBy(CanonicalOperation::ordinal)
                     .forEach { add(RuntimeServerConstructionFailure.MissingBinding(it)) }
+                present
+                    .filterNot(requiredOperations::contains)
+                    .sortedBy(CanonicalOperation::ordinal)
+                    .forEach { add(RuntimeServerConstructionFailure.UnexpectedBinding(it)) }
             }
             return if (failures.isEmpty()) {
                 RuntimeServerConstruction.Created(
@@ -87,6 +109,10 @@ sealed interface RuntimeServerConstructionFailure {
     ) : RuntimeServerConstructionFailure
 
     data class DuplicateBinding(
+        val operation: CanonicalOperation,
+    ) : RuntimeServerConstructionFailure
+
+    data class UnexpectedBinding(
         val operation: CanonicalOperation,
     ) : RuntimeServerConstructionFailure
 }

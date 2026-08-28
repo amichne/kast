@@ -210,6 +210,8 @@ class AdmittedIdeHostCompatibility private constructor(
                 mismatch(IdeHostCompatibilityIdentityField.OPERATION_REGISTRY_DIGEST)
             wireSchemaDigest != other.wireSchemaDigest ->
                 mismatch(IdeHostCompatibilityIdentityField.WIRE_SCHEMA_DIGEST)
+            capabilities.capabilities != other.capabilities.capabilities ->
+                IdeHostCompatibilityComparison.CapabilitySetMismatch
             else -> IdeHostCompatibilityComparison.Exact
         }
 
@@ -304,12 +306,18 @@ class IdeHostCompatibilityPolicy private constructor(
                     IdeHostCompatibilityAdmission.Rejected(
                         IdeHostCompatibilityFailure.Mismatch(comparison.field),
                     )
+                IdeHostCompatibilityComparison.CapabilitySetMismatch ->
+                    IdeHostCompatibilityAdmission.Rejected(
+                        IdeHostCompatibilityFailure.CapabilitySetMismatch,
+                    )
             }
         }
 }
 
 internal sealed interface IdeHostCompatibilityComparison {
     data object Exact : IdeHostCompatibilityComparison
+
+    data object CapabilitySetMismatch : IdeHostCompatibilityComparison
 
     data class Mismatch(
         val field: IdeHostCompatibilityIdentityField,

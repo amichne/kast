@@ -213,6 +213,7 @@ class OperationRegistryContractTest {
             scope = OperationScope.SYMBOL,
             budget = resourceBudget(),
             completeness = completeness,
+            hostedExposure = HostedExposure.UNAVAILABLE,
         )
 
     private fun resourceBudget(): ResourceBudget = ResourceBudget(

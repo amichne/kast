@@ -2,7 +2,6 @@ package io.github.amichne.kast.ide.compatibility
 
 import io.github.amichne.kast.kernel.OperationId
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.IdeHostCapability
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
@@ -73,7 +72,7 @@ class IdeHostCompatibilityNegativeTest {
     fun `unknown duplicate missing extra and reordered capabilities fail closed`() {
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES + "diagnostic.check"),
-            IdeHostCompatibilityFailure.UnsupportedCapability(CanonicalOperation.DIAGNOSTIC_CHECK),
+            IdeHostCompatibilityFailure.CapabilitySetMismatch,
         )
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES + "other.read"),
@@ -88,13 +87,7 @@ class IdeHostCompatibilityNegativeTest {
         )
         assertRejected(
             expected.copy(
-                capabilities = listOf(
-                    "workspace.inspect",
-                    "workspace.inspect",
-                    "symbol.discover",
-                    "symbol.resolve",
-                    "symbol.describe",
-                ),
+                capabilities = listOf(HOSTED_CAPABILITIES.first()) + HOSTED_CAPABILITIES,
             ),
             IdeHostCompatibilityFailure.DuplicateCapability(IdeHostCapability.WORKSPACE_INSPECT),
         )
@@ -119,7 +112,12 @@ class IdeHostCompatibilityNegativeTest {
             runtimeProtocolIdentity = expected.runtimeProtocolIdentity,
             operationRegistryDigest = expected.operationRegistryDigest,
             wireSchemaDigest = expected.wireSchemaDigest,
-            capabilities = expected.capabilities,
+            capabilities = expected.capabilities.map { operation ->
+                HostedCapabilityReportDocument(
+                    operation,
+                    if (operation == "change.plan") listOf("add-declaration") else emptyList(),
+                )
+            },
         )
         assertMetadataRejected("{", IdeHostCompatibilityMetadataFailure.MalformedDocument)
         assertMetadataRejected(

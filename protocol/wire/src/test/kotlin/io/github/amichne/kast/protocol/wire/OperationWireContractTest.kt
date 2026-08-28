@@ -18,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.registry.CompletenessPolicy
+import io.github.amichne.kast.protocol.registry.HostedExposure
 import io.github.amichne.kast.protocol.registry.OperationCost
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import io.github.amichne.kast.protocol.registry.OperationEffect
@@ -164,6 +165,7 @@ class OperationWireContractTest {
                 scope = OperationScope.SYMBOL,
                 budget = resourceBudget(),
                 completeness = CompletenessPolicy.QUALIFIED_ALLOWED,
+                hostedExposure = HostedExposure.UNAVAILABLE,
             )
             OperationWireBinding(
                 definition = definition,

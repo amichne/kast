@@ -125,7 +125,7 @@ data class IdeEndpointDescriptorCandidate(
     val socketPath: String,
     val framing: String,
     val runtimeEpoch: Long,
-    val capabilities: List<String>,
+    val capabilities: List<HostedCapabilityCandidate>,
 )
 
 sealed interface IdeEndpointDescriptorFailure {
@@ -154,6 +154,10 @@ sealed interface IdeEndpointDescriptorFailure {
     data class CompatibilityRejected(
         val failure: IdeHostCompatibilityFailure,
     ) : IdeEndpointDescriptorFailure
+
+    data class HostedCapabilitiesRejected(
+        val failure: HostedCapabilitySetFailure,
+    ) : IdeEndpointDescriptorFailure
 }
 
 sealed interface IdeEndpointDescriptorAdmission {
@@ -172,6 +176,7 @@ class IdeEndpointDescriptorV2 private constructor(
     val compatibility: AdmittedIdeHostCompatibility,
     val socketPath: IdeUnixSocketPath,
     val runtimeEpoch: IdeRuntimeEpoch,
+    val capabilities: HostedCapabilitySet,
 ) {
     val schema: IdeEndpointSchema = IdeEndpointSchema.V2
     val hostKind: IdeEndpointHostKind = IdeEndpointHostKind.IDE_PROJECT
@@ -191,7 +196,7 @@ class IdeEndpointDescriptorV2 private constructor(
          * IdeEndpointDescriptorAdmission`.
          *
          * Establishes the exact canonical v2 schema, root, IDE host, process, compatibility tuple,
-         * UDS path, framing, epoch, and four-operation capability set. Malformed, noncanonical,
+         * UDS path, framing, epoch, and generated hosted capability set. Malformed, noncanonical,
          * stale, invalid, and incompatible inputs remain [IdeEndpointDescriptorFailure] data. Raw
          * JSON and primitive fields are extracted only inside this wire boundary.
          */
@@ -231,6 +236,14 @@ class IdeEndpointDescriptorV2 private constructor(
                     IdeEndpointDescriptorFailure.InvalidProcessId(refined.failure),
                 )
             }
+            val hostedCapabilities = when (val admitted = HostedCapabilitySet.admit(
+                candidate.capabilities,
+            )) {
+                is HostedCapabilitySetAdmission.Admitted -> admitted.capabilities
+                is HostedCapabilitySetAdmission.Rejected -> return rejected(
+                    IdeEndpointDescriptorFailure.HostedCapabilitiesRejected(admitted.failure),
+                )
+            }
             val compatibility = when (val admitted = policy.admit(candidate.compatibility())) {
                 is IdeHostCompatibilityAdmission.Admitted -> admitted.compatibility
                 is IdeHostCompatibilityAdmission.Rejected -> return rejected(
@@ -253,7 +266,14 @@ class IdeEndpointDescriptorV2 private constructor(
                 )
             }
             return IdeEndpointDescriptorAdmission.Admitted(
-                IdeEndpointDescriptorV2(root, processId, compatibility, socket, epoch),
+                IdeEndpointDescriptorV2(
+                    root,
+                    processId,
+                    compatibility,
+                    socket,
+                    epoch,
+                    hostedCapabilities,
+                ),
             )
         }
     }
@@ -266,7 +286,7 @@ private fun IdeEndpointDescriptorCandidate.compatibility() = IdeHostCompatibilit
     runtimeProtocolIdentity,
     operationRegistryDigest,
     wireSchemaDigest,
-    capabilities,
+    capabilities.map(HostedCapabilityCandidate::operationId),
 )
 
 private fun rejected(

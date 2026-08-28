@@ -90,6 +90,7 @@ object CanonicalOperationDefinitions {
         OperationCost.HOST_NEUTRAL,
         OperationScope.WORKSPACE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
+        HostedExposure.PUBLIC,
     )
 
     val topologyBuild = definition(
@@ -104,6 +105,7 @@ object CanonicalOperationDefinitions {
         OperationCost.PHYSICAL_EFFECT,
         OperationScope.WORKSPACE,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
         schema = schema("kast.topology.build.v2"),
     )
 
@@ -119,6 +121,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.WORKSPACE,
         CompletenessPolicy.QUALIFIED_ALLOWED,
+        HostedExposure.PUBLIC,
     )
 
     val symbolResolve = definition(
@@ -133,6 +136,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
     )
 
     val symbolDescribe = definition(
@@ -147,6 +151,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
     )
 
     val relationRead = definition(
@@ -161,6 +166,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.QUALIFIED_ALLOWED,
+        HostedExposure.INTERNAL_ONLY,
     )
 
     val traversalRun = definition(
@@ -175,6 +181,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.QUALIFIED_ALLOWED,
+        HostedExposure.PUBLIC,
     )
 
     val diagnosticCheck = definition(
@@ -189,6 +196,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.PROJECT,
         CompletenessPolicy.QUALIFIED_ALLOWED,
+        HostedExposure.INTERNAL_ONLY,
     )
 
     val changePlan = definition(
@@ -203,6 +211,8 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
+        hostedVariants = HostedVariants.Intents(setOf(HostedChangeIntent.ADD_DECLARATION)),
     )
 
     val changeApply = definition(
@@ -217,6 +227,7 @@ object CanonicalOperationDefinitions {
         OperationCost.PHYSICAL_EFFECT,
         OperationScope.FILE,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
     )
 
     val changeVerify = definition(
@@ -231,6 +242,7 @@ object CanonicalOperationDefinitions {
         OperationCost.BOUNDED_READ,
         OperationScope.SYMBOL,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
     )
 
     val changeRecover = definition(
@@ -245,6 +257,7 @@ object CanonicalOperationDefinitions {
         OperationCost.PHYSICAL_EFFECT,
         OperationScope.FILE,
         CompletenessPolicy.COMPLETE_REQUIRED,
+        HostedExposure.PUBLIC,
     )
 
     val all: List<OperationDefinition<*, *, *, *, *>> = listOf(
@@ -287,6 +300,8 @@ object CanonicalOperationDefinitions {
         cost: OperationCost,
         scope: OperationScope,
         completeness: CompletenessPolicy,
+        hostedExposure: HostedExposure,
+        hostedVariants: HostedVariants = HostedVariants.None,
         schema: SchemaIdentity = schema("kast.${operation.id.value}.v1"),
     ): OperationDefinition<Request, Result, Capability, Qualification, Rejection> =
         OperationDefinition(
@@ -306,6 +321,8 @@ object CanonicalOperationDefinitions {
             scope = scope,
             budget = standardBudget(),
             completeness = completeness,
+            hostedExposure = hostedExposure,
+            hostedVariants = hostedVariants,
         )
 
     private fun capability(operation: CanonicalOperation): CapabilityId =

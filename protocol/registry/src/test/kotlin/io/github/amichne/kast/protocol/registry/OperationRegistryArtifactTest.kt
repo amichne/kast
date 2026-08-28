@@ -12,5 +12,11 @@ class OperationRegistryArtifactTest {
             registry.definitions.map { it.id },
             OperationRegistryArtifact.from(registry).operationIds,
         )
+        assertEquals(
+            listOf("add-declaration"),
+            OperationRegistryArtifact.from(registry).entries
+                .single { it.operationId == CanonicalOperationDefinitions.changePlan.id }
+                .hostedIntentIds,
+        )
     }
 }

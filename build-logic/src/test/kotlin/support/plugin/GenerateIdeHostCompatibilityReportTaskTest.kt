@@ -22,7 +22,9 @@ class GenerateIdeHostCompatibilityReportTaskTest {
     @Test
     fun `report digests bind physical registry bytes and the sole canonical wire schema`() {
         val registry = root.resolve("operation-registry.json")
-        Files.writeString(registry, "registry-one")
+        val registryOne = registryDocument("one")
+        val registryTwo = registryDocument("two")
+        Files.writeString(registry, registryOne)
         val task = ProjectBuilder.builder().withProjectDir(root.toFile()).build().tasks.register(
             "generateIdeHostCompatibilityReportUnderTest",
             GenerateIdeHostCompatibilityReportTask::class.java,
@@ -31,26 +33,25 @@ class GenerateIdeHostCompatibilityReportTaskTest {
             kotlinPluginBuild.set("262.9437.185-IJ")
             kastPluginVersion.set("0.28.1")
             runtimeProtocolIdentity.set("kast.ide-hosted.runtime.v1")
-            capabilities.set(HOSTED_CAPABILITIES)
             operationRegistryFile.set(registry.toFile())
             reportFile.set(root.resolve("report.json").toFile())
         }
 
         task.generate()
         val first = decodeReport(task)
-        Files.writeString(registry, "registry-two")
+        Files.writeString(registry, registryTwo)
         task.generate()
         val second = decodeReport(task)
 
         assertNotEquals(first.operationRegistryDigest, second.operationRegistryDigest)
-        assertEquals(digest("registry-one".toByteArray()), first.operationRegistryDigest)
-        assertEquals(digest("registry-two".toByteArray()), second.operationRegistryDigest)
+        assertEquals(digest(registryOne.toByteArray()), first.operationRegistryDigest)
+        assertEquals(digest(registryTwo.toByteArray()), second.operationRegistryDigest)
         assertEquals(digest(CanonicalWireSchema.encodedBytes()), first.wireSchemaDigest)
         assertEquals(first.wireSchemaDigest, second.wireSchemaDigest)
 
         val admitted = when (val result = AdmittedIdeHostCompatibilityReport.admit(
             task.reportFile.get().asFile.readText(),
-            "registry-two".toByteArray(),
+            registryTwo.toByteArray(),
             "0.28.1",
         )) {
             is IdeHostCompatibilityReportAdmission.Complete -> result.report
@@ -68,7 +69,7 @@ class GenerateIdeHostCompatibilityReportTaskTest {
             ),
             AdmittedIdeHostCompatibilityReport.admit(
                 task.reportFile.get().asFile.readText(),
-                "registry-three".toByteArray(),
+                registryDocument("three").toByteArray(),
                 "0.28.1",
             ),
         )
@@ -76,7 +77,7 @@ class GenerateIdeHostCompatibilityReportTaskTest {
 
     @Test
     fun `metadata admission rejects every compatibility report mismatch as finite data`() {
-        val registryBytes = "registry".toByteArray()
+        val registryBytes = registryDocument("exact").toByteArray()
         val exact = IdeHostCompatibilityReportDocument(
             schemaVersion = 1,
             taskId = "IDE-HOST-COMPATIBILITY",
@@ -86,7 +87,12 @@ class GenerateIdeHostCompatibilityReportTaskTest {
             runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
             operationRegistryDigest = digest(registryBytes),
             wireSchemaDigest = digest(CanonicalWireSchema.encodedBytes()),
-            capabilities = HOSTED_CAPABILITIES,
+            capabilities = HOSTED_CAPABILITIES.map { operation ->
+                HostedCapabilityReportDocument(
+                    operation,
+                    if (operation == "change.plan") listOf("add-declaration") else emptyList(),
+                )
+            },
         )
         val cases = listOf(
             exact.copy(schemaVersion = 2) to
@@ -107,7 +113,7 @@ class GenerateIdeHostCompatibilityReportTaskTest {
                 IdeHostCompatibilityReportFailure.OPERATION_REGISTRY_DIGEST_MISMATCH,
             exact.copy(wireSchemaDigest = digest("other".toByteArray())) to
                 IdeHostCompatibilityReportFailure.WIRE_SCHEMA_DIGEST_MISMATCH,
-            exact.copy(capabilities = HOSTED_CAPABILITIES.reversed()) to
+            exact.copy(capabilities = exact.capabilities.reversed()) to
                 IdeHostCompatibilityReportFailure.CAPABILITY_SET_MISMATCH,
         )
 
@@ -166,10 +172,31 @@ class GenerateIdeHostCompatibilityReportTaskTest {
         }
         val HOSTED_CAPABILITIES = listOf(
             "workspace.inspect",
+            "topology.build",
             "symbol.discover",
             "symbol.resolve",
             "symbol.describe",
+            "traversal.run",
+            "change.plan",
+            "change.apply",
+            "change.verify",
+            "change.recover",
         )
+
+        fun registryDocument(marker: String): String =
+            """{"schemaVersion":2,"operations":[""" +
+                HOSTED_CAPABILITIES.joinToString(",") { operation ->
+                    val intents = if (operation == "change.plan") {
+                        "[\"add-declaration\"]"
+                    } else {
+                        "[]"
+                    }
+                    "{\"operationId\":\"$operation\",\"hostedExposure\":" +
+                        "\"public\",\"intents\":$intents}"
+                } +
+                ",{" +
+                "\"operationId\":\"relation.read.$marker\"," +
+                "\"hostedExposure\":\"internal_only\",\"intents\":[]}] }"
     }
 }
 
@@ -183,5 +210,11 @@ private data class ReportDocument(
     val runtimeProtocolIdentity: String,
     val operationRegistryDigest: String,
     val wireSchemaDigest: String,
-    val capabilities: List<String>,
+    val capabilities: List<ReportCapabilityDocument>,
+)
+
+@Serializable
+private data class ReportCapabilityDocument(
+    val operationId: String,
+    val intents: List<String>,
 )

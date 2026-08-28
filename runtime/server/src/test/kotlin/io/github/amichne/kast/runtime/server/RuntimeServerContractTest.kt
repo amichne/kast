@@ -19,12 +19,14 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.registry.CompletenessPolicy
+import io.github.amichne.kast.protocol.registry.HostedExposure
 import io.github.amichne.kast.protocol.registry.OperationCost
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.OperationLane
 import io.github.amichne.kast.protocol.registry.OperationScope
 import io.github.amichne.kast.protocol.wire.GeneratedOperationWireBindingFactory
+import io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.WireFailure
@@ -58,6 +60,53 @@ class RuntimeServerContractTest {
                 ),
             ),
             RuntimeServer.create(bindings + bindings.first()),
+        )
+    }
+
+    @Test
+    fun `hosted binding table is exactly the generated public route set`() = runTest {
+        val allBindings = canonicalBindings()
+        val hostedBindings = allBindings.filter {
+            it.operation in CanonicalHostedCapabilities.operations
+        }
+        val server = RuntimeServer.createHosted(hostedBindings).createdServer()
+
+        assertEquals(
+            RuntimeServerConstruction.Rejected(
+                setOf(
+                    RuntimeServerConstructionFailure.MissingBinding(
+                        CanonicalOperation.CHANGE_RECOVER,
+                    ),
+                ),
+            ),
+            RuntimeServer.createHosted(hostedBindings.dropLast(1)),
+        )
+        assertEquals(
+            RuntimeServerConstruction.Rejected(
+                setOf(
+                    RuntimeServerConstructionFailure.UnexpectedBinding(
+                        CanonicalOperation.RELATION_READ,
+                    ),
+                ),
+            ),
+            RuntimeServer.createHosted(
+                hostedBindings + allBindings.single {
+                    it.operation == CanonicalOperation.RELATION_READ
+                },
+            ),
+        )
+
+        val internalBinding = allBindings.single {
+            it.operation == CanonicalOperation.DIAGNOSTIC_CHECK
+        }
+        val document = internalBinding.wireBinding
+            .encodeRequest(TestRequest(TestOutcomeKind.COMPLETE))
+            .encodedDocument()
+        assertEquals(
+            ServerDispatch.Rejected(
+                ServerDispatchFailure.UnsupportedOperation(CanonicalOperation.DIAGNOSTIC_CHECK),
+            ),
+            server.dispatch(document),
         )
     }
 
@@ -151,6 +200,7 @@ class RuntimeServerContractTest {
             scope = OperationScope.SYMBOL,
             budget = resourceBudget(),
             completeness = CompletenessPolicy.QUALIFIED_ALLOWED,
+            hostedExposure = HostedExposure.UNAVAILABLE,
         )
 
     private fun expectedOutcome(
