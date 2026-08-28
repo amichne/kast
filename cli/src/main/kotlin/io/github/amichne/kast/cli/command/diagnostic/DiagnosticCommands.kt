@@ -18,7 +18,10 @@ internal fun diagnosticCommandGroup(
 ): CommandFamily {
     val check = DiagnosticCheckCommand(preparers)
     return CommandFamily(
-        KastCommandGroup("diagnostic", "Read bounded compiler diagnostics.").subcommands(check),
+        KastCommandGroup(
+            "diagnostic",
+            "Canonical command shape; not hosted by the current IDE endpoint.",
+        ).subcommands(check),
         listOf(check),
     )
 }

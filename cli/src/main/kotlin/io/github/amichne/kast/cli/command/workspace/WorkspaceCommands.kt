@@ -27,7 +27,10 @@ internal fun topologyCommandGroup(
 ): CommandFamily {
     val build = TopologyBuildCommand(preparers)
     return CommandFamily(
-        KastCommandGroup("topology", "Build the durable generation-bound repository topology.")
+        KastCommandGroup(
+            "topology",
+            "Build the durable generation-bound repository topology.",
+        )
             .subcommands(build),
         listOf(build),
     )

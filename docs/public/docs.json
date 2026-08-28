@@ -1,0 +1,84 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "Kast",
+  "description": "Compiler-grounded evidence for exact Kotlin repositories.",
+  "colors": {
+    "primary": "#4F46E5",
+    "light": "#818CF8",
+    "dark": "#6366F1"
+  },
+  "logo": "/images/kast-mark.svg",
+  "favicon": "/images/kast-mark.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "icon": "rocket",
+        "pages": [
+          "index",
+          "start"
+        ]
+      },
+      {
+        "group": "Guides",
+        "icon": "compass",
+        "pages": [
+          "questions/workspace-readiness",
+          "questions/declaration-identity",
+          "questions/code-connections",
+          "questions/safe-change"
+        ]
+      },
+      {
+        "group": "Concepts",
+        "icon": "shield-check",
+        "pages": [
+          "concepts/evidence-boundaries",
+          "explanation/how-kast-works"
+        ]
+      },
+      {
+        "group": "Reference",
+        "icon": "terminal",
+        "pages": [
+          "reference/cli"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/amichne/kast"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get started",
+      "href": "/start"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/amichne/kast"
+    }
+  },
+  "metadata": {
+    "timestamp": true
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  },
+  "interaction": {
+    "drilldown": true
+  },
+  "errors": {
+    "404": {
+      "redirect": false,
+      "title": "Page not found",
+      "description": "The requested Kast documentation page does not exist. Return to the [documentation home](/)."
+    }
+  }
+}

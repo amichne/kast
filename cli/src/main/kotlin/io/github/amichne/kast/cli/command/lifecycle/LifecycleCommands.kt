@@ -22,7 +22,7 @@ internal fun lifecycleCommands(
 private class StartCommand(
     private val preparers: CanonicalCliRequestPreparers,
 ) : LifecycleKastCommand("start", CliLifecycleCommand.START) {
-    override fun help(context: Context): String = "Start or reuse the exact-root runtime."
+    override fun help(context: Context): String = "Admit the existing exact-root IDE endpoint."
 
     override fun resolveAction(): CliActionResolution = prepareInspection(preparers) { request ->
         CliAction.Lifecycle.Start(request)
@@ -30,21 +30,23 @@ private class StartCommand(
 }
 
 private data object StopCommand : LifecycleKastCommand("stop", CliLifecycleCommand.STOP) {
-    override fun help(context: Context): String = "Stop the exact-root runtime and retire markers."
+    override fun help(context: Context): String = "Reject because the IDE owns endpoint lifecycle."
 
     override fun resolveAction(): CliActionResolution =
         CliActionResolution.Selected(CliAction.Lifecycle.Stop)
 }
 
 private data object StatusCommand : LifecycleKastCommand("status", CliLifecycleCommand.STATUS) {
-    override fun help(context: Context): String = "Read exact-root runtime status."
+    override fun help(context: Context): String =
+        "Report the admitted exact-root IDE endpoint as running."
 
     override fun resolveAction(): CliActionResolution =
         CliActionResolution.Selected(CliAction.Lifecycle.Status)
 }
 
 private data object CleanCommand : LifecycleKastCommand("clean", CliLifecycleCommand.CLEAN) {
-    override fun help(context: Context): String = "Remove stopped runtime markers and state."
+    override fun help(context: Context): String =
+        "Reject because hosted endpoint state is IDE-owned."
 
     override fun resolveAction(): CliActionResolution =
         CliActionResolution.Selected(CliAction.Lifecycle.Clean)
@@ -53,7 +55,8 @@ private data object CleanCommand : LifecycleKastCommand("clean", CliLifecycleCom
 private class ReindexCommand(
     private val preparers: CanonicalCliRequestPreparers,
 ) : LifecycleKastCommand("reindex", CliLifecycleCommand.REINDEX) {
-    override fun help(context: Context): String = "Stop, clean, and rebuild exact-root semantic state."
+    override fun help(context: Context): String =
+        "Reject because the CLI cannot rebuild IDE-owned state."
 
     override fun resolveAction(): CliActionResolution = prepareInspection(preparers) { request ->
         CliAction.Lifecycle.Reindex(request)

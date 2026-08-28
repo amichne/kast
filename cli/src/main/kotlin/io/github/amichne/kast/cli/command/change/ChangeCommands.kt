@@ -32,7 +32,10 @@ internal fun changeCommandGroup(
         ChangeRecoverCommand(preparers),
     )
     return CommandFamily(
-        KastCommandGroup("change", "Plan, apply, verify, and recover typed changes.")
+        KastCommandGroup(
+            "change",
+            "Plan, apply, verify, and recover hosted AddDeclaration changes.",
+        )
             .subcommands(commands),
         commands,
     )

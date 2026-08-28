@@ -1,0 +1,70 @@
+---
+title: "Trace code connections"
+sidebarTitle: "Topology and traversal"
+description: "Publish an exact-generation repository topology and traverse its semantic relations with explicit bounds."
+icon: "share-2"
+keywords: ["relations", "topology", "traversal", "generation"]
+---
+
+Kast exposes repository connections through `topology.build` and
+`traversal.run`. It does not expose a direct `relation.read` route. Relation
+compilers remain an internal hosted service for topology, traversal, planning,
+and verification.
+
+## Publish before traversing
+
+<Steps>
+  <Step title="Resolve an exact starting symbol">
+    Use `kast symbol discover` and `kast symbol resolve` to obtain an exact,
+    generation-bound selector.
+  </Step>
+
+  <Step title="Build complete topology">
+    ```console
+    kast topology build
+    ```
+
+    The endpoint enumerates the admitted source roots, extracts semantic
+    topology through IntelliJ, and publishes a durable snapshot only when the
+    current generation is still valid. An eligible unchanged snapshot is
+    reused instead of extracted again.
+  </Step>
+
+  <Step title="Traverse with explicit bounds">
+    ```console
+    kast traversal run \
+      --selector '<exact-selector>' \
+      --relation references \
+      --maximum-depth 3 \
+      --maximum-results 50
+    ```
+
+    Traversal reads only the eligible durable snapshot. It never starts hidden
+    compiler work and keeps depth, result, work, time, and byte limits attached
+    to the outcome.
+  </Step>
+</Steps>
+
+## Follow a workspace generation
+
+Topology snapshots and selectors belong to one semantic generation. A
+successful hosted apply publishes a newer generation in the same endpoint, so
+the prior selector and snapshot cannot silently answer for the changed source.
+After verification publishes the topology delta, resolve a fresh selector and
+traverse the resulting generation without restarting IntelliJ.
+
+A cold Project restart is deliberately different: Kast advances the semantic
+generation because layout metadata cannot prove source content stayed unchanged
+while the Project was closed. Run `kast topology build` once after reopening.
+The build verifies the exact current candidates and reports `reused` when it can
+rebind the unchanged durable snapshot to the new generation. Selectors from
+before the restart remain stale.
+
+<Info>
+  A complete traversal supports only the requested relation, direction, root,
+  depth, and result bound. A qualified result keeps its reached bound visible;
+  stale or unavailable topology rejects.
+</Info>
+
+[Add a declaration safely](/questions/safe-change) or
+[review the evidence boundary](/concepts/evidence-boundaries).

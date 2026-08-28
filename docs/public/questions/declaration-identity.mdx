@@ -1,0 +1,56 @@
+---
+title: "What declaration is this?"
+sidebarTitle: "Establish identity"
+description: "Refine a bounded discovery candidate into an exact, generation-bound Kotlin symbol."
+icon: "fingerprint"
+keywords: ["symbol", "declaration", "selector", "identity"]
+---
+
+Names are useful for finding possibilities. They are not stable identities for
+aliases, overloads, generated declarations, or modules that use the same simple
+name.
+
+Kast makes identity a visible refinement:
+
+<Steps>
+  <Step title="Discover without overclaiming">
+    ```console
+    kast symbol discover --mode name --query PricePolicy --limit 25
+    ```
+
+    Discovery can search by name, source location, file structure, or bounded
+    text. Its results are candidates because the query may intentionally match
+    more than one declaration. Each candidate carries enough context for the
+    next boundary.
+
+    This is the place to widen or narrow a search. Do not infer exact ownership
+    from display text.
+  </Step>
+
+  <Step title="Resolve one candidate">
+    Select the `candidateSelector` from the intended discovery item:
+
+    ```console
+    kast symbol resolve --candidate '<candidate-selector>'
+    ```
+
+    Resolution succeeds only when that candidate still identifies one symbol
+    in the same root, scope, and semantic generation. Its `exactSelector` is a
+    capability for exact symbol operations, not another search string.
+  </Step>
+
+  <Step title="Describe the exact symbol">
+    ```console
+    kast symbol describe --selector '<exact-selector>'
+    ```
+
+    The description is compiler-grounded and tied to the selector that
+    requested it. If the declaration moved with a newer generation, Kast
+    closes the request instead of resolving a convenient current match.
+  </Step>
+</Steps>
+
+<Tip>
+  Reuse the exact selector only for current hosted symbol operations in the
+  same workspace generation. Rediscover after the generation moves.
+</Tip>

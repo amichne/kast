@@ -1,0 +1,86 @@
+---
+title: "Add a declaration safely"
+sidebarTitle: "Safe AddDeclaration"
+description: "Plan, apply, publish, verify, and recover one typed AddDeclaration mutation through the live IDE endpoint."
+icon: "git-pull-request-create"
+keywords: ["change", "add-declaration", "plan", "verify", "recover"]
+---
+
+The hosted writer admits one mutation intent: `add-declaration`. The other
+canonical change intent shapes remain in `kast --schema`, but this endpoint
+rejects them instead of widening its source-write authority.
+
+## Run the complete lifecycle
+
+Start with an exact selector and a complete topology snapshot for its current
+workspace generation. Then keep the same endpoint open through the mutation:
+
+<Steps>
+  <Step title="Plan from complete semantic evidence">
+    ```console
+    kast change plan \
+      --intent add-declaration \
+      --target '<exact-selector>' \
+      --declaration 'fun added(): String = "value"'
+    ```
+
+    `change.plan` is pure. It binds the intended declaration, source preimage,
+    relation evidence, traversal evidence, diagnostics, and prior semantic
+    lease into one durable plan identity.
+  </Step>
+
+  <Step title="Apply and publish the successor generation">
+    ```console
+    kast change apply --plan '<plan-identity>'
+    ```
+
+    A complete apply means the physical write and its application identity are
+    durable and the same hosted workspace owner has published a proven newer
+    generation. The read routes advance with that publication, and selectors
+    from the prior generation are stale immediately.
+  </Step>
+
+  <Step title="Verify without restarting">
+    ```console
+    kast change verify --application '<application-identity>'
+    ```
+
+    Verification observes the newer generation, checks the planned semantic
+    obligations, and publishes the resulting topology delta. Resolve a fresh
+    selector before traversing the resulting topology.
+  </Step>
+</Steps>
+
+## Recover a post-write failure
+
+If source may have changed but Kast cannot durably issue the application
+identity, the apply request rejects as `recovery-required`. The live endpoint
+immediately withdraws planning, application, and verification authority.
+
+```console
+kast change recover --plan '<plan-identity>'
+```
+
+A `PriorState` or `RolledBack` result first publishes a successor generation
+for the physical recovery, then re-audits the durable journal and installs a
+fresh clean mutation state in the same endpoint. You can resolve a current
+selector, rebuild topology, and create a new plan without restarting. An
+unresolved recovery remains qualified as manual recovery required and does not
+regain writer authority.
+
+<Warning>
+  Do not treat transport success, a physical file write, or a durable plan as
+  verified semantic success. Only a complete `change.verify` receipt closes
+  the normal lifecycle.
+</Warning>
+
+Endpoint restarts preserve durable plans, applications, receipts, topology,
+and recovery evidence, but neither the normal lifecycle nor successful
+recovery requires a restart.
+
+If the target source changed outside Kast after planning, `change.apply`
+rejects as `content-changed` and publishes that targeted divergence as a newer
+workspace generation. Rediscover and resolve before attempting another plan.
+
+[Build and traverse topology](/questions/code-connections) or
+[review the evidence boundary](/concepts/evidence-boundaries).

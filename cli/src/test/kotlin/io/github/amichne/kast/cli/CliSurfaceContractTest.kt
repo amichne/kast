@@ -69,14 +69,37 @@ class CliSurfaceContractTest {
         val help = cli.execute(listOf("--help"), Path.of("/missing")) as CliExit.Complete
         val version = cli.execute(listOf("--version"), Path.of("/missing")) as CliExit.Complete
         val schema = cli.execute(listOf("--schema"), Path.of("/missing")) as CliExit.Complete
+        val helpText = help.document.value
 
         assertFalse(boundaryTouched)
-        assertTrue(help.document.value.contains("workspace"))
-        assertTrue(help.document.value.contains("change"))
+        assertTrue(
+            helpText.contains(
+                "Inspect and change one exact Kotlin workspace through typed IDE-hosted operations.",
+            ),
+        )
+        assertTrue(helpText.contains("Show the installed IDE-hosted product version"))
+        assertEquals(
+            2,
+            "Canonical command shape; not hosted by the current IDE endpoint."
+                .toRegex(RegexOption.LITERAL)
+                .findAll(helpText)
+                .count(),
+        )
+        assertTrue(helpText.contains("Admit the existing exact-root IDE endpoint."))
+        assertTrue(helpText.contains("Reject because the IDE owns endpoint lifecycle."))
+        assertTrue(helpText.contains("Report the admitted exact-root IDE endpoint as running."))
+        assertTrue(helpText.contains("Reject because hosted endpoint state is IDE-owned."))
+        assertTrue(helpText.contains("Reject because the CLI cannot rebuild IDE-owned state."))
+        assertTrue(helpText.contains("hosted AddDeclaration changes"))
+        assertTrue(helpText.contains("durable generation-bound repository topology"))
+        assertFalse(helpText.contains("Start or reuse"))
+        assertFalse(helpText.contains("Stop, clean, and rebuild"))
+        assertTrue(helpText.contains("workspace"))
+        assertTrue(helpText.contains("change"))
         CliLifecycleCommand.entries.forEach { command ->
-            assertTrue(help.document.value.contains(command.command))
+            assertTrue(helpText.contains(command.command))
         }
-        assertFalse(help.document.value.contains(" setup"))
+        assertFalse(helpText.contains(" setup"))
         assertEquals(
             "kast 1.2.3 (IDE-hosted)",
             version.document.value,
