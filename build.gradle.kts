@@ -5,6 +5,8 @@ import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
 import support.tasks.GenerateHostedControlMetadataTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
+import support.hostedwriter.GenerateHostedWriterProgramTask
+import support.hostedwriter.WriteHostedWriterReceiptTask
 
 plugins {
     base
@@ -32,6 +34,26 @@ version = providers.gradleProperty("version")
     .orElse(providers.gradleProperty("VERSION"))
     .orElse(gitDescribeVersion)
     .get()
+
+val hostedWriterReportDirectory = layout.buildDirectory.dir("reports/hosted-writer")
+val generateHostedWriterProgram by tasks.registering(GenerateHostedWriterProgramTask::class) {
+    group = "verification"
+    description = "Projects the fixed hosted-writer proof graph to deterministic JSON."
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/program.schema.json"))
+    outputFile.set(hostedWriterReportDirectory.map { it.file("program.json") })
+}
+
+tasks.register<WriteHostedWriterReceiptTask>("writeHostedWriterProgramReceipt") {
+    group = "verification"
+    description = "Writes the exact-head PROGRAM receipt for the fixed hosted-writer graph."
+    dependsOn(generateHostedWriterProgram)
+    gateId.set("PROGRAM")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    proofArtifacts.from(generateHostedWriterProgram.flatMap { it.outputFile })
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/PROGRAM.json") })
+}
 
 subprojects {
     group = rootProject.group

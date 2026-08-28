@@ -24,6 +24,7 @@ dependencies {
     )
     implementation(catalog.findLibrary("kotlin-serialization-plugin").get())
     implementation(catalog.findLibrary("serialization-json").get())
+    implementation(catalog.findLibrary("json-schema-validator").get())
     implementation(catalog.findLibrary("vanniktech-maven-publish-plugin").get())
     implementation("com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:${catalog.findVersion("shadow").get().requiredVersion}")
     implementation("org.ow2.asm:asm:9.9.1")
