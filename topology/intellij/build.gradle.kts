@@ -53,8 +53,10 @@ private val kotlinPluginLibs: ConfigurableFileCollection = files(
 ).builtBy(extractTopologyKotlinPlugin)
 
 dependencies {
+    implementation(project(":protocol:contract"))
     implementation(project(":topology:contract"))
     implementation(project(":workspace:contract"))
+    implementation(project(":workspace:intellij-read"))
     implementation(project(":symbol:contract"))
 
     topologyIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {

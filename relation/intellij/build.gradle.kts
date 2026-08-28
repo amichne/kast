@@ -52,9 +52,11 @@ private val kotlinPluginLibs: ConfigurableFileCollection = files(
 ).builtBy(extractRelationKotlinPlugin)
 
 dependencies {
+    implementation(project(":protocol:contract"))
     implementation(project(":relation:contract"))
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
+    implementation(project(":workspace:intellij-read"))
 
     relationIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
