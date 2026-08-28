@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.topology.contract.TopologyExtractionFailure
+import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -14,11 +15,14 @@ import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
 import io.github.amichne.kast.workspace.intellij.read.HostedProjectAdmissionFailure
 
 class HostedTopologyPorts private constructor(
+    val candidates: TopologyCandidateEnumerator,
     val fileExtractor: TopologyFileExtractor,
 ) {
     companion object {
-        internal fun retained(fileExtractor: TopologyFileExtractor): HostedTopologyPorts =
-            HostedTopologyPorts(fileExtractor)
+        internal fun retained(
+            candidates: TopologyCandidateEnumerator,
+            fileExtractor: TopologyFileExtractor,
+        ): HostedTopologyPorts = HostedTopologyPorts(candidates, fileExtractor)
     }
 }
 
@@ -58,7 +62,9 @@ fun admitHostedIntellijTopologyPorts(
             ?: return@TopologyFileExtractor topologyUnavailable()
         adapter.extract(project, current, request)
     }
-    return HostedTopologyAdmission.Admitted(HostedTopologyPorts.retained(extractor))
+    return HostedTopologyAdmission.Admitted(
+        HostedTopologyPorts.retained(AdmittedSourceRootEnumerator(), extractor),
+    )
 }
 
 private fun topologyUnavailable(): TopologyFileExtraction = TopologyFileExtraction.Failed(

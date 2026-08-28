@@ -2,7 +2,7 @@ package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.runtime.composition.protocol.graph.toProtocolCoverage
+import io.github.amichne.kast.runtime.server.toProtocolCoverage
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind

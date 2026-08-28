@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
 import io.github.amichne.kast.protocol.contract.TopologyPublicationRejection
 import io.github.amichne.kast.protocol.contract.TopologySnapshotRejection
 import io.github.amichne.kast.runtime.server.OperationHandler
+import io.github.amichne.kast.runtime.server.toProtocolCoverage
 import io.github.amichne.kast.topology.contract.TopologyBuildFailure
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildResult
