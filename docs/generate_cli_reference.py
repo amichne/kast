@@ -16,6 +16,16 @@ from pathlib import Path
 class SemanticCommand:
     operation_id: str
     usage: str
+    hosted_exposure: str
+    hosted_intents: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class OperationMetadata:
+    enum_name: str
+    operation_id: str
+    hosted_exposure: str
+    hosted_intents: tuple[str, ...]
 
 
 OPERATION_DESCRIPTIONS = {
@@ -34,36 +44,55 @@ OPERATION_DESCRIPTIONS = {
 }
 
 LIFECYCLE_DESCRIPTIONS = {
-    "start": "Start or reuse the exact-root runtime and wait for semantic readiness.",
-    "stop": "Stop the exact-root runtime and retire its endpoint markers.",
-    "status": "Read the exact-root runtime state.",
-    "clean": "Remove state and markers for a stopped runtime.",
-    "reindex": "Stop, clean, and rebuild exact-root semantic state.",
+    "start": "Admit the existing exact-root IDE endpoint and return workspace readiness.",
+    "stop": "Reject because the already-running IDE owns endpoint lifecycle.",
+    "status": "Report running after compatible exact-root endpoint admission.",
+    "clean": "Reject because active IDE-hosted state is not owned by the CLI.",
+    "reindex": "Reject because the CLI cannot stop or rebuild IDE-owned semantic state.",
 }
 
 
-def parse_operations(registry_path: Path) -> list[tuple[str, str]]:
+def parse_operations(registry_path: Path) -> list[OperationMetadata]:
     if not registry_path.is_file():
         raise ValueError(
             "generated operation registry is missing; run "
             "./gradlew :protocol:wire:generateOperationRegistry"
         )
     registry = json.loads(registry_path.read_text())
-    if registry.get("schemaVersion") != 1:
+    if registry.get("schemaVersion") != 2:
         raise ValueError("generated operation registry has an unsupported schema version")
-    operation_ids = registry.get("operationIds")
-    if not isinstance(operation_ids, list) or not all(
-        isinstance(operation_id, str) and operation_id for operation_id in operation_ids
-    ):
-        raise ValueError("generated operation registry has invalid operation identities")
+    rows = registry.get("operations")
+    if not isinstance(rows, list):
+        raise ValueError("generated operation registry has no operation metadata")
+    operations: list[OperationMetadata] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("generated operation registry has a non-object operation")
+        operation_id = row.get("operationId")
+        exposure = row.get("hostedExposure")
+        intents = row.get("intents")
+        if not isinstance(operation_id, str) or not operation_id:
+            raise ValueError("generated operation registry has an invalid operation identity")
+        if exposure not in {"public", "internal_only", "unavailable"}:
+            raise ValueError(f"invalid hosted exposure for {operation_id}: {exposure!r}")
+        if not isinstance(intents, list) or not all(
+            isinstance(intent, str) and intent for intent in intents
+        ):
+            raise ValueError(f"invalid hosted intents for {operation_id}: {intents!r}")
+        operations.append(
+            OperationMetadata(
+                operation_id.upper().replace(".", "_"),
+                operation_id,
+                exposure,
+                tuple(intents),
+            )
+        )
+    operation_ids = [operation.operation_id for operation in operations]
     if len(set(operation_ids)) != len(operation_ids):
         raise ValueError("canonical operation identities are not unique")
     if set(operation_ids) != set(OPERATION_DESCRIPTIONS):
         raise ValueError("operation descriptions do not match the generated registry")
-    return [
-        (operation_id.upper().replace(".", "_"), operation_id)
-        for operation_id in operation_ids
-    ]
+    return operations
 
 
 def kotlin_string(expression: str) -> str:
@@ -75,7 +104,7 @@ def kotlin_string(expression: str) -> str:
 
 def parse_semantic_commands(
     root: Path,
-    operations: list[tuple[str, str]],
+    operations: list[OperationMetadata],
 ) -> list[SemanticCommand]:
     command_root = root / "cli/src/main/kotlin/io/github/amichne/kast/cli/command"
     by_enum: dict[str, str] = {}
@@ -91,15 +120,20 @@ def parse_semantic_commands(
                 raise ValueError(f"duplicate CLI projection for {operation}")
             by_enum[operation] = kotlin_string(match.group("usage"))
 
-    expected_enums = {enum_name for enum_name, _ in operations}
+    expected_enums = {operation.enum_name for operation in operations}
     if set(by_enum) != expected_enums:
         missing = sorted(expected_enums - set(by_enum))
         extra = sorted(set(by_enum) - expected_enums)
         raise ValueError(f"CLI projection mismatch; missing={missing}, extra={extra}")
 
     return [
-        SemanticCommand(operation_id, by_enum[enum_name])
-        for enum_name, operation_id in operations
+        SemanticCommand(
+            operation.operation_id,
+            by_enum[operation.enum_name],
+            operation.hosted_exposure,
+            operation.hosted_intents,
+        )
+        for operation in operations
     ]
 
 
@@ -138,15 +172,30 @@ def table_cell(value: str) -> str:
     return value.replace("|", "\\|")
 
 
+def hosted_description(command: SemanticCommand) -> str:
+    description = OPERATION_DESCRIPTIONS[command.operation_id]
+    if not command.hosted_intents:
+        return description
+    intents = ", ".join(f"`{intent}`" for intent in command.hosted_intents)
+    return f"Hosted only for {intents}. {description}"
+
+
 def render(
     semantic: list[SemanticCommand],
     lifecycle: list[str],
     local_flags: list[str],
 ) -> str:
-    semantic_rows = "\n".join(
+    hosted_rows = "\n".join(
         f"| `{command.operation_id}` | `kast {table_cell(command.usage)}` | "
-        f"{OPERATION_DESCRIPTIONS[command.operation_id]} |"
+        f"{hosted_description(command)} |"
         for command in semantic
+        if command.hosted_exposure == "public"
+    )
+    deferred_rows = "\n".join(
+        f"| `{command.operation_id}` | `kast {table_cell(command.usage)}` | "
+        "Available only as an internal hosted service; no direct endpoint route. |"
+        for command in semantic
+        if command.hosted_exposure != "public"
     )
     lifecycle_rows = "\n".join(
         f"| `kast {command}` | {LIFECYCLE_DESCRIPTIONS[command]} |"
@@ -160,9 +209,14 @@ def render(
         }[flag]
         for flag in local_flags
     )
-    return f"""<!-- Generated by docs/generate_cli_reference.py. Do not edit. -->
+    return f"""---
+title: "CLI reference"
+description: "Canonical Kast command shapes generated from the typed operation registry and Kotlin command graph."
+icon: "terminal"
+keywords: ["CLI", "commands", "schema", "operations"]
+---
 
-# CLI reference
+{{/* Generated by docs/generate_cli_reference.py. Do not edit. */}}
 
 This page is generated from the same typed operation registry and Kotlin
 command graph used by `kast --schema`. The documentation check fails when this
@@ -171,19 +225,34 @@ page differs from either authority.
 Run `kast --schema` when a tool needs the contract as JSON. Run a command with
 `--help` when you need every option and intent-specific combination.
 
-## Semantic operations
+## Hosted endpoint operations
 
 Run semantic commands from the repository root. Each command emits one JSON
 document on standard output. A rejected command emits one diagnostic document
-on standard error.
+on standard error. The installed IDE plugin publishes the ten operations marked
+`public` by the generated operation registry:
 
 | Operation | Command shape | Result role |
 | --- | --- | --- |
-{semantic_rows}
+{hosted_rows}
+
+## Canonical operations without a direct hosted route
+
+<Warning>
+  These operations remain in the canonical registry and command graph because
+  hosted topology, traversal, planning, and verification consume them
+  internally. The installed IDE endpoint does not publish them as direct
+  routes.
+</Warning>
+
+| Operation | Command shape | Current availability |
+| --- | --- | --- |
+{deferred_rows}
 
 ## Runtime lifecycle
 
-Lifecycle commands act on the runtime associated with the exact current root.
+The IDE owns this lifecycle. Every lifecycle command first admits the
+already-running compatible endpoint for the exact current root.
 
 | Command | Effect |
 | --- | --- |
@@ -197,9 +266,9 @@ These flags do not contact the hosted IDE endpoint.
 | --- | --- |
 {local_rows}
 
-For a first run, continue with [Set up and start Kast](../start.md). For the
+For a first run, continue with [Set up and start Kast](/start). For the
 meaning of successful and limited answers, read
-[Trust the evidence](../concepts/evidence-boundaries.md).
+[Trust the evidence](/concepts/evidence-boundaries).
 """
 
 
@@ -211,7 +280,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = (args.root or Path(__file__).resolve().parents[1]).resolve()
-    target = root / "docs/public/reference/cli.md"
+    target = root / "docs/public/reference/cli.mdx"
     registry = args.registry or (
         root / "protocol/wire/build/generated/operation-registry/operation-registry.json"
     )

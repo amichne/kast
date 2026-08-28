@@ -19,7 +19,10 @@ internal fun traversalCommandGroup(
 ): CommandFamily {
     val run = TraversalRunCommand(preparers)
     return CommandFamily(
-        KastCommandGroup("traversal", "Traverse bounded semantic relation graphs.").subcommands(run),
+        KastCommandGroup(
+            "traversal",
+            "Traverse bounded, durable, generation-bound semantic relation graphs.",
+        ).subcommands(run),
         listOf(run),
     )
 }
