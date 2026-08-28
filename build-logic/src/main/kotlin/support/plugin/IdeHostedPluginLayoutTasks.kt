@@ -10,8 +10,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
@@ -34,7 +34,26 @@ internal data class IdeHostCompatibilityReportDocument(
     val runtimeProtocolIdentity: String,
     val operationRegistryDigest: String,
     val wireSchemaDigest: String,
-    val capabilities: List<String>,
+    val capabilities: List<HostedCapabilityReportDocument>,
+)
+
+@Serializable
+internal data class HostedCapabilityReportDocument(
+    val operationId: String,
+    val intents: List<String>,
+)
+
+@Serializable
+private data class HostedOperationRegistryDocument(
+    val schemaVersion: Int,
+    val operations: List<HostedOperationRegistryEntryDocument>,
+)
+
+@Serializable
+private data class HostedOperationRegistryEntryDocument(
+    val operationId: String,
+    val hostedExposure: String,
+    val intents: List<String>,
 )
 
 internal enum class IdeHostCompatibilityReportFailure {
@@ -49,6 +68,7 @@ internal enum class IdeHostCompatibilityReportFailure {
     RUNTIME_PROTOCOL_IDENTITY_MISMATCH,
     OPERATION_REGISTRY_DIGEST_MISMATCH,
     WIRE_SCHEMA_DIGEST_MISMATCH,
+    OPERATION_REGISTRY_MALFORMED,
     CAPABILITY_SET_MISMATCH,
 }
 
@@ -60,12 +80,6 @@ internal enum class SupportedKotlinPluginBuild(val value: String) {
 }
 internal enum class SupportedIdeRuntimeProtocol(val value: String) {
     V1("kast.ide-hosted.runtime.v1"),
-}
-internal enum class IdeHostReportCapability(val operationId: String) {
-    WORKSPACE_INSPECT("workspace.inspect"),
-    SYMBOL_DISCOVER("symbol.discover"),
-    SYMBOL_RESOLVE("symbol.resolve"),
-    SYMBOL_DESCRIBE("symbol.describe"),
 }
 internal enum class IdeHostReportCapabilitySet { CANONICAL }
 
@@ -169,6 +183,14 @@ internal class AdmittedIdeHostCompatibilityReport private constructor(
             if (document.operationRegistryDigest != registryDigest.value) return reportRejected(
                 IdeHostCompatibilityReportFailure.OPERATION_REGISTRY_DIGEST_MISMATCH,
             )
+            val hostedCapabilities = when (
+                val projection = projectHostedCapabilities(operationRegistryBytes)
+            ) {
+                is HostedCapabilityProjection.Projected -> projection.capabilities
+                HostedCapabilityProjection.Rejected -> return reportRejected(
+                    IdeHostCompatibilityReportFailure.OPERATION_REGISTRY_MALFORMED,
+                )
+            }
             val wireDigest = CompatibilityDigest.observe(CanonicalWireSchema.encodedBytes())
             if (document.wireSchemaDigest != wireDigest.value) return reportRejected(
                 IdeHostCompatibilityReportFailure.WIRE_SCHEMA_DIGEST_MISMATCH,
@@ -202,8 +224,6 @@ internal sealed interface IdeHostCompatibilityReportAdmission {
         IdeHostCompatibilityReportAdmission
 }
 
-private val hostedCapabilities = IdeHostReportCapability.entries.map { it.operationId }
-
 private fun reportRejected(
     failure: IdeHostCompatibilityReportFailure,
 ): IdeHostCompatibilityReportAdmission = IdeHostCompatibilityReportAdmission.Rejected(failure)
@@ -214,7 +234,6 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
     @get:Input abstract val kotlinPluginBuild: Property<String>
     @get:Input abstract val kastPluginVersion: Property<String>
     @get:Input abstract val runtimeProtocolIdentity: Property<String>
-    @get:Input abstract val capabilities: ListProperty<String>
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
@@ -232,6 +251,12 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
     fun generate() {
         val registryBytes = operationRegistryFile.get().asFile.readBytes()
         val wireBytes = CanonicalWireSchema.encodedBytes()
+        val hostedCapabilities = when (val projection = projectHostedCapabilities(registryBytes)) {
+            is HostedCapabilityProjection.Projected -> projection.capabilities
+            HostedCapabilityProjection.Rejected -> throw GradleException(
+                "Canonical operation registry does not contain a valid hosted projection",
+            )
+        }
         val report = IdeHostCompatibilityReportDocument(
             schemaVersion = 1,
             taskId = "IDE-HOST-COMPATIBILITY",
@@ -241,7 +266,7 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
             runtimeProtocolIdentity = runtimeProtocolIdentity.get(),
             operationRegistryDigest = CompatibilityDigest.observe(registryBytes).value,
             wireSchemaDigest = CompatibilityDigest.observe(wireBytes).value,
-            capabilities = capabilities.get(),
+            capabilities = hostedCapabilities,
         )
         writeAtomically(
             reportFile.get().asFile.toPath(),
@@ -249,6 +274,41 @@ abstract class GenerateIdeHostCompatibilityReportTask : DefaultTask() {
                 "\n",
         )
     }
+}
+
+private sealed interface HostedCapabilityProjection {
+    data class Projected(
+        val capabilities: List<HostedCapabilityReportDocument>,
+    ) : HostedCapabilityProjection
+    data object Rejected : HostedCapabilityProjection
+}
+
+private fun projectHostedCapabilities(bytes: ByteArray): HostedCapabilityProjection {
+    val document = try {
+        REPORT_JSON.decodeFromString(
+            HostedOperationRegistryDocument.serializer(),
+            bytes.toString(Charsets.UTF_8),
+        )
+    } catch (_: SerializationException) {
+        return HostedCapabilityProjection.Rejected
+    } catch (_: IllegalArgumentException) {
+        return HostedCapabilityProjection.Rejected
+    }
+    if (document.schemaVersion != 2) return HostedCapabilityProjection.Rejected
+    if (document.operations.map { it.operationId }.toSet().size != document.operations.size) {
+        return HostedCapabilityProjection.Rejected
+    }
+    val public = document.operations
+        .filter { it.hostedExposure == "public" }
+        .map { HostedCapabilityReportDocument(it.operationId, it.intents) }
+    if (public.isEmpty()) return HostedCapabilityProjection.Rejected
+    if (document.operations.any {
+            it.hostedExposure !in setOf("public", "internal_only", "unavailable")
+        }
+    ) {
+        return HostedCapabilityProjection.Rejected
+    }
+    return HostedCapabilityProjection.Projected(public)
 }
 
 private fun writeAtomically(target: Path, content: String) {

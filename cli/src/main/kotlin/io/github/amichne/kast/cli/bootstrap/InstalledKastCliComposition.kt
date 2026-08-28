@@ -13,6 +13,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.contract.KastPluginVersion
+import io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
+import io.github.amichne.kast.protocol.wire.metadata.HostedCapabilityCandidate
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectory
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectoryFailure
 import java.io.IOException
@@ -23,12 +25,11 @@ import java.nio.file.Path
 internal const val SUPPORTED_IDE_BUILD = "262.9437.185"
 internal const val SUPPORTED_KOTLIN_PLUGIN_BUILD = "262.9437.185-IJ"
 internal const val IDE_RUNTIME_PROTOCOL = "kast.ide-hosted.runtime.v1"
-internal val IDE_CAPABILITIES = listOf(
-    "workspace.inspect",
-    "symbol.discover",
-    "symbol.resolve",
-    "symbol.describe",
-)
+internal val INSTALLED_HOSTED_ACCEPTANCE_EXPECTATIONS: List<HostedCapabilityCandidate> =
+    CanonicalHostedCapabilities.candidates
+internal val IDE_CAPABILITIES: List<String> = INSTALLED_HOSTED_ACCEPTANCE_EXPECTATIONS.map {
+    it.operationId
+}
 
 /**
  * Proof transition: installed host constant ->

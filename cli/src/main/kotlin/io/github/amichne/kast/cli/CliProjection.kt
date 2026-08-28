@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
@@ -57,7 +58,11 @@ class TypedCliProjection<
             )
         }
         return CliProjectionPreparation.Prepared(
-            PreparedCliRequest(wireBinding.operation, requestDocument) { response ->
+            PreparedCliRequest(
+                wireBinding.operation,
+                hostedDemand(wireBinding.operation, request),
+                requestDocument,
+            ) { response ->
                 when (val decoded = wireBinding.decodeOutcome(response)) {
                     is WireDecoding.Decoded -> CliProjectionCompletion.Completed(
                         outcomeProjector.project(decoded.value),
@@ -76,6 +81,7 @@ class TypedCliProjection<
 
 class PreparedCliRequest internal constructor(
     val operation: CanonicalOperation,
+    val hostedDemand: HostedRuntimeDemand,
     val document: String,
     private val completion: (String) -> CliProjectionCompletion,
 ) {
@@ -87,6 +93,17 @@ class PreparedCliRequest internal constructor(
      * text may be extracted only at this wire-decoding boundary.
      */
     fun complete(response: String): CliProjectionCompletion = completion(response)
+}
+
+private fun hostedDemand(
+    operation: CanonicalOperation,
+    request: OperationRequest,
+): HostedRuntimeDemand = if (
+    operation == CanonicalOperation.CHANGE_PLAN && request is ChangePlanRequest
+) {
+    HostedRuntimeDemand.ChangePlan(request.intent)
+} else {
+    HostedRuntimeDemand.Operation(operation)
 }
 
 sealed interface CliProjectionPreparation {

@@ -5,6 +5,8 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorAdmission
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorCandidate
+import io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
+import io.github.amichne.kast.protocol.wire.metadata.HostedCapabilityCandidate
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorV2
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointLocation
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectory
@@ -99,7 +101,7 @@ internal fun IdeEndpointDescriptorCandidate.compatibilityCandidate() =
         runtimeProtocolIdentity,
         operationRegistryDigest,
         wireSchemaDigest,
-        capabilities,
+        capabilities.map(HostedCapabilityCandidate::operationId),
     )
 
 internal fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
@@ -117,9 +119,4 @@ internal const val FIXTURE_REGISTRY_DIGEST =
     "sha256:1111111111111111111111111111111111111111111111111111111111111111"
 internal const val FIXTURE_WIRE_DIGEST =
     "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-internal val FIXTURE_CAPABILITIES = listOf(
-    "workspace.inspect",
-    "symbol.discover",
-    "symbol.resolve",
-    "symbol.describe",
-)
+internal val FIXTURE_CAPABILITIES = CanonicalHostedCapabilities.candidates

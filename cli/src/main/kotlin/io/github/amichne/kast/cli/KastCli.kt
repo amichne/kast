@@ -64,7 +64,7 @@ class KastCli(
         request: PreparedCliRequest,
         start: Path,
     ): CliExit {
-        val boundary = when (val resolution = resolveRuntimeBoundary(start)) {
+        val boundary = when (val resolution = resolveRuntimeBoundary(start, request.hostedDemand)) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
         }
@@ -75,7 +75,15 @@ class KastCli(
         action: CliAction.Lifecycle,
         start: Path,
     ): CliExit {
-        val boundary = when (val resolution = resolveRuntimeBoundary(start)) {
+        val demand = when (action) {
+            is CliAction.Lifecycle.Start -> action.request.hostedDemand
+            is CliAction.Lifecycle.Reindex -> action.request.hostedDemand
+            CliAction.Lifecycle.Clean,
+            CliAction.Lifecycle.Status,
+            CliAction.Lifecycle.Stop,
+                -> HostedRuntimeDemand.Lifecycle
+        }
+        val boundary = when (val resolution = resolveRuntimeBoundary(start, demand)) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
         }
@@ -109,14 +117,17 @@ class KastCli(
         }
     }
 
-    private fun resolveRuntimeBoundary(start: Path): CliRuntimeBoundaryResolution {
+    private fun resolveRuntimeBoundary(
+        start: Path,
+        demand: HostedRuntimeDemand,
+    ): CliRuntimeBoundaryResolution {
         val root = when (val discovery = rootDiscovery.discover(start)) {
             is CanonicalRootDiscovery.Discovered -> discovery.root
             is CanonicalRootDiscovery.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
                 boundaryExit(CliBoundaryExitStatus.ROOT, discovery.failure.name.lowercase()),
             )
         }
-        val endpoint = when (val admission = runtimeDemander.demand(root)) {
+        val endpoint = when (val admission = runtimeDemander.demand(root, demand)) {
             is RuntimeAdmission.Ready -> admission.endpoint
             is RuntimeAdmission.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
                 boundaryExit(

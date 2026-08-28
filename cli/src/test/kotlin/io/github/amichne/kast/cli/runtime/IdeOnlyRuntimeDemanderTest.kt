@@ -1,12 +1,19 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
 class IdeOnlyRuntimeDemanderTest {
+    private val workspaceDemand = HostedRuntimeDemand.Operation(
+        CanonicalOperation.WORKSPACE_INSPECT,
+    )
+
     @Test
     @DisplayName("Missing or incompatible IDE endpoint evidence is a closed rejection.")
     fun `missing or incompatible IDE endpoint evidence is a closed rejection`() {
@@ -17,7 +24,7 @@ class IdeOnlyRuntimeDemanderTest {
                 IdeEndpointDescriptorRead.Rejected(IdeEndpointDescriptorReadFailure.UNAVAILABLE),
             ),
             runtimeId,
-        ).demand(fixture.root)
+        ).demand(fixture.root, workspaceDemand)
         val incompatible = IdeOnlyRuntimeDemander(
             fixture.admitter(
                 IdeEndpointDescriptorRead.Complete(
@@ -25,7 +32,7 @@ class IdeOnlyRuntimeDemanderTest {
                 ),
             ),
             runtimeId,
-        ).demand(fixture.root)
+        ).demand(fixture.root, workspaceDemand)
 
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_DESCRIPTOR_READ_REJECTED),
@@ -46,14 +53,54 @@ class IdeOnlyRuntimeDemanderTest {
         val admission = IdeOnlyRuntimeDemander(
             fixture.admitter(IdeEndpointDescriptorRead.Complete(fixture.document)),
             runtimeId,
-        ).demand(fixture.root)
+        ).demand(fixture.root, workspaceDemand)
 
         val endpoint = (admission as RuntimeAdmission.Ready).endpoint
         assertSame(fixture.root, endpoint.root)
         assertEquals(runtimeId, endpoint.runtimeId)
         assertEquals(fixture.location.socketPath.value, endpoint.socketPath.toString())
     }
+
+    @Test
+    fun `pre-dispatch capability admission rejects internal routes and unavailable plan intents`() {
+        val fixture = ideEndpointFixture()
+        val demander = IdeOnlyRuntimeDemander(
+            fixture.admitter(IdeEndpointDescriptorRead.Complete(fixture.document)),
+            fixtureRuntimeId(),
+        )
+
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_CAPABILITY_UNAVAILABLE),
+            demander.demand(
+                fixture.root,
+                HostedRuntimeDemand.Operation(CanonicalOperation.RELATION_READ),
+            ),
+        )
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_VARIANT_UNAVAILABLE),
+            demander.demand(
+                fixture.root,
+                HostedRuntimeDemand.ChangePlan(
+                    ChangeIntentDocument.RenameSymbol(text("exact:Target"), text("Renamed")),
+                ),
+            ),
+        )
+        assertEquals(
+            RuntimeAdmission.Ready::class,
+            demander.demand(
+                fixture.root,
+                HostedRuntimeDemand.ChangePlan(
+                    ChangeIntentDocument.AddDeclaration(
+                        text("exact:Target"),
+                        text("fun added() = Unit"),
+                    ),
+                ),
+            )::class,
+        )
+    }
 }
+
+private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refined()
 
 private fun IdeEndpointFixture.admitter(
     descriptorRead: IdeEndpointDescriptorRead,

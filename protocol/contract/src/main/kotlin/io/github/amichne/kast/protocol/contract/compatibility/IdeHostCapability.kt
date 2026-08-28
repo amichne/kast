@@ -4,22 +4,16 @@ import io.github.amichne.kast.kernel.OperationId
 import io.github.amichne.kast.kernel.PermanentIdentityFailure
 import io.github.amichne.kast.kernel.Refinement
 
-enum class IdeHostCapability(val operation: CanonicalOperation) {
-    WORKSPACE_INSPECT(CanonicalOperation.WORKSPACE_INSPECT),
-    SYMBOL_DISCOVER(CanonicalOperation.SYMBOL_DISCOVER),
-    SYMBOL_RESOLVE(CanonicalOperation.SYMBOL_RESOLVE),
-    SYMBOL_DESCRIBE(CanonicalOperation.SYMBOL_DESCRIBE),
-    ;
+data class IdeHostCapability private constructor(val operation: CanonicalOperation) {
 
     companion object {
         /**
          * Proof transition: `OperationId -> Refinement<IdeHostCapability,
          * IdeHostCompatibilityFailure>`.
          *
-         * Establishes membership in the exact four-operation IDE-hosted read capability set.
-         * Unknown and canonical-but-unsupported operations remain distinct closed failures. Raw
-         * operation text may be extracted only before `OperationId` parsing at the report or
-         * endpoint boundary.
+         * Establishes membership in the canonical operation set. Hosted exposure is deliberately
+         * not decided here: the canonical operation definitions are the sole authority and generated
+         * compatibility metadata supplies its projection at the outer boundary.
          */
         internal fun resolve(
             operationId: OperationId,
@@ -28,41 +22,38 @@ enum class IdeHostCapability(val operation: CanonicalOperation) {
                 is CanonicalOperationResolution.Unknown -> Refinement.Rejected(
                     IdeHostCompatibilityFailure.UnknownCapability(resolution.id),
                 )
-                is CanonicalOperationResolution.Known -> when (resolution.operation) {
-                    CanonicalOperation.WORKSPACE_INSPECT -> Refinement.Refined(WORKSPACE_INSPECT)
-                    CanonicalOperation.SYMBOL_DISCOVER -> Refinement.Refined(SYMBOL_DISCOVER)
-                    CanonicalOperation.SYMBOL_RESOLVE -> Refinement.Refined(SYMBOL_RESOLVE)
-                    CanonicalOperation.SYMBOL_DESCRIBE -> Refinement.Refined(SYMBOL_DESCRIBE)
-                    CanonicalOperation.TOPOLOGY_BUILD,
-                    CanonicalOperation.RELATION_READ,
-                    CanonicalOperation.TRAVERSAL_RUN,
-                    CanonicalOperation.DIAGNOSTIC_CHECK,
-                    CanonicalOperation.CHANGE_PLAN,
-                    CanonicalOperation.CHANGE_APPLY,
-                    CanonicalOperation.CHANGE_VERIFY,
-                    CanonicalOperation.CHANGE_RECOVER,
-                    -> Refinement.Rejected(
-                        IdeHostCompatibilityFailure.UnsupportedCapability(resolution.operation),
-                    )
-                }
+                is CanonicalOperationResolution.Known ->
+                    Refinement.Refined(byOperation.getValue(resolution.operation))
             }
+
+        private val byOperation = CanonicalOperation.entries.associateWith(::IdeHostCapability)
+
+        val WORKSPACE_INSPECT = byOperation.getValue(CanonicalOperation.WORKSPACE_INSPECT)
+        val SYMBOL_DISCOVER = byOperation.getValue(CanonicalOperation.SYMBOL_DISCOVER)
+        val SYMBOL_RESOLVE = byOperation.getValue(CanonicalOperation.SYMBOL_RESOLVE)
+        val SYMBOL_DESCRIBE = byOperation.getValue(CanonicalOperation.SYMBOL_DESCRIBE)
+
+        /** Existing read-route vocabulary; not an authority for the complete hosted surface. */
+        val entries: List<IdeHostCapability> = listOf(
+            WORKSPACE_INSPECT,
+            SYMBOL_DISCOVER,
+            SYMBOL_RESOLVE,
+            SYMBOL_DESCRIBE,
+        )
     }
 }
 
-class IdeHostCapabilitySet private constructor() {
-    val capabilities: List<IdeHostCapability>
-        get() = IdeHostCapability.entries.toList()
+class IdeHostCapabilitySet private constructor(
+    val capabilities: List<IdeHostCapability>,
+) {
 
     companion object {
-        private val exactCapabilities = IdeHostCapability.entries.toList()
-
         /**
          * Proof transition: `List<String> -> Refinement<IdeHostCapabilitySet, IdeHostCompatibilityFailure>`.
          *
-         * Establishes the exact ordered, unique four-operation IDE-hosted read set derived from
-         * [CanonicalOperation]. Unknown, unsupported, duplicate, missing, extra, and reordered
-         * values are closed [IdeHostCompatibilityFailure] cases. Raw identities may be extracted
-         * only at endpoint or generated-report boundaries.
+         * Establishes an ordered, unique set of canonical operation identities. The exact public
+         * set is supplied by generated canonical metadata and retained by
+         * [IdeHostCompatibilityPolicy], rather than duplicated in this contract.
          */
         fun parse(raw: List<String>): Refinement<IdeHostCapabilitySet, IdeHostCompatibilityFailure> {
             val admitted = ArrayList<IdeHostCapability>(raw.size)
@@ -88,11 +79,7 @@ class IdeHostCapabilitySet private constructor() {
                 }
                 admitted += capability
             }
-            return if (admitted == exactCapabilities) {
-                Refinement.Refined(IdeHostCapabilitySet())
-            } else {
-                Refinement.Rejected(IdeHostCompatibilityFailure.CapabilitySetMismatch)
-            }
+            return Refinement.Refined(IdeHostCapabilitySet(admitted))
         }
     }
 }

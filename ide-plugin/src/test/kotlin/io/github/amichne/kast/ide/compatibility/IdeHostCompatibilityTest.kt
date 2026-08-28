@@ -28,14 +28,12 @@ class IdeHostCompatibilityTest {
         assertEquals(HOSTED_RUNTIME_PROTOCOL, admitted.runtimeProtocolIdentity.value)
         assertEquals(OPERATION_REGISTRY_DIGEST, admitted.operationRegistryDigest.value)
         assertEquals(WIRE_SCHEMA_DIGEST, admitted.wireSchemaDigest.value)
-        assertEquals(IdeHostCapability.entries, admitted.capabilities.capabilities)
         assertEquals(
-            listOf(
-                "workspace.inspect",
-                "symbol.discover",
-                "symbol.resolve",
-                "symbol.describe",
-            ),
+            HOSTED_CAPABILITIES,
+            admitted.capabilities.capabilities.map { it.operation.id.value },
+        )
+        assertEquals(
+            HOSTED_CAPABILITIES,
             admitted.capabilities.capabilities.map { it.operation.id.value },
         )
     }
@@ -85,7 +83,10 @@ class IdeHostCompatibilityTest {
 
         assertEquals(metadata.candidate.kastPluginVersion, admitted.kastPluginVersion.value)
         assertEquals(HOSTED_RUNTIME_PROTOCOL, admitted.runtimeProtocolIdentity.value)
-        assertEquals(IdeHostCapability.entries, admitted.capabilities.capabilities)
+        assertEquals(
+            HOSTED_CAPABILITIES,
+            admitted.capabilities.capabilities.map { it.operation.id.value },
+        )
     }
 }
 
@@ -93,15 +94,21 @@ internal const val HOSTED_IDE_BUILD = "262.9437.185"
 internal const val HOSTED_KOTLIN_PLUGIN_BUILD = "262.9437.185-IJ"
 internal const val HOSTED_RUNTIME_PROTOCOL = "kast.ide-hosted.runtime.v1"
 internal const val OPERATION_REGISTRY_DIGEST =
-    "sha256:2d4b7e46638f44c2ec57e5aa3654c07319a68fc1596c2826ac58034dba5211fc"
+    "sha256:cfe0a0d56914945d2eacfd765f34e017ff44fef4dc4f3c2353b7cf45dd449baf"
 internal const val WIRE_SCHEMA_DIGEST =
     "sha256:52966aebe99d44ba6754a71c563f444c851d8727106bbb754ae51822eec36fc7"
 
 internal val HOSTED_CAPABILITIES = listOf(
     "workspace.inspect",
+    "topology.build",
     "symbol.discover",
     "symbol.resolve",
     "symbol.describe",
+    "traversal.run",
+    "change.plan",
+    "change.apply",
+    "change.verify",
+    "change.recover",
 )
 
 internal fun supportedCandidate(pluginVersion: String) = IdeHostCompatibilityCandidate(

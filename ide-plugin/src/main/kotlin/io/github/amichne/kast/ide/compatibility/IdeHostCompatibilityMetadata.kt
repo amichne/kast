@@ -30,7 +30,13 @@ internal data class IdeHostCompatibilityReportDocument(
     val runtimeProtocolIdentity: String,
     val operationRegistryDigest: String,
     val wireSchemaDigest: String,
-    val capabilities: List<String>,
+    val capabilities: List<HostedCapabilityReportDocument>,
+)
+
+@Serializable
+internal data class HostedCapabilityReportDocument(
+    val operationId: String,
+    val intents: List<String>,
 )
 
 internal sealed interface IdeHostCompatibilityMetadataFailure {
@@ -47,6 +53,7 @@ internal sealed interface IdeHostCompatibilityMetadataFailure {
 internal class AdmittedIdeHostCompatibilityMetadata private constructor(
     val candidate: IdeHostCompatibilityCandidate,
     val compatibilityPolicy: IdeHostCompatibilityPolicy,
+    val hostedCapabilities: List<HostedCapabilityReportDocument>,
 ) {
     companion object {
         /**
@@ -61,13 +68,18 @@ internal class AdmittedIdeHostCompatibilityMetadata private constructor(
             AdmittedIdeHostCompatibilityMetadata,
             IdeHostCompatibilityMetadataFailure,
         > {
-            val candidate = when (val parsed = IdeHostCompatibilityMetadata.parseGenerated()) {
+            val document = when (val parsed = IdeHostCompatibilityMetadata.parseGenerated()) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return parsed
             }
+            val candidate = document.candidate
             return when (val definition = IdeHostCompatibilityPolicy.define(candidate)) {
                 is Refinement.Refined -> Refinement.Refined(
-                    AdmittedIdeHostCompatibilityMetadata(candidate, definition.value),
+                    AdmittedIdeHostCompatibilityMetadata(
+                        candidate,
+                        definition.value,
+                        document.hostedCapabilities,
+                    ),
                 )
                 is Refinement.Rejected -> Refinement.Rejected(
                     IdeHostCompatibilityMetadataFailure.CompatibilityRejected(definition.failure),
@@ -78,6 +90,11 @@ internal class AdmittedIdeHostCompatibilityMetadata private constructor(
 }
 
 internal object IdeHostCompatibilityMetadata {
+    internal data class Parsed(
+        val candidate: IdeHostCompatibilityCandidate,
+        val hostedCapabilities: List<HostedCapabilityReportDocument>,
+    )
+
     /**
      * Proof transition: `GeneratedIdeHostCompatibilityMetadata ->
      * Refinement<IdeHostCompatibilityCandidate, IdeHostCompatibilityMetadataFailure>`.
@@ -87,7 +104,7 @@ internal object IdeHostCompatibilityMetadata {
      * JSON leaves only at this generated compile-time metadata boundary.
      */
     internal fun parseGenerated(): Refinement<
-        IdeHostCompatibilityCandidate,
+        Parsed,
         IdeHostCompatibilityMetadataFailure,
     > = parse(GeneratedIdeHostCompatibilityMetadata.document)
 
@@ -104,10 +121,11 @@ internal object IdeHostCompatibilityMetadata {
         raw: String,
         policy: IdeHostCompatibilityPolicy,
     ): Refinement<AdmittedIdeHostCompatibility, IdeHostCompatibilityMetadataFailure> {
-        val candidate = when (val parsed = parse(raw)) {
+        val parsedDocument = when (val parsed = parse(raw)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> return parsed
         }
+        val candidate = parsedDocument.candidate
         return when (val admission = policy.admit(candidate)) {
             is IdeHostCompatibilityAdmission.Admitted -> Refinement.Refined(admission.compatibility)
             is IdeHostCompatibilityAdmission.Rejected -> Refinement.Rejected(
@@ -127,7 +145,7 @@ internal object IdeHostCompatibilityMetadata {
      */
     private fun parse(
         raw: String,
-    ): Refinement<IdeHostCompatibilityCandidate, IdeHostCompatibilityMetadataFailure> {
+    ): Refinement<Parsed, IdeHostCompatibilityMetadataFailure> {
         val document = try {
             compatibilityMetadataJson.decodeFromString(
                 IdeHostCompatibilityReportDocument.serializer(),
@@ -147,14 +165,17 @@ internal object IdeHostCompatibilityMetadata {
             return Refinement.Rejected(IdeHostCompatibilityMetadataFailure.WrongTaskIdentity)
         }
         return Refinement.Refined(
-            IdeHostCompatibilityCandidate(
-                document.ideBuild,
-                document.kotlinPluginBuild,
-                document.kastPluginVersion,
-                document.runtimeProtocolIdentity,
-                document.operationRegistryDigest,
-                document.wireSchemaDigest,
-                document.capabilities,
+            Parsed(
+                candidate = IdeHostCompatibilityCandidate(
+                    document.ideBuild,
+                    document.kotlinPluginBuild,
+                    document.kastPluginVersion,
+                    document.runtimeProtocolIdentity,
+                    document.operationRegistryDigest,
+                    document.wireSchemaDigest,
+                    document.capabilities.map(HostedCapabilityReportDocument::operationId),
+                ),
+                hostedCapabilities = document.capabilities,
             ),
         )
     }

@@ -39,6 +39,8 @@ data class OperationDefinition<
     val scope: OperationScope,
     val budget: ResourceBudget,
     val completeness: CompletenessPolicy,
+    val hostedExposure: HostedExposure,
+    val hostedVariants: HostedVariants = HostedVariants.None,
 ) : OperationMetadata {
     override val id: OperationId
         get() = operation.id

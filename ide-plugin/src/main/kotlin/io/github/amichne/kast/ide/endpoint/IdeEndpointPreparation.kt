@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorV2
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointFraming
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointHostKind
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointLocation
+import io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointPathFailure
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSchema
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectory
@@ -98,9 +99,7 @@ sealed interface IdeEndpointPreparation {
                         socketPath = location.socketPath.value,
                         framing = IdeEndpointFraming.LENGTH_PREFIXED_JSON_V1.identity,
                         runtimeEpoch = candidate.runtimeEpoch.value,
-                        capabilities = compatibility.capabilities.capabilities.map {
-                            it.operation.id.value
-                        },
+                        capabilities = CanonicalHostedCapabilities.candidates,
                     ),
                     candidate.compatibilityPolicy,
                 )) {

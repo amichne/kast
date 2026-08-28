@@ -7,7 +7,14 @@ import kotlinx.serialization.Serializable
 @Serializable
 private data class OperationRegistryDocument(
     val schemaVersion: Int,
-    val operationIds: List<String>,
+    val operations: List<OperationRegistryOperationDocument>,
+)
+
+@Serializable
+private data class OperationRegistryOperationDocument(
+    val operationId: String,
+    val hostedExposure: String,
+    val intents: List<String>,
 )
 
 /** Sole generated serializer binding catalog for the twelve production operation definitions. */
@@ -15,10 +22,16 @@ object CanonicalOperationWireBindings {
     val operationRegistryDocument: String = wireJson.encodeToString(
         OperationRegistryDocument.serializer(),
         OperationRegistryDocument(
-            schemaVersion = 1,
-            operationIds = OperationRegistryArtifact.from(CanonicalOperationDefinitions.registry)
-                .operationIds
-                .map { it.value },
+            schemaVersion = 2,
+            operations = OperationRegistryArtifact.from(CanonicalOperationDefinitions.registry)
+                .entries
+                .map { entry ->
+                    OperationRegistryOperationDocument(
+                        operationId = entry.operationId.value,
+                        hostedExposure = entry.hostedExposure.name.lowercase(),
+                        intents = entry.hostedIntentIds,
+                    )
+                },
         )
     ) + "\n"
 

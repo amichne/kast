@@ -20,6 +20,10 @@ sealed interface ServerDispatchFailure {
         val failure: WireFailure,
     ) : ServerDispatchFailure
 
+    data class UnsupportedOperation(
+        val operation: CanonicalOperation,
+    ) : ServerDispatchFailure
+
     data class RequestDecodingFailed(
         val operation: CanonicalOperation,
         val failure: WireFailure,

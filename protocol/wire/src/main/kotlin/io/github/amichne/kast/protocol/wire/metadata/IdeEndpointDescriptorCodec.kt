@@ -20,7 +20,7 @@ private data class IdeEndpointDescriptorDocument(
     val socketPath: String,
     val framing: String,
     val runtimeEpoch: Long,
-    val capabilities: List<String>,
+    val capabilities: List<HostedCapabilityCandidate>,
 )
 
 class EncodedIdeEndpointDescriptor private constructor(
@@ -115,5 +115,5 @@ private fun IdeEndpointDescriptorV2.toDocument() = IdeEndpointDescriptorDocument
     socketPath = socketPath.value,
     framing = framing.identity,
     runtimeEpoch = runtimeEpoch.value,
-    capabilities = compatibility.capabilities.capabilities.map { it.operation.id.value },
+    capabilities = capabilities.candidates(),
 )

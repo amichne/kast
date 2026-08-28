@@ -90,14 +90,6 @@ val generateIdeHostCompatibilityReport by tasks.registering(
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
     kastPluginVersion.set(project.version.toString())
     runtimeProtocolIdentity.set("kast.ide-hosted.runtime.v1")
-    capabilities.set(
-        listOf(
-            "workspace.inspect",
-            "symbol.discover",
-            "symbol.resolve",
-            "symbol.describe",
-        ),
-    )
     operationRegistryFile.set(operationRegistryArtifact)
     reportFile.set(layout.buildDirectory.file("generated/ide-host-compatibility.json"))
 }

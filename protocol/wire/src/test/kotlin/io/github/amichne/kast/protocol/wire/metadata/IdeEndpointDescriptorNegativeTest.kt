@@ -2,12 +2,8 @@ package io.github.amichne.kast.protocol.wire.metadata
 
 import io.github.amichne.kast.kernel.OperationId
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.IdeHostCapability
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
-import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityField
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityIdentityField
-import io.github.amichne.kast.protocol.contract.IdeHostCompatibilitySyntaxFailure
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
@@ -138,43 +134,63 @@ class IdeEndpointDescriptorNegativeTest {
     @Test
     fun `unknown unsupported duplicate missing and reordered capabilities fail closed`() {
         assertRejected(
-            candidate.copy(capabilities = candidate.capabilities + "other.read"),
-            compatibilityFailure(
-                IdeHostCompatibilityFailure.UnknownCapability(operationId("other.read")),
+            candidate.copy(
+                capabilities = candidate.capabilities +
+                    HostedCapabilityCandidate("other.read", emptyList()),
+            ),
+            hostedCapabilityFailure(
+                HostedCapabilitySetFailure.UnknownOperation(operationId("other.read")),
             ),
         )
         assertRejected(
-            candidate.copy(capabilities = candidate.capabilities + "diagnostic.check"),
-            compatibilityFailure(
-                IdeHostCompatibilityFailure.UnsupportedCapability(
-                    CanonicalOperation.DIAGNOSTIC_CHECK,
+            candidate.copy(
+                capabilities = candidate.capabilities +
+                    HostedCapabilityCandidate("diagnostic.check", emptyList()),
+            ),
+            hostedCapabilityFailure(HostedCapabilitySetFailure.CanonicalProjectionMismatch),
+        )
+        assertRejected(
+            candidate.copy(
+                capabilities = candidate.capabilities +
+                    HostedCapabilityCandidate("a".repeat(97), emptyList()),
+            ),
+            hostedCapabilityFailure(
+                HostedCapabilitySetFailure.MalformedOperationId(
+                    io.github.amichne.kast.kernel.PermanentIdentityFailure.TOO_LONG,
                 ),
             ),
         )
         assertRejected(
-            candidate.copy(capabilities = candidate.capabilities + "a".repeat(97)),
-            compatibilityFailure(
-                IdeHostCompatibilityFailure.Malformed(
-                    IdeHostCompatibilityField.CAPABILITIES,
-                    IdeHostCompatibilitySyntaxFailure.TOO_LONG,
-                ),
-            ),
-        )
-        assertRejected(
-            candidate.copy(capabilities = candidate.capabilities + "workspace.inspect"),
-            compatibilityFailure(
-                IdeHostCompatibilityFailure.DuplicateCapability(
-                    IdeHostCapability.WORKSPACE_INSPECT,
+            candidate.copy(capabilities = candidate.capabilities + candidate.capabilities.first()),
+            hostedCapabilityFailure(
+                HostedCapabilitySetFailure.DuplicateOperation(
+                    io.github.amichne.kast.protocol.contract.CanonicalOperation.WORKSPACE_INSPECT,
                 ),
             ),
         )
         assertRejected(
             candidate.copy(capabilities = candidate.capabilities.dropLast(1)),
-            compatibilityFailure(IdeHostCompatibilityFailure.CapabilitySetMismatch),
+            hostedCapabilityFailure(HostedCapabilitySetFailure.CanonicalProjectionMismatch),
         )
         assertRejected(
             candidate.copy(capabilities = candidate.capabilities.reversed()),
-            compatibilityFailure(IdeHostCompatibilityFailure.CapabilitySetMismatch),
+            hostedCapabilityFailure(HostedCapabilitySetFailure.CanonicalProjectionMismatch),
+        )
+        assertRejected(
+            candidate.copy(
+                capabilities = candidate.capabilities.map { capability ->
+                    if (capability.operationId == "change.plan") {
+                        capability.copy(intents = listOf("rename-symbol"))
+                    } else {
+                        capability
+                    }
+                },
+            ),
+            hostedCapabilityFailure(
+                HostedCapabilitySetFailure.UnsupportedIntent(
+                    io.github.amichne.kast.protocol.contract.CanonicalOperation.CHANGE_PLAN,
+                ),
+            ),
         )
     }
 
@@ -203,6 +219,10 @@ class IdeEndpointDescriptorNegativeTest {
     private fun compatibilityFailure(
         failure: IdeHostCompatibilityFailure,
     ) = IdeEndpointDescriptorFailure.CompatibilityRejected(failure)
+
+    private fun hostedCapabilityFailure(
+        failure: HostedCapabilitySetFailure,
+    ) = IdeEndpointDescriptorFailure.HostedCapabilitiesRejected(failure)
 
     private fun digest(character: Char): String = "sha256:" + character.toString().repeat(64)
 
