@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when CI or release workflows omit runtime-delivery proofs."""
+"""Fail closed when CI or release workflows omit hosted-delivery proofs."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ def main() -> None:
             "packaging/test-installer.sh",
             ".github/scripts/release/build-assets.sh",
             ".github/scripts/release/publish-release.sh",
-            "packaging/verify-published-runtime-delivery.sh",
+            "packaging/verification/verify-published-hosted-delivery.sh",
         ),
         "release workflow",
         failures,
@@ -108,7 +108,7 @@ def main() -> None:
             "packaging/test-installer.sh",
             ".github/scripts/release/build-assets.sh",
             ".github/scripts/release/publish-release.sh",
-            "packaging/verify-published-runtime-delivery.sh",
+            "packaging/verification/verify-published-hosted-delivery.sh",
         ),
         "release workflow",
         failures,
@@ -116,37 +116,54 @@ def main() -> None:
     build_assets = read(root / ".github/scripts/release/build-assets.sh", failures)
     require_tokens(
         build_assets,
-        ("runtimeDeliveryMvpAcceptance", "verify-assets.py"),
+        (
+            "verifyIdeHostedReleaseNegative",
+            "assembleIdeHostedRelease",
+            "verifyIdeHostedRelease",
+            "distribution/release/verify_assets.py",
+        ),
         "release asset build",
         failures,
     )
     require_order(
         build_assets,
-        ("runtimeDeliveryMvpAcceptance", "verify-assets.py"),
+        (
+            "  verifyIdeHostedReleaseNegative \\",
+            "  assembleIdeHostedRelease \\",
+            "  verifyIdeHostedRelease\n",
+        ),
         "release asset build",
         failures,
     )
     installed = read(root / "packaging/test-installed-product.sh", failures)
     require_tokens(
         installed,
-        ("packaging/topology_installed_acceptance.py",),
+        (
+            "semantic-runtime.json",
+            '"${kast}" workspace inspect',
+            "isolatedIndexerProcessDelta",
+        ),
         "staged installed-product verification",
         failures,
     )
-    published = read(root / "packaging/verify-published-runtime-delivery.sh", failures)
+    published = read(
+        root / "packaging/verification/verify-published-hosted-delivery.sh",
+        failures,
+    )
     require_tokens(
         published,
         (
             'bash "${repository_root}/install.sh" install',
-            "packaging/topology_installed_acceptance.py",
+            '"${kast}" workspace inspect',
+            "KastIndexerMainKt",
         ),
-        "published runtime verification",
+        "published hosted verification",
         failures,
     )
     forbid_tokens(
         published,
         ('"${kast}" change plan', '"${kast}" topology build'),
-        "published runtime verification",
+        "published hosted verification",
         failures,
     )
     if failures:

@@ -20,12 +20,14 @@ class JvmEffectScannerTest {
         )
 
         assertTrue(
-            scanned.effects.any { effect ->
+            scanned.effects().any { effect ->
                 effect.effect == ForbiddenEffect.FILESYSTEM_WRITE &&
                 effect.target.owner == JvmClassName("java/nio/file/Files") &&
                 effect.target.name == JvmMemberName("deleteIfExists")
             },
         )
+        (scanned.effects() as MutableSet).clear()
+        assertTrue(scanned.effects().any { it.effect == ForbiddenEffect.FILESYSTEM_WRITE })
     }
 
     @Test
@@ -37,7 +39,60 @@ class JvmEffectScannerTest {
             JvmEffectScanner.scan(module(ModuleId.INDEXER), listOf(malformed)),
         )
 
-        assertEquals(listOf(BytecodeScanFailure.MalformedClass(malformed)), failed.failures)
+        assertEquals(listOf(BytecodeScanFailure.MalformedClass(malformed)), failed.failures())
+        (failed.failures() as MutableList).clear()
+        assertEquals(listOf(BytecodeScanFailure.MalformedClass(malformed)), failed.failures())
+    }
+
+    @Test
+    fun `truncated class is a closed scan failure`() {
+        val failed = assertInstanceOf<BytecodeScanOutcome.Failed>(
+            JvmEffectScanner.scanBytes(
+                module(ModuleId.INDEXER),
+                listOf(HostedReadClassBytes.capture("Truncated.class", byteArrayOf(0xCA.toByte()))),
+            ),
+        )
+
+        assertEquals(
+            listOf(BytecodeScanFailure.MalformedClass(Path.of("Truncated.class"))),
+            failed.failures(),
+        )
+    }
+
+    @Test
+    fun `invalid class identity is a closed scan failure`() {
+        val failed = assertInstanceOf<BytecodeScanOutcome.Failed>(
+            JvmEffectScanner.scanBytes(
+                module(ModuleId.INDEXER),
+                listOf(HostedReadClassBytes.capture("Invalid\u0000.class", emptyClassBytes())),
+            ),
+        )
+
+        assertEquals(
+            listOf(BytecodeScanFailure.InvalidClassIdentity("Invalid\u0000.class")),
+            failed.failures(),
+        )
+    }
+
+    @Test
+    fun `invalid descriptor is a closed scan failure`() {
+        val invalidDescriptor = ClassWriter(0).apply {
+            visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "fixture/InvalidDescriptor", null, "java/lang/Object", null)
+            visitField(Opcodes.ACC_PRIVATE, "broken", "invalid", null, null).visitEnd()
+            visitEnd()
+        }.toByteArray()
+
+        val failed = assertInstanceOf<BytecodeScanOutcome.Failed>(
+            JvmEffectScanner.scanBytes(
+                module(ModuleId.INDEXER),
+                listOf(HostedReadClassBytes.capture("InvalidDescriptor.class", invalidDescriptor)),
+            ),
+        )
+
+        assertEquals(
+            listOf(BytecodeScanFailure.MalformedClass(Path.of("InvalidDescriptor.class"))),
+            failed.failures(),
+        )
     }
 
     @Test
@@ -51,7 +106,7 @@ class JvmEffectScannerTest {
             JvmEffectScanner.scan(module(ModuleId.KERNEL), listOf(classFile)),
         )
 
-        assertTrue(scanned.effects.any { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
+        assertTrue(scanned.effects().any { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
     }
 
     @Test
@@ -62,8 +117,8 @@ class JvmEffectScannerTest {
             JvmEffectScanner.scan(module(ModuleId.KERNEL), listOf(classFile)),
         )
 
-        assertTrue(scanned.effects.any { it.effect == ForbiddenEffect.FILESYSTEM_WRITE })
-        assertTrue(scanned.effects.none { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
+        assertTrue(scanned.effects().any { it.effect == ForbiddenEffect.FILESYSTEM_WRITE })
+        assertTrue(scanned.effects().none { it.effect == ForbiddenEffect.SOURCE_FILESYSTEM_WRITE })
     }
 
     private fun copyClassFile(
@@ -113,6 +168,11 @@ class JvmEffectScannerTest {
         }.toByteArray()
         return temporary.resolve("SourceWriter.class").also { Files.write(it, bytecode) }
     }
+
+    private fun emptyClassBytes(): ByteArray = ClassWriter(0).apply {
+        visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "fixture/Empty", null, "java/lang/Object", null)
+        visitEnd()
+    }.toByteArray()
 
     @Suppress("unused")
     private class FilesMutationFixture {

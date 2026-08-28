@@ -6,7 +6,6 @@ import kotlinx.serialization.Serializable
 internal enum class InstalledSchemaResource {
     OPERATION_REGISTRY,
     WIRE_SCHEMA,
-    SEMANTIC_RUNTIME,
 }
 
 internal data class InstalledSchemaFailure(
@@ -29,7 +28,6 @@ internal sealed interface InstalledSchemaConstruction {
 internal fun installedSchema(
     operationRegistry: String,
     wireSchema: String,
-    runtimeManifest: String,
     commandSurface: CliCommandSurface,
 ): InstalledSchemaConstruction {
     val operationRegistryObject = when (val admission = CliOpenJsonObject.parse(operationRegistry)) {
@@ -44,13 +42,6 @@ internal fun installedSchema(
             InstalledSchemaFailure(InstalledSchemaResource.WIRE_SCHEMA, admission.failure),
         )
     }
-    val runtimeManifestObject = when (val admission = CliOpenJsonObject.parse(runtimeManifest)) {
-        is CliOpenJsonObjectAdmission.Admitted -> admission.value
-        is CliOpenJsonObjectAdmission.Rejected -> return InstalledSchemaConstruction.Rejected(
-            InstalledSchemaFailure(InstalledSchemaResource.SEMANTIC_RUNTIME, admission.failure),
-        )
-    }
-
     return InstalledSchemaConstruction.Constructed(
         installedSchemaFactory.create(
             InstalledSchemaDocument(
@@ -62,7 +53,6 @@ internal fun installedSchema(
                     lifecycleCommands = commandSurface.lifecycleCommands.map { it.command },
                     commands = commandSurface.semanticCommands.map { it.usage },
                 ),
-                semanticRuntime = runtimeManifestObject,
             ),
         ),
     )
@@ -74,7 +64,6 @@ private data class InstalledSchemaDocument(
     val operationRegistry: CliOpenJsonObject,
     val wireSchema: CliOpenJsonObject,
     val cliProjection: InstalledCliProjectionDocument,
-    val semanticRuntime: CliOpenJsonObject,
 )
 
 @Serializable

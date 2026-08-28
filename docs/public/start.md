@@ -1,8 +1,7 @@
 # Set up and start Kast
 
-The first successful run establishes one exact repository root and waits for
-compiler-backed evidence to become ready. A foreground IDE project is not part
-of this workflow.
+The first successful run admits the already-open IntelliJ Project for one exact
+repository root and uses its compiler-backed evidence.
 
 ## Check the host
 
@@ -10,21 +9,19 @@ Kast's supported developer pathway currently requires:
 
 - macOS on Apple silicon
 - Java 21
-- IntelliJ IDEA 2026.2, build 262, or Android Studio 2026.1.2, build 261
+- IntelliJ IDEA 2026.2 or Android Studio 2026.1.2 with the repository already open and indexed
 - a Kotlin Gradle repository
 
-The supported JetBrains installation supplies matched IntelliJ and Kotlin
-runtime libraries. It can remain closed while Kast runs its own isolated
-indexer.
+The supported IDE supplies the existing Project, VFS, indexes, PSI, and Kotlin
+semantic APIs. Kast does not construct a second Project or isolated indexer.
 
 <div class="kast-notice kast-tone-discovery" markdown>
 
 <strong class="kast-notice-title">One install, complete local release</strong>
 
 The installer verifies both release payloads: the `kast` command and its exact
-semantic runtime. On first semantic demand, Kast realizes the already local
-runtime archive into its content-addressed store. It does not make another
-release download.
+standalone IDE plugin. No semantic-runtime archive, private IDEA home, or
+runtime store is installed.
 
 </div>
 
@@ -37,15 +34,14 @@ curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 ```
 
 The installer validates the host and Java version and downloads the latest
-stable control and semantic-runtime archives with their SHA-256 records. It
-rejects unsafe archive paths or unexpected contents and matches the runtime
-archive to the control manifest. It smoke-tests local metadata before it moves
-the managed `kast` link.
+stable control archive and matched IDE plugin with their SHA-256 records. It
+rejects unsafe archive paths or unexpected contents and smoke-tests local
+metadata before it moves the managed command and plugin links.
 
 By default, the command link is `~/.local/bin/kast`. If that directory is not
 already on `PATH`, the installer reports the exact directory to add through
 your shell profile. The [latest release](https://github.com/amichne/kast/releases/latest)
-provides the verified control and semantic-runtime artifacts for manual
+provides the verified control and IDE-plugin artifacts for manual
 inspection.
 
 ## Recover from an older installation
@@ -69,15 +65,15 @@ To remove Kast without reinstalling it, run:
 bash "$installer_file" uninstall
 ```
 
-Confirm the process-local contract before starting a runtime:
+Confirm the process-local contract before contacting the IDE:
 
 ```console
 kast --version
 kast --schema
 ```
 
-`kast --schema` lists the twelve canonical operations, command shapes, runtime
-identity, and wire schema without touching the runtime store.
+`kast --schema` lists the canonical operations, command shapes, and wire schema
+without contacting IntelliJ.
 
 ## Start the exact repository
 
@@ -88,10 +84,10 @@ cd /path/to/kotlin-repository
 kast start
 ```
 
-Kast now resolves the supported platform installation, starts or reuses the
-indexer for this root, imports the Gradle model, and waits for semantic
-readiness. Success is one JSON result for `workspace.inspect`. A qualified
-result includes the evidence that is ready and the limitation that remains.
+Kast now admits the compatible exact-root endpoint published by the already
+running IDE. It never opens a Project, imports Gradle, refreshes VFS, or starts
+an isolated process. Success is one JSON result for `workspace.inspect`; a
+qualified result retains the exact limitation.
 
 Read lifecycle state without asking a semantic question:
 
@@ -99,10 +95,9 @@ Read lifecycle state without asking a semantic question:
 kast status
 ```
 
-The status is `running`, `stopped`, or `stale` for this root. If Kast reports a
-blocker, use the returned condition as the next action. A missing supported
-installation, a rejected project model, and an unavailable compiler scope are
-different failures and remain different in the output.
+The status reflects hosted endpoint availability for this root. If Kast reports
+a blocker, use the returned condition as the next action. A missing plugin, a
+missing exact Project, and an incompatible endpoint remain different failures.
 
 ## Make the first answer useful
 

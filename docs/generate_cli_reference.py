@@ -191,7 +191,7 @@ Lifecycle commands act on the runtime associated with the exact current root.
 
 ## Process-local flags
 
-These flags do not start or acquire the semantic runtime.
+These flags do not contact the hosted IDE endpoint.
 
 | Flag | Result |
 | --- | --- |

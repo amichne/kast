@@ -183,13 +183,13 @@ class CliCommandGraphContractTest {
         localMetadata = when (
             val admitted = CliLocalMetadata.admit(
                 productVersion = "1.2.3",
-                runtimeIdentity = "sha256:${"a".repeat(64)}",
                 schema = "{\"schemaVersion\":1}",
             )
         ) {
             is CliLocalMetadataAdmission.Admitted -> admitted.metadata
             is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
         },
+        lifecycle = ExactRootRuntimeLifecycle(),
     )
 
     private fun commandGraphFactory(): CliCommandGraphFactory = when (

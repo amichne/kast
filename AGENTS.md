@@ -141,26 +141,27 @@ fun requireRepositorySnapshotDatabase(path: Path): RepositorySnapshotDatabase
 - Return decoding, refinement, and document-mapping failures as closed typed data. Do not turn an
   expected malformed payload into an exception, null, sentinel, or manufactured success.
 
-## macOS indexer pathway
+## macOS IDE-hosted pathway
 
-On a macOS developer workstation, explicit semantic demand is the normal
-runtime bootstrap. Invoke the active public Kast CLI from the canonical
-workspace root:
+On a macOS developer workstation, open the canonical workspace in a supported
+IntelliJ IDE and let its existing Project reach indexed smart mode. Then invoke
+the active public Kast CLI from that exact workspace root:
 
 ```shell
 kast start
 ```
 
-Kast reuses or starts one isolated indexer for the exact root. It
-starts Gradle import and semantic indexing without opening, closing, focusing,
-or routing through a foreground IDE project. `kast start` returns only when
-semantic evidence is ready, or it reports a typed blocker.
+Kast admits one compatible endpoint published by that already-running Project
+and reuses its VFS, indexes, PSI, and Kotlin semantic APIs. It does not create a
+second Project, import Gradle, refresh the VFS, start an indexer process, or fall
+back automatically. `kast start` returns only when the exact-root endpoint is
+ready, or it reports a typed blocker.
 
 Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio
-2026.1.2/build 261. A supported installation supplies matched IntelliJ runtime
-libraries to the isolated process. It is not a semantic backend and its open
-or closed foreground state is irrelevant. Do not control a foreground IDE to
-repair Kast. Resolve the typed indexer blocker instead.
+2026.1.2/build 261. The already-running supported IDE is the semantic backend;
+if it is closed, has another root open, is incompatible, or has not published a
+complete endpoint, Kast fails closed. Resolve the typed endpoint blocker in the
+existing Project rather than manufacturing another host.
 
 ## Public documentation topology
 
@@ -179,21 +180,36 @@ and authored diagram sources do not enter the ignored `site/` output.
 `.github/workflows/docs.yml` is the GitHub Pages publication authority. It
 deploys only the `site/` artifact produced by the public-site builder.
 
+## VFS-passive delivery authority
+
+`build-logic/src/main/kotlin/support/delivery` is the typed authority for the
+exact-head VFS-passive reused-index delivery program. The
+`kast.vfs-passive-delivery` plugin generates and verifies its program and
+requirement projections under `gradle/delivery`; verification must not rewrite
+checked-in artifacts. `gradle/delivery/authority-sources` preserves the exact,
+digest-identified source bytes admitted by KVP-001; its live exact-head ledger,
+contradiction projection, and verification report belong under
+`build/reports/delivery`. Gate and completion receipts likewise belong under
+`build/reports/delivery/receipts`; checked-in receipts cannot bind their own commit.
+`scripts/verify_bundle.sh` is the dependency-free Kotlin,
+projection, fingerprint, and schema boundary. The normative reader plan is
+`docs/kast-vfs-passive-reused-index-delivery-program.md`.
+
 `install.sh` is the public release-install boundary. Preserve its host,
 checksum, archive, and managed-link checks when changing its presentation. Run
-`bash packaging/test-public-installer.sh` after changing its output.
+`bash packaging/verification/test-public-installer.sh` after changing its output.
 
 ## Gradle topology
 
 `settings.gradle.kts` is the project-membership authority. The main build has
-exactly 36 target subprojects and one included build:
+exactly 39 target subprojects and one included build:
 
 | Project or family | Broad owner | Dependency direction | Local guide |
 | --- | --- | --- | --- |
 | `:kernel` | Host-neutral refinement and generation primitives | Leaf project | `kernel/AGENTS.md` |
 | `:distribution:{contract,managed}` | Runtime identity and the sole acquisition/store adapter | Contract then managed adapter | Each project root |
 | `:protocol:{contract,registry,wire}` | Twelve canonical operations, typed metadata, and generated wire bindings | Contract then registry/wire | Each project root |
-| `:workspace:{contract,service,intellij}` | Published-workspace identity, transition coordination, and IntelliJ/Gradle effects | Contract then service/adapter | Each project root |
+| `:workspace:{contract,service,intellij,intellij-read}` | Published-workspace identity, transition coordination, IntelliJ/Gradle effects, and existing-Project read admission | Contracts inward; transition and read adapters remain separate | Each project root |
 | `:symbol:{contract,service,intellij}` | Discovery/exact-symbol contracts, admission, and IntelliJ/K2 execution | Contract then service/adapter | Each project root |
 | `:relation:{contract,service,intellij}` | One-hop semantic relation evidence and bounded K2 execution | Contract then service/adapter | Each project root |
 | `:traversal:{contract,service}` | Deterministic bounded traversal contracts and pure workflow | Contract then service | Each project root |
@@ -201,9 +217,10 @@ exactly 36 target subprojects and one included build:
 | `:diagnostic:{contract,service,intellij}` | Generation-bound diagnostic evidence and compiler projection | Contract then service/adapter | Each project root |
 | `:change:{contract,plan,apply,verify,recovery,intellij}` | Closed change intents and proof-preserving mutation stages | Contract inward; services and sole write adapter outward | Each project root |
 | `:evidence:{contract,sqlite}` | Publication/recovery contracts and sole physical persistence | Contract then SQLite adapter | Each project root |
-| `:runtime:{server,composition}` | Contract-only dispatch and the sole complete implementation graph | Server inward; composition depends on all target implementations | Each project root |
+| `:runtime:{server,ide-read,composition}` | Contract-only dispatch, bounded project-read admission, and the sole complete implementation graph | Read admission depends on workspace evidence; composition depends on all target implementations | Each project root |
 | `:cli` | Command parsing, indexer admission, wire transport, and result projection | Inward to kernel/protocol only | `cli/AGENTS.md` |
 | `:indexer` | Isolated host for one already-constructed runtime composition | Depends only on `:runtime:composition` | `indexer/AGENTS.md` |
+| `:ide-plugin` | Standalone IntelliJ plugin packaging and hosted endpoint owner | Depends inward on `:protocol:{contract,wire}`, `:runtime:ide-read`, and `:workspace:intellij-read` | `ide-plugin/AGENTS.md` |
 | included `build-logic` | `kast.*` conventions and reusable Gradle task types | Version catalog; no product project | `build-logic/AGENTS.md` |
 
 ## Dependency direction
@@ -214,8 +231,11 @@ Keep dependencies pointed toward host-neutral evidence:
 indexer -> runtime:composition
 runtime:composition -> runtime:server + target services + target adapters
 runtime:server -> protocol:{contract,registry,wire}
+runtime:ide-read -> workspace:contract + symbol:intellij
 services -> their contracts and narrower contracts
 IntelliJ/SQLite adapters -> their contracts
+workspace:intellij-read -> protocol:contract + workspace:contract
+ide-plugin -> protocol:{contract,wire} + runtime:ide-read + workspace:intellij-read
 cli -> distribution:{contract,managed} + kernel + protocol:{contract,registry,wire}
 workspace, symbol, relation, traversal, topology, diagnostic, change, and evidence contracts -> kernel
 ```

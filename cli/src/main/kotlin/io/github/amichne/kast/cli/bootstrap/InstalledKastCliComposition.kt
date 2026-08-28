@@ -8,27 +8,42 @@ import io.github.amichne.kast.cli.command.CliCommandGraphFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifestAdmission
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeFailure
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeSource
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeSourceSelection
-import io.github.amichne.kast.distribution.managed.ManagedSemanticRuntimeProvider
-import io.github.amichne.kast.distribution.managed.RuntimeStore
-import io.github.amichne.kast.distribution.managed.RuntimeStoreAdmission
-import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
-import io.github.amichne.kast.distribution.managed.SemanticRuntimeResolution
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
+import io.github.amichne.kast.protocol.contract.KastPluginVersion
+import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectory
+import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectoryFailure
 import java.io.IOException
 import java.net.URISyntaxException
 import java.nio.file.Files
-import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
-private const val RUNTIME_DIRECTORY_ENVIRONMENT = "KAST_RUNTIME_DIRECTORY"
-private const val RUNTIME_ARCHIVE_ENVIRONMENT = "KAST_RUNTIME_ARCHIVE"
-private const val RUNTIME_STORE_ENVIRONMENT = "KAST_RUNTIME_STORE"
+internal const val SUPPORTED_IDE_BUILD = "262.9437.185"
+internal const val SUPPORTED_KOTLIN_PLUGIN_BUILD = "262.9437.185-IJ"
+internal const val IDE_RUNTIME_PROTOCOL = "kast.ide-hosted.runtime.v1"
+internal val IDE_CAPABILITIES = listOf(
+    "workspace.inspect",
+    "symbol.discover",
+    "symbol.resolve",
+    "symbol.describe",
+)
 
-private sealed interface InstalledCompositionFailure : KastCliCompositionFailure {
+/**
+ * Proof transition: installed host constant ->
+ * `Refinement<IdeEndpointSocketDirectory, IdeEndpointSocketDirectoryFailure>`.
+ *
+ * Establishes the same stable, bounded `/tmp` directory used by hosted endpoint publication.
+ * [IdeEndpointSocketDirectoryFailure] remains the closed expected failure; raw path extraction is
+ * permitted only when the installed composition constructs its endpoint admitter.
+ */
+internal fun installedIdeEndpointSocketDirectory(): Refinement<
+    IdeEndpointSocketDirectory,
+    IdeEndpointSocketDirectoryFailure,
+> = IdeEndpointSocketDirectory.parse("/tmp")
+
+internal sealed interface InstalledCompositionFailure : KastCliCompositionFailure {
     data class ControlProductRejected(
         val failure: InstalledKastControlProductFailure,
     ) : InstalledCompositionFailure
@@ -37,7 +52,11 @@ private sealed interface InstalledCompositionFailure : KastCliCompositionFailure
         val resource: InstalledControlResource,
     ) : InstalledCompositionFailure
 
-    data class RuntimeManifestRejected(
+    data class ProductVersionRejected(
+        val failure: IdeHostCompatibilityFailure,
+    ) : InstalledCompositionFailure
+
+    data class HostedRuntimeIdentityRejected(
         val failure: SemanticRuntimeFailure,
     ) : InstalledCompositionFailure
 
@@ -45,8 +64,12 @@ private sealed interface InstalledCompositionFailure : KastCliCompositionFailure
         val failures: Set<CliCommandGraphFailure>,
     ) : InstalledCompositionFailure
 
-    data class RuntimeDirectoryRejected(
-        val failure: InstalledRuntimeDirectoryFailure,
+    data class EndpointPolicyRejected(
+        val failure: IdeHostCompatibilityFailure,
+    ) : InstalledCompositionFailure
+
+    data class EndpointSocketDirectoryRejected(
+        val failure: IdeEndpointSocketDirectoryFailure,
     ) : InstalledCompositionFailure
 
     data class SchemaRejected(
@@ -63,10 +86,10 @@ internal class InstalledKastCliComposition : KastCliComposition {
     /**
      * Proof transition: `installed process environment -> KastCliCompositionConstruction`.
      *
-     * Establishes one complete CLI graph with an admitted control product, runtime manifest,
-     * command surface, runtime directory, and local metadata. [InstalledCompositionFailure] is
-     * the closed expected failure. Filesystem and environment extraction remain in this installed
-     * composition boundary.
+     * Establishes one complete CLI graph with an admitted control product, product version,
+     * protocol resources, exact IDE-host policy, endpoint directory, and local metadata.
+     * [InstalledCompositionFailure] is the closed expected failure. Filesystem and environment
+     * extraction remain in this installed composition boundary.
      */
     override fun create(): KastCliCompositionConstruction {
         val installation = when (val admission = InstalledKastControlProduct.discover()) {
@@ -76,21 +99,16 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     InstalledCompositionFailure.ControlProductRejected(admission.failure),
                 )
         }
-        val manifestResource = when (
-            val resource = installation.readResource(InstalledControlResource.SEMANTIC_RUNTIME)
-        ) {
-            is InstalledControlResourceRead.Read -> resource.value
-            is InstalledControlResourceRead.Rejected ->
-                return KastCliCompositionConstruction.Rejected(
-                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
-                )
+        val productVersion = when (val admission = installation.productVersion()) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return KastCliCompositionConstruction.Rejected(
+                InstalledCompositionFailure.ProductVersionRejected(admission.failure),
+            )
         }
-        val manifest = when (val admission = SemanticRuntimeManifest.admit(manifestResource)) {
-            is SemanticRuntimeManifestAdmission.Admitted -> admission.manifest
-            is SemanticRuntimeManifestAdmission.Rejected ->
-                return KastCliCompositionConstruction.Rejected(
-                    InstalledCompositionFailure.RuntimeManifestRejected(admission.failure),
-                )
+        val protocol = when (val construction = installation.protocolResources()) {
+            is InstalledProtocolResourcesConstruction.Constructed -> construction.resources
+            is InstalledProtocolResourcesConstruction.Rejected ->
+                return KastCliCompositionConstruction.Rejected(construction.failure)
         }
         val commandGraphFactory = when (
             val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
@@ -101,15 +119,35 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     InstalledCompositionFailure.CommandGraphRejected(construction.failures),
                 )
         }
-        val runtimeDirectory = when (val admission = InstalledRuntimeDirectory.admit()) {
-            is InstalledRuntimeDirectoryAdmission.Admitted -> admission.directory
-            is InstalledRuntimeDirectoryAdmission.Rejected ->
+        val endpointPolicy = when (
+            val admission = installation.ideEndpointPolicy(productVersion.value, protocol)
+        ) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected ->
                 return KastCliCompositionConstruction.Rejected(
-                    InstalledCompositionFailure.RuntimeDirectoryRejected(admission.failure),
+                    InstalledCompositionFailure.EndpointPolicyRejected(admission.failure),
                 )
         }
+        val socketDirectory = when (val admission = installedIdeEndpointSocketDirectory()) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return KastCliCompositionConstruction.Rejected(
+                InstalledCompositionFailure.EndpointSocketDirectoryRejected(admission.failure),
+            )
+        }
+        val hostedRuntimeId = when (
+            val admission = installedHostedRuntimeId(productVersion.value, protocol)
+        ) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return KastCliCompositionConstruction.Rejected(
+                InstalledCompositionFailure.HostedRuntimeIdentityRejected(admission.failure),
+            )
+        }
         val localMetadata = when (
-            val construction = installation.localMetadata(manifest, commandGraphFactory.surface)
+            val construction = installation.localMetadata(
+                productVersion.value,
+                protocol,
+                commandGraphFactory.surface,
+            )
         ) {
             is InstalledLocalMetadataConstruction.Constructed -> construction.metadata
             is InstalledLocalMetadataConstruction.Rejected ->
@@ -119,19 +157,19 @@ internal class InstalledKastCliComposition : KastCliComposition {
             KastCli(
                 commandGraphFactory,
                 FilesystemCanonicalRootDiscovery,
-                Sha256RuntimeEndpointLocator(runtimeDirectory.path, manifest.runtimeId),
-                ManagedExactRootRuntimeDemander(
-                    manifest,
-                    InstalledSemanticRuntimeResolver(::resolveInstalledRuntime),
+                IdeOnlyRuntimeDemander(
+                    IdeEndpointAdmitter(socketDirectory, endpointPolicy),
+                    hostedRuntimeId,
                 ),
                 UnixDomainWireClient(),
                 localMetadata,
+                IdeEndpointRuntimeLifecycle,
             ),
         )
     }
 }
 
-private enum class InstalledKastControlProductFailure {
+internal enum class InstalledKastControlProductFailure {
     CODE_SOURCE_UNAVAILABLE,
     CODE_SOURCE_INVALID,
     LIBRARY_DIRECTORY_INVALID,
@@ -149,10 +187,9 @@ private sealed interface InstalledKastControlProductAdmission {
     ) : InstalledKastControlProductAdmission
 }
 
-private enum class InstalledControlResource(val fileName: String) {
+internal enum class InstalledControlResource(val fileName: String) {
     OPERATION_REGISTRY("operation-registry.json"),
     WIRE_SCHEMA("wire-schema.json"),
-    SEMANTIC_RUNTIME("semantic-runtime.json"),
 }
 
 private sealed interface InstalledControlResourceRead {
@@ -172,34 +209,20 @@ private class InstalledKastControlProduct private constructor(
     private val root: Path,
 ) {
     /**
-     * Proof transition: `SemanticRuntimeManifest + CliCommandSurface ->
+     * Proof transition: `KastPluginVersion + InstalledProtocolResources + CliCommandSurface ->
      * InstalledLocalMetadataConstruction`.
      *
      * Establishes readable schema resources and admitted local metadata while preserving any
      * [InstalledCompositionFailure]. Raw installed resource text remains inside this adapter.
      */
     fun localMetadata(
-        manifest: SemanticRuntimeManifest,
+        productVersion: String,
+        protocol: InstalledProtocolResources,
         commandSurface: CliCommandSurface,
     ): InstalledLocalMetadataConstruction {
-        val operationRegistry = when (val resource = readResource(InstalledControlResource.OPERATION_REGISTRY)) {
-            is InstalledControlResourceRead.Read -> resource.value
-            is InstalledControlResourceRead.Rejected ->
-                return InstalledLocalMetadataConstruction.Rejected(
-                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
-                )
-        }
-        val wireSchema = when (val resource = readResource(InstalledControlResource.WIRE_SCHEMA)) {
-            is InstalledControlResourceRead.Read -> resource.value
-            is InstalledControlResourceRead.Rejected ->
-                return InstalledLocalMetadataConstruction.Rejected(
-                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
-                )
-        }
         val schema = when (val construction = installedSchema(
-            operationRegistry,
-            wireSchema,
-            manifest.canonicalJson.value,
+            protocol.operationRegistry,
+            protocol.wireSchema,
             commandSurface,
         )) {
             is InstalledSchemaConstruction.Constructed -> construction.document
@@ -210,8 +233,7 @@ private class InstalledKastControlProduct private constructor(
         }
         return when (
             val admission = CliLocalMetadata.admit(
-                manifest.productVersion.value,
-                manifest.runtimeId.value,
+                productVersion,
                 schema,
             )
         ) {
@@ -222,6 +244,67 @@ private class InstalledKastControlProduct private constructor(
             )
         }
     }
+
+    /**
+     * Proof transition: `KastPluginVersion + InstalledProtocolResources ->
+     * Refinement<IdeHostCompatibilityPolicy, IdeHostCompatibilityFailure>`.
+     *
+     * Establishes the exact installed CLI/plugin compatibility tuple from the admitted product
+     * version and physical installed protocol bytes. Every malformed candidate remains the closed
+     * [IdeHostCompatibilityFailure]. Raw resource text and digest strings exist only here, at the
+     * installed metadata boundary.
+     */
+    fun ideEndpointPolicy(
+        productVersion: String,
+        protocol: InstalledProtocolResources,
+    ): Refinement<IdeHostCompatibilityPolicy, IdeHostCompatibilityFailure> =
+        IdeHostCompatibilityPolicy.define(compatibilityCandidate(productVersion, protocol))
+
+    /**
+     * Proof transition: `installed metadata files -> InstalledProtocolResourcesConstruction`.
+     *
+     * Establishes one read of each exact protocol resource plus its SHA-256 identity. Missing
+     * resources remain closed [InstalledCompositionFailure] data; raw text remains inside the
+     * installed-control boundary.
+     */
+    fun protocolResources(): InstalledProtocolResourcesConstruction {
+        val operationRegistry = when (
+            val resource = readResource(InstalledControlResource.OPERATION_REGISTRY)
+        ) {
+            is InstalledControlResourceRead.Read -> resource.value
+            is InstalledControlResourceRead.Rejected ->
+                return InstalledProtocolResourcesConstruction.Rejected(
+                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
+                )
+        }
+        val wireSchema = when (val resource = readResource(InstalledControlResource.WIRE_SCHEMA)) {
+            is InstalledControlResourceRead.Read -> resource.value
+            is InstalledControlResourceRead.Rejected ->
+                return InstalledProtocolResourcesConstruction.Rejected(
+                    InstalledCompositionFailure.ResourceUnavailable(resource.resource),
+                )
+        }
+        return InstalledProtocolResourcesConstruction.Constructed(
+            InstalledProtocolResources(
+                operationRegistry,
+                wireSchema,
+                InstalledProtocolDigest.derive(operationRegistry),
+                InstalledProtocolDigest.derive(wireSchema),
+            ),
+        )
+    }
+
+    /**
+     * Proof transition: `installed CLI package metadata -> Refinement<KastPluginVersion, ...>`.
+     *
+     * Establishes the exact release version embedded in the installed CLI jar. Malformed or
+     * absent metadata remains a closed compatibility failure; raw package metadata is extracted
+     * only here.
+     */
+    fun productVersion(): Refinement<KastPluginVersion, IdeHostCompatibilityFailure> =
+        KastPluginVersion.parse(
+            InstalledKastCliComposition::class.java.`package`.implementationVersion.orEmpty(),
+        )
 
     /**
      * Proof transition: `InstalledControlResource -> InstalledControlResourceRead`.
@@ -275,79 +358,6 @@ private class InstalledKastControlProduct private constructor(
                 )
             }
             return InstalledKastControlProductAdmission.Admitted(InstalledKastControlProduct(root))
-        }
-    }
-}
-
-/** Performs source selection and store admission only after semantic demand. */
-private fun resolveInstalledRuntime(
-    manifest: SemanticRuntimeManifest,
-): SemanticRuntimeResolution {
-    val source = when (
-        val selected = SemanticRuntimeSource.select(System.getenv(RUNTIME_ARCHIVE_ENVIRONMENT))
-    ) {
-        is SemanticRuntimeSourceSelection.Managed -> selected.source
-        is SemanticRuntimeSourceSelection.Preseeded -> selected.source
-        is SemanticRuntimeSourceSelection.Rejected -> return SemanticRuntimeResolution.Rejected(
-            RuntimeStoreFailure.STORE_INVALID,
-        )
-    }
-    val rawStore = System.getenv(RUNTIME_STORE_ENVIRONMENT)
-    val storePath = try {
-        when {
-            rawStore == null -> Path.of(System.getProperty("user.home"))
-                .resolve(".cache/kast/semantic-runtimes")
-            rawStore.isBlank() -> return SemanticRuntimeResolution.Rejected(
-                RuntimeStoreFailure.STORE_INVALID,
-            )
-            else -> Path.of(rawStore)
-        }
-    } catch (_: InvalidPathException) {
-        return SemanticRuntimeResolution.Rejected(RuntimeStoreFailure.STORE_INVALID)
-    }
-    val store = when (val admitted = RuntimeStore.admit(storePath.toAbsolutePath())) {
-        is RuntimeStoreAdmission.Admitted -> admitted.store
-        is RuntimeStoreAdmission.Rejected -> return SemanticRuntimeResolution.Rejected(
-            admitted.failure,
-        )
-    }
-    return ManagedSemanticRuntimeProvider(store).resolve(manifest, source)
-}
-
-private enum class InstalledRuntimeDirectoryFailure { INVALID_PATH }
-
-private sealed interface InstalledRuntimeDirectoryAdmission {
-    data class Admitted(val directory: InstalledRuntimeDirectory) : InstalledRuntimeDirectoryAdmission
-    data class Rejected(
-        val failure: InstalledRuntimeDirectoryFailure,
-    ) : InstalledRuntimeDirectoryAdmission
-}
-
-/** An absolute normalized runtime path admitted before exact-root socket derivation. */
-private class InstalledRuntimeDirectory private constructor(val path: Path) {
-    companion object {
-        /**
-         * Proof transition: `KAST_RUNTIME_DIRECTORY | java.io.tmpdir ->
-         * InstalledRuntimeDirectoryAdmission`.
-         *
-         * Establishes an absolute normalized path for exact-root socket derivation without
-         * granting or performing a filesystem write. [InstalledRuntimeDirectoryFailure] closes a
-         * malformed path. Raw text is extracted only here; the indexer owns physical admission.
-         */
-        fun admit(): InstalledRuntimeDirectoryAdmission {
-            val configured = try {
-                System.getenv(RUNTIME_DIRECTORY_ENVIRONMENT)
-                    ?.takeIf(String::isNotBlank)
-                    ?.let(Path::of)
-                ?: Path.of(System.getProperty("java.io.tmpdir")).resolve("kast-runtime")
-            } catch (_: InvalidPathException) {
-                return InstalledRuntimeDirectoryAdmission.Rejected(
-                    InstalledRuntimeDirectoryFailure.INVALID_PATH,
-                )
-            }
-            return InstalledRuntimeDirectoryAdmission.Admitted(
-                InstalledRuntimeDirectory(configured.toAbsolutePath().normalize()),
-            )
         }
     }
 }

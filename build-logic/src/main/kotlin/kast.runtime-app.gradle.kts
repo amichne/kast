@@ -9,18 +9,7 @@ plugins {
 
 val applicationName = project.name
 
-val gitCommitHash: Provider<String> = providers.exec {
-    commandLine("git", "rev-parse", "HEAD")
-}.standardOutput.asText.map { it.trim() }
-
-val gitDirty: Provider<Boolean> = providers.exec {
-    commandLine("git", "diff", "--quiet", "HEAD")
-    isIgnoreExitValue = true
-}.result.map { it.exitValue != 0 }
-
-val buildVersion: Provider<String> = gitCommitHash.zip(gitDirty) { hash, dirty ->
-    if (dirty) "$hash+dirty" else hash
-}
+val buildVersion: Provider<String> = providers.provider { project.version.toString() }
 
 extra["buildVersion"] = buildVersion
 

@@ -73,6 +73,43 @@ class NoLegacyArchitectureTest {
     }
 
     @Test
+    fun `current compatibility metadata is not legacy routing`() {
+        val currentMetadata = LegacyArchitectureObservation(
+            projectPaths = setOf(":ide-plugin", ":protocol:contract"),
+            legacyModuleRoots = emptySet(),
+            productionSources = listOf(
+                ProductionSource(
+                    "ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/compatibility/" +
+                        "IdeHostCompatibilityMetadata.kt",
+                    "data class IdeHostCompatibilityMetadata(val ideBuild: String)",
+                ),
+            ),
+        )
+        assertEquals(
+            emptyList<LegacyArchitectureFinding>(),
+            NoLegacyArchitectureInspection.inspect(currentMetadata),
+        )
+
+        val explicitLegacyRoutes = currentMetadata.copy(
+            productionSources = listOf(
+                ProductionSource("indexer/src/main/CompatibilityRoute.kt", "class CompatibilityRoute"),
+                ProductionSource("indexer/src/main/LegacyProtocolRoute.kt", "class LegacyProtocolRoute"),
+            ),
+        )
+        assertEquals(
+            listOf(
+                LegacyArchitectureFinding.CompatibilityRoute(
+                    "indexer/src/main/CompatibilityRoute.kt",
+                ),
+                LegacyArchitectureFinding.CompatibilityRoute(
+                    "indexer/src/main/LegacyProtocolRoute.kt",
+                ),
+            ),
+            NoLegacyArchitectureInspection.inspect(explicitLegacyRoutes),
+        )
+    }
+
+    @Test
     fun `exact Gradle task rejects legacy fixture and accepts target fixture`(@TempDir fixture: Path) {
         val legacy = fixture.resolve("legacy")
         writeFixture(

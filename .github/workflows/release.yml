@@ -56,8 +56,8 @@ jobs:
           --commit "$GITHUB_SHA"
           --assets-directory "build/release/v${RELEASE_VERSION}"
 
-      - name: Verify fresh published installation
+      - name: Verify fresh published hosted installation
         run: >-
-          bash packaging/verify-published-runtime-delivery.sh
+          bash packaging/verification/verify-published-hosted-delivery.sh
           --release "v${RELEASE_VERSION}"
           --repository "$GITHUB_REPOSITORY"

@@ -29,9 +29,9 @@ compiler-visible relationships connect that call to the rest of the repository.
 
 ## Start from the repository root
 
-Kast supports macOS on Apple silicon, Java 21, and a Kotlin Gradle repository.
-It uses matched runtime libraries from IntelliJ IDEA 2026.2, build 262, or
-Android Studio 2026.1.2, build 261. The JetBrains application can remain closed.
+Kast supports macOS on Apple silicon, Java 21, and a Kotlin Gradle repository
+already open in a supported IntelliJ IDE. It reuses that IDE's existing
+Project, VFS, indexes, PSI, and Kotlin semantic APIs.
 
 Install the latest stable control command:
 
@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 Read the [installer source](install.sh) before running the command if your
 environment requires script review.
 
-Start or reuse the isolated semantic runtime for one canonical root:
+Open the repository in the supported IDE, then inspect its hosted endpoint:
 
 ```console
 cd /path/to/kotlin-repository
@@ -50,8 +50,9 @@ kast start
 kast workspace inspect
 ```
 
-`kast start` returns only after workspace evidence is ready, or it returns a
-typed blocker. It does not open, focus, or coordinate a foreground IDE project.
+`kast start` admits only the compatible endpoint for this exact root, or returns
+a typed blocker. It never opens a Project, imports Gradle, refreshes VFS, starts
+an indexer process, or falls back to a private runtime.
 
 ## Ask a repository question
 
@@ -76,16 +77,16 @@ eligible topology snapshot and never starts hidden compiler work.
 ```mermaid
 flowchart LR
 	CLI["Kotlin control executable"] -->|typed JSON| RPC["Local wire RPC"]
-	RPC --> INDEXER["Exact-root indexer"]
-	INDEXER --> K2["Request-local PSI and K2"]
+	RPC --> IDE["Existing exact-root IntelliJ Project"]
+	IDE --> K2["Existing indexes, PSI, and K2"]
 	K2 --> RESULT["Complete, qualified, or rejected JSON"]
 ```
 
 The control executable parses the CLI command into a typed request document and
-sends one bounded frame over an exact-root Unix-domain socket. The isolated
-runtime admits the operation before a compiler or write adapter can run. PSI
-and K2 objects stay inside that adapter. The request and response cross the wire
-as host-neutral documents.
+sends one bounded frame over an exact-root Unix-domain socket. The hosted
+plugin admits the operation before IntelliJ semantic APIs can run. PSI and K2
+objects stay inside that adapter. The request and response cross the wire as
+host-neutral documents.
 
 [How Kast works](https://kast.michne.com/explanation/how-kast-works/) traces a
 concrete `kast symbol describe` request through the Kotlin implementation.

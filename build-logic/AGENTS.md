@@ -16,9 +16,16 @@ the consuming projects.
 - `support/tasks` owns IDEA distribution extraction, test-tag selection,
   runtime library synchronization, classpath layout proof, indexer-version
   generation, generated-serialization source guards, and wrapper scripts.
+- `support/plugin` owns standalone IntelliJ plugin payload refinement, deterministic ZIP assembly,
+  hosted read-only bytecode/layout proof, generated build-report serialization, and independent
+  report/archive admission for receipts.
 - `support/pr633` owns reusable exact-head, bytecode, API, and gate-evidence task types.
 - `support/architecture` owns the typed clean-slate module graph, effect policy,
   and checked-in architecture projection.
+- `support/delivery/model` owns the VFS-passive delivery graph, legacy exact-head receipt prefix,
+  content-scoped atomic proof protocol, and typed authority
+  refinement. `support/delivery/tasks` owns projection, Git, source-read, serialization, generation,
+  and verification boundaries.
 - `src/test/kotlin` contains task and convention contract tests.
 
 ## Dependency boundary
@@ -30,8 +37,9 @@ the consuming projects.
 - Convention-plugin IDs and registered task names are consumed across project
   boundaries. Renaming or changing their output layout is a repository-wide
   contract change.
-- `kast.runtime-app` provides generic application packaging. `indexer` owns the
-  additional private-plugin/runtime split required by its IntelliJ host.
+- `kast.runtime-app` provides generic application packaging. `:ide-plugin` owns the final hosted
+  plugin artifact. The explicit `:indexer` fixture stages its own descriptor and private runtime
+  payload; it never supplies or consumes the hosted artifact.
 
 ## Shared invariants
 
@@ -59,6 +67,10 @@ the consuming projects.
   publication in `:evidence:sqlite`; effect scanning proves their concrete bytecode ownership.
 - Publishing configuration must reject missing or blank artifact metadata and
   preserve explicit local, snapshot, release, and GitHub target behavior.
+- `kast.vfs-passive-delivery` verifies checked-in program projections without rewriting them. Its
+  explicit projection-generation task replaces both projections atomically. The KVP-001 GREEN path
+  separately generates exact-head authority, contradiction, and verification evidence under
+  `build/reports/delivery` from digest-admitted repository authority sources before verifying them.
 
 ## Verification ladder
 

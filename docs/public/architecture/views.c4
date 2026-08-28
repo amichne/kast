@@ -17,7 +17,7 @@ views {
     title "Where each proof is owned"
     description "Contracts point inward; compiler, SQLite, lifecycle, and source writes remain explicit outer adapters."
 
-    source.cli -> source.distribution "acquires and reuses the semantic runtime"
+    source.cli -> source.distribution "uses installed product identity"
     source.cli -> source.protocol "uses protocol contracts"
     source.indexer -> source.runtime "hosts one complete runtime composition"
     source.runtime -> source.protocol "dispatches the closed operation set"

@@ -249,6 +249,37 @@ internal object KastCleanSlateModules {
             ModuleId.PROTOCOL_WIRE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
         ),
+        ideRead(
+            ModuleId.WORKSPACE_INTELLIJ_READ,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.WORKSPACE_CONTRACT,
+            lifecycle = ModuleLifecycle.ACTIVE,
+        ),
+        ideRead(
+            ModuleId.RUNTIME_IDE_READ,
+            ModuleId.KERNEL,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_REGISTRY,
+            ModuleId.PROTOCOL_WIRE,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
+            ModuleId.SYMBOL_CONTRACT,
+            ModuleId.SYMBOL_INTELLIJ,
+            lifecycle = ModuleLifecycle.ACTIVE,
+        ),
+        ideRead(
+            ModuleId.IDE_PLUGIN,
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleId.PROTOCOL_WIRE,
+            ModuleId.RUNTIME_IDE_READ,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.WORKSPACE_INTELLIJ_READ,
+            lifecycle = ModuleLifecycle.ACTIVE,
+            additionalEffects = setOf(
+                ForbiddenEffect.UDS_BIND,
+                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
+            ),
+        ),
         runtimeComposition(),
         target(
             ModuleId.INDEXER,
@@ -283,6 +314,19 @@ internal object KastCleanSlateModules {
         allowedEffects = effects,
     )
 
+    private fun ideRead(
+        id: ModuleId,
+        vararg dependencies: ModuleId,
+        lifecycle: ModuleLifecycle = ModuleLifecycle.PLANNED,
+        additionalEffects: Set<ForbiddenEffect> = emptySet(),
+    ): ModulePolicy = ModulePolicy(
+        id = id,
+        lifecycle = lifecycle,
+        role = ModuleRole.IDE_READ_ONLY,
+        allowedProjectDependencies = dependencies.toSet(),
+        allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM) + additionalEffects,
+    )
+
     private fun targetIds(): Set<ModuleId> = setOf(
         ModuleId.KERNEL,
         ModuleId.DISTRIBUTION_CONTRACT,
@@ -293,6 +337,7 @@ internal object KastCleanSlateModules {
         ModuleId.WORKSPACE_CONTRACT,
         ModuleId.WORKSPACE_SERVICE,
         ModuleId.WORKSPACE_INTELLIJ,
+        ModuleId.WORKSPACE_INTELLIJ_READ,
         ModuleId.SYMBOL_CONTRACT,
         ModuleId.SYMBOL_SERVICE,
         ModuleId.SYMBOL_INTELLIJ,
@@ -318,6 +363,8 @@ internal object KastCleanSlateModules {
         ModuleId.EVIDENCE_SQLITE,
         ModuleId.RUNTIME_SERVER,
         ModuleId.RUNTIME_COMPOSITION,
+        ModuleId.RUNTIME_IDE_READ,
+        ModuleId.IDE_PLUGIN,
         ModuleId.CLI,
         ModuleId.INDEXER,
     )

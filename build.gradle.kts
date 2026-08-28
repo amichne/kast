@@ -1,8 +1,9 @@
+import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
-import support.tasks.VerifyControlDistributionTask
+import support.tasks.GenerateHostedControlMetadataTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
 import support.tasks.registerGeneratedBuildLogicSerializationVerification
 
@@ -12,10 +13,10 @@ plugins {
     id("kast.pr633-stack")
     id("kast.pr633-topology")
     id("kast.pr633-delivery")
+    id("kast.vfs-passive-delivery")
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
-
 group = providers.gradleProperty("GROUP").get()
 val gitDescribeVersion: Provider<String> = providers.exec {
     commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")
@@ -60,13 +61,13 @@ tasks.register("buildIndexerPortableZip") {
 val installedProductDirectory = layout.buildDirectory.dir("installed-product")
 
 val semanticRuntimeStage = project(":indexer").layout.buildDirectory.dir("portable-dist/indexer")
-val semanticRuntimeArchive by tasks.registering(Zip::class) {
-    group = "distribution"
-    description = "Builds the independently acquired IntelliJ/K2 semantic runtime."
+val legacyIsolatedRuntimeFixtureArchive by tasks.registering(Zip::class) {
+    group = "verification"
+    description = "Builds the explicit non-default isolated-runtime compatibility fixture."
     dependsOn(":indexer:syncPortableDist")
     from(semanticRuntimeStage)
-    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveFileName.set("kast-semantic-runtime-${project.version}-macos-aarch64.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("fixtures/isolated-runtime"))
+    archiveFileName.set("kast-semantic-runtime-fixture-${project.version}-macos-aarch64.zip")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     eachFile {
@@ -74,21 +75,23 @@ val semanticRuntimeArchive by tasks.registering(Zip::class) {
     }
 }
 
-tasks.register("assembleKastSemanticRuntimeDist") {
-    group = "distribution"
-    description = "Assembles the independently installable semantic runtime archive."
-    dependsOn(semanticRuntimeArchive)
+tasks.register("assembleLegacyIsolatedRuntimeFixture") {
+    group = "verification"
+    description = "Assembles the explicit non-default isolated-runtime compatibility fixture."
+    dependsOn(legacyIsolatedRuntimeFixtureArchive)
 }
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
 val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
     "generated/operation-registry/operation-registry.json",
 )
-val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask::class) {
-    group = "distribution"
-    description = "Generates the exact runtime manifest and public schema resources."
-    dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry")
-    runtimeArchive.set(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
+val generateLegacyIsolatedRuntimeFixtureMetadata by tasks.registering(
+    GenerateControlMetadataTask::class,
+) {
+    group = "verification"
+    description = "Generates metadata only for the explicit isolated-runtime fixture."
+    dependsOn(legacyIsolatedRuntimeFixtureArchive, ":protocol:wire:generateOperationRegistry")
+    runtimeArchive.set(legacyIsolatedRuntimeFixtureArchive.flatMap(Zip::getArchiveFile))
     runtimeDirectory.set(semanticRuntimeStage)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
@@ -102,16 +105,26 @@ val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask
     outputDirectory.set(generatedControlMetadata)
 }
 
+val generatedHostedControlMetadata = layout.buildDirectory.dir("generated/hosted-control-metadata")
+val generateHostedControlMetadata by tasks.registering(GenerateHostedControlMetadataTask::class) {
+    group = "distribution"
+    description = "Generates exact IDE-hosted control metadata without isolated-runtime authority."
+    dependsOn(":protocol:wire:generateOperationRegistry")
+    licenseFile.set(layout.projectDirectory.file("LICENSE"))
+    operationRegistryFile.set(generatedOperationRegistry)
+    outputDirectory.set(generatedHostedControlMetadata)
+}
+
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
 val stageKastControlProduct by tasks.registering(Sync::class) {
     group = "distribution"
-    description = "Stages the control-only Kast installation."
-    dependsOn(":cli:installDist", generateKastControlMetadata)
+    description = "Stages the IDE-hosted Kast control installation."
+    dependsOn(":cli:installDist", generateHostedControlMetadata)
     into(controlProductDirectory)
     from(project(":cli").layout.buildDirectory.dir("install/kast")) {
         exclude("bin/cli", "bin/kast.bat")
     }
-    from(generatedControlMetadata) {
+    from(generatedHostedControlMetadata) {
         into("share/kast")
     }
 }
@@ -131,49 +144,16 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
     }
 }
 
-val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTask::class) {
-    group = "verification"
-    description = "Rejects oversized or semantic-runtime-bearing control archives."
-    dependsOn(assembleKastControlDist)
-    controlDirectory.set(controlProductDirectory)
-    controlArchive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
-    maximumArchiveBytes.set(64L * 1024L * 1024L)
-    maximumInstalledBytes.set(128L * 1024L * 1024L)
-}
+apply(from = "distribution/release/ide-hosted-release.gradle.kts")
+apply(from = "packaging/ide-hosted-retirement.gradle.kts")
 
-val verifyKastSemanticRuntimeDistLayout by tasks.registering(
+val verifyLegacyIsolatedRuntimeFixtureLayout by tasks.registering(
     VerifySemanticRuntimeDistributionTask::class,
 ) {
     group = "verification"
-    description = "Verifies the independently packaged semantic runtime layout."
-    dependsOn(semanticRuntimeArchive, ":indexer:verifyPortableDistLayout")
+    description = "Verifies the explicit non-default isolated-runtime fixture layout."
+    dependsOn(legacyIsolatedRuntimeFixtureArchive, ":indexer:verifyPortableDistLayout")
     runtimeDirectory.set(semanticRuntimeStage)
-}
-
-tasks.register("verifyDistributionContent") {
-    group = "verification"
-    description = "Verifies control/runtime content separation and required artifact layouts."
-    dependsOn(verifyKastControlDistLayout, verifyKastSemanticRuntimeDistLayout)
-}
-
-tasks.register("verifyDistributionSize") {
-    group = "verification"
-    description = "Enforces the control archive and installed-size ceilings."
-    dependsOn(verifyKastControlDistLayout)
-}
-
-tasks.register("runtimeDeliveryMvpAcceptance") {
-    group = "verification"
-    description = "Proves the control-only install, exact cold acquisition, and warm reuse journey."
-    dependsOn(
-        ":distribution:contract:test",
-        ":distribution:managed:test",
-        ":cli:check",
-        ":indexer:test",
-        "verifyDistributionContent",
-        "verifyDistributionSize",
-        "installedProductTest",
-    )
 }
 
 val stageInstalledProduct by tasks.registering(Sync::class) {
@@ -204,44 +184,35 @@ val installLocalControl by tasks.registering(Sync::class) {
     into(localInstallPrefix.map { it.resolve("share/kast/control") })
 }
 
-val installLocalRuntime by tasks.registering(Sync::class) {
+val purgeLocalSemanticRuntime by tasks.registering(Delete::class) {
     group = "distribution"
-    description = "Installs the matching semantic runtime archive into the local prefix."
-    dependsOn(semanticRuntimeArchive)
-    from(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    into(localInstallPrefix.map { it.resolve("share/kast/runtime") })
+    description = "Removes legacy semantic runtime payloads from the default local install."
+    delete(localInstallPrefix.map { it.resolve("share/kast/runtime") })
 }
 
-val localLauncherContent = semanticRuntimeArchive.flatMap(Zip::getArchiveFileName)
-    .map { runtimeArchiveFileName ->
-        $$"""
+val localLauncherContent = providers.provider {
+    $$"""
         |#!/bin/sh
         |set -eu
         |
         |script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
         |install_prefix="$(CDPATH= cd -- "${script_dir}/.." && pwd -P)"
         |control_executable="${install_prefix}/share/kast/control/bin/kast"
-        |runtime_archive="${install_prefix}/share/kast/runtime/$$runtimeArchiveFileName"
         |
         |if [ ! -x "${control_executable}" ]; then
         |  echo "kast: installed control executable is missing: ${control_executable}" >&2
         |  exit 1
         |fi
-        |if [ ! -f "${runtime_archive}" ]; then
-        |  echo "kast: installed semantic runtime is missing: ${runtime_archive}" >&2
-        |  exit 1
-        |fi
         |
-        |export KAST_RUNTIME_ARCHIVE="${runtime_archive}"
         |exec "${control_executable}" "$@"
         """.trimMargin()
-    }
+}
 
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val installLocalLauncher = tasks.register<Exec>("installLocalLauncher") {
     group = "distribution"
     description = "Installs the relocatable local Kast launcher."
-    dependsOn(installLocalControl, installLocalRuntime)
+    dependsOn(installLocalControl, purgeLocalSemanticRuntime)
     inputs.property("launcherContent", localLauncherContent)
     outputs.file(localLauncherFile)
     outputs.upToDateWhen { false }
@@ -279,13 +250,11 @@ tasks.register("installLocal") {
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Executes the public target surface through only the staged installed product."
-    dependsOn(stageInstalledProduct, semanticRuntimeArchive, assembleKastControlDist)
+    description = "Executes hosted metadata and fail-closed demand through the staged product."
+    dependsOn(stageInstalledProduct, assembleKastControlDist)
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
-    inputs.file(layout.projectDirectory.file("packaging/topology_installed_acceptance.py"))
-    inputs.file(layout.projectDirectory.file("packaging/topology_installed_support.py"))
     outputs.file(
         layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"),
     )
@@ -293,10 +262,6 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     environment(
         "KAST_INSTALLED_PRODUCT",
         installedProductDirectory.get().asFile.absolutePath,
-    )
-    environment(
-        "KAST_SEMANTIC_RUNTIME_ARCHIVE",
-        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
     environment(
         "KAST_CONTROL_ARCHIVE",
@@ -310,13 +275,13 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
 
-tasks.register<Exec>("enterpriseAcceptance") {
+tasks.register<Exec>("legacyIsolatedRuntimeFixtureAcceptance") {
     group = "verification"
-    description = "Proves the installed product against enterprise-scale and failure bounds."
+    description = "Runs the explicit non-default isolated-runtime enterprise fixture."
     dependsOn(
         installedProductTest,
         stageInstalledProduct,
-        semanticRuntimeArchive,
+        legacyIsolatedRuntimeFixtureArchive,
         ":change:recovery:test",
         ":relation:contract:test",
         ":relation:intellij:test",
@@ -345,7 +310,7 @@ tasks.register<Exec>("enterpriseAcceptance") {
         "--thresholds",
         layout.projectDirectory.file("benchmarks/enterprise-acceptance.json").asFile.absolutePath,
         "--runtime-archive",
-        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
+        legacyIsolatedRuntimeFixtureArchive.get().archiveFile.get().asFile.absolutePath,
     )
 }
 
@@ -382,7 +347,7 @@ val topologyAcceptanceChecks: Map<String, List<Any>> = mapOf(
         "verifyKastModuleGraph",
         "verifyForbiddenEffects",
     ),
-    "topologyScaleAcceptance" to listOf("enterpriseAcceptance"),
+    "topologyScaleAcceptance" to listOf("legacyIsolatedRuntimeFixtureAcceptance"),
 )
 
 topologyAcceptanceChecks.forEach { (name, dependencies) ->

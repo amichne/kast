@@ -57,13 +57,13 @@ class CliSurfaceContractTest {
             localMetadata = when (
                 val admitted = CliLocalMetadata.admit(
                     productVersion = "1.2.3",
-                    runtimeIdentity = "sha256:${"a".repeat(64)}",
                     schema = "{\"schemaVersion\":1}",
                 )
             ) {
                 is CliLocalMetadataAdmission.Admitted -> admitted.metadata
                 is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
             },
+            lifecycle = ExactRootRuntimeLifecycle(),
         )
 
         val help = cli.execute(listOf("--help"), Path.of("/missing")) as CliExit.Complete
@@ -78,7 +78,7 @@ class CliSurfaceContractTest {
         }
         assertFalse(help.document.value.contains(" setup"))
         assertEquals(
-            "kast 1.2.3 (semantic runtime sha256:${"a".repeat(64)})",
+            "kast 1.2.3 (IDE-hosted)",
             version.document.value,
         )
         assertEquals("{\"schemaVersion\":1}", schema.document.value)

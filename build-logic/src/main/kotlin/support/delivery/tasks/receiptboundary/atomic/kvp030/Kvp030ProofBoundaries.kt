@@ -1,0 +1,232 @@
+package support.delivery
+
+import java.io.ByteArrayOutputStream
+import java.nio.file.Path
+import org.gradle.process.ExecOperations
+
+internal enum class Kvp030BoundaryFailure {
+    GIT_COMMAND_REJECTED,
+    PREDECESSOR_NOT_ANCESTOR,
+    NO_IMPLEMENTATION_COMMIT,
+    WRITE_OUTSIDE_DECLARED_SCOPE,
+    DIRTY_RELEVANT_INPUT,
+    EMPTY_RELEVANT_INPUT,
+    RELEVANT_INPUT_READ_REJECTED,
+}
+
+internal data class Kvp030ImplementationCommit(
+    val revision: DeliveryGeneration,
+    val changedPaths: List<String>,
+)
+
+internal class AdmittedKvp030ImplementationScope internal constructor(
+    val commits: List<Kvp030ImplementationCommit>,
+)
+
+internal sealed interface Kvp030ImplementationScopeAdmission {
+    data class Complete(val scope: AdmittedKvp030ImplementationScope) :
+        Kvp030ImplementationScopeAdmission
+    data class Rejected(val failure: Kvp030BoundaryFailure) :
+        Kvp030ImplementationScopeAdmission
+}
+
+internal sealed interface Kvp030RelevantInputAdmission {
+    data class Complete(val digest: RelevantInputDigest) : Kvp030RelevantInputAdmission
+    data class Rejected(val failure: Kvp030BoundaryFailure) : Kvp030RelevantInputAdmission
+}
+
+/**
+ * Proof transition: admitted KVP-029 baseline/current head and graph-declared write roots ->
+ * `Kvp030ImplementationScopeAdmission`.
+ *
+ * Establishes a nonempty, ordered KVP-030 commit delta after observing every checkpoint without a
+ * pathspec. Earlier completed-task checkpoints are skipped until the first KVP-030-exclusive path;
+ * subsequent mixed checkpoints must lie in the dependency-closed companion/task write union. Git
+ * or scope failure remains finite rejection. Raw Git output exists only here.
+ */
+internal fun admitKvp030ImplementationScope(
+    exec: ExecOperations,
+    repositoryRoot: Path,
+    predecessorHead: DeliveryGeneration,
+    currentHead: DeliveryGeneration,
+    allowedWrites: List<String>,
+    companionWrites: List<String>,
+): Kvp030ImplementationScopeAdmission {
+    if (git(exec, repositoryRoot, listOf(
+            "merge-base", "--is-ancestor", predecessorHead.value, currentHead.value,
+        )).exitCode != 0
+    ) return scopeRejected(Kvp030BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
+    val revisions = git(
+        exec,
+        repositoryRoot,
+        listOf("rev-list", "--reverse", "${predecessorHead.value}..${currentHead.value}"),
+    )
+    if (revisions.exitCode != 0) {
+        return scopeRejected(Kvp030BoundaryFailure.GIT_COMMAND_REJECTED)
+    }
+    val commits = mutableListOf<Kvp030ImplementationCommit>()
+    var taskStarted = false
+    revisions.text.lineSequence().filter(String::isNotBlank).forEach { revision ->
+        val changed = git(
+            exec,
+            repositoryRoot,
+            listOf("diff-tree", "--root", "--no-commit-id", "--name-only", "-r", revision),
+        )
+        if (changed.exitCode != 0) {
+            return scopeRejected(Kvp030BoundaryFailure.GIT_COMMAND_REJECTED)
+        }
+        val observedPaths = changed.text.lineSequence().filter(String::isNotBlank).sorted().toList()
+        if (!taskStarted) {
+            taskStarted = observedPaths.any { path ->
+                allowedWrites.any { scope -> path.inScope(scope) } &&
+                    companionWrites.none { scope -> path.inScope(scope) }
+            }
+            if (!taskStarted) return@forEach
+        }
+        val taskPaths = observedPaths.filter { path ->
+            allowedWrites.any { scope -> path.inScope(scope) }
+        }
+        if (taskPaths.isEmpty()) return@forEach
+        val dependencyClosedBatchWrites = allowedWrites + companionWrites
+        if (observedPaths.any { path ->
+                dependencyClosedBatchWrites.none { scope -> path.inScope(scope) }
+            }
+        ) return scopeRejected(Kvp030BoundaryFailure.WRITE_OUTSIDE_DECLARED_SCOPE)
+        commits += Kvp030ImplementationCommit(DeliveryGeneration(revision), taskPaths)
+    }
+    return if (commits.isEmpty()) {
+        scopeRejected(Kvp030BoundaryFailure.NO_IMPLEMENTATION_COMMIT)
+    } else {
+        Kvp030ImplementationScopeAdmission.Complete(
+            AdmittedKvp030ImplementationScope(commits),
+        )
+    }
+}
+
+/**
+ * Proof transition: structurally admitted prior report scope plus current Git head ->
+ * `Kvp030ImplementationScopeAdmission`.
+ *
+ * Establishes that the prior report head remains an ancestor, that the last admitted implementation
+ * commit is an ancestor of that report head, and that replaying the graph-declared write policy to
+ * the implementation commit yields byte-identical evidence. Later successor commits are
+ * deliberately outside this content-scoped transition.
+ */
+internal fun admitPriorKvp030ImplementationScope(
+    exec: ExecOperations,
+    repositoryRoot: Path,
+    predecessorHead: DeliveryGeneration,
+    currentHead: DeliveryGeneration,
+    candidate: Kvp030PriorProofScopeCandidate,
+    allowedWrites: List<String>,
+    companionWrites: List<String>,
+): Kvp030ImplementationScopeAdmission {
+    if (git(exec, repositoryRoot, listOf(
+            "merge-base", "--is-ancestor", candidate.reportHead.value, currentHead.value,
+        )).exitCode != 0
+    ) return scopeRejected(Kvp030BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
+    val implementationHead = candidate.commits.lastOrNull()?.revision ?: return scopeRejected(
+        Kvp030BoundaryFailure.NO_IMPLEMENTATION_COMMIT,
+    )
+    if (git(exec, repositoryRoot, listOf(
+            "merge-base", "--is-ancestor", implementationHead.value, candidate.reportHead.value,
+        )).exitCode != 0
+    ) return scopeRejected(Kvp030BoundaryFailure.PREDECESSOR_NOT_ANCESTOR)
+    return when (val replayed = admitKvp030ImplementationScope(
+        exec,
+        repositoryRoot,
+        predecessorHead,
+        implementationHead,
+        allowedWrites,
+        companionWrites,
+    )) {
+        is Kvp030ImplementationScopeAdmission.Complete -> if (
+            replayed.scope.commits == candidate.commits
+        ) replayed else scopeRejected(Kvp030BoundaryFailure.RELEVANT_INPUT_READ_REJECTED)
+        is Kvp030ImplementationScopeAdmission.Rejected -> replayed
+    }
+}
+
+/**
+ * Proof transition: graph-declared read roots plus packet/dependency evidence ->
+ * `Kvp030RelevantInputAdmission`.
+ *
+ * Establishes a deterministic digest over clean tracked files in only the declared roots, the
+ * canonical packet, and every admitted predecessor digest. This boundary performs no repository
+ * walk. Dirty, empty, unreadable, or Git-rejected closure is finite rejection.
+ */
+internal fun admitKvp030RelevantInputs(
+    exec: ExecOperations,
+    repositoryRoot: Path,
+    packet: AdmittedTaskPacketFile,
+    dependencies: AdmittedKvp030Dependencies,
+): Kvp030RelevantInputAdmission {
+    val roots = packet.packet.task.allowedReads
+    val status = git(
+        exec,
+        repositoryRoot,
+        listOf("status", "--porcelain=v1", "-z", "--untracked-files=all", "--") + roots,
+    )
+    if (status.exitCode != 0) return inputRejected(
+        Kvp030BoundaryFailure.GIT_COMMAND_REJECTED,
+    )
+    if (status.bytes.isNotEmpty()) return inputRejected(
+        Kvp030BoundaryFailure.DIRTY_RELEVANT_INPUT,
+    )
+    val listed = git(exec, repositoryRoot, listOf("ls-files", "-z", "--") + roots)
+    if (listed.exitCode != 0) return inputRejected(
+        Kvp030BoundaryFailure.GIT_COMMAND_REJECTED,
+    )
+    val paths = listed.bytes.toString(Charsets.UTF_8).split('\u0000')
+        .filter(String::isNotEmpty).sorted()
+    if (paths.isEmpty()) return inputRejected(Kvp030BoundaryFailure.EMPTY_RELEVANT_INPUT)
+    val digests = linkedMapOf<String, String>()
+    paths.forEach { path ->
+        if (roots.none { path.inScope(it) }) return inputRejected(
+            Kvp030BoundaryFailure.RELEVANT_INPUT_READ_REJECTED,
+        )
+        when (val read = readBoundaryFile(repositoryRoot.resolve(path), MAX_SOURCE_ARTIFACT_BYTES)) {
+            is BoundaryFileRead.Complete -> digests[path] = sha256Bytes(read.bytes)
+            is BoundaryFileRead.Rejected -> return inputRejected(
+                Kvp030BoundaryFailure.RELEVANT_INPUT_READ_REJECTED,
+            )
+        }
+    }
+    val closure = linkedMapOf<String, Any?>(
+        "packetDigest" to packet.documentDigest.value,
+        "dependencyReceiptDigests" to dependencies.digests,
+        "trackedInputDigests" to digests,
+    )
+    return Kvp030RelevantInputAdmission.Complete(
+        RelevantInputDigest(sha256(canonicalJson(closure)).value),
+    )
+}
+
+private data class Kvp030GitObservation(val exitCode: Int, val bytes: ByteArray) {
+    val text: String get() = bytes.toString(Charsets.UTF_8).trim()
+}
+
+private fun git(
+    exec: ExecOperations,
+    root: Path,
+    arguments: List<String>,
+): Kvp030GitObservation {
+    val output = ByteArrayOutputStream()
+    val result = exec.exec {
+        workingDir(root.toFile())
+        executable("git")
+        args(arguments)
+        standardOutput = output
+        errorOutput = ByteArrayOutputStream()
+        isIgnoreExitValue = true
+    }
+    return Kvp030GitObservation(result.exitValue, output.toByteArray())
+}
+
+private fun String.inScope(scope: String) = this == scope || startsWith("$scope/")
+
+private fun scopeRejected(failure: Kvp030BoundaryFailure) =
+    Kvp030ImplementationScopeAdmission.Rejected(failure)
+
+private fun inputRejected(failure: Kvp030BoundaryFailure) =
+    Kvp030RelevantInputAdmission.Rejected(failure)

@@ -19,9 +19,10 @@
   therefore prove a dispatch-capable runtime, never an in-progress startup.
 - Each indexer process receives endpoint-local IntelliJ config, system, and log directories;
   durable workspace evidence remains in the endpoint's SQLite siblings across process restarts.
-- The packaged plugin descriptor registers both the indexer application starter and the workspace
-  adapter's Gradle project-resolve extension; required-entry verification must keep the resolver,
-  Tooling model, and producer-evidence types in the installed plugin archive.
+- The indexer owns its explicit legacy fixture descriptor and stages its non-launcher classes plus
+  private non-platform runtime JARs directly into the isolated distribution. It never consumes the
+  final hosted `:ide-plugin` ZIP. Required-entry verification keeps the starter, resolver, Tooling
+  model, and producer-evidence types only in this fixture archive.
 - Raw request documents enter at one outer host frame and immediately refine to the closed
   composition dispatch result.
 - No aggregate backend or duplicate semantic authority exists in this module.

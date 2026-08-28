@@ -16,6 +16,9 @@ shared by the registry, wire transport, runtime server, and CLI.
 - Operation request, result, qualification, and rejection values retain distinct marker types.
 - Every type binding includes all four Kotlin types and one refined schema identity.
 - Unknown operation identity and invalid schema identity remain closed failures.
+- `IdeHostCompatibilityPolicy` admits one exact hosted IDEA, Kotlin plugin, Kast plugin, runtime
+  protocol, registry, wire schema, and four-operation capability tuple. It returns only
+  `AdmittedIdeHostCompatibility` or finite field/capability failure data.
 - Topology coverage rejections retain structured workspace, source-root, path, and content-hash
   evidence for contradictory files; an unrepresentable projection remains its own closed public
   rejection.

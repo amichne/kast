@@ -170,6 +170,14 @@ val indexerPluginJar by tasks.registering(Jar::class) {
     isZip64 = true
 }
 
+val syncIndexerPluginPayload by tasks.registering(Sync::class) {
+    description = "Stages private non-platform JAR inputs for the standalone IDE plugin owner."
+    from(indexerPluginJar)
+    from(indexerPluginRuntime)
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    into(layout.buildDirectory.dir("plugin-payload"))
+}
+
 tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
     outputFile.set(layout.buildDirectory.file("scripts/kast-indexer"))
     scriptContent.set(
@@ -225,10 +233,10 @@ tasks.named<Sync>("syncPortableDist") {
     from(indexerPluginJar) {
         into("idea-home/plugins/kast-indexer/lib")
     }
-    into("idea-home/plugins/kast-indexer/lib") {
-        from(indexerPluginRuntime)
+    from(indexerPluginRuntime) {
+        into("idea-home/plugins/kast-indexer/lib")
     }
-    dependsOn("syncRuntimeLibs", extractIdeaDistribution)
+    dependsOn("syncRuntimeLibs", extractIdeaDistribution, indexerPluginJar)
 }
 
 val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::class) {

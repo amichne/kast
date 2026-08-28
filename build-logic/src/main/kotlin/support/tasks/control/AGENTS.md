@@ -7,11 +7,17 @@ tasks alone write generated metadata files.
 - GenerateControlMetadataTask copies the operation-registry projection
   byte-for-byte and renders its fixed runtime/package metadata documents through generated
   kotlinx serializers.
+- GenerateHostedControlMetadataTask stages only the operation registry, canonical wire schema,
+  and license required by the IDE-hosted control product. It must not recreate a semantic-runtime
+  manifest or acquire archive authority.
 - WriteJavaProcessOutputTask captures deterministic JVM standard output
   atomically and must not interpret product-domain values.
 - WriteProcessOutputTask captures one declared executable's standard output atomically without
   storing Gradle script closures in the execution task.
 - WriteProtocolSchemaVersionsTask and WriteSourceIndexSchemaVersionTask emit checked version
   metadata from declared Gradle inputs.
+- `CanonicalWireSchema` is the sole constructible `wire-schema.json` authority. Its generated
+  serializer projection is shared with KVP-012 digest generation; both consumers must hash or
+  write the same fresh no-newline bytes.
 
 Run the focused task tests, then ./gradlew generateKastControlMetadata.

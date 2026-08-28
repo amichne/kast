@@ -6,6 +6,10 @@ This directory owns the Zensical source for `https://kast.michne.com`, its
 reader-facing content checks, the root GitHub README contract, publication
 boundary, and LikeC4 sources.
 `zensical.toml` at the repository root is the site and navigation authority.
+`kast-vfs-passive-reused-index-delivery-program.md` is the normative reader plan for the typed
+delivery authority. The Kotlin graph and checked-in JSON remain the sole task-field authority. The
+plan is not a public-site route and must keep its target and program fingerprint aligned with
+`gradle/delivery`.
 
 The site has five reader routes: Start, Repository questions, Trust the
 evidence, CLI reference, and How Kast works. Keep the landing page quiet and
@@ -16,6 +20,13 @@ module graph before the reader understands the runtime flow.
 ## Source and generated boundaries
 
 - Author human-facing pages under `public/`.
+- Keep internal supported-build engineering evidence under `engineering/`. These files are
+  delivery evidence, not public-site routes. `engineering/ide-read-epoch-ledger.md` records the
+  KVP-015 IDEA 262 epoch-signal characterization and must match its generated JSON report.
+  `engineering/ide-detached-model.md` records KVP-016 detached-model capture and must match its
+  generated report, exact limits, and no-production-epoch boundary.
+  `engineering/ide-project-read-epoch.md` records KVP-017's opaque Project/runtime-scoped epoch,
+  bounded IDEA observation, comparison relations, and zero stronger effects.
 - Generate `public/reference/cli.md` from the typed operation-registry artifact with
   `./gradlew :protocol:wire:generateOperationRegistry` followed by
   `python3 docs/generate_cli_reference.py`. Do not edit that page by hand.
