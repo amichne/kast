@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.ide.host
 
-import io.github.amichne.kast.change.apply.AddDeclarationApplyOperations
 import io.github.amichne.kast.change.apply.AddDeclarationApplyRequest
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
 import io.github.amichne.kast.change.apply.AddDeclarationApplyService
@@ -32,7 +31,8 @@ import io.github.amichne.kast.change.verify.ChangeVerificationObserver
 import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticObservation
 import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticObserver
 import io.github.amichne.kast.change.verify.PendingChangeVerification
-import io.github.amichne.kast.change.verify.VerifiedMutationOperations
+import io.github.amichne.kast.change.verify.ResultingGenerationPublication
+import io.github.amichne.kast.change.verify.ResultingGenerationPublisher
 import io.github.amichne.kast.change.verify.VerifiedMutationRequest
 import io.github.amichne.kast.change.verify.VerifiedMutationResult
 import io.github.amichne.kast.change.verify.VerifiedReceipt
@@ -104,6 +104,12 @@ fun interface ChangeRecoveryOperations {
     fun recover(binding: MutationPlanBinding): AddDeclarationRecoveryOutcome
 }
 
+/** Publication authority retained through recovery after clean writer authority is withdrawn. */
+interface HostedMutationPublicationOperations : ResultingGenerationPublisher {
+    /** Publishes a proven successor of whatever workspace publication is current now. */
+    fun publishCurrentTransition(): ResultingGenerationPublication
+}
+
 sealed interface HostedChangePlanningResult {
     data class Planned(val plan: AddDeclarationChangePlan) : HostedChangePlanningResult
     data class Rejected(val failure: HostedMutationAdmissionFailure) : HostedChangePlanningResult
@@ -128,15 +134,22 @@ sealed interface HostedMutationState {
         val application: ChangeApplyOperations,
         val verification: ChangeVerifyOperations,
         val recovery: ChangeRecoveryOperations,
+        val publication: HostedMutationPublicationOperations,
     ) : HostedMutationState
 
     data class RecoveryRequired(
         val recovery: ChangeRecoveryOperations,
+        val publication: HostedMutationPublicationOperations,
     ) : HostedMutationState
 
     data class Rejected(
         val failure: HostedMutationAdmissionFailure,
     ) : HostedMutationState
+}
+
+/** Rebuilds mutation authority from current durable state after a terminal recovery result. */
+fun interface HostedMutationAdmissionOperations {
+    fun admit(): HostedMutationState
 }
 
 data class HostedChangeRuntimePorts(
@@ -181,7 +194,7 @@ object HostedMutationComposition {
         when (val audit = authority.auditMutationState()) {
             HostedDurableMutationAudit.Clean -> Unit
             is HostedDurableMutationAudit.RecoveryRequired ->
-                return HostedMutationState.RecoveryRequired(recovery)
+                return HostedMutationState.RecoveryRequired(recovery, workspace)
             is HostedDurableMutationAudit.Rejected -> return HostedMutationState.Rejected(
                 if (audit.failure == io.github.amichne.kast.change.verify.DurableChangeAuthorityFailure.CORRUPT_RECORD) {
                     HostedMutationAdmissionFailure.CORRUPT_RECOVERY
@@ -245,7 +258,7 @@ object HostedMutationComposition {
                     ),
                 )
             },
-            ChangeVerifyOperations { pending ->
+            { pending ->
                 when (val result = verification.verify(
                     VerifiedMutationRequest(pending.plan, pending.application),
                 )) {
@@ -267,6 +280,7 @@ object HostedMutationComposition {
                 }
             },
             recovery,
+            workspace,
         )
     }
 }

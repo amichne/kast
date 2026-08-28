@@ -7,6 +7,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatch
@@ -201,6 +202,7 @@ private fun testingCurrentRead(
 internal sealed interface HostedIdeReadRuntimeCandidate {
     data class Complete(
         val project: HostedIdeReadProject,
+        val lease: SemanticReadLease,
         val workspaceInspect: WorkspaceInspectReadPort,
         val symbolDiscover: SymbolDiscoverReadPort,
         val symbolResolve: SymbolResolveReadPort,
@@ -215,6 +217,7 @@ internal sealed interface HostedIdeReadRuntimeCandidate {
 
 enum class HostedIdeReadRuntimePreparationFailure {
     PARTIAL_RUNTIME,
+    LEASE_ROOT_MISMATCH,
 }
 
 sealed interface HostedIdeReadRuntimePreparation {
@@ -230,6 +233,7 @@ sealed interface HostedIdeReadRuntimePreparation {
 /** Complete exact-four-operation dispatch capability; partial route state cannot construct it. */
 class HostedIdeReadRuntime private constructor(
     private val project: HostedIdeReadProject,
+    val semanticLease: SemanticReadLease,
     private val dispatch: IdeReadRuntimeDispatch,
 ) {
     val canonicalRoot: IdeEndpointCanonicalRoot get() = project.canonicalRoot
@@ -269,17 +273,26 @@ class HostedIdeReadRuntime private constructor(
             candidate: HostedIdeReadRuntimeCandidate,
         ): HostedIdeReadRuntimePreparation =
             when (candidate) {
-                is HostedIdeReadRuntimeCandidate.Complete -> HostedIdeReadRuntimePreparation.Prepared(
-                    HostedIdeReadRuntime(
-                        candidate.project,
-                        IdeReadRuntimeDispatch(
-                            candidate.workspaceInspect,
-                            candidate.symbolDiscover,
-                            candidate.symbolResolve,
-                            candidate.symbolDescribe,
+                is HostedIdeReadRuntimeCandidate.Complete -> if (
+                    candidate.project.canonicalRoot.value == candidate.lease.workspaceRoot.value
+                ) {
+                    HostedIdeReadRuntimePreparation.Prepared(
+                        HostedIdeReadRuntime(
+                            candidate.project,
+                            candidate.lease,
+                            IdeReadRuntimeDispatch(
+                                candidate.workspaceInspect,
+                                candidate.symbolDiscover,
+                                candidate.symbolResolve,
+                                candidate.symbolDescribe,
+                            ),
                         ),
-                    ),
-                )
+                    )
+                } else {
+                    HostedIdeReadRuntimePreparation.Rejected(
+                        HostedIdeReadRuntimePreparationFailure.LEASE_ROOT_MISMATCH,
+                    )
+                }
                 is HostedIdeReadRuntimeCandidate.Partial ->
                     HostedIdeReadRuntimePreparation.Rejected(
                     HostedIdeReadRuntimePreparationFailure.PARTIAL_RUNTIME,

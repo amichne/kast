@@ -2,6 +2,7 @@ package io.github.amichne.kast.change.intellij
 
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
@@ -49,22 +50,26 @@ internal class IntellijExistingSourceRollback(
         }
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
                    ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
-        val target = ReadAction.computeBlocking<KtFile?, RuntimeException> {
-            PsiManager.getInstance(project).findFile(file) as? KtFile
+        val target = ReadAction.computeBlocking<ExistingRollbackTarget?, RuntimeException> {
+            val psi = PsiManager.getInstance(project).findFile(file) as? KtFile
+                ?: return@computeBlocking null
+            val document = FileDocumentManager.getInstance().getDocument(file)
+                ?: return@computeBlocking null
+            ExistingRollbackTarget(psi, document)
         } ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
-        val document = FileDocumentManager.getInstance().getDocument(file)
-                       ?: return rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
         return try {
-            onEdt {
-                WriteCommandAction.writeCommandAction(project, target)
+            val written = onEdt {
+                if (!file.isValid || !target.psi.isValid) return@onEdt false
+                WriteCommandAction.writeCommandAction(project, target.psi)
                     .withName("Kast rollback semantic change")
                     .compute<Unit, RuntimeException> {
-                        document.setText(expected.text)
-                        PsiDocumentManager.getInstance(project).commitDocument(document)
+                        target.document.setText(expected.text)
+                        PsiDocumentManager.getInstance(project).commitDocument(target.document)
                     }
-                FileDocumentManager.getInstance().saveDocument(document)
+                FileDocumentManager.getInstance().saveDocument(target.document)
+                true
             }
-            if (Files.readAllBytes(path).contentEquals(preimage)) {
+            if (written && Files.readAllBytes(path).contentEquals(preimage)) {
                 AddDeclarationRollbackResult.RolledBack
             } else {
                 rejected(AddDeclarationRollbackFailure.WRITE_REJECTED)
@@ -79,3 +84,9 @@ internal class IntellijExistingSourceRollback(
     private fun rejected(failure: AddDeclarationRollbackFailure) =
         AddDeclarationRollbackResult.Rejected(failure)
 }
+
+/** Request-local read-action proof required before the EDT write command can restore a source. */
+private data class ExistingRollbackTarget(
+    val psi: KtFile,
+    val document: Document,
+)

@@ -13,7 +13,6 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
-import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntime
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
@@ -163,7 +162,7 @@ internal class HostedSelectorAuthority(
 
     companion object {
         fun from(
-            reads: HostedIdeReadRuntime,
+            reads: HostedReadRuntimeOperations,
             workspace: HostedWorkspaceOperations,
             snapshotReader: TopologySnapshotReader,
             contentReader: TopologySnapshotContentReader,
@@ -182,7 +181,7 @@ private sealed interface HostedSelectorSequence {
 }
 
 private class HostedReadSymbolDescriptionOperations(
-    private val reads: HostedIdeReadRuntime,
+    private val reads: HostedReadRuntimeOperations,
 ) : HostedSymbolDescriptionOperations {
     override suspend fun describe(token: ProtocolText): HostedSymbolDescription {
         val request = when (val encoded = CanonicalOperationWireBindings.symbolDescribe.encodeRequest(

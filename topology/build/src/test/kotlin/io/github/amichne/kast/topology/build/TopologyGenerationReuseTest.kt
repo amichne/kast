@@ -98,7 +98,7 @@ class TopologyGenerationReuseTest {
     }
 
     @Test
-    fun `semantic state change cannot reuse stale compiler facts`() {
+    fun `semantic state advance rebinds only after exact candidates prove unchanged content`() {
         val root = sourceRoot()
         val priorWorkspace = workspace(root)
         val priorFile = sourceFile(priorWorkspace, root, "Alpha.kt", 'a')
@@ -126,10 +126,14 @@ class TopologyGenerationReuseTest {
             listOf(currentFile),
         ).refined()
 
-        assertEquals(
-            TopologyGenerationReuse.SourceChanged,
-            rebindUnchangedTopologyGeneration(currentWorkspace, candidates, content),
-        )
+        val rebound = rebindUnchangedTopologyGeneration(
+            currentWorkspace,
+            candidates,
+            content,
+        ) as TopologyGenerationReuse.Rebound
+
+        assertEquals(TopologyWorkspaceIdentity.from(currentWorkspace), rebound.generation.identity)
+        assertEquals(listOf(currentFile), rebound.generation.files.map { it.file })
     }
 
     @Test

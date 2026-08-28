@@ -174,9 +174,11 @@ private fun rejected(
  *
  * Rebound establishes that every current candidate has byte- and source-root-identical terminal
  * facts in the prior admitted snapshot, with all symbols and edges rebound to the current lease.
- * SourceChanged closes ordinary staleness. [TopologyGenerationReuse.Rejected] closes a malformed
- * proof transition without manufacturing detail that the public snapshot contract cannot consume.
- * Raw compiler facts are never accepted by this transition.
+ * SourceChanged closes candidate-set or content staleness. The source-state token may differ: an
+ * exact canonical candidate projection is the stronger proof that permits rebinding a snapshot
+ * after a conservative cold-start generation advance. [TopologyGenerationReuse.Rejected] closes
+ * a malformed proof transition without manufacturing detail that the public snapshot contract
+ * cannot consume. Raw compiler facts are never accepted by this transition.
  */
 internal fun rebindUnchangedTopologyGeneration(
     workspace: PublishedWorkspace,
@@ -186,9 +188,6 @@ internal fun rebindUnchangedTopologyGeneration(
     val currentIdentity = TopologyWorkspaceIdentity.from(workspace)
     if (prior.snapshot.identity.lease.workspaceRoot != currentIdentity.lease.workspaceRoot) {
         return TopologyGenerationReuse.Rejected
-    }
-    if (prior.snapshot.identity.sourceState != currentIdentity.sourceState) {
-        return TopologyGenerationReuse.SourceChanged
     }
     if (candidates.workspace != currentIdentity) {
         return TopologyGenerationReuse.Rejected
