@@ -1,5 +1,6 @@
 package io.github.amichne.kast.evidence.sqlite
 
+import io.github.amichne.kast.evidence.contract.TopologyDatabaseLocation
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
 import io.github.amichne.kast.topology.contract.TopologyPublicationFailure
@@ -172,6 +173,15 @@ class SqliteTopologySnapshotStore private constructor(
     }
 
     companion object {
+        /** Opens one exact-root durable location without exposing a raw path to composition. */
+        fun open(location: TopologyDatabaseLocation): SqliteTopologySnapshotStoreOpening {
+            val path = prepareHostedDatabasePath(location.valueAtSqliteBoundary())
+                ?: return SqliteTopologySnapshotStoreOpening.Rejected(
+                    SqliteTopologySnapshotStoreFailure.STORAGE_UNAVAILABLE,
+                )
+            return open(path)
+        }
+
         /**
          * Proof transition: `Path -> SqliteTopologySnapshotStoreOpening`.
          *
