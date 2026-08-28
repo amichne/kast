@@ -188,7 +188,14 @@ abstract class ValidateHostedWriterInstalledAcceptanceTask : DefaultTask() {
             "installed acceptance repository head mismatch"
         }
         require(
-            document.positiveJourney.all { it.outcome == InstalledAcceptanceOutcome.COMPLETE },
+            document.positiveJourney.all { observation ->
+                when (observation.name) {
+                    "topology.build.after-restart" ->
+                        observation.outcome == InstalledAcceptanceOutcome.REUSED
+
+                    else -> observation.outcome == InstalledAcceptanceOutcome.COMPLETE
+                }
+            },
         ) {
             "installed acceptance contains an incomplete positive observation"
         }

@@ -26,7 +26,7 @@
       "required": ["name", "outcome", "artifactDigest"],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
-        "outcome": { "enum": ["COMPLETE", "QUALIFIED", "REJECTED"] },
+        "outcome": { "enum": ["COMPLETE", "REUSED", "QUALIFIED", "REJECTED"] },
         "artifactDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     }

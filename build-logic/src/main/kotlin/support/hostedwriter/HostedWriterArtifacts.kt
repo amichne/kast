@@ -66,6 +66,7 @@ data class ProofReceipt(
 @Serializable
 enum class InstalledAcceptanceOutcome {
     COMPLETE,
+    REUSED,
     QUALIFIED,
     REJECTED,
 }
