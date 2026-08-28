@@ -48,6 +48,7 @@ class KastCleanSlatePolicyTest {
                 ":runtime:server",
                 ":runtime:composition",
                 ":runtime:ide-read",
+                ":runtime:ide-host",
                 ":ide-plugin",
                 ":cli",
                 ":indexer",
@@ -130,15 +131,20 @@ class KastCleanSlatePolicyTest {
     }
 
     @Test
-    fun `runtime composition is the sole complete implementation graph owner`() {
+    fun `full and hosted compositions retain distinct exact implementation graphs`() {
         val architecture = canonicalArchitecture()
         val composition = architecture.modules.getValue(ModuleId.RUNTIME_COMPOSITION)
-        val excluded = setOf(ModuleId.CLI, ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION)
+        val excluded = setOf(
+            ModuleId.CLI,
+            ModuleId.INDEXER,
+            ModuleId.RUNTIME_COMPOSITION,
+            ModuleId.RUNTIME_IDE_HOST,
+        )
 
         assertEquals(ModuleRole.COMPOSITION, composition.role)
         assertEquals(architecture.modules.keys - excluded, composition.allowedProjectDependencies)
         assertEquals(
-            setOf(ModuleId.RUNTIME_COMPOSITION),
+            setOf(ModuleId.RUNTIME_COMPOSITION, ModuleId.RUNTIME_IDE_HOST),
             architecture.modules.values
                 .filter { it.role == ModuleRole.COMPOSITION }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id),

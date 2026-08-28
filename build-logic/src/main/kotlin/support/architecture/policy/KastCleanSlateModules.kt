@@ -267,15 +267,44 @@ internal object KastCleanSlateModules {
             ModuleId.SYMBOL_INTELLIJ,
             lifecycle = ModuleLifecycle.ACTIVE,
         ),
-        ideRead(
+        target(
+            ModuleId.RUNTIME_IDE_HOST,
+            ModuleRole.COMPOSITION,
+            ModuleId.RUNTIME_IDE_READ,
+            ModuleId.RUNTIME_SERVER,
+            ModuleId.WORKSPACE_CONTRACT,
+            ModuleId.TOPOLOGY_CONTRACT,
+            ModuleId.TOPOLOGY_BUILD,
+            ModuleId.TOPOLOGY_SERVICE,
+            ModuleId.RELATION_CONTRACT,
+            ModuleId.RELATION_SERVICE,
+            ModuleId.TRAVERSAL_CONTRACT,
+            ModuleId.TRAVERSAL_SERVICE,
+            ModuleId.DIAGNOSTIC_CONTRACT,
+            ModuleId.DIAGNOSTIC_SERVICE,
+            ModuleId.CHANGE_CONTRACT,
+            ModuleId.CHANGE_PLAN,
+            ModuleId.CHANGE_APPLY,
+            ModuleId.CHANGE_VERIFY,
+            ModuleId.CHANGE_RECOVERY,
+            ModuleId.EVIDENCE_CONTRACT,
+            ModuleId.EVIDENCE_SQLITE,
+        ),
+        target(
             ModuleId.IDE_PLUGIN,
+            ModuleRole.IDE_HOST,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_WIRE,
             ModuleId.RUNTIME_IDE_READ,
+            ModuleId.RUNTIME_IDE_HOST,
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_INTELLIJ_READ,
-            lifecycle = ModuleLifecycle.ACTIVE,
-            additionalEffects = setOf(
+            ModuleId.TOPOLOGY_INTELLIJ,
+            ModuleId.RELATION_INTELLIJ,
+            ModuleId.DIAGNOSTIC_INTELLIJ,
+            ModuleId.CHANGE_INTELLIJ,
+            effects = setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.UDS_BIND,
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),
@@ -293,7 +322,12 @@ internal object KastCleanSlateModules {
     )
 
     private fun runtimeComposition(): ModulePolicy {
-        val excluded = setOf(ModuleId.CLI, ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION)
+        val excluded = setOf(
+            ModuleId.CLI,
+            ModuleId.INDEXER,
+            ModuleId.RUNTIME_COMPOSITION,
+            ModuleId.RUNTIME_IDE_HOST,
+        )
         return target(
             ModuleId.RUNTIME_COMPOSITION,
             ModuleRole.COMPOSITION,
@@ -364,6 +398,7 @@ internal object KastCleanSlateModules {
         ModuleId.RUNTIME_SERVER,
         ModuleId.RUNTIME_COMPOSITION,
         ModuleId.RUNTIME_IDE_READ,
+        ModuleId.RUNTIME_IDE_HOST,
         ModuleId.IDE_PLUGIN,
         ModuleId.CLI,
         ModuleId.INDEXER,

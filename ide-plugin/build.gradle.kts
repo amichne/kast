@@ -9,7 +9,7 @@ import support.plugin.GenerateIdeHostCompatibilityReportTask
 
 plugins {
     id("kast.kotlin-serialization")
-    id("kast.role.ide-read-only")
+    id("kast.role.ide-host")
 }
 
 group = "${rootProject.group}.ide"
@@ -42,8 +42,13 @@ dependencies {
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:wire"))
     implementation(project(":runtime:ide-read"))
+    implementation(project(":runtime:ide-host"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
+    implementation(project(":topology:intellij"))
+    implementation(project(":relation:intellij"))
+    implementation(project(":diagnostic:intellij"))
+    implementation(project(":change:intellij"))
     compileOnly(workspaceIdeaLibraries)
     testImplementation(workspaceIdeaLibraries)
 }

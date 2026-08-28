@@ -22,6 +22,7 @@ class ModuleRoleBoundaryTest {
             ModuleRole.SPI to "kast.role.spi",
             ModuleRole.SERVICE to "kast.role.service",
             ModuleRole.IDE_READ_ONLY to "kast.role.ide-read-only",
+            ModuleRole.IDE_HOST to "kast.role.ide-host",
             ModuleRole.INTELLIJ_READ_ADAPTER to "kast.role.intellij-read",
             ModuleRole.INTELLIJ_WRITE_ADAPTER to "kast.role.intellij-write",
             ModuleRole.FILESYSTEM_WRITE_ADAPTER to "kast.role.filesystem-write",
