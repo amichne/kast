@@ -59,6 +59,46 @@ class EditableMutationTarget private constructor(
         get() = selector.range
 
     companion object {
+        internal fun restore(
+            lease: SemanticReadLease,
+            workspaceState: WorkspaceStateIdentity,
+            file: SymbolDiscoveryFileIdentity.Workspace,
+            content: WorkspaceSourceContentHash,
+            sourceRoot: SourceRoot,
+            selector: SymbolSelector,
+        ): Refinement<EditableMutationTarget, MutationTargetAdmissionFailure> {
+            if (selector.lease != lease || selector.file != file) {
+                return Refinement.Rejected(MutationTargetAdmissionFailure.STALE_STATE)
+            }
+            val targetPath = runCatching { Path.of(file.path.value) }.getOrNull()
+                ?: return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
+            val rootPath = runCatching { Path.of(lease.workspaceRoot.value) }.getOrNull()
+                ?: return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
+            val sourcePath = rootPath.resolve(sourceRoot.location.value).normalize()
+            if (targetPath == sourcePath || !targetPath.startsWith(sourcePath)) {
+                return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
+            }
+            when (sourceRoot.provenance) {
+                SourceRootProvenance.Authored -> Unit
+                SourceRootProvenance.Generated -> return Refinement.Rejected(
+                    MutationTargetAdmissionFailure.GENERATED_SOURCE_ROOT,
+                )
+                is SourceRootProvenance.Unknown -> return Refinement.Rejected(
+                    MutationTargetAdmissionFailure.UNKNOWN_SOURCE_ROOT,
+                )
+            }
+            return Refinement.Refined(
+                EditableMutationTarget(
+                    lease,
+                    workspaceState,
+                    file,
+                    content,
+                    sourceRoot,
+                    selector,
+                ),
+            )
+        }
+
         /**
          * Proof transition: `MutationTargetObservation -> Refinement<EditableMutationTarget,
          * MutationTargetAdmissionFailure>`.

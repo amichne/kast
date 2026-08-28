@@ -8,6 +8,7 @@ import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.traversal.contract.TraversalPosition
 import io.github.amichne.kast.traversal.contract.TraversalResult
+import kotlinx.serialization.Serializable
 
 @JvmInline
 value class ChangePlanningEvidenceFingerprint internal constructor(
@@ -123,6 +124,166 @@ class CompleteChangePlanningEvidence private constructor(
 }
 
 typealias CompleteAddDeclarationPlanningEvidence = CompleteChangePlanningEvidence
+
+@Serializable
+enum class AddDeclarationRelationMeaning {
+    REFERENCES,
+    CALLERS,
+    CALLEES,
+    IMPLEMENTATIONS,
+    INHERITORS,
+    OVERRIDES,
+    TYPE_USES,
+}
+
+@Serializable
+@JvmInline
+value class ChangePlanningEvidenceProjection private constructor(
+    val value: String,
+) {
+    companion object {
+        internal fun fromProven(value: String): ChangePlanningEvidenceProjection =
+            ChangePlanningEvidenceProjection(value)
+    }
+}
+
+@Serializable
+@JvmInline
+value class StableRelationEvidenceDigest private constructor(
+    val value: String,
+) {
+    companion object {
+        internal fun fromProven(value: String): StableRelationEvidenceDigest =
+            StableRelationEvidenceDigest(value)
+    }
+}
+
+@Serializable
+data class DurableAddDeclarationRelationEvidence internal constructor(
+    val meaning: AddDeclarationRelationMeaning,
+    val projection: ChangePlanningEvidenceProjection,
+    val stableDigest: StableRelationEvidenceDigest,
+)
+
+/** Canonical, restart-safe projection of every proof admitted by AddDeclaration planning. */
+@Serializable
+data class DurableAddDeclarationPlanningEvidence internal constructor(
+    val relations: List<DurableAddDeclarationRelationEvidence>,
+    val traversals: List<ChangePlanningEvidenceProjection>,
+    val diagnostics: List<ChangePlanningEvidenceProjection>,
+    val fingerprint: ChangePlanningEvidenceFingerprintDocument,
+) {
+    companion object {
+        internal fun from(evidence: CompleteChangePlanningEvidence):
+            DurableAddDeclarationPlanningEvidence = DurableAddDeclarationPlanningEvidence(
+            relations = evidence.relations.map { result ->
+                DurableAddDeclarationRelationEvidence(
+                    result.batch.request.meaning.durable(),
+                    ChangePlanningEvidenceProjection.fromProven(relationProjection(result)),
+                    result.stableDigest(),
+                )
+            },
+            traversals = evidence.traversals.map { result ->
+                ChangePlanningEvidenceProjection.fromProven(traversalProjection(result))
+            },
+            diagnostics = evidence.diagnostics.map { result ->
+                ChangePlanningEvidenceProjection.fromProven(diagnosticProjection(result))
+            },
+            fingerprint = ChangePlanningEvidenceFingerprintDocument(evidence.fingerprint.value),
+        )
+
+        internal fun restore(
+            relations: List<DurableAddDeclarationRelationEvidence>,
+            traversals: List<ChangePlanningEvidenceProjection>,
+            diagnostics: List<ChangePlanningEvidenceProjection>,
+            fingerprint: ChangePlanningEvidenceFingerprintDocument,
+        ): Refinement<DurableAddDeclarationPlanningEvidence, DurablePlanningEvidenceFailure> {
+            if (relations.isEmpty() || traversals.isEmpty() || diagnostics.isEmpty()) {
+                return Refinement.Rejected(DurablePlanningEvidenceFailure.INCOMPLETE)
+            }
+            val relationProjections = relations.map { it.projection.value }
+            val traversalProjections = traversals.map { it.value }
+            val diagnosticProjections = diagnostics.map { it.value }
+            if (
+                relationProjections.any(String::isBlank) ||
+                traversalProjections.any(String::isBlank) ||
+                diagnosticProjections.any(String::isBlank) ||
+                relations.any { !SHA_256.matches(it.stableDigest.value) } ||
+                !SHA_256.matches(fingerprint.value)
+            ) {
+                return Refinement.Rejected(DurablePlanningEvidenceFailure.MALFORMED)
+            }
+            if (
+                relationProjections != relationProjections.sorted() ||
+                traversalProjections != traversalProjections.sorted() ||
+                diagnosticProjections != diagnosticProjections.sorted()
+            ) {
+                return Refinement.Rejected(DurablePlanningEvidenceFailure.NOT_CANONICAL)
+            }
+            val canonical = buildString {
+                relationProjections.forEach { appendPlanningField(it) }
+                traversalProjections.forEach { appendPlanningField(it) }
+                diagnosticProjections.forEach { appendPlanningField(it) }
+            }
+            if (sha256Hex(canonical.toByteArray()) != fingerprint.value) {
+                return Refinement.Rejected(DurablePlanningEvidenceFailure.FINGERPRINT_MISMATCH)
+            }
+            return Refinement.Refined(
+                DurableAddDeclarationPlanningEvidence(
+                    relations,
+                    traversals,
+                    diagnostics,
+                    fingerprint,
+                ),
+            )
+        }
+    }
+}
+
+@Serializable
+@JvmInline
+value class ChangePlanningEvidenceFingerprintDocument internal constructor(val value: String)
+
+enum class DurablePlanningEvidenceFailure {
+    INCOMPLETE,
+    MALFORMED,
+    NOT_CANONICAL,
+    FINGERPRINT_MISMATCH,
+}
+
+fun DurableAddDeclarationRelationEvidence.matches(
+    result: RelationReadResult.Complete,
+): Boolean = meaning == result.batch.request.meaning.durable() && stableDigest == result.stableDigest()
+
+private fun RelationReadResult.Complete.stableDigest(): StableRelationEvidenceDigest {
+    val canonical = buildString {
+        appendPlanningField(batch.request.meaning.canonicalKey())
+        batch.facts.map { it.canonicalProjection() }.sorted().forEach(::appendPlanningField)
+    }
+    return StableRelationEvidenceDigest.fromProven(sha256Hex(canonical.toByteArray()))
+}
+
+private fun RelationMeaning.durable(): AddDeclarationRelationMeaning = when (this) {
+    RelationMeaning.References -> AddDeclarationRelationMeaning.REFERENCES
+    RelationMeaning.Callers -> AddDeclarationRelationMeaning.CALLERS
+    RelationMeaning.Callees -> AddDeclarationRelationMeaning.CALLEES
+    RelationMeaning.Implementations -> AddDeclarationRelationMeaning.IMPLEMENTATIONS
+    RelationMeaning.Inheritors -> AddDeclarationRelationMeaning.INHERITORS
+    RelationMeaning.Overrides -> AddDeclarationRelationMeaning.OVERRIDES
+    RelationMeaning.TypeUses -> AddDeclarationRelationMeaning.TYPE_USES
+}
+
+fun AddDeclarationRelationMeaning.domain(): RelationMeaning = when (this) {
+    AddDeclarationRelationMeaning.REFERENCES -> RelationMeaning.References
+    AddDeclarationRelationMeaning.CALLERS -> RelationMeaning.Callers
+    AddDeclarationRelationMeaning.CALLEES -> RelationMeaning.Callees
+    AddDeclarationRelationMeaning.IMPLEMENTATIONS -> RelationMeaning.Implementations
+    AddDeclarationRelationMeaning.INHERITORS -> RelationMeaning.Inheritors
+    AddDeclarationRelationMeaning.OVERRIDES -> RelationMeaning.Overrides
+    AddDeclarationRelationMeaning.TYPE_USES -> RelationMeaning.TypeUses
+}
+
+private val SHA_256 = Regex("[0-9a-f]{64}")
 
 private fun relationProjection(result: RelationReadResult.Complete): String = buildString {
     val request = result.batch.request

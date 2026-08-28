@@ -18,6 +18,13 @@ import io.github.amichne.kast.change.verify.VerifiedMutationBeforePublicationFai
 import io.github.amichne.kast.change.verify.VerifiedMutationOperations
 import io.github.amichne.kast.change.verify.VerifiedMutationRequest
 import io.github.amichne.kast.change.verify.VerifiedMutationResult
+import io.github.amichne.kast.change.verify.ChangeApplicationIdentity
+import io.github.amichne.kast.change.verify.ChangeApplicationIssuance
+import io.github.amichne.kast.change.verify.ChangeApplicationLookup
+import io.github.amichne.kast.change.verify.ChangePlanIdentity
+import io.github.amichne.kast.change.verify.ChangePlanLookup
+import io.github.amichne.kast.change.verify.ChangeReceiptIssuance
+import io.github.amichne.kast.change.verify.DurableChangeAuthority
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -45,7 +52,7 @@ import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApp
 internal class CanonicalChangeApplyHandler(
     private val workspace: WorkspaceInspectionOperations,
     private val operations: AddDeclarationApplyOperations,
-    private val authority: CanonicalChangeAuthority,
+    private val authority: DurableChangeAuthority,
 ) : OperationHandler<
     ChangeApplyRequest,
     ChangeApplyResult,
@@ -57,10 +64,14 @@ internal class CanonicalChangeApplyHandler(
         ChangeApplyQualification,
         ChangeApplyRejection,
         > {
-        val plan = when (val lookup = authority.plan(request.planIdentity)) {
+        val identity = ChangePlanIdentity.parse(request.planIdentity.value)
+            ?: return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
+        val plan = when (val lookup = authority.loadPlan(identity)) {
             is ChangePlanLookup.Found -> lookup.plan
             ChangePlanLookup.Missing ->
                 return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
+            is ChangePlanLookup.Rejected ->
+                return OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
         }
         val ready = when (val state = workspace.inspect()) {
             is WorkspaceRuntimeState.Ready -> state.workspace
@@ -90,7 +101,7 @@ internal class CanonicalChangeApplyHandler(
                 EvidenceEnvelope(
                     CanonicalOperation.CHANGE_APPLY.id,
                     result.priorLease.generation,
-                    ChangeApplyResult(issued.identity),
+                    ChangeApplyResult(issued.identity.protocolText()),
                 ),
             )
             is ChangeApplicationIssuance.Rejected ->
@@ -100,7 +111,7 @@ internal class CanonicalChangeApplyHandler(
 
 internal class CanonicalChangeVerifyHandler(
     private val operations: VerifiedMutationOperations,
-    private val authority: CanonicalChangeAuthority,
+    private val authority: DurableChangeAuthority,
 ) : OperationHandler<
     ChangeVerifyRequest,
     ChangeVerifyResult,
@@ -112,15 +123,19 @@ internal class CanonicalChangeVerifyHandler(
         ChangeVerifyQualification,
         ChangeVerifyRejection,
         > {
-        val pending = when (val lookup = authority.application(request.applicationIdentity)) {
+        val identity = ChangeApplicationIdentity.parse(request.applicationIdentity.value)
+            ?: return OperationOutcome.Rejected(ChangeVerifyRejection.APPLICATION_NOT_FOUND)
+        val pending = when (val lookup = authority.loadApplication(identity)) {
             is ChangeApplicationLookup.Found -> lookup.application
             ChangeApplicationLookup.Missing ->
                 return OperationOutcome.Rejected(ChangeVerifyRejection.APPLICATION_NOT_FOUND)
+            is ChangeApplicationLookup.Rejected ->
+                return OperationOutcome.Rejected(ChangeVerifyRejection.OBLIGATION_FAILED)
         }
         return when (val result = operations.verify(
             VerifiedMutationRequest(
                 pending.plan,
-                pending.applied,
+                pending.application,
             )
         )) {
             is VerifiedMutationResult.Verified -> when (
@@ -130,7 +145,7 @@ internal class CanonicalChangeVerifyHandler(
                     EvidenceEnvelope(
                         CanonicalOperation.CHANGE_VERIFY.id,
                         result.receipt.resultingWorkspace.generation,
-                        ChangeVerifyResult(issued.identity),
+                        ChangeVerifyResult(issued.identity.protocolText()),
                     ),
                 )
                 is ChangeReceiptIssuance.Rejected ->
@@ -157,7 +172,7 @@ internal class CanonicalChangeVerifyHandler(
 
 internal class CanonicalChangeRecoverHandler(
     private val operations: ChangeRecoveryOperations,
-    private val authority: CanonicalChangeAuthority,
+    private val authority: DurableChangeAuthority,
 ) : OperationHandler<
     ChangeRecoverRequest,
     ChangeRecoverResult,
@@ -169,10 +184,14 @@ internal class CanonicalChangeRecoverHandler(
         ChangeRecoverQualification,
         ChangeRecoverRejection,
         > {
-        val plan = when (val lookup = authority.plan(request.planIdentity)) {
+        val identity = ChangePlanIdentity.parse(request.planIdentity.value)
+            ?: return OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND)
+        val plan = when (val lookup = authority.loadPlan(identity)) {
             is ChangePlanLookup.Found -> lookup.plan
             ChangePlanLookup.Missing ->
                 return OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND)
+            is ChangePlanLookup.Rejected ->
+                return OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
         }
         val binding = when (val parsed = MutationPlanBinding.parse(plan.planId.value)) {
             is Refinement.Refined -> parsed.value
@@ -209,6 +228,19 @@ internal class CanonicalChangeRecoverHandler(
         plan.priorLease.generation,
         ChangeRecoverResult(state),
     )
+}
+
+private fun ChangeApplicationIdentity.protocolText(): io.github.amichne.kast.protocol.contract.ProtocolText =
+    protocolText(value)
+
+private fun io.github.amichne.kast.change.verify.ChangeReceiptIdentity.protocolText():
+    io.github.amichne.kast.protocol.contract.ProtocolText = protocolText(value)
+
+private fun protocolText(value: String): io.github.amichne.kast.protocol.contract.ProtocolText = when (
+    val parsed = io.github.amichne.kast.protocol.contract.ProtocolText.parse(value)
+) {
+    is Refinement.Refined -> parsed.value
+    is Refinement.Rejected -> error("canonical durable change identity is protocol text")
 }
 
 private fun AddDeclarationApplyFailure.protocolRejection(): ChangeApplyRejection = when (this) {

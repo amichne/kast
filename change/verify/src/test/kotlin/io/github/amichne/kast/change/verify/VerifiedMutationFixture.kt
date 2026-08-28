@@ -234,7 +234,7 @@ internal class VerifiedMutationFixture {
         return DiagnosticCheckResult.Complete(complete.batch, complete.coverage)
     }
 
-    private fun planRequest(): AddDeclarationPlanRequest = AddDeclarationPlanRequest(
+    internal fun planRequest(): AddDeclarationPlanRequest = AddDeclarationPlanRequest(
         target = editableTarget(),
         declaration = AddDeclarationSourceText.parse("fun added(): Int = 1").refined(),
         expectedSemanticDelta = ExpectedAddDeclarationDelta.admit(

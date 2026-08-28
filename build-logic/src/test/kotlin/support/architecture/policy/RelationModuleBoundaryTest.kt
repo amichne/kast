@@ -31,9 +31,11 @@ class RelationModuleBoundaryTest {
             ModuleId.RELATION_INTELLIJ to ExpectedRelationBoundary(
                 role = ModuleRole.INTELLIJ_READ_ADAPTER,
                 dependencies = setOf(
+                    ModuleId.PROTOCOL_CONTRACT,
                     ModuleId.RELATION_CONTRACT,
                     ModuleId.SYMBOL_CONTRACT,
                     ModuleId.WORKSPACE_CONTRACT,
+                    ModuleId.WORKSPACE_INTELLIJ_READ,
                 ),
                 effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
             ),

@@ -103,6 +103,7 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     ModuleId.DISTRIBUTION_MANAGED,
+                    ModuleId.EVIDENCE_SQLITE,
                     ModuleId.INDEXER,
                 ),
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE to emptySet(),

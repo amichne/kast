@@ -89,7 +89,7 @@ class AddDeclarationChangePlan private constructor(
     override val planId: AddDeclarationPlanId,
     val sourceSnapshot: AddDeclarationSourceSnapshot,
     val target: EditableMutationTarget,
-    val evidence: CompleteAddDeclarationPlanningEvidence,
+    val evidence: DurableAddDeclarationPlanningEvidence,
     val plannedEdits: List<AddDeclarationPlannedEdit>,
     val expectedSemanticDelta: ExpectedAddDeclarationDelta,
     val requiredVerification: AddDeclarationVerificationContract,
@@ -135,40 +135,82 @@ class AddDeclarationChangePlan private constructor(
         fun issue(
             input: AdmittedAddDeclarationPlanInput,
         ): AddDeclarationChangePlan {
+            val evidence = DurableAddDeclarationPlanningEvidence.from(input.evidence)
             val verification = AddDeclarationVerificationContract.forGeneration(
                 input.target.lease.generation,
             )
-            val edit = if (input.target.selector.kind == CompilerSymbolKind.CLASSLIKE) {
+            return create(
+                input.target,
+                input.declaration,
+                evidence,
+                input.expectedSemanticDelta,
+                verification,
+            )
+        }
+
+        internal fun restore(
+            expectedPlanId: AddDeclarationPlanId,
+            target: EditableMutationTarget,
+            declaration: AddDeclarationSourceText,
+            evidence: DurableAddDeclarationPlanningEvidence,
+            expectedSemanticDelta: ExpectedAddDeclarationDelta,
+        ): Refinement<AddDeclarationChangePlan, HostedAddDeclarationPlanDecodeFailure> {
+            val restored = create(
+                target,
+                declaration,
+                evidence,
+                expectedSemanticDelta,
+                AddDeclarationVerificationContract.forGeneration(target.lease.generation),
+            )
+            return if (restored.planId == expectedPlanId) {
+                Refinement.Refined(restored)
+            } else {
+                Refinement.Rejected(HostedAddDeclarationPlanDecodeFailure.MALFORMED_OR_TAMPERED)
+            }
+        }
+
+        private fun create(
+            target: EditableMutationTarget,
+            declaration: AddDeclarationSourceText,
+            evidence: DurableAddDeclarationPlanningEvidence,
+            expectedSemanticDelta: ExpectedAddDeclarationDelta,
+            verification: AddDeclarationVerificationContract,
+        ): AddDeclarationChangePlan {
+            val edit = if (target.selector.kind == CompilerSymbolKind.CLASSLIKE) {
                 AddDeclarationPlannedEdit.InsertIntoClassBody(
-                    input.target.file,
-                    input.target.range,
-                    input.declaration,
+                    target.file,
+                    target.range,
+                    declaration,
                 )
             } else {
                 AddDeclarationPlannedEdit.InsertAfterDeclaration(
-                    input.target.file,
-                    input.target.range,
-                    input.declaration,
+                    target.file,
+                    target.range,
+                    declaration,
                 )
             }
             val canonical = buildString {
-                appendTarget(input.target)
-                appendPlanningField(input.declaration.value)
-                appendPlanningField(input.expectedSemanticDelta.packageName)
-                appendPlanningField(input.expectedSemanticDelta.declarationName)
-                appendPlanningField(input.expectedSemanticDelta.declarationKind.name)
-                appendPlanningField(input.evidence.fingerprint.value)
+                appendTarget(target)
+                appendPlanningField(declaration.value)
+                appendPlanningField(expectedSemanticDelta.packageName)
+                appendPlanningField(expectedSemanticDelta.declarationName)
+                appendPlanningField(expectedSemanticDelta.declarationKind.name)
+                appendPlanningField(evidence.fingerprint.value)
+                evidence.relations.forEach { relation ->
+                    appendPlanningField(relation.meaning.name)
+                    appendPlanningField(relation.stableDigest.value)
+                }
                 verification.obligations.forEach { obligation ->
                     appendPlanningField(obligation.name)
                 }
             }
             return AddDeclarationChangePlan(
                 planId = AddDeclarationPlanId.fromCanonicalIdentity(canonical),
-                sourceSnapshot = AddDeclarationSourceSnapshot.from(input.target),
-                target = input.target,
-                evidence = input.evidence,
+                sourceSnapshot = AddDeclarationSourceSnapshot.from(target),
+                target = target,
+                evidence = evidence,
                 plannedEdits = listOf(edit),
-                expectedSemanticDelta = input.expectedSemanticDelta,
+                expectedSemanticDelta = expectedSemanticDelta,
                 requiredVerification = verification,
             )
         }

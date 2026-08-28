@@ -37,7 +37,11 @@ class RecoveryModuleBoundaryTest {
 
         assertTrue(recovery.allowedEffects.intersect(forbidden).isEmpty())
         assertEquals(
-            setOf(ForbiddenEffect.JDBC, ForbiddenEffect.TOPOLOGY_PUBLICATION),
+            setOf(
+                ForbiddenEffect.JDBC,
+                ForbiddenEffect.FILESYSTEM_WRITE,
+                ForbiddenEffect.TOPOLOGY_PUBLICATION,
+            ),
             architecture.modules.getValue(ModuleId.EVIDENCE_SQLITE).allowedEffects,
         )
     }

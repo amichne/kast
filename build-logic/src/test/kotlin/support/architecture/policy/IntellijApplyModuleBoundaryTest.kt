@@ -28,10 +28,13 @@ class IntellijApplyModuleBoundaryTest {
         assertEquals(ModuleRole.INTELLIJ_WRITE_ADAPTER, intellij.role)
         assertEquals(
             setOf(
+                ModuleId.PROTOCOL_CONTRACT,
                 ModuleId.CHANGE_APPLY,
                 ModuleId.CHANGE_CONTRACT,
                 ModuleId.CHANGE_RECOVERY,
                 ModuleId.EVIDENCE_CONTRACT,
+                ModuleId.WORKSPACE_CONTRACT,
+                ModuleId.WORKSPACE_INTELLIJ_READ,
             ),
             intellij.allowedProjectDependencies,
         )
@@ -51,10 +54,13 @@ class IntellijApplyModuleBoundaryTest {
         )
         assertEquals(
             setOf(
+                ModuleId.PROTOCOL_CONTRACT,
                 ModuleId.CHANGE_APPLY,
                 ModuleId.CHANGE_CONTRACT,
                 ModuleId.CHANGE_RECOVERY,
                 ModuleId.EVIDENCE_CONTRACT,
+                ModuleId.WORKSPACE_CONTRACT,
+                ModuleId.WORKSPACE_INTELLIJ_READ,
             ),
             target.getValue(ModuleId.CHANGE_INTELLIJ).allowedProjectDependencies,
         )

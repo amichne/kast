@@ -4,6 +4,7 @@ import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.ObservedMutationSource
 import io.github.amichne.kast.change.apply.SourceObservationResult
 import io.github.amichne.kast.change.contract.AddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.domain
 import io.github.amichne.kast.change.verify.AddDeclarationVerificationEvidence
 import io.github.amichne.kast.change.verify.ChangeVerificationObservation
 import io.github.amichne.kast.change.verify.ChangeVerificationObservationRejection
@@ -93,7 +94,7 @@ internal class InstalledChangeVerificationObserver(
                 semantic.relation.read(
                     RelationRequest.start(
                         original,
-                        planned.batch.request.meaning,
+                        planned.meaning.domain(),
                         budgets.relation,
                     ),
                 )

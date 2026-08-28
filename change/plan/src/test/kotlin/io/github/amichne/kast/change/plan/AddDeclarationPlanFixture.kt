@@ -80,6 +80,7 @@ internal class AddDeclarationPlanFixture(
     private val declarationEndExclusive: Int = 17,
     private val symbolKind: CompilerSymbolKind = CompilerSymbolKind.FUNCTION,
 ) {
+    val sourcePreimage: ByteArray = "fun service(): Int = 0".toByteArray()
     private val workspaceRoot = CanonicalWorkspaceRoot
         .fromCanonicalPath(Path.of("/workspace"))
         .refined()
@@ -231,7 +232,7 @@ internal class AddDeclarationPlanFixture(
                 ObservedMutationTargetState(
                     lease,
                     selector.file,
-                    WorkspaceSourceContentHash.parse("a".repeat(64)).refined(),
+                    WorkspaceSourceContentHash.parse(sha256(sourcePreimage)).refined(),
                 ),
             ),
         ).refined()
@@ -294,6 +295,10 @@ internal class AddDeclarationPlanFixture(
     private fun <T> List<T>.ordered(reverse: Boolean): List<T> =
         if (reverse) reversed() else this
 }
+
+private fun sha256(value: ByteArray): String = java.security.MessageDigest.getInstance("SHA-256")
+    .digest(value)
+    .joinToString(separator = "") { byte -> "%02x".format(byte) }
 
 internal fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
     is Refinement.Refined -> value

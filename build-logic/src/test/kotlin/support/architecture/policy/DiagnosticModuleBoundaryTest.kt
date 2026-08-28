@@ -26,8 +26,10 @@ class DiagnosticModuleBoundaryTest {
             ModuleId.DIAGNOSTIC_INTELLIJ to ExpectedDiagnosticBoundary(
                 role = ModuleRole.INTELLIJ_READ_ADAPTER,
                 dependencies = setOf(
+                    ModuleId.PROTOCOL_CONTRACT,
                     ModuleId.DIAGNOSTIC_CONTRACT,
                     ModuleId.WORKSPACE_CONTRACT,
+                    ModuleId.WORKSPACE_INTELLIJ_READ,
                 ),
                 effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
             ),
