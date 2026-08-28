@@ -1,6 +1,8 @@
 package support.hostedwriter
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -59,6 +61,31 @@ class HostedWriterProgramTest {
         ).forEach { name ->
             assertTrue(Files.isRegularFile(schemaPath(name)), "missing schema $name")
         }
+    }
+
+    @Test
+    fun `installed acceptance schema preserves durable topology reuse`() {
+        val observation = buildJsonObject {
+            put("name", "topology.build.after-restart")
+            put("outcome", "REUSED")
+            put("artifactDigest", "0".repeat(64))
+        }
+
+        assertTrue(
+            HostedWriterSchemaValidator.validate(
+                schema("installed-acceptance.schema.json"),
+                buildJsonObject {
+                    put("schemaVersion", 1)
+                    put("repositoryHead", "0".repeat(40))
+                    put("positiveJourney", kotlinx.serialization.json.buildJsonArray {
+                        repeat(10) { add(observation) }
+                    })
+                    put("negativeJourneys", kotlinx.serialization.json.buildJsonArray {
+                        repeat(8) { add(observation) }
+                    })
+                },
+            ) is HostedWriterSchemaValidation.Valid,
+        )
     }
 
     private fun schema(name: String) = Json.parseToJsonElement(
