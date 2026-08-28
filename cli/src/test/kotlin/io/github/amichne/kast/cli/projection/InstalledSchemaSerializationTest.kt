@@ -46,6 +46,7 @@ class InstalledSchemaSerializationTest {
             surface.semanticCommands.map { it.usage },
             document.cliProjection.commands,
         )
+        assertEquals(installedServerProjection(surface), document.serverProjection)
     }
 
     @Test
@@ -93,6 +94,7 @@ private data class InstalledSchemaFixture(
     val operationRegistry: JsonElement,
     val wireSchema: JsonElement,
     val cliProjection: InstalledCliProjectionFixture,
+    val serverProjection: InstalledServerProjectionDocument,
 )
 
 @Serializable
