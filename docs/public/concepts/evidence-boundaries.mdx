@@ -1,0 +1,79 @@
+---
+title: "Trust the evidence"
+description: "Interpret complete, qualified, and rejected Kast outcomes within their exact root, generation, scope, and bounds."
+icon: "shield-check"
+keywords: ["evidence", "complete", "qualified", "rejected", "generation"]
+---
+
+A successful transport only proves that one request crossed the local wire.
+The semantic result has its own closed outcome and evidence coordinates.
+
+## Three closed outcomes
+
+<Columns cols={3}>
+  <Card title="Complete">
+    The operation met its admitted scope, bounds, and completeness policy. The
+    payload can support the full claim described by that operation.
+  </Card>
+  <Card title="Qualified">
+    The payload remains usable within a named limitation. The response keeps
+    the missing coverage or reached bound attached to the evidence.
+  </Card>
+  <Card title="Rejected">
+    Kast established no successful payload. The response returns one typed
+    reason from the operation's finite failure set.
+  </Card>
+</Columns>
+
+The ten hosted operations cover workspace inspection, topology publication,
+three symbol operations, bounded traversal, and four AddDeclaration lifecycle
+phases. Exact symbol resolution, symbol description, topology publication, and
+each change phase require a complete result. Workspace inspection, discovery,
+and traversal may return qualified evidence when the limitation is part of
+their public contract.
+
+## Every answer has coordinates
+
+A semantic claim is valid only where all of its coordinates still hold:
+
+<Steps>
+  <Step title="Exact root">
+    The canonical repository checkout that owns the admitted IDE endpoint.
+  </Step>
+  <Step title="Operation">
+    The typed question asked, such as `workspace.inspect` or `symbol.describe`.
+  </Step>
+  <Step title="Generation">
+    The semantic workspace state against which selectors and evidence were
+    issued.
+  </Step>
+  <Step title="Scope and bounds">
+    The discovery mode, search scope, result limit, and completeness policy
+    admitted for the request.
+  </Step>
+  <Step title="Qualification">
+    Any explicit limitation that prevents the result from supporting a
+    stronger claim.
+  </Step>
+</Steps>
+
+<Info>
+  Unknown, stale, unsupported, incomplete, or unproven coordinates fail closed.
+  Kast does not guess a current symbol or turn partial coverage into complete
+  evidence.
+</Info>
+
+## Judge a negative answer
+
+An empty result is strong evidence only when the result is complete for the
+scope that matters. Before treating "no matches" as a repository fact, check:
+
+- the exact root is the intended checkout
+- the generation is still current
+- the selected operation answers the intended question
+- scope and result limits cover the decision
+- the outcome is complete, not qualified or rejected
+
+The [CLI reference](/reference/cli) lists the current operations.
+[How Kast works](/explanation/how-kast-works) shows where their evidence is
+admitted and projected.

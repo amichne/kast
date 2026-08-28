@@ -20,7 +20,10 @@ internal fun relationCommandGroup(
 ): CommandFamily {
     val read = RelationReadCommand(preparers)
     return CommandFamily(
-        KastCommandGroup("relation", "Read one-hop semantic relations.").subcommands(read),
+        KastCommandGroup(
+            "relation",
+            "Canonical command shape; not hosted by the current IDE endpoint.",
+        ).subcommands(read),
         listOf(read),
     )
 }

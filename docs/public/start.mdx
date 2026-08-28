@@ -1,0 +1,146 @@
+---
+title: "Set up and start Kast"
+sidebarTitle: "Quickstart"
+description: "Install Kast, admit the exact open Kotlin repository, and inspect the first compiler-backed result."
+icon: "rocket"
+keywords: ["install", "quickstart", "IntelliJ"]
+---
+
+The first successful run admits the already-open IntelliJ Project for one exact
+repository root and uses its compiler-backed evidence.
+
+<Info>
+  The installer verifies both release payloads: the `kast` command and its
+  exact standalone IDE plugin. No private IDE installation or second project
+  model is installed.
+</Info>
+
+<Steps>
+  <Step title="Check the host">
+    Kast currently requires:
+
+    - macOS on Apple silicon
+    - Java 21 or newer
+    - IntelliJ IDEA build 262.9437.185
+    - Kotlin plugin build 262.9437.185-IJ
+    - an open, indexed Kotlin Gradle repository
+
+    The supported IDE supplies the existing Project, VFS, indexes, PSI, and
+    Kotlin semantic APIs.
+  </Step>
+
+  <Step title="Install Kast">
+    Use the repository installer as the installation boundary:
+
+    ```shell
+    curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
+    ```
+
+    The installer validates the host and Java version, then downloads the
+    latest stable control command and matched IDE plugin with their SHA-256
+    records. It rejects unsafe archive paths or unexpected contents and
+    smoke-tests local metadata before moving either payload into place.
+  </Step>
+
+  <Step title="Confirm the local contract">
+    The installer creates `~/.local/bin/kast` but does not edit your shell profile.
+    If it warns that the directory is absent from `PATH`, add it for the current
+    shell before verifying the process-local surface:
+
+    ```shell
+    export PATH="$HOME/.local/bin:$PATH"
+    kast --version
+    kast --schema
+    ```
+
+    `kast --schema` lists all twelve canonical operations, command shapes, and
+    wire schema. The current hosted endpoint publishes ten of them: workspace
+    inspection, topology build, three symbol operations, traversal, and four
+    AddDeclaration lifecycle operations. Direct relation and diagnostic routes
+    remain internal services.
+  </Step>
+
+  <Step title="Start the exact repository">
+    If IntelliJ was open during installation, restart it so it loads the
+    plugin. Open the repository, wait for indexing, then run Kast from its
+    canonical root:
+
+    ```console
+    cd /path/to/kotlin-repository
+    kast start
+    ```
+
+    Kast admits the compatible exact-root endpoint published by that Project.
+    It never opens a Project, imports Gradle, refreshes VFS, or starts an
+    isolated indexing process.
+  </Step>
+
+  <Step title="Inspect the first answer">
+    Read lifecycle state and compiler-backed workspace evidence separately:
+
+    ```console
+    kast status
+    kast workspace inspect
+    kast symbol discover --mode name --query PricePolicy --limit 25
+    ```
+
+    The first semantic command tells you what is ready. Discovery then returns
+    bounded candidates, not an exact declaration claim.
+  </Step>
+</Steps>
+
+<AccordionGroup>
+  <Accordion title="Where the installer writes files" icon="folder-tree">
+    The versioned control product and matched plugin live under
+    `${XDG_DATA_HOME:-$HOME/.local/share}/kast`. The command is linked at
+    `$HOME/.local/bin/kast`, and the plugin is linked into
+    `$HOME/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins`.
+  </Accordion>
+
+  <Accordion title="Use a different plugin directory" icon="folder-cog">
+    Set `KAST_IDE_PLUGIN_DIRECTORY` or pass `--ide-plugin-directory` when the
+    supported IntelliJ installation uses a non-default plugin directory.
+
+    ```shell
+    installer_file="$(mktemp)"
+    curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh --output "$installer_file"
+    bash "$installer_file" --ide-plugin-directory "/absolute/path/to/plugins"
+    rm "$installer_file"
+    ```
+  </Accordion>
+
+  <Accordion title="Uninstall Kast" icon="trash-2">
+    The uninstall action removes Kast-managed commands, installed versions,
+    runtime state, configuration, services, and old Kast plugin directories.
+    It preserves repositories and unrelated JetBrains state.
+
+    ```shell
+    curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash -s -- uninstall
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Recover from an older installation
+
+If a prior local, Homebrew, or release-managed installation conflicts with the
+current release, download the reviewed installer and use its opt-in purge-first
+flow:
+
+```shell
+installer_file="$(mktemp)"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh --output "$installer_file"
+bash "$installer_file" install --purge-existing
+rm "$installer_file"
+```
+
+The installer verifies the replacement before removing Kast state. It does not
+remove repositories or unrelated JetBrains state.
+
+<Warning>
+  `--purge-existing` removes current and historical Kast commands, services,
+  runtime state, configuration, and old Kast IDE plugins before reinstalling.
+  Use it only when replacing an existing installation.
+</Warning>
+
+[Inspect workspace readiness](/questions/workspace-readiness) or
+[establish declaration identity](/questions/declaration-identity).

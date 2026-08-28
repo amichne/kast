@@ -24,16 +24,16 @@ class Checkout(private val policy: BillingPricePolicy) {
 ```
 
 A search can find `PricePolicy`, `policy`, and `price`. Kast can establish which
-declaration the alias names, which overload receives `order`, and which
-compiler-visible relationships connect that call to the rest of the repository.
+declaration the alias names and which overload receives `order`.
 
 ## Start from the repository root
 
-Kast supports macOS on Apple silicon, Java 21, and a Kotlin Gradle repository
-already open in a supported IntelliJ IDE. It reuses that IDE's existing
-Project, VFS, indexes, PSI, and Kotlin semantic APIs.
+Kast supports macOS on Apple silicon, Java 21 or newer, IntelliJ IDEA build
+262.9437.185 with Kotlin plugin build 262.9437.185-IJ, and a Kotlin Gradle
+repository already open in that IDE. It reuses the IDE's existing Project,
+VFS, indexes, PSI, and Kotlin semantic APIs.
 
-Install the latest stable control command:
+Install the latest stable control command and its matched IDE plugin:
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
@@ -56,21 +56,30 @@ an indexer process, or falls back to a private runtime.
 
 ## Ask a repository question
 
-Use the narrowest operation that answers the decision. The generated
-[CLI reference](https://kast.michne.com/reference/cli/) contains every current
-command shape, and `kast --schema` returns the same contract as JSON.
+The installed endpoint publishes ten IDE-hosted operations. The generated
+[CLI reference](https://kast.michne.com/reference/cli/) distinguishes those
+public routes from relation and diagnostic services that remain internal to
+hosted workflows, and `kast --schema` returns the complete contract as JSON.
 
 | Question | Command path |
 | --- | --- |
 | What is Kast ready to inspect? | `kast workspace inspect` |
 | What declaration is this? | `kast symbol discover ...`, then `kast symbol resolve ...` and `kast symbol describe ...` |
-| How is this code connected? | `kast relation read ...`, or `kast topology build` followed by `kast traversal run ...` |
-| Is this file semantically valid? | `kast diagnostic check ...` |
-| How can I change it safely? | `kast change plan ...`, `kast change apply ...`, `kast change verify ...`, and `kast change recover ...` |
+| How is this code connected? | `kast topology build`, then `kast traversal run ...` |
+| How can I add a declaration safely? | `kast change plan ...`, `kast change apply ...`, `kast change verify ...`, and `kast change recover ...` |
 
 Discovery returns bounded candidates. Resolution refines one candidate into an
-exact, generation-bound selector. Multi-hop traversal requires an explicit,
-eligible topology snapshot and never starts hidden compiler work.
+exact, generation-bound selector. Description returns detached compiler
+evidence for that selector. A successful apply publishes the newer workspace
+generation in the same endpoint, so prior selectors become stale immediately
+and verification can continue without restarting IntelliJ. The successor also
+activates read routes at that exact generation, so freshly resolved selectors
+can consume the verified topology without reconstructing the endpoint.
+
+Reopening the IntelliJ Project conservatively advances the semantic generation,
+so selectors from the previous process remain stale. `kast topology build`
+then verifies the current candidate set and can rebind an unchanged durable
+snapshot to that new generation without repeating semantic extraction.
 
 ## One request, at a high level
 
@@ -102,9 +111,11 @@ closed outcome:
 | Qualified | The returned evidence remains usable within a named limitation. |
 | Rejected | Kast established no successful payload and returned a typed reason. |
 
-Exact symbol resolution, symbol description, and every change phase require a
-complete result. Unknown, stale, unsupported, or inadmissible input fails
-closed.
+Exact symbol resolution, symbol description, topology publication, and every
+change phase require a complete result. Unknown, stale, unsupported, or
+inadmissible input fails closed. If a write cannot be durably recorded, Kast
+withdraws planning, application, and verification authority until recovery
+establishes a clean state.
 
 [Trust the evidence](https://kast.michne.com/concepts/evidence-boundaries/)
 explains how root, operation, generation, scope, bounds, and qualification
@@ -112,18 +123,26 @@ constrain each claim.
 
 ## Develop Kast
 
-Build and install the current checkout with Gradle:
+Build the current checkout, including the standalone IDE plugin archive, with
+Gradle:
 
 ```shell
 ./gradlew build
+./gradlew :ide-plugin:buildPlugin
 ./gradlew installLocal
 kast --version
 ```
 
-Build the public documentation with:
+`installLocal` installs only the control launcher from the checkout. Use the
+release installer when you need a matched, fully installed control-plus-plugin
+product.
+
+Validate and preview the Mintlify documentation with:
 
 ```shell
-python3 docs/build_public_site.py
+cd docs/public
+mint validate
+mint dev
 ```
 
 ## License

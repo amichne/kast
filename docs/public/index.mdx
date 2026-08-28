@@ -1,0 +1,93 @@
+---
+title: "Kast"
+description: "Compiler-grounded evidence for exact Kotlin repositories."
+mode: "wide"
+icon: "braces"
+keywords: ["Kotlin", "compiler", "semantic analysis", "coding agents"]
+---
+
+Kast gives engineers and coding agents a repo-local command boundary for
+questions whose answers depend on compiler identity, not a convincing reading
+of source text. Every answer keeps its repository root, evidence generation,
+scope, limits, and outcome attached.
+
+## The compiler sees more than text
+
+Consider a checkout service that imports one of several declarations named
+`PricePolicy`:
+
+```kotlin
+import billing.PricePolicy as BillingPricePolicy
+
+class Checkout(private val policy: BillingPricePolicy) {
+    fun total(order: Order): Money = policy.price(order)
+}
+```
+
+<Columns cols={2}>
+  <Card title="Text can suggest">
+    A search can find `PricePolicy`, `policy`, and `price`. It cannot establish
+    which declaration the alias names or which overload receives `order`.
+  </Card>
+  <Card title="Compiler evidence can establish">
+    The property and call each have an exact compiler identity. Their source
+    locations and semantic relationship remain part of the result.
+  </Card>
+</Columns>
+
+The distinction becomes important when an answer crosses files, modules, or a
+change boundary. Kast makes the strength and limits of that answer visible.
+
+## Start from the repository root
+
+```console
+cd /path/to/kotlin-repository
+kast start
+```
+
+`kast start` admits only the compatible endpoint for the already-open, exact
+IntelliJ Project. It returns when semantic evidence is ready, or returns a typed
+blocker instead of manufacturing readiness.
+
+[Set up and start Kast](/start)
+
+## Ten hosted operations
+
+The installed IDE endpoint publishes workspace inspection, topology build,
+three symbol operations, bounded traversal, and the four-phase hosted
+AddDeclaration lifecycle. Relation and diagnostic reads remain internal
+services used by those public workflows.
+
+<Columns cols={2}>
+  <Card title="What is Kast ready to inspect?" icon="gauge" href="/questions/workspace-readiness">
+    See the exact root, semantic generation, and readiness limits before
+    relying on later answers.
+  </Card>
+  <Card title="What declaration is this?" icon="fingerprint" href="/questions/declaration-identity">
+    Refine a bounded candidate into an exact symbol, then ask for its compiler
+    description.
+  </Card>
+  <Card title="How is this code connected?" icon="route" href="/questions/code-connections">
+    Publish exact-generation topology, then traverse it with explicit depth
+    and result limits.
+  </Card>
+  <Card title="How can I add a declaration safely?" icon="file-pen" href="/questions/safe-change">
+    Plan, apply, publish, verify, or recover one admitted AddDeclaration
+    mutation without restarting the endpoint.
+  </Card>
+</Columns>
+
+## Evidence keeps its boundary
+
+<Info>
+  **Complete** means the operation met its declared scope and completeness
+  contract. **Qualified** keeps usable evidence and names its limits.
+  **Rejected** returns no evidence as success.
+</Info>
+
+Every successful semantic payload names the operation and evidence generation
+that produced it. A moved generation, unsupported scope, exhausted bound, or
+missing capability stays visible at the boundary.
+
+[Learn how to judge an answer](/concepts/evidence-boundaries) or
+[see how Kast works](/explanation/how-kast-works).
