@@ -43,7 +43,14 @@ dependencies {
     implementation(project(":protocol:wire"))
     implementation(project(":runtime:ide-read"))
     implementation(project(":runtime:ide-host"))
+    implementation(project(":evidence:contract"))
     implementation(project(":workspace:contract"))
+    implementation(project(":topology:contract"))
+    implementation(project(":relation:contract"))
+    implementation(project(":diagnostic:contract"))
+    implementation(project(":change:contract"))
+    implementation(project(":change:apply"))
+    implementation(project(":change:verify"))
     implementation(project(":workspace:intellij-read"))
     implementation(project(":topology:intellij"))
     implementation(project(":relation:intellij"))
@@ -55,12 +62,14 @@ dependencies {
 
 private val runtimeIdeReadFriendPath =
     project(":runtime:ide-read").layout.buildDirectory.dir("classes/kotlin/main")
+private val runtimeIdeHostFriendPath =
+    project(":runtime:ide-host").layout.buildDirectory.dir("classes/kotlin/main")
 
 tasks.named<KotlinCompile>("compileTestKotlin") {
-    dependsOn(":runtime:ide-read:compileKotlin")
+    dependsOn(":runtime:ide-read:compileKotlin", ":runtime:ide-host:compileKotlin")
     compilerOptions.freeCompilerArgs.add(
-        runtimeIdeReadFriendPath.map { directory ->
-            "-Xfriend-paths=${directory.asFile.absolutePath}"
+        runtimeIdeReadFriendPath.zip(runtimeIdeHostFriendPath) { read, host ->
+            "-Xfriend-paths=${read.asFile.absolutePath},${host.asFile.absolutePath}"
         },
     )
 }

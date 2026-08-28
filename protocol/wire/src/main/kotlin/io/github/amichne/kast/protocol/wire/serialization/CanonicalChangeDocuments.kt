@@ -77,6 +77,9 @@ internal enum class ChangePlanRejectionDocument {
     @SerialName("diagnostic_check_required")
     DIAGNOSTIC_CHECK_REQUIRED,
 
+    @SerialName("recovery_required")
+    RECOVERY_REQUIRED,
+
     @SerialName("intent_rejected")
     INTENT_REJECTED,
 }

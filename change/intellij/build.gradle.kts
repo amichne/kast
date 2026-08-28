@@ -59,6 +59,7 @@ dependencies {
     implementation(project(":change:apply"))
     implementation(project(":change:contract"))
     implementation(project(":change:recovery"))
+    implementation(project(":change:verify"))
     implementation(project(":evidence:contract"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))

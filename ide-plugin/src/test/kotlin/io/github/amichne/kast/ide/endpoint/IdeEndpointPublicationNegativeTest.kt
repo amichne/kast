@@ -17,6 +17,7 @@ import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimeC
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProject
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparation
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparationFailure
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntime as HostedEffectsRuntime
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.ServerSocketChannel
@@ -42,7 +43,7 @@ class IdeEndpointPublicationNegativeTest {
         assertDirectoryEmpty(directory)
     }
     @Test
-    fun `partial runtime rejects before bind`() = withDirectory { directory ->
+    fun `partial read runtime cannot inhabit endpoint candidate`() {
         assertTrue(
             IdeEndpointService::class.java.constructors.any { constructor ->
                 constructor.parameterTypes.contentEquals(
@@ -51,14 +52,11 @@ class IdeEndpointPublicationNegativeTest {
             },
         )
         assertFalse(IdeEndpointService::class.java.constructors.any { it.parameterCount == 0 })
-        val result = prepareEndpoint(
-            directory,
-            runtime = HostedIdeReadRuntimePreparation.Rejected(
-                HostedIdeReadRuntimePreparationFailure.PARTIAL_RUNTIME,
-            ),
+        assertTrue(
+            IdeEndpointPreparationCandidate::class.java.declaredConstructors.any { constructor ->
+                constructor.parameterTypes.contains(HostedEffectsRuntime::class.java)
+            },
         )
-        assertPreparationRejected(result, IdeEndpointPublicationFailure.PARTIAL_RUNTIME)
-        assertDirectoryEmpty(directory)
     }
     @Test
     fun `packaged descriptor registers the scoped service and post startup activity`() {
@@ -286,7 +284,7 @@ internal fun prepareEndpoint(
     directory: Path,
     projectRoot: IdeEndpointCanonicalRoot = endpointRoot("/workspace/kast"),
     descriptorRoot: IdeEndpointCanonicalRoot = projectRoot,
-    runtime: HostedIdeReadRuntimePreparation? = null,
+    runtime: HostedEffectsRuntime? = null,
 ): IdeEndpointPreparation {
     val candidate = compatibilityCandidate()
     val policy = policy(candidate)
@@ -309,15 +307,18 @@ internal fun prepareEndpoint(
 private fun completeRuntime(
     root: IdeEndpointCanonicalRoot,
     compatibility: io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility,
-): HostedIdeReadRuntimePreparation = HostedIdeReadRuntime.prepare(
-    HostedIdeReadRuntimeCandidate.Complete(
-        HostedIdeReadProject.testing(root, compatibility),
-        WorkspaceInspectReadPort { fail("workspace port must not run during publication") },
-        SymbolDiscoverReadPort { fail("discover port must not run during publication") },
-        SymbolResolveReadPort { fail("resolve port must not run during publication") },
-        SymbolDescribeReadPort { fail("describe port must not run during publication") },
-    ),
-)
+): HostedEffectsRuntime {
+    val preparation = HostedIdeReadRuntime.prepare(
+        HostedIdeReadRuntimeCandidate.Complete(
+            HostedIdeReadProject.testing(root, compatibility),
+            WorkspaceInspectReadPort { fail("workspace port must not run during publication") },
+            SymbolDiscoverReadPort { fail("discover port must not run during publication") },
+            SymbolResolveReadPort { fail("resolve port must not run during publication") },
+            SymbolDescribeReadPort { fail("describe port must not run during publication") },
+        ),
+    ) as HostedIdeReadRuntimePreparation.Prepared
+    return HostedEffectsRuntime.testing(preparation.runtime)
+}
 
 private fun compatibilityCandidate() = IdeHostCompatibilityCandidate(
     ideBuild = "262.9437.185",

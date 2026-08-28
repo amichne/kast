@@ -34,6 +34,70 @@ import java.nio.file.Path
 
 class TopologyGenerationReuseTest {
     @Test
+    fun `verified singleton source change re-extracts changed file and rebinds incoming edges`() {
+        val root = sourceRoot()
+        val priorWorkspace = workspace(root)
+        val priorFirst = sourceFile(priorWorkspace, root, "First.kt", 'a')
+        val priorSecond = sourceFile(priorWorkspace, root, "Second.kt", 'b')
+        val priorFirstSymbol = symbol(priorFirst, "first", 0)
+        val priorSecondSymbol = symbol(priorSecond, "second", 20)
+        val priorEdge = TopologyEdge.fromBoundary(
+            TopologyEdgeKind.CALL,
+            priorFirstSymbol,
+            priorSecondSymbol,
+            1,
+            2,
+        ).refined()
+        val priorFirstComplete = CompleteTopologyFile.admit(
+            priorFirst,
+            listOf(priorFirstSymbol),
+            listOf(priorEdge),
+        ).refined()
+        val priorSecondComplete = CompleteTopologyFile.admit(
+            priorSecond,
+            listOf(priorSecondSymbol),
+            emptyList(),
+        ).refined()
+        val priorGeneration = CompleteTopologyGeneration.admit(
+            priorWorkspace,
+            listOf(priorFirst, priorSecond),
+            listOf(priorFirstComplete, priorSecondComplete),
+        ).refined()
+        val priorContent = TopologySnapshotContent.admit(
+            Snapshot(
+                priorGeneration.identity,
+                TopologySnapshotManifest.from(priorGeneration),
+            ),
+            listOf(priorFirstComplete, priorSecondComplete),
+        ).refined()
+        val currentWorkspace = workspace(root, "changed-state", 8)
+        val currentFirst = sourceFile(currentWorkspace, root, "First.kt", 'a')
+        val currentSecond = sourceFile(currentWorkspace, root, "Second.kt", 'c')
+        val candidates = TopologyCandidateSet.admit(
+            currentWorkspace,
+            listOf(currentFirst, currentSecond),
+        ).refined()
+        val movedSecond = symbol(currentSecond, "second", 30)
+        val added = symbol(currentSecond, "added", 40)
+        val extractedSecond = CompleteTopologyFile.admit(
+            currentSecond,
+            listOf(movedSecond, added).sorted(),
+            emptyList(),
+        ).refined()
+
+        val rebound = rebindVerifiedSingletonChange(
+            currentWorkspace,
+            candidates,
+            priorContent,
+            extractedSecond,
+        ) as VerifiedTopologyGenerationReuse.Rebound
+
+        assertEquals(3, rebound.generation.symbols.size)
+        assertEquals(currentFirst, rebound.generation.edges.single().source.file)
+        assertEquals(movedSecond, rebound.generation.edges.single().target)
+    }
+
+    @Test
     fun `semantic state change cannot reuse stale compiler facts`() {
         val root = sourceRoot()
         val priorWorkspace = workspace(root)

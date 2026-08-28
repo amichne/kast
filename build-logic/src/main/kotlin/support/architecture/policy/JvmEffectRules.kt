@@ -56,7 +56,11 @@ internal object EffectRules {
         ) {
             add(ForbiddenEffect.INTELLIJ_PLATFORM)
         }
-        if (moduleRole == ModuleRole.IDE_READ_ONLY && isProjectOpenAuthority(owner, name)) {
+        if (
+            moduleRole in setOf(ModuleRole.IDE_READ_ONLY, ModuleRole.IDE_HOST) &&
+            (isProjectOpenAuthority(owner, name) ||
+                moduleRole == ModuleRole.IDE_HOST && isAmbientProjectDiscovery(owner, name))
+        ) {
             add(ForbiddenEffect.PROJECT_OPEN)
         }
         if (
@@ -163,6 +167,10 @@ internal object EffectRules {
         owner == "com/intellij/openapi/project/ex/ProjectManagerEx" && name == "openProject" ||
             owner == "com/intellij/ide/impl/ProjectUtil" && name in setOf("openOrImport", "openProject") ||
             owner == "com/intellij/ide/impl/OpenProjectTask"
+
+    private fun isAmbientProjectDiscovery(owner: String, name: String): Boolean =
+        owner == "com/intellij/openapi/project/ProjectManager" &&
+            name in setOf("getInstance", "getOpenProjects")
 
     private fun isIsolatedRuntimeAuthority(owner: String): Boolean =
         owner.startsWith("io/github/amichne/kast/indexer/") ||

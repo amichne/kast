@@ -1,6 +1,7 @@
 package io.github.amichne.kast.change.apply
 
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
+import io.github.amichne.kast.change.contract.ChangePlan
 import io.github.amichne.kast.change.contract.ChangeIntent
 import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
@@ -19,30 +20,20 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
  * exists only after pure current-state admission and durable exact pre-write recovery evidence.
  */
 class MutationAuthority private constructor(
-    internal val admitted: AdmittedMutation,
-    internal val preparedRecovery: PreparedAddDeclarationRecovery,
+    val planId: AddDeclarationPlanId,
+    val binding: MutationPlanBinding,
+    val source: SymbolDiscoveryFileIdentity.Workspace,
+    val intent: ChangeIntent,
+    val priorLease: SemanticReadLease,
+    private val precondition: ObservedMutationPrecondition,
+    private val postimage: DerivedMutationPostimage,
 ) {
-    val planId: AddDeclarationPlanId
-        get() = admitted.request.plan.planId
-
-    val binding: MutationPlanBinding
-        get() = preparedRecovery.record.binding
-
-    val source: SymbolDiscoveryFileIdentity.Workspace
-        get() = admitted.write.source
-
-    val intent: ChangeIntent
-        get() = admitted.request.plan.intent
-
-    val priorLease: SemanticReadLease
-        get() = admitted.request.workspace.readLease
-
     val expectedPostimage: WorkspaceSourceContentHash
-        get() = admitted.write.postimage.content
+        get() = postimage.content
 
     /** Closed exact preimage state leaves only at the IntelliJ source-write boundary. */
     fun preconditionAtIntellijBoundary(): MutationPreconditionAtIntellijBoundary =
-        when (val preimage = admitted.write.preimage) {
+        when (val preimage = precondition) {
             is ObservedMutationSource -> MutationPreconditionAtIntellijBoundary.Existing(
                 preimage.text,
             )
@@ -50,14 +41,14 @@ class MutationAuthority private constructor(
         }
 
     /** Raw postimage text leaves only at the IntelliJ source-write boundary. */
-    fun postimageTextAtIntellijBoundary(): String = admitted.write.postimage.text
+    fun postimageTextAtIntellijBoundary(): String = postimage.text
 
     /** Planned typed transformations leave only at the IntelliJ source-write boundary. */
-    fun mutationsAtIntellijBoundary(): List<SourceTextMutation> = admitted.write.postimage.mutations
+    fun mutationsAtIntellijBoundary(): List<SourceTextMutation> = postimage.mutations
 
     /** Raw exact postimage bytes leave only for physical save observation. */
     fun postimageBytesAtIntellijBoundary(): ByteArray =
-        admitted.write.postimage.text.toByteArray(Charsets.UTF_8)
+        postimage.text.toByteArray(Charsets.UTF_8)
 
     companion object {
         /**
@@ -72,8 +63,83 @@ class MutationAuthority private constructor(
         internal fun issue(
             admitted: AdmittedMutation,
             recovery: PreparedAddDeclarationRecovery,
-        ): MutationAuthority = MutationAuthority(admitted, recovery)
+        ): MutationAuthority = MutationAuthority(
+            admitted.request.plan.planId,
+            recovery.record.binding,
+            admitted.write.source,
+            admitted.request.plan.intent,
+            admitted.request.workspace.readLease,
+            admitted.write.preimage,
+            admitted.write.postimage,
+        )
+
+        fun restore(
+            plan: ChangePlan,
+            record: MutationRecoveryRecord.AppliedWritesDurable,
+        ): Refinement<MutationAuthority, MutationAuthorityRestorationFailure> {
+            val write = plan.writes.entries.singleOrNull()
+                ?: return Refinement.Rejected(
+                    MutationAuthorityRestorationFailure.WRITE_SET_MISMATCH,
+                )
+            if (
+                record.binding.value != plan.planId.value ||
+                record.appliedWrites.sources.singleOrNull()?.value != write.source.path.value
+            ) {
+                return Refinement.Rejected(
+                    MutationAuthorityRestorationFailure.RECOVERY_BINDING_MISMATCH,
+                )
+            }
+            val plannedRecovery = record.preparation.plannedWrites.singleOrNull()
+                ?: return Refinement.Rejected(
+                    MutationAuthorityRestorationFailure.RECOVERY_BINDING_MISMATCH,
+                )
+            val precondition = when (write.precondition) {
+                is io.github.amichne.kast.change.contract.PlannedSourcePrecondition.Existing ->
+                    when (val captured = ObservedMutationSource.capture(
+                        write.source,
+                        plannedRecovery.preimage.decodeAtRecoveryBoundary(),
+                        SourceWriteAccess.Writable,
+                    )) {
+                        is Refinement.Refined -> captured.value
+                        is Refinement.Rejected -> return Refinement.Rejected(
+                            MutationAuthorityRestorationFailure.PREIMAGE_INVALID,
+                        )
+                    }
+                io.github.amichne.kast.change.contract.PlannedSourcePrecondition.Absent ->
+                    return Refinement.Rejected(
+                        MutationAuthorityRestorationFailure.UNSUPPORTED_PLAN,
+                    )
+            }
+            val postimage = when (val derived = DerivedMutationPostimage.derive(
+                precondition,
+                write.mutations,
+            )) {
+                is Refinement.Refined -> derived.value
+                is Refinement.Rejected -> return Refinement.Rejected(
+                    MutationAuthorityRestorationFailure.POSTIMAGE_INVALID,
+                )
+            }
+            return Refinement.Refined(
+                MutationAuthority(
+                    plan.planId,
+                    record.binding,
+                    write.source,
+                    plan.intent,
+                    plan.priorLease,
+                    precondition,
+                    postimage,
+                ),
+            )
+        }
     }
+}
+
+enum class MutationAuthorityRestorationFailure {
+    WRITE_SET_MISMATCH,
+    RECOVERY_BINDING_MISMATCH,
+    PREIMAGE_INVALID,
+    POSTIMAGE_INVALID,
+    UNSUPPORTED_PLAN,
 }
 
 /** Raw boundary projection that cannot confuse an absent target with an empty existing file. */

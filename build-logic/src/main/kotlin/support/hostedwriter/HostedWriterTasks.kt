@@ -22,6 +22,29 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.HexFormat
 
+abstract class VerifyHostedWriterCleanCheckoutTask : DefaultTask() {
+    @get:Internal
+    abstract val repositoryDirectory: DirectoryProperty
+
+    @TaskAction
+    fun verify() {
+        val process = ProcessBuilder(
+            "git",
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+        )
+            .directory(repositoryDirectory.get().asFile)
+            .redirectErrorStream(true)
+            .start()
+        val status = process.inputStream.bufferedReader().use { it.readText() }
+        require(process.waitFor() == 0) { "git status failed during hosted-writer proof" }
+        require(status.isBlank()) {
+            "hosted-writer installed proof requires a clean checkout:\n$status"
+        }
+    }
+}
+
 abstract class GenerateHostedWriterProgramTask : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -143,6 +166,9 @@ abstract class WriteHostedWriterReceiptTask : DefaultTask() {
 }
 
 abstract class ValidateHostedWriterInstalledAcceptanceTask : DefaultTask() {
+    @get:Internal
+    abstract val repositoryDirectory: DirectoryProperty
+
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val candidateFile: RegularFileProperty
@@ -157,9 +183,34 @@ abstract class ValidateHostedWriterInstalledAcceptanceTask : DefaultTask() {
     @TaskAction
     fun validateAndCopy() {
         val candidate = candidateFile.get().asFile.readText()
-        Json.decodeFromString<InstalledAcceptanceDocument>(candidate)
+        val document = Json.decodeFromString<InstalledAcceptanceDocument>(candidate)
+        require(document.repositoryHead == repositoryHead()) {
+            "installed acceptance repository head mismatch"
+        }
+        require(
+            document.positiveJourney.all { it.outcome == InstalledAcceptanceOutcome.COMPLETE },
+        ) {
+            "installed acceptance contains an incomplete positive observation"
+        }
+        require(
+            document.negativeJourneys.all { it.outcome == InstalledAcceptanceOutcome.REJECTED },
+        ) {
+            "installed acceptance contains a non-rejected negative observation"
+        }
         validate(schemaFile.get().asFile.readText(), candidate)
         writeAtomically(outputFile.get().asFile.toPath(), candidate)
+    }
+
+    private fun repositoryHead(): RepositoryHead {
+        val process = ProcessBuilder("git", "rev-parse", "HEAD")
+            .directory(repositoryDirectory.get().asFile)
+            .redirectErrorStream(true)
+            .start()
+        val raw = process.inputStream.bufferedReader().use { it.readText() }.trim()
+        require(process.waitFor() == 0 && Regex("[0-9a-f]{40}").matches(raw)) {
+            "repository HEAD unavailable"
+        }
+        return RepositoryHead(raw)
     }
 }
 

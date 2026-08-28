@@ -6,6 +6,8 @@ import support.tasks.GenerateControlMetadataTask
 import support.tasks.GenerateHostedControlMetadataTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
 import support.hostedwriter.GenerateHostedWriterProgramTask
+import support.hostedwriter.ValidateHostedWriterInstalledAcceptanceTask
+import support.hostedwriter.VerifyHostedWriterCleanCheckoutTask
 import support.hostedwriter.WriteHostedWriterReceiptTask
 
 plugins {
@@ -36,6 +38,7 @@ version = providers.gradleProperty("version")
     .get()
 
 val hostedWriterReportDirectory = layout.buildDirectory.dir("reports/hosted-writer")
+val hostedWriterBuildLogicTest = gradle.includedBuild("build-logic").task(":test")
 val generateHostedWriterProgram by tasks.registering(GenerateHostedWriterProgramTask::class) {
     group = "verification"
     description = "Projects the fixed hosted-writer proof graph to deterministic JSON."
@@ -43,7 +46,9 @@ val generateHostedWriterProgram by tasks.registering(GenerateHostedWriterProgram
     outputFile.set(hostedWriterReportDirectory.map { it.file("program.json") })
 }
 
-tasks.register<WriteHostedWriterReceiptTask>("writeHostedWriterProgramReceipt") {
+val writeHostedWriterProgramReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterProgramReceipt",
+) {
     group = "verification"
     description = "Writes the exact-head PROGRAM receipt for the fixed hosted-writer graph."
     dependsOn(generateHostedWriterProgram)
@@ -53,6 +58,147 @@ tasks.register<WriteHostedWriterReceiptTask>("writeHostedWriterProgramReceipt") 
     schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
     proofArtifacts.from(generateHostedWriterProgram.flatMap { it.outputFile })
     outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/PROGRAM.json") })
+}
+
+val writeHostedWriterSurfaceReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterSurfaceReceipt",
+) {
+    group = "verification"
+    description = "Executes and receipts the canonical hosted operation projection gate."
+    dependsOn(writeHostedWriterProgramReceipt, ":protocol:registry:test")
+    gateId.set("SURFACE")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(writeHostedWriterProgramReceipt.flatMap { it.outputFile })
+    proofArtifacts.from(
+        project(":protocol:registry").layout.buildDirectory.dir("test-results/test"),
+    )
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/SURFACE.json") })
+}
+
+val writeHostedWriterHostBoundaryReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterHostBoundaryReceipt",
+) {
+    group = "verification"
+    description = "Executes and receipts the narrow IDE host module boundary gate."
+    dependsOn(
+        writeHostedWriterSurfaceReceipt,
+        hostedWriterBuildLogicTest,
+        "verifyKastArchitecture",
+    )
+    gateId.set("HOST-BOUNDARY")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(writeHostedWriterSurfaceReceipt.flatMap { it.outputFile })
+    proofArtifacts.from(
+        layout.projectDirectory.dir("build-logic/build/test-results/test"),
+        layout.buildDirectory.file("reports/kast-architecture/verifyKastArchitecture.json"),
+    )
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/HOST-BOUNDARY.json") })
+}
+
+val writeHostedWriterProjectPortsReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterProjectPortsReceipt",
+) {
+    group = "verification"
+    description = "Executes and receipts direct-project hosted adapter admission."
+    dependsOn(writeHostedWriterHostBoundaryReceipt, ":ide-plugin:test")
+    gateId.set("PROJECT-PORTS")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(writeHostedWriterHostBoundaryReceipt.flatMap { it.outputFile })
+    proofArtifacts.from(project(":ide-plugin").layout.buildDirectory.dir("test-results/test"))
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/PROJECT-PORTS.json") })
+}
+
+val writeHostedWriterDurableStateReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterDurableStateReceipt",
+) {
+    group = "verification"
+    description = "Executes and receipts exact-root durable hosted state."
+    dependsOn(writeHostedWriterHostBoundaryReceipt, ":evidence:sqlite:test")
+    gateId.set("DURABLE-STATE")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(writeHostedWriterHostBoundaryReceipt.flatMap { it.outputFile })
+    proofArtifacts.from(project(":evidence:sqlite").layout.buildDirectory.dir("test-results/test"))
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/DURABLE-STATE.json") })
+}
+
+val writeHostedWriterTopologyReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterTopologyReceipt",
+) {
+    group = "verification"
+    description = "Executes and receipts the hosted topology lifecycle."
+    dependsOn(
+        writeHostedWriterProjectPortsReceipt,
+        writeHostedWriterDurableStateReceipt,
+        ":runtime:ide-host:test",
+    )
+    gateId.set("TOPOLOGY")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(
+        writeHostedWriterProjectPortsReceipt.flatMap { it.outputFile },
+        writeHostedWriterDurableStateReceipt.flatMap { it.outputFile },
+    )
+    proofArtifacts.from(project(":runtime:ide-host").layout.buildDirectory.dir("test-results/test"))
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/TOPOLOGY.json") })
+}
+
+val writeHostedWriterMutationReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterMutationReceipt",
+) {
+    group = "verification"
+    description = "Executes and receipts the hosted add-declaration lifecycle."
+    dependsOn(
+        writeHostedWriterProjectPortsReceipt,
+        writeHostedWriterDurableStateReceipt,
+        writeHostedWriterTopologyReceipt,
+        ":runtime:ide-host:test",
+    )
+    gateId.set("MUTATION")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(
+        writeHostedWriterProjectPortsReceipt.flatMap { it.outputFile },
+        writeHostedWriterDurableStateReceipt.flatMap { it.outputFile },
+        writeHostedWriterTopologyReceipt.flatMap { it.outputFile },
+    )
+    proofArtifacts.from(project(":runtime:ide-host").layout.buildDirectory.dir("test-results/test"))
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/MUTATION.json") })
+}
+
+val writeHostedWriterEndpointReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterEndpointReceipt",
+) {
+    group = "verification"
+    description = "Executes and receipts generated all-or-nothing endpoint publication."
+    dependsOn(
+        writeHostedWriterTopologyReceipt,
+        writeHostedWriterMutationReceipt,
+        ":ide-plugin:test",
+        ":ide-plugin:buildPlugin",
+    )
+    gateId.set("ENDPOINT")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(
+        writeHostedWriterTopologyReceipt.flatMap { it.outputFile },
+        writeHostedWriterMutationReceipt.flatMap { it.outputFile },
+    )
+    proofArtifacts.from(
+        project(":ide-plugin").layout.buildDirectory.dir("test-results/test"),
+        project(":ide-plugin").layout.buildDirectory.dir("distributions"),
+    )
+    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/ENDPOINT.json") })
 }
 
 subprojects {
@@ -287,6 +433,108 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
         layout.buildDirectory.dir("reports/installed-product").get().asFile.absolutePath,
     )
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
+}
+
+val verifyHostedWriterCleanCheckout = tasks.register<VerifyHostedWriterCleanCheckoutTask>(
+    "verifyHostedWriterCleanCheckout",
+) {
+    group = "verification"
+    description = "Fails unless the hosted-writer installed proof starts from a clean checkout."
+    repositoryDirectory.set(layout.projectDirectory)
+}
+
+val hostedWriterPluginArchive = project(":ide-plugin").layout.buildDirectory.file(
+    "distributions/kast-ide-plugin-${project.version}.zip",
+)
+val hostedWriterAcceptanceCandidate = layout.buildDirectory.file(
+    "tmp/hosted-writer/installed-acceptance.candidate.json",
+)
+val hostedWriterIdeaExecutable = providers.gradleProperty("kastHostedWriterIdeaExecutable")
+    .orElse(providers.environmentVariable("KAST_HOSTED_WRITER_IDEA_EXECUTABLE"))
+    .orElse(
+        providers.systemProperty("user.home").map { userHome ->
+            file(userHome)
+                .resolve("Applications/IntelliJ IDEA.app/Contents/MacOS/idea")
+                .absolutePath
+        },
+    )
+val runHostedWriterInstalledAcceptance = tasks.register<Exec>(
+    "runHostedWriterInstalledAcceptance",
+) {
+    group = "verification"
+    description = "Runs the packaged hosted writer through exact-root restart and recovery journeys."
+    dependsOn(
+        verifyHostedWriterCleanCheckout,
+        stageInstalledProduct,
+        ":ide-plugin:buildPlugin",
+    )
+    inputs.dir(installedProductDirectory)
+    inputs.file(hostedWriterPluginArchive)
+    inputs.dir(layout.projectDirectory.dir("fixtures/enterprise-workspace"))
+    inputs.file(layout.projectDirectory.file("packaging/test-hosted-writer.sh"))
+    outputs.file(hostedWriterAcceptanceCandidate)
+    outputs.upToDateWhen { false }
+    environment(
+        "KAST_INSTALLED_PRODUCT",
+        installedProductDirectory.get().asFile.absolutePath,
+    )
+    environment(
+        "KAST_HOSTED_WRITER_PLUGIN_ZIP",
+        hostedWriterPluginArchive.get().asFile.absolutePath,
+    )
+    environment(
+        "KAST_HOSTED_WRITER_FIXTURE",
+        layout.projectDirectory.dir("fixtures/enterprise-workspace").asFile.absolutePath,
+    )
+    environment("KAST_HOSTED_WRITER_IDEA_EXECUTABLE", hostedWriterIdeaExecutable.get())
+    environment(
+        "KAST_HOSTED_WRITER_ACCEPTANCE_CANDIDATE",
+        hostedWriterAcceptanceCandidate.get().asFile.absolutePath,
+    )
+    environment(
+        "KAST_HOSTED_WRITER_RUN_PARENT",
+        layout.buildDirectory.dir("tmp/hosted-writer/runs").get().asFile.absolutePath,
+    )
+    environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
+    commandLine("bash", layout.projectDirectory.file("packaging/test-hosted-writer.sh"))
+}
+
+val validateHostedWriterInstalledAcceptance = tasks.register(
+    "validateHostedWriterInstalledAcceptance",
+    ValidateHostedWriterInstalledAcceptanceTask::class,
+) {
+    group = "verification"
+    description = "Validates the installed hosted-writer evidence at the exact repository head."
+    dependsOn(runHostedWriterInstalledAcceptance)
+    repositoryDirectory.set(layout.projectDirectory)
+    candidateFile.set(hostedWriterAcceptanceCandidate)
+    schemaFile.set(
+        layout.projectDirectory.file("gradle/hosted-writer/installed-acceptance.schema.json"),
+    )
+    outputFile.set(hostedWriterReportDirectory.map { it.file("installed-acceptance.json") })
+}
+
+val writeHostedWriterInstalledProofReceipt = tasks.register<WriteHostedWriterReceiptTask>(
+    "writeHostedWriterInstalledProofReceipt",
+) {
+    group = "verification"
+    description = "Receipts the installed hosted-writer proof at one exact clean head."
+    dependsOn(writeHostedWriterEndpointReceipt, validateHostedWriterInstalledAcceptance)
+    gateId.set("INSTALLED-PROOF")
+    repositoryDirectory.set(layout.projectDirectory)
+    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
+    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
+    dependencyReceipts.from(writeHostedWriterEndpointReceipt.flatMap { it.outputFile })
+    proofArtifacts.from(validateHostedWriterInstalledAcceptance.flatMap { it.outputFile })
+    outputFile.set(
+        hostedWriterReportDirectory.map { it.file("receipts/INSTALLED-PROOF.json") },
+    )
+}
+
+tasks.register("hostedWriterProof") {
+    group = "verification"
+    description = "Executes the fixed nine-gate hosted writer proof at one exact clean head."
+    dependsOn(writeHostedWriterInstalledProofReceipt)
 }
 
 tasks.register<Exec>("legacyIsolatedRuntimeFixtureAcceptance") {

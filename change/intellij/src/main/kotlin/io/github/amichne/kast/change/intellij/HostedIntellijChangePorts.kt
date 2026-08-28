@@ -4,36 +4,35 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.change.apply.AddDeclarationSourceObserver
 import io.github.amichne.kast.change.apply.AddDeclarationSourceRollback
 import io.github.amichne.kast.change.apply.AddDeclarationSourceWriter
-import io.github.amichne.kast.change.apply.MutationAuthority
-import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
+import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentCompiler
+import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticObserver
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
 import io.github.amichne.kast.workspace.intellij.read.HostedProjectAdmissionFailure
-import java.util.concurrent.ConcurrentHashMap
 
 class HostedChangePorts private constructor(
     val sourceObserver: AddDeclarationSourceObserver,
     val sourceWriter: AddDeclarationSourceWriter,
     val sourceRollback: AddDeclarationSourceRollback,
-    val recoveryRollback: AddDeclarationRollbackPort,
     val intentCompiler: InstalledAddDeclarationIntentCompiler,
+    val semanticObserver: HostedAddDeclarationSemanticObserver,
 ) {
     companion object {
         internal fun retained(
             sourceObserver: AddDeclarationSourceObserver,
             sourceWriter: AddDeclarationSourceWriter,
             sourceRollback: AddDeclarationSourceRollback,
-            recoveryRollback: AddDeclarationRollbackPort,
             intentCompiler: InstalledAddDeclarationIntentCompiler,
+            semanticObserver: HostedAddDeclarationSemanticObserver,
         ): HostedChangePorts = HostedChangePorts(
             sourceObserver,
             sourceWriter,
             sourceRollback,
-            recoveryRollback,
             intentCompiler,
+            semanticObserver,
         )
     }
 }
@@ -61,7 +60,6 @@ fun admitHostedIntellijChangePorts(
             HostedProjectAdmissionFailure.ProjectRejected(admission.failure),
         )
     }
-    val authorities = ConcurrentHashMap<String, MutationAuthority>()
     fun adapter(): IntellijChangeSourceAdapter? = if (project.isDisposed) {
         null
     } else {
@@ -73,19 +71,16 @@ fun admitHostedIntellijChangePorts(
                 adapter()?.observe(source) ?: unavailableObservation()
             },
             sourceWriter = { authority, durability ->
-                authorities[authority.binding.value] = authority
                 adapter()?.write(authority, durability) ?: unavailableWrite()
             },
             sourceRollback = { authority, record ->
                 adapter()?.rollback(authority, record) ?: unavailableRollback()
             },
-            recoveryRollback = recovery@{ record ->
-                val authority = authorities[record.binding.value]
-                    ?: return@recovery unavailableRollback()
-                adapter()?.rollback(authority, record) ?: unavailableRollback()
-            },
             intentCompiler = { selector, raw ->
                 compileIntent(project, root, selector, raw)
+            },
+            semanticObserver = { workspace, plan ->
+                observeHostedAddDeclaration(project, root, workspace, plan)
             },
         ),
     )

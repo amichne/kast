@@ -58,6 +58,7 @@ class HostedProjectEffectAdmissionTest {
     fun `hosted factory bytecode has no ambient project discovery`() {
         listOf(
             "io/github/amichne/kast/topology/intellij/HostedIntellijTopologyPortsKt.class",
+            "io/github/amichne/kast/topology/intellij/HostedWorkspaceSourceStateKt.class",
             "io/github/amichne/kast/change/intellij/HostedIntellijChangePortsKt.class",
             "io/github/amichne/kast/relation/intellij/HostedIntellijRelationPortsKt.class",
             "io/github/amichne/kast/diagnostic/intellij/HostedIntellijDiagnosticPortsKt.class",

@@ -35,9 +35,6 @@ import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.runtime.ide.read.composition.HostedExactIssuance
-import io.github.amichne.kast.runtime.ide.read.composition.HostedExactLookup
-import io.github.amichne.kast.runtime.ide.read.composition.HostedExactSelectorOperations
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
 import io.github.amichne.kast.runtime.server.toProtocolCoverage
@@ -65,7 +62,7 @@ private const val HOSTED_TIME_MILLIS = 30_000L
 private const val HOSTED_HOP_TIME_MILLIS = 1_000L
 private const val HOSTED_RETURNED_BYTES = 1_048_576L
 
-object HostedTopologyProtocol {
+internal object HostedTopologyProtocol {
     fun bindings(
         operations: HostedTopologyOperations,
         selectors: HostedExactSelectorOperations,
@@ -137,6 +134,8 @@ private class HostedTraversalRunHandler(
             is HostedExactLookup.Found -> lookup.selector
             HostedExactLookup.Missing ->
                 return OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_STALE)
+            HostedExactLookup.TopologyUnavailable ->
+                return OperationOutcome.Rejected(TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED)
         }
         val budget = traversalBudget(request.maximumDepth.value, request.maximumResults.value)
             ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)

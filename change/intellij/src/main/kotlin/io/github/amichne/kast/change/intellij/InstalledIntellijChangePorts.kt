@@ -16,6 +16,10 @@ import io.github.amichne.kast.change.apply.MutationAuthority
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationSourceText
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
+import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntent
+import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentCompilation
+import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentCompiler
+import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
@@ -33,50 +37,6 @@ import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtTypeAlias
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-
-/** Compiler-refined AddDeclaration intent admitted at the live IntelliJ boundary. */
-data class InstalledAddDeclarationIntent(
-    val declaration: AddDeclarationSourceText,
-    val expectedDelta: ExpectedAddDeclarationDelta,
-)
-
-/** Finite failures while refining public declaration text against one exact target. */
-enum class InstalledAddDeclarationIntentFailure {
-    PROJECT_UNAVAILABLE,
-    GENERATION_MOVED,
-    TARGET_UNAVAILABLE,
-    TARGET_NOT_KOTLIN,
-    TARGET_MOVED,
-    DECLARATION_REJECTED,
-    COMPILER_IDENTITY_UNAVAILABLE,
-}
-
-/** Closed compiler-backed AddDeclaration intent result. */
-sealed interface InstalledAddDeclarationIntentCompilation {
-    data class Compiled(
-        val intent: InstalledAddDeclarationIntent,
-    ) : InstalledAddDeclarationIntentCompilation
-
-    data class Rejected(
-        val failure: InstalledAddDeclarationIntentFailure,
-    ) : InstalledAddDeclarationIntentCompilation
-}
-
-fun interface InstalledAddDeclarationIntentCompiler {
-    /**
-     * Proof transition: `(SymbolSelector, String) ->
-     * InstalledAddDeclarationIntentCompilation`.
-     *
-     * Compiled establishes canonical declaration source plus one syntactically valid named Kotlin
-     * declaration and its exact package/name/kind delta against the selector's live source file.
-     * [InstalledAddDeclarationIntentFailure] closes every expected rejection. Raw text, VFS, PSI,
-     * and project values are extracted only inside this outer IntelliJ boundary.
-     */
-    fun compile(
-        selector: SymbolSelector,
-        rawDeclaration: String,
-    ): InstalledAddDeclarationIntentCompilation
-}
 
 /** Installed exact-root source, recovery, and AddDeclaration intent capabilities. */
 class InstalledIntellijChangePorts private constructor(

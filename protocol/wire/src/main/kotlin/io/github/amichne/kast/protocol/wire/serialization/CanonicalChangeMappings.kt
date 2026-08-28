@@ -324,6 +324,8 @@ internal fun ChangePlanRejection.toSerializableDocument(): ChangePlanRejectionDo
             ChangePlanRejectionDocument.REQUIRED_TRAVERSAL_INCOMPLETE
         ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED ->
             ChangePlanRejectionDocument.DIAGNOSTIC_CHECK_REQUIRED
+        ChangePlanRejection.RECOVERY_REQUIRED ->
+            ChangePlanRejectionDocument.RECOVERY_REQUIRED
         ChangePlanRejection.INTENT_REJECTED -> ChangePlanRejectionDocument.INTENT_REJECTED
     }
 
@@ -344,6 +346,8 @@ internal fun ChangePlanRejectionDocument.toContract(): WireDocumentConversion<Ch
                 ChangePlanRejection.REQUIRED_TRAVERSAL_INCOMPLETE
             ChangePlanRejectionDocument.DIAGNOSTIC_CHECK_REQUIRED ->
                 ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED
+            ChangePlanRejectionDocument.RECOVERY_REQUIRED ->
+                ChangePlanRejection.RECOVERY_REQUIRED
             ChangePlanRejectionDocument.INTENT_REJECTED -> ChangePlanRejection.INTENT_REJECTED
         },
     )
