@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/schemas/hosted-writer/installed-acceptance.schema.json",
+  "title": "Kast hosted-writer installed acceptance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "repositoryHead", "positiveJourney", "negativeJourneys"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "repositoryHead": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "positiveJourney": {
+      "type": "array",
+      "minItems": 10,
+      "items": { "$ref": "#/$defs/observation" }
+    },
+    "negativeJourneys": {
+      "type": "array",
+      "minItems": 8,
+      "items": { "$ref": "#/$defs/observation" }
+    }
+  },
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "outcome", "artifactDigest"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["COMPLETE", "QUALIFIED", "REJECTED"] },
+        "artifactDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}
