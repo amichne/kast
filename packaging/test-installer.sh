@@ -35,6 +35,7 @@ brew_state="$test_state/homebrew-formula"
 brew_log="$test_state/brew.log"
 process_state="$test_state/indexer-process"
 process_log="$test_state/process.log"
+curl_log="$test_state/curl.log"
 
 printf '%s\n' '#!/usr/bin/env bash' \
   'set -euo pipefail' \
@@ -102,17 +103,20 @@ chmod +x "$stub_bin/java"
 printf '%s\n' '#!/usr/bin/env bash' \
   'set -euo pipefail' \
   'destination=""' \
+  'source_url=""' \
   'while [[ $# -gt 0 ]]; do' \
   '  case "$1" in' \
   '    --output) destination="${2:?}"; shift 2 ;;' \
   '    --retry-delay) shift 2 ;;' \
   '    --write-out) shift 2 ;;' \
   '    --fail|--location|--silent|--show-error|--retry) shift ;;' \
-  '    http*) shift ;;' \
+  '    http*|file:*) source_url="$1"; shift ;;' \
   '    *) shift ;;' \
   '  esac' \
   'done' \
   '[[ -n "$destination" ]] || exit 64' \
+  '[[ -n "$source_url" ]] || exit 64' \
+  'printf "%s\n" "$source_url" >> "${KAST_TEST_CURL_LOG:?}"' \
   'cp "${KAST_TEST_ASSET_DIR:?}/${destination##*/}" "$destination"' > "$stub_bin/curl"
 chmod +x "$stub_bin/curl"
 
@@ -165,6 +169,7 @@ installer_environment=(
   "KAST_TEST_BREW_LOG=$brew_log"
   "KAST_TEST_PROCESS_STATE=$process_state"
   "KAST_TEST_PROCESS_LOG=$process_log"
+  "KAST_TEST_CURL_LOG=$curl_log"
   "KAST_TEST_ASSET_DIR=$assets"
   "KAST_INSTALL_PROCESS_TABLE_COMMAND=$stub_bin/ps"
   "KAST_INSTALL_PROCESS_KILL_COMMAND=$stub_bin/kill"
@@ -270,7 +275,8 @@ fi
 
 install_output="$fixture_root/install.out"
 if ! env "${installer_environment[@]}" bash "$repository_root/install.sh" install \
-  --purge-existing --version 9.8.7 --repository example/kast \
+  --purge-existing --version 9.8.7 \
+  --release-base-url "file://$assets" \
   > "$install_output" 2>&1; then
   cat "$install_output" >&2
   fail "purge-first installation failed"
@@ -296,5 +302,7 @@ fi
 grep -Fq 'purging prior Kast installations' "$install_output" ||
   fail "purge-first did not report the shared cleanup operation"
 grep -Fq 'installed Kast 9.8.7' "$install_output" || fail "installation did not complete"
+grep -Fxq "file://$assets/v9.8.7/$control_name" "$curl_log" ||
+  fail "release-base override did not own the selected control artifact"
 
 printf 'installer contract: all checks passed\n'

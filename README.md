@@ -60,6 +60,10 @@ The installed endpoint publishes ten IDE-hosted operations. The generated
 [CLI reference](https://kast.michne.com/reference/cli/) distinguishes those
 public routes from relation and diagnostic services that remain internal to
 hosted workflows, and `kast --schema` returns the complete contract as JSON.
+Its `serverProjection` is the installed executable's authority for
+server-visible tool names, descriptions, input and output JSON Schemas, loading
+policy, and field-to-CLI bindings. A broker can therefore follow the selected
+installed path without carrying a Kast-version lookup table.
 
 | Question | Command path |
 | --- | --- |
@@ -136,6 +140,23 @@ kast --version
 `installLocal` installs only the control launcher from the checkout. Use the
 release installer when you need a matched, fully installed control-plus-plugin
 product.
+
+To dogfood one locally packaged, matched product through that same verified
+installer boundary, assign an unreleased semantic version and select the local
+release directory explicitly:
+
+```shell
+release_version=0.29.1
+./gradlew -Pversion="$release_version" assembleIdeHostedRelease
+bash install.sh install --purge-existing \
+  --version "$release_version" \
+  --release-base-url "file://$PWD/build/release"
+```
+
+The installer still checks both SHA-256 records, archive paths, product
+metadata, and matched plugin identity before it removes an older installation.
+An explicit version is required for a custom HTTPS mirror or absolute `file://`
+release base.
 
 Validate and preview the Mintlify documentation with:
 

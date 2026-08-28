@@ -95,6 +95,7 @@ Usage:
              [--install-root <absolute-path>] [--bin-dir <absolute-path>]
              [--ide-plugin-directory <absolute-path>]
              [--repository <owner/name>]
+             [--release-base-url <https-or-file-url>]
   install.sh uninstall [--install-root <absolute-path>]
              [--bin-dir <absolute-path>]
              [--ide-plugin-directory <absolute-path>]
@@ -106,6 +107,7 @@ Defaults:
   IDE plugins   $HOME/Library/Application Support/JetBrains/
                 IntelliJIdea2026.2/plugins
   repository    amichne/kast
+  release URL   https://github.com/<repository>/releases/download
 
 Environment equivalents:
   KAST_VERSION
@@ -113,6 +115,7 @@ Environment equivalents:
   KAST_BIN_DIR
   KAST_IDE_PLUGIN_DIRECTORY
   KAST_REPOSITORY
+  KAST_RELEASE_BASE_URL
 
 uninstall is the destructive recovery operation. It removes current and
 historical Kast commands, installation roots, runtime caches and sockets,
@@ -289,6 +292,16 @@ validate_repository() {
     fail "repository must be <owner>/<name>: $1"
 }
 
+validate_release_base_url() {
+  case "$1" in
+    https://?*|file:///*) ;;
+    *) fail "release base URL must use https:// or an absolute file:// URL: $1" ;;
+  esac
+  case "$1" in
+    *\?*|*\#*) fail "release base URL must not contain a query or fragment: $1" ;;
+  esac
+}
+
 java_major_version() {
   local java_executable="$1"
   local version_line version major
@@ -432,6 +445,7 @@ action="install"
 purge_existing=false
 version="${KAST_VERSION:-}"
 repository="${KAST_REPOSITORY:-$DEFAULT_REPOSITORY}"
+release_base_url="${KAST_RELEASE_BASE_URL:-}"
 install_root="${KAST_INSTALL_ROOT:-$default_install_root}"
 bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
 legacy_runtime_store="$runtime_cache_root/semantic-runtimes"
@@ -440,6 +454,7 @@ process_table_command="${KAST_INSTALL_PROCESS_TABLE_COMMAND:-ps}"
 process_kill_command="${KAST_INSTALL_PROCESS_KILL_COMMAND:-kill}"
 version_option_set=false
 repository_option_set=false
+release_base_url_option_set=false
 
 if [[ ${#} -gt 0 ]]; then
   case "$1" in
@@ -483,6 +498,12 @@ while [[ $# -gt 0 ]]; do
       repository_option_set=true
       shift 2
       ;;
+    --release-base-url)
+      [[ $# -ge 2 ]] || fail "--release-base-url requires a value"
+      release_base_url="$2"
+      release_base_url_option_set=true
+      shift 2
+      ;;
     --help|-h)
       usage
       exit 0
@@ -494,8 +515,9 @@ done
 if [[ "$action" == "uninstall" ]]; then
   [[ "$purge_existing" == false ]] ||
     fail "--purge-existing is valid only with install"
-  [[ "$version_option_set" == false && "$repository_option_set" == false ]] ||
-    fail "--version and --repository are valid only with install"
+  [[ "$version_option_set" == false && "$repository_option_set" == false && \
+    "$release_base_url_option_set" == false ]] ||
+    fail "--version, --repository, and --release-base-url are valid only with install"
   require_command rm
   require_command find
   require_command "$process_table_command"
@@ -542,6 +564,11 @@ java_major="$(java_major_version "$java_executable")" ||
 (( java_major >= 21 )) || fail "Java 21 or newer is required; found Java $java_major"
 
 validate_repository "$repository"
+if [[ -n "$release_base_url" ]]; then
+  validate_release_base_url "$release_base_url"
+  [[ "$repository_option_set" == false ]] ||
+    fail "--repository and --release-base-url are mutually exclusive"
+fi
 require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_dir"
 require_absolute_path "IDE plugin directory" "$ide_plugin_directory"
@@ -554,6 +581,8 @@ if [[ "$purge_existing" == true ]]; then
 fi
 
 if [[ -z "$version" || "$version" == "latest" ]]; then
+  [[ -z "$release_base_url" ]] ||
+    fail "an explicit --version is required with a release base URL"
   version="$(resolve_latest_version "$repository")"
 else
   version="${version#v}"
@@ -563,7 +592,11 @@ fi
 release="v${version}"
 control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 plugin_name="kast-ide-plugin-${version}.zip"
-release_url="https://github.com/${repository}/releases/download/${release}"
+if [[ -n "$release_base_url" ]]; then
+  release_url="${release_base_url%/}/${release}"
+else
+  release_url="https://github.com/${repository}/releases/download/${release}"
+fi
 
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 staged_root=""
