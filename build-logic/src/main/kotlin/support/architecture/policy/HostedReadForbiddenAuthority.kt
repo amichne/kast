@@ -6,7 +6,10 @@ internal enum class HostedReadForbiddenAuthority(
     name: String,
     private val ownerMatch: HostedReadMemberMatch = HostedReadMemberMatch.EXACT,
     private val nameMatch: HostedReadMemberMatch = HostedReadMemberMatch.EXACT,
-    private val roles: Set<ModuleRole> = setOf(ModuleRole.IDE_READ_ONLY),
+    private val roles: Set<ModuleRole> = setOf(
+        ModuleRole.IDE_READ_ONLY,
+        ModuleRole.IDE_HOST,
+    ),
 ) {
     FILES_WALK(ForbiddenEffect.REPOSITORY_TRAVERSAL, "java/nio/file/Files", "walk"),
     FILES_WALK_FILE_TREE(ForbiddenEffect.REPOSITORY_TRAVERSAL, "java/nio/file/Files", "walkFileTree"),

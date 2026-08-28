@@ -26,6 +26,7 @@ import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntime
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimeCandidate
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadProject
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparation
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntime as HostedEffectsRuntime
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.ByteBuffer
@@ -61,7 +62,7 @@ class IdeEndpointPublicationTest {
             WorkspaceInspectRejection,
             > = OperationOutcome.Rejected(WorkspaceInspectRejection.RUNTIME_BLOCKED)
         var workspaceCalls = 0
-        val runtime = HostedIdeReadRuntime.prepare(
+        val readRuntime = HostedIdeReadRuntime.prepare(
             HostedIdeReadRuntimeCandidate.Complete(
                 HostedIdeReadProject.testing(root, compatibility),
                 WorkspaceInspectReadPort {
@@ -72,6 +73,9 @@ class IdeEndpointPublicationTest {
                 SymbolResolveReadPort { fail("resolve port must not run during publication") },
                 SymbolDescribeReadPort { fail("describe port must not run during publication") },
             ),
+        )
+        val runtime = HostedEffectsRuntime.testing(
+            (readRuntime as HostedIdeReadRuntimePreparation.Prepared).runtime,
         )
         val prepared = IdeEndpointPreparation.prepare(
             IdeEndpointPreparationCandidate(

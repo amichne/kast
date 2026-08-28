@@ -1,7 +1,7 @@
 package io.github.amichne.kast.ide.endpoint
 
-import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
-import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntime
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntime
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntimeDispatch
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.SocketChannel
@@ -78,7 +78,7 @@ private sealed interface IdeEndpointConnectionAdmission {
 /** Bound exact-root transport that can serve only its retained complete hosted runtime. */
 internal class IdeEndpointTransport(
     private val socket: OwnedEndpointPath,
-    private val runtime: HostedIdeReadRuntime,
+    private val runtime: HostedIdeRuntime,
 ) {
     private var state: IdeEndpointTransportState = IdeEndpointTransportState.Listening
 
@@ -155,7 +155,7 @@ internal class IdeEndpointTransport(
                 )
             }
             when (val dispatch = runtime.dispatch(request)) {
-                is IdeReadRuntimeDispatchResult.Responded -> when (
+                is HostedIdeRuntimeDispatch.Responded -> when (
                     IdeEndpointFrameCodec.write(connection, dispatch.document)
                 ) {
                     IdeEndpointFrameWrite.Written -> Unit
@@ -163,7 +163,7 @@ internal class IdeEndpointTransport(
                         IdeEndpointConnectionFailure.RESPONSE_WRITE_FAILED,
                     )
                 }
-                is IdeReadRuntimeDispatchResult.Rejected ->
+                HostedIdeRuntimeDispatch.Rejected ->
                     return IdeEndpointConnectionHandling.Rejected(
                         IdeEndpointConnectionFailure.DISPATCH_REJECTED,
                     )

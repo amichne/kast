@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.server
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.IdeHostCapability
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
 import io.github.amichne.kast.protocol.wire.metadata.CanonicalHostedCapabilities
@@ -55,6 +56,15 @@ class RuntimeServer private constructor(
         fun createHosted(
             bindings: Iterable<TypedOperationBinding<*, *, *, *>>,
         ): RuntimeServerConstruction = create(bindings, CanonicalHostedCapabilities.operations)
+
+        /** Establishes the generated hosted surface not already owned by the exact-four read runtime. */
+        fun createHostedEffects(
+            bindings: Iterable<TypedOperationBinding<*, *, *, *>>,
+        ): RuntimeServerConstruction = create(
+            bindings,
+            CanonicalHostedCapabilities.operations -
+                IdeHostCapability.entries.mapTo(linkedSetOf(), IdeHostCapability::operation),
+        )
 
         private fun create(
             bindings: Iterable<TypedOperationBinding<*, *, *, *>>,

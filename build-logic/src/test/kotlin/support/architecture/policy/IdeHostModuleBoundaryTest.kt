@@ -59,6 +59,43 @@ class IdeHostModuleBoundaryTest {
         )
     }
 
+    @Test
+    fun `ide host scanning rejects source reads hashes and ambient project discovery`() {
+        val caller = JvmMember.of("example/HostedFactory", "create", "()V")
+
+        assertEquals(
+            setOf(ForbiddenEffect.PHYSICAL_SOURCE_READ),
+            EffectRules.classify(
+                ModuleRole.IDE_HOST,
+                caller,
+                JvmMember.of("java/nio/file/Files", "readAllBytes", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(ForbiddenEffect.SOURCE_CONTENT_HASH),
+            EffectRules.classify(
+                ModuleRole.IDE_HOST,
+                caller,
+                JvmMember.of("java/security/MessageDigest", "update", "()V"),
+            ),
+        )
+        assertEquals(
+            setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.PROJECT_OPEN,
+            ),
+            EffectRules.classify(
+                ModuleRole.IDE_HOST,
+                caller,
+                JvmMember.of(
+                    "com/intellij/openapi/project/ProjectManager",
+                    "getOpenProjects",
+                    "()V",
+                ),
+            ),
+        )
+    }
+
     private fun canonical(): ValidatedArchitecturePolicy = assertInstanceOf<
         ArchitecturePolicyValidation.Valid,
         >(KastArchitecturePolicy.validate()).architecture

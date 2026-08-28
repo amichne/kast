@@ -40,11 +40,95 @@ sealed interface SqliteDurableChangeAuthorityOpenResult {
         SqliteDurableChangeAuthorityOpenResult
 }
 
+sealed interface HostedDurableMutationAudit {
+    data object Clean : HostedDurableMutationAudit
+    data class RecoveryRequired(val bindings: Set<MutationPlanBinding>) :
+        HostedDurableMutationAudit
+    data class Rejected(val failure: DurableChangeAuthorityFailure) :
+        HostedDurableMutationAudit
+}
+
 /** Durable public plan/application/receipt authority sharing mutation.sqlite with recovery. */
 class SqliteDurableChangeAuthority private constructor(
     private val connections: SqliteMutationRecoveryConnections,
     private val recovery: SqliteMutationRecoveryJournal,
 ) : DurableChangeAuthority {
+    /**
+     * Distinguishes an interrupted applied write from one whose public application identity was
+     * durably issued. Only the former withdraws plan/apply/verify authority after restart.
+     */
+    fun auditMutationState(): HostedDurableMutationAudit = storage(
+        rejected = { HostedDurableMutationAudit.Rejected(it) },
+    ) {
+        val rows = connections.use { connection ->
+            connection.prepareStatement(
+                """SELECT recovery.plan_binding, recovery.stage, application.identity
+                    FROM mutation_recovery AS recovery
+                    LEFT JOIN hosted_change_application AS application
+                      ON application.recovery_binding = recovery.plan_binding
+                    WHERE recovery.stage IN ('APPLIED_WRITES_DURABLE', 'RECOVERY_REQUIRED')
+                    ORDER BY recovery.plan_binding""",
+            ).use { statement ->
+                statement.executeQuery().use { result ->
+                    buildList {
+                        while (result.next()) {
+                            add(
+                                DurableMutationAuditRow(
+                                    result.getString("plan_binding"),
+                                    result.getString("stage"),
+                                    result.getString("identity"),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        val recoveryRequired = linkedSetOf<MutationPlanBinding>()
+        rows.forEach { row ->
+            val binding = when (val parsed = MutationPlanBinding.parse(row.binding)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return@storage HostedDurableMutationAudit.Rejected(
+                    DurableChangeAuthorityFailure.CORRUPT_RECORD,
+                )
+            }
+            if (row.stage == "RECOVERY_REQUIRED" || row.applicationIdentity == null) {
+                recoveryRequired += binding
+            } else {
+                val identity = ChangeApplicationIdentity.parse(row.applicationIdentity)
+                    ?: return@storage HostedDurableMutationAudit.Rejected(
+                        DurableChangeAuthorityFailure.CORRUPT_RECORD,
+                    )
+                when (loadApplication(identity)) {
+                    is ChangeApplicationLookup.Found -> Unit
+                    ChangeApplicationLookup.Missing,
+                    is ChangeApplicationLookup.Rejected,
+                    -> return@storage HostedDurableMutationAudit.Rejected(
+                        DurableChangeAuthorityFailure.CORRUPT_RECORD,
+                    )
+                }
+            }
+        }
+        if (recoveryRequired.isEmpty()) HostedDurableMutationAudit.Clean
+        else HostedDurableMutationAudit.RecoveryRequired(recoveryRequired)
+    }
+
+    fun loadPlanForRecovery(binding: MutationPlanBinding): ChangePlanLookup = storage(
+        rejected = { ChangePlanLookup.Rejected(it) },
+    ) {
+        val identity = connections.use { connection ->
+            connection.prepareStatement(
+                "SELECT identity FROM hosted_change_plan WHERE plan_id = ?",
+            ).use { statement ->
+                statement.setString(1, binding.value)
+                statement.executeQuery().use { rows ->
+                    if (!rows.next()) null else ChangePlanIdentity.parse(rows.getString("identity"))
+                }
+            }
+        } ?: return@storage ChangePlanLookup.Missing
+        loadPlan(identity)
+    }
+
     override fun issuePlan(plan: ChangePlan): ChangePlanIssuance {
         val supported = plan as? AddDeclarationChangePlan
             ?: return ChangePlanIssuance.Rejected(DurableChangeAuthorityFailure.UNSUPPORTED_PLAN)
@@ -392,6 +476,12 @@ private data class ApplicationRow(
     val postimage: String,
     val recoveryBinding: String,
     val digest: String,
+)
+
+private data class DurableMutationAuditRow(
+    val binding: String,
+    val stage: String,
+    val applicationIdentity: String?,
 )
 
 private fun Connection.applicationRow(identity: ChangeApplicationIdentity): ApplicationRow? =

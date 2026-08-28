@@ -2,8 +2,13 @@ package io.github.amichne.kast.ide.endpoint
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.ide.compatibility.AdmittedIdeHostCompatibilityMetadata
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.change.intellij.HostedChangeAdmission
+import io.github.amichne.kast.change.intellij.admitHostedIntellijChangePorts
+import io.github.amichne.kast.diagnostic.intellij.HostedDiagnosticAdmission
+import io.github.amichne.kast.diagnostic.intellij.admitHostedIntellijDiagnosticPorts
+import io.github.amichne.kast.evidence.contract.HostedWorkspaceStateLocation
+import io.github.amichne.kast.evidence.contract.KastUserStateRoot
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorAdmission
@@ -26,6 +31,21 @@ import io.github.amichne.kast.runtime.ide.read.composition.HostedIdeReadProducti
 import io.github.amichne.kast.runtime.ide.read.composition.HostedIdeReadProductionCompositionPreparation
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparation
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparationFailure
+import io.github.amichne.kast.runtime.ide.host.HostedChangeRuntimePorts
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntime
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntimeComposition
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntimeCompositionFailure
+import io.github.amichne.kast.runtime.ide.host.HostedIdeRuntimeCompositionResult
+import io.github.amichne.kast.runtime.ide.host.HostedSemanticGenerationIssuance
+import io.github.amichne.kast.runtime.ide.host.HostedTopologyAdapterPorts
+import io.github.amichne.kast.runtime.ide.host.HostedWorkspaceOperations
+import io.github.amichne.kast.relation.intellij.HostedRelationAdmission
+import io.github.amichne.kast.relation.intellij.InstalledRelationScopeOperations
+import io.github.amichne.kast.relation.intellij.admitHostedIntellijRelationPorts
+import io.github.amichne.kast.topology.intellij.HostedTopologyAdmission
+import io.github.amichne.kast.topology.intellij.HostedWorkspaceSourceStateAdmission
+import io.github.amichne.kast.topology.intellij.admitHostedWorkspaceSourceState
+import io.github.amichne.kast.topology.intellij.admitHostedIntellijTopologyPorts
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
 import io.github.amichne.kast.workspace.intellij.read.DetachedModelCapture
@@ -36,7 +56,7 @@ import java.nio.file.Path
 
 data class IdeEndpointPreparationCandidate(
     val descriptorRoot: IdeEndpointCanonicalRoot,
-    val runtime: HostedIdeReadRuntimePreparation,
+    val runtime: HostedIdeRuntime,
     val compatibilityPolicy: IdeHostCompatibilityPolicy,
     val socketDirectory: IdeEndpointSocketDirectory,
     val processId: IdeProcessId,
@@ -63,12 +83,7 @@ sealed interface IdeEndpointPreparation {
          * at the hosted endpoint publication boundary.
          */
         fun prepare(candidate: IdeEndpointPreparationCandidate): IdeEndpointPreparation {
-            val runtime = when (val prepared = candidate.runtime) {
-                is HostedIdeReadRuntimePreparation.Prepared -> prepared.runtime
-                is HostedIdeReadRuntimePreparation.Rejected -> return Rejected(
-                    IdeEndpointPublicationFailure.PARTIAL_RUNTIME,
-                )
-            }
+            val runtime = candidate.runtime
             if (runtime.canonicalRoot != candidate.descriptorRoot) {
                 return Rejected(IdeEndpointPublicationFailure.WRONG_ROOT)
             }
@@ -137,6 +152,11 @@ internal sealed interface IdeEndpointStartupFailure {
     data class RuntimeRejected(
         val cause: HostedIdeReadRuntimePreparationFailure,
     ) : IdeEndpointStartupFailure
+    data class HostedRuntimeRejected(
+        val cause: HostedIdeRuntimeCompositionFailure,
+    ) : IdeEndpointStartupFailure
+    data object HostedEffectsRejected : IdeEndpointStartupFailure
+    data object HostedWorkspaceRejected : IdeEndpointStartupFailure
     data class ProjectModelRejected(
         val causes: Set<DetachedModelCaptureFailure>,
     ) : IdeEndpointStartupFailure
@@ -197,6 +217,21 @@ internal object IdeEndpointModelCaptureAdmission {
     }
 }
 
+internal object IdeEndpointReadRuntimeAdmission {
+    /**
+     * Proof transition: `HostedIdeReadRuntimePreparationFailure -> IdeEndpointStartup`.
+     *
+     * A partial exact-four-route runtime cannot publish, but may be observed while IntelliJ moves
+     * through a Gradle model or smart-mode transition. It therefore remains a closed deferred
+     * readiness state so the next installed lifecycle signal can re-run the full admission.
+     */
+    fun admit(failure: HostedIdeReadRuntimePreparationFailure): IdeEndpointStartup = when (failure) {
+        HostedIdeReadRuntimePreparationFailure.PARTIAL_RUNTIME -> IdeEndpointStartup.Deferred(
+            IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
+        )
+    }
+}
+
 /** Live project-service startup boundary with no import, refresh, traversal, or fallback path. */
 internal object LiveIdeEndpointStartup {
     /**
@@ -204,7 +239,7 @@ internal object LiveIdeEndpointStartup {
      *
      * Refines the existing Project through the compiled host-compatibility tuple and [HostedIdeReadProject],
      * preserves transient cached-readiness failures as [IdeEndpointStartup.Deferred], and consumes
-     * a generation only after complete four-operation runtime construction. All other expected
+     * a generation only after complete hosted runtime construction. All other expected
      * failures remain finite [IdeEndpointStartupFailure]. Raw Project metadata, PID, and endpoint
      * directory values leave only at this outer hosted service boundary.
      */
@@ -287,18 +322,135 @@ internal object LiveIdeEndpointStartup {
                 IdeEndpointStartupFailure.EndpointGenerationExhausted,
             )
         }
-        val evidenceGeneration = when (
-            val parsed = EvidenceGeneration.parse(runtimeEpoch.value)
-        ) {
+        val workspaceModel = when (val admission = admitHostedWorkspaceModel(model)) {
+            is HostedWorkspaceModelAdmissionResult.Admitted -> admission.admission
+            is HostedWorkspaceModelAdmissionResult.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedWorkspaceRejected,
+            )
+        }
+        val stateRoot = when (val parsed = System.getProperty("user.home")?.let { home ->
+            KastUserStateRoot.parse(
+                Path.of(home).resolve(".local/share/kast").toAbsolutePath().normalize().toString(),
+            )
+        }) {
             is Refinement.Refined -> parsed.value
+            is Refinement.Rejected, null -> return rejected(
+                IdeEndpointStartupFailure.HostConfigurationUnavailable,
+            )
+        }
+        val stateLocation = when (val located = HostedWorkspaceStateLocation.locate(
+            stateRoot,
+            workspaceRoot,
+        )) {
+            is Refinement.Refined -> located.value
             is Refinement.Rejected -> return rejected(
                 IdeEndpointStartupFailure.HostConfigurationUnavailable,
             )
         }
-        val runtime = when (val preparation = composition.activate(evidenceGeneration)) {
-            is HostedIdeReadRuntimePreparation.Prepared -> preparation
-            is HostedIdeReadRuntimePreparation.Rejected -> return rejected(
-                IdeEndpointStartupFailure.RuntimeRejected(preparation.failure),
+        val sourceState = when (val admission = admitHostedWorkspaceSourceState(
+            project,
+            workspaceRoot,
+            metadata.candidate,
+            metadata.compatibilityPolicy,
+            workspaceModel.sourceRoots,
+        )) {
+            is HostedWorkspaceSourceStateAdmission.Admitted -> admission.sourceState
+            is HostedWorkspaceSourceStateAdmission.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedEffectsRejected,
+            )
+        }
+        val evidenceGeneration = when (val issued =
+            HostedIdeRuntimeComposition.issueSemanticGeneration(
+                stateLocation,
+                sourceState,
+            )
+        ) {
+            is HostedSemanticGenerationIssuance.Issued -> issued.generation
+            HostedSemanticGenerationIssuance.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostConfigurationUnavailable,
+            )
+        }
+        val workspaceAdmission = when (val admission = workspaceModel.reconcile(sourceState)) {
+            is HostedWorkspaceAdmissionResult.Admitted -> admission.admission
+            is HostedWorkspaceAdmissionResult.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedWorkspaceRejected,
+            )
+        }
+        val readRuntime = when (val preparation = composition.activate(evidenceGeneration)) {
+            is HostedIdeReadRuntimePreparation.Prepared -> preparation.runtime
+            is HostedIdeReadRuntimePreparation.Rejected -> return IdeEndpointReadRuntimeAdmission.admit(
+                preparation.failure,
+            )
+        }
+        val hostedWorkspace = HostedWorkspaceOperations(
+            workspaceAdmission.publish(evidenceGeneration),
+        )
+        val topologyPorts = when (val admission = admitHostedIntellijTopologyPorts(
+            project,
+            workspaceRoot,
+            metadata.candidate,
+            metadata.compatibilityPolicy,
+            hostedWorkspace,
+        )) {
+            is HostedTopologyAdmission.Admitted -> admission.ports
+            is HostedTopologyAdmission.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedEffectsRejected,
+            )
+        }
+        val relationPorts = when (val admission = admitHostedIntellijRelationPorts(
+            project,
+            workspaceRoot,
+            metadata.candidate,
+            metadata.compatibilityPolicy,
+            hostedWorkspace,
+            InstalledRelationScopeOperations { workspaceAdmission.scope },
+        )) {
+            is HostedRelationAdmission.Admitted -> admission.ports
+            is HostedRelationAdmission.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedEffectsRejected,
+            )
+        }
+        val diagnosticPorts = when (val admission = admitHostedIntellijDiagnosticPorts(
+            project,
+            workspaceRoot,
+            metadata.candidate,
+            metadata.compatibilityPolicy,
+            hostedWorkspace,
+        )) {
+            is HostedDiagnosticAdmission.Admitted -> admission.ports
+            is HostedDiagnosticAdmission.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedEffectsRejected,
+            )
+        }
+        val changePorts = when (val admission = admitHostedIntellijChangePorts(
+            project,
+            workspaceRoot,
+            metadata.candidate,
+            metadata.compatibilityPolicy,
+        )) {
+            is HostedChangeAdmission.Admitted -> admission.ports
+            is HostedChangeAdmission.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedEffectsRejected,
+            )
+        }
+        val runtime = when (val created = HostedIdeRuntimeComposition.create(
+            readRuntime,
+            hostedWorkspace,
+            stateLocation,
+            HostedTopologyAdapterPorts(topologyPorts.candidates, topologyPorts.fileExtractor),
+            HostedChangeRuntimePorts(
+                relationPorts.compiler,
+                diagnosticPorts.compiler,
+                changePorts.sourceObserver,
+                changePorts.sourceWriter,
+                changePorts.sourceRollback,
+                changePorts.intentCompiler,
+                changePorts.semanticObserver,
+            ),
+        )) {
+            is HostedIdeRuntimeCompositionResult.Created -> created.runtime
+            is HostedIdeRuntimeCompositionResult.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostedRuntimeRejected(created.failure),
             )
         }
         return when (val prepared = IdeEndpointPreparation.prepare(

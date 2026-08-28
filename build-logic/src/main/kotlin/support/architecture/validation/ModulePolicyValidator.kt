@@ -135,12 +135,16 @@ internal object KastCleanSlateCrossRoleDependencies {
         ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_RECOVERY),
+        ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_VERIFY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.EVIDENCE_SQLITE, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.EVIDENCE_SQLITE, ModuleId.CHANGE_VERIFY),
         ProjectDependencyObservation(ModuleId.RELATION_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.TOPOLOGY_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
         ProjectDependencyObservation(ModuleId.DIAGNOSTIC_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ),
+        // IDE startup may name only the narrow host-neutral change port types it passes onward.
+        ProjectDependencyObservation(ModuleId.IDE_PLUGIN, ModuleId.CHANGE_APPLY),
+        ProjectDependencyObservation(ModuleId.IDE_PLUGIN, ModuleId.CHANGE_VERIFY),
     )
 }
 

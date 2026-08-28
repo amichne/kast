@@ -16,6 +16,7 @@ import io.github.amichne.kast.evidence.contract.KastUserStateRoot
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage
 import io.github.amichne.kast.evidence.sqlite.SqliteDurableChangeAuthority
 import io.github.amichne.kast.evidence.sqlite.SqliteDurableChangeAuthorityOpenResult
+import io.github.amichne.kast.evidence.sqlite.HostedDurableMutationAudit
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournal
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournalOpenResult
 import io.github.amichne.kast.kernel.Refinement
@@ -64,11 +65,16 @@ class HostedChangeAuthorityRestartTest {
             postimage,
             appliedRecovery.record.binding,
         ).refined()
+        assertInstanceOf(
+            HostedDurableMutationAudit.RecoveryRequired::class.java,
+            authority(state).auditMutationState(),
+        )
         val applicationIdentity = (
             first.issueApplication(plan, applied) as ChangeApplicationIssuance.Issued
             ).identity
 
         val reopened = authority(state)
+        assertEquals(HostedDurableMutationAudit.Clean, reopened.auditMutationState())
         val loadedPlan = reopened.loadPlan(planIdentity)
         assertInstanceOf(ChangePlanLookup.Found::class.java, loadedPlan)
         assertEquals(plan.planId, (loadedPlan as ChangePlanLookup.Found).plan.planId)

@@ -9,8 +9,8 @@ import io.github.amichne.kast.change.contract.AddDeclarationPlanningEvidenceInpu
 import io.github.amichne.kast.change.contract.EditableMutationTarget
 import io.github.amichne.kast.change.contract.MutationTargetObservation
 import io.github.amichne.kast.change.contract.ObservedMutationTargetState
-import io.github.amichne.kast.change.intellij.InstalledAddDeclarationIntentCompilation
-import io.github.amichne.kast.change.intellij.InstalledAddDeclarationIntentCompiler
+import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentCompilation
+import io.github.amichne.kast.change.contract.InstalledAddDeclarationIntentCompiler
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
