@@ -49,6 +49,19 @@ data class SemanticReadLease(
     val generation: EvidenceGeneration,
 )
 
+/**
+ * Exact in-process serialization boundary shared by source invalidation and workspace publication.
+ *
+ * The capability is deliberately concrete and identity-bearing: participants that must exclude
+ * one another receive the same instance rather than independently synchronizing on unrelated
+ * objects.
+ */
+class WorkspacePublicationSerialization {
+    fun <Value> serialized(operation: () -> Value): Value = synchronized(this) {
+        operation()
+    }
+}
+
 /** Closed result of attempting an effect while one semantic lease remains current. */
 sealed interface SemanticReadLeaseUse<out Value> {
     data class Completed<Value>(

@@ -40,6 +40,9 @@ import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimeC
 import io.github.amichne.kast.runtime.ide.read.preparation.HostedIdeReadRuntimePreparation
 import io.github.amichne.kast.runtime.ide.read.workspace.HostedWorkspaceInspection
 import io.github.amichne.kast.runtime.ide.read.workspace.HostedWorkspaceInspectionPreparation
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
@@ -188,6 +191,14 @@ class IdeHostedSymbolDescribeAcceptance {
             HostedIdeReadRuntime.prepare(
                 HostedIdeReadRuntimeCandidate.Complete(
                     project,
+                    SemanticReadLease(
+                        refined(
+                            CanonicalWorkspaceRoot.fromCanonicalPath(
+                                Path.of(project.canonicalRoot.value),
+                            ),
+                        ),
+                        refined(EvidenceGeneration.parse(31)),
+                    ),
                     inspection,
                     discovery,
                     resolution,

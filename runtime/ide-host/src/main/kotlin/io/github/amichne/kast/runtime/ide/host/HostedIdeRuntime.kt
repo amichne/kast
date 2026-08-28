@@ -32,7 +32,7 @@ sealed interface HostedIdeRuntimeDispatch {
 
 /** Existing exact-four read runtime plus the exact generated hosted-effects table. */
 class HostedIdeRuntime private constructor(
-    private val reads: HostedIdeReadRuntime,
+    private val reads: HostedReadRuntimeOperations,
     private val effects: RuntimeServer,
 ) {
     val canonicalRoot get() = reads.canonicalRoot
@@ -53,20 +53,22 @@ class HostedIdeRuntime private constructor(
             is IdeReadRuntimeDispatchFailure.RequestAdmissionFailed,
             is IdeReadRuntimeDispatchFailure.RequestDecodingFailed,
             is IdeReadRuntimeDispatchFailure.ResponseEncodingFailed,
+            IdeReadRuntimeDispatchFailure.RuntimeGenerationUnavailable,
             -> HostedIdeRuntimeDispatch.Rejected
         }
     }
 
     companion object {
         internal fun create(
-            reads: HostedIdeReadRuntime,
+            reads: HostedReadRuntimeOperations,
             topology: HostedTopologyOperations,
             selectors: HostedExactSelectorOperations,
             mutation: HostedMutationState,
+            mutationAdmission: HostedMutationAdmissionOperations,
             authority: DurableChangeAuthority,
         ): HostedIdeRuntimeConstruction = when (val server = RuntimeServer.createHostedEffects(
             HostedTopologyProtocol.bindings(topology, selectors) +
-                HostedMutationProtocol.bindings(mutation, selectors, authority),
+                HostedMutationProtocol.bindings(mutation, mutationAdmission, selectors, authority),
         )) {
             is RuntimeServerConstruction.Created -> HostedIdeRuntimeConstruction.Created(
                 HostedIdeRuntime(reads, server.server),
@@ -105,7 +107,10 @@ class HostedIdeRuntime private constructor(
                 ),
             )
         ) {
-            is RuntimeServerConstruction.Created -> HostedIdeRuntime(reads, server.server)
+            is RuntimeServerConstruction.Created -> HostedIdeRuntime(
+                StaticHostedReadRuntimeOperations(reads),
+                server.server,
+            )
             is RuntimeServerConstruction.Rejected -> error("test effect table is complete")
         }
     }

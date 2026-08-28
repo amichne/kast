@@ -70,6 +70,8 @@ sealed interface IdeReadRuntimeDispatchResult {
 
 /** Closed dispatch failures kept distinct from encoded semantic operation rejection outcomes. */
 sealed interface IdeReadRuntimeDispatchFailure {
+    data object RuntimeGenerationUnavailable : IdeReadRuntimeDispatchFailure
+
     data class RequestAdmissionFailed(
         val failure: WireFailure,
     ) : IdeReadRuntimeDispatchFailure

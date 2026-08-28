@@ -2,6 +2,10 @@ package io.github.amichne.kast.runtime.ide.host
 
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompiler
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompilerOpening
+import io.github.amichne.kast.change.verify.ResultingGenerationPublication
+import io.github.amichne.kast.change.verify.ResultingGenerationPublicationRejection
+import io.github.amichne.kast.change.verify.ResultingGenerationPublisher
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.topology.build.TopologyBuildService
@@ -23,23 +27,212 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.SemanticReadLeaseGuard
 import io.github.amichne.kast.workspace.contract.SemanticReadLeaseUse
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
+import io.github.amichne.kast.workspace.contract.WorkspacePublicationSerialization
+import io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
+import io.github.amichne.kast.workspace.service.ResultingWorkspacePublication
+
+/** One exact host-supplied attempt to move an admitted workspace publication forward. */
+sealed interface HostedWorkspaceTransition {
+    data class Published(
+        val publication: ResultingWorkspacePublication,
+    ) : HostedWorkspaceTransition
+
+    data object Unchanged : HostedWorkspaceTransition
+
+    data class Rejected(
+        val blocker: WorkspacePublicationBlocker,
+    ) : HostedWorkspaceTransition
+
+    companion object {
+        /**
+         * Proof transition: `(PublishedWorkspace, PublishedWorkspace) ->
+         * HostedWorkspaceTransition`.
+         *
+         * Preserves an identical publication as [Unchanged], admits only a same-root strictly
+         * newer candidate as [Published], and closes every invalid candidate as [Rejected].
+         */
+        fun admit(
+            current: PublishedWorkspace,
+            candidate: PublishedWorkspace,
+        ): HostedWorkspaceTransition {
+            if (
+                current.readLease == candidate.readLease &&
+                current.sourceState == candidate.sourceState
+            ) {
+                return Unchanged
+            }
+            return when (val admitted = ResultingWorkspacePublication.admit(
+                current.readLease,
+                candidate,
+            )) {
+                is Refinement.Refined -> Published(admitted.value)
+                is Refinement.Rejected -> Rejected(
+                    WorkspacePublicationBlocker.PublicationUnavailable,
+                )
+            }
+        }
+    }
+}
+
+/** Narrow boundary that may only publish a proven successor of the supplied workspace. */
+enum class HostedWorkspaceTransitionCause {
+    OBSERVED_SOURCE_EVENT,
+    PROVEN_SOURCE_TRANSITION,
+}
+
+fun interface HostedWorkspaceTransitionOperations {
+    fun publishAfter(
+        current: PublishedWorkspace,
+        cause: HostedWorkspaceTransitionCause,
+    ): HostedWorkspaceTransition
+}
 
 /** Host-neutral exact publication retained for one admitted endpoint generation. */
 class HostedWorkspaceOperations(
-    private val workspace: PublishedWorkspace,
-) : WorkspaceInspectionOperations, SemanticReadLeaseGuard {
-    override fun inspect(): WorkspaceRuntimeState = WorkspaceRuntimeState.Ready(workspace)
+    workspace: PublishedWorkspace,
+    private val transition: HostedWorkspaceTransitionOperations =
+        HostedWorkspaceTransitionOperations { _, _ -> HostedWorkspaceTransition.Unchanged },
+    private val serialization: WorkspacePublicationSerialization =
+        WorkspacePublicationSerialization(),
+) : WorkspaceInspectionOperations, SemanticReadLeaseGuard, HostedMutationPublicationOperations {
+    @Volatile
+    private var state: WorkspaceRuntimeState = WorkspaceRuntimeState.Ready(workspace)
+
+    override fun inspect(): WorkspaceRuntimeState = serialization.serialized {
+        refresh(HostedWorkspaceTransitionCause.OBSERVED_SOURCE_EVENT)
+    }
 
     override fun <Value> whileCurrent(
         expected: SemanticReadLease,
         operation: () -> Value,
-    ): SemanticReadLeaseUse<Value> = if (expected == workspace.readLease) {
-        SemanticReadLeaseUse.Completed(operation())
-    } else {
-        SemanticReadLeaseUse.Moved
+    ): SemanticReadLeaseUse<Value> = serialization.serialized {
+        when (val current = refresh(HostedWorkspaceTransitionCause.OBSERVED_SOURCE_EVENT)) {
+            is WorkspaceRuntimeState.Ready -> if (expected == current.workspace.readLease) {
+                SemanticReadLeaseUse.Completed(operation())
+            } else {
+                SemanticReadLeaseUse.Moved
+            }
+            WorkspaceRuntimeState.Absent,
+            is WorkspaceRuntimeState.Blocked,
+            WorkspaceRuntimeState.Reconciling,
+            WorkspaceRuntimeState.Starting,
+            WorkspaceRuntimeState.Stopping,
+            -> SemanticReadLeaseUse.Moved
+        }
+    }
+
+    override fun publishAfter(
+        prior: SemanticReadLease,
+    ): ResultingGenerationPublication = serialization.serialized {
+        val current = state as? WorkspaceRuntimeState.Ready
+            ?: return@serialized publicationRejected(
+                ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE,
+            )
+        if (current.workspace.readLease != prior) {
+            return@serialized publicationRejected(
+                ResultingGenerationPublicationRejection.RECONCILIATION_INVALIDATED,
+            )
+        }
+        val observed = refresh(HostedWorkspaceTransitionCause.OBSERVED_SOURCE_EVENT)
+        val refreshed = if (
+            observed is WorkspaceRuntimeState.Ready &&
+            observed.workspace.readLease == prior
+        ) {
+            refresh(HostedWorkspaceTransitionCause.PROVEN_SOURCE_TRANSITION)
+        } else {
+            observed
+        }
+        when (refreshed) {
+            is WorkspaceRuntimeState.Ready -> if (
+                refreshed.workspace.root == prior.workspaceRoot &&
+                refreshed.workspace.generation.value > prior.generation.value
+            ) {
+                ResultingGenerationPublication.Published(refreshed.workspace)
+            } else {
+                publicationRejected(
+                    ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE,
+                )
+            }
+            is WorkspaceRuntimeState.Blocked -> publicationRejected(
+                ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED,
+            )
+            WorkspaceRuntimeState.Absent,
+            WorkspaceRuntimeState.Reconciling,
+            WorkspaceRuntimeState.Starting,
+            WorkspaceRuntimeState.Stopping,
+            -> publicationRejected(
+                ResultingGenerationPublicationRejection.RECONCILIATION_INVALIDATED,
+            )
+        }
+    }
+
+    override fun publishCurrentTransition(): ResultingGenerationPublication =
+        serialization.serialized {
+            val observed = refresh(HostedWorkspaceTransitionCause.OBSERVED_SOURCE_EVENT)
+            val current = observed as? WorkspaceRuntimeState.Ready
+                ?: return@serialized when (observed) {
+                    is WorkspaceRuntimeState.Blocked -> publicationRejected(
+                        ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED,
+                    )
+                    else -> publicationRejected(
+                        ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE,
+                    )
+                }
+            val prior = current.workspace.readLease
+            when (val advanced = refresh(
+                HostedWorkspaceTransitionCause.PROVEN_SOURCE_TRANSITION,
+            )) {
+                is WorkspaceRuntimeState.Ready -> if (
+                    advanced.workspace.root == prior.workspaceRoot &&
+                    advanced.workspace.generation.value > prior.generation.value
+                ) {
+                    ResultingGenerationPublication.Published(advanced.workspace)
+                } else {
+                    publicationRejected(
+                        ResultingGenerationPublicationRejection.CURRENT_PUBLICATION_UNAVAILABLE,
+                    )
+                }
+                is WorkspaceRuntimeState.Blocked -> publicationRejected(
+                    ResultingGenerationPublicationRejection.RECONCILIATION_BLOCKED,
+                )
+                WorkspaceRuntimeState.Absent,
+                WorkspaceRuntimeState.Reconciling,
+                WorkspaceRuntimeState.Starting,
+                WorkspaceRuntimeState.Stopping,
+                -> publicationRejected(
+                    ResultingGenerationPublicationRejection.RECONCILIATION_INVALIDATED,
+                )
+            }
+        }
+
+    private fun refresh(cause: HostedWorkspaceTransitionCause): WorkspaceRuntimeState {
+        val current = state as? WorkspaceRuntimeState.Ready ?: return state
+        state = try {
+            when (val publication = transition.publishAfter(current.workspace, cause)) {
+                is HostedWorkspaceTransition.Published -> if (
+                    publication.publication.prior == current.workspace.readLease
+                ) {
+                    WorkspaceRuntimeState.Ready(publication.publication.workspace)
+                } else {
+                    WorkspaceRuntimeState.Blocked(
+                        WorkspacePublicationBlocker.PublicationUnavailable,
+                    )
+                }
+                HostedWorkspaceTransition.Unchanged -> current
+                is HostedWorkspaceTransition.Rejected ->
+                    WorkspaceRuntimeState.Blocked(publication.blocker)
+            }
+        } catch (_: RuntimeException) {
+            WorkspaceRuntimeState.Blocked(WorkspacePublicationBlocker.PublicationUnavailable)
+        }
+        return state
     }
 }
+
+private fun publicationRejected(
+    reason: ResultingGenerationPublicationRejection,
+): ResultingGenerationPublication = ResultingGenerationPublication.Rejected(reason)
 
 data class HostedTopologyRuntimePorts(
     val candidates: TopologyCandidateEnumerator,
