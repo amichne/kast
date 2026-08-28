@@ -245,6 +245,7 @@ internal object KastCleanSlateModules {
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.RELATION_CONTRACT,
             ModuleId.TRAVERSAL_CONTRACT,
+            ModuleId.TOPOLOGY_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
             ModuleId.CHANGE_CONTRACT,
         ),

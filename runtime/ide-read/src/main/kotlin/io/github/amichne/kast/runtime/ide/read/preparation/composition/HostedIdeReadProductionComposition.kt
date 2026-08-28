@@ -62,6 +62,7 @@ class PreparedHostedIdeReadProductionComposition internal constructor(
     private val scope: WorkspaceSearchScopeModelCompilation.Compiled,
 ) {
     private val selectors = HostedSelectorAuthority()
+    val exactSelectors: HostedExactSelectorOperations = selectors
     private val discoveryAdapter = IntellijSymbolCompilerAdapter()
     private val exactAdapter = IntellijSymbolExactCompilerAdapter()
 

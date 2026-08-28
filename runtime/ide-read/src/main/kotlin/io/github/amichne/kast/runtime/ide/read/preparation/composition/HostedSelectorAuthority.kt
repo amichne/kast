@@ -20,13 +20,13 @@ internal sealed interface HostedCandidateLookup {
 }
 
 /** Closed endpoint-scoped exact-token issuance. */
-internal sealed interface HostedExactIssuance {
+sealed interface HostedExactIssuance {
     data class Issued(val token: ProtocolText) : HostedExactIssuance
     data object Rejected : HostedExactIssuance
 }
 
 /** Closed endpoint-scoped exact-token lookup. */
-internal sealed interface HostedExactLookup {
+sealed interface HostedExactLookup {
     data class Found(val selector: SymbolSelector) : HostedExactLookup
     data object Missing : HostedExactLookup
 }
@@ -43,7 +43,14 @@ private sealed interface HostedSelectorSequence {
  * this lifecycle owner. The maps retain only host-neutral strong domain values; Project, VFS, PSI,
  * index, scope, and compiler objects cannot enter them.
  */
-internal class HostedSelectorAuthority {
+/** Carried exact-selector proof shared by read issuance and hosted derived operations. */
+interface HostedExactSelectorOperations {
+    fun issueExact(selector: SymbolSelector): HostedExactIssuance
+
+    fun exact(token: ProtocolText): HostedExactLookup
+}
+
+internal class HostedSelectorAuthority : HostedExactSelectorOperations {
     private var sequence: HostedSelectorSequence = HostedSelectorSequence.Available(1)
     private val candidates = linkedMapOf<ProtocolText, SymbolDiscoverySelection>()
     private val exact = linkedMapOf<ProtocolText, SymbolSelector>()
@@ -87,7 +94,7 @@ internal class HostedSelectorAuthority {
      * Exhaustion and token admission failure remain closed.
      */
     @Synchronized
-    fun issueExact(selector: SymbolSelector): HostedExactIssuance {
+    override fun issueExact(selector: SymbolSelector): HostedExactIssuance {
         val token = nextToken("exact", selector.lease.generation.value)
             ?: return HostedExactIssuance.Rejected
         exact[token] = selector
@@ -96,7 +103,7 @@ internal class HostedSelectorAuthority {
 
     /** Preserves exact authority only for a token issued by this endpoint generation. */
     @Synchronized
-    fun exact(token: ProtocolText): HostedExactLookup =
+    override fun exact(token: ProtocolText): HostedExactLookup =
         exact[token]?.let(HostedExactLookup::Found) ?: HostedExactLookup.Missing
 
     private fun nextToken(family: String, generation: Long): ProtocolText? {

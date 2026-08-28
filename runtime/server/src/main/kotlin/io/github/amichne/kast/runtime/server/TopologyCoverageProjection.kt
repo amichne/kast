@@ -1,11 +1,11 @@
-package io.github.amichne.kast.runtime.composition.protocol.graph
+package io.github.amichne.kast.runtime.server
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.TopologyCoverageFailure
 import io.github.amichne.kast.protocol.contract.TopologyCoverageCandidateEvidenceMismatch
+import io.github.amichne.kast.protocol.contract.TopologyCoverageFailure
 import io.github.amichne.kast.protocol.contract.TopologyCoverageFileEvidence
 import io.github.amichne.kast.protocol.contract.TopologyCoverageNode
 import io.github.amichne.kast.protocol.contract.TopologyCoverageProjectionRejection
@@ -28,15 +28,10 @@ import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 
 /**
- * Proof transition: `TopologyGenerationCoverageFailure -> Refinement<TopologyCoverageFailure,
- * TopologyCoverageProjectionRejection>`.
- *
- * Retains every path, exact location-bearing node, and contradictory endpoint while refining raw
- * topology text, hashes, and ranges to public protocol values.
- * [TopologyCoverageProjectionRejection] is the closed expected failure. Protocol primitives may
- * leave the returned value only at wire or CLI presentation boundaries.
+ * Proof transition from complete domain coverage failure to its public protocol representation.
+ * Every exact path, location-bearing node, and contradictory endpoint is retained.
  */
-internal fun TopologyGenerationCoverageFailure.toProtocolCoverage(): Refinement<
+fun TopologyGenerationCoverageFailure.toProtocolCoverage(): Refinement<
     TopologyCoverageFailure,
     TopologyCoverageProjectionRejection,
 > {
