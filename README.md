@@ -67,8 +67,10 @@ public routes from relation and diagnostic services that remain internal to
 hosted workflows, and `kast --schema` returns the complete contract as JSON.
 Its `serverProjection` is the installed executable's authority for
 server-visible tool names, descriptions, input and output JSON Schemas, loading
-policy, and field-to-CLI bindings. A broker can therefore follow the selected
-installed path without carrying a Kast-version lookup table.
+policy, and field-to-CLI bindings. It advertises every public hosted operation
+and excludes the internal-only relation and diagnostic services. A broker can
+therefore follow the selected installed path without carrying a Kast-version
+lookup table.
 
 | Question | Command path |
 | --- | --- |

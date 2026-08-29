@@ -3,11 +3,15 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
@@ -23,19 +27,27 @@ class InstalledServerProjectionTest {
             .getValue("serverProjection")
             .jsonObject
         val tools = projection.getValue("tools").jsonArray.map { it.jsonObject }
+        val expectedPublicOperations = HostedOperationProjection.publicDefinitions
+            .map { it.operation.id.value }
+        val internalOperations = HostedOperationProjection.internalDefinitions
+            .map { it.operation.id.value }
 
         assertEquals(1, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
-            listOf("symbol_discover", "symbol_resolve", "traversal_run"),
-            tools.map { it.getValue("name").jsonPrimitive.content },
-        )
-        assertEquals(
-            listOf("symbol.discover", "symbol.resolve", "traversal.run"),
+            expectedPublicOperations,
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
+        assertEquals(
+            expectedPublicOperations.map { it.replace('.', '_') },
+            tools.map { it.getValue("name").jsonPrimitive.content },
+        )
+        assertTrue(tools.all { it.getValue("deferLoading").jsonPrimitive.content.toBoolean() })
+        assertFalse(
+            tools.any { it.getValue("operationId").jsonPrimitive.content in internalOperations },
+        )
 
-        val discover = tools.first()
+        val discover = tools.tool("symbol.discover")
         val variants = discover.getValue("inputSchema")
             .jsonObject
             .getValue("anyOf")
@@ -58,14 +70,57 @@ class InstalledServerProjectionTest {
             listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
             discover.cliOptionFields(),
         )
-        assertEquals(listOf("symbol", "discover"), discover.cliCommand())
-        assertEquals(listOf("symbol", "resolve"), tools[1].cliCommand())
-        assertEquals(listOf("traversal", "run"), tools[2].cliCommand())
         assertEquals(
-            listOf("selector", "relation", "maximumDepth", "maximumResults"),
-            tools[2].cliOptionFields(),
+            linkedMapOf(
+                "workspace.inspect" to listOf("workspace", "inspect"),
+                "topology.build" to listOf("topology", "build"),
+                "symbol.discover" to listOf("symbol", "discover"),
+                "symbol.resolve" to listOf("symbol", "resolve"),
+                "symbol.describe" to listOf("symbol", "describe"),
+                "traversal.run" to listOf("traversal", "run"),
+                "change.plan" to listOf("change", "plan"),
+                "change.apply" to listOf("change", "apply"),
+                "change.verify" to listOf("change", "verify"),
+                "change.recover" to listOf("change", "recover"),
+            ),
+            tools.associate { tool ->
+                tool.getValue("operationId").jsonPrimitive.content to tool.cliCommand()
+            },
+        )
+        assertEquals(
+            linkedMapOf(
+                "workspace.inspect" to emptyList(),
+                "topology.build" to emptyList(),
+                "symbol.discover" to
+                    listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),
+                "symbol.resolve" to listOf("candidate"),
+                "symbol.describe" to listOf("selector"),
+                "traversal.run" to
+                    listOf("selector", "relation", "maximumDepth", "maximumResults"),
+                "change.plan" to listOf("intent", "target", "declaration"),
+                "change.apply" to listOf("plan"),
+                "change.verify" to listOf("application"),
+                "change.recover" to listOf("plan"),
+            ),
+            tools.associate { tool ->
+                tool.getValue("operationId").jsonPrimitive.content to tool.cliOptionFields()
+            },
         )
         assertEquals(1, tools.map { it.getValue("outputSchema") }.distinct().size)
+
+        val changePlanProperties = tools.tool("change.plan")
+            .getValue("inputSchema")
+            .jsonObject
+            .getValue("properties")
+            .jsonObject
+        assertEquals(
+            "add-declaration",
+            changePlanProperties.getValue("intent")
+                .jsonObject
+                .getValue("const")
+                .jsonPrimitive
+                .content,
+        )
     }
 
     private fun commandGraphFactory(): CliCommandGraphFactory = when (
@@ -80,14 +135,14 @@ class InstalledServerProjectionTest {
         is InstalledSchemaConstruction.Rejected -> error(failure)
     }
 
-    private fun kotlinx.serialization.json.JsonObject.cliCommand(): List<String> =
+    private fun JsonObject.cliCommand(): List<String> =
         getValue("invocation")
             .jsonObject
             .getValue("command")
             .jsonArray
             .map { it.jsonPrimitive.content }
 
-    private fun kotlinx.serialization.json.JsonObject.cliOptionFields(): List<String> =
+    private fun JsonObject.cliOptionFields(): List<String> =
         getValue("invocation")
             .jsonObject
             .getValue("bindings")
@@ -95,4 +150,10 @@ class InstalledServerProjectionTest {
             .map { binding ->
                 binding.jsonObject.getValue("inputField").jsonPrimitive.content
             }
+
+    private fun List<JsonObject>.tool(
+        operationId: String,
+    ): JsonObject = single {
+        it.getValue("operationId").jsonPrimitive.content == operationId
+    }
 }
