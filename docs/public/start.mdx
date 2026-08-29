@@ -56,11 +56,12 @@ repository root and uses its compiler-backed evidence.
     `kast --schema` lists all twelve canonical operations, command shapes, wire
     schema, and the installed `serverProjection`. That projection owns the
     server-visible tool names, descriptions, input and output JSON Schemas,
-    deferred-loading policy, and exact field-to-CLI bindings. The current
-    hosted endpoint publishes ten operations: workspace inspection, topology
-    build, three symbol operations, traversal, and four AddDeclaration
-    lifecycle operations. Direct relation and diagnostic routes remain
-    internal services.
+    deferred-loading policy, and exact field-to-CLI bindings for every public
+    hosted operation. The current hosted endpoint publishes ten operations:
+    workspace inspection, topology build, three symbol operations, traversal,
+    and four AddDeclaration lifecycle operations. Direct relation and
+    diagnostic routes remain internal services and are absent from that server
+    projection.
   </Step>
 
   <Step title="Start the exact repository">

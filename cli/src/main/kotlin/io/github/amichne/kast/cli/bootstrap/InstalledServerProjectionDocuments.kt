@@ -2,6 +2,8 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.HostedBindingCompleteness
+import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -76,10 +78,19 @@ internal fun installedServerProjection(
     return InstalledServerProjectionDocument(
         schemaVersion = SERVER_PROJECTION_SCHEMA_VERSION,
         namespace = "kast",
-        tools = InstalledServerTool.entries.map { tool ->
+        tools = installedServerTools.map { tool ->
             tool.document(commandByOperation.getValue(tool.operation).usage)
         },
     )
+}
+
+private val installedServerTools: List<InstalledServerTool> = InstalledServerTool.entries.also {
+    val operations = it.map { tool -> tool.operation }
+    when (val completeness = HostedOperationProjection.verifyBindings(operations)) {
+        HostedBindingCompleteness.Complete -> Unit
+        is HostedBindingCompleteness.Rejected ->
+            error("Invalid installed server projection: ${completeness.failures}")
+    }
 }
 
 private enum class InstalledServerTool(
@@ -90,6 +101,23 @@ private enum class InstalledServerTool(
     private val command: List<String>,
     private val optionFields: List<ServerCliOptionField>,
 ) {
+    WORKSPACE_INSPECT(
+        operation = CanonicalOperation.WORKSPACE_INSPECT,
+        toolName = "workspace_inspect",
+        toolDescription = "Inspect exact-root workspace readiness and canonical identity.",
+        inputSchema = objectSchema(),
+        command = listOf("workspace", "inspect"),
+        optionFields = emptyList(),
+    ),
+    TOPOLOGY_BUILD(
+        operation = CanonicalOperation.TOPOLOGY_BUILD,
+        toolName = "topology_build",
+        toolDescription =
+            "Build or reuse the complete durable topology for the current workspace generation.",
+        inputSchema = objectSchema(),
+        command = listOf("topology", "build"),
+        optionFields = emptyList(),
+    ),
     SYMBOL_DISCOVER(
         operation = CanonicalOperation.SYMBOL_DISCOVER,
         toolName = "symbol_discover",
@@ -122,6 +150,16 @@ private enum class InstalledServerTool(
         command = listOf("symbol", "resolve"),
         optionFields = listOf(ServerCliOptionField("candidate", "--candidate")),
     ),
+    SYMBOL_DESCRIBE(
+        operation = CanonicalOperation.SYMBOL_DESCRIBE,
+        toolName = "symbol_describe",
+        toolDescription = "Describe one exact current-generation Kotlin symbol.",
+        inputSchema = objectSchema(
+            ServerSchemaProperty("selector", textSchema("Exact symbol selector.")),
+        ),
+        command = listOf("symbol", "describe"),
+        optionFields = listOf(ServerCliOptionField("selector", "--selector")),
+    ),
     TRAVERSAL_RUN(
         operation = CanonicalOperation.TRAVERSAL_RUN,
         toolName = "traversal_run",
@@ -146,6 +184,56 @@ private enum class InstalledServerTool(
             ServerCliOptionField("maximumDepth", "--maximum-depth"),
             ServerCliOptionField("maximumResults", "--maximum-results"),
         ),
+    ),
+    CHANGE_PLAN(
+        operation = CanonicalOperation.CHANGE_PLAN,
+        toolName = "change_plan",
+        toolDescription =
+            "Derive one hosted add-declaration plan without writing the workspace.",
+        inputSchema = objectSchema(
+            ServerSchemaProperty(
+                "intent",
+                constantSchema("add-declaration", "Hosted change intent."),
+            ),
+            ServerSchemaProperty("target", textSchema("Exact target selector.")),
+            ServerSchemaProperty("declaration", textSchema("Declaration to add.")),
+        ),
+        command = listOf("change", "plan"),
+        optionFields = listOf(
+            ServerCliOptionField("intent", "--intent"),
+            ServerCliOptionField("target", "--target"),
+            ServerCliOptionField("declaration", "--declaration"),
+        ),
+    ),
+    CHANGE_APPLY(
+        operation = CanonicalOperation.CHANGE_APPLY,
+        toolName = "change_apply",
+        toolDescription = "Apply one admitted hosted change plan.",
+        inputSchema = objectSchema(
+            ServerSchemaProperty("plan", textSchema("Plan identity.")),
+        ),
+        command = listOf("change", "apply"),
+        optionFields = listOf(ServerCliOptionField("plan", "--plan")),
+    ),
+    CHANGE_VERIFY(
+        operation = CanonicalOperation.CHANGE_VERIFY,
+        toolName = "change_verify",
+        toolDescription = "Verify one hosted change application against semantic evidence.",
+        inputSchema = objectSchema(
+            ServerSchemaProperty("application", textSchema("Application identity.")),
+        ),
+        command = listOf("change", "verify"),
+        optionFields = listOf(ServerCliOptionField("application", "--application")),
+    ),
+    CHANGE_RECOVER(
+        operation = CanonicalOperation.CHANGE_RECOVER,
+        toolName = "change_recover",
+        toolDescription = "Recover one hosted change plan to a known workspace state.",
+        inputSchema = objectSchema(
+            ServerSchemaProperty("plan", textSchema("Plan identity.")),
+        ),
+        command = listOf("change", "recover"),
+        optionFields = listOf(ServerCliOptionField("plan", "--plan")),
     ),
     ;
 

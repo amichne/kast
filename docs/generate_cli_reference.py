@@ -229,10 +229,11 @@ Run `kast --schema` when a tool needs the contract as JSON. Run a command with
 
 The schema's `serverProjection` is generated with the installed command graph.
 It owns server-visible tool names and descriptions, closed input and output
-JSON Schemas, deferred-loading policy, and field-to-CLI option bindings. A
-broker must qualify and consume that projection from its exact configured
-`kast` executable; it must not infer tool shapes from the executable's version
-or from the human-readable command strings.
+JSON Schemas, deferred-loading policy, and field-to-CLI option bindings. It
+contains every operation marked `public` by the hosted registry and excludes
+internal-only operations. A broker must qualify and consume that projection
+from its exact configured `kast` executable; it must not infer tool shapes from
+the executable's version or from the human-readable command strings.
 
 ## Hosted endpoint operations
 
