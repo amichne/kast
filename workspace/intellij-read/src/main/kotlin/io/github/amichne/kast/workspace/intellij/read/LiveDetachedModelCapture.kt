@@ -14,6 +14,9 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.OrderRootType
+import com.intellij.openapi.vfs.StandardFileSystems
+import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -227,8 +230,8 @@ internal object LiveDetachedModelCapture {
     /**
      * Proof transition: `ModuleRootManager -> Refinement<List<DetachedSourceRootBoundary>,
      * DetachedModelCaptureFailure>`. Establishes an explicitly bounded primitive root list. The
-     * closed expected failure is [DetachedModelCaptureFailure]. Raw source folders and virtual
-     * files may be extracted only inside this live adapter.
+     * closed expected failure is [DetachedModelCaptureFailure]. Raw source folders and their
+     * platform-owned URLs may be extracted only inside this live adapter.
      */
     private fun observeSourceRoots(
         rootManager: ModuleRootManager,
@@ -245,8 +248,12 @@ internal object LiveDetachedModelCapture {
                 if (roots.size == DetachedModelLimits.MAX_SOURCE_ROOTS_PER_MODULE) {
                     return Refinement.Rejected(DetachedModelCaptureFailure.TOO_MANY_SOURCE_ROOTS)
                 }
+                val path = when (val observed = observeLocalSourceRootPath(folder.url)) {
+                    is Refinement.Refined -> observed.value
+                    is Refinement.Rejected -> return observed
+                }
                 roots += DetachedSourceRootBoundary(
-                    path = folder.file?.path,
+                    path = path,
                     kind = when (folder.rootType) {
                         JavaSourceRootType.SOURCE -> DetachedSourceRootKind.PRODUCTION
                         JavaSourceRootType.TEST_SOURCE -> DetachedSourceRootKind.TEST
@@ -269,6 +276,21 @@ internal object LiveDetachedModelCapture {
             }
         }
         return Refinement.Refined(roots)
+    }
+
+    /**
+     * Proof transition: `SourceFolder.url -> Refinement<String,
+     * DetachedModelCaptureFailure>`. Establishes a local VFS path observation without requiring
+     * the source root to exist or materialize as a `VirtualFile`. Absolute normalized syntax and
+     * workspace containment remain the responsibility of detached-model path refinement.
+     */
+    internal fun observeLocalSourceRootPath(
+        url: String,
+    ): Refinement<String, DetachedModelCaptureFailure> {
+        if (VirtualFileManager.extractProtocol(url) != StandardFileSystems.FILE_PROTOCOL) {
+            return Refinement.Rejected(DetachedModelCaptureFailure.INVALID_SOURCE_ROOT)
+        }
+        return Refinement.Refined(VfsUtilCore.urlToPath(url))
     }
 
     /**

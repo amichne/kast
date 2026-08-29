@@ -191,6 +191,7 @@ internal object DetachedModelClassContract {
             member.owner.endsWith("DumbService") && member.name in SMART_WAIT_METHODS -> true
             member.owner.startsWith("com/intellij/openapi/externalSystem/") &&
                 DESTRUCTIVE_EXTERNAL_SYSTEM_VERBS.any(name::startsWith) -> true
+            member in FORBIDDEN_SOURCE_ROOT_MATERIALIZERS -> true
             member.owner.startsWith("com/intellij/openapi/vfs/") &&
                 FORBIDDEN_VFS_METHODS.any(name::contains) -> true
             member.owner == "java/nio/file/Files" &&
@@ -223,7 +224,7 @@ internal object DetachedModelClassContract {
     private const val JAVA_21_CLASS_VERSION = 65
 
     private val EXPECTED_FINGERPRINTS = linkedMapOf(
-        MAIN_RESOURCE to "99b9bf24d05d6ba6267ec07539933a75250e010a961b43f75584d632fc4e2c25",
+        MAIN_RESOURCE to "98dc361e765eb478094c69cad924fadcf6b07ed811addd59416859289936d8f5",
         MAPPINGS_RESOURCE to "2e9b61f95ae2cd3b53ed39b6f41f8dcb6153f10fb3bb9539aea27b1bb14ea415",
     )
 
@@ -262,9 +263,10 @@ internal object DetachedModelClassContract {
         member("com/intellij/openapi/roots/ModuleRootManager", "getInstance", "(Lcom/intellij/openapi/module/Module;)Lcom/intellij/openapi/roots/ModuleRootManager;"),
         member("com/intellij/openapi/roots/ModuleRootManager", "getContentEntries", "()[Lcom/intellij/openapi/roots/ContentEntry;"),
         member("com/intellij/openapi/roots/ContentEntry", "getSourceFolders", "()[Lcom/intellij/openapi/roots/SourceFolder;"),
-        member("com/intellij/openapi/roots/SourceFolder", "getFile", "()Lcom/intellij/openapi/vfs/VirtualFile;"),
+        member("com/intellij/openapi/roots/SourceFolder", "getUrl", "()Ljava/lang/String;"),
         member("com/intellij/openapi/roots/SourceFolder", "getRootType", "()Lorg/jetbrains/jps/model/module/JpsModuleSourceRootType;"),
-        member("com/intellij/openapi/vfs/VirtualFile", "getPath", "()Ljava/lang/String;"),
+        member("com/intellij/openapi/vfs/VirtualFileManager", "extractProtocol", "(Ljava/lang/String;)Ljava/lang/String;"),
+        member("com/intellij/openapi/vfs/VfsUtilCore", "urlToPath", "(Ljava/lang/String;)Ljava/lang/String;"),
         member("com/intellij/openapi/roots/ModuleRootManager", "orderEntries", "()Lcom/intellij/openapi/roots/OrderEnumerator;"),
         member("com/intellij/openapi/roots/OrderEnumerator", "forEach", "(Lcom/intellij/util/Processor;)V"),
         member("com/intellij/openapi/roots/OrderEntry", "getFiles", "(Lcom/intellij/openapi/roots/OrderRootType;)[Lcom/intellij/openapi/vfs/VirtualFile;"),
@@ -313,6 +315,13 @@ internal object DetachedModelClassContract {
         "runReadActionInSmartModeWithWriteActionPriority",
     )
     private val DESTRUCTIVE_EXTERNAL_SYSTEM_VERBS = setOf("refresh", "link", "unlink", "import", "prepare", "repair")
+    private val FORBIDDEN_SOURCE_ROOT_MATERIALIZERS = setOf(
+        member(
+            "com/intellij/openapi/roots/SourceFolder",
+            "getFile",
+            "()Lcom/intellij/openapi/vfs/VirtualFile;",
+        ),
+    )
     private val FORBIDDEN_VFS_METHODS = setOf("refresh", "contentsToByteArray", "inputStream", "binaryContent", "iterateChildrenRecursively", "visitChildrenRecursively")
         .map(String::lowercase)
     private val FORBIDDEN_FILES_METHODS = setOf("walk", "find", "read", "lines", "newInputStream", "newByteChannel")
