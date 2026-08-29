@@ -56,6 +56,13 @@ build, three symbol operations, traversal, and the four AddDeclaration
 lifecycle operations. Direct relation and diagnostic routes remain internal
 services used by those workflows.
 
+Source-root identity comes from IntelliJ's canonical local source-folder URL,
+not from an existence-dependent `VirtualFile`. A declared source directory may
+therefore be absent, including an empty resources or generated-source root,
+without preventing endpoint publication. Its absence contributes no source
+candidates until the directory appears. Malformed, non-local,
+outside-workspace, conflicting, or otherwise unproven roots still fail closed.
+
 <Columns cols={3}>
   <Card title="Exact root" icon="folder-key">
     The canonical checkout determines the descriptor and socket identity. A

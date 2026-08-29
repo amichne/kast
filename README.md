@@ -54,6 +54,11 @@ kast workspace inspect
 a typed blocker. It never opens a Project, imports Gradle, refreshes VFS, starts
 an indexer process, or falls back to a private runtime.
 
+IntelliJ-declared local source roots remain part of that model even when an
+empty directory does not currently exist. Kast preserves the root identity
+without inventing source content, while malformed, non-local, or
+outside-workspace roots still fail closed.
+
 ## Ask a repository question
 
 The installed endpoint publishes ten IDE-hosted operations. The generated
