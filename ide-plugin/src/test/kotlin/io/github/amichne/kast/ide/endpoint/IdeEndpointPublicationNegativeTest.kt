@@ -115,16 +115,12 @@ class IdeEndpointPublicationNegativeTest {
                 coordinator.rejectListenerInstallation(),
             )
             assertEquals(IdeEndpointSignalPlan.Coalesced, coordinator.planSignal())
-            assertEquals(
-                IdeEndpointCompletionPlan.Retry,
-                coordinator.planCompletion(
-                    firstAttempt,
-                    IdeEndpointStartup.Deferred(IdeEndpointDeferredReadiness.DUMB_MODE),
-                ),
+            val retry = coordinator.planCompletion(
+                firstAttempt,
+                IdeEndpointStartup.Deferred(IdeEndpointDeferredReadiness.DUMB_MODE),
             )
-            val retryLaunch = coordinator.planSignal()
-            assertTrue(retryLaunch is IdeEndpointSignalPlan.Launch)
-            val retryAttempt = (retryLaunch as IdeEndpointSignalPlan.Launch).attempt
+            assertTrue(retry is IdeEndpointCompletionPlan.Retry)
+            val retryAttempt = (retry as IdeEndpointCompletionPlan.Retry).attempt
             val activation = coordinator.planCompletion(
                 retryAttempt,
                 IdeEndpointStartup.Prepared(prepared),

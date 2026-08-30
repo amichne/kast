@@ -1,11 +1,16 @@
 package io.github.amichne.kast.ide.endpoint
 
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
 private sealed interface IdeEndpointCoordinatorState {
     data object Unstarted : IdeEndpointCoordinatorState
     data object InstallingListeners : IdeEndpointCoordinatorState
     data object InstallingListenersWithPendingSignal : IdeEndpointCoordinatorState
     data class AwaitingDeferred(
         val last: IdeEndpointDeferredReadiness,
+        val retry: IssuedIdeEndpointScheduledRetry,
     ) : IdeEndpointCoordinatorState
     data class Attempting(val attempt: IssuedIdeEndpointAttempt) : IdeEndpointCoordinatorState
     data class AttemptingWithPendingSignal(
@@ -44,7 +49,34 @@ internal sealed interface IdeEndpointServiceStart {
 }
 
 internal sealed interface IdeEndpointAttempt
-private class IssuedIdeEndpointAttempt : IdeEndpointAttempt
+private class IssuedIdeEndpointAttempt(
+    val deferredRetry: IdeEndpointDeferredRetry,
+) : IdeEndpointAttempt
+
+internal enum class IdeEndpointDeferredRetry(
+    val duration: Duration,
+) {
+    PROMPT(250.milliseconds),
+    SETTLING(1.seconds),
+    QUIESCENT(3.seconds),
+    ;
+
+    fun next(): IdeEndpointDeferredRetry = when (this) {
+        PROMPT -> SETTLING
+        SETTLING,
+        QUIESCENT,
+        -> QUIESCENT
+    }
+}
+
+internal sealed interface IdeEndpointScheduledRetry {
+    val cadence: IdeEndpointDeferredRetry
+}
+
+private class IssuedIdeEndpointScheduledRetry(
+    override val cadence: IdeEndpointDeferredRetry,
+    val nextAttemptRetry: IdeEndpointDeferredRetry,
+) : IdeEndpointScheduledRetry
 
 internal sealed interface IdeEndpointSignalPlan {
     data class Launch(val attempt: IdeEndpointAttempt) : IdeEndpointSignalPlan
@@ -59,8 +91,8 @@ private class IssuedIdeEndpointActivationRequest(
 private class IssuedIdeEndpointPublicationClaim
 
 internal sealed interface IdeEndpointCompletionPlan {
-    data object Await : IdeEndpointCompletionPlan
-    data object Retry : IdeEndpointCompletionPlan
+    data class Retry(val attempt: IdeEndpointAttempt) : IdeEndpointCompletionPlan
+    data class RetryAfter(val retry: IdeEndpointScheduledRetry) : IdeEndpointCompletionPlan
     data class Activate(val request: IdeEndpointActivationRequest) : IdeEndpointCompletionPlan
     data object Stop : IdeEndpointCompletionPlan
 }
@@ -88,6 +120,11 @@ private enum class IdeEndpointPendingSignal {
     ABSENT,
     PRESENT,
 }
+
+private data class IdeEndpointCompletionAdmission(
+    val attempt: IssuedIdeEndpointAttempt,
+    val pendingSignal: IdeEndpointPendingSignal,
+)
 
 /** Pure single-flight coordinator; endpoint publication always runs outside its monitor. */
 internal class IdeEndpointCoordinator(
@@ -135,7 +172,7 @@ internal class IdeEndpointCoordinator(
             IdeEndpointSignalPlan.Coalesced
         is IdeEndpointCoordinatorState.AwaitingDeferred,
         -> {
-            val attempt = IssuedIdeEndpointAttempt()
+            val attempt = IssuedIdeEndpointAttempt(current.retry.nextAttemptRetry)
             state = IdeEndpointCoordinatorState.Attempting(attempt)
             IdeEndpointSignalPlan.Launch(attempt)
         }
@@ -169,11 +206,45 @@ internal class IdeEndpointCoordinator(
         IdeEndpointCoordinatorState.InstallingListeners,
         IdeEndpointCoordinatorState.InstallingListenersWithPendingSignal,
         -> {
-            val attempt = IssuedIdeEndpointAttempt()
+            val attempt = IssuedIdeEndpointAttempt(IdeEndpointDeferredRetry.PROMPT)
             state = IdeEndpointCoordinatorState.Attempting(attempt)
             IdeEndpointSignalPlan.Launch(attempt)
         }
         else -> IdeEndpointSignalPlan.Terminal
+    }
+
+    /**
+     * Proof transition: `IdeEndpointScheduledRetry -> IdeEndpointSignalPlan`.
+     *
+     * Consumes only the currently issued scheduled-retry capability. A readiness signal that
+     * already launched the next attempt makes the timer stale, so it coalesces without queuing a
+     * duplicate signal. Terminal lifecycle states remain terminal.
+     */
+    @Synchronized
+    fun planRetry(retry: IdeEndpointScheduledRetry): IdeEndpointSignalPlan = when (
+        val current = state
+    ) {
+        is IdeEndpointCoordinatorState.AwaitingDeferred -> {
+            if (current.retry !== retry) return IdeEndpointSignalPlan.Coalesced
+            val attempt = IssuedIdeEndpointAttempt(current.retry.nextAttemptRetry)
+            state = IdeEndpointCoordinatorState.Attempting(attempt)
+            IdeEndpointSignalPlan.Launch(attempt)
+        }
+        is IdeEndpointCoordinatorState.Attempting,
+        is IdeEndpointCoordinatorState.AttemptingWithPendingSignal,
+        -> IdeEndpointSignalPlan.Coalesced
+        IdeEndpointCoordinatorState.Unstarted,
+        IdeEndpointCoordinatorState.InstallingListeners,
+        IdeEndpointCoordinatorState.InstallingListenersWithPendingSignal,
+        is IdeEndpointCoordinatorState.AwaitingActivation,
+        is IdeEndpointCoordinatorState.Publishing,
+        is IdeEndpointCoordinatorState.RetirementPending,
+        is IdeEndpointCoordinatorState.Ready,
+        is IdeEndpointCoordinatorState.RetirementIncomplete,
+        is IdeEndpointCoordinatorState.Retired,
+        IdeEndpointCoordinatorState.Stopped,
+        is IdeEndpointCoordinatorState.Rejected,
+        -> IdeEndpointSignalPlan.Terminal
     }
 
     /**
@@ -188,26 +259,41 @@ internal class IdeEndpointCoordinator(
         attempt: IdeEndpointAttempt,
         startup: IdeEndpointStartup,
     ): IdeEndpointCompletionPlan {
-        val pendingSignal = when (val current = state) {
+        val admission = when (val current = state) {
             is IdeEndpointCoordinatorState.Attempting -> {
                 if (current.attempt !== attempt) return IdeEndpointCompletionPlan.Stop
-                IdeEndpointPendingSignal.ABSENT
+                IdeEndpointCompletionAdmission(
+                    current.attempt,
+                    IdeEndpointPendingSignal.ABSENT,
+                )
             }
             is IdeEndpointCoordinatorState.AttemptingWithPendingSignal -> {
                 if (current.attempt !== attempt) return IdeEndpointCompletionPlan.Stop
-                IdeEndpointPendingSignal.PRESENT
+                IdeEndpointCompletionAdmission(
+                    current.attempt,
+                    IdeEndpointPendingSignal.PRESENT,
+                )
             }
             else -> return IdeEndpointCompletionPlan.Stop
         }
         return when (startup) {
-            is IdeEndpointStartup.Deferred -> if (
-                pendingSignal == IdeEndpointPendingSignal.PRESENT
-            ) {
-                state = IdeEndpointCoordinatorState.AwaitingDeferred(startup.readiness)
-                IdeEndpointCompletionPlan.Retry
-            } else {
-                state = IdeEndpointCoordinatorState.AwaitingDeferred(startup.readiness)
-                IdeEndpointCompletionPlan.Await
+            is IdeEndpointStartup.Deferred -> {
+                val nextRetry = admission.attempt.deferredRetry.next()
+                if (admission.pendingSignal == IdeEndpointPendingSignal.PRESENT) {
+                    val nextAttempt = IssuedIdeEndpointAttempt(nextRetry)
+                    state = IdeEndpointCoordinatorState.Attempting(nextAttempt)
+                    IdeEndpointCompletionPlan.Retry(nextAttempt)
+                } else {
+                    val retry = IssuedIdeEndpointScheduledRetry(
+                        cadence = admission.attempt.deferredRetry,
+                        nextAttemptRetry = nextRetry,
+                    )
+                    state = IdeEndpointCoordinatorState.AwaitingDeferred(
+                        startup.readiness,
+                        retry,
+                    )
+                    IdeEndpointCompletionPlan.RetryAfter(retry)
+                }
             }
             is IdeEndpointStartup.Rejected -> {
                 state = IdeEndpointCoordinatorState.Rejected(

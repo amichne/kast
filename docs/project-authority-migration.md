@@ -56,6 +56,19 @@ policy grants that effect only to `workspace:intellij-read`, and the policy vali
 module as its exclusive owner. A direct call reintroduced in diagnostics, relations, or another
 IntelliJ consumer now fails `verifyKastArchitecture` even if source review misses it.
 
+### Bounded endpoint readiness re-observation
+
+Endpoint preparation remains fail closed when cached IntelliJ or Gradle model evidence is
+incomplete, but a deferred observation no longer depends on a later readiness event arriving in a
+particular order. The pure endpoint coordinator issues an opaque, single-use scheduled-retry
+capability with a finite cadence: 250 milliseconds, 1 second, then a 3-second capped quiescent
+interval. A real readiness signal consumes the awaiting state immediately; the older timer then
+coalesces as stale and cannot queue or launch a duplicate attempt.
+
+The project-service coroutine scope owns the delay, so project or plugin disposal cancels it. The
+previous one-off three-second service timer was removed because retry policy now applies to every
+typed deferred outcome instead of one startup callback.
+
 ### First consumers
 
 The diagnostic adapter now uses the detached classification for concrete-file source admission.
@@ -159,6 +172,12 @@ needs them; do not prebuild a project-wide index mirror.
 The detached workspace model can reject the whole observation for missing Gradle ownership, SDK,
 classpath, source roots, or other bounds. Capability-specific observations should prevent an
 operation from depending on facts it never requested.
+
+This also remains the largest cold-start cost and availability risk. Bounded re-observation fixes
+the lost-wakeup failure mode; it does not make aggregate hosted-runtime preparation incremental.
+The next cold-start slice should measure each preparation phase and move descriptor/socket
+publication behind the smallest capability set that can honestly be advertised, without
+manufacturing partial readiness.
 
 ### Test-runtime/platform bytecode mismatch
 

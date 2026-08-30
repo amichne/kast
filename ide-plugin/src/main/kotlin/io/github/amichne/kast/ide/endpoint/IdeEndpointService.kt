@@ -17,7 +17,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import io.github.amichne.kast.topology.intellij.HostedWorkspaceColdStartIdentity
 import io.github.amichne.kast.topology.intellij.HostedWorkspaceSourceStateSession
-import kotlin.time.Duration.Companion.seconds
 
 /** One eagerly registered IntelliJ project-scoped endpoint coordinator. */
 class IdeEndpointService private constructor(
@@ -81,10 +80,6 @@ class IdeEndpointService private constructor(
             startup.allActivitiesPassedFuture.invokeOnCompletion { failure ->
                 if (failure == null) {
                     requestAttempt(project)
-                    coroutineScope.launch {
-                        delay(CACHED_MODEL_PUBLICATION_REOBSERVATION_DELAY)
-                        requestAttempt(project)
-                    }
                 }
             }
         } catch (cancelled: ProcessCanceledException) {
@@ -130,10 +125,15 @@ class IdeEndpointService private constructor(
         startup: IdeEndpointStartup,
     ) {
         when (val plan = coordinator.planCompletion(attempt, startup)) {
-            IdeEndpointCompletionPlan.Await,
-            IdeEndpointCompletionPlan.Stop,
-            -> Unit
-            IdeEndpointCompletionPlan.Retry -> requestAttempt(project)
+            IdeEndpointCompletionPlan.Stop -> Unit
+            is IdeEndpointCompletionPlan.Retry -> executeSignalPlan(
+                project,
+                IdeEndpointSignalPlan.Launch(plan.attempt),
+            )
+            is IdeEndpointCompletionPlan.RetryAfter -> coroutineScope.launch {
+                delay(plan.retry.cadence.duration)
+                executeSignalPlan(project, coordinator.planRetry(plan.retry))
+            }
             is IdeEndpointCompletionPlan.Activate -> when (
                 val activationPlan = coordinator.activate(plan.request)
             ) {
@@ -154,7 +154,6 @@ class IdeEndpointService private constructor(
 
     internal companion object {
         private val LOG = Logger.getInstance(IdeEndpointService::class.java)
-        private val CACHED_MODEL_PUBLICATION_REOBSERVATION_DELAY = 3.seconds
 
         @JvmSynthetic
         fun testing(
