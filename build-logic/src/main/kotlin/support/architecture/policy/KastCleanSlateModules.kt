@@ -328,6 +328,7 @@ internal object KastCleanSlateModules {
             ModuleId.CHANGE_INTELLIJ,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY,
                 ForbiddenEffect.UDS_BIND,
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),

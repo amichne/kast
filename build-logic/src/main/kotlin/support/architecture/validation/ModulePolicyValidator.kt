@@ -224,6 +224,7 @@ private object ModuleRoleBoundaries {
             ),
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY,
                 ForbiddenEffect.UDS_BIND,
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),

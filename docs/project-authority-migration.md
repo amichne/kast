@@ -82,6 +82,11 @@ source owns one workspace-model listener and one root-filtered VFS listener. Def
 reach admission do not add another pair. Compiled hosted-factory tests reject a validation-only
 path that references `AdmittedIdeProject`.
 
+The compiled architecture gate classifies the `AdmittedIdeProjectSession.admit` JVM member,
+including its Kotlin value-class-mangled form, as `PROJECT_READ_EPOCH_AUTHORITY`. `ide-plugin` is
+its exclusive policy owner, so a future direct call from topology, diagnostics, relations, change,
+or another validation-only adapter fails `verifyKastArchitecture`.
+
 ### First consumers
 
 The diagnostic adapter now uses the detached classification for concrete-file source admission.
