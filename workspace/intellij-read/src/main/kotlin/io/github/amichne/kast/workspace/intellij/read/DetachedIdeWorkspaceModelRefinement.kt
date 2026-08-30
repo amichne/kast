@@ -226,7 +226,7 @@ private fun refineSourceRoots(
 private fun refineSdk(
     raw: DetachedSdkBoundary?,
 ): Refinement<DetachedIdeSdkIdentity, DetachedModelCaptureFailure> {
-    raw ?: return rejected(DetachedModelCaptureFailure.INVALID_SDK_IDENTITY)
+    raw ?: return rejected(DetachedModelCaptureFailure.SDK_UNAVAILABLE)
     val name = when (val value = refineIdentity(raw.name)) {
         is Refinement.Refined -> DetachedSdkName(value.value.value)
         is Refinement.Rejected -> return rejected(value.failure.sdkFailure())

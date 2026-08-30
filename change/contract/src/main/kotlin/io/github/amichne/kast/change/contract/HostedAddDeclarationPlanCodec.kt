@@ -65,7 +65,8 @@ private data class HostedAddDeclarationPlanDocument(
 
 /** Canonical durable codec for the sole hosted change.plan variant. */
 object HostedAddDeclarationPlanCodec {
-    private const val SCHEMA_VERSION = 1
+    private const val LEGACY_SCHEMA_VERSION = 1
+    private const val SCHEMA_VERSION = 2
 
     private val json = Json {
         encodeDefaults = true
@@ -86,7 +87,7 @@ object HostedAddDeclarationPlanCodec {
             json.decodeFromString(HostedAddDeclarationPlanDocument.serializer(), encoded)
         }.getOrNull() ?: return rejected()
         if (
-            document.schemaVersion != SCHEMA_VERSION ||
+            document.schemaVersion !in setOf(LEGACY_SCHEMA_VERSION, SCHEMA_VERSION) ||
             json.encodeToString(HostedAddDeclarationPlanDocument.serializer(), document) != encoded
         ) {
             return rejected()
@@ -165,6 +166,11 @@ object HostedAddDeclarationPlanCodec {
             document.evidence.traversals,
             document.evidence.diagnostics,
             document.evidence.fingerprint,
+            when (document.schemaVersion) {
+                LEGACY_SCHEMA_VERSION -> StableRelationEvidenceSemantics.GENERATION_BOUND_V1
+                SCHEMA_VERSION -> StableRelationEvidenceSemantics.SEMANTIC_V2
+                else -> return rejected()
+            },
         ).valueOrNull() ?: return rejected()
         val planId = ChangePlanId.parse(document.planId).valueOrNull() ?: return rejected()
         return AddDeclarationChangePlan.restore(
@@ -188,7 +194,10 @@ object HostedAddDeclarationPlanCodec {
             io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Unavailable -> null
         }
         return HostedAddDeclarationPlanDocument(
-            SCHEMA_VERSION,
+            when (evidence.relationDigestSemantics) {
+                StableRelationEvidenceSemantics.GENERATION_BOUND_V1 -> LEGACY_SCHEMA_VERSION
+                StableRelationEvidenceSemantics.SEMANTIC_V2 -> SCHEMA_VERSION
+            },
             planId.value,
             priorLease.workspaceRoot.value,
             priorLease.generation.value,

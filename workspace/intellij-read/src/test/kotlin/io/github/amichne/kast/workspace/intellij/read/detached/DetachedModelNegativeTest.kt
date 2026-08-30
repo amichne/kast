@@ -334,7 +334,7 @@ class DetachedModelNegativeTest {
             ),
             ModuleCase(
                 "missing SDK",
-                DetachedModelCaptureFailure.INVALID_SDK_IDENTITY,
+                DetachedModelCaptureFailure.SDK_UNAVAILABLE,
                 listOf(valid.copy(sdk = null)),
             ),
             ModuleCase(

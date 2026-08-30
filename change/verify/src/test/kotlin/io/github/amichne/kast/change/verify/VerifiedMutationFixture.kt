@@ -43,8 +43,12 @@ import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationCompilation
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
@@ -53,6 +57,7 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
@@ -91,11 +96,12 @@ import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.security.MessageDigest
 
 internal class VerifiedMutationFixture {
-    val sourceText = "package sample\n\nfun service(): Int = 0\n"
+    val sourceText = "package sample\n\nfun service(): Int = 0\nfun invoke(): Int = service()\n"
     private val root = canonicalRoot("/workspace")
     private val targetPath = Path.of("/workspace/app/src/main/kotlin/sample/Service.kt")
     private val anchorStart = sourceText.indexOf("fun service")
@@ -146,11 +152,24 @@ internal class VerifiedMutationFixture {
             KotlinIdentifier.parse("service").refined(),
             RenameSymbolOccurrenceRole.DECLARATION,
         ).refined()
+        val referenceStart = sourceText.lastIndexOf("service")
+        val reference = RenameSymbolOccurrence.admit(
+            request.target.file,
+            ExactDeclarationTextRange.parse(
+                referenceStart,
+                referenceStart + "service".length,
+            ).refined(),
+            KotlinIdentifier.parse("service").refined(),
+            RenameSymbolOccurrenceRole.REFERENCE,
+        ).refined()
         val result = PureRenameSymbolPlanningService().plan(
             RenameSymbolPlanRequest(
                 request.target,
                 KotlinIdentifier.parse("renamedService").refined(),
-                RenameSymbolOccurrenceSet.admit(request.target, listOf(occurrence)).refined(),
+                RenameSymbolOccurrenceSet.admit(
+                    request.target,
+                    listOf(occurrence, reference),
+                ).refined(),
                 request.evidence,
             ),
         )
@@ -168,7 +187,7 @@ internal class VerifiedMutationFixture {
                 0,
                 1,
                 0,
-                0,
+                1,
             ).refined(),
         )
 
@@ -320,12 +339,41 @@ internal class VerifiedMutationFixture {
     private fun relationBatch(
         selector: SymbolSelector,
         meaning: RelationMeaning,
-    ): RelationBatch = RelationBatch.create(
-        RelationRequest.start(selector, meaning, relationBudget()),
-        emptyList(),
-        RelationByteCount.parse(0L).refined(),
-        RelationWorkCount.parse(0L).refined(),
-    ).refined()
+    ): RelationBatch {
+        val request = RelationRequest.start(selector, meaning, relationBudget())
+        val qualifiedIdentity = (selector.qualifiedIdentity as ExactDeclarationQualifiedIdentity.Available)
+            .value
+        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
+            selector.file,
+            selector.range.startInclusive,
+            selector.range.endExclusive,
+            selector.name.value,
+            qualifiedIdentity,
+            selector.kind,
+            selector.compilerIdentity,
+        ).refined()
+        val source = RelationEndpoint.resolve(selector.lease, selector.scope, evidence).refined()
+        val occurrence = RelationOccurrence.fromBoundary(
+            selector.file,
+            sourceText.lastIndexOf(selector.name.value),
+            sourceText.lastIndexOf(selector.name.value) + selector.name.value.length,
+        ).refined()
+        val fact = RelationFact.create(
+            request,
+            source,
+            request.subject,
+            occurrence,
+            RelationProvenance.K2_AUTHORED_SOURCE,
+        ).refined()
+        return RelationBatch.create(
+            request,
+            listOf(fact),
+            RelationByteCount.parse(
+                fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong(),
+            ).refined(),
+            RelationWorkCount.parse(1L).refined(),
+        ).refined()
+    }
 
     private fun completeTraversal(): TraversalResult {
         val traversal = TraversalPlan.start(

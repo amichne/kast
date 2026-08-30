@@ -7,6 +7,12 @@ import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
 import io.github.amichne.kast.change.verify.ResultingGenerationPublication
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchFailure
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
@@ -166,7 +172,7 @@ class HostedTopologyLifecycleTest {
 
             assertEquals(
                 IdeReadRuntimeDispatchResult.Responded("generation-one"),
-                dispatch.dispatch("request"),
+                dispatch.dispatch(workspaceInspectDocument()),
             )
             assertEquals(
                 HostedReadRuntimeStaging.Staged,
@@ -182,7 +188,7 @@ class HostedTopologyLifecycleTest {
 
             assertEquals(
                 IdeReadRuntimeDispatchResult.Responded("generation-two"),
-                dispatch.dispatch("request"),
+                dispatch.dispatch(workspaceInspectDocument()),
             )
         }
 
@@ -224,9 +230,48 @@ class HostedTopologyLifecycleTest {
             IdeReadRuntimeDispatchResult.Rejected(
                 IdeReadRuntimeDispatchFailure.RuntimeGenerationUnavailable,
             ),
-            dispatch.dispatch("request"),
+            dispatch.dispatch(workspaceInspectDocument()),
         )
     }
+
+    @Test
+    fun `effect routing remains available when the read generation has not been staged`() =
+        runTest {
+            val fixture = fixture()
+            val resulting = PublishedWorkspace.publish(
+                ReconciledWorkspace.admit(
+                    WorkspaceCandidate(
+                        fixture.workspace.root,
+                        WorkspaceStateIdentity.parse("state-v2").refined(),
+                    ),
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    fixture.workspace.sourceRoots,
+                ).refined(),
+                EvidenceGeneration.parse(2).refined(),
+            )
+            val dispatch = HostedGenerationReadDispatch(
+                fixture.workspace.readLease.generation,
+                HostedReadDispatchOperations {
+                    error("an effect route must not require a generation-bound read runtime")
+                },
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(resulting) },
+            )
+            val request = when (val encoded = CanonicalOperationWireBindings.changeApply.encodeRequest(
+                ChangeApplyRequest(ProtocolText.parse("plan:${"a".repeat(64)}").refined()),
+            )) {
+                is WireEncoding.Encoded -> encoded.document
+                is WireEncoding.Rejected -> error(encoded.failure.toString())
+            }
+
+            assertEquals(
+                IdeReadRuntimeDispatchResult.Rejected(
+                    IdeReadRuntimeDispatchFailure.UnsupportedOperation(
+                        CanonicalOperation.CHANGE_APPLY,
+                    ),
+                ),
+                dispatch.dispatch(request),
+            )
+        }
 
     @Test
     fun `topology build survives host restart and is reused without extraction`() = runTest {
@@ -262,6 +307,15 @@ class HostedTopologyLifecycleTest {
     ) {
         is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
         is SqliteTopologySnapshotStoreOpening.Rejected -> error(opened.failure.toString())
+    }
+
+    private fun workspaceInspectDocument(): String = when (
+        val encoded = CanonicalOperationWireBindings.workspaceInspect.encodeRequest(
+            WorkspaceInspectRequest,
+        )
+    ) {
+        is WireEncoding.Encoded -> encoded.document
+        is WireEncoding.Rejected -> error(encoded.failure.toString())
     }
 
     private fun fixture(): Fixture {

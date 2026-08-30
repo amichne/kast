@@ -12,10 +12,36 @@ class MutationAdmissionTest {
 
     @Test
     fun `exact current state and singleton write scope are admitted`() {
-        assertInstanceOf(
-            Refinement.Refined::class.java,
-            admission.admit(fixture.request(), fixture.observed()),
+        val admitted = when (val result = admission.admit(fixture.request(), fixture.observed())) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> error(result.failure.toString())
+        }
+        assertEquals(
+            MutationPlanPublicationRelationship.EXACT,
+            admitted.publication.relationship,
         )
+    }
+
+    @Test
+    fun `durable plan is revalidated against an exact successor publication`() {
+        val successor = fixture.workspace(
+            generationValue = 12L,
+            sourceState = "cold-start-successor",
+        )
+
+        val admitted = admission.admit(
+            fixture.request(current = successor),
+            fixture.observed(),
+        ) as Refinement.Refined<AdmittedMutation>
+
+        assertEquals(
+            MutationPlanPublicationRelationship.REVALIDATED_SUCCESSOR,
+            admitted.value.publication.relationship,
+        )
+        assertEquals(fixture.plan.priorLease, admitted.value.publication.plannedLease)
+        assertEquals(successor.readLease, admitted.value.publication.applicationLease)
+        assertEquals(fixture.plan.workspaceState, admitted.value.publication.plannedState)
+        assertEquals(successor.sourceState, admitted.value.publication.applicationState)
     }
 
     @Test
@@ -39,7 +65,12 @@ class MutationAdmissionTest {
         )
         assertRejected(
             MutationAdmissionFailure.STALE_GENERATION,
-            fixture.request(current = fixture.workspace(generationValue = 12L, sourceState = "state-12")),
+            fixture.request(current = fixture.workspace(generationValue = 10L, sourceState = "state-10")),
+            fixture.observed(),
+        )
+        assertRejected(
+            MutationAdmissionFailure.STALE_SOURCE_STATE,
+            fixture.request(current = fixture.workspace(sourceState = "same-generation-different-state")),
             fixture.observed(),
         )
         assertRejected(

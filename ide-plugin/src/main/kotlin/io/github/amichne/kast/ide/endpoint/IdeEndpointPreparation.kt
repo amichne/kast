@@ -205,6 +205,11 @@ internal object IdeEndpointModelCaptureAdmission {
                 IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
             )
         }
+        if (failures == setOf(DetachedModelCaptureFailure.SDK_UNAVAILABLE)) {
+            return IdeEndpointStartup.Deferred(
+                IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
+            )
+        }
         return when {
             DetachedModelCaptureFailure.PROJECT_NOT_INITIALIZED in failures ->
                 IdeEndpointStartup.Deferred(

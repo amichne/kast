@@ -264,7 +264,7 @@ object HostedMutationComposition {
                 )) {
                     is VerifiedMutationResult.Verified -> when (
                         val publication = topologyPublisher.publish(
-                            result.receipt.priorLease,
+                            pending.application.publication.plannedLease,
                             result.receipt.resultingWorkspace,
                             pending.application.source,
                             pending.application.postimage,

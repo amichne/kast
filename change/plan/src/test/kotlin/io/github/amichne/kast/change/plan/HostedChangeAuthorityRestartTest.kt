@@ -1,6 +1,7 @@
 package io.github.amichne.kast.change.plan
 
 import io.github.amichne.kast.change.apply.AppliedUnverified
+import io.github.amichne.kast.change.apply.MutationPlanPublicationRelationship
 import io.github.amichne.kast.change.contract.AddDeclarationPlanResult
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryPreparation
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryService
@@ -19,9 +20,12 @@ import io.github.amichne.kast.evidence.sqlite.SqliteDurableChangeAuthorityOpenRe
 import io.github.amichne.kast.evidence.sqlite.HostedDurableMutationAudit
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournal
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournalOpenResult
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.sql.DriverManager
@@ -60,8 +64,15 @@ class HostedChangeAuthorityRestartTest {
             recovery.recordApplied(prepared) as RecordAppliedAddDeclarationResult.Recorded
             ).recovery
         val postimage = WorkspaceSourceContentHash.parse(sha256("changed".toByteArray())).refined()
+        val applicationLease = SemanticReadLease(
+            plan.priorLease.workspaceRoot,
+            EvidenceGeneration.parse(plan.priorLease.generation.value + 1L).refined(),
+        )
+        val applicationState = WorkspaceStateIdentity.parse("restart-successor").refined()
         val applied = AppliedUnverified.restore(
             plan,
+            applicationLease,
+            applicationState,
             postimage,
             appliedRecovery.record.binding,
         ).refined()
@@ -83,6 +94,8 @@ class HostedChangeAuthorityRestartTest {
         val pending = (loadedApplication as ChangeApplicationLookup.Found).application
         assertEquals(plan.planId, pending.plan.planId)
         assertEquals(postimage, pending.application.postimage)
+        assertEquals(applicationLease, pending.application.priorLease)
+        assertEquals(applicationState, pending.application.publication.applicationState)
     }
 
     @Test
@@ -125,6 +138,62 @@ class HostedChangeAuthorityRestartTest {
         )
     }
 
+    @Test
+    fun `legacy exact application rows are refined without changing public identity`() {
+        val fixture = AddDeclarationPlanFixture()
+        val plan = when (val planned = PureAddDeclarationPlanningService().plan(fixture.request())) {
+            is AddDeclarationPlanResult.Planned -> planned.plan
+            is AddDeclarationPlanResult.Rejected -> error(planned.failure.toString())
+        }
+        val state = HostedWorkspaceStateLocation.locate(
+            KastUserStateRoot.parse(temporary.toString()).refined(),
+            plan.priorLease.workspaceRoot,
+        ).refined()
+        val first = authority(state)
+        val planIdentity = (first.issuePlan(plan) as ChangePlanIssuance.Issued).identity
+        val recovery = AddDeclarationRecoveryService(journal(state))
+        val preparation = AddDeclarationRecoveryPreparation.fromPlan(
+            plan,
+            RecoveryPreimage.fromBoundary(fixture.sourcePreimage),
+        ).refined()
+        val prepared = (recovery.prepare(preparation) as PrepareAddDeclarationRecoveryResult.Prepared)
+            .recovery
+        val appliedRecovery = (
+            recovery.recordApplied(prepared) as RecordAppliedAddDeclarationResult.Recorded
+            ).recovery
+        val postimage = WorkspaceSourceContentHash.parse(sha256("changed".toByteArray())).refined()
+        val applied = AppliedUnverified.restore(
+            plan,
+            plan.priorLease,
+            plan.workspaceState,
+            postimage,
+            appliedRecovery.record.binding,
+        ).refined()
+        val applicationIdentity = (
+            first.issueApplication(plan, applied) as ChangeApplicationIssuance.Issued
+            ).identity
+
+        replaceApplicationTableWithLegacyRow(
+            state,
+            planIdentity.value,
+            plan.planId.value,
+            postimage.value,
+            appliedRecovery.record.binding.value,
+            applicationIdentity.value,
+        )
+
+        val loaded = authority(state).loadApplication(applicationIdentity)
+        val pending = assertInstanceOf(ChangeApplicationLookup.Found::class.java, loaded).application
+        assertEquals(applicationIdentity, (
+            authority(state).issueApplication(plan, pending.application) as ChangeApplicationIssuance.Issued
+            ).identity)
+        assertEquals(plan.priorLease, pending.application.priorLease)
+        assertEquals(
+            MutationPlanPublicationRelationship.EXACT,
+            pending.application.publication.relationship,
+        )
+    }
+
     private fun authority(
         state: HostedWorkspaceStateLocation,
     ): SqliteDurableChangeAuthority = when (
@@ -141,6 +210,59 @@ class HostedChangeAuthorityRestartTest {
     ) {
         is SqliteMutationRecoveryJournalOpenResult.Opened -> opened.journal
         is SqliteMutationRecoveryJournalOpenResult.Rejected -> error(opened.failure.toString())
+    }
+
+    private fun replaceApplicationTableWithLegacyRow(
+        state: HostedWorkspaceStateLocation,
+        planIdentity: String,
+        planId: String,
+        postimage: String,
+        recoveryBinding: String,
+        applicationIdentity: String,
+    ) {
+        val digest = sha256(
+            canonicalFields(planIdentity, planId, postimage, recoveryBinding).toByteArray(),
+        )
+        DriverManager.getConnection(
+            "jdbc:sqlite:${state.mutationDatabase.valueAtSqliteBoundary()}",
+        ).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("DROP TABLE hosted_change_application")
+                statement.execute(
+                    """CREATE TABLE hosted_change_application (
+                        identity TEXT PRIMARY KEY NOT NULL,
+                        plan_identity TEXT NOT NULL REFERENCES hosted_change_plan(identity),
+                        plan_id TEXT NOT NULL,
+                        postimage_sha256 TEXT NOT NULL,
+                        recovery_binding TEXT NOT NULL,
+                        record_digest TEXT NOT NULL,
+                        UNIQUE(plan_identity, postimage_sha256)
+                    ) WITHOUT ROWID""",
+                )
+            }
+            connection.prepareStatement(
+                """INSERT INTO hosted_change_application(
+                    identity, plan_identity, plan_id, postimage_sha256,
+                    recovery_binding, record_digest
+                ) VALUES (?, ?, ?, ?, ?, ?)""",
+            ).use { statement ->
+                statement.setString(1, applicationIdentity)
+                statement.setString(2, planIdentity)
+                statement.setString(3, planId)
+                statement.setString(4, postimage)
+                statement.setString(5, recoveryBinding)
+                statement.setString(6, digest)
+                statement.executeUpdate()
+            }
+        }
+    }
+
+    private fun canonicalFields(vararg fields: String): String = buildString {
+        fields.forEach { field ->
+            append(field.toByteArray().size)
+            append(':')
+            append(field)
+        }
     }
 
     private fun sha256(value: ByteArray): String = MessageDigest.getInstance("SHA-256")

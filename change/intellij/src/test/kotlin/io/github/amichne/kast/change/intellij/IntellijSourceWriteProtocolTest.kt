@@ -10,6 +10,25 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class IntellijSourceWriteProtocolTest {
+    @Test
+    fun `existing rollback distinguishes exact preimage postimage and divergent bytes`() {
+        val preimage = "before".toByteArray()
+        val postimage = "after".toByteArray()
+
+        assertEquals(
+            ExistingRollbackPhysicalState.Preimage,
+            existingRollbackPhysicalState(preimage.copyOf(), preimage, postimage),
+        )
+        assertEquals(
+            ExistingRollbackPhysicalState.Postimage,
+            existingRollbackPhysicalState(postimage.copyOf(), preimage, postimage),
+        )
+        assertEquals(
+            ExistingRollbackPhysicalState.Diverged,
+            existingRollbackPhysicalState("other".toByteArray(), preimage, postimage),
+        )
+    }
+
     private val input = IntellijMutationInput(
         sourcePath = "/workspace/app/src/main/kotlin/sample/Service.kt",
         preimageText = "fun service() = 0\n",
