@@ -3,7 +3,6 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.searches.DefinitionsScopedSearch
 import com.intellij.psi.search.searches.ReferencesSearch
@@ -18,11 +17,12 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.intellij.read.IntellijGeneratedSourceState
+import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
+import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import java.nio.file.Path
 
 /** Request-local K2-confirmed implementation of all seven closed one-hop relation meanings. */
 internal class IntellijK2RelationSearch(
@@ -262,34 +262,20 @@ internal class IntellijK2RelationSearch(
             }
     }
 
-    private fun com.intellij.openapi.vfs.VirtualFile.provenance(): OccurrenceProvenance {
-        if (ProjectFileIndex.getInstance(project).isInLibrary(this)) {
-            return OccurrenceProvenance.Found(RelationProvenance.K2_PROJECT_LIBRARY)
+    private fun com.intellij.openapi.vfs.VirtualFile.provenance(): OccurrenceProvenance =
+        when (val classification = IntellijProjectFileIndexClassifier.classify(project, this)) {
+            is IntellijProjectFileClassification.Source -> when (classification.generated) {
+                IntellijGeneratedSourceState.AUTHORED ->
+                    OccurrenceProvenance.Found(RelationProvenance.K2_AUTHORED_SOURCE)
+                IntellijGeneratedSourceState.GENERATED ->
+                    OccurrenceProvenance.Found(RelationProvenance.K2_GENERATED_SOURCE)
+            }
+            is IntellijProjectFileClassification.Library ->
+                OccurrenceProvenance.Found(RelationProvenance.K2_PROJECT_LIBRARY)
+            is IntellijProjectFileClassification.NotSource,
+            is IntellijProjectFileClassification.Rejected,
+                -> OccurrenceProvenance.Unsupported
         }
-        val path = when (val classified = relationNativePath(this)) {
-            is IntellijRelationNativePath.Absolute -> classified.value
-            IntellijRelationNativePath.Relative,
-            IntellijRelationNativePath.Unavailable,
-                -> return OccurrenceProvenance.Unsupported
-        }
-        val owners = scope.sourceRoots.filter { root ->
-            path.startsWith(Path.of(root.sourceRoot.value))
-        }
-        val depth = owners.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount }
-                    ?: return OccurrenceProvenance.Unsupported
-        val provenance = owners
-                             .filter { Path.of(it.sourceRoot.value).nameCount == depth }
-                             .map { it.provenance }
-                             .distinct()
-                             .singleOrNull() ?: return OccurrenceProvenance.Unsupported
-        return when (provenance) {
-            WorkspaceSourceRootProvenance.AUTHORED ->
-                OccurrenceProvenance.Found(RelationProvenance.K2_AUTHORED_SOURCE)
-            WorkspaceSourceRootProvenance.GENERATED ->
-                OccurrenceProvenance.Found(RelationProvenance.K2_GENERATED_SOURCE)
-            WorkspaceSourceRootProvenance.UNKNOWN -> OccurrenceProvenance.Unsupported
-        }
-    }
 }
 
 private sealed interface ContainingDeclaration {
