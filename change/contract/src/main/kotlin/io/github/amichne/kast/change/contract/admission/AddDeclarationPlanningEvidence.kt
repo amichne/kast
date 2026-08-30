@@ -3,12 +3,17 @@ package io.github.amichne.kast.change.contract
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticFact
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReadResult
+import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.traversal.contract.TraversalPosition
 import io.github.amichne.kast.traversal.contract.TraversalResult
+import java.nio.charset.StandardCharsets
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @JvmInline
 value class ChangePlanningEvidenceFingerprint internal constructor(
@@ -111,7 +116,9 @@ class CompleteChangePlanningEvidence private constructor(
                     normalizedRelations,
                     normalizedTraversals,
                     normalizedDiagnostics,
-                    ChangePlanningEvidenceFingerprint(sha256Hex(canonical.toByteArray())),
+                    ChangePlanningEvidenceFingerprint(
+                        sha256Hex(canonical.toByteArray(StandardCharsets.UTF_8)),
+                    ),
                 ),
             )
         }
@@ -172,6 +179,9 @@ data class DurableAddDeclarationPlanningEvidence internal constructor(
     val traversals: List<ChangePlanningEvidenceProjection>,
     val diagnostics: List<ChangePlanningEvidenceProjection>,
     val fingerprint: ChangePlanningEvidenceFingerprintDocument,
+    @Transient
+    internal val relationDigestSemantics: StableRelationEvidenceSemantics =
+        StableRelationEvidenceSemantics.SEMANTIC_V2,
 ) {
     companion object {
         internal fun from(evidence: CompleteChangePlanningEvidence):
@@ -197,6 +207,8 @@ data class DurableAddDeclarationPlanningEvidence internal constructor(
             traversals: List<ChangePlanningEvidenceProjection>,
             diagnostics: List<ChangePlanningEvidenceProjection>,
             fingerprint: ChangePlanningEvidenceFingerprintDocument,
+            relationDigestSemantics: StableRelationEvidenceSemantics =
+                StableRelationEvidenceSemantics.SEMANTIC_V2,
         ): Refinement<DurableAddDeclarationPlanningEvidence, DurablePlanningEvidenceFailure> {
             if (relations.isEmpty() || traversals.isEmpty() || diagnostics.isEmpty()) {
                 return Refinement.Rejected(DurablePlanningEvidenceFailure.INCOMPLETE)
@@ -225,7 +237,7 @@ data class DurableAddDeclarationPlanningEvidence internal constructor(
                 traversalProjections.forEach { appendPlanningField(it) }
                 diagnosticProjections.forEach { appendPlanningField(it) }
             }
-            if (sha256Hex(canonical.toByteArray()) != fingerprint.value) {
+            if (sha256Hex(canonical.toByteArray(StandardCharsets.UTF_8)) != fingerprint.value) {
                 return Refinement.Rejected(DurablePlanningEvidenceFailure.FINGERPRINT_MISMATCH)
             }
             return Refinement.Refined(
@@ -234,6 +246,7 @@ data class DurableAddDeclarationPlanningEvidence internal constructor(
                     traversals,
                     diagnostics,
                     fingerprint,
+                    relationDigestSemantics,
                 ),
             )
         }
@@ -251,16 +264,66 @@ enum class DurablePlanningEvidenceFailure {
     FINGERPRINT_MISMATCH,
 }
 
-fun DurableAddDeclarationRelationEvidence.matches(
+internal enum class StableRelationEvidenceSemantics {
+    GENERATION_BOUND_V1,
+    SEMANTIC_V2,
+}
+
+fun DurableAddDeclarationPlanningEvidence.matches(
+    expected: DurableAddDeclarationRelationEvidence,
     result: RelationReadResult.Complete,
-): Boolean = meaning == result.batch.request.meaning.durable() && stableDigest == result.stableDigest()
+): Boolean = expected.meaning == result.batch.request.meaning.durable() &&
+    expected.stableDigest == when (relationDigestSemantics) {
+        StableRelationEvidenceSemantics.GENERATION_BOUND_V1 -> result.generationBoundDigest()
+        StableRelationEvidenceSemantics.SEMANTIC_V2 -> result.stableDigest()
+    }
+
+private fun RelationReadResult.Complete.generationBoundDigest(): StableRelationEvidenceDigest {
+    val canonical = buildString {
+        appendPlanningField(batch.request.meaning.canonicalKey())
+        batch.facts.map(RelationFact::canonicalProjection)
+            .sorted()
+            .forEach(::appendPlanningField)
+    }
+    return StableRelationEvidenceDigest.fromProven(
+        sha256Hex(canonical.toByteArray(StandardCharsets.UTF_8)),
+    )
+}
 
 private fun RelationReadResult.Complete.stableDigest(): StableRelationEvidenceDigest {
     val canonical = buildString {
         appendPlanningField(batch.request.meaning.canonicalKey())
-        batch.facts.map { it.canonicalProjection() }.sorted().forEach(::appendPlanningField)
+        batch.facts.map(RelationFact::stableSemanticProjection)
+            .sorted()
+            .forEach(::appendPlanningField)
     }
-    return StableRelationEvidenceDigest.fromProven(sha256Hex(canonical.toByteArray()))
+    return StableRelationEvidenceDigest.fromProven(
+        sha256Hex(canonical.toByteArray(StandardCharsets.UTF_8)),
+    )
+}
+
+/** Generation-independent semantic edge identity used only for G0/G1 equivalence. */
+private fun RelationFact.stableSemanticProjection(): String = buildString {
+    appendPlanningField(meaning.canonicalKey())
+    appendPlanningField(source.stableSemanticProjection())
+    appendPlanningField(target.stableSemanticProjection())
+    appendPlanningField(occurrence.file.stableValue)
+    appendPlanningField(provenance.name)
+    appendPlanningField(coverage.name)
+}
+
+private fun RelationEndpoint.stableSemanticProjection(): String = buildString {
+    appendPlanningField(file.stableValue)
+    appendPlanningField(name.value)
+    when (val identity = qualifiedIdentity) {
+        is ExactDeclarationQualifiedIdentity.Available -> {
+            appendPlanningField("AVAILABLE")
+            appendPlanningField(identity.value)
+        }
+        ExactDeclarationQualifiedIdentity.Unavailable -> appendPlanningField("UNAVAILABLE")
+    }
+    appendPlanningField(kind.name)
+    appendPlanningField(compilerIdentity.value)
 }
 
 private fun RelationMeaning.durable(): AddDeclarationRelationMeaning = when (this) {

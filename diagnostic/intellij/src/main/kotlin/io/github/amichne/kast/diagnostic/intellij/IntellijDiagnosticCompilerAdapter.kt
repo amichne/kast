@@ -4,7 +4,6 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
@@ -13,6 +12,8 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitationReason
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
+import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
@@ -106,9 +107,20 @@ internal class IntellijDiagnosticCompilerQuery {
             collector.recordLimitation(file, DiagnosticLimitationReason.FILE_UNAVAILABLE)
             return
         }
-        if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
-            collector.recordLimitation(file, DiagnosticLimitationReason.OUTSIDE_SOURCE_CONTENT)
-            return
+        when (IntellijProjectFileIndexClassifier.classify(project, virtualFile)) {
+            is IntellijProjectFileClassification.Source -> Unit
+            is IntellijProjectFileClassification.NotSource -> {
+                collector.recordLimitation(file, DiagnosticLimitationReason.OUTSIDE_SOURCE_CONTENT)
+                return
+            }
+            is IntellijProjectFileClassification.Library -> {
+                collector.recordLimitation(file, DiagnosticLimitationReason.OUTSIDE_SOURCE_CONTENT)
+                return
+            }
+            is IntellijProjectFileClassification.Rejected -> {
+                collector.recordLimitation(file, DiagnosticLimitationReason.ANALYSIS_UNAVAILABLE)
+                return
+            }
         }
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
         if (psiFile == null) {

@@ -65,10 +65,13 @@ sealed interface AddDeclarationApplyResult {
 class AppliedUnverified private constructor(
     val planId: AddDeclarationPlanId,
     val source: SymbolDiscoveryFileIdentity.Workspace,
-    val priorLease: SemanticReadLease,
+    val publication: MutationPlanPublication,
     val postimage: WorkspaceSourceContentHash,
     val recoveryBinding: MutationPlanBinding,
 ) : AddDeclarationApplyResult {
+    val priorLease: SemanticReadLease
+        get() = publication.applicationLease
+
     companion object {
         /**
          * Proof transition: `(MutationAuthority, AppliedSourceWrite,
@@ -86,13 +89,15 @@ class AppliedUnverified private constructor(
         ): AppliedUnverified = AppliedUnverified(
             authority.planId,
             authority.source,
-            authority.priorLease,
+            authority.publication,
             write.content,
             recovery.record.binding,
         )
 
         fun restore(
             plan: ChangePlan,
+            applicationLease: SemanticReadLease,
+            applicationState: io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
             postimage: WorkspaceSourceContentHash,
             recoveryBinding: MutationPlanBinding,
         ): Refinement<AppliedUnverified, AppliedUnverifiedRestorationFailure> {
@@ -105,11 +110,32 @@ class AppliedUnverified private constructor(
                     AppliedUnverifiedRestorationFailure.RECOVERY_BINDING_MISMATCH,
                 )
             }
+            val publication = when (val restored = MutationPlanPublication.restore(
+                plan,
+                applicationLease,
+                applicationState,
+            )) {
+                is Refinement.Refined -> restored.value
+                is Refinement.Rejected -> return Refinement.Rejected(
+                    when (restored.failure) {
+                        MutationPlanPublicationRestorationFailure.WRITE_SET_NOT_SINGLETON ->
+                            AppliedUnverifiedRestorationFailure.WRITE_SET_NOT_SINGLETON
+                        MutationPlanPublicationRestorationFailure.APPLICATION_ROOT_MISMATCH ->
+                            AppliedUnverifiedRestorationFailure.APPLICATION_ROOT_MISMATCH
+                        MutationPlanPublicationRestorationFailure.APPLICATION_GENERATION_STALE ->
+                            AppliedUnverifiedRestorationFailure.APPLICATION_GENERATION_STALE
+                        MutationPlanPublicationRestorationFailure.APPLICATION_STATE_MISMATCH ->
+                            AppliedUnverifiedRestorationFailure.APPLICATION_STATE_MISMATCH
+                        MutationPlanPublicationRestorationFailure.APPLICATION_SUCCESSOR_UNSUPPORTED ->
+                            AppliedUnverifiedRestorationFailure.APPLICATION_SUCCESSOR_UNSUPPORTED
+                    },
+                )
+            }
             return Refinement.Refined(
                 AppliedUnverified(
                     plan.planId,
                     source,
-                    plan.priorLease,
+                    publication,
                     postimage,
                     recoveryBinding,
                 ),
@@ -121,6 +147,10 @@ class AppliedUnverified private constructor(
 enum class AppliedUnverifiedRestorationFailure {
     WRITE_SET_NOT_SINGLETON,
     RECOVERY_BINDING_MISMATCH,
+    APPLICATION_ROOT_MISMATCH,
+    APPLICATION_GENERATION_STALE,
+    APPLICATION_STATE_MISMATCH,
+    APPLICATION_SUCCESSOR_UNSUPPORTED,
 }
 
 /** Public `change.apply` boundary for the one KCS-017 AddDeclaration mutation. */

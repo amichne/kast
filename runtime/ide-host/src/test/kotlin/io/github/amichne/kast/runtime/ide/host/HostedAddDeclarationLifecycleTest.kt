@@ -114,7 +114,7 @@ class HostedAddDeclarationLifecycleTest {
         }
 
     @Test
-    fun `successful live recovery re-admits clean writer authority without restart`() =
+    fun `successful live recovery withdraws and re-admits clean writer authority without restart`() =
         runTest {
             val fixture = HostedMutationProtocolFixture()
             val planningCalls = AtomicInteger()
@@ -128,6 +128,7 @@ class HostedAddDeclarationLifecycleTest {
                     HostedExactLookup.Found(fixture.selector)
             }
             val recovery = ChangeRecoveryOperations {
+                recoveryEvents += "recover"
                 AddDeclarationRecoveryOutcome.PriorState(
                     PriorStateEvidence.Absent(
                         MutationPlanBinding.parse(fixture.plan.planId.value).refined(),
@@ -155,13 +156,20 @@ class HostedAddDeclarationLifecycleTest {
                     )
                 },
             )
+            val active = HostedMutationState.Clean(
+                planning = ChangePlanOperations { _, _ -> error("not invoked before recovery") },
+                application = ChangeApplyOperations { error("not invoked") },
+                verification = ChangeVerifyOperations { error("not invoked") },
+                recovery = recovery,
+                publication = recoveryPublication,
+            )
             val authority = object : DurableChangeAuthority by rejectedAuthority {
                 override fun loadPlan(identity: ChangePlanIdentity) =
                     ChangePlanLookup.Found(fixture.plan)
             }
             val server = RuntimeServer.createHostedEffects(
                 topologyBindings() + HostedMutationProtocol.bindings(
-                    HostedMutationState.RecoveryRequired(recovery, recoveryPublication),
+                    active,
                     HostedMutationAdmissionOperations {
                         recoveryEvents += "re-admit"
                         restored
@@ -197,7 +205,7 @@ class HostedAddDeclarationLifecycleTest {
                 .decodeOutcome(recovered)
                 .decoded() as OperationOutcome.Complete
             assertEquals(12L, recoveryOutcome.evidence.generation.value)
-            assertEquals(listOf("publish-successor", "re-admit"), recoveryEvents)
+            assertEquals(listOf("recover", "publish-successor", "re-admit"), recoveryEvents)
             assertEquals(1, planningCalls.get())
         }
 

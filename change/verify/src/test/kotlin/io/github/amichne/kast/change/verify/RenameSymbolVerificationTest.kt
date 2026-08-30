@@ -30,7 +30,7 @@ class RenameSymbolVerificationTest {
             1,
             1,
             0,
-            0,
+            1,
         ).refined()
 
         val result = service(complete.copy(observedDelta = rejectedDelta)).verify(

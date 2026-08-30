@@ -316,6 +316,10 @@ private class HostedChangeRecoverHandler(
             is Refinement.Rejected ->
                 return OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
         }
+        // Recovery owns the only physical rollback capability. Withdraw clean plan/apply/verify
+        // authority before invoking it so successful restoration can re-admit from one explicit
+        // recovery state rather than attempting an invalid Clean -> Clean transition.
+        state.requireRecovery()
         return when (capabilities.recovery.recover(binding)) {
             is AddDeclarationRecoveryOutcome.PriorState -> completeAfterRestoration(
                 capabilities,

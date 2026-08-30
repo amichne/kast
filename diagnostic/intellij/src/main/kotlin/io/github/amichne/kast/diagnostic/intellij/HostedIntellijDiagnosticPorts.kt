@@ -9,8 +9,7 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
-import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
-import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
+import io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation
 import io.github.amichne.kast.workspace.intellij.read.HostedProjectAdmissionFailure
 
 class HostedDiagnosticPorts private constructor(
@@ -34,15 +33,15 @@ fun admitHostedIntellijDiagnosticPorts(
     compatibilityPolicy: IdeHostCompatibilityPolicy,
     workspaces: WorkspaceInspectionOperations,
 ): HostedDiagnosticAdmission {
-    when (val admission = AdmittedIdeProject.admit(
+    when (val validation = ExistingProjectValidation.validate(
         project,
         root,
         compatibilityCandidate,
         compatibilityPolicy,
     )) {
-        is ExistingProjectAdmission.Admitted -> Unit
-        is ExistingProjectAdmission.Rejected -> return HostedDiagnosticAdmission.Rejected(
-            HostedProjectAdmissionFailure.ProjectRejected(admission.failure),
+        ExistingProjectValidation.Validated -> Unit
+        is ExistingProjectValidation.Rejected -> return HostedDiagnosticAdmission.Rejected(
+            HostedProjectAdmissionFailure.ProjectRejected(validation.failure),
         )
     }
     val adapter = IntellijDiagnosticCompilerAdapter()

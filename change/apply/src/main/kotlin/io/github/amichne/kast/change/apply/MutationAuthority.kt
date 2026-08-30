@@ -24,10 +24,13 @@ class MutationAuthority private constructor(
     val binding: MutationPlanBinding,
     val source: SymbolDiscoveryFileIdentity.Workspace,
     val intent: ChangeIntent,
-    val priorLease: SemanticReadLease,
+    val publication: MutationPlanPublication,
     private val precondition: ObservedMutationPrecondition,
     private val postimage: DerivedMutationPostimage,
 ) {
+    val priorLease: SemanticReadLease
+        get() = publication.applicationLease
+
     val expectedPostimage: WorkspaceSourceContentHash
         get() = postimage.content
 
@@ -68,7 +71,7 @@ class MutationAuthority private constructor(
             recovery.record.binding,
             admitted.write.source,
             admitted.request.plan.intent,
-            admitted.request.workspace.readLease,
+            admitted.publication,
             admitted.write.preimage,
             admitted.write.postimage,
         )
@@ -119,13 +122,23 @@ class MutationAuthority private constructor(
                     MutationAuthorityRestorationFailure.POSTIMAGE_INVALID,
                 )
             }
+            val publication = when (val restored = MutationPlanPublication.restore(
+                plan,
+                plan.priorLease,
+                plan.workspaceState,
+            )) {
+                is Refinement.Refined -> restored.value
+                is Refinement.Rejected -> return Refinement.Rejected(
+                    MutationAuthorityRestorationFailure.PUBLICATION_INVALID,
+                )
+            }
             return Refinement.Refined(
                 MutationAuthority(
                     plan.planId,
                     record.binding,
                     write.source,
                     plan.intent,
-                    plan.priorLease,
+                    publication,
                     precondition,
                     postimage,
                 ),
@@ -139,6 +152,7 @@ enum class MutationAuthorityRestorationFailure {
     RECOVERY_BINDING_MISMATCH,
     PREIMAGE_INVALID,
     POSTIMAGE_INVALID,
+    PUBLICATION_INVALID,
     UNSUPPORTED_PLAN,
 }
 

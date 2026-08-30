@@ -10,8 +10,7 @@ import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
-import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
-import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
+import io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation
 import io.github.amichne.kast.workspace.intellij.read.HostedProjectAdmissionFailure
 
 class HostedTopologyPorts private constructor(
@@ -42,15 +41,15 @@ fun admitHostedIntellijTopologyPorts(
     compatibilityPolicy: IdeHostCompatibilityPolicy,
     workspaces: WorkspaceInspectionOperations,
 ): HostedTopologyAdmission {
-    when (val admission = AdmittedIdeProject.admit(
+    when (val validation = ExistingProjectValidation.validate(
         project,
         root,
         compatibilityCandidate,
         compatibilityPolicy,
     )) {
-        is ExistingProjectAdmission.Admitted -> Unit
-        is ExistingProjectAdmission.Rejected -> return HostedTopologyAdmission.Rejected(
-            HostedProjectAdmissionFailure.ProjectRejected(admission.failure),
+        ExistingProjectValidation.Validated -> Unit
+        is ExistingProjectValidation.Rejected -> return HostedTopologyAdmission.Rejected(
+            HostedProjectAdmissionFailure.ProjectRejected(validation.failure),
         )
     }
     val adapter = IntellijTopologyFileExtractor()

@@ -3,6 +3,8 @@ package support.architecture
 internal object EffectRules {
     private const val ENDPOINT_PUBLISHER_OWNER =
         "io/github/amichne/kast/ide/endpoint/JdkIdeEndpointPublisher"
+    private const val PROJECT_READ_EPOCH_SESSION_OWNER =
+        "io/github/amichne/kast/workspace/intellij/read/AdmittedIdeProjectSession"
     private val endpointFilesystemOwners = setOf(
         ENDPOINT_PUBLISHER_OWNER,
         "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory",
@@ -55,6 +57,15 @@ internal object EffectRules {
                 owner.startsWith("org/jetbrains/kotlin/analysis/api/"))
         ) {
             add(ForbiddenEffect.INTELLIJ_PLATFORM)
+        }
+        if (owner == "com/intellij/openapi/roots/ProjectFileIndex") {
+            add(ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY)
+        }
+        if (
+            owner == PROJECT_READ_EPOCH_SESSION_OWNER &&
+            (name == "admit" || name.startsWith("admit-"))
+        ) {
+            add(ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY)
         }
         if (
             moduleRole in setOf(ModuleRole.IDE_READ_ONLY, ModuleRole.IDE_HOST) &&

@@ -76,4 +76,23 @@ class HostedProjectEffectAdmissionTest {
             ).forEach { forbidden -> assertFalse(forbidden in constantPool, "$resource: $forbidden") }
         }
     }
+
+    @Test
+    fun `validation-only hosted factories do not install project read epoch authority`() {
+        listOf(
+            "io/github/amichne/kast/topology/intellij/HostedIntellijTopologyPortsKt.class",
+            "io/github/amichne/kast/topology/intellij/HostedWorkspaceSourceStateKt.class",
+            "io/github/amichne/kast/change/intellij/HostedIntellijChangePortsKt.class",
+            "io/github/amichne/kast/relation/intellij/HostedIntellijRelationPortsKt.class",
+            "io/github/amichne/kast/diagnostic/intellij/HostedIntellijDiagnosticPortsKt.class",
+        ).forEach { resource ->
+            val bytes = HostedProjectEffectAdmissionTest::class.java.classLoader
+                .getResourceAsStream(resource)
+                ?.use { it.readAllBytes() }
+            assertNotNull(bytes, resource)
+            val constantPool = checkNotNull(bytes).toString(Charsets.ISO_8859_1)
+
+            assertFalse("AdmittedIdeProject" in constantPool, "$resource: AdmittedIdeProject")
+        }
+    }
 }

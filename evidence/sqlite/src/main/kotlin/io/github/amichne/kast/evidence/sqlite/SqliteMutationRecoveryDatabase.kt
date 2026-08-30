@@ -71,6 +71,17 @@ internal fun interface MutationRecoveryFaultInjector {
     }
 }
 
+/** Package proof that recovery PRAGMAs and schema exist for one connection source. */
+internal sealed interface InitializedSqliteMutationRecoveryConnections {
+    fun <T> use(block: (Connection) -> T): T
+}
+
+private class RetainedInitializedSqliteMutationRecoveryConnections(
+    private val connections: SqliteMutationRecoveryConnections,
+) : InitializedSqliteMutationRecoveryConnections {
+    override fun <T> use(block: (Connection) -> T): T = connections.use(block)
+}
+
 internal class SqliteMutationRecoveryConnections(
     private val database: SqliteMutationRecoveryDatabase,
 ) {
@@ -86,7 +97,12 @@ internal class SqliteMutationRecoveryConnections(
         }
     }
 
-    fun initialize() = use { connection ->
+    fun initialize(): InitializedSqliteMutationRecoveryConnections {
+        initializeSchema()
+        return RetainedInitializedSqliteMutationRecoveryConnections(this)
+    }
+
+    private fun initializeSchema() = use { connection ->
         connection.createStatement().use { statement ->
             statement.execute("PRAGMA journal_mode = WAL")
             statement.execute(

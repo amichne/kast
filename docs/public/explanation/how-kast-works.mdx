@@ -156,7 +156,18 @@ A newly opened Project conservatively advances the durable semantic generation.
 IntelliJ does not expose a persistent, source-root-bounded subtree epoch that
 could prove files were unchanged while the Project was closed, so Kast does
 not reuse the old generation on layout evidence alone. Deferred startup
-attempts in the same project service reuse one listener and event counter.
+attempts in the same project service reuse one listener and event counter. If
+cached project-model evidence is not ready, the endpoint coordinator retries
+after 250 milliseconds, 1 second, and then at a capped 3-second interval. A
+real IntelliJ readiness signal takes precedence, and its older scheduled retry
+becomes stale rather than starting duplicate work.
+One project-service session retains the admitted project-read epoch authority
+across those attempts. Validation-only hosted adapters cannot install another
+epoch source, so retries do not multiply workspace-model or VFS listeners.
+The hosted mutation database is also initialized once for generation resumption
+and once for the aggregate mutation authority. That aggregate retains its
+recovery journal, avoiding two additional recovery-schema initialization passes
+during normal startup.
 After a cold start, an explicit `topology.build` enumerates the current
 canonical candidates; if their paths, source roots, and content hashes exactly
 match the durable snapshot, Kast rebinds that snapshot to the new lease as

@@ -31,6 +31,33 @@ class IdeEndpointModelCaptureAdmissionTest {
     }
 
     @Test
+    fun `unavailable Gradle module SDK remains fail closed and retryable`() {
+        assertEquals(
+            IdeEndpointStartup.Deferred(
+                IdeEndpointDeferredReadiness.GRADLE_MODEL_INCOMPLETE,
+            ),
+            IdeEndpointModelCaptureAdmission.admit(
+                setOf(DetachedModelCaptureFailure.SDK_UNAVAILABLE),
+            ),
+        )
+    }
+
+    @Test
+    fun `terminal failure cannot hide behind unavailable Gradle module SDK`() {
+        val failures = setOf(
+            DetachedModelCaptureFailure.SDK_UNAVAILABLE,
+            DetachedModelCaptureFailure.MODULE_DISPOSED,
+        )
+
+        assertEquals(
+            IdeEndpointStartup.Rejected(
+                IdeEndpointStartupFailure.ProjectModelRejected(failures),
+            ),
+            IdeEndpointModelCaptureAdmission.admit(failures),
+        )
+    }
+
+    @Test
     fun `terminal failure cannot hide behind unsettled Gradle module ownership`() {
         val failures = setOf(
             DetachedModelCaptureFailure.NOT_GRADLE_OWNED,

@@ -25,7 +25,7 @@ sealed interface SqliteMutationRecoveryJournalOpenResult {
 
 /** SQLite owner of atomic clean-slate mutation recovery evidence transitions. */
 class SqliteMutationRecoveryJournal private constructor(
-    private val connections: SqliteMutationRecoveryConnections,
+    private val connections: InitializedSqliteMutationRecoveryConnections,
     private val faults: MutationRecoveryFaultInjector,
 ) : MutationRecoveryEvidenceStore {
     override fun prepare(
@@ -248,8 +248,7 @@ class SqliteMutationRecoveryJournal private constructor(
                 )
             }
             return try {
-                val connections = SqliteMutationRecoveryConnections(database)
-                connections.initialize()
+                val connections = SqliteMutationRecoveryConnections(database).initialize()
                 SqliteMutationRecoveryJournalOpenResult.Opened(
                     SqliteMutationRecoveryJournal(connections, faults),
                 )
@@ -259,6 +258,13 @@ class SqliteMutationRecoveryJournal private constructor(
                 )
             }
         }
+
+        internal fun retain(
+            connections: InitializedSqliteMutationRecoveryConnections,
+        ): SqliteMutationRecoveryJournal = SqliteMutationRecoveryJournal(
+            connections,
+            MutationRecoveryFaultInjector.Disabled,
+        )
     }
 }
 

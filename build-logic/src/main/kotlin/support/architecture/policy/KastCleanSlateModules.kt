@@ -268,6 +268,7 @@ internal object KastCleanSlateModules {
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
             lifecycle = ModuleLifecycle.ACTIVE,
+            additionalEffects = setOf(ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY),
         ),
         ideRead(
             ModuleId.RUNTIME_IDE_READ,
@@ -327,6 +328,7 @@ internal object KastCleanSlateModules {
             ModuleId.CHANGE_INTELLIJ,
             effects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY,
                 ForbiddenEffect.UDS_BIND,
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),

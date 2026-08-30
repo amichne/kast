@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import java.lang.reflect.Modifier
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
@@ -22,6 +23,11 @@ class ExistingProjectAdmissionTest {
     @Test
     fun `only the exact ready existing Project yields the stronger authority`() {
         val observation = RecordingProjectObservation()
+        var epochSourceInstallations = 0
+        val epochSourceFactory = ExistingProjectReadEpochSourceFactory { project, root ->
+            epochSourceInstallations += 1
+            FIXTURE_EPOCH_SOURCE_FACTORY.create(project, root)
+        }
 
         val admitted = when (
             val result = AdmittedIdeProject.admitObserved(
@@ -30,7 +36,7 @@ class ExistingProjectAdmissionTest {
                 FIXTURE_COMPATIBILITY,
                 FIXTURE_COMPATIBILITY_POLICY,
                 observation,
-                FIXTURE_EPOCH_SOURCE_FACTORY,
+                epochSourceFactory,
             )
         ) {
             is ExistingProjectAdmission.Admitted -> result.project
@@ -46,6 +52,76 @@ class ExistingProjectAdmissionTest {
         assertEquals(
             ExistingProjectObservationStage.entries,
             observation.observedStages,
+        )
+        assertEquals(1, epochSourceInstallations)
+    }
+
+    @Test
+    fun `validation observes the exact policy without an epoch source factory`() {
+        val observation = RecordingProjectObservation()
+
+        val validation = ExistingProjectValidation.validateObserved(
+            opaqueProject(),
+            FIXTURE_ROOT,
+            FIXTURE_COMPATIBILITY,
+            FIXTURE_COMPATIBILITY_POLICY,
+            observation,
+        )
+
+        assertEquals(ExistingProjectValidation.Validated, validation)
+        assertEquals(ExistingProjectObservationStage.entries, observation.observedStages)
+    }
+
+    @Test
+    fun `project service session retains one epoch authority across repeated admission`() {
+        val project = opaqueProject()
+        val session = AdmittedIdeProjectSession()
+        var admissionAttempts = 0
+        var epochSourceInstallations = 0
+        val admissions = ExistingProjectAdmissionOperations {
+                candidateProject, expectedRoot, compatibilityCandidate, compatibilityPolicy ->
+            admissionAttempts += 1
+            AdmittedIdeProject.admitObserved(
+                candidateProject,
+                expectedRoot,
+                compatibilityCandidate,
+                compatibilityPolicy,
+                RecordingProjectObservation(),
+                ExistingProjectReadEpochSourceFactory { sourceProject, sourceRoot ->
+                    epochSourceInstallations += 1
+                    FIXTURE_EPOCH_SOURCE_FACTORY.create(sourceProject, sourceRoot)
+                },
+            )
+        }
+
+        val first = session.admitUsing(
+            project,
+            FIXTURE_ROOT,
+            FIXTURE_COMPATIBILITY,
+            FIXTURE_COMPATIBILITY_POLICY,
+            admissions,
+        ) as ExistingProjectAdmission.Admitted
+        val repeated = session.admitUsing(
+            project,
+            FIXTURE_ROOT,
+            FIXTURE_COMPATIBILITY,
+            FIXTURE_COMPATIBILITY_POLICY,
+            admissions,
+        ) as ExistingProjectAdmission.Admitted
+        val mismatched = session.admitUsing(
+            project,
+            OTHER_FIXTURE_ROOT,
+            FIXTURE_COMPATIBILITY,
+            FIXTURE_COMPATIBILITY_POLICY,
+            admissions,
+        )
+
+        assertSame(first.project, repeated.project)
+        assertEquals(1, admissionAttempts)
+        assertEquals(1, epochSourceInstallations)
+        assertEquals(
+            ExistingProjectAdmissionFailure.RetainedAuthorityMismatch,
+            admittedFailure(mismatched),
         )
     }
 

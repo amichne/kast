@@ -126,6 +126,8 @@ internal class HostedMutationProtocolFixture {
 
     val applied: AppliedUnverified = AppliedUnverified.restore(
         plan,
+        plan.priorLease,
+        plan.workspaceState,
         WorkspaceSourceContentHash.parse(sha256("fun service(): Int = 0\nfun added(): Int = 1".toByteArray()))
             .refined(),
         MutationPlanBinding.parse(plan.planId.value).refined(),

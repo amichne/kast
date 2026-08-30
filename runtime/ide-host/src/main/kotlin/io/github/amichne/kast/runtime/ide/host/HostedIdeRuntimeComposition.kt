@@ -2,9 +2,7 @@ package io.github.amichne.kast.runtime.ide.host
 
 import io.github.amichne.kast.evidence.contract.HostedWorkspaceStateLocation
 import io.github.amichne.kast.evidence.sqlite.SqliteDurableChangeAuthority
-import io.github.amichne.kast.evidence.sqlite.SqliteDurableChangeAuthorityOpenResult
-import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournal
-import io.github.amichne.kast.evidence.sqlite.SqliteMutationRecoveryJournalOpenResult
+import io.github.amichne.kast.evidence.sqlite.SqliteHostedMutationAuthorityOpenResult
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStore
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
 import io.github.amichne.kast.evidence.sqlite.SqliteHostedWorkspaceGenerationAuthority
@@ -100,22 +98,16 @@ object HostedIdeRuntimeComposition {
                 HostedIdeRuntimeCompositionFailure.TOPOLOGY_STORAGE_UNAVAILABLE,
             )
         }
-        val journal = when (val opened = SqliteMutationRecoveryJournal.open(
+        val mutationAuthority = when (val opened = SqliteDurableChangeAuthority.openHosted(
             location.mutationDatabase,
         )) {
-            is SqliteMutationRecoveryJournalOpenResult.Opened -> opened.journal
-            is SqliteMutationRecoveryJournalOpenResult.Rejected -> return rejected(
+            is SqliteHostedMutationAuthorityOpenResult.Opened -> opened
+            is SqliteHostedMutationAuthorityOpenResult.Rejected -> return rejected(
                 HostedIdeRuntimeCompositionFailure.MUTATION_STORAGE_UNAVAILABLE,
             )
         }
-        val authority = when (val opened = SqliteDurableChangeAuthority.open(
-            location.mutationDatabase,
-        )) {
-            is SqliteDurableChangeAuthorityOpenResult.Opened -> opened.authority
-            is SqliteDurableChangeAuthorityOpenResult.Rejected -> return rejected(
-                HostedIdeRuntimeCompositionFailure.MUTATION_STORAGE_UNAVAILABLE,
-            )
-        }
+        val journal = mutationAuthority.recoveryJournal
+        val authority = mutationAuthority.authority
         val topology = HostedTopologyComposition.create(
             workspace,
             HostedTopologyRuntimePorts(

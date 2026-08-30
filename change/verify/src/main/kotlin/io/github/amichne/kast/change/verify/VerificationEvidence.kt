@@ -262,10 +262,14 @@ class CompleteAddDeclarationVerification private constructor(
                     if (
                         planned.size != completeRelations.size ||
                         planned.any { expected ->
-                            completeRelations.count(expected::matches) != 1
+                            completeRelations.count { observed ->
+                                plan.evidence.matches(expected, observed)
+                            } != 1
                         } ||
                         completeRelations.any { observed ->
-                            planned.count { expected -> expected.matches(observed) } != 1
+                            planned.count { expected ->
+                                plan.evidence.matches(expected, observed)
+                            } != 1
                         }
                     ) {
                         failures += AddDeclarationProofFailure.RELATION_DELTA_REJECTED

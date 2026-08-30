@@ -50,7 +50,7 @@ sealed interface VerifiedTopologyDeltaPublication {
 /** Verification-bound publication of one singleton source delta; it is not a traversal fallback. */
 fun interface VerifiedTopologyDeltaPublicationOperations {
     suspend fun publish(
-        prior: SemanticReadLease,
+        priorTopologyLease: SemanticReadLease,
         resulting: PublishedWorkspace,
         changedSource: SymbolDiscoveryFileIdentity.Workspace,
         postimage: WorkspaceSourceContentHash,
@@ -59,7 +59,9 @@ fun interface VerifiedTopologyDeltaPublicationOperations {
 
 /**
  * Preserves a complete durable topology across one verified source write by extracting only the
- * changed file and mechanically rebinding all retained compiler facts to the resulting lease.
+ * changed file and mechanically rebinding all retained compiler facts to the resulting lease. The
+ * prior lease names the durable snapshot admitted by the plan; exact candidate comparison below
+ * proves unchanged files across any conservative cold-start publications before application.
  */
 class VerifiedTopologyDeltaPublicationService(
     private val leaseGuard: SemanticReadLeaseGuard,
@@ -68,7 +70,7 @@ class VerifiedTopologyDeltaPublicationService(
     private val snapshots: TopologySnapshotStore,
 ) : VerifiedTopologyDeltaPublicationOperations {
     override suspend fun publish(
-        prior: SemanticReadLease,
+        priorTopologyLease: SemanticReadLease,
         resulting: PublishedWorkspace,
         changedSource: SymbolDiscoveryFileIdentity.Workspace,
         postimage: WorkspaceSourceContentHash,
@@ -93,7 +95,7 @@ class VerifiedTopologyDeltaPublicationService(
                 )
             }
         }
-        if (priorSnapshot.identity.lease != prior) {
+        if (priorSnapshot.identity.lease != priorTopologyLease) {
             return rejected(VerifiedTopologyDeltaPublicationFailure.PRIOR_SNAPSHOT_MISMATCH)
         }
         val priorContent = when (val read = snapshots.read(priorSnapshot)) {

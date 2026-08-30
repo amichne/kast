@@ -248,6 +248,7 @@ class ModuleRoleBoundaryTest {
         assertEquals(
             setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY,
                 ForbiddenEffect.INTELLIJ_WRITE,
                 ForbiddenEffect.FILESYSTEM_WRITE,
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE,
@@ -273,6 +274,11 @@ class ModuleRoleBoundaryTest {
 
     private fun forbiddenAuthorityFixture(temporary: Path): Path {
         val targets = listOf(
+            JvmMember.of(
+                "com/intellij/openapi/roots/ProjectFileIndex",
+                "getInstance",
+                "()V",
+            ),
             JvmMember.of(
                 "com/intellij/openapi/command/WriteCommandAction",
                 "runWriteCommandAction",

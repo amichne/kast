@@ -39,6 +39,7 @@ sealed interface ExistingProjectAdmissionFailure {
     data object DumbMode : ExistingProjectAdmissionFailure
     data object K2Unavailable : ExistingProjectAdmissionFailure
     data object HostIdentityUnavailable : ExistingProjectAdmissionFailure
+    data object RetainedAuthorityMismatch : ExistingProjectAdmissionFailure
     data class HostIncompatible(
         val cause: IdeHostCompatibilityFailure,
     ) : ExistingProjectAdmissionFailure

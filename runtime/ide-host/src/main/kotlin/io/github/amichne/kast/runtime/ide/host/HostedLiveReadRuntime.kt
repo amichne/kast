@@ -2,6 +2,9 @@ package io.github.amichne.kast.runtime.ide.host
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
+import io.github.amichne.kast.protocol.contract.IdeHostCapability
+import io.github.amichne.kast.protocol.wire.WireRequestAdmission
+import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchFailure
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
@@ -58,6 +61,17 @@ internal class HostedGenerationReadDispatch(
     }
 
     suspend fun dispatch(document: String): IdeReadRuntimeDispatchResult {
+        val operation = when (val admission = WireRequestEnvelope.admit(document)) {
+            is WireRequestAdmission.Admitted -> admission.request.operation
+            is WireRequestAdmission.Rejected -> return IdeReadRuntimeDispatchResult.Rejected(
+                IdeReadRuntimeDispatchFailure.RequestAdmissionFailed(admission.failure),
+            )
+        }
+        if (operation !in hostedReadOperations) {
+            return IdeReadRuntimeDispatchResult.Rejected(
+                IdeReadRuntimeDispatchFailure.UnsupportedOperation(operation),
+            )
+        }
         val lease = when (val current = workspace.inspect()) {
             is WorkspaceRuntimeState.Ready -> current.workspace.readLease
             WorkspaceRuntimeState.Absent,
@@ -140,6 +154,10 @@ private data class GenerationReadDispatch(
     val generation: EvidenceGeneration,
     val dispatch: HostedReadDispatchOperations,
 )
+
+private val hostedReadOperations = IdeHostCapability.entries.mapTo(linkedSetOf()) {
+    it.operation
+}
 
 private fun HostedIdeReadRuntime.asDispatchOperations() =
     HostedReadDispatchOperations { document -> dispatch(document) }

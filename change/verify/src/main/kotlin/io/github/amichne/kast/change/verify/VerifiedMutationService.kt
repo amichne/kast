@@ -32,16 +32,22 @@ class AdmittedVerifiedMutationRequest private constructor(
          * Proof transition: `VerifiedMutationRequest -> Refinement<
          * AdmittedVerifiedMutationRequest, VerifiedMutationAdmissionFailure>`.
          *
-         * Establishes exact plan identity, G0 lease, and source identity before any publication
-         * effect begins. [VerifiedMutationAdmissionFailure] is the closed expected failure. Raw
-         * extraction is prohibited; only typed KCS-015 and KCS-017 proof enters.
+         * Establishes exact plan identity, the retained plan-to-application publication proof,
+         * and source identity before any publication effect begins.
+         * [VerifiedMutationAdmissionFailure] is the closed expected failure. Raw extraction is
+         * prohibited; only typed KCS-015 and KCS-017 proof enters.
          */
         fun admit(
             request: VerifiedMutationRequest,
         ): Refinement<AdmittedVerifiedMutationRequest, VerifiedMutationAdmissionFailure> = when {
             request.plan.planId != request.applied.planId ->
                 Refinement.Rejected(VerifiedMutationAdmissionFailure.PLAN_ID_MISMATCH)
-            request.plan.priorLease != request.applied.priorLease ->
+            request.plan.priorLease != request.applied.publication.plannedLease ||
+                request.plan.workspaceState != request.applied.publication.plannedState ||
+                request.plan.writes.entries.singleOrNull()?.sourceRoot !=
+                request.applied.publication.sourceRoot ||
+                request.plan.writes.entries.singleOrNull()?.precondition !=
+                request.applied.publication.precondition ->
                 Refinement.Rejected(VerifiedMutationAdmissionFailure.PRIOR_LEASE_MISMATCH)
             request.plan.writes.entries.singleOrNull()?.source != request.applied.source ->
                 Refinement.Rejected(VerifiedMutationAdmissionFailure.SOURCE_MISMATCH)
