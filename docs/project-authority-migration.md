@@ -1,7 +1,7 @@
 # Project authority migration
 
 Status: incremental migration in progress
-Implementation baseline: `309290b5fb6f793a014805d2ecd827c98007e894`
+Implementation baseline: `9bc29ad1b5cdafd8f377b7bfd242e85f093f15cb`
 
 This document records the authority rule, the current semantic-conversion inventory, completed
 migration slices, and remaining gaps. It is not a declaration that the aggregate detached model is
@@ -47,6 +47,14 @@ owner or root facts produce a closed `ProjectFileClassificationFailure`; they ar
 
 The classification is request-local. No `ProjectFileIndex`, `Project`, `Module`, or `VirtualFile`
 escapes in the detached result, and no project-wide classification is persisted.
+
+### Mechanical ProjectFileIndex ownership
+
+The bytecode architecture scanner classifies every direct JVM reference to
+`com.intellij.openapi.roots.ProjectFileIndex` as `PROJECT_FILE_INDEX_AUTHORITY`. The canonical
+policy grants that effect only to `workspace:intellij-read`, and the policy validator fixes that
+module as its exclusive owner. A direct call reintroduced in diagnostics, relations, or another
+IntelliJ consumer now fails `verifyKastArchitecture` even if source review misses it.
 
 ### First consumers
 

@@ -202,6 +202,7 @@ private object ModuleRoleBoundaries {
             safeReadCosts,
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY,
             ),
         )
         ModuleRole.IDE_HOST -> boundary(

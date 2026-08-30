@@ -27,6 +27,7 @@ enum class ModuleRole {
 
 enum class ForbiddenEffect {
     INTELLIJ_PLATFORM,
+    PROJECT_FILE_INDEX_AUTHORITY,
     UDS_BIND,
     ENDPOINT_DESCRIPTOR_WRITE,
     PROJECT_OPEN,

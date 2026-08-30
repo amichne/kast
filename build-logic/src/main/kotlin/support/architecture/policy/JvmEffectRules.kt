@@ -56,6 +56,9 @@ internal object EffectRules {
         ) {
             add(ForbiddenEffect.INTELLIJ_PLATFORM)
         }
+        if (owner == "com/intellij/openapi/roots/ProjectFileIndex") {
+            add(ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY)
+        }
         if (
             moduleRole in setOf(ModuleRole.IDE_READ_ONLY, ModuleRole.IDE_HOST) &&
             (isProjectOpenAuthority(owner, name) ||
