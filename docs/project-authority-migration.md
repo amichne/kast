@@ -87,6 +87,14 @@ including its Kotlin value-class-mangled form, as `PROJECT_READ_EPOCH_AUTHORITY`
 its exclusive policy owner, so a future direct call from topology, diagnostics, relations, change,
 or another validation-only adapter fails `verifyKastArchitecture`.
 
+Hosted mutation storage now refines raw SQLite connections into one typed initialized-recovery
+capability. `SqliteDurableChangeAuthority.openHosted` returns both the durable change authority and
+its retained recovery journal from that proof, while the narrower `open` still exposes only change
+authority. Hosted runtime no longer opens a second journal. Together with generation resumption,
+normal startup recovery-schema initialization passes fall from four to two. A production-bytecode
+test fixes the hosted composition boundary at one aggregate authority open and zero direct journal
+opens.
+
 ### First consumers
 
 The diagnostic adapter now uses the detached classification for concrete-file source admission.

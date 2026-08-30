@@ -4,6 +4,8 @@ plugins {
 }
 
 dependencies {
+    testImplementation("org.ow2.asm:asm:9.9.1")
+
     implementation(project(":runtime:ide-read"))
     implementation(project(":runtime:server"))
     implementation(project(":workspace:contract"))

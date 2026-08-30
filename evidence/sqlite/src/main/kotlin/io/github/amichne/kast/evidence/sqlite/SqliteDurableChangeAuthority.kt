@@ -40,6 +40,16 @@ sealed interface SqliteDurableChangeAuthorityOpenResult {
         SqliteDurableChangeAuthorityOpenResult
 }
 
+sealed interface SqliteHostedMutationAuthorityOpenResult {
+    data class Opened(
+        val authority: SqliteDurableChangeAuthority,
+        val recoveryJournal: SqliteMutationRecoveryJournal,
+    ) : SqliteHostedMutationAuthorityOpenResult
+
+    data class Rejected(val failure: SqliteDurableChangeAuthorityOpenFailure) :
+        SqliteHostedMutationAuthorityOpenResult
+}
+
 sealed interface HostedDurableMutationAudit {
     data object Clean : HostedDurableMutationAudit
     data class RecoveryRequired(val bindings: Set<MutationPlanBinding>) :
@@ -50,7 +60,7 @@ sealed interface HostedDurableMutationAudit {
 
 /** Durable public plan/application/receipt authority sharing mutation.sqlite with recovery. */
 class SqliteDurableChangeAuthority private constructor(
-    private val connections: SqliteMutationRecoveryConnections,
+    private val connections: InitializedSqliteMutationRecoveryConnections,
     private val recovery: SqliteMutationRecoveryJournal,
 ) : DurableChangeAuthority {
     /**
@@ -384,31 +394,37 @@ class SqliteDurableChangeAuthority private constructor(
     }
 
     companion object {
-        fun open(location: MutationDatabaseLocation): SqliteDurableChangeAuthorityOpenResult {
+        fun open(
+            location: MutationDatabaseLocation,
+        ): SqliteDurableChangeAuthorityOpenResult = when (val opened = openHosted(location)) {
+            is SqliteHostedMutationAuthorityOpenResult.Opened ->
+                SqliteDurableChangeAuthorityOpenResult.Opened(opened.authority)
+            is SqliteHostedMutationAuthorityOpenResult.Rejected ->
+                SqliteDurableChangeAuthorityOpenResult.Rejected(opened.failure)
+        }
+
+        /** Opens the exact change authority and recovery journal from one initialized proof. */
+        fun openHosted(
+            location: MutationDatabaseLocation,
+        ): SqliteHostedMutationAuthorityOpenResult {
             val path = prepareHostedDatabasePath(location.valueAtSqliteBoundary())
-                ?: return SqliteDurableChangeAuthorityOpenResult.Rejected(
+                ?: return SqliteHostedMutationAuthorityOpenResult.Rejected(
                     SqliteDurableChangeAuthorityOpenFailure.STORAGE_UNAVAILABLE,
                 )
             val database = SqliteMutationRecoveryDatabase.admit(path).valueOrNull()
-                ?: return SqliteDurableChangeAuthorityOpenResult.Rejected(
+                ?: return SqliteHostedMutationAuthorityOpenResult.Rejected(
                     SqliteDurableChangeAuthorityOpenFailure.STORAGE_UNAVAILABLE,
                 )
             return try {
-                val connections = SqliteMutationRecoveryConnections(database)
-                connections.initialize()
+                val connections = SqliteMutationRecoveryConnections(database).initialize()
                 connections.initializeAuthority()
-                val journal = when (val opened = SqliteMutationRecoveryJournal.open(path)) {
-                    is SqliteMutationRecoveryJournalOpenResult.Opened -> opened.journal
-                    is SqliteMutationRecoveryJournalOpenResult.Rejected ->
-                        return SqliteDurableChangeAuthorityOpenResult.Rejected(
-                            SqliteDurableChangeAuthorityOpenFailure.STORAGE_UNAVAILABLE,
-                        )
-                }
-                SqliteDurableChangeAuthorityOpenResult.Opened(
+                val journal = SqliteMutationRecoveryJournal.retain(connections)
+                SqliteHostedMutationAuthorityOpenResult.Opened(
                     SqliteDurableChangeAuthority(connections, journal),
+                    journal,
                 )
             } catch (_: Exception) {
-                SqliteDurableChangeAuthorityOpenResult.Rejected(
+                SqliteHostedMutationAuthorityOpenResult.Rejected(
                     SqliteDurableChangeAuthorityOpenFailure.STORAGE_UNAVAILABLE,
                 )
             }
@@ -416,7 +432,7 @@ class SqliteDurableChangeAuthority private constructor(
     }
 }
 
-private fun SqliteMutationRecoveryConnections.initializeAuthority() = use { connection ->
+private fun InitializedSqliteMutationRecoveryConnections.initializeAuthority() = use { connection ->
     connection.createStatement().use { statement ->
         statement.execute(
             """CREATE TABLE IF NOT EXISTS hosted_change_plan (
