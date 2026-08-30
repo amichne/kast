@@ -17,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import io.github.amichne.kast.topology.intellij.HostedWorkspaceColdStartIdentity
 import io.github.amichne.kast.topology.intellij.HostedWorkspaceSourceStateSession
+import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProjectSession
 
 /** One eagerly registered IntelliJ project-scoped endpoint coordinator. */
 class IdeEndpointService private constructor(
@@ -25,6 +26,7 @@ class IdeEndpointService private constructor(
     private val coordinator: IdeEndpointCoordinator,
     private val generations: ProjectEndpointGenerationSource,
     private val coldStart: HostedWorkspaceColdStartIdentity,
+    private val projectAdmissions: AdmittedIdeProjectSession,
 ) : Disposable {
     private val sourceStates = HostedWorkspaceSourceStateSession(coldStart, this)
 
@@ -34,6 +36,7 @@ class IdeEndpointService private constructor(
         IdeEndpointCoordinator(JdkIdeEndpointPublisher),
         ProjectEndpointGenerationSource(),
         HostedWorkspaceColdStartIdentity.issue(),
+        AdmittedIdeProjectSession(),
     )
 
     init {
@@ -105,6 +108,7 @@ class IdeEndpointService private constructor(
                     project,
                     generations,
                     sourceStates,
+                    projectAdmissions,
                 )
                 LOG.info("Kast hosted endpoint startup outcome: $startup")
                 complete(
@@ -165,6 +169,7 @@ class IdeEndpointService private constructor(
             coordinator,
             ProjectEndpointGenerationSource(),
             HostedWorkspaceColdStartIdentity.issue(),
+            AdmittedIdeProjectSession(),
         )
     }
 }

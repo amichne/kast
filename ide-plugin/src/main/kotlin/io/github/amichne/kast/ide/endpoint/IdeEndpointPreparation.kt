@@ -57,7 +57,7 @@ import io.github.amichne.kast.topology.intellij.HostedWorkspaceSourceStateAdmiss
 import io.github.amichne.kast.topology.intellij.admitHostedIntellijTopologyPorts
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationBlocker
-import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
+import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProjectSession
 import io.github.amichne.kast.workspace.intellij.read.DetachedModelCapture
 import io.github.amichne.kast.workspace.intellij.read.DetachedModelCaptureFailure
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
@@ -257,6 +257,7 @@ internal object LiveIdeEndpointStartup {
         project: Project,
         generations: ProjectEndpointGenerationSource,
         sourceStates: HostedWorkspaceSourceStateSession,
+        projectAdmissions: AdmittedIdeProjectSession,
     ): IdeEndpointStartup {
         val canonicalRoot = when (
             val parsed = project.basePath?.let(IdeEndpointCanonicalRoot::parse)
@@ -282,7 +283,7 @@ internal object LiveIdeEndpointStartup {
                 IdeEndpointStartupFailure.ProjectRootUnavailable,
             )
         }
-        val admittedProject = when (val admission = AdmittedIdeProject.admit(
+        val admittedProject = when (val admission = projectAdmissions.admit(
             project,
             workspaceRoot,
             metadata.candidate,

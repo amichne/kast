@@ -16,8 +16,7 @@ import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspacePublicationSerialization
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProject
-import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
+import io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation
 import io.github.amichne.kast.workspace.intellij.read.HostedProjectAdmissionFailure
 import java.nio.charset.StandardCharsets
 import java.nio.file.InvalidPathException
@@ -195,16 +194,16 @@ fun admitHostedWorkspaceSourceState(
     coldStart: HostedWorkspaceColdStartIdentity,
     lifecycle: Disposable,
 ): HostedWorkspaceSourceStateAdmission {
-    when (val admission = AdmittedIdeProject.admit(
+    when (val validation = ExistingProjectValidation.validate(
         project,
         root,
         compatibilityCandidate,
         compatibilityPolicy,
     )) {
-        is ExistingProjectAdmission.Admitted -> Unit
-        is ExistingProjectAdmission.Rejected -> return rejected(
+        ExistingProjectValidation.Validated -> Unit
+        is ExistingProjectValidation.Rejected -> return rejected(
             HostedWorkspaceSourceStateAdmissionFailure.ProjectRejected(
-                HostedProjectAdmissionFailure.ProjectRejected(admission.failure),
+                HostedProjectAdmissionFailure.ProjectRejected(validation.failure),
             ),
         )
     }

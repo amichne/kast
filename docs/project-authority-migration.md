@@ -69,6 +69,19 @@ The project-service coroutine scope owns the delay, so project or plugin disposa
 previous one-off three-second service timer was removed because retry policy now applies to every
 typed deferred outcome instead of one startup callback.
 
+### Single retained project-read epoch authority
+
+Existing-Project policy validation is now distinct from `AdmittedIdeProject` authority
+installation. The endpoint project-service session installs and retains one read-epoch source and
+reuses it across deferred attempts. Hosted topology, source-state, change, relation, and diagnostic
+factories use `ExistingProjectValidation`, which applies the same exact-root, Gradle-model,
+smart-mode, K2, and compatibility policy without accepting an epoch-source factory.
+
+This reduces successful cold-start read-epoch subscriptions from twelve to two: the retained
+source owns one workspace-model listener and one root-filtered VFS listener. Deferred attempts that
+reach admission do not add another pair. Compiled hosted-factory tests reject a validation-only
+path that references `AdmittedIdeProject`.
+
 ### First consumers
 
 The diagnostic adapter now uses the detached classification for concrete-file source admission.

@@ -15,15 +15,25 @@ class ExistingProjectAdmissionNegativeTest {
     fun `every finite rejection stops before the next observation stage`() {
         rejectionCases().forEach { case ->
             val observation = RecordingProjectObservation().also(case.configure)
+            val validationObservation = RecordingProjectObservation().also(case.configure)
             val failure = admittedFailure(
                 admit(observation),
             )
+            val validationFailure = validatedFailure(
+                validate(validationObservation),
+            )
 
             assertEquals(case.failure, failure, case.name)
+            assertEquals(case.failure, validationFailure, "${case.name} validation")
             assertEquals(
                 ExistingProjectObservationStage.entries.take(case.observedStageCount),
                 observation.observedStages,
                 case.name,
+            )
+            assertEquals(
+                observation.observedStages,
+                validationObservation.observedStages,
+                "${case.name} validation stages",
             )
         }
     }
@@ -143,6 +153,23 @@ class ExistingProjectAdmissionNegativeTest {
         observation,
         FIXTURE_EPOCH_SOURCE_FACTORY,
     )
+
+    private fun validate(
+        observation: RecordingProjectObservation,
+    ): ExistingProjectValidation = ExistingProjectValidation.validateObserved(
+        opaqueProject(),
+        FIXTURE_ROOT,
+        FIXTURE_COMPATIBILITY,
+        FIXTURE_COMPATIBILITY_POLICY,
+        observation,
+    )
+
+    private fun validatedFailure(
+        result: ExistingProjectValidation,
+    ): ExistingProjectAdmissionFailure = when (result) {
+        ExistingProjectValidation.Validated -> error("fixture Project unexpectedly validated")
+        is ExistingProjectValidation.Rejected -> result.failure
+    }
 
     private data class RejectionCase(
         val name: String,

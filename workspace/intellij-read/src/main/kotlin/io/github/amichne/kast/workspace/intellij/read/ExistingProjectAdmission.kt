@@ -36,6 +36,54 @@ internal interface ExistingProjectObservationPort {
     fun hostIdentity(): ExistingProjectHostIdentityObservation
 }
 
+/** Exact existing-Project policy proof with no retained read authority or listener installation. */
+sealed interface ExistingProjectValidation {
+    data object Validated : ExistingProjectValidation
+
+    data class Rejected(
+        val failure: ExistingProjectAdmissionFailure,
+    ) : ExistingProjectValidation
+
+    companion object {
+        /**
+         * Proof transition: `(Project, root, host candidate, policy) -> ExistingProjectValidation`.
+         *
+         * Observes the complete existing-Project admission policy but cannot create a
+         * [ProjectReadEpoch.Source]. Validation-only hosted factories therefore receive no
+         * project-lifetime authority to discard.
+         */
+        fun validate(
+            project: Project,
+            expectedRoot: CanonicalWorkspaceRoot,
+            compatibilityCandidate: IdeHostCompatibilityCandidate,
+            compatibilityPolicy: IdeHostCompatibilityPolicy,
+        ): ExistingProjectValidation = validateObserved(
+            project,
+            expectedRoot,
+            compatibilityCandidate,
+            compatibilityPolicy,
+            LiveExistingProjectObservation,
+        )
+
+        internal fun validateObserved(
+            project: Project,
+            expectedRoot: CanonicalWorkspaceRoot,
+            compatibilityCandidate: IdeHostCompatibilityCandidate,
+            compatibilityPolicy: IdeHostCompatibilityPolicy,
+            observation: ExistingProjectObservationPort,
+        ): ExistingProjectValidation = when (val evidence = validateExistingProject(
+            project,
+            expectedRoot,
+            compatibilityCandidate,
+            compatibilityPolicy,
+            observation,
+        )) {
+            is ExistingProjectValidationEvidence.Validated -> Validated
+            is ExistingProjectValidationEvidence.Rejected -> Rejected(evidence.failure)
+        }
+    }
+}
+
 /** Non-forgeable package proof that project admission retained the exact live Project. */
 internal sealed interface AdmittedProjectReadExecutionProof
 private data object RetainedAdmittedProjectProof : AdmittedProjectReadExecutionProof
@@ -120,7 +168,7 @@ class AdmittedIdeProject private constructor(
          * `(Project, root, host candidate, policy) -> ExistingProjectAdmission`; proves open,
          * initialized, exact-root, complete-model, smart, K2, compatible state or closed failure.
          */
-        fun admit(
+        internal fun admit(
             project: Project,
             expectedRoot: CanonicalWorkspaceRoot,
             compatibilityCandidate: IdeHostCompatibilityCandidate,
@@ -145,164 +193,257 @@ class AdmittedIdeProject private constructor(
             compatibilityPolicy: IdeHostCompatibilityPolicy,
             observation: ExistingProjectObservationPort,
             readEpochSourceFactory: ExistingProjectReadEpochSourceFactory,
-        ): ExistingProjectAdmission {
-            val disposed = when (
-                val attempt = observe(ExistingProjectObservationStage.DISPOSAL) {
-                    observation.isDisposed(project)
-                }
+        ): ExistingProjectAdmission = when (val evidence = validateExistingProject(
+            project,
+            expectedRoot,
+            compatibilityCandidate,
+            compatibilityPolicy,
+            observation,
+        )) {
+            is ExistingProjectValidationEvidence.Rejected ->
+                ExistingProjectAdmission.Rejected(evidence.failure)
+            is ExistingProjectValidationEvidence.Validated -> when (
+                val installed = readEpochSourceFactory.create(project, evidence.exactRoot)
             ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            if (disposed) {
-                return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.ProjectDisposed,
+                is Refinement.Refined -> ExistingProjectAdmission.Admitted(
+                    AdmittedIdeProject(
+                        LiveProjectHandle(project),
+                        installed.value,
+                        evidence.exactRoot,
+                        evidence.compatibility,
+                    ),
                 )
-            }
-            val open = when (
-                val attempt = observe(ExistingProjectObservationStage.OPEN) {
-                    observation.isOpen(project)
+                is Refinement.Rejected -> when (installed.failure) {
+                    ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed ->
+                        ExistingProjectAdmission.Rejected(
+                            ExistingProjectAdmissionFailure.ProjectDisposed,
+                        )
                 }
-            ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            if (!open) {
-                return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.ProjectNotOpen,
-                )
-            }
-            val initialized = when (
-                val attempt = observe(ExistingProjectObservationStage.INITIALIZATION) {
-                    observation.isInitialized(project)
-                }
-            ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            if (!initialized) {
-                return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.ProjectNotInitialized,
-                )
-            }
-            val observedRoot = when (
-                val attempt = observe(ExistingProjectObservationStage.ROOT) {
-                    observation.root(project, expectedRoot)
-                }
-            ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            val exactRoot = when (observedRoot) {
-                is ExistingProjectRootObservation.Available -> observedRoot.root
-                ExistingProjectRootObservation.Mismatch -> return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.ProjectRootMismatch,
-                )
-                ExistingProjectRootObservation.Unavailable -> return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.ProjectRootUnavailable,
-                )
-            }
-            if (exactRoot != expectedRoot) {
-                return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.ProjectRootMismatch,
-                )
-            }
-            val gradleModel = when (
-                val attempt = observe(ExistingProjectObservationStage.GRADLE_MODEL) {
-                    observation.gradleModel(project, expectedRoot)
-                }
-            ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            when (gradleModel) {
-                ExistingProjectGradleModelState.UNAVAILABLE ->
-                    return ExistingProjectAdmission.Rejected(
-                        ExistingProjectAdmissionFailure.GradleModelUnavailable,
-                    )
-                ExistingProjectGradleModelState.INCOMPLETE ->
-                    return ExistingProjectAdmission.Rejected(
-                        ExistingProjectAdmissionFailure.GradleModelIncomplete,
-                    )
-                ExistingProjectGradleModelState.COMPLETE -> Unit
-            }
-            val indexing = when (
-                val attempt = observe(ExistingProjectObservationStage.INDEXING) {
-                    observation.indexing(project)
-                }
-            ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            if (indexing == ExistingProjectIndexingState.DUMB) {
-                return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.DumbMode,
-                )
-            }
-            val kotlinMode = when (
-                val attempt = observe(ExistingProjectObservationStage.KOTLIN_MODE) {
-                    observation.kotlinMode()
-                }
-            ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            if (kotlinMode != ExistingProjectKotlinMode.K2) {
-                return ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.K2Unavailable,
-                )
-            }
-
-            val hostIdentity = when (
-                val attempt = observe(ExistingProjectObservationStage.HOST_IDENTITY) {
-                    observation.hostIdentity()
-                }
-            ) {
-                is ExistingProjectObservation.Observed -> attempt.value
-                is ExistingProjectObservation.Failed -> return attempt.rejection()
-            }
-            val observedCandidate = when (hostIdentity) {
-                is ExistingProjectHostIdentityObservation.Available ->
-                    compatibilityCandidate.copy(
-                        ideBuild = hostIdentity.ideBuild.value,
-                        kotlinPluginBuild = hostIdentity.kotlinPluginBuild.value,
-                    )
-                is ExistingProjectHostIdentityObservation.Rejected ->
-                    return ExistingProjectAdmission.Rejected(
-                        ExistingProjectAdmissionFailure.HostIncompatible(hostIdentity.failure),
-                    )
-                ExistingProjectHostIdentityObservation.Unavailable ->
-                    return ExistingProjectAdmission.Rejected(
-                        ExistingProjectAdmissionFailure.HostIdentityUnavailable,
-                    )
-            }
-
-            return when (val admitted = compatibilityPolicy.admit(observedCandidate)) {
-                is IdeHostCompatibilityAdmission.Admitted -> when (
-                    val installed = readEpochSourceFactory.create(project, exactRoot)
-                ) {
-                    is Refinement.Refined -> ExistingProjectAdmission.Admitted(
-                        AdmittedIdeProject(
-                            LiveProjectHandle(project),
-                            installed.value,
-                            exactRoot,
-                            admitted.compatibility,
-                        ),
-                    )
-                    is Refinement.Rejected -> when (installed.failure) {
-                        ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed ->
-                            ExistingProjectAdmission.Rejected(ExistingProjectAdmissionFailure.ProjectDisposed)
-                    }
-                }
-                is IdeHostCompatibilityAdmission.Rejected -> ExistingProjectAdmission.Rejected(
-                    ExistingProjectAdmissionFailure.HostIncompatible(admitted.failure),
-                )
             }
         }
     }
 }
 
+internal fun interface ExistingProjectAdmissionOperations {
+    fun admit(
+        project: Project,
+        expectedRoot: CanonicalWorkspaceRoot,
+        compatibilityCandidate: IdeHostCompatibilityCandidate,
+        compatibilityPolicy: IdeHostCompatibilityPolicy,
+    ): ExistingProjectAdmission
+}
+
+/** Project-service session that can install and retain at most one project-read epoch authority. */
+class AdmittedIdeProjectSession {
+    private var cached: CachedAdmittedIdeProject? = null
+
+    fun admit(
+        project: Project,
+        expectedRoot: CanonicalWorkspaceRoot,
+        compatibilityCandidate: IdeHostCompatibilityCandidate,
+        compatibilityPolicy: IdeHostCompatibilityPolicy,
+    ): ExistingProjectAdmission = admitUsing(
+        project,
+        expectedRoot,
+        compatibilityCandidate,
+        compatibilityPolicy,
+        AdmittedIdeProject::admit,
+    )
+
+    @Synchronized
+    internal fun admitUsing(
+        project: Project,
+        expectedRoot: CanonicalWorkspaceRoot,
+        compatibilityCandidate: IdeHostCompatibilityCandidate,
+        compatibilityPolicy: IdeHostCompatibilityPolicy,
+        admissions: ExistingProjectAdmissionOperations,
+    ): ExistingProjectAdmission {
+        val current = cached
+        if (current != null) {
+            return if (
+                current.liveProject === project &&
+                current.canonicalRoot == expectedRoot &&
+                current.compatibilityCandidate == compatibilityCandidate &&
+                current.compatibilityPolicy == compatibilityPolicy
+            ) {
+                ExistingProjectAdmission.Admitted(current.authority)
+            } else {
+                ExistingProjectAdmission.Rejected(
+                    ExistingProjectAdmissionFailure.RetainedAuthorityMismatch,
+                )
+            }
+        }
+        return when (val admission = admissions.admit(
+            project,
+            expectedRoot,
+            compatibilityCandidate,
+            compatibilityPolicy,
+        )) {
+            is ExistingProjectAdmission.Admitted -> {
+                cached = CachedAdmittedIdeProject(
+                    project,
+                    expectedRoot,
+                    compatibilityCandidate,
+                    compatibilityPolicy,
+                    admission.project,
+                )
+                admission
+            }
+            is ExistingProjectAdmission.Rejected -> admission
+        }
+    }
+}
+
+private data class CachedAdmittedIdeProject(
+    val liveProject: Project,
+    val canonicalRoot: CanonicalWorkspaceRoot,
+    val compatibilityCandidate: IdeHostCompatibilityCandidate,
+    val compatibilityPolicy: IdeHostCompatibilityPolicy,
+    val authority: AdmittedIdeProject,
+)
+
 private class LiveProjectHandle(val project: Project)
+
+private sealed interface ExistingProjectValidationEvidence {
+    data class Validated(
+        val exactRoot: CanonicalWorkspaceRoot,
+        val compatibility: AdmittedIdeHostCompatibility,
+    ) : ExistingProjectValidationEvidence
+
+    data class Rejected(
+        val failure: ExistingProjectAdmissionFailure,
+    ) : ExistingProjectValidationEvidence
+}
+
+private fun validateExistingProject(
+    project: Project,
+    expectedRoot: CanonicalWorkspaceRoot,
+    compatibilityCandidate: IdeHostCompatibilityCandidate,
+    compatibilityPolicy: IdeHostCompatibilityPolicy,
+    observation: ExistingProjectObservationPort,
+): ExistingProjectValidationEvidence {
+    val disposed = when (
+        val attempt = observe(ExistingProjectObservationStage.DISPOSAL) {
+            observation.isDisposed(project)
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    if (disposed) {
+        return validationRejected(ExistingProjectAdmissionFailure.ProjectDisposed)
+    }
+    val open = when (
+        val attempt = observe(ExistingProjectObservationStage.OPEN) {
+            observation.isOpen(project)
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    if (!open) {
+        return validationRejected(ExistingProjectAdmissionFailure.ProjectNotOpen)
+    }
+    val initialized = when (
+        val attempt = observe(ExistingProjectObservationStage.INITIALIZATION) {
+            observation.isInitialized(project)
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    if (!initialized) {
+        return validationRejected(ExistingProjectAdmissionFailure.ProjectNotInitialized)
+    }
+    val observedRoot = when (
+        val attempt = observe(ExistingProjectObservationStage.ROOT) {
+            observation.root(project, expectedRoot)
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    val exactRoot = when (observedRoot) {
+        is ExistingProjectRootObservation.Available -> observedRoot.root
+        ExistingProjectRootObservation.Mismatch -> return validationRejected(
+            ExistingProjectAdmissionFailure.ProjectRootMismatch,
+        )
+        ExistingProjectRootObservation.Unavailable -> return validationRejected(
+            ExistingProjectAdmissionFailure.ProjectRootUnavailable,
+        )
+    }
+    if (exactRoot != expectedRoot) {
+        return validationRejected(ExistingProjectAdmissionFailure.ProjectRootMismatch)
+    }
+    val gradleModel = when (
+        val attempt = observe(ExistingProjectObservationStage.GRADLE_MODEL) {
+            observation.gradleModel(project, expectedRoot)
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    when (gradleModel) {
+        ExistingProjectGradleModelState.UNAVAILABLE -> return validationRejected(
+            ExistingProjectAdmissionFailure.GradleModelUnavailable,
+        )
+        ExistingProjectGradleModelState.INCOMPLETE -> return validationRejected(
+            ExistingProjectAdmissionFailure.GradleModelIncomplete,
+        )
+        ExistingProjectGradleModelState.COMPLETE -> Unit
+    }
+    val indexing = when (
+        val attempt = observe(ExistingProjectObservationStage.INDEXING) {
+            observation.indexing(project)
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    if (indexing == ExistingProjectIndexingState.DUMB) {
+        return validationRejected(ExistingProjectAdmissionFailure.DumbMode)
+    }
+    val kotlinMode = when (
+        val attempt = observe(ExistingProjectObservationStage.KOTLIN_MODE) {
+            observation.kotlinMode()
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    if (kotlinMode != ExistingProjectKotlinMode.K2) {
+        return validationRejected(ExistingProjectAdmissionFailure.K2Unavailable)
+    }
+    val hostIdentity = when (
+        val attempt = observe(ExistingProjectObservationStage.HOST_IDENTITY) {
+            observation.hostIdentity()
+        }
+    ) {
+        is ExistingProjectObservation.Observed -> attempt.value
+        is ExistingProjectObservation.Failed -> return attempt.rejection()
+    }
+    val observedCandidate = when (hostIdentity) {
+        is ExistingProjectHostIdentityObservation.Available -> compatibilityCandidate.copy(
+            ideBuild = hostIdentity.ideBuild.value,
+            kotlinPluginBuild = hostIdentity.kotlinPluginBuild.value,
+        )
+        is ExistingProjectHostIdentityObservation.Rejected -> return validationRejected(
+            ExistingProjectAdmissionFailure.HostIncompatible(hostIdentity.failure),
+        )
+        ExistingProjectHostIdentityObservation.Unavailable -> return validationRejected(
+            ExistingProjectAdmissionFailure.HostIdentityUnavailable,
+        )
+    }
+    return when (val admitted = compatibilityPolicy.admit(observedCandidate)) {
+        is IdeHostCompatibilityAdmission.Admitted -> ExistingProjectValidationEvidence.Validated(
+            exactRoot,
+            admitted.compatibility,
+        )
+        is IdeHostCompatibilityAdmission.Rejected -> validationRejected(
+            ExistingProjectAdmissionFailure.HostIncompatible(admitted.failure),
+        )
+    }
+}
 
 private sealed interface ExistingProjectObservation<out Value> {
     data class Observed<Value>(val value: Value) : ExistingProjectObservation<Value>
@@ -320,6 +461,10 @@ private inline fun <Value> observe(
     ExistingProjectObservation.Failed(stage)
 }
 
-private fun ExistingProjectObservation.Failed.rejection() = ExistingProjectAdmission.Rejected(
+private fun ExistingProjectObservation.Failed.rejection() = validationRejected(
     ExistingProjectAdmissionFailure.ObservationFailed(stage),
 )
+
+private fun validationRejected(
+    failure: ExistingProjectAdmissionFailure,
+) = ExistingProjectValidationEvidence.Rejected(failure)

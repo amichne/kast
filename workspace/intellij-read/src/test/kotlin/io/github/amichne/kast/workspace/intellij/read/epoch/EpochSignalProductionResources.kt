@@ -96,7 +96,7 @@ private fun adapterEpochResources(): List<String> = listOf(
 private fun admissionBridgeResources(): List<String> = listOf(
     "AdmittedIdeProject.class",
     "AdmittedIdeProject\$Companion.class",
-    "AdmittedIdeProject\$Companion\$WhenMappings.class",
+    "ExistingProjectAdmissionKt\$WhenMappings.class",
     "ExistingProjectReadEpochSourceFactory.class",
     "ExistingProjectReadEpochSourceInstallationFailure.class",
     "ExistingProjectReadEpochSourceInstallationFailure\$ProjectDisposed.class",
