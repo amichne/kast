@@ -3,7 +3,12 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLocationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
@@ -67,8 +72,35 @@ internal data class DiagnosticCheckRequestDocument(
 
 @Serializable
 internal data class DiagnosticCheckResultDocument(
-    val diagnostics: List<String>,
+    val diagnostics: List<DiagnosticWireDocument>,
 )
+
+@Serializable
+internal data class DiagnosticWireDocument(
+    val severity: DiagnosticSeverityWireDocument,
+    val code: String,
+    val message: String,
+    val location: DiagnosticLocationWireDocument,
+)
+
+@Serializable
+internal data class DiagnosticLocationWireDocument(
+    val file: String,
+    val range: DiagnosticRangeWireDocument,
+)
+
+@Serializable
+internal data class DiagnosticRangeWireDocument(
+    val startInclusive: Int,
+    val endExclusive: Int,
+)
+
+@Serializable
+internal enum class DiagnosticSeverityWireDocument {
+    @SerialName("error") ERROR,
+    @SerialName("warning") WARNING,
+    @SerialName("info") INFO,
+}
 
 @Serializable
 internal enum class WorkspaceStateWireDocument {
@@ -147,9 +179,23 @@ internal enum class RelationKindWireDocument {
 }
 
 @Serializable
-internal enum class RelationReadQualificationWireDocument {
-    @SerialName("result_limit") RESULT_LIMIT,
-    @SerialName("coverage_incomplete") COVERAGE_INCOMPLETE,
+internal data class RelationReadQualificationWireDocument(
+    val knownMinimum: Int,
+    val limitations: List<RelationLimitationWireDocument>,
+    val continuation: String,
+)
+
+@Serializable
+internal enum class RelationLimitationWireDocument {
+    @SerialName("result_limit_reached") RESULT_LIMIT_REACHED,
+    @SerialName("byte_limit_reached") BYTE_LIMIT_REACHED,
+    @SerialName("work_limit_reached") WORK_LIMIT_REACHED,
+    @SerialName("time_limit_reached") TIME_LIMIT_REACHED,
+    @SerialName("dumb_mode_transition") DUMB_MODE_TRANSITION,
+    @SerialName("unresolved_target") UNRESOLVED_TARGET,
+    @SerialName("unsupported_item") UNSUPPORTED_ITEM,
+    @SerialName("provider_failure") PROVIDER_FAILURE,
+    @SerialName("provider_incomplete") PROVIDER_INCOMPLETE,
 }
 
 @Serializable
@@ -160,10 +206,21 @@ internal enum class RelationReadRejectionWireDocument {
 }
 
 @Serializable
-internal enum class TraversalRunQualificationWireDocument {
-    @SerialName("depth_limit") DEPTH_LIMIT,
-    @SerialName("result_limit") RESULT_LIMIT,
-    @SerialName("coverage_incomplete") COVERAGE_INCOMPLETE,
+internal data class TraversalRunQualificationWireDocument(
+    val limitations: List<TraversalLimitationWireDocument>,
+    val relationLimitations: List<RelationLimitationWireDocument>,
+    val continuation: String,
+)
+
+@Serializable
+internal enum class TraversalLimitationWireDocument {
+    @SerialName("record_limit_reached") RECORD_LIMIT_REACHED,
+    @SerialName("byte_limit_reached") BYTE_LIMIT_REACHED,
+    @SerialName("work_limit_reached") WORK_LIMIT_REACHED,
+    @SerialName("time_limit_reached") TIME_LIMIT_REACHED,
+    @SerialName("depth_limit_reached") DEPTH_LIMIT_REACHED,
+    @SerialName("frontier_limit_reached") FRONTIER_LIMIT_REACHED,
+    @SerialName("one_hop_incomplete") ONE_HOP_INCOMPLETE,
 }
 
 @Serializable
@@ -175,9 +232,28 @@ internal enum class TraversalRunRejectionWireDocument {
 }
 
 @Serializable
-internal enum class DiagnosticCheckQualificationWireDocument {
-    @SerialName("result_limit") RESULT_LIMIT,
-    @SerialName("coverage_incomplete") COVERAGE_INCOMPLETE,
+internal data class DiagnosticCheckQualificationWireDocument(
+    val knownDiagnosticCount: Int,
+    val resultLimitReached: Boolean,
+    val analyzedFiles: List<String>,
+    val limitations: List<DiagnosticLimitationWireDocument>,
+)
+
+@Serializable
+internal data class DiagnosticLimitationWireDocument(
+    val file: String,
+    val reason: DiagnosticLimitationReasonWireDocument,
+)
+
+@Serializable
+internal enum class DiagnosticLimitationReasonWireDocument {
+    @SerialName("file_unavailable") FILE_UNAVAILABLE,
+    @SerialName("outside_source_content") OUTSIDE_SOURCE_CONTENT,
+    @SerialName("indexing") INDEXING,
+    @SerialName("psi_unavailable") PSI_UNAVAILABLE,
+    @SerialName("unsupported_file_kind") UNSUPPORTED_FILE_KIND,
+    @SerialName("unsupported_diagnostic") UNSUPPORTED_DIAGNOSTIC,
+    @SerialName("analysis_unavailable") ANALYSIS_UNAVAILABLE,
 }
 
 @Serializable
@@ -309,7 +385,7 @@ internal fun DiagnosticCheckRequestDocument.toContract():
 )
 
 internal fun DiagnosticCheckResult.toReadDocument(): DiagnosticCheckResultDocument =
-    DiagnosticCheckResultDocument(diagnostics.values.map { it.value })
+    DiagnosticCheckResultDocument(diagnostics.values.map { it.toWireDocument() })
 
 /**
  * Proof transition: `DiagnosticCheckResultDocument -> DiagnosticCheckResult`.
@@ -319,7 +395,62 @@ internal fun DiagnosticCheckResult.toReadDocument(): DiagnosticCheckResultDocume
  * strings are extracted only in this wire adapter.
  */
 internal fun DiagnosticCheckResultDocument.toContract(): WireDocumentConversion<DiagnosticCheckResult> =
-    diagnostics.protocolTextList().mapConverted(::DiagnosticCheckResult)
+    diagnostics.convertEach { it.toContract() }
+        .flatMapConverted { values ->
+            BoundedProtocolList.create(values).toWireDocumentConversion()
+        }
+        .mapConverted(::DiagnosticCheckResult)
+
+private fun DiagnosticDocument.toWireDocument(): DiagnosticWireDocument = DiagnosticWireDocument(
+    severity = severity.toWireDocument(),
+    code = code.value,
+    message = message.value,
+    location = DiagnosticLocationWireDocument(
+        location.file.value,
+        DiagnosticRangeWireDocument(
+            location.range.startInclusive.value,
+            location.range.endExclusive.value,
+        ),
+    ),
+)
+
+private fun DiagnosticWireDocument.toContract(): WireDocumentConversion<DiagnosticDocument> =
+    combineConverted(
+        code.protocolText(),
+        message.protocolText(),
+        location.toContract(),
+    ) { code, message, location ->
+        DiagnosticDocument(severity.toContract(), code, message, location)
+    }
+
+private fun DiagnosticLocationWireDocument.toContract():
+    WireDocumentConversion<DiagnosticLocationDocument> = combineConverted(
+    file.protocolText(),
+    range.toContract(),
+    ::DiagnosticLocationDocument,
+)
+
+private fun DiagnosticRangeWireDocument.toContract(): WireDocumentConversion<DiagnosticRangeDocument> =
+    combineConverted(
+        ProtocolOffset.parse(startInclusive).toWireDocumentConversion(),
+        ProtocolOffset.parse(endExclusive).toWireDocumentConversion(),
+    ) { start, end -> start to end }
+        .flatMapConverted { (start, end) ->
+            DiagnosticRangeDocument.create(start, end).toWireDocumentConversion()
+        }
+
+private fun DiagnosticSeverityDocument.toWireDocument(): DiagnosticSeverityWireDocument =
+    when (this) {
+        DiagnosticSeverityDocument.ERROR -> DiagnosticSeverityWireDocument.ERROR
+        DiagnosticSeverityDocument.WARNING -> DiagnosticSeverityWireDocument.WARNING
+        DiagnosticSeverityDocument.INFO -> DiagnosticSeverityWireDocument.INFO
+    }
+
+private fun DiagnosticSeverityWireDocument.toContract(): DiagnosticSeverityDocument = when (this) {
+    DiagnosticSeverityWireDocument.ERROR -> DiagnosticSeverityDocument.ERROR
+    DiagnosticSeverityWireDocument.WARNING -> DiagnosticSeverityDocument.WARNING
+    DiagnosticSeverityWireDocument.INFO -> DiagnosticSeverityDocument.INFO
+}
 
 /**
  * Proof transition: `String -> ProtocolText`.
@@ -340,16 +471,3 @@ private fun String.protocolText(): WireDocumentConversion<ProtocolText> = Protoc
  */
 private fun Int.protocolCount(): WireDocumentConversion<ProtocolCount> = ProtocolCount.parse(this)
     .toWireDocumentConversion()
-
-/**
- * Proof transition: `List<String> -> BoundedProtocolList<ProtocolText>`.
- *
- * Establishes refined members and the public collection bound.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw
- * strings are extracted only in generated document conversion.
- */
-private fun List<String>.protocolTextList():
-    WireDocumentConversion<BoundedProtocolList<ProtocolText>> = convertEach(String::protocolText)
-    .flatMapConverted { values ->
-        BoundedProtocolList.create(values).toWireDocumentConversion()
-    }

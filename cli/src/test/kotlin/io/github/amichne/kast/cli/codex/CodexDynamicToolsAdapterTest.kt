@@ -6,9 +6,18 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
+import io.github.amichne.kast.protocol.contract.RelationFactDocument
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
+import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
@@ -209,7 +218,7 @@ class CodexDynamicToolsAdapterTest {
             CodexDynamicToolCallResult.Rejected(CodexDynamicToolFailure.KAST_OPERATION_REJECTED),
             result,
         )
-        assertEquals(listOf("COVERAGE_INCOMPLETE"), adapter.metrics().relationQualificationNames)
+        assertEquals(listOf("PROVIDER_INCOMPLETE"), adapter.metrics().relationQualificationNames)
         assertFalse(adapter.metrics().selectorRoundTripUnchanged)
     }
 
@@ -286,13 +295,17 @@ class CodexDynamicToolsAdapterTest {
             relationRequest = request
             if (qualifiedRelation) {
                 val result = RelationReadResult(
-                    BoundedProtocolList.create(emptyList<SymbolDocument>()).refined(),
+                    BoundedProtocolList.create(emptyList<RelationFactDocument>()).refined(),
                 )
                 return CanonicalKastReadAttempt.Read(
                     CanonicalKastRead(
                         OperationOutcome.Qualified(
                             EvidenceEnvelope(CanonicalOperation.RELATION_READ.id, generation(), result),
-                            RelationReadQualification.COVERAGE_INCOMPLETE,
+                            RelationReadQualification.create(
+                                RelationKnownMinimumDocument.parse(0).refined(),
+                                listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
+                                RelationContinuationDocument.parse("c".repeat(64)).refined(),
+                            ).refined(),
                         ),
                         RELATION_JSON,
                     ),
@@ -300,7 +313,9 @@ class CodexDynamicToolsAdapterTest {
             }
             return read(
                 CanonicalOperation.RELATION_READ,
-                RelationReadResult(BoundedProtocolList.create(listOf(exactSymbol)).refined()),
+                RelationReadResult(
+                    BoundedProtocolList.create(listOf(relation(exactSymbol))).refined(),
+                ),
                 RELATION_JSON,
             )
         }
@@ -338,15 +353,31 @@ class CodexDynamicToolsAdapterTest {
 
         private fun generation(): EvidenceGeneration = EvidenceGeneration.parse(1).refined()
 
-        private fun symbol(selector: ProtocolText): SymbolDocument = SymbolDocument(
-            selector = selector,
-            kind = SymbolKindDocument.CLASSLIKE,
-            name = text("CanonicalSymbolDiscoverHandler"),
-            qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(
-                text("io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler"),
-            ),
-            file = text("runtime/composition/CanonicalSymbolHandlers.kt"),
-            range = SourceRangeDocument.create(offset(0), offset(10)).refined(),
+        private fun symbol(selector: ProtocolText): SymbolDocument {
+            val qualifiedIdentity = text(
+                "io.github.amichne.kast.runtime.composition.protocol." +
+                    "CanonicalSymbolDiscoverHandler",
+            )
+            val signature = CompilerSignatureDocument.ClassLike(qualifiedIdentity)
+            val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
+            return SymbolDocument.create(
+                selector = selector,
+                kind = SymbolKindDocument.CLASSLIKE,
+                name = text("CanonicalSymbolDiscoverHandler"),
+                qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualifiedIdentity),
+                file = text("runtime/composition/CanonicalSymbolHandlers.kt"),
+                range = SourceRangeDocument.create(offset(0), offset(10)).refined(),
+                compilerEvidence = compilerEvidence,
+            ).refined()
+        }
+
+        private fun relation(symbol: SymbolDocument): RelationFactDocument = RelationFactDocument(
+            meaning = RelationKindDocument.REFERENCES,
+            source = symbol,
+            target = symbol,
+            occurrence = RelationOccurrenceDocument(symbol.file, symbol.range),
+            provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+            coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
         )
 
         private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {

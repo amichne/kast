@@ -2,7 +2,14 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
+import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
+import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
@@ -13,6 +20,8 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveQualification
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
+import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceStateDocument
@@ -198,19 +207,68 @@ internal fun RelationKindWireDocument.toContract(): RelationKindDocument = when 
 }
 
 internal fun RelationReadQualification.toWireDocument():
-    RelationReadQualificationWireDocument = when (this) {
-    RelationReadQualification.RESULT_LIMIT -> RelationReadQualificationWireDocument.RESULT_LIMIT
-    RelationReadQualification.COVERAGE_INCOMPLETE ->
-        RelationReadQualificationWireDocument.COVERAGE_INCOMPLETE
-}
+    RelationReadQualificationWireDocument = RelationReadQualificationWireDocument(
+    knownMinimum = knownMinimum.value,
+    limitations = limitations.map(RelationLimitationDocument::toWireDocument),
+    continuation = continuation.value,
+)
 
-internal fun RelationReadQualificationWireDocument.toContract(): RelationReadQualification =
+internal fun RelationReadQualificationWireDocument.toContract():
+    WireDocumentConversion<RelationReadQualification> =
+    RelationKnownMinimumDocument.parse(knownMinimum).toWireDocumentConversion()
+        .flatMapConverted { admittedMinimum ->
+            RelationContinuationDocument.parse(continuation).toWireDocumentConversion()
+                .flatMapConverted { admittedContinuation ->
+                    RelationReadQualification.create(
+                        admittedMinimum,
+                        limitations.map(RelationLimitationWireDocument::toContract),
+                        admittedContinuation,
+                    ).toWireDocumentConversion()
+                }
+        }
+
+private fun RelationLimitationDocument.toWireDocument(): RelationLimitationWireDocument =
     when (this) {
-        RelationReadQualificationWireDocument.RESULT_LIMIT ->
-            RelationReadQualification.RESULT_LIMIT
-        RelationReadQualificationWireDocument.COVERAGE_INCOMPLETE ->
-            RelationReadQualification.COVERAGE_INCOMPLETE
+        RelationLimitationDocument.RESULT_LIMIT_REACHED ->
+            RelationLimitationWireDocument.RESULT_LIMIT_REACHED
+        RelationLimitationDocument.BYTE_LIMIT_REACHED ->
+            RelationLimitationWireDocument.BYTE_LIMIT_REACHED
+        RelationLimitationDocument.WORK_LIMIT_REACHED ->
+            RelationLimitationWireDocument.WORK_LIMIT_REACHED
+        RelationLimitationDocument.TIME_LIMIT_REACHED ->
+            RelationLimitationWireDocument.TIME_LIMIT_REACHED
+        RelationLimitationDocument.DUMB_MODE_TRANSITION ->
+            RelationLimitationWireDocument.DUMB_MODE_TRANSITION
+        RelationLimitationDocument.UNRESOLVED_TARGET ->
+            RelationLimitationWireDocument.UNRESOLVED_TARGET
+        RelationLimitationDocument.UNSUPPORTED_ITEM ->
+            RelationLimitationWireDocument.UNSUPPORTED_ITEM
+        RelationLimitationDocument.PROVIDER_FAILURE ->
+            RelationLimitationWireDocument.PROVIDER_FAILURE
+        RelationLimitationDocument.PROVIDER_INCOMPLETE ->
+            RelationLimitationWireDocument.PROVIDER_INCOMPLETE
     }
+
+private fun RelationLimitationWireDocument.toContract(): RelationLimitationDocument = when (this) {
+    RelationLimitationWireDocument.RESULT_LIMIT_REACHED ->
+        RelationLimitationDocument.RESULT_LIMIT_REACHED
+    RelationLimitationWireDocument.BYTE_LIMIT_REACHED ->
+        RelationLimitationDocument.BYTE_LIMIT_REACHED
+    RelationLimitationWireDocument.WORK_LIMIT_REACHED ->
+        RelationLimitationDocument.WORK_LIMIT_REACHED
+    RelationLimitationWireDocument.TIME_LIMIT_REACHED ->
+        RelationLimitationDocument.TIME_LIMIT_REACHED
+    RelationLimitationWireDocument.DUMB_MODE_TRANSITION ->
+        RelationLimitationDocument.DUMB_MODE_TRANSITION
+    RelationLimitationWireDocument.UNRESOLVED_TARGET ->
+        RelationLimitationDocument.UNRESOLVED_TARGET
+    RelationLimitationWireDocument.UNSUPPORTED_ITEM ->
+        RelationLimitationDocument.UNSUPPORTED_ITEM
+    RelationLimitationWireDocument.PROVIDER_FAILURE ->
+        RelationLimitationDocument.PROVIDER_FAILURE
+    RelationLimitationWireDocument.PROVIDER_INCOMPLETE ->
+        RelationLimitationDocument.PROVIDER_INCOMPLETE
+}
 
 internal fun RelationReadRejection.toWireDocument(): RelationReadRejectionWireDocument =
     when (this) {
@@ -231,20 +289,57 @@ internal fun RelationReadRejectionWireDocument.toContract(): RelationReadRejecti
     }
 
 internal fun TraversalRunQualification.toWireDocument():
-    TraversalRunQualificationWireDocument = when (this) {
-    TraversalRunQualification.DEPTH_LIMIT -> TraversalRunQualificationWireDocument.DEPTH_LIMIT
-    TraversalRunQualification.RESULT_LIMIT -> TraversalRunQualificationWireDocument.RESULT_LIMIT
-    TraversalRunQualification.COVERAGE_INCOMPLETE ->
-        TraversalRunQualificationWireDocument.COVERAGE_INCOMPLETE
-}
+    TraversalRunQualificationWireDocument = TraversalRunQualificationWireDocument(
+    limitations = limitations.map(TraversalLimitationDocument::toWireDocument),
+    relationLimitations = relationLimitations.map(RelationLimitationDocument::toWireDocument),
+    continuation = continuation.value,
+)
 
-internal fun TraversalRunQualificationWireDocument.toContract(): TraversalRunQualification =
+internal fun TraversalRunQualificationWireDocument.toContract():
+    WireDocumentConversion<TraversalRunQualification> =
+    TraversalContinuationDocument.parse(continuation).toWireDocumentConversion()
+        .flatMapConverted { admittedContinuation ->
+            TraversalRunQualification.create(
+                limitations.map(TraversalLimitationWireDocument::toContract),
+                relationLimitations.map(RelationLimitationWireDocument::toContract),
+                admittedContinuation,
+            ).toWireDocumentConversion()
+        }
+
+private fun TraversalLimitationDocument.toWireDocument(): TraversalLimitationWireDocument =
     when (this) {
-        TraversalRunQualificationWireDocument.DEPTH_LIMIT -> TraversalRunQualification.DEPTH_LIMIT
-        TraversalRunQualificationWireDocument.RESULT_LIMIT ->
-            TraversalRunQualification.RESULT_LIMIT
-        TraversalRunQualificationWireDocument.COVERAGE_INCOMPLETE ->
-            TraversalRunQualification.COVERAGE_INCOMPLETE
+        TraversalLimitationDocument.RECORD_LIMIT_REACHED ->
+            TraversalLimitationWireDocument.RECORD_LIMIT_REACHED
+        TraversalLimitationDocument.BYTE_LIMIT_REACHED ->
+            TraversalLimitationWireDocument.BYTE_LIMIT_REACHED
+        TraversalLimitationDocument.WORK_LIMIT_REACHED ->
+            TraversalLimitationWireDocument.WORK_LIMIT_REACHED
+        TraversalLimitationDocument.TIME_LIMIT_REACHED ->
+            TraversalLimitationWireDocument.TIME_LIMIT_REACHED
+        TraversalLimitationDocument.DEPTH_LIMIT_REACHED ->
+            TraversalLimitationWireDocument.DEPTH_LIMIT_REACHED
+        TraversalLimitationDocument.FRONTIER_LIMIT_REACHED ->
+            TraversalLimitationWireDocument.FRONTIER_LIMIT_REACHED
+        TraversalLimitationDocument.ONE_HOP_INCOMPLETE ->
+            TraversalLimitationWireDocument.ONE_HOP_INCOMPLETE
+    }
+
+private fun TraversalLimitationWireDocument.toContract(): TraversalLimitationDocument =
+    when (this) {
+        TraversalLimitationWireDocument.RECORD_LIMIT_REACHED ->
+            TraversalLimitationDocument.RECORD_LIMIT_REACHED
+        TraversalLimitationWireDocument.BYTE_LIMIT_REACHED ->
+            TraversalLimitationDocument.BYTE_LIMIT_REACHED
+        TraversalLimitationWireDocument.WORK_LIMIT_REACHED ->
+            TraversalLimitationDocument.WORK_LIMIT_REACHED
+        TraversalLimitationWireDocument.TIME_LIMIT_REACHED ->
+            TraversalLimitationDocument.TIME_LIMIT_REACHED
+        TraversalLimitationWireDocument.DEPTH_LIMIT_REACHED ->
+            TraversalLimitationDocument.DEPTH_LIMIT_REACHED
+        TraversalLimitationWireDocument.FRONTIER_LIMIT_REACHED ->
+            TraversalLimitationDocument.FRONTIER_LIMIT_REACHED
+        TraversalLimitationWireDocument.ONE_HOP_INCOMPLETE ->
+            TraversalLimitationDocument.ONE_HOP_INCOMPLETE
     }
 
 internal fun TraversalRunRejection.toWireDocument(): TraversalRunRejectionWireDocument =
@@ -269,19 +364,76 @@ internal fun TraversalRunRejectionWireDocument.toContract(): TraversalRunRejecti
     }
 
 internal fun DiagnosticCheckQualification.toWireDocument():
-    DiagnosticCheckQualificationWireDocument = when (this) {
-    DiagnosticCheckQualification.RESULT_LIMIT ->
-        DiagnosticCheckQualificationWireDocument.RESULT_LIMIT
-    DiagnosticCheckQualification.COVERAGE_INCOMPLETE ->
-        DiagnosticCheckQualificationWireDocument.COVERAGE_INCOMPLETE
-}
+    DiagnosticCheckQualificationWireDocument = DiagnosticCheckQualificationWireDocument(
+    knownDiagnosticCount = knownDiagnosticCount.value,
+    resultLimitReached = resultLimitReached,
+    analyzedFiles = analyzedFiles.map { it.value },
+    limitations = limitations.map { limitation ->
+        DiagnosticLimitationWireDocument(
+            limitation.file.value,
+            limitation.reason.toWireDocument(),
+        )
+    },
+)
 
 internal fun DiagnosticCheckQualificationWireDocument.toContract():
-    DiagnosticCheckQualification = when (this) {
-    DiagnosticCheckQualificationWireDocument.RESULT_LIMIT ->
-        DiagnosticCheckQualification.RESULT_LIMIT
-    DiagnosticCheckQualificationWireDocument.COVERAGE_INCOMPLETE ->
-        DiagnosticCheckQualification.COVERAGE_INCOMPLETE
+    WireDocumentConversion<DiagnosticCheckQualification> =
+    DiagnosticKnownCountDocument.parse(knownDiagnosticCount).toWireDocumentConversion()
+        .flatMapConverted { admittedCount ->
+            combineConverted(
+                analyzedFiles.convertEach { raw -> raw.protocolQualificationText() },
+                limitations.convertEach(DiagnosticLimitationWireDocument::toContract),
+            ) { admittedFiles, admittedLimitations ->
+                DiagnosticCheckQualification.create(
+                    admittedCount,
+                    resultLimitReached,
+                    admittedFiles,
+                    admittedLimitations,
+                ).toWireDocumentConversion()
+            }.flattenConverted()
+        }
+
+private fun DiagnosticLimitationWireDocument.toContract():
+    WireDocumentConversion<DiagnosticLimitationDocument> =
+    file.protocolQualificationText().mapConverted {
+    admittedFile -> DiagnosticLimitationDocument(admittedFile, reason.toContract())
+}
+
+private fun String.protocolQualificationText(): WireDocumentConversion<ProtocolText> =
+    ProtocolText.parse(this).toWireDocumentConversion()
+
+private fun DiagnosticLimitationReasonDocument.toWireDocument():
+    DiagnosticLimitationReasonWireDocument = when (this) {
+    DiagnosticLimitationReasonDocument.FILE_UNAVAILABLE ->
+        DiagnosticLimitationReasonWireDocument.FILE_UNAVAILABLE
+    DiagnosticLimitationReasonDocument.OUTSIDE_SOURCE_CONTENT ->
+        DiagnosticLimitationReasonWireDocument.OUTSIDE_SOURCE_CONTENT
+    DiagnosticLimitationReasonDocument.INDEXING -> DiagnosticLimitationReasonWireDocument.INDEXING
+    DiagnosticLimitationReasonDocument.PSI_UNAVAILABLE ->
+        DiagnosticLimitationReasonWireDocument.PSI_UNAVAILABLE
+    DiagnosticLimitationReasonDocument.UNSUPPORTED_FILE_KIND ->
+        DiagnosticLimitationReasonWireDocument.UNSUPPORTED_FILE_KIND
+    DiagnosticLimitationReasonDocument.UNSUPPORTED_DIAGNOSTIC ->
+        DiagnosticLimitationReasonWireDocument.UNSUPPORTED_DIAGNOSTIC
+    DiagnosticLimitationReasonDocument.ANALYSIS_UNAVAILABLE ->
+        DiagnosticLimitationReasonWireDocument.ANALYSIS_UNAVAILABLE
+}
+
+private fun DiagnosticLimitationReasonWireDocument.toContract():
+    DiagnosticLimitationReasonDocument = when (this) {
+    DiagnosticLimitationReasonWireDocument.FILE_UNAVAILABLE ->
+        DiagnosticLimitationReasonDocument.FILE_UNAVAILABLE
+    DiagnosticLimitationReasonWireDocument.OUTSIDE_SOURCE_CONTENT ->
+        DiagnosticLimitationReasonDocument.OUTSIDE_SOURCE_CONTENT
+    DiagnosticLimitationReasonWireDocument.INDEXING -> DiagnosticLimitationReasonDocument.INDEXING
+    DiagnosticLimitationReasonWireDocument.PSI_UNAVAILABLE ->
+        DiagnosticLimitationReasonDocument.PSI_UNAVAILABLE
+    DiagnosticLimitationReasonWireDocument.UNSUPPORTED_FILE_KIND ->
+        DiagnosticLimitationReasonDocument.UNSUPPORTED_FILE_KIND
+    DiagnosticLimitationReasonWireDocument.UNSUPPORTED_DIAGNOSTIC ->
+        DiagnosticLimitationReasonDocument.UNSUPPORTED_DIAGNOSTIC
+    DiagnosticLimitationReasonWireDocument.ANALYSIS_UNAVAILABLE ->
+        DiagnosticLimitationReasonDocument.ANALYSIS_UNAVAILABLE
 }
 
 internal fun DiagnosticCheckRejection.toWireDocument(): DiagnosticCheckRejectionWireDocument =

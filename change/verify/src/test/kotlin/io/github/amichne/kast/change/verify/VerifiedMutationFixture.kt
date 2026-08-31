@@ -54,7 +54,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
@@ -318,7 +318,13 @@ internal class VerifiedMutationFixture {
             "service",
             "sample.service",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.service").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.service",
+                null,
+                emptyList(),
+                emptyList(),
+                0,
+            ).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }
@@ -350,7 +356,7 @@ internal class VerifiedMutationFixture {
             selector.name.value,
             qualifiedIdentity,
             selector.kind,
-            selector.compilerIdentity,
+            selector.signature,
         ).refined()
         val source = RelationEndpoint.resolve(selector.lease, selector.scope, evidence).refined()
         val occurrence = RelationOccurrence.fromBoundary(

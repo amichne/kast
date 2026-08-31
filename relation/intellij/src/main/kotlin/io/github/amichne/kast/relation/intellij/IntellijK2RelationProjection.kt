@@ -158,7 +158,7 @@ internal class IntellijK2RelationProjection(
                 declaration.name.orEmpty(),
                 projection.qualifiedIdentity,
                 projection.kind,
-                projection.identity,
+                projection.signature,
             )
         ) {
             is Refinement.Refined -> refined.value

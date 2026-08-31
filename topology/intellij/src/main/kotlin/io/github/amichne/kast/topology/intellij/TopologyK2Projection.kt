@@ -90,7 +90,7 @@ internal fun projectTopologySymbol(
         declaration.name.orEmpty(),
         projection.qualifiedIdentity,
         projection.kind,
-        projection.identity,
+        projection.signature,
     )) {
         is Refinement.Refined -> detached.value
         is Refinement.Rejected -> return TopologySymbolProjection.Rejected
@@ -172,6 +172,7 @@ internal fun KtNamedDeclaration.directOverrideTopologyIdentities(
 private data class TopologyCompilerProjection(
     val kind: CompilerSymbolKind,
     val qualifiedIdentity: String,
+    val signature: CanonicalCompilerSignature,
     val identity: CompilerSymbolIdentity,
 )
 
@@ -204,7 +205,12 @@ private fun KaSymbol.topologyProjection(): TopologyCompilerProjectionResult = wh
         projected(
             CompilerSymbolKind.PROPERTY,
             callable,
-            CanonicalCompilerSignature.property(callable, returnType.toString()),
+            CanonicalCompilerSignature.property(
+                rawQualifiedIdentity = callable,
+                rawReceiverType = receiverParameter?.returnType?.toString(),
+                rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+                rawReturnType = returnType.toString(),
+            ),
         )
     }
     is KaTypeAliasSymbol -> {
@@ -248,6 +254,7 @@ private fun projected(
         TopologyCompilerProjection(
             kind,
             qualifiedIdentity,
+            signature.value,
             CompilerSymbolIdentity.fromCanonicalSignature(signature.value),
         ),
     )

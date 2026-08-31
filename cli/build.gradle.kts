@@ -19,6 +19,7 @@ dependencies {
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))
     implementation(project(":protocol:wire"))
+    testImplementation(libs.json.schema.validator)
 }
 
 tasks.named<Test>("test") {

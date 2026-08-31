@@ -4,6 +4,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -32,19 +34,23 @@ class CanonicalSymbolGeneratedSerializationTest {
             CanonicalSymbolSerializers.discoverRequest.encode(request, WireValueRole.REQUEST).json(),
         )
 
-        val unavailable = SymbolDescribeResult(
-            SymbolDocument(
+        val qualifiedIdentity = text("sample.Sample")
+        val signature = CompilerSignatureDocument.TypeAlias(qualifiedIdentity)
+        val evidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
+        val exact = SymbolDescribeResult(
+            SymbolDocument.create(
                 selector = text("exact:v1:sample"),
                 kind = SymbolKindDocument.TYPE_ALIAS,
                 name = text("Sample"),
-                qualifiedIdentity = SymbolQualifiedIdentityDocument.Unavailable,
+                qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualifiedIdentity),
                 file = text("src/Sample.kt"),
                 range = range(4, 10),
-            ),
+                compilerEvidence = evidence,
+            ).refined(),
         )
         assertEquals(
-            """{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"Sample","qualifiedIdentity":null,"file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10}}}""",
-            CanonicalSymbolSerializers.describeResult.encode(unavailable, WireValueRole.RESULT).json(),
+            """{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"Sample","qualifiedIdentity":"sample.Sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10},"compilerEvidence":{"identity":"${evidence.identity.value}","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}""",
+            CanonicalSymbolSerializers.describeResult.encode(exact, WireValueRole.RESULT).json(),
         )
     }
 
@@ -70,8 +76,8 @@ class CanonicalSymbolGeneratedSerializationTest {
     @Test
     fun `generated symbol result rejects missing null marker and invalid range`() {
         val malformed = listOf(
-            """{"symbol":{"selector":"exact:v1:sample","kind":"function","name":"sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10}}}""",
-            """{"symbol":{"selector":"exact:v1:sample","kind":"function","name":"sample","qualifiedIdentity":null,"file":"src/Sample.kt","range":{"startInclusive":10,"endExclusive":4}}}""",
+            """{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10},"compilerEvidence":{"identity":"identity","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}""",
+            """{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"sample","qualifiedIdentity":null,"file":"src/Sample.kt","range":{"startInclusive":10,"endExclusive":4},"compilerEvidence":{"identity":"identity","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}""",
         )
 
         malformed.forEach { document ->

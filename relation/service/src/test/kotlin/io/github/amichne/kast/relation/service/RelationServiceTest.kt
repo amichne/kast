@@ -20,7 +20,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
@@ -212,7 +212,13 @@ class RelationServiceTest {
             selection.candidate.name.value,
             "sample.Subject.run",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.Subject.run|-|||-|0").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.Subject.run",
+                null,
+                emptyList(),
+                emptyList(),
+                0,
+            ).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

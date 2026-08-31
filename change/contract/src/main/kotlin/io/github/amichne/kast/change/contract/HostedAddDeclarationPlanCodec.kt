@@ -2,6 +2,7 @@ package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -54,19 +55,20 @@ private data class HostedAddDeclarationPlanDocument(
     val selectorName: String,
     val selectorQualifiedIdentity: String?,
     val selectorKind: String,
+    val selectorCompilerSignature: String,
     val selectorCompilerIdentity: String,
     val selectorFingerprint: String,
     val declaration: String,
     val expectedPackage: String,
     val expectedName: String,
     val expectedKind: String,
+    val relationEvidenceSemantics: String,
     val evidence: DurableAddDeclarationPlanningEvidence,
 )
 
 /** Canonical durable codec for the sole hosted change.plan variant. */
 object HostedAddDeclarationPlanCodec {
-    private const val LEGACY_SCHEMA_VERSION = 1
-    private const val SCHEMA_VERSION = 2
+    private const val SCHEMA_VERSION = 3
 
     private val json = Json {
         encodeDefaults = true
@@ -87,7 +89,7 @@ object HostedAddDeclarationPlanCodec {
             json.decodeFromString(HostedAddDeclarationPlanDocument.serializer(), encoded)
         }.getOrNull() ?: return rejected()
         if (
-            document.schemaVersion !in setOf(LEGACY_SCHEMA_VERSION, SCHEMA_VERSION) ||
+            document.schemaVersion != SCHEMA_VERSION ||
             json.encodeToString(HostedAddDeclarationPlanDocument.serializer(), document) != encoded
         ) {
             return rejected()
@@ -132,13 +134,17 @@ object HostedAddDeclarationPlanCodec {
             ?: return rejected()
         val compilerIdentity = CompilerSymbolIdentity.parse(document.selectorCompilerIdentity)
             .valueOrNull() ?: return rejected()
-        val selectorEvidence = CompilerGroundedSymbolEvidence.fromBoundary(
+        val compilerSignature = CanonicalCompilerSignature.restoreCanonicalEncoding(
+            document.selectorCompilerSignature,
+        ).valueOrNull() ?: return rejected()
+        val selectorEvidence = CompilerGroundedSymbolEvidence.restoreBoundary(
             file,
             document.selectorStart,
             document.selectorEnd,
             document.selectorName,
             document.selectorQualifiedIdentity,
             document.selectorKind.enumOrNull<CompilerSymbolKind>() ?: return rejected(),
+            compilerSignature,
             compilerIdentity,
         ).valueOrNull() ?: return rejected()
         val selectorFingerprint = SymbolSelectorFingerprint.parse(document.selectorFingerprint)
@@ -166,11 +172,8 @@ object HostedAddDeclarationPlanCodec {
             document.evidence.traversals,
             document.evidence.diagnostics,
             document.evidence.fingerprint,
-            when (document.schemaVersion) {
-                LEGACY_SCHEMA_VERSION -> StableRelationEvidenceSemantics.GENERATION_BOUND_V1
-                SCHEMA_VERSION -> StableRelationEvidenceSemantics.SEMANTIC_V2
-                else -> return rejected()
-            },
+            document.relationEvidenceSemantics.enumOrNull<StableRelationEvidenceSemantics>()
+                ?: return rejected(),
         ).valueOrNull() ?: return rejected()
         val planId = ChangePlanId.parse(document.planId).valueOrNull() ?: return rejected()
         return AddDeclarationChangePlan.restore(
@@ -194,10 +197,7 @@ object HostedAddDeclarationPlanCodec {
             io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Unavailable -> null
         }
         return HostedAddDeclarationPlanDocument(
-            when (evidence.relationDigestSemantics) {
-                StableRelationEvidenceSemantics.GENERATION_BOUND_V1 -> LEGACY_SCHEMA_VERSION
-                StableRelationEvidenceSemantics.SEMANTIC_V2 -> SCHEMA_VERSION
-            },
+            SCHEMA_VERSION,
             planId.value,
             priorLease.workspaceRoot.value,
             priorLease.generation.value,
@@ -220,12 +220,14 @@ object HostedAddDeclarationPlanCodec {
             target.selector.name.value,
             qualified,
             target.selector.kind.name,
+            target.selector.signature.canonicalEncoding().value,
             target.selector.compilerIdentity.value,
             target.selector.fingerprint.value,
             declaration.value,
             expectedSemanticDelta.packageName,
             expectedSemanticDelta.declarationName,
             expectedSemanticDelta.declarationKind.name,
+            evidence.relationDigestSemantics.name,
             evidence,
         )
     }

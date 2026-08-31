@@ -3,7 +3,12 @@ package io.github.amichne.kast.runtime.ide.read.composition
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
@@ -14,6 +19,9 @@ import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.SymbolResolveRejection
 import io.github.amichne.kast.protocol.contract.SymbolResolveResult
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDescription
@@ -82,15 +90,66 @@ private fun SymbolDescription.hostedDocument(token: ProtocolText): SymbolDocumen
         ExactDeclarationQualifiedIdentity.Unavailable ->
             SymbolQualifiedIdentityDocument.Unavailable
     }
-    return SymbolDocument(
-        token,
-        kind.hostedKind(),
-        admittedName,
-        identity,
-        admittedFile,
-        admittedRange,
+    val signatureDocument = signature.hostedDocument() ?: return null
+    val compilerEvidence = refined(
+        CompilerSymbolEvidenceDocument.restore(
+            identity = refined(ProtocolText.parse(compilerIdentity.value)) ?: return null,
+            signature = signatureDocument,
+        ),
+    ) ?: return null
+    return refined(
+        SymbolDocument.create(
+            selector = token,
+            kind = kind.hostedKind(),
+            name = admittedName,
+            qualifiedIdentity = identity,
+            file = admittedFile,
+            range = admittedRange,
+            compilerEvidence = compilerEvidence,
+        ),
     )
 }
+
+private fun CanonicalCompilerSignature.hostedDocument(): CompilerSignatureDocument? = when (this) {
+    is CanonicalCompilerSignature.Function -> CompilerSignatureDocument.Function(
+        qualifiedIdentity = refined(ProtocolText.parse(qualifiedIdentity.value)) ?: return null,
+        receiver = when (val canonical = receiver) {
+            CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+            is CanonicalCompilerReceiver.Present -> CompilerReceiverDocument.Present(
+                refined(ProtocolText.parse(canonical.type.value)) ?: return null,
+            )
+        },
+        contextReceivers = contextReceivers.hostedTypes() ?: return null,
+        valueParameters = valueParameters.hostedTypes() ?: return null,
+        typeParameterCount = refined(
+            CompilerTypeParameterCountDocument.parse(typeParameterCount.value),
+        ) ?: return null,
+    )
+    is CanonicalCompilerSignature.Property -> CompilerSignatureDocument.Property(
+        qualifiedIdentity = refined(ProtocolText.parse(qualifiedIdentity.value)) ?: return null,
+        receiver = when (val canonical = receiver) {
+            CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+            is CanonicalCompilerReceiver.Present -> CompilerReceiverDocument.Present(
+                refined(ProtocolText.parse(canonical.type.value)) ?: return null,
+            )
+        },
+        contextReceivers = contextReceivers.hostedTypes() ?: return null,
+        returnType = refined(ProtocolText.parse(returnType.value)) ?: return null,
+    )
+    is CanonicalCompilerSignature.TypeAlias -> CompilerSignatureDocument.TypeAlias(
+        refined(ProtocolText.parse(qualifiedIdentity.value)) ?: return null,
+    )
+    is CanonicalCompilerSignature.ClassLike -> CompilerSignatureDocument.ClassLike(
+        refined(ProtocolText.parse(qualifiedIdentity.value)) ?: return null,
+    )
+}
+
+private fun List<CanonicalCompilerType>.hostedTypes(): BoundedProtocolList<ProtocolText>? =
+    refined(
+        BoundedProtocolList.create(
+            map { type -> refined(ProtocolText.parse(type.value)) ?: return null },
+        ),
+    )
 
 private fun CompilerSymbolKind.hostedKind(): SymbolKindDocument = when (this) {
     CompilerSymbolKind.CLASSLIKE -> SymbolKindDocument.CLASSLIKE

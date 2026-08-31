@@ -1,3 +1,8 @@
+@file:OptIn(
+    org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class,
+    org.jetbrains.kotlin.analysis.api.KaIdeApi::class,
+)
+
 package io.github.amichne.kast.change.intellij
 
 import com.intellij.openapi.application.ReadAction
@@ -12,14 +17,26 @@ import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticEvidence
 import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticObservation
 import io.github.amichne.kast.change.verify.HostedAddDeclarationSemanticObservationFailure
+import io.github.amichne.kast.change.verify.CompilerReobservedMutationAnchor
 import io.github.amichne.kast.change.verify.ObservedAddDeclarationDelta
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import java.nio.file.Path
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
@@ -85,19 +102,19 @@ private fun observeRead(
     if (file.packageFqName.asString() != plan.expectedSemanticDelta.packageName || added.name == null) {
         return rejected(HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED)
     }
-    val qualified = when (val identity = prior.qualifiedIdentity) {
-        is ExactDeclarationQualifiedIdentity.Available -> identity.value
-        ExactDeclarationQualifiedIdentity.Unavailable -> null
-    }
-    val evidence = when (val admitted = CompilerGroundedSymbolEvidence.fromBoundary(
-        prior.file,
-        anchor.textRange.startOffset,
-        anchor.textRange.endOffset,
-        prior.name.value,
-        qualified,
-        prior.kind,
-        prior.compilerIdentity,
+    val currentFile = when (val admitted = SymbolDiscoveryFileIdentity.fromBoundary(
+        workspace.root,
+        Path.of(virtual.path),
+        virtual.url,
     )) {
+        is Refinement.Refined -> admitted.value
+        is Refinement.Rejected -> return rejected(
+            HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED,
+        )
+    }
+    val evidence = anchor.compilerEvidence(currentFile)
+        ?: return rejected(HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED)
+    val reobserved = when (val admitted = CompilerReobservedMutationAnchor.admit(prior, evidence)) {
         is Refinement.Refined -> admitted.value
         is Refinement.Rejected -> return rejected(
             HostedAddDeclarationSemanticObservationFailure.EVIDENCE_REJECTED,
@@ -116,10 +133,89 @@ private fun observeRead(
     }
     return HostedAddDeclarationSemanticObservation.Observed(
         HostedAddDeclarationSemanticEvidence(
-            SymbolSelector.issue(workspace.readLease, prior.scope, evidence),
+            SymbolSelector.issue(workspace.readLease, prior.scope, reobserved.evidence),
             delta,
         ),
     )
+}
+
+private fun KtNamedDeclaration.compilerEvidence(
+    file: SymbolDiscoveryFileIdentity,
+): CompilerGroundedSymbolEvidence? {
+    val projection = analyze(this) { symbol.compilerProjection() } ?: return null
+    return CompilerGroundedSymbolEvidence.fromBoundary(
+        file = file,
+        rawStartInclusive = textRange.startOffset,
+        rawEndExclusive = textRange.endOffset,
+        rawName = name.orEmpty(),
+        rawQualifiedIdentity = projection.qualifiedIdentity,
+        kind = projection.kind,
+        signature = projection.signature,
+    ).valueOrNull()
+}
+
+private data class CompilerProjection(
+    val kind: CompilerSymbolKind,
+    val qualifiedIdentity: String,
+    val signature: CanonicalCompilerSignature,
+)
+
+private fun KaSymbol.compilerProjection(): CompilerProjection? = when (this) {
+    is KaConstructorSymbol -> {
+        val owner = containingClassId?.asSingleFqName()?.asString() ?: return null
+        projected(CompilerSymbolKind.CONSTRUCTOR, "$owner.<init>", functionSignature("$owner.<init>"))
+    }
+    is KaFunctionSymbol -> {
+        val callable = callableId?.asSingleFqName()?.asString() ?: return null
+        projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
+    }
+    is KaKotlinPropertySymbol -> {
+        val callable = callableId?.asSingleFqName()?.asString() ?: return null
+        projected(
+            CompilerSymbolKind.PROPERTY,
+            callable,
+            CanonicalCompilerSignature.property(
+                rawQualifiedIdentity = callable,
+                rawReceiverType = receiverParameter?.returnType?.toString(),
+                rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+                rawReturnType = returnType.toString(),
+            ),
+        )
+    }
+    is KaTypeAliasSymbol -> {
+        val identity = classId?.asSingleFqName()?.asString() ?: return null
+        projected(CompilerSymbolKind.TYPE_ALIAS, identity, CanonicalCompilerSignature.typeAlias(identity))
+    }
+    is KaClassLikeSymbol -> {
+        val identity = classId?.asSingleFqName()?.asString() ?: return null
+        projected(CompilerSymbolKind.CLASSLIKE, identity, CanonicalCompilerSignature.classLike(identity))
+    }
+    else -> null
+}
+
+private fun KaFunctionSymbol.functionSignature(
+    qualifiedIdentity: String,
+): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
+    CanonicalCompilerSignature.function(
+        rawQualifiedIdentity = qualifiedIdentity,
+        rawReceiverType = receiverParameter?.returnType?.toString(),
+        rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+        rawValueParameterTypes = valueParameters.map { it.returnType.toString() },
+        rawTypeParameterCount = (this as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0,
+    )
+
+private fun projected(
+    kind: CompilerSymbolKind,
+    qualifiedIdentity: String,
+    signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
+): CompilerProjection? = when (signature) {
+    is Refinement.Refined -> CompilerProjection(kind, qualifiedIdentity, signature.value)
+    is Refinement.Rejected -> null
+}
+
+private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? = when (this) {
+    is Refinement.Refined -> value
+    is Refinement.Rejected -> null
 }
 
 private fun KtDeclaration.addDeclarationKind(): AddDeclarationKind? = when (this) {

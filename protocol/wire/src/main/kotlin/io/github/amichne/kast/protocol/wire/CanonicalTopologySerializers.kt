@@ -61,6 +61,7 @@ internal enum class TopologyCoverageProjectionFailureDocument {
     @SerialName("unrepresentable-text") UNREPRESENTABLE_TEXT,
     @SerialName("unrepresentable-range") UNREPRESENTABLE_RANGE,
     @SerialName("unrepresentable-content-hash") UNREPRESENTABLE_CONTENT_HASH,
+    @SerialName("unrepresentable-compiler-evidence") UNREPRESENTABLE_COMPILER_EVIDENCE,
     @SerialName("empty-failure") EMPTY_FAILURE,
 }
 
@@ -186,6 +187,8 @@ internal fun TopologyCoverageProjectionRejection.toDocument() = when (this) {
         TopologyCoverageProjectionFailureDocument.UNREPRESENTABLE_RANGE
     TopologyCoverageProjectionRejection.UNREPRESENTABLE_CONTENT_HASH ->
         TopologyCoverageProjectionFailureDocument.UNREPRESENTABLE_CONTENT_HASH
+    TopologyCoverageProjectionRejection.UNREPRESENTABLE_COMPILER_EVIDENCE ->
+        TopologyCoverageProjectionFailureDocument.UNREPRESENTABLE_COMPILER_EVIDENCE
     TopologyCoverageProjectionRejection.EMPTY_FAILURE ->
         TopologyCoverageProjectionFailureDocument.EMPTY_FAILURE
 }
@@ -197,6 +200,8 @@ internal fun TopologyCoverageProjectionFailureDocument.toContract() = when (this
         TopologyCoverageProjectionRejection.UNREPRESENTABLE_RANGE
     TopologyCoverageProjectionFailureDocument.UNREPRESENTABLE_CONTENT_HASH ->
         TopologyCoverageProjectionRejection.UNREPRESENTABLE_CONTENT_HASH
+    TopologyCoverageProjectionFailureDocument.UNREPRESENTABLE_COMPILER_EVIDENCE ->
+        TopologyCoverageProjectionRejection.UNREPRESENTABLE_COMPILER_EVIDENCE
     TopologyCoverageProjectionFailureDocument.EMPTY_FAILURE ->
         TopologyCoverageProjectionRejection.EMPTY_FAILURE
 }

@@ -22,8 +22,9 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
@@ -71,7 +72,7 @@ internal class TraversalTestFixture {
     fun selector(
         name: String,
         offset: Int,
-        compilerIdentity: String = "function|sample.$name|-|||-|0",
+        signature: CanonicalCompilerSignature = functionSignature("sample.$name"),
     ): SymbolSelector {
         val request = SymbolDiscoveryRequest(
             SymbolSearchScopeRequest(lease, scope),
@@ -114,9 +115,9 @@ internal class TraversalTestFixture {
             location.offset.value,
             location.offset.value + name.length + 1,
             name,
-            "sample.$name",
+            signature.qualifiedIdentity(),
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse(compilerIdentity).refined(),
+            signature,
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }
@@ -202,16 +203,35 @@ internal class TraversalTestFixture {
         target: SymbolSelector,
     ): RelationEndpoint.Resolved {
         val description = SymbolDescription.from(target)
+        val qualifiedIdentity = (
+            description.qualifiedIdentity as ExactDeclarationQualifiedIdentity.Available
+            ).value
         val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
             target.file,
             target.range.startInclusive,
             target.range.endExclusive,
             target.name.value,
-            "sample.${target.name.value}",
+            qualifiedIdentity,
             target.kind,
-            description.compilerIdentity,
+            description.signature,
         ).refined()
         return RelationEndpoint.resolve(subject.lease, subject.scope, evidence).refined()
+    }
+
+    private fun functionSignature(qualifiedIdentity: String): CanonicalCompilerSignature =
+        CanonicalCompilerSignature.function(
+            qualifiedIdentity,
+            null,
+            emptyList(),
+            emptyList(),
+            0,
+        ).refined()
+
+    private fun CanonicalCompilerSignature.qualifiedIdentity(): String = when (this) {
+        is CanonicalCompilerSignature.Function -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.Property -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.TypeAlias -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.ClassLike -> qualifiedIdentity.value
     }
 
     fun completeRelationResult(

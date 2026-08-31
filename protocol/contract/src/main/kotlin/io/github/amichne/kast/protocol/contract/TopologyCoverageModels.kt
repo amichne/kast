@@ -89,14 +89,77 @@ data class TopologyCoverageCandidateEvidenceMismatch(
     val completed: TopologyCoverageFileEvidence,
 )
 
+enum class TopologyCoverageSymbolFailure {
+    NODE_COMPILER_IDENTITY_MISMATCH,
+    NODE_FILE_MISMATCH,
+    SIGNATURE_KIND_MISMATCH,
+    QUALIFIED_IDENTITY_MISMATCH,
+}
+
 /** Exact contradictory edge endpoint, including its content/source-root and compiler evidence. */
-data class TopologyCoverageSymbol(
+@ConsistentCopyVisibility
+data class TopologyCoverageSymbol private constructor(
     val node: TopologyCoverageNode,
     val fileEvidence: TopologyCoverageFileEvidence,
     val name: ProtocolText,
     val qualifiedIdentity: TopologyCoverageQualifiedIdentity,
     val kind: TopologyCoverageSymbolKind,
-)
+    val compilerEvidence: CompilerSymbolEvidenceDocument,
+) {
+    companion object {
+        /**
+         * Proof transition: exact topology endpoint fields to a compiler-grounded public symbol.
+         * The node identity, source file, kind, and qualified identity must all agree with the
+         * retained canonical compiler signature. Expected disagreement is finite data.
+         */
+        fun create(
+            node: TopologyCoverageNode,
+            fileEvidence: TopologyCoverageFileEvidence,
+            name: ProtocolText,
+            qualifiedIdentity: TopologyCoverageQualifiedIdentity,
+            kind: TopologyCoverageSymbolKind,
+            compilerEvidence: CompilerSymbolEvidenceDocument,
+        ): Refinement<TopologyCoverageSymbol, TopologyCoverageSymbolFailure> {
+            if (node.compilerIdentity != compilerEvidence.identity) {
+                return Refinement.Rejected(
+                    TopologyCoverageSymbolFailure.NODE_COMPILER_IDENTITY_MISMATCH,
+                )
+            }
+            if (node.file != fileEvidence.path) {
+                return Refinement.Rejected(TopologyCoverageSymbolFailure.NODE_FILE_MISMATCH)
+            }
+            if (!compilerEvidence.signature.supports(kind.symbolKind())) {
+                return Refinement.Rejected(TopologyCoverageSymbolFailure.SIGNATURE_KIND_MISMATCH)
+            }
+            if (
+                qualifiedIdentity !is TopologyCoverageQualifiedIdentity.Available ||
+                qualifiedIdentity.value != compilerEvidence.signature.qualifiedIdentity()
+            ) {
+                return Refinement.Rejected(
+                    TopologyCoverageSymbolFailure.QUALIFIED_IDENTITY_MISMATCH,
+                )
+            }
+            return Refinement.Refined(
+                TopologyCoverageSymbol(
+                    node,
+                    fileEvidence,
+                    name,
+                    qualifiedIdentity,
+                    kind,
+                    compilerEvidence,
+                ),
+            )
+        }
+    }
+}
+
+private fun TopologyCoverageSymbolKind.symbolKind(): SymbolKindDocument = when (this) {
+    TopologyCoverageSymbolKind.CLASSLIKE -> SymbolKindDocument.CLASSLIKE
+    TopologyCoverageSymbolKind.CONSTRUCTOR -> SymbolKindDocument.CONSTRUCTOR
+    TopologyCoverageSymbolKind.FUNCTION -> SymbolKindDocument.FUNCTION
+    TopologyCoverageSymbolKind.PROPERTY -> SymbolKindDocument.PROPERTY
+    TopologyCoverageSymbolKind.TYPE_ALIAS -> SymbolKindDocument.TYPE_ALIAS
+}
 
 enum class TopologyCoverageFailureAdmissionFailure {
     EMPTY,
@@ -152,15 +215,15 @@ data class TopologyCoverageFailure private constructor(
             }
             return Refinement.Refined(
                 TopologyCoverageFailure(
-                    missing.toSet(),
-                    unexpected.toSet(),
-                    duplicateCandidates.toSet(),
-                    duplicateCompletions.toSet(),
-                    workspaceMismatches.toSet(),
-                    candidateEvidenceMismatches.toSet(),
-                    duplicateSymbols.toSet(),
-                    missingEdgeTargets.toSet(),
-                    mismatchedEdgeEndpoints.toSet(),
+                    java.util.Set.copyOf(missing),
+                    java.util.Set.copyOf(unexpected),
+                    java.util.Set.copyOf(duplicateCandidates),
+                    java.util.Set.copyOf(duplicateCompletions),
+                    java.util.Set.copyOf(workspaceMismatches),
+                    java.util.Set.copyOf(candidateEvidenceMismatches),
+                    java.util.Set.copyOf(duplicateSymbols),
+                    java.util.Set.copyOf(missingEdgeTargets),
+                    java.util.Set.copyOf(mismatchedEdgeEndpoints),
                 ),
             )
         }

@@ -7,7 +7,7 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
@@ -51,7 +51,7 @@ class RelationContractTest {
             selector.name.value,
             "sample.Subject.run",
             selector.kind,
-            description.compilerIdentity,
+            description.signature,
         ).refined()
 
         val endpoint = RelationEndpoint.resolve(
@@ -75,7 +75,13 @@ class RelationContractTest {
             endpoint.name.value,
             "sample.Related.run",
             endpoint.kind,
-            CompilerSymbolIdentity.parse("function|sample.Related.run|-|||1").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.Related.run",
+                null,
+                emptyList(),
+                emptyList(),
+                1,
+            ).refined(),
         ).refined()
 
         val result = RevalidatedRelationEndpoint.validate(endpoint, changed)
@@ -147,7 +153,13 @@ class RelationContractTest {
                 "related",
                 "sample.Related.run",
                 CompilerSymbolKind.FUNCTION,
-                CompilerSymbolIdentity.parse("function|sample.Related.run|-|||0").refined(),
+                CanonicalCompilerSignature.function(
+                    "sample.Related.run",
+                    null,
+                    emptyList(),
+                    emptyList(),
+                    0,
+                ).refined(),
             ).refined(),
         ).refined()
 
@@ -219,7 +231,13 @@ class RelationContractTest {
             selection.candidate.name.value,
             "sample.Subject.run",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.Subject.run|-|||0").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.Subject.run",
+                null,
+                emptyList(),
+                emptyList(),
+                0,
+            ).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

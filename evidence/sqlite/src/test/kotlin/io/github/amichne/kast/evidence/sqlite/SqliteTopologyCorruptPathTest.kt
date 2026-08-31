@@ -43,7 +43,7 @@ class SqliteTopologyCorruptPathTest {
         ).snapshot
         DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
             connection.prepareStatement(
-                "UPDATE topology_file_v2 SET source_root = ?",
+                "UPDATE topology_file_v3 SET source_root = ?",
             ).use { statement ->
                 statement.setString(1, "src" + 0.toChar() + "/main/kotlin")
                 statement.executeUpdate()

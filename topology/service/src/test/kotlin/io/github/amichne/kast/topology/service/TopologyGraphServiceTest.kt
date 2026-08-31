@@ -5,6 +5,7 @@ import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
@@ -151,7 +152,7 @@ class TopologyGraphServiceTest {
             name,
             "sample.$name",
             CompilerSymbolKind.CLASSLIKE,
-            CompilerSymbolIdentity.parse("class|sample.$name").refined(),
+            CanonicalCompilerSignature.classLike("sample.$name").refined(),
         ).refined()
         return TopologySymbol.admit(file, evidence).refined()
     }

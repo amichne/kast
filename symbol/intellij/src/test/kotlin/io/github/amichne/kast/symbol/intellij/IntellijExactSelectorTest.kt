@@ -6,6 +6,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -58,14 +59,16 @@ class IntellijExactSelectorTest {
         ).refined()
 
         assertNotEquals(firstSelector.fingerprint, secondSelector.fingerprint)
+        val firstSignature = SymbolDescription.from(firstSelector).signature as
+            CanonicalCompilerSignature.Function
+        val secondSignature = SymbolDescription.from(secondSelector).signature as
+            CanonicalCompilerSignature.Function
+        assertEquals(listOf("sample.Service.call(kotlin.Int)"), firstSignature.valueParameters.map { it.value })
         assertEquals(
-            "sample.Service.call(kotlin.Int)",
-            SymbolDescription.from(firstSelector).compilerIdentity.value,
+            listOf("sample.Service.call(kotlin.String)"),
+            secondSignature.valueParameters.map { it.value },
         )
-        assertEquals(
-            "sample.Service.call(kotlin.String)",
-            SymbolDescription.from(secondSelector).compilerIdentity.value,
-        )
+        assertNotEquals(firstSelector.compilerIdentity, secondSelector.compilerIdentity)
     }
 
     @Test
@@ -155,7 +158,13 @@ class IntellijExactSelectorTest {
         rawName = selection.candidate.name.value,
         rawQualifiedIdentity = "sample.Service.call",
         kind = CompilerSymbolKind.FUNCTION,
-        compilerIdentity = CompilerSymbolIdentity.parse(compilerIdentity).refined(),
+        signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = "sample.Service.call",
+            rawReceiverType = null,
+            rawContextReceiverTypes = emptyList(),
+            rawValueParameterTypes = listOf(compilerIdentity),
+            rawTypeParameterCount = 0,
+        ).refined(),
     ).refined()
 
     private fun batch(vararg offsets: Int): SymbolDiscoveryBatch {

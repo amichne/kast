@@ -25,10 +25,19 @@ import io.github.amichne.kast.protocol.contract.ChangeVerifyQualification
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRejection
 import io.github.amichne.kast.protocol.contract.ChangeVerifyRequest
 import io.github.amichne.kast.protocol.contract.ChangeVerifyResult
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLocationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
@@ -37,6 +46,13 @@ import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
+import io.github.amichne.kast.protocol.contract.RelationFactDocument
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
+import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
@@ -68,6 +84,10 @@ import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
+import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
@@ -171,10 +191,17 @@ class CanonicalOperationWireBindingsTest {
             CanonicalOperationWireBindings.relationRead,
             RelationReadRequest(text("exact:Target"), RelationKindDocument.CALLERS, count(50)),
             RelationReadResult(
-                BoundedProtocolList.create(listOf(symbol("exact:v1:Caller", "Caller")))
-                    .refinedValue(),
+                BoundedProtocolList.create(
+                    listOf(
+                        relation(
+                            RelationKindDocument.CALLERS,
+                            symbol("exact:v1:Caller", "Caller"),
+                            symbol("exact:v1:Target", "Target"),
+                        ),
+                    ),
+                ).refinedValue(),
             ),
-            RelationReadQualification.COVERAGE_INCOMPLETE,
+            relationQualification(),
             RelationReadRejection.RELATION_UNSUPPORTED,
         )
         assertRoundTrips(
@@ -188,19 +215,47 @@ class CanonicalOperationWireBindingsTest {
             TraversalRunResult(
                 BoundedProtocolList.create(
                     listOf(
-                        symbol("exact:v1:Caller", "Caller"),
-                        symbol("exact:v1:Root", "Root"),
+                        traversal(
+                            1,
+                            relation(
+                                RelationKindDocument.CALLERS,
+                                symbol("exact:v1:Caller", "Caller"),
+                                symbol("exact:v1:Target", "Target"),
+                            ),
+                        ),
+                        traversal(
+                            2,
+                            relation(
+                                RelationKindDocument.CALLERS,
+                                symbol("exact:v1:Root", "Root"),
+                                symbol("exact:v1:Caller", "Caller"),
+                            ),
+                        ),
                     ),
                 ).refinedValue(),
             ),
-            TraversalRunQualification.DEPTH_LIMIT,
+            traversalQualification(),
             TraversalRunRejection.PLAN_REJECTED,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.diagnosticCheck,
             DiagnosticCheckRequest(text("project:fixture"), count(100)),
-            DiagnosticCheckResult(texts("warning:unused")),
-            DiagnosticCheckQualification.RESULT_LIMIT,
+            DiagnosticCheckResult(
+                BoundedProtocolList.create(
+                    listOf(
+                        DiagnosticDocument(
+                            DiagnosticSeverityDocument.WARNING,
+                            text("UNUSED"),
+                            text("unused"),
+                            DiagnosticLocationDocument(
+                                text("src/Target.kt"),
+                                DiagnosticRangeDocument.create(offset(3), offset(3)).refinedValue(),
+                            ),
+                        ),
+                    ),
+                ).refinedValue(),
+            ),
+            diagnosticQualification(),
             DiagnosticCheckRejection.SCOPE_REJECTED,
         )
         assertRoundTrips(
@@ -362,23 +417,75 @@ class CanonicalOperationWireBindingsTest {
             count(limit),
         )
 
-    private fun symbol(selector: String, name: String): SymbolDocument = SymbolDocument(
-        selector = text(selector),
-        kind = SymbolKindDocument.CLASSLIKE,
-        name = text(name),
-        qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(text("sample.$name")),
-        file = text("src/$name.kt"),
-        range = SourceRangeDocument.create(offset(0), offset(name.length)).refinedValue(),
+    private fun symbol(selector: String, name: String): SymbolDocument {
+        val qualifiedIdentity = text("sample.$name")
+        val signature = CompilerSignatureDocument.ClassLike(qualifiedIdentity)
+        val evidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refinedValue()
+        return SymbolDocument.create(
+            selector = text(selector),
+            kind = SymbolKindDocument.CLASSLIKE,
+            name = text(name),
+            qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualifiedIdentity),
+            file = text("src/$name.kt"),
+            range = SourceRangeDocument.create(offset(0), offset(name.length)).refinedValue(),
+            compilerEvidence = evidence,
+        ).refinedValue()
+    }
+
+    private fun relation(
+        meaning: RelationKindDocument,
+        source: SymbolDocument,
+        target: SymbolDocument,
+    ): RelationFactDocument = RelationFactDocument(
+        meaning,
+        source,
+        target,
+        RelationOccurrenceDocument(source.file, source.range),
+        RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+        RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
     )
+
+    private fun traversal(depth: Int, relation: RelationFactDocument): TraversalRecordDocument =
+        TraversalRecordDocument(TraversalDepthDocument.parse(depth).refinedValue(), relation)
+
+    private fun relationQualification(): RelationReadQualification =
+        RelationReadQualification.create(
+            RelationKnownMinimumDocument.parse(1).refinedValue(),
+            listOf(
+                RelationLimitationDocument.RESULT_LIMIT_REACHED,
+                RelationLimitationDocument.PROVIDER_INCOMPLETE,
+            ),
+            RelationContinuationDocument.parse("a".repeat(64)).refinedValue(),
+        ).refinedValue()
+
+    private fun traversalQualification(): TraversalRunQualification =
+        TraversalRunQualification.create(
+            listOf(
+                TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
+                TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
+            ),
+            listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
+            TraversalContinuationDocument.parse("b".repeat(64)).refinedValue(),
+        ).refinedValue()
+
+    private fun diagnosticQualification(): DiagnosticCheckQualification =
+        DiagnosticCheckQualification.create(
+            DiagnosticKnownCountDocument.parse(1).refinedValue(),
+            resultLimitReached = true,
+            analyzedFiles = listOf(text("src/Target.kt")),
+            limitations = listOf(
+                DiagnosticLimitationDocument(
+                    text("src/Other.kt"),
+                    DiagnosticLimitationReasonDocument.INDEXING,
+                ),
+            ),
+        ).refinedValue()
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
-
-    private fun texts(vararg raw: String): BoundedProtocolList<ProtocolText> =
-        BoundedProtocolList.create(raw.map(::text)).refinedValue()
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value

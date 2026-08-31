@@ -87,6 +87,7 @@ internal object CanonicalSelectorCodec {
         )
         return encodeToken(
             CANDIDATE_PREFIX,
+            CANDIDATE_TOKEN_VERSION,
             selectorJson.encodeToString(CandidateSelectorDocument.serializer(), document),
         )
     }
@@ -101,7 +102,9 @@ internal object CanonicalSelectorCodec {
     fun decodeCandidate(
         token: ProtocolText,
     ): CanonicalSelectorDecoding<SymbolDiscoverySelection> {
-        val payload = when (val admission = parseToken(token, CANDIDATE_PREFIX)) {
+        val payload = when (
+            val admission = parseToken(token, CANDIDATE_PREFIX, CANDIDATE_TOKEN_VERSION)
+        ) {
             is SelectorTokenPayloadAdmission.Admitted -> admission.payload
             is SelectorTokenPayloadAdmission.Rejected -> return admission.failure.rejected()
         }
@@ -153,11 +156,13 @@ internal object CanonicalSelectorCodec {
                 ExactDeclarationQualifiedIdentity.Unavailable -> null
             },
             kind = selector.kind.name,
+            compilerSignature = selector.signature.canonicalEncoding().value,
             compilerIdentity = selector.compilerIdentity.value,
             fingerprint = selector.fingerprint.value,
         )
         return encodeToken(
             EXACT_PREFIX,
+            EXACT_TOKEN_VERSION,
             selectorJson.encodeToString(ExactSelectorDocument.serializer(), document),
         )
     }
@@ -170,7 +175,9 @@ internal object CanonicalSelectorCodec {
      * the closed expected failure. Raw token text is extracted only by this decoder boundary.
      */
     fun decodeExact(token: ProtocolText): CanonicalSelectorDecoding<SymbolSelector> {
-        val payload = when (val admission = parseToken(token, EXACT_PREFIX)) {
+        val payload = when (
+            val admission = parseToken(token, EXACT_PREFIX, EXACT_TOKEN_VERSION)
+        ) {
             is SelectorTokenPayloadAdmission.Admitted -> admission.payload
             is SelectorTokenPayloadAdmission.Rejected -> return admission.failure.rejected()
         }
@@ -197,10 +204,14 @@ private sealed interface SelectorTokenPayloadAdmission {
 }
 
 /** Encodes one generated JSON document as a digest-bound, bounded public protocol token. */
-private fun encodeToken(prefix: String, document: String): CanonicalSelectorEncoding {
+private fun encodeToken(
+    prefix: String,
+    version: String,
+    document: String,
+): CanonicalSelectorEncoding {
     val payload = document.toByteArray(StandardCharsets.UTF_8)
     val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-    val raw = "$prefix:$TOKEN_VERSION:$encoded:${sha256(payload)}"
+    val raw = "$prefix:$version:$encoded:${sha256(payload)}"
     return when (val admitted = ProtocolText.parse(raw)) {
         is Refinement.Refined -> CanonicalSelectorEncoding.Encoded(admitted.value)
         is Refinement.Rejected -> CanonicalSelectorEncoding.Rejected(
@@ -219,9 +230,10 @@ private fun encodeToken(prefix: String, document: String): CanonicalSelectorEnco
 private fun parseToken(
     document: ProtocolText,
     prefix: String,
+    version: String,
 ): SelectorTokenPayloadAdmission {
     val parts = document.value.split(':')
-    if (parts.size != TOKEN_PART_COUNT || parts[0] != prefix || parts[1] != TOKEN_VERSION) {
+    if (parts.size != TOKEN_PART_COUNT || parts[0] != prefix || parts[1] != version) {
         return SelectorTokenPayloadAdmission.Rejected(
             CanonicalSelectorDecodingFailure.INVALID_TOKEN_STRUCTURE,
         )
@@ -266,5 +278,6 @@ private fun sha256(bytes: ByteArray): String =
 
 private const val CANDIDATE_PREFIX = "candidate"
 private const val EXACT_PREFIX = "exact"
-private const val TOKEN_VERSION = "v1"
+private const val CANDIDATE_TOKEN_VERSION = "v1"
+private const val EXACT_TOKEN_VERSION = "v2"
 private const val TOKEN_PART_COUNT = 4

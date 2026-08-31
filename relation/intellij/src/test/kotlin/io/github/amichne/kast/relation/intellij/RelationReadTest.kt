@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.intellij
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -238,7 +239,13 @@ class RelationReadTest {
             selection.candidate.name.value,
             "sample.Subject.run",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.Subject.run|-|||-|0").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.Subject.run",
+                null,
+                emptyList(),
+                emptyList(),
+                0,
+            ).refined(),
         ).refined()
     }
 
@@ -252,7 +259,13 @@ class RelationReadTest {
         "run",
         "sample.Related.run",
         CompilerSymbolKind.FUNCTION,
-        CompilerSymbolIdentity.parse(identity).refined(),
+        CanonicalCompilerSignature.function(
+            "sample.Related.run",
+            null,
+            emptyList(),
+            listOf(identity),
+            0,
+        ).refined(),
     ).refined()
 
     private fun lease(): SemanticReadLease = SemanticReadLease(

@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 internal data class IntellijCompilerProjection(
     val kind: CompilerSymbolKind,
     val qualifiedIdentity: String,
+    val signature: CanonicalCompilerSignature,
     val identity: CompilerSymbolIdentity,
 )
 
@@ -67,7 +68,12 @@ internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult = w
         projected(
             CompilerSymbolKind.PROPERTY,
             callable,
-            CanonicalCompilerSignature.property(callable, returnType.toString()),
+            CanonicalCompilerSignature.property(
+                rawQualifiedIdentity = callable,
+                rawReceiverType = receiverParameter?.returnType?.toString(),
+                rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+                rawReturnType = returnType.toString(),
+            ),
         )
     }
     is KaTypeAliasSymbol -> {
@@ -135,6 +141,7 @@ private fun projected(
         IntellijCompilerProjection(
             kind,
             qualifiedIdentity,
+            signature.value,
             CompilerSymbolIdentity.fromCanonicalSignature(signature.value),
         ),
     )

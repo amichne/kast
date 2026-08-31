@@ -7,7 +7,7 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescription
@@ -154,7 +154,13 @@ class SymbolExactServiceTest {
             rawName = selection.candidate.name.value,
             rawQualifiedIdentity = "sample.Service.call",
             kind = CompilerSymbolKind.FUNCTION,
-            compilerIdentity = CompilerSymbolIdentity.parse("sample.Service.call(kotlin.Int)").refined(),
+            signature = CanonicalCompilerSignature.function(
+                "sample.Service.call",
+                null,
+                emptyList(),
+                listOf("kotlin.Int"),
+                0,
+            ).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

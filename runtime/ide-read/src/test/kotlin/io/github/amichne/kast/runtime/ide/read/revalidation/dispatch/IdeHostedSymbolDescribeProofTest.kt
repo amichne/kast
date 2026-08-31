@@ -6,6 +6,8 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.IdeHostCapability
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
@@ -301,14 +303,22 @@ private fun resolutionOutcome(): OperationOutcome<
     ),
 )
 
-private fun symbol(selector: String): SymbolDocument = SymbolDocument(
-    protocolText(selector),
-    SymbolKindDocument.CLASSLIKE,
-    protocolText("Widget"),
-    SymbolQualifiedIdentityDocument.Available(protocolText("sample.Widget")),
-    protocolText("src/Widget.kt"),
-    refined(SourceRangeDocument.create(offset(7), offset(13))),
-)
+private fun symbol(selector: String): SymbolDocument {
+    val qualifiedIdentity = protocolText("sample.Widget")
+    val signature = CompilerSignatureDocument.ClassLike(qualifiedIdentity)
+    val compilerEvidence = refined(CompilerSymbolEvidenceDocument.fromSignature(signature))
+    return refined(
+        SymbolDocument.create(
+            selector = protocolText(selector),
+            kind = SymbolKindDocument.CLASSLIKE,
+            name = protocolText("Widget"),
+            qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualifiedIdentity),
+            file = protocolText("src/Widget.kt"),
+            range = refined(SourceRangeDocument.create(offset(7), offset(13))),
+            compilerEvidence = compilerEvidence,
+        ),
+    )
+}
 
 private fun hostedProject(read: HostedIdeReadProjectTestRead): HostedIdeReadProject {
     val candidate = IdeHostCompatibilityCandidate(

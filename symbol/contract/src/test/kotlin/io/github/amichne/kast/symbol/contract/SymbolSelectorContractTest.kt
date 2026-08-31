@@ -12,10 +12,68 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class SymbolSelectorContractTest {
+    @Test
+    fun `compiler evidence retains canonical signature and rejects mismatched restored identity`() {
+        val selection = selection()
+        val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
+        val signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = "sample.Service.call",
+            rawReceiverType = "sample.Service",
+            rawContextReceiverTypes = listOf("sample.Context"),
+            rawValueParameterTypes = listOf("kotlin.Int"),
+            rawTypeParameterCount = 1,
+        ).refined()
+        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
+            file = location.file,
+            rawStartInclusive = location.offset.value,
+            rawEndExclusive = location.offset.value + 10,
+            rawName = selection.candidate.name.value,
+            rawQualifiedIdentity = "sample.Service.call",
+            kind = CompilerSymbolKind.FUNCTION,
+            signature = signature,
+        ).refined()
+        val function = evidence.signature as CanonicalCompilerSignature.Function
+
+        assertEquals("sample.Service.call", function.qualifiedIdentity.value)
+        assertEquals(
+            CanonicalCompilerReceiver.Present(CanonicalCompilerType("sample.Service")),
+            function.receiver,
+        )
+        assertEquals(listOf(CanonicalCompilerType("sample.Context")), function.contextReceivers)
+        assertEquals(listOf(CanonicalCompilerType("kotlin.Int")), function.valueParameters)
+        assertEquals(CanonicalTypeParameterCount(1), function.typeParameterCount)
+        assertEquals(
+            CompilerSymbolIdentity.fromCanonicalSignature(signature),
+            evidence.compilerIdentity,
+        )
+        assertEquals(
+            CompilerGroundedSymbolEvidenceFailure.COMPILER_IDENTITY_MISMATCH,
+            CompilerGroundedSymbolEvidence.restoreBoundary(
+                file = location.file,
+                rawStartInclusive = location.offset.value,
+                rawEndExclusive = location.offset.value + 10,
+                rawName = selection.candidate.name.value,
+                rawQualifiedIdentity = "sample.Service.call",
+                kind = CompilerSymbolKind.FUNCTION,
+                signature = signature,
+                compilerIdentity = CompilerSymbolIdentity.fromCanonicalSignature(
+                    CanonicalCompilerSignature.function(
+                        rawQualifiedIdentity = "sample.Service.other",
+                        rawReceiverType = null,
+                        rawContextReceiverTypes = emptyList(),
+                        rawValueParameterTypes = emptyList(),
+                        rawTypeParameterCount = 0,
+                    ).refined(),
+                ),
+            ).rejected(),
+        )
+    }
+
     @Test
     fun `canonical signatures produce bounded deterministic compiler identities`() {
         val longType = "sample.DeepType<${"kotlin.String,".repeat(500)}kotlin.Int>"
@@ -42,6 +100,117 @@ class SymbolSelectorContractTest {
         assertEquals(94, same.value.length)
         assertEquals(true, same.value.startsWith("canonical-signature-sha256-v1|"))
         assertEquals(same, CompilerSymbolIdentity.parse(same.value).refined())
+    }
+
+    @Test
+    fun `canonical signature collections cannot mutate after identity derivation`() {
+        val signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = "sample.Service.call",
+            rawReceiverType = null,
+            rawContextReceiverTypes = listOf("sample.Context"),
+            rawValueParameterTypes = listOf("kotlin.Int"),
+            rawTypeParameterCount = 0,
+        ).refined() as CanonicalCompilerSignature.Function
+        val identity = CompilerSymbolIdentity.fromCanonicalSignature(signature)
+
+        assertThrows(UnsupportedOperationException::class.java) {
+            @Suppress("UNCHECKED_CAST")
+            (signature.contextReceivers as MutableList<CanonicalCompilerType>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            @Suppress("UNCHECKED_CAST")
+            (signature.valueParameters as MutableList<CanonicalCompilerType>).clear()
+        }
+        assertEquals(listOf(CanonicalCompilerType("sample.Context")), signature.contextReceivers)
+        assertEquals(listOf(CanonicalCompilerType("kotlin.Int")), signature.valueParameters)
+        assertEquals(identity, CompilerSymbolIdentity.fromCanonicalSignature(signature))
+    }
+
+    @Test
+    fun `property identities retain extension and context receivers`() {
+        val stringReceiver = CanonicalCompilerSignature.property(
+            rawQualifiedIdentity = "sample.tag",
+            rawReceiverType = "kotlin.String",
+            rawContextReceiverTypes = listOf("sample.Context"),
+            rawReturnType = "kotlin.Int",
+        ).refined() as CanonicalCompilerSignature.Property
+        val intReceiver = CanonicalCompilerSignature.property(
+            rawQualifiedIdentity = "sample.tag",
+            rawReceiverType = "kotlin.Int",
+            rawContextReceiverTypes = listOf("sample.Context"),
+            rawReturnType = "kotlin.Int",
+        ).refined()
+        val otherContext = CanonicalCompilerSignature.property(
+            rawQualifiedIdentity = "sample.tag",
+            rawReceiverType = "kotlin.String",
+            rawContextReceiverTypes = listOf("sample.OtherContext"),
+            rawReturnType = "kotlin.Int",
+        ).refined()
+
+        assertEquals(
+            CanonicalCompilerReceiver.Present(CanonicalCompilerType("kotlin.String")),
+            stringReceiver.receiver,
+        )
+        assertEquals(
+            listOf(CanonicalCompilerType("sample.Context")),
+            stringReceiver.contextReceivers,
+        )
+        assertNotEquals(
+            CompilerSymbolIdentity.fromCanonicalSignature(stringReceiver),
+            CompilerSymbolIdentity.fromCanonicalSignature(intReceiver),
+        )
+        assertNotEquals(
+            CompilerSymbolIdentity.fromCanonicalSignature(stringReceiver),
+            CompilerSymbolIdentity.fromCanonicalSignature(otherContext),
+        )
+        assertEquals(
+            stringReceiver,
+            CanonicalCompilerSignature.restoreCanonicalEncoding(
+                stringReceiver.canonicalEncoding().value,
+            ).refined(),
+        )
+        assertThrows(UnsupportedOperationException::class.java) {
+            @Suppress("UNCHECKED_CAST")
+            (stringReceiver.contextReceivers as MutableList<CanonicalCompilerType>).clear()
+        }
+    }
+
+    @Test
+    fun `compiler evidence rejects a qualified identity that disagrees with its signature`() {
+        val selection = selection()
+        val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
+        val signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = "sample.Service.call",
+            rawReceiverType = null,
+            rawContextReceiverTypes = emptyList(),
+            rawValueParameterTypes = emptyList(),
+            rawTypeParameterCount = 0,
+        ).refined()
+
+        assertEquals(
+            "QUALIFIED_IDENTITY_MISMATCH",
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                file = location.file,
+                rawStartInclusive = location.offset.value,
+                rawEndExclusive = location.offset.value + 10,
+                rawName = selection.candidate.name.value,
+                rawQualifiedIdentity = "sample.Service.other",
+                kind = CompilerSymbolKind.FUNCTION,
+                signature = signature,
+            ).rejected().name,
+        )
+        assertEquals(
+            "QUALIFIED_IDENTITY_MISMATCH",
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                file = location.file,
+                rawStartInclusive = location.offset.value,
+                rawEndExclusive = location.offset.value + 10,
+                rawName = selection.candidate.name.value,
+                rawQualifiedIdentity = null,
+                kind = CompilerSymbolKind.FUNCTION,
+                signature = signature,
+            ).rejected().name,
+        )
     }
 
     @Test
@@ -87,8 +256,8 @@ class SymbolSelectorContractTest {
     @Test
     fun `compiler identity is sealed into exact selection and revalidation`() {
         val selection = selection()
-        val firstEvidence = evidence(selection, "sample.Service.call(kotlin.Int)")
-        val secondEvidence = evidence(selection, "sample.Service.call(kotlin.String)")
+        val firstEvidence = evidence(selection, "kotlin.Int")
+        val secondEvidence = evidence(selection, "kotlin.String")
         val first = SymbolSelector.issue(selection, firstEvidence).refined()
         val second = SymbolSelector.issue(selection, secondEvidence).refined()
 
@@ -107,7 +276,13 @@ class SymbolSelectorContractTest {
     fun `compiler evidence cannot escape the selected file name or offset`() {
         val selection = selection()
         val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
-        val compilerIdentity = CompilerSymbolIdentity.parse("sample.Service.call(kotlin.Int)").refined()
+        val signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = "sample.Service.call",
+            rawReceiverType = null,
+            rawContextReceiverTypes = emptyList(),
+            rawValueParameterTypes = listOf("kotlin.Int"),
+            rawTypeParameterCount = 0,
+        ).refined()
         val otherFile = SymbolDiscoveryFileIdentity.fromBoundary(
             selection.lease.workspaceRoot,
             Path.of("/workspace/src/Other.kt"),
@@ -125,7 +300,7 @@ class SymbolSelectorContractTest {
                     selection.candidate.name.value,
                     "sample.Service.call",
                     CompilerSymbolKind.FUNCTION,
-                    compilerIdentity,
+                    signature,
                 ).refined(),
             ).rejected(),
         )
@@ -138,9 +313,9 @@ class SymbolSelectorContractTest {
                     location.offset.value,
                     location.offset.value + 10,
                     "other",
-                    "sample.Service.other",
+                    "sample.Service.call",
                     CompilerSymbolKind.FUNCTION,
-                    compilerIdentity,
+                    signature,
                 ).refined(),
             ).rejected(),
         )
@@ -155,7 +330,7 @@ class SymbolSelectorContractTest {
                     selection.candidate.name.value,
                     "sample.Service.call",
                     CompilerSymbolKind.FUNCTION,
-                    compilerIdentity,
+                    signature,
                 ).refined(),
             ).rejected(),
         )
@@ -163,9 +338,16 @@ class SymbolSelectorContractTest {
 
     private fun evidence(
         selection: SymbolDiscoverySelection,
-        identity: String,
+        parameterType: String,
     ): CompilerGroundedSymbolEvidence {
         val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration
+        val signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = "sample.Service.call",
+            rawReceiverType = null,
+            rawContextReceiverTypes = emptyList(),
+            rawValueParameterTypes = listOf(parameterType),
+            rawTypeParameterCount = 0,
+        ).refined()
         return CompilerGroundedSymbolEvidence.fromBoundary(
             location.file,
             location.offset.value,
@@ -173,7 +355,7 @@ class SymbolSelectorContractTest {
             selection.candidate.name.value,
             "sample.Service.call",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse(identity).refined(),
+            signature,
         ).refined()
     }
 

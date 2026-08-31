@@ -302,7 +302,7 @@ object CanonicalOperationDefinitions {
         completeness: CompletenessPolicy,
         hostedExposure: HostedExposure,
         hostedVariants: HostedVariants = HostedVariants.None,
-        schema: SchemaIdentity = schema("kast.${operation.id.value}.v1"),
+        schema: SchemaIdentity = schema("kast.${operation.id.value}.v2"),
     ): OperationDefinition<Request, Result, Capability, Qualification, Rejection> =
         OperationDefinition(
             operation = operation,

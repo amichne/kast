@@ -82,34 +82,14 @@ class AddDeclarationPlanTest {
         assertEquals(planned.target.selector.fingerprint, reopened.target.selector.fingerprint)
         assertEquals(planned.writes.entries.single().source, reopened.writes.entries.single().source)
         assertEquals(planned.evidence, reopened.evidence)
-        assertTrue(encoded.startsWith("{\"schemaVersion\":2,"))
+        assertTrue(encoded.startsWith("{\"schemaVersion\":3,"))
     }
 
     @Test
-    fun `base schema plan retains generation bound relation digest semantics`() {
-        val request = fixture.request()
-        val firstReopen = HostedAddDeclarationPlanCodec.decode(LEGACY_SCHEMA_ONE_PLAN).let { decoded ->
-            when (decoded) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> decoded.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> error(decoded.failure.toString())
-            }
-        }
-        val reencoded = HostedAddDeclarationPlanCodec.encode(firstReopen)
-        val reopened = HostedAddDeclarationPlanCodec.decode(reencoded).let { decoded ->
-            when (decoded) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> decoded.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> error(decoded.failure.toString())
-            }
-        }
-        val observed = request.evidence.relations.map {
-            it as RelationReadResult.Complete
-        }
-
-        assertEquals(LEGACY_SCHEMA_ONE_PLAN, reencoded)
-        assertTrue(
-            reopened.evidence.relations.all { expected ->
-                observed.count { current -> reopened.evidence.matches(expected, current) } == 1
-            },
+    fun `proofless base schema plan is rejected`() {
+        assertInstanceOf(
+            io.github.amichne.kast.kernel.Refinement.Rejected::class.java,
+            HostedAddDeclarationPlanCodec.decode(LEGACY_SCHEMA_ONE_PLAN),
         )
     }
 

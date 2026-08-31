@@ -2,6 +2,7 @@ package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -154,7 +155,13 @@ class TopologyProjectionRegistryCacheTest {
             "example",
             "sample.example",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse(compilerIdentity).refined(),
+            CanonicalCompilerSignature.function(
+                rawQualifiedIdentity = "sample.example",
+                rawReceiverType = null,
+                rawContextReceiverTypes = emptyList(),
+                rawValueParameterTypes = listOf(compilerIdentity),
+                rawTypeParameterCount = 0,
+            ).refined(),
         ).refined()
         return TopologySymbol.admit(file, evidence).refined()
     }

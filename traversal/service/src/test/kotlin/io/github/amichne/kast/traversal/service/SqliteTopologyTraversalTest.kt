@@ -10,6 +10,7 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
@@ -85,9 +86,15 @@ class SqliteTopologyTraversalTest {
     @Test
     fun `exact selector location distinguishes duplicate compiler identities`() {
         val traversalFixture = TraversalTestFixture()
-        val sharedIdentity = "function|sample.shared|-|||0"
-        val a = traversalFixture.selector("a", 10, sharedIdentity)
-        val b = traversalFixture.selector("b", 20, sharedIdentity)
+        val sharedSignature = CanonicalCompilerSignature.function(
+            "sample.shared",
+            null,
+            emptyList(),
+            emptyList(),
+            0,
+        ).refined()
+        val a = traversalFixture.selector("a", 10, sharedSignature)
+        val b = traversalFixture.selector("b", 20, sharedSignature)
         val c = traversalFixture.selector("c", 30)
         val workspace = workspace(traversalFixture, sourceRoot())
         val generation = generation(workspace, listOf(a, b, c))
@@ -158,7 +165,7 @@ class SqliteTopologyTraversalTest {
             selector.name.value,
             qualified,
             selector.kind,
-            SymbolDescription.from(selector).compilerIdentity,
+            SymbolDescription.from(selector).signature,
         ).refined()
         return TopologySymbol.admit(file, evidence).refined()
     }

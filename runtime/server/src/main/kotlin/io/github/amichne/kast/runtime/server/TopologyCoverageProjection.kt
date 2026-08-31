@@ -1,6 +1,11 @@
 package io.github.amichne.kast.runtime.server
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
@@ -17,6 +22,9 @@ import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbol
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbolKind
 import io.github.amichne.kast.protocol.contract.TopologyCoverageWorkspaceEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.topology.contract.TopologyCandidateEvidenceMismatch
 import io.github.amichne.kast.topology.contract.TopologyGenerationCoverageFailure
@@ -169,8 +177,23 @@ private fun TopologySymbol.toProtocol(): Refinement<
         ExactDeclarationQualifiedIdentity.Unavailable ->
             TopologyCoverageQualifiedIdentity.Unavailable
     }
-    return Refinement.Refined(
-        TopologyCoverageSymbol(
+    val signature = evidence.signature.toProtocolDocument()
+        ?: return Refinement.Rejected(
+            TopologyCoverageProjectionRejection.UNREPRESENTABLE_COMPILER_EVIDENCE,
+        )
+    val compilerIdentity = when (val result = evidence.compilerIdentity.value.toProtocolText()) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> return result
+    }
+    val compilerEvidence = when (
+        val result = CompilerSymbolEvidenceDocument.restore(compilerIdentity, signature)
+    ) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> return Refinement.Rejected(
+            TopologyCoverageProjectionRejection.UNREPRESENTABLE_COMPILER_EVIDENCE,
+        )
+    }
+    return when (val result = TopologyCoverageSymbol.create(
             node,
             fileEvidence,
             name,
@@ -182,9 +205,54 @@ private fun TopologySymbol.toProtocol(): Refinement<
                 CompilerSymbolKind.PROPERTY -> TopologyCoverageSymbolKind.PROPERTY
                 CompilerSymbolKind.TYPE_ALIAS -> TopologyCoverageSymbolKind.TYPE_ALIAS
             },
-        ),
-    )
+            compilerEvidence,
+        )) {
+        is Refinement.Refined -> Refinement.Refined(result.value)
+        is Refinement.Rejected -> Refinement.Rejected(
+            TopologyCoverageProjectionRejection.UNREPRESENTABLE_COMPILER_EVIDENCE,
+        )
+    }
 }
+
+private fun CanonicalCompilerSignature.toProtocolDocument(): CompilerSignatureDocument? =
+    when (this) {
+        is CanonicalCompilerSignature.Function -> CompilerSignatureDocument.Function(
+            qualifiedIdentity = qualifiedIdentity.value.toProtocolText().valueOrNull()
+                ?: return null,
+            receiver = when (val value = receiver) {
+                CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+                is CanonicalCompilerReceiver.Present -> CompilerReceiverDocument.Present(
+                    value.type.value.toProtocolText().valueOrNull() ?: return null,
+                )
+            },
+            contextReceivers = contextReceivers.toProtocolTypes() ?: return null,
+            valueParameters = valueParameters.toProtocolTypes() ?: return null,
+            typeParameterCount = CompilerTypeParameterCountDocument.parse(typeParameterCount.value)
+                .valueOrNull() ?: return null,
+        )
+        is CanonicalCompilerSignature.Property -> CompilerSignatureDocument.Property(
+            qualifiedIdentity.value.toProtocolText().valueOrNull() ?: return null,
+            when (val value = receiver) {
+                CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+                is CanonicalCompilerReceiver.Present -> CompilerReceiverDocument.Present(
+                    value.type.value.toProtocolText().valueOrNull() ?: return null,
+                )
+            },
+            contextReceivers.toProtocolTypes() ?: return null,
+            returnType.value.toProtocolText().valueOrNull() ?: return null,
+        )
+        is CanonicalCompilerSignature.TypeAlias -> CompilerSignatureDocument.TypeAlias(
+            qualifiedIdentity.value.toProtocolText().valueOrNull() ?: return null,
+        )
+        is CanonicalCompilerSignature.ClassLike -> CompilerSignatureDocument.ClassLike(
+            qualifiedIdentity.value.toProtocolText().valueOrNull() ?: return null,
+        )
+    }
+
+private fun List<CanonicalCompilerType>.toProtocolTypes(): BoundedProtocolList<ProtocolText>? =
+    BoundedProtocolList.create(
+        map { type -> type.value.toProtocolText().valueOrNull() ?: return null },
+    ).valueOrNull()
 
 private fun TopologyCandidateEvidenceMismatch.toProtocol(): Refinement<
     TopologyCoverageCandidateEvidenceMismatch,
@@ -281,6 +349,11 @@ private fun String.toProtocolText(): Refinement<ProtocolText, TopologyCoveragePr
             TopologyCoverageProjectionRejection.UNREPRESENTABLE_TEXT,
         )
     }
+
+private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? = when (this) {
+    is Refinement.Refined -> value
+    is Refinement.Rejected -> null
+}
 
 private fun <Input, Output> Iterable<Input>.project(
     projection: (Input) -> Refinement<Output, TopologyCoverageProjectionRejection>,
