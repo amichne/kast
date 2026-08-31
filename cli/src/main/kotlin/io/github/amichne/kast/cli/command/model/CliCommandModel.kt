@@ -5,6 +5,7 @@ import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliProjectionPreparation
 import io.github.amichne.kast.cli.CliRequestPreparer
 import io.github.amichne.kast.cli.PreparedCliRequest
+import io.github.amichne.kast.cli.RuntimeStartupRequest
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.OperationRequest
 
@@ -46,6 +47,7 @@ sealed interface CliAction {
 
         data class Start(
             val request: PreparedCliRequest,
+            val startup: RuntimeStartupRequest,
         ) : Lifecycle {
             override val command: CliLifecycleCommand = CliLifecycleCommand.START
         }
@@ -72,6 +74,10 @@ sealed interface CliAction {
 
 /** Closed domain failures produced after Clikt has refined individual option values. */
 sealed interface CliUsageFailure {
+    enum class Start : CliUsageFailure {
+        OPTIONS_REQUIRE_SEED,
+    }
+
     enum class SymbolDiscover : CliUsageFailure {
         OPTIONS_DO_NOT_MATCH_MODE,
         TEXT_SCOPE_REQUIRED,
@@ -85,6 +91,8 @@ sealed interface CliUsageFailure {
 }
 
 internal fun CliUsageFailure.message(): String = when (this) {
+    CliUsageFailure.Start.OPTIONS_REQUIRE_SEED ->
+        "--source-idea-system and --accept-global-index-copy require --seed-from-idea"
     CliUsageFailure.SymbolDiscover.OPTIONS_DO_NOT_MATCH_MODE ->
         "options do not match the selected discovery mode"
     CliUsageFailure.SymbolDiscover.TEXT_SCOPE_REQUIRED ->

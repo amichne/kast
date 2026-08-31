@@ -31,11 +31,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Java 21
+      - name: Set up Java 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -53,8 +53,8 @@ jobs:
           --commit "$GITHUB_SHA"
           --assets-directory "build/release/v${RELEASE_VERSION}"
 
-      - name: Verify fresh published hosted installation
+      - name: Verify fresh published sidecar installation
         run: >-
-          bash packaging/verification/verify-published-hosted-delivery.sh
+          bash packaging/verification/verify-published-sidecar-delivery.sh
           --release "v${RELEASE_VERSION}"
           --repository "$GITHUB_REPOSITORY"

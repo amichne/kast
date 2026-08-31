@@ -69,6 +69,7 @@ sealed interface RuntimeEndpointResolution {
 enum class RuntimeEndpointFailure {
     ROOT_MISMATCH,
     INVALID_SOCKET_PATH,
+    LAUNCH_CONTEXT_REQUIRED,
 }
 
 fun interface RuntimeEndpointLocator {
@@ -164,6 +165,7 @@ class IndexerLaunchCommand private constructor(
             executable: IndexerExecutable,
             root: CanonicalRoot,
             endpoint: RuntimeEndpoint,
+            context: SidecarLaunchContext,
         ): IndexerLaunchCommandConstruction = if (endpoint.root == root) {
             IndexerLaunchCommandConstruction.Created(
                 IndexerLaunchCommand(
@@ -172,6 +174,13 @@ class IndexerLaunchCommand private constructor(
                         "--workspace-root=${root.path}",
                         "--socket-path=${endpoint.socketPath}",
                         "--runtime-id=${endpoint.runtimeId.value}",
+                        "--idea-home=${context.runtime.home}",
+                        "--java-executable=${context.runtime.javaExecutable}",
+                        "--idea-system-path=${context.systemDirectory}",
+                        "--idea-config-path=${context.configDirectory}",
+                        "--idea-log-path=${context.logDirectory}",
+                        "--private-plugins-path=${context.privatePluginsDirectory}",
+                        "--cache-state-path=${context.cacheRoot.resolve("cache-state")}",
                     ),
                     processSession = MacOsRuntimeProcessSession.from(endpoint),
                 ),
@@ -179,6 +188,15 @@ class IndexerLaunchCommand private constructor(
         } else {
             IndexerLaunchCommandConstruction.Rejected(RuntimeEndpointFailure.ROOT_MISMATCH)
         }
+
+        /** Legacy callers cannot manufacture a launch without the new sidecar authority. */
+        fun create(
+            executable: IndexerExecutable,
+            root: CanonicalRoot,
+            endpoint: RuntimeEndpoint,
+        ): IndexerLaunchCommandConstruction = IndexerLaunchCommandConstruction.Rejected(
+            RuntimeEndpointFailure.LAUNCH_CONTEXT_REQUIRED,
+        )
     }
 }
 
@@ -263,6 +281,8 @@ sealed interface RuntimeAdmissionFailure {
     data object IdeCapabilityUnavailable : RuntimeAdmissionFailure
     data object IdeVariantUnavailable : RuntimeAdmissionFailure
     data object Interrupted : RuntimeAdmissionFailure
+    data class InstalledIdeRejected(val failure: IndexSeedFailure) : RuntimeAdmissionFailure
+    data class SidecarCacheRejected(val failure: SidecarCacheFailure) : RuntimeAdmissionFailure
 }
 
 internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
@@ -291,6 +311,24 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     RuntimeAdmissionFailure.IdeCapabilityUnavailable -> "ide-capability-unavailable"
     RuntimeAdmissionFailure.IdeVariantUnavailable -> "ide-variant-unavailable"
     RuntimeAdmissionFailure.Interrupted -> "interrupted"
+    is RuntimeAdmissionFailure.InstalledIdeRejected -> when (failure) {
+        IndexSeedFailure.Ambiguity -> "idea-installation-ambiguous"
+        IndexSeedFailure.MissingInstallation -> "idea-installation-missing"
+        is IndexSeedFailure.Incompatibility -> "idea-installation-incompatible"
+        else -> "idea-installation-rejected"
+    }
+    is RuntimeAdmissionFailure.SidecarCacheRejected -> when (failure) {
+        SidecarCacheFailure.FilesystemRejected -> "sidecar-cache-rejected"
+        SidecarCacheFailure.RebuildRequired -> "sidecar-cache-rebuild-required"
+        is SidecarCacheFailure.SeedRejected -> when (failure.failure) {
+            IndexSeedFailure.RunningSourceIde -> "index-seed-source-running"
+            IndexSeedFailure.ConsentAbsent -> "index-seed-consent-absent"
+            IndexSeedFailure.UnsupportedFilesystem -> "index-seed-filesystem-unsupported"
+            IndexSeedFailure.SourceMutation -> "index-seed-source-mutated"
+            IndexSeedFailure.CopyFailure -> "index-seed-copy-failed"
+            else -> "index-seed-rejected"
+        }
+    }
 }
 
 fun interface RuntimeDemander {
@@ -317,6 +355,7 @@ private const val RUNTIME_PROBE_INTERVAL_MILLIS = 100L
 /** Starts only the admitted indexer artifact with explicit exact-root and socket arguments. */
 internal class ExactRootProcessRuntimeDemander(
     private val executable: IndexerExecutable,
+    private val launchContext: SidecarLaunchContext,
     private val processStarter: RuntimeProcessStarter = JdkRuntimeProcessStarter,
     private val endpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
 ) : RuntimeDemander {
@@ -331,7 +370,12 @@ internal class ExactRootProcessRuntimeDemander(
             return RuntimeAdmission.Ready(endpoint)
         }
         val command = when (
-            val construction = IndexerLaunchCommand.create(executable, root, endpoint)
+            val construction = IndexerLaunchCommand.create(
+                executable,
+                root,
+                endpoint,
+                launchContext,
+            )
         ) {
             is IndexerLaunchCommandConstruction.Created -> construction.command
             is IndexerLaunchCommandConstruction.Rejected ->
@@ -390,6 +434,7 @@ fun interface InstalledSemanticRuntimeResolver {
 class ManagedExactRootRuntimeDemander(
     private val manifest: SemanticRuntimeManifest,
     private val resolver: InstalledSemanticRuntimeResolver,
+    private val launchContext: SidecarLaunchContext? = null,
 ) : RuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
@@ -412,7 +457,10 @@ class ManagedExactRootRuntimeDemander(
                 RuntimeAdmissionFailure.LayoutInvalid,
             )
         }
-        return ExactRootProcessRuntimeDemander(executable).demand(root, endpoint)
+        val context = launchContext ?: return RuntimeAdmission.Rejected(
+            RuntimeAdmissionFailure.LayoutInvalid,
+        )
+        return ExactRootProcessRuntimeDemander(executable, context).demand(root, endpoint)
     }
 }
 

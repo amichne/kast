@@ -24,6 +24,7 @@ class RuntimeProcessSessionTest {
         var probes = 0
         val demander = ExactRootProcessRuntimeDemander(
             executable = executable(temporary),
+            launchContext = launchContext(temporary),
             processStarter = RuntimeProcessStarter {
                 RuntimeProcessStart.Accepted(
                     AcceptedRuntimeStartupSession { LaunchdServiceObservation.Present },
@@ -52,6 +53,7 @@ class RuntimeProcessSessionTest {
         var probes = 0
         val demander = ExactRootProcessRuntimeDemander(
             executable = executable(temporary),
+            launchContext = launchContext(temporary),
             processStarter = RuntimeProcessStarter {
                 RuntimeProcessStart.Accepted(
                     AcceptedRuntimeStartupSession { LaunchdServiceObservation.Absent },
@@ -79,6 +81,7 @@ class RuntimeProcessSessionTest {
         fun demand(observation: LaunchdServiceObservation): RuntimeAdmission =
             ExactRootProcessRuntimeDemander(
                 executable = executable(temporary),
+                launchContext = launchContext(temporary),
                 processStarter = RuntimeProcessStarter {
                     RuntimeProcessStart.Accepted(
                         AcceptedRuntimeStartupSession { observation },
@@ -331,6 +334,7 @@ class RuntimeProcessSessionTest {
             executable(temporary),
             endpoint.root,
             endpoint,
+            launchContext(temporary),
         )
     ) {
         is IndexerLaunchCommandConstruction.Created -> construction.command
@@ -361,10 +365,44 @@ class RuntimeProcessSessionTest {
             admitted,
             endpoint.root,
             endpoint,
+            launchContext(temporary),
         )) {
             is IndexerLaunchCommandConstruction.Created -> construction.command
             is IndexerLaunchCommandConstruction.Rejected -> error(construction.failure)
         }
+    }
+
+    private fun launchContext(temporary: Path): SidecarLaunchContext {
+        val ideaHome = Files.createDirectories(temporary.resolve("idea-home")).toRealPath()
+        val java = ideaHome.resolve("java")
+        if (Files.notExists(java)) Files.createFile(java)
+        java.toFile().setExecutable(true)
+        val pair = SupportedIdeRuntimePair.admit(
+            "262.9437.185",
+            "262.9437.185-IJ",
+        ).let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
+        val identity = IdeRuntimeIdentity.admit(
+            pair,
+            IdeRuntimeIdentityCandidate(
+                pair.ideaBuild,
+                pair.kotlinPluginBuild,
+                "jbr-25.0.3+9-b508.16-aarch64",
+                "sha256:${"a".repeat(64)}",
+            ),
+        ).let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
+        val state = Files.createDirectories(temporary.resolve("sidecar-state")).toRealPath()
+        val system = Files.createDirectories(state.resolve("system")).toRealPath()
+        val config = Files.createDirectories(state.resolve("config")).toRealPath()
+        val log = Files.createDirectories(state.resolve("log")).toRealPath()
+        val plugins = Files.createDirectories(temporary.resolve("private-plugins")).toRealPath()
+        return SidecarLaunchContext.admit(
+            InstalledIdeRuntime(ideaHome, java.toRealPath(), identity),
+            state,
+            system,
+            config,
+            log,
+            plugins,
+        ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
     }
 
     private fun awaitFile(path: Path) {

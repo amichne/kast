@@ -11,6 +11,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import java.nio.file.InvalidPathException
+import java.nio.file.Path
 
 /** Closed Clikt option presence; optional values never enter domain refinement as null. */
 internal sealed interface CliOptionValue<out Value> {
@@ -74,6 +76,23 @@ internal fun ParameterHolder.protocolOffsetOption(
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> fail("must be a non-negative integer")
         }
+    }
+
+/** Refines an option to an absolute normalized path; physical identity is proven by its owner. */
+internal fun ParameterHolder.absolutePathOption(
+    name: String,
+    help: String,
+): NullableOption<Path, Path> = option(name, help = help, metavar = "absolute-path")
+    .convert("absolute-path") { raw ->
+        val candidate = try {
+            Path.of(raw)
+        } catch (_: InvalidPathException) {
+            fail("must be an absolute normalized path")
+        }
+        if (!candidate.isAbsolute || candidate.normalize() != candidate) {
+            fail("must be an absolute normalized path")
+        }
+        candidate
     }
 
 /**

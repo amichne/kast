@@ -19,17 +19,17 @@ Run `kast --schema` when a tool needs the contract as JSON. Run a command with
 The schema's `serverProjection` is generated with the installed command graph.
 It owns server-visible tool names and descriptions, closed input and output
 JSON Schemas, deferred-loading policy, and field-to-CLI option bindings. It
-contains every operation marked `public` by the hosted registry and excludes
+contains every operation marked `public` by the operation registry and excludes
 internal-only operations. A broker must qualify and consume that projection
 from its exact configured `kast` executable; it must not infer tool shapes from
 the executable's version or from the human-readable command strings.
 
-## Hosted endpoint operations
+## Sidecar endpoint operations
 
 Run semantic commands from the repository root. Each command emits one JSON
 document on standard output. A rejected command emits one diagnostic document
-on standard error. The installed IDE plugin publishes the ten operations marked
-`public` by the generated operation registry:
+on standard error. The private IntelliJ sidecar publishes the ten operations
+marked `public` by the generated operation registry:
 
 | Operation | Command shape | Result role |
 | --- | --- | --- |
@@ -39,50 +39,51 @@ on standard error. The installed IDE plugin publishes the ten operations marked
 | `symbol.resolve` | `kast symbol resolve --candidate <candidate-selector>` | Refine one candidate into an exact symbol selector. |
 | `symbol.describe` | `kast symbol describe --selector <exact-selector>` | Describe one exact, current-generation symbol. |
 | `traversal.run` | `kast traversal run --selector <exact-selector> --relation <kind> --maximum-depth <1..1000> --maximum-results <1..1000>` | Read the eligible durable snapshot with explicit depth and result limits. |
-| `change.plan` | `kast change plan --intent <add-file\|add-declaration\|replace-declaration\|rename-symbol> <intent-options>` | Hosted only for `add-declaration`. Derive a typed plan without writing the workspace. |
+| `change.plan` | `kast change plan --intent <add-file\|add-declaration\|replace-declaration\|rename-symbol> <intent-options>` | Sidecar route is available only for `add-declaration`. Derive a typed plan without writing the workspace. |
 | `change.apply` | `kast change apply --plan <plan-identity>` | Apply one admitted plan and return an application identity. |
 | `change.verify` | `kast change verify --application <application-identity>` | Check one application against resulting semantic evidence. |
 | `change.recover` | `kast change recover --plan <plan-identity>` | Restore one plan to a known workspace state. |
 
-## Canonical operations without a direct hosted route
+## Canonical operations without a direct sidecar route
 
 <Warning>
   These operations remain in the canonical registry and command graph because
-  hosted topology, traversal, planning, and verification consume them
-  internally. The installed IDE endpoint does not publish them as direct
+  sidecar topology, traversal, planning, and verification consume them
+  internally. The installed sidecar endpoint does not publish them as direct
   routes.
 </Warning>
 
 | Operation | Command shape | Current availability |
 | --- | --- | --- |
-| `relation.read` | `kast relation read --selector <exact-selector> --relation <kind> --limit <1..1000>` | Available only as an internal hosted service; no direct endpoint route. |
-| `diagnostic.check` | `kast diagnostic check --scope <scope> --limit <1..1000>` | Available only as an internal hosted service; no direct endpoint route. |
+| `relation.read` | `kast relation read --selector <exact-selector> --relation <kind> --limit <1..1000>` | Available only as an internal sidecar service; no direct endpoint route. |
+| `diagnostic.check` | `kast diagnostic check --scope <scope> --limit <1..1000>` | Available only as an internal sidecar service; no direct endpoint route. |
 
 ## Runtime lifecycle
 
-The IDE owns this lifecycle. Every lifecycle command first admits the
-already-running compatible endpoint for the exact current root.
+Kast owns the isolated sidecar lifecycle. `start` and semantic commands may
+launch the exact supported local IDEA build; `status`, `stop`, and `clean`
+remain passive and never manufacture an endpoint.
 
 | Command | Effect |
 | --- | --- |
-| `kast start` | Admit the existing exact-root IDE endpoint and return workspace readiness. |
-| `kast stop` | Reject because the already-running IDE owns endpoint lifecycle. |
-| `kast status` | Report running after compatible exact-root endpoint admission. |
-| `kast clean` | Reject because active IDE-hosted state is not owned by the CLI. |
-| `kast reindex` | Reject because the CLI cannot stop or rebuild IDE-owned semantic state. |
+| `kast start` | Start or reuse the exact-root private sidecar and return workspace readiness. |
+| `kast stop` | Stop only the process proven to own the exact-root sidecar endpoint. |
+| `kast status` | Passively report exact-root runtime identity and private cache state. |
+| `kast clean` | Remove inactive exact-root endpoint artifacts while retaining the private cache. |
+| `kast reindex` | Quarantine only the exact Kast cache, then perform a fresh private import. |
 
 ## Process-local inspection
 
-These commands inspect installed control or endpoint evidence directly. They do
-not require successful hosted runtime admission.
+These commands inspect installed control and Kast-owned cache evidence directly.
+They do not require successful sidecar runtime admission.
 
 | Command | Result |
 | --- | --- |
-| `kast product inspect` | Report installed control identity plus direct root and IDE endpoint evidence without requiring compatible runtime admission. |
+| `kast product inspect` | Report installed sidecar identity plus direct root and Kast-cache evidence without starting or admitting a runtime. |
 
 ## Process-local flags
 
-These flags do not contact the hosted IDE endpoint.
+These flags do not contact or start the IntelliJ sidecar.
 
 | Flag | Result |
 | --- | --- |

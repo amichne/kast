@@ -106,6 +106,7 @@ data class ModulePolicy(
     val role: ModuleRole,
     val allowedProjectDependencies: Set<ModuleId>,
     val allowedEffects: Set<ForbiddenEffect>,
+    val allowedScopedEffectCallers: Map<ForbiddenEffect, Set<JvmClassName>> = emptyMap(),
 )
 
 @JvmInline

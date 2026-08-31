@@ -1,14 +1,9 @@
-import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
-import support.tasks.GenerateHostedControlMetadataTask
+import support.tasks.VerifyControlDistributionTask
 import support.tasks.VerifySemanticRuntimeDistributionTask
-import support.hostedwriter.GenerateHostedWriterProgramTask
-import support.hostedwriter.ValidateHostedWriterInstalledAcceptanceTask
-import support.hostedwriter.VerifyHostedWriterCleanCheckoutTask
-import support.hostedwriter.WriteHostedWriterReceiptTask
 
 plugins {
     base
@@ -37,170 +32,6 @@ version = providers.gradleProperty("version")
     .orElse(gitDescribeVersion)
     .get()
 
-val hostedWriterReportDirectory = layout.buildDirectory.dir("reports/hosted-writer")
-val hostedWriterBuildLogicTest = gradle.includedBuild("build-logic").task(":test")
-val generateHostedWriterProgram by tasks.registering(GenerateHostedWriterProgramTask::class) {
-    group = "verification"
-    description = "Projects the fixed hosted-writer proof graph to deterministic JSON."
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/program.schema.json"))
-    outputFile.set(hostedWriterReportDirectory.map { it.file("program.json") })
-}
-
-val writeHostedWriterProgramReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterProgramReceipt",
-) {
-    group = "verification"
-    description = "Writes the exact-head PROGRAM receipt for the fixed hosted-writer graph."
-    dependsOn(generateHostedWriterProgram)
-    gateId.set("PROGRAM")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    proofArtifacts.from(generateHostedWriterProgram.flatMap { it.outputFile })
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/PROGRAM.json") })
-}
-
-val writeHostedWriterSurfaceReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterSurfaceReceipt",
-) {
-    group = "verification"
-    description = "Executes and receipts the canonical hosted operation projection gate."
-    dependsOn(writeHostedWriterProgramReceipt, ":protocol:registry:test")
-    gateId.set("SURFACE")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(writeHostedWriterProgramReceipt.flatMap { it.outputFile })
-    proofArtifacts.from(
-        project(":protocol:registry").layout.buildDirectory.dir("test-results/test"),
-    )
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/SURFACE.json") })
-}
-
-val writeHostedWriterHostBoundaryReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterHostBoundaryReceipt",
-) {
-    group = "verification"
-    description = "Executes and receipts the narrow IDE host module boundary gate."
-    dependsOn(
-        writeHostedWriterSurfaceReceipt,
-        hostedWriterBuildLogicTest,
-        "verifyKastArchitecture",
-    )
-    gateId.set("HOST-BOUNDARY")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(writeHostedWriterSurfaceReceipt.flatMap { it.outputFile })
-    proofArtifacts.from(
-        layout.projectDirectory.dir("build-logic/build/test-results/test"),
-        layout.buildDirectory.file("reports/kast-architecture/verifyKastArchitecture.json"),
-    )
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/HOST-BOUNDARY.json") })
-}
-
-val writeHostedWriterProjectPortsReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterProjectPortsReceipt",
-) {
-    group = "verification"
-    description = "Executes and receipts direct-project hosted adapter admission."
-    dependsOn(writeHostedWriterHostBoundaryReceipt, ":ide-plugin:test")
-    gateId.set("PROJECT-PORTS")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(writeHostedWriterHostBoundaryReceipt.flatMap { it.outputFile })
-    proofArtifacts.from(project(":ide-plugin").layout.buildDirectory.dir("test-results/test"))
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/PROJECT-PORTS.json") })
-}
-
-val writeHostedWriterDurableStateReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterDurableStateReceipt",
-) {
-    group = "verification"
-    description = "Executes and receipts exact-root durable hosted state."
-    dependsOn(writeHostedWriterHostBoundaryReceipt, ":evidence:sqlite:test")
-    gateId.set("DURABLE-STATE")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(writeHostedWriterHostBoundaryReceipt.flatMap { it.outputFile })
-    proofArtifacts.from(project(":evidence:sqlite").layout.buildDirectory.dir("test-results/test"))
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/DURABLE-STATE.json") })
-}
-
-val writeHostedWriterTopologyReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterTopologyReceipt",
-) {
-    group = "verification"
-    description = "Executes and receipts the hosted topology lifecycle."
-    dependsOn(
-        writeHostedWriterProjectPortsReceipt,
-        writeHostedWriterDurableStateReceipt,
-        ":runtime:ide-host:test",
-    )
-    gateId.set("TOPOLOGY")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(
-        writeHostedWriterProjectPortsReceipt.flatMap { it.outputFile },
-        writeHostedWriterDurableStateReceipt.flatMap { it.outputFile },
-    )
-    proofArtifacts.from(project(":runtime:ide-host").layout.buildDirectory.dir("test-results/test"))
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/TOPOLOGY.json") })
-}
-
-val writeHostedWriterMutationReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterMutationReceipt",
-) {
-    group = "verification"
-    description = "Executes and receipts the hosted add-declaration lifecycle."
-    dependsOn(
-        writeHostedWriterProjectPortsReceipt,
-        writeHostedWriterDurableStateReceipt,
-        writeHostedWriterTopologyReceipt,
-        ":runtime:ide-host:test",
-    )
-    gateId.set("MUTATION")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(
-        writeHostedWriterProjectPortsReceipt.flatMap { it.outputFile },
-        writeHostedWriterDurableStateReceipt.flatMap { it.outputFile },
-        writeHostedWriterTopologyReceipt.flatMap { it.outputFile },
-    )
-    proofArtifacts.from(project(":runtime:ide-host").layout.buildDirectory.dir("test-results/test"))
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/MUTATION.json") })
-}
-
-val writeHostedWriterEndpointReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterEndpointReceipt",
-) {
-    group = "verification"
-    description = "Executes and receipts generated all-or-nothing endpoint publication."
-    dependsOn(
-        writeHostedWriterTopologyReceipt,
-        writeHostedWriterMutationReceipt,
-        ":ide-plugin:test",
-        ":ide-plugin:buildPlugin",
-    )
-    gateId.set("ENDPOINT")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(
-        writeHostedWriterTopologyReceipt.flatMap { it.outputFile },
-        writeHostedWriterMutationReceipt.flatMap { it.outputFile },
-    )
-    proofArtifacts.from(
-        project(":ide-plugin").layout.buildDirectory.dir("test-results/test"),
-        project(":ide-plugin").layout.buildDirectory.dir("distributions"),
-    )
-    outputFile.set(hostedWriterReportDirectory.map { it.file("receipts/ENDPOINT.json") })
-}
-
 subprojects {
     group = rootProject.group
     version = rootProject.version
@@ -222,13 +53,14 @@ tasks.register("buildIndexerPortableZip") {
 val installedProductDirectory = layout.buildDirectory.dir("installed-product")
 
 val semanticRuntimeStage = project(":indexer").layout.buildDirectory.dir("portable-dist/indexer")
-val legacyIsolatedRuntimeFixtureArchive by tasks.registering(Zip::class) {
-    group = "verification"
-    description = "Builds the explicit non-default isolated-runtime compatibility fixture."
+val semanticRuntimeArchiveName = "kast-semantic-runtime-${project.version}-macos-aarch64.zip"
+val semanticRuntimeArchive by tasks.registering(Zip::class) {
+    group = "distribution"
+    description = "Builds the small private sidecar payload without an IDEA distribution."
     dependsOn(":indexer:syncPortableDist")
     from(semanticRuntimeStage)
-    destinationDirectory.set(layout.buildDirectory.dir("fixtures/isolated-runtime"))
-    archiveFileName.set("kast-semantic-runtime-fixture-${project.version}-macos-aarch64.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    archiveFileName.set(semanticRuntimeArchiveName)
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     eachFile {
@@ -236,29 +68,29 @@ val legacyIsolatedRuntimeFixtureArchive by tasks.registering(Zip::class) {
     }
 }
 
-tasks.register("assembleLegacyIsolatedRuntimeFixture") {
-    group = "verification"
-    description = "Assembles the explicit non-default isolated-runtime compatibility fixture."
-    dependsOn(legacyIsolatedRuntimeFixtureArchive)
+tasks.register("assembleKastSemanticRuntimeDist") {
+    group = "distribution"
+    description = "Assembles the independently installable private sidecar payload."
+    dependsOn(semanticRuntimeArchive)
 }
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
 val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
     "generated/operation-registry/operation-registry.json",
 )
-val generateLegacyIsolatedRuntimeFixtureMetadata by tasks.registering(
+val generateKastControlMetadata by tasks.registering(
     GenerateControlMetadataTask::class,
 ) {
-    group = "verification"
-    description = "Generates metadata only for the explicit isolated-runtime fixture."
-    dependsOn(legacyIsolatedRuntimeFixtureArchive, ":protocol:wire:generateOperationRegistry")
-    runtimeArchive.set(legacyIsolatedRuntimeFixtureArchive.flatMap(Zip::getArchiveFile))
+    group = "distribution"
+    description = "Generates the exact installed-IDE sidecar manifest and public schemas."
+    dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry")
+    runtimeArchive.set(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
     runtimeDirectory.set(semanticRuntimeStage)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
     productVersion.set(project.version.toString())
-    ideaBuild.set(libs.versions.idea.platform.build)
-    kotlinPluginBuild.set(libs.versions.kotlin)
+    ideaBuild.set(libs.versions.ide.host.build)
+    kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
     runtimeBaseUrl.set(
         providers.environmentVariable("KAST_RUNTIME_BASE_URL")
             .orElse("https://github.com/amichne/kast/releases/download/v${project.version}"),
@@ -266,26 +98,16 @@ val generateLegacyIsolatedRuntimeFixtureMetadata by tasks.registering(
     outputDirectory.set(generatedControlMetadata)
 }
 
-val generatedHostedControlMetadata = layout.buildDirectory.dir("generated/hosted-control-metadata")
-val generateHostedControlMetadata by tasks.registering(GenerateHostedControlMetadataTask::class) {
-    group = "distribution"
-    description = "Generates exact IDE-hosted control metadata without isolated-runtime authority."
-    dependsOn(":protocol:wire:generateOperationRegistry")
-    licenseFile.set(layout.projectDirectory.file("LICENSE"))
-    operationRegistryFile.set(generatedOperationRegistry)
-    outputDirectory.set(generatedHostedControlMetadata)
-}
-
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
 val stageKastControlProduct by tasks.registering(Sync::class) {
     group = "distribution"
-    description = "Stages the IDE-hosted Kast control installation."
-    dependsOn(":cli:installDist", generateHostedControlMetadata)
+    description = "Stages the plugin-free sidecar Kast control installation."
+    dependsOn(":cli:installDist", generateKastControlMetadata)
     into(controlProductDirectory)
     from(project(":cli").layout.buildDirectory.dir("install/kast")) {
         exclude("bin/cli", "bin/kast.bat")
     }
-    from(generatedHostedControlMetadata) {
+    from(generatedControlMetadata) {
         into("share/kast")
     }
 }
@@ -305,15 +127,31 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
     }
 }
 
-apply(from = "distribution/release/ide-hosted-release.gradle.kts")
+val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTask::class) {
+    group = "verification"
+    description = "Rejects oversized or semantic-payload-bearing control archives."
+    dependsOn(assembleKastControlDist)
+    controlDirectory.set(controlProductDirectory)
+    controlArchive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
+    maximumArchiveBytes.set(64L * 1024L * 1024L)
+    maximumInstalledBytes.set(128L * 1024L * 1024L)
+}
 
-val verifyLegacyIsolatedRuntimeFixtureLayout by tasks.registering(
+apply(from = "distribution/release/sidecar-release.gradle.kts")
+
+val verifyKastSemanticRuntimeDistLayout by tasks.registering(
     VerifySemanticRuntimeDistributionTask::class,
 ) {
     group = "verification"
-    description = "Verifies the explicit non-default isolated-runtime fixture layout."
-    dependsOn(legacyIsolatedRuntimeFixtureArchive, ":indexer:verifyPortableDistLayout")
+    description = "Verifies the private sidecar payload contains no IDEA distribution."
+    dependsOn(semanticRuntimeArchive, ":indexer:verifyPortableDistLayout")
     runtimeDirectory.set(semanticRuntimeStage)
+}
+
+tasks.register("verifyDistributionContent") {
+    group = "verification"
+    description = "Verifies control/sidecar separation and required artifact layouts."
+    dependsOn(verifyKastControlDistLayout, verifyKastSemanticRuntimeDistLayout)
 }
 
 val stageInstalledProduct by tasks.registering(Sync::class) {
@@ -344,35 +182,41 @@ val installLocalControl by tasks.registering(Sync::class) {
     into(localInstallPrefix.map { it.resolve("share/kast/control") })
 }
 
-val purgeLocalSemanticRuntime by tasks.registering(Delete::class) {
+val installLocalSemanticRuntime by tasks.registering(Sync::class) {
     group = "distribution"
-    description = "Removes legacy semantic runtime payloads from the default local install."
-    delete(localInstallPrefix.map { it.resolve("share/kast/runtime") })
+    description = "Installs the small private sidecar payload into the local prefix."
+    dependsOn(semanticRuntimeArchive)
+    from(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
+    into(localInstallPrefix.map { it.resolve("share/kast/runtime") })
 }
 
-val localLauncherContent = providers.provider {
-    $$"""
+val localLauncherContent = $$"""
         |#!/bin/sh
         |set -eu
         |
         |script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
         |install_prefix="$(CDPATH= cd -- "${script_dir}/.." && pwd -P)"
         |control_executable="${install_prefix}/share/kast/control/bin/kast"
+        |runtime_archive="${install_prefix}/share/kast/runtime/$$semanticRuntimeArchiveName"
         |
         |if [ ! -x "${control_executable}" ]; then
         |  echo "kast: installed control executable is missing: ${control_executable}" >&2
         |  exit 1
         |fi
+        |if [ ! -f "${runtime_archive}" ]; then
+        |  echo "kast: installed sidecar payload is missing: ${runtime_archive}" >&2
+        |  exit 1
+        |fi
         |
+        |export KAST_RUNTIME_ARCHIVE="${runtime_archive}"
         |exec "${control_executable}" "$@"
         """.trimMargin()
-}
 
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val installLocalLauncher = tasks.register<Exec>("installLocalLauncher") {
     group = "distribution"
     description = "Installs the relocatable local Kast launcher."
-    dependsOn(installLocalControl, purgeLocalSemanticRuntime)
+    dependsOn(installLocalControl, installLocalSemanticRuntime)
     inputs.property("launcherContent", localLauncherContent)
     outputs.file(localLauncherFile)
     outputs.upToDateWhen { false }
@@ -397,7 +241,7 @@ val installLocalLauncher = tasks.register<Exec>("installLocalLauncher") {
         """.trimMargin(),
         "install-local-launcher",
         localLauncherFile.get().absolutePath,
-        localLauncherContent.get(),
+        localLauncherContent,
     )
 }
 
@@ -410,8 +254,8 @@ tasks.register("installLocal") {
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Executes hosted metadata and fail-closed demand through the staged product."
-    dependsOn(stageInstalledProduct, assembleKastControlDist)
+    description = "Executes sidecar metadata and fail-closed demand through the staged product."
+    dependsOn(stageInstalledProduct, semanticRuntimeArchive, assembleKastControlDist)
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
@@ -427,6 +271,10 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
         "KAST_CONTROL_ARCHIVE",
         assembleKastControlDist.get().archiveFile.get().asFile.absolutePath,
     )
+    environment(
+        "KAST_SEMANTIC_RUNTIME_ARCHIVE",
+        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
+    )
     environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
     environment(
         "KAST_INSTALLED_REPORT_DIRECTORY",
@@ -435,115 +283,13 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
 
-val verifyHostedWriterCleanCheckout = tasks.register<VerifyHostedWriterCleanCheckoutTask>(
-    "verifyHostedWriterCleanCheckout",
-) {
+tasks.register<Exec>("enterpriseAcceptance") {
     group = "verification"
-    description = "Fails unless the hosted-writer installed proof starts from a clean checkout."
-    repositoryDirectory.set(layout.projectDirectory)
-}
-
-val hostedWriterPluginArchive = project(":ide-plugin").layout.buildDirectory.file(
-    "distributions/kast-ide-plugin-${project.version}.zip",
-)
-val hostedWriterAcceptanceCandidate = layout.buildDirectory.file(
-    "tmp/hosted-writer/installed-acceptance.candidate.json",
-)
-val hostedWriterIdeaExecutable = providers.gradleProperty("kastHostedWriterIdeaExecutable")
-    .orElse(providers.environmentVariable("KAST_HOSTED_WRITER_IDEA_EXECUTABLE"))
-    .orElse(
-        providers.systemProperty("user.home").map { userHome ->
-            file(userHome)
-                .resolve("Applications/IntelliJ IDEA.app/Contents/MacOS/idea")
-                .absolutePath
-        },
-    )
-val runHostedWriterInstalledAcceptance = tasks.register<Exec>(
-    "runHostedWriterInstalledAcceptance",
-) {
-    group = "verification"
-    description = "Runs the packaged hosted writer through exact-root restart and recovery journeys."
-    dependsOn(
-        verifyHostedWriterCleanCheckout,
-        stageInstalledProduct,
-        ":ide-plugin:buildPlugin",
-    )
-    inputs.dir(installedProductDirectory)
-    inputs.file(hostedWriterPluginArchive)
-    inputs.dir(layout.projectDirectory.dir("fixtures/enterprise-workspace"))
-    inputs.file(layout.projectDirectory.file("packaging/test-hosted-writer.sh"))
-    outputs.file(hostedWriterAcceptanceCandidate)
-    outputs.upToDateWhen { false }
-    environment(
-        "KAST_INSTALLED_PRODUCT",
-        installedProductDirectory.get().asFile.absolutePath,
-    )
-    environment(
-        "KAST_HOSTED_WRITER_PLUGIN_ZIP",
-        hostedWriterPluginArchive.get().asFile.absolutePath,
-    )
-    environment(
-        "KAST_HOSTED_WRITER_FIXTURE",
-        layout.projectDirectory.dir("fixtures/enterprise-workspace").asFile.absolutePath,
-    )
-    environment("KAST_HOSTED_WRITER_IDEA_EXECUTABLE", hostedWriterIdeaExecutable.get())
-    environment(
-        "KAST_HOSTED_WRITER_ACCEPTANCE_CANDIDATE",
-        hostedWriterAcceptanceCandidate.get().asFile.absolutePath,
-    )
-    environment(
-        "KAST_HOSTED_WRITER_RUN_PARENT",
-        layout.buildDirectory.dir("tmp/hosted-writer/runs").get().asFile.absolutePath,
-    )
-    environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
-    commandLine("bash", layout.projectDirectory.file("packaging/test-hosted-writer.sh"))
-}
-
-val validateHostedWriterInstalledAcceptance = tasks.register(
-    "validateHostedWriterInstalledAcceptance",
-    ValidateHostedWriterInstalledAcceptanceTask::class,
-) {
-    group = "verification"
-    description = "Validates the installed hosted-writer evidence at the exact repository head."
-    dependsOn(runHostedWriterInstalledAcceptance)
-    repositoryDirectory.set(layout.projectDirectory)
-    candidateFile.set(hostedWriterAcceptanceCandidate)
-    schemaFile.set(
-        layout.projectDirectory.file("gradle/hosted-writer/installed-acceptance.schema.json"),
-    )
-    outputFile.set(hostedWriterReportDirectory.map { it.file("installed-acceptance.json") })
-}
-
-val writeHostedWriterInstalledProofReceipt = tasks.register<WriteHostedWriterReceiptTask>(
-    "writeHostedWriterInstalledProofReceipt",
-) {
-    group = "verification"
-    description = "Receipts the installed hosted-writer proof at one exact clean head."
-    dependsOn(writeHostedWriterEndpointReceipt, validateHostedWriterInstalledAcceptance)
-    gateId.set("INSTALLED-PROOF")
-    repositoryDirectory.set(layout.projectDirectory)
-    programFile.set(generateHostedWriterProgram.flatMap { it.outputFile })
-    schemaFile.set(layout.projectDirectory.file("gradle/hosted-writer/receipt.schema.json"))
-    dependencyReceipts.from(writeHostedWriterEndpointReceipt.flatMap { it.outputFile })
-    proofArtifacts.from(validateHostedWriterInstalledAcceptance.flatMap { it.outputFile })
-    outputFile.set(
-        hostedWriterReportDirectory.map { it.file("receipts/INSTALLED-PROOF.json") },
-    )
-}
-
-tasks.register("hostedWriterProof") {
-    group = "verification"
-    description = "Executes the fixed nine-gate hosted writer proof at one exact clean head."
-    dependsOn(writeHostedWriterInstalledProofReceipt)
-}
-
-tasks.register<Exec>("legacyIsolatedRuntimeFixtureAcceptance") {
-    group = "verification"
-    description = "Runs the explicit non-default isolated-runtime enterprise fixture."
+    description = "Runs the installed sidecar enterprise fixture."
     dependsOn(
         installedProductTest,
         stageInstalledProduct,
-        legacyIsolatedRuntimeFixtureArchive,
+        semanticRuntimeArchive,
         ":change:recovery:test",
         ":relation:contract:test",
         ":relation:intellij:test",
@@ -570,6 +316,6 @@ tasks.register<Exec>("legacyIsolatedRuntimeFixtureAcceptance") {
         "--thresholds",
         layout.projectDirectory.file("benchmarks/enterprise-acceptance.json").asFile.absolutePath,
         "--runtime-archive",
-        legacyIsolatedRuntimeFixtureArchive.get().archiveFile.get().asFile.absolutePath,
+        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
     )
 }

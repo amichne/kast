@@ -97,8 +97,21 @@ abstract class VerifySemanticRuntimeDistributionTask : DefaultTask() {
     fun verify() {
         val root = runtimeDirectory.get().asFile.toPath()
         check(Files.isExecutable(root.resolve("kast-indexer")))
-        check(Files.isRegularFile(root.resolve("idea-home/product-info.json")))
-        check(Files.isDirectory(root.resolve("idea-home/plugins/kast-indexer")))
+        check(Files.isDirectory(root.resolve("private-plugins/kast-indexer/lib")))
         check(Files.isDirectory(root.resolve("runtime-libs")))
+        check(Files.notExists(root.resolve("idea-home"))) {
+            "semantic runtime must not package an IDEA home"
+        }
+        val forbidden = Files.walk(root).use { paths ->
+            paths.map { path -> root.relativize(path).toString() }
+                .filter { entry ->
+                    entry.contains("product-info.json") ||
+                        entry.contains("plugins/Kotlin") ||
+                        entry.contains("plugins/gradle")
+                }
+                .findFirst()
+                .orElse(null)
+        }
+        check(forbidden == null) { "semantic runtime packages installed-IDE content: $forbidden" }
     }
 }

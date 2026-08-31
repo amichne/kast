@@ -1,13 +1,14 @@
 ---
 title: "How Kast works"
-description: "Trace one typed request from the repository-local CLI through the exact open IntelliJ Project and back as host-neutral evidence."
+description: "Trace one typed request through Kast's isolated exact-root IntelliJ sidecar and back as host-neutral evidence."
 icon: "workflow"
 keywords: ["architecture", "K2", "IntelliJ", "wire protocol"]
 ---
 
-Kast places a narrow command boundary in front of an already-running supported
-IDE. It reuses the exact open Project without opening, focusing, importing, or
-refreshing it.
+Kast places a narrow command boundary in front of an isolated headless Project.
+The sidecar uses the exactly supported local IDEA installation, JBR, Kotlin
+plugin, Gradle integration, PSI, and indexes, while all mutable IDE state stays
+under Kast-owned paths.
 
 ## One request, end to end
 
@@ -17,9 +18,9 @@ refreshing it.
 sequenceDiagram
     actor Caller
     participant CLI as Kotlin control executable
-    participant Admission as Endpoint admission
-    participant Endpoint as IDE plugin endpoint
-    participant Dispatch as Hosted dispatch
+    participant Admission as Runtime admission
+    participant Endpoint as Private sidecar endpoint
+    participant Dispatch as Semantic dispatch
     participant K2 as IntelliJ adapter
 
     Caller->>CLI: kast symbol describe --selector ...
@@ -41,16 +42,18 @@ documents. PSI and K2 objects never cross the wire.
 
 ## What `kast start` means
 
-`kast start` does not launch a runtime. `IdeOnlyRuntimeDemander` admits one
-compatible endpoint already published by the IntelliJ Project for the exact
-repository root, then the CLI sends `workspace.inspect` and returns that
-readiness result.
+`kast start` discovers or admits one exactly supported IDEA home, verifies its
+IDEA build, Kotlin plugin, JBR, bootstrap classes, and Gradle integration, and
+then launches a headless process with private config, system, plugin, and log
+directories. The Project is imported from disk, its VFS is refreshed, and the
+endpoint is published only after smart mode and semantic canaries succeed.
 
-Missing, stale, wrong-root, wrong-version, or unreachable endpoint evidence
-fails closed. There is no private IDE installation, runtime acquisition, VFS
-refresh, Gradle import, or isolated indexing fallback.
+Missing, ambiguous, wrong-build, wrong-root, stale-cache, or unreachable
+evidence fails closed. A missing cache causes a fresh private import; it does not
+authorize reading the user's IDEA cache. Kast ships no IDEA distribution and
+has no user-IDE plugin fallback.
 
-Before the plugin publishes readiness, its hosted composition constructs the
+Before the sidecar publishes readiness, its composition constructs the
 exact ten-operation public capability set: workspace inspection, topology
 build, three symbol operations, traversal, and the four AddDeclaration
 lifecycle operations. Direct relation and diagnostic routes remain internal
@@ -69,14 +72,32 @@ outside-workspace, conflicting, or otherwise unproven roots still fail closed.
     focused window cannot substitute another Project.
   </Card>
   <Card title="Exact product" icon="badge-check">
-    CLI version, plugin version, IDE build, Kotlin plugin build, registry
+    CLI version, private-extension version, IDE build, Kotlin plugin build, registry
     digest, wire digest, protocol identity, and capabilities must agree.
   </Card>
-  <Card title="Existing IDE" icon="monitor-check">
-    The descriptor must name a live IDE process and a reachable endpoint. The
-    CLI has no authority to manufacture either one.
+  <Card title="Private state" icon="monitor-check">
+    The sidecar's config, system, plugins, logs, socket, and persistent cache
+    must be physically distinct from the user's IDEA state.
   </Card>
 </Columns>
+
+## Optional index seeding is a validated copy
+
+`kast start --seed-from-idea` is the only operation authorized to read an IDEA
+system directory. The source must belong to the exact runtime and target
+project, and IDEA must be fully stopped with no live lock or matching process.
+Interactive startup discloses the version-specific allowlist, estimated bytes,
+and the unavoidable presence of other-project entries in required global
+VFS/index files. Non-interactive startup must carry
+`--accept-global-index-copy` as explicit consent.
+
+On APFS, Kast copy-on-write clones the allowlisted global identity data and only
+the target project's dedicated model/index cache into an unpublished staging
+directory. Local History, logs, AI data, VCS logs, editor state, temporary
+data, and other projects' dedicated caches are excluded. Source and clone
+manifests plus source quiescence are checked again before an atomic publish.
+The seed is only an acceleration hint: corrupt, changed, or incompatible state
+becomes a typed failure or `rebuild-required`, never semantic success.
 
 ## Follow one symbol request
 
@@ -90,7 +111,9 @@ The Kotlin control executable parses `symbol.describe` and constructs a
 `SymbolDescribeRequestDocument`. `UnixDomainWireClient` sends that document as
 one bounded frame to the admitted socket.
 
-`IdeEndpointTransport` reads the frame and passes it to `HostedIdeRuntime`.
+The private `IdeEndpointTransport` reads the frame and passes it to
+`HostedIdeRuntime`; that class is now internal sidecar composition, not a
+user-IDE endpoint or fallback.
 The runtime delegates the four read routes to `IdeReadRuntimeDispatch` and the
 six topology, traversal, and change routes to its exact hosted-effects table.
 This request reaches `HostedSymbolDescription`. The
@@ -106,16 +129,19 @@ diagnostic to standard error for a boundary rejection.
   <Accordion title="Trace the implementation owners" icon="code-xml">
     - [`KastCli`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt)
       parses the public command and holds the orchestration boundary.
-    - [`IdeOnlyRuntimeDemander`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IdeOnlyRuntimeDemand.kt)
-      requires an already-running compatible endpoint for the exact root.
+    - [`InstalledSidecarRootRuntimeDemander`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt)
+      discovers the exact installed runtime, prepares the private cache, and
+      starts or reuses the exact-root endpoint.
+    - [`IndexSeedFilesystemService`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedFilesystemService.kt)
+      admits and validates an explicitly requested APFS cache clone.
     - [`UnixDomainWireClient`](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/UnixDomainWireClient.kt)
       owns client-side framing and transport.
     - [`IdeEndpointTransport`](https://github.com/amichne/kast/blob/main/ide-plugin/src/main/kotlin/io/github/amichne/kast/ide/endpoint/IdeEndpointTransport.kt)
-      owns the plugin-side socket and request frames.
+      owns the private-extension socket and request frames.
     - [`IdeReadRuntimeDispatch`](https://github.com/amichne/kast/blob/main/runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/dispatch/IdeReadRuntimeDispatch.kt)
       admits and routes the exact four read operations.
     - [`HostedIdeReadProductionComposition`](https://github.com/amichne/kast/blob/main/runtime/ide-read/src/main/kotlin/io/github/amichne/kast/runtime/ide/read/preparation/composition/HostedIdeReadProductionComposition.kt)
-      binds the four routes to the retained Project and native adapters.
+      binds the four routes to the sidecar Project and native adapters.
     - [`HostedIdeRuntime`](https://github.com/amichne/kast/blob/main/runtime/ide-host/src/main/kotlin/io/github/amichne/kast/runtime/ide/host/HostedIdeRuntime.kt)
       composes those reads with the six exact topology, traversal, and change
       routes.
@@ -128,11 +154,12 @@ diagnostic to standard error for a boundary rejection.
 
     ```mermaid placement="top-right" actions={true}
     flowchart LR
-        CLI[Kotlin control executable] --> ADMIT[Exact endpoint admission]
+        CLI[Kotlin control executable] --> ADMIT[Exact runtime discovery and admission]
         CLI --> WIRE[Typed wire documents]
-        WIRE --> TRANSPORT[IDE plugin transport]
-        TRANSPORT --> DISPATCH[Exact ten-route hosted dispatch]
-        DISPATCH --> ROUTES[Hosted read and effect routes]
+        ADMIT --> SIDECAR[Private installed-IDE sidecar]
+        WIRE --> TRANSPORT[Private extension transport]
+        TRANSPORT --> DISPATCH[Exact ten-route semantic dispatch]
+        DISPATCH --> ROUTES[Read and effect routes]
         ROUTES --> K2[Request-local IntelliJ adapters]
         K2 --> EVIDENCE[Host-neutral evidence]
         EVIDENCE --> WIRE
@@ -164,7 +191,7 @@ becomes stale rather than starting duplicate work.
 One project-service session retains the admitted project-read epoch authority
 across those attempts. Validation-only hosted adapters cannot install another
 epoch source, so retries do not multiply workspace-model or VFS listeners.
-The hosted mutation database is also initialized once for generation resumption
+The sidecar mutation database is also initialized once for generation resumption
 and once for the aggregate mutation authority. That aggregate retains its
 recovery journal, avoiding two additional recovery-schema initialization passes
 during normal startup.
@@ -204,7 +231,7 @@ serialized or reused after their workspace generation changes.
 ## The current boundary is intentionally narrow
 
 <Columns cols={3}>
-  <Card title="Hosted now" icon="circle-check">
+  <Card title="Sidecar routes" icon="circle-check">
     Workspace inspection, topology, symbol reads, traversal, and the
     AddDeclaration lifecycle are the ten public installed capabilities.
   </Card>
@@ -212,15 +239,15 @@ serialized or reused after their workspace generation changes.
     Relation and diagnostic operations remain canonical internal services and
     have no direct endpoint routes.
   </Card>
-  <Card title="IDE-owned lifecycle" icon="power">
-    `stop`, `clean`, and `reindex` reject for the active hosted endpoint. Close,
-    restart, or reindex the Project through IntelliJ.
+  <Card title="Kast-owned lifecycle" icon="power">
+    `status` is passive, `stop` targets only the proven sidecar process,
+    `clean` retains the private cache, and `reindex` quarantines only that cache.
   </Card>
 </Columns>
 
 ## Exact endpoint identity is part of the result
 
-One exact-root hosted endpoint means another checkout, Project, IDE process, or
+One exact-root sidecar endpoint means another checkout, Project, IDE process, or
 stale descriptor cannot silently become the authority for this request. When
 root, generation, capability, scope, or endpoint identity cannot be proven,
 the operation fails closed.

@@ -80,27 +80,20 @@ class CliSurfaceContractTest {
         assertFalse(boundaryTouched)
         assertTrue(
             helpText.contains(
-                "Inspect and change one exact Kotlin workspace through typed IDE-hosted operations.",
+                "Inspect and change one exact Kotlin workspace through an isolated IntelliJ sidecar.",
             ),
         )
-        assertTrue(helpText.contains("Show the installed IDE-hosted product version"))
+        assertTrue(helpText.contains("Show the installed IntelliJ sidecar product version"))
         assertTrue(helpText.contains("product"))
-        assertEquals(
-            2,
-            "Canonical command shape; not hosted by the current IDE endpoint."
-                .toRegex(RegexOption.LITERAL)
-                .findAll(helpText)
-                .count(),
-        )
-        assertTrue(helpText.contains("Admit the existing exact-root IDE endpoint."))
-        assertTrue(helpText.contains("Reject because the IDE owns endpoint lifecycle."))
-        assertTrue(helpText.contains("Report the admitted exact-root IDE endpoint as running."))
-        assertTrue(helpText.contains("Reject because hosted endpoint state is IDE-owned."))
-        assertTrue(helpText.contains("Reject because the CLI cannot rebuild IDE-owned state."))
-        assertTrue(helpText.contains("hosted AddDeclaration changes"))
+        assertTrue(helpText.contains("Start the isolated exact-root IntelliJ sidecar."))
+        assertTrue(helpText.contains("Stop only the process proven to own this exact workspace endpoint."))
+        assertTrue(helpText.contains("Report exact-root runtime and private cache identity and state."))
+        assertTrue(helpText.contains("retain the private cache"))
+        assertTrue(helpText.contains("Quarantine the exact Kast-owned cache"))
+        assertTrue(helpText.contains("sidecar-backed changes"))
         assertTrue(helpText.contains("durable generation-bound repository topology"))
-        assertFalse(helpText.contains("Start or reuse"))
-        assertFalse(helpText.contains("Stop, clean, and rebuild"))
+        assertTrue(helpText.contains("Read bounded semantic relations"))
+        assertTrue(helpText.contains("Read bounded IntelliJ diagnostics"))
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
         CliLifecycleCommand.entries.forEach { command ->
@@ -108,7 +101,7 @@ class CliSurfaceContractTest {
         }
         assertFalse(helpText.contains(" setup"))
         assertEquals(
-            "kast 1.2.3 (IDE-hosted)",
+            "kast 1.2.3 (IntelliJ sidecar)",
             version.document.value,
         )
         assertEquals("{\"schemaVersion\":1}", schema.document.value)

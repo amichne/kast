@@ -1,6 +1,6 @@
 package io.github.amichne.kast.topology.intellij
 
-import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumeration
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerationFailure
@@ -10,8 +10,14 @@ import io.github.amichne.kast.topology.contract.TopologyExtractionRequest
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
 import io.github.amichne.kast.workspace.contract.SourceRoot
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.util.concurrent.CancellationException
+import java.time.Duration
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 internal enum class TopologySourceRootVfsSynchronizationFailure {
     INVALID_SOURCE_ROOT_SCOPE,
@@ -24,6 +30,92 @@ internal sealed interface TopologySourceRootVfsSynchronization {
     data class Rejected(
         val failure: TopologySourceRootVfsSynchronizationFailure,
     ) : TopologySourceRootVfsSynchronization
+}
+
+internal enum class TopologyVfsRefresh {
+    REFRESHED,
+    REJECTED,
+}
+
+internal enum class TopologyVfsRefreshStart {
+    STARTED,
+    REJECTED,
+}
+
+internal fun interface TopologyVfsRefreshStarter {
+    fun start(completion: Runnable): TopologyVfsRefreshStart
+}
+
+/** Waits for an asynchronous IntelliJ refresh without consulting the caller's coroutine job. */
+internal data object AwaitedTopologyVfsRefresh {
+    fun execute(
+        starter: TopologyVfsRefreshStarter,
+        timeout: Duration,
+    ): TopologyVfsRefresh {
+        if (timeout.isZero || timeout.isNegative) return TopologyVfsRefresh.REJECTED
+        val timeoutNanos = try {
+            timeout.toNanos()
+        } catch (_: ArithmeticException) {
+            return TopologyVfsRefresh.REJECTED
+        }
+        val completion = CompletableFuture<Unit>()
+        val start = try {
+            starter.start(Runnable { completion.complete(Unit) })
+        } catch (_: RuntimeException) {
+            return TopologyVfsRefresh.REJECTED
+        }
+        if (start != TopologyVfsRefreshStart.STARTED) return TopologyVfsRefresh.REJECTED
+        return try {
+            completion.get(timeoutNanos, TimeUnit.NANOSECONDS)
+            TopologyVfsRefresh.REFRESHED
+        } catch (_: ExecutionException) {
+            TopologyVfsRefresh.REJECTED
+        } catch (_: TimeoutException) {
+            TopologyVfsRefresh.REJECTED
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            TopologyVfsRefresh.REJECTED
+        }
+    }
+}
+
+/** IntelliJ VFS effect that starts asynchronously and completes through an explicit callback. */
+private data object InstalledTopologyVfsRefresh {
+    fun refresh(roots: List<Path>): TopologyVfsRefresh {
+        val fileSystem = LocalFileSystem.getInstance()
+        val presentRoots = roots.filter { root ->
+            if (Files.notExists(root, LinkOption.NOFOLLOW_LINKS)) return@filter false
+            if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {
+                return TopologyVfsRefresh.REJECTED
+            }
+            true
+        }
+        if (presentRoots.isEmpty()) return TopologyVfsRefresh.REFRESHED
+        val virtualRoots = try {
+            presentRoots.map { root ->
+                fileSystem.findFileByNioFile(root) ?: return TopologyVfsRefresh.REJECTED
+            }
+        } catch (_: RuntimeException) {
+            return TopologyVfsRefresh.REJECTED
+        }
+        val dirtyRoots = try {
+            VfsUtil.markDirty(true, true, *virtualRoots.toTypedArray())
+        } catch (_: RuntimeException) {
+            return TopologyVfsRefresh.REJECTED
+        }
+        if (dirtyRoots.isEmpty()) return TopologyVfsRefresh.REFRESHED
+        return AwaitedTopologyVfsRefresh.execute(
+            starter = TopologyVfsRefreshStarter { completion ->
+                try {
+                    fileSystem.refreshFiles(dirtyRoots, true, true, completion)
+                    TopologyVfsRefreshStart.STARTED
+                } catch (_: RuntimeException) {
+                    TopologyVfsRefreshStart.REJECTED
+                }
+            },
+            timeout = TOPOLOGY_VFS_REFRESH_TIMEOUT,
+        )
+    }
 }
 
 /** Explicit IntelliJ VFS effect restricted to already admitted workspace source roots. */
@@ -53,25 +145,23 @@ internal data object InstalledTopologySourceRootVfsSynchronizer :
                 TopologySourceRootVfsSynchronizationFailure.INVALID_SOURCE_ROOT_SCOPE,
             )
         }
-        if (roots.isNotEmpty()) {
-            VfsUtil.markDirtyAndRefresh(
-                false,
-                true,
-                true,
-                *roots.map(Path::toFile).toTypedArray(),
+        if (
+            roots.isNotEmpty() &&
+            InstalledTopologyVfsRefresh.refresh(roots) != TopologyVfsRefresh.REFRESHED
+        ) {
+            return TopologySourceRootVfsSynchronization.Rejected(
+                TopologySourceRootVfsSynchronizationFailure.REFRESH_UNAVAILABLE,
             )
         }
         TopologySourceRootVfsSynchronization.Synchronized
-    } catch (cancelled: ProcessCanceledException) {
-        throw cancelled
-    } catch (cancelled: CancellationException) {
-        throw cancelled
     } catch (_: RuntimeException) {
         TopologySourceRootVfsSynchronization.Rejected(
             TopologySourceRootVfsSynchronizationFailure.REFRESH_UNAVAILABLE,
         )
     }
 }
+
+private val TOPOLOGY_VFS_REFRESH_TIMEOUT: Duration = Duration.ofMinutes(5)
 
 /** Candidate enumerator that establishes VFS observation before disk bytes are hashed. */
 internal class SourceRootSynchronizedTopologyCandidateEnumerator(

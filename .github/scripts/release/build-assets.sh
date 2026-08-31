@@ -27,32 +27,32 @@ cd "${repository_root}"
 ./gradlew \
   -Dorg.gradle.jvmargs=-Xmx5g \
   -Pversion="${version}" \
-  assembleIdeHostedRelease
+  assembleSidecarRelease
 
 control_name="kast-control-v${version}-macos-aarch64.tar.gz"
-plugin_name="kast-ide-plugin-${version}.zip"
-control_source="${repository_root}/build/ide-hosted-release-assets/${control_name}"
-plugin_source="${repository_root}/ide-plugin/build/distributions/${plugin_name}"
+sidecar_name="kast-semantic-runtime-${version}-macos-aarch64.zip"
+control_source="${repository_root}/build/distributions/${control_name}"
+sidecar_source="${repository_root}/build/distributions/${sidecar_name}"
 [[ -f "${control_source}" ]] || fail "missing control artifact: ${control_source}"
-[[ -f "${plugin_source}" ]] || fail "missing plugin artifact: ${plugin_source}"
+[[ -f "${sidecar_source}" ]] || fail "missing sidecar artifact: ${sidecar_source}"
 
 output_directory="${repository_root}/build/release/v${version}"
 mkdir -p "${output_directory}"
 rm -f -- \
   "${output_directory}/${control_name}" \
   "${output_directory}/${control_name}.sha256" \
-  "${output_directory}/${plugin_name}" \
-  "${output_directory}/${plugin_name}.sha256"
+  "${output_directory}/${sidecar_name}" \
+  "${output_directory}/${sidecar_name}.sha256"
 cp "${control_source}" "${output_directory}/${control_name}"
-cp "${plugin_source}" "${output_directory}/${plugin_name}"
+cp "${sidecar_source}" "${output_directory}/${sidecar_name}"
 (
   cd "${output_directory}"
   shasum -a 256 "${control_name}" >"${control_name}.sha256"
-  shasum -a 256 "${plugin_name}" >"${plugin_name}.sha256"
+  shasum -a 256 "${sidecar_name}" >"${sidecar_name}.sha256"
 )
 
 python3 distribution/release/verify_assets.py \
   --directory "${output_directory}" \
   --release "v${version}" \
   --repository "${GITHUB_REPOSITORY:-amichne/kast}" \
-  --report "${repository_root}/build/reports/ide-hosted/release-assets.json"
+  --report "${repository_root}/build/reports/sidecar/release-assets.json"

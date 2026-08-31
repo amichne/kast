@@ -1,11 +1,21 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
+import io.github.amichne.kast.distribution.contract.RuntimeDigest
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.protocol.contract.KastPluginVersion
 import java.nio.file.Path
 
-/** One complete local observation of the installed control product and optional IDE endpoint. */
+/** Installed control plus the sole private-sidecar runtime identity. */
+data class SidecarProductIdentity(
+    val productVersion: KastPluginVersion,
+    val runtimeId: SemanticRuntimeId,
+    val supportedRuntime: SupportedIdeRuntimePair,
+    val payloadDigest: RuntimeDigest,
+)
+
+/** One complete local observation that never discovers or admits a hosted IDE endpoint. */
 data class ProductInspection(
-    val control: AdmittedIdeHostCompatibility,
+    val control: SidecarProductIdentity,
     val workspace: ProductWorkspaceObservation,
 )
 
@@ -16,35 +26,24 @@ sealed interface ProductWorkspaceObservation {
 
     data class Observed(
         val root: CanonicalRoot,
-        val endpoint: ProductEndpointObservation,
+        val cache: RootSidecarCacheObservation,
     ) : ProductWorkspaceObservation
-}
-
-sealed interface ProductEndpointObservation {
-    data class Ready(
-        val endpoint: AdmittedIdeEndpoint,
-    ) : ProductEndpointObservation
-
-    data class Rejected(
-        val failure: IdeEndpointAdmissionFailure,
-    ) : ProductEndpointObservation
 }
 
 fun interface ProductInspector {
     /**
      * Proof transition: `Path -> ProductInspection`.
      *
-     * Preserves the already-refined installed control identity and directly observes canonical
-     * root and IDE endpoint evidence. Root and endpoint failures remain explicit inspection data;
-     * no compatible runtime admission is required.
+     * Preserves the admitted sidecar identity and directly observes only canonical root and
+     * Kast-owned cache evidence. No runtime demand or user-IDE endpoint admission is possible.
      */
     fun inspect(start: Path): ProductInspection
 }
 
-class InstalledProductInspector(
-    private val control: AdmittedIdeHostCompatibility,
+class SidecarProductInspector(
+    private val control: SidecarProductIdentity,
     private val rootDiscovery: CanonicalRootDiscoverer,
-    private val endpointAdmitter: IdeEndpointAdmitter,
+    private val cacheLifecycle: RootSidecarCacheLifecycle,
 ) : ProductInspector {
     override fun inspect(start: Path): ProductInspection {
         val workspace = when (val discovery = rootDiscovery.discover(start)) {
@@ -52,12 +51,7 @@ class InstalledProductInspector(
                 ProductWorkspaceObservation.RootRejected(discovery.failure)
             is CanonicalRootDiscovery.Discovered -> ProductWorkspaceObservation.Observed(
                 discovery.root,
-                when (val admission = endpointAdmitter.admit(discovery.root)) {
-                    is IdeEndpointAdmission.Complete ->
-                        ProductEndpointObservation.Ready(admission.endpoint)
-                    is IdeEndpointAdmission.Rejected ->
-                        ProductEndpointObservation.Rejected(admission.failure)
-                },
+                cacheLifecycle.observe(discovery.root.path),
             )
         }
         return ProductInspection(control, workspace)

@@ -305,7 +305,7 @@ private class KastRootCommand : KastCommand("kast") {
                 )
             }
         }
-        eagerOption("--version", help = "Show the installed IDE-hosted product version") {
+        eagerOption("--version", help = "Show the installed IntelliJ sidecar product version") {
             throw CliLocalCommandMessage(CliLocalMetadataCommand.VERSION)
         }
         eagerOption("--schema", help = "Print the installed machine-readable schema") {
@@ -314,7 +314,7 @@ private class KastRootCommand : KastCommand("kast") {
     }
 
     override fun help(context: Context): String =
-        "Inspect and change one exact Kotlin workspace through typed IDE-hosted operations."
+        "Inspect and change one exact Kotlin workspace through an isolated IntelliJ sidecar."
 
     override fun helpEpilog(context: Context): String =
         "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr."

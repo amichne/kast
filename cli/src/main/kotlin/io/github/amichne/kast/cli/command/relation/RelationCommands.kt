@@ -22,7 +22,7 @@ internal fun relationCommandGroup(
     return CommandFamily(
         KastCommandGroup(
             "relation",
-            "Canonical command shape; not hosted by the current IDE endpoint.",
+            "Read bounded semantic relations from the isolated sidecar.",
         ).subcommands(read),
         listOf(read),
     )

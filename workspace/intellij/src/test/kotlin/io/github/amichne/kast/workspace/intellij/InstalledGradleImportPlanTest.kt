@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 
 class InstalledGradleImportPlanTest {
     @Test
-    fun `linked exact workspace awaits project-open sync without starting another refresh`() {
+    fun `linked exact workspace requests one callback-backed refresh`() {
         val linkedSettings = GradleProjectSettings("/workspace").apply {
             gradleJvm = "prior-jvm"
         }
@@ -19,7 +19,7 @@ class InstalledGradleImportPlanTest {
         )
 
         assertInstanceOf(
-            InstalledGradleImportOperation.AwaitLinked::class.java,
+            InstalledGradleImportOperation.RefreshLinked::class.java,
             application.operation,
         )
         assertEquals(gradleJvm.projectSettingsSelector(), linkedSettings.gradleJvm)

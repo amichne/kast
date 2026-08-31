@@ -7,36 +7,61 @@ import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
+import io.github.amichne.kast.distribution.contract.RuntimeDigest
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.KastPluginVersion
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class ProductInspectionCommandTest {
     @Test
-    fun `product inspection reports an incompatible endpoint without runtime admission`() {
-        val fixture = ideEndpointFixture()
-        var semanticBoundaryTouched = false
-        val inspector = InstalledProductInspector(
-            control = fixture.policy.supportedCompatibility,
-            rootDiscovery = CanonicalRootDiscoverer {
-                CanonicalRootDiscovery.Discovered(fixture.root)
-            },
-            endpointAdmitter = IdeEndpointAdmitter(
-                fixture.socketDirectory,
-                fixture.policy,
-                IdeEndpointDescriptorReader {
-                    IdeEndpointDescriptorRead.Complete(
-                        fixture.document.replace(FIXTURE_PLUGIN_VERSION, "1.2.4"),
-                    )
-                },
-                IdeEndpointProcessProbe { IdeEndpointProcessObservation.Alive },
-                IdeEndpointReachabilityProbe { IdeEndpointReachability.Reachable },
-            ),
+    fun `product inspection reports sidecar and private cache without runtime admission`(
+        @TempDir temporary: Path,
+    ) {
+        val rootPath = Files.createDirectory(temporary.resolve("repo"))
+        Files.writeString(rootPath.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val root = (FilesystemCanonicalRootDiscovery.discover(rootPath) as
+            CanonicalRootDiscovery.Discovered).root
+        val support = SupportedIdeRuntimePair.admit(
+            "262.9437.185",
+            "262.9437.185-IJ",
+        ).let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
+        val identity = SidecarProductIdentity(
+            productVersion = KastPluginVersion.parse("1.2.3").refined(),
+            runtimeId = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}").refined(),
+            supportedRuntime = support,
+            payloadDigest = RuntimeDigest.parse("sha256:${"b".repeat(64)}").refined(),
         )
+        val inspector = SidecarProductInspector(
+            identity,
+            FilesystemCanonicalRootDiscovery,
+            object : RootSidecarCacheLifecycle {
+                override fun observe(root: Path): RootSidecarCacheObservation =
+                    RootSidecarCacheObservation.Observed(
+                        RootSidecarCacheStatus(
+                            "cache-key",
+                            KastCacheState.SMART,
+                            temporary.resolve("IntelliJ IDEA.app"),
+                            support.ideaBuild,
+                            support.kotlinPluginBuild,
+                            "jbr-25.0.3-aarch64",
+                            identity.payloadDigest.value,
+                        ),
+                    )
+
+                override fun quarantine(root: Path): RootSidecarCacheQuarantine =
+                    error("product inspection must not quarantine")
+            },
+        )
+        var semanticBoundaryTouched = false
         val cli = KastCli(
             commandGraphFactory = commandGraphFactory(),
             rootDiscovery = CanonicalRootDiscoverer {
@@ -61,30 +86,27 @@ class ProductInspectionCommandTest {
         )
 
         val parsed = commandGraphFactory().parse(listOf("product", "inspect"))
-        val exit = cli.execute(listOf("product", "inspect"), Path.of("/unobserved"))
+        val exit = cli.execute(listOf("product", "inspect"), root.path)
 
-        assertEquals(
-            CliAction.Local.ProductInspect,
-            (parsed as CliCommandParsing.Parsed).action,
-        )
+        assertEquals(CliAction.Local.ProductInspect, (parsed as CliCommandParsing.Parsed).action)
         assertFalse(semanticBoundaryTouched)
         val output = Json.parseToJsonElement((exit as CliExit.Complete).document.value).jsonObject
         assertEquals("product.inspect", output.getValue("operation").jsonPrimitive.content)
-        assertEquals("complete", output.getValue("status").jsonPrimitive.content)
         assertEquals(
-            FIXTURE_PLUGIN_VERSION,
+            "isolated-intellij-sidecar",
             output.getValue("control").jsonObject
-                .getValue("kastPluginVersion").jsonPrimitive.content,
+                .getValue("execution").jsonPrimitive.content,
         )
-        val mismatch = output.getValue("workspace").jsonObject
-            .getValue("endpoint").jsonObject
-            .getValue("failure").jsonObject
-            .getValue("failure").jsonObject
-            .getValue("failure").jsonObject
-        assertEquals("mismatch", mismatch.getValue("type").jsonPrimitive.content)
-        assertEquals("kast-plugin-version", mismatch.getValue("field").jsonPrimitive.content)
-        assertEquals("1.2.3", mismatch.getValue("expected").jsonPrimitive.content)
-        assertEquals("1.2.4", mismatch.getValue("observed").jsonPrimitive.content)
+        assertEquals(
+            "cache-key",
+            output.getValue("workspace").jsonObject
+                .getValue("cache").jsonObject.getValue("identity").jsonPrimitive.content,
+        )
+        assertEquals(
+            "smart",
+            output.getValue("workspace").jsonObject
+                .getValue("cache").jsonObject.getValue("state").jsonPrimitive.content,
+        )
     }
 
     private fun commandGraphFactory(): CliCommandGraphFactory = when (
@@ -99,5 +121,10 @@ class ProductInspectionCommandTest {
     ) {
         is CliLocalMetadataAdmission.Admitted -> admission.metadata
         is CliLocalMetadataAdmission.Rejected -> error(admission.failure)
+    }
+
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error(failure.toString())
     }
 }

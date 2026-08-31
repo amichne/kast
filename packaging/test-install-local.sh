@@ -30,13 +30,17 @@ ln -s "${sentinel}" "${install_prefix}/bin/kast"
   fail "installation followed and modified the previous launcher symlink"
 [[ -x "${install_prefix}/share/kast/control/bin/kast" ]] ||
   fail "control product is missing"
-[[ ! -e "${install_prefix}/share/kast/control/share/kast/semantic-runtime.json" ]] ||
-  fail "default control retained a semantic-runtime manifest"
+[[ -f "${install_prefix}/share/kast/control/share/kast/semantic-runtime.json" ]] ||
+  fail "control is missing the sidecar manifest"
 
-[[ ! -e "${install_prefix}/share/kast/runtime" ]] ||
-  fail "default local install retained a semantic runtime payload"
-if grep -F 'KAST_RUNTIME_ARCHIVE' "${install_prefix}/bin/kast" >/dev/null; then
-  fail "default launcher retained semantic runtime archive authority"
+runtime_archive="$(find "${install_prefix}/share/kast/runtime" -maxdepth 1 -type f \
+  -name 'kast-semantic-runtime-*.zip' -print -quit)"
+[[ -n "${runtime_archive}" ]] || fail "small private sidecar payload is missing"
+grep -Fq 'KAST_RUNTIME_ARCHIVE' "${install_prefix}/bin/kast" ||
+  fail "launcher does not bind the installed sidecar payload"
+if grep -Eq '(^|/)idea-home/|product-info\.json|kast-ide-plugin' \
+  < <(unzip -Z1 "${runtime_archive}"); then
+  fail "local sidecar payload contains IDEA or a public plugin"
 fi
 
 if grep -F "${PWD}/build" "${install_prefix}/bin/kast" >/dev/null; then
@@ -56,7 +60,6 @@ import sys
 document = json.loads(sys.argv[1])
 expected_registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == expected_registry, document
-assert "semanticRuntime" not in document, document
 PY
 
 echo "install-local-test: PASS"

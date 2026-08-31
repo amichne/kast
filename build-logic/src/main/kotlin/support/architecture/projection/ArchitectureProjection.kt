@@ -3,6 +3,7 @@ package support.architecture.projection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import support.architecture.JvmClassName
 import support.architecture.ModuleRoleConventionRequirement
 import support.architecture.ValidatedArchitecturePolicy
 
@@ -26,6 +27,13 @@ internal data class ArchitectureModuleDocument(
     val roleConvention: ModuleRoleConventionDocument,
     val allowedProjectDependencies: List<String>,
     val allowedEffects: List<String>,
+    val allowedScopedEffects: List<ArchitectureScopedEffectDocument>,
+)
+
+@Serializable
+internal data class ArchitectureScopedEffectDocument(
+    val effect: String,
+    val callerClasses: List<String>,
 )
 
 @Serializable
@@ -42,7 +50,7 @@ internal sealed interface ModuleRoleConventionDocument {
 object ArchitectureProjection {
     fun render(policy: ValidatedArchitecturePolicy): String {
         val document = ArchitectureProjectionDocument(
-            schemaVersion = 1,
+            schemaVersion = 2,
             modules = policy.moduleOrder.map { id ->
                 val module = policy.modules.getValue(id)
                 ArchitectureModuleDocument(
@@ -56,6 +64,14 @@ object ArchitectureProjection {
                         .map { it.projectPath }
                         .sorted(),
                     allowedEffects = module.allowedEffects.map(Enum<*>::name).sorted(),
+                    allowedScopedEffects = module.allowedScopedEffectCallers
+                        .map { (effect, callers) ->
+                            ArchitectureScopedEffectDocument(
+                                effect = effect.name,
+                                callerClasses = callers.map(JvmClassName::internalName).sorted(),
+                            )
+                        }
+                        .sortedBy(ArchitectureScopedEffectDocument::effect),
                 )
             },
         )

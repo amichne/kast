@@ -45,6 +45,7 @@ internal data class ModuleRoleBoundary(
     val allowedDependencyCosts: Set<ModuleCost>,
     val allowedExportedDependencyRoles: Set<ModuleRole>,
     val allowedEffects: Set<ForbiddenEffect>,
+    val allowedScopedEffects: Set<ForbiddenEffect>,
 )
 
 class ValidatedModulePolicy internal constructor(
@@ -58,6 +59,8 @@ class ValidatedModulePolicy internal constructor(
     val conventionRequirement: ModuleRoleConventionRequirement get() = boundary.conventionRequirement
     val allowedProjectDependencies: Set<ModuleId> get() = policy.allowedProjectDependencies
     val allowedEffects: Set<ForbiddenEffect> get() = policy.allowedEffects
+    val allowedScopedEffectCallers: Map<ForbiddenEffect, Set<JvmClassName>>
+        get() = policy.allowedScopedEffectCallers
 }
 
 sealed interface ModulePolicyValidation {
@@ -120,6 +123,17 @@ internal object ModulePolicyValidator {
                 .forEach { effect ->
                     add(ArchitecturePolicyFailure.ForbiddenModuleRoleEffect(module.id, effect))
                 }
+            module.allowedScopedEffectCallers.forEach { (effect, callers) ->
+                if (effect !in boundary.allowedScopedEffects) {
+                    add(ArchitecturePolicyFailure.ForbiddenModuleRoleEffect(module.id, effect))
+                }
+                if (callers.isEmpty()) {
+                    add(ArchitecturePolicyFailure.EmptyScopedEffectCallerSet(module.id, effect))
+                }
+                if (effect in module.allowedEffects) {
+                    add(ArchitecturePolicyFailure.RedundantScopedEffectAllowance(module.id, effect))
+                }
+            }
         }
         return if (failures.isEmpty()) {
             ModulePolicyValidation.Valid(ValidatedModulePolicy(module, boundary))
@@ -158,6 +172,7 @@ private object ModuleRoleBoundaries {
             allowedDependencyCosts = ModuleCost.entries.toSet(),
             allowedExportedDependencyRoles = ModuleRole.entries.toSet(),
             allowedEffects = ForbiddenEffect.entries.toSet(),
+            allowedScopedEffects = ForbiddenEffect.entries.toSet(),
         )
         ModuleRole.KERNEL -> boundary(
             role,
@@ -313,6 +328,7 @@ private object ModuleRoleBoundaries {
             setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
             setOf(ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
             allowedEffects = setOf(ForbiddenEffect.PROCESS_CONTROL),
+            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
         )
         ModuleRole.INDEXER_HOST -> boundary(
             role,
@@ -335,6 +351,7 @@ private object ModuleRoleBoundaries {
         allowedDependencyCosts: Set<ModuleCost>,
         allowedExportedDependencyRoles: Set<ModuleRole> = emptySet(),
         allowedEffects: Set<ForbiddenEffect> = emptySet(),
+        allowedScopedEffects: Set<ForbiddenEffect> = emptySet(),
     ): ModuleRoleBoundary = ModuleRoleBoundary(
         role,
         cost,
@@ -343,6 +360,7 @@ private object ModuleRoleBoundaries {
         allowedDependencyCosts,
         allowedExportedDependencyRoles,
         allowedEffects,
+        allowedScopedEffects,
     )
 
     private val inwardRoles = setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.SPI)

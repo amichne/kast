@@ -2,9 +2,11 @@ package io.github.amichne.kast.workspace.intellij
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.JavaSdk
 import com.intellij.openapi.projectRoots.ProjectJdkTable
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
@@ -31,36 +33,41 @@ class InstalledProjectJvm private constructor(
     /**
      * Proof transition: `InstalledProjectJvm + Project -> InstalledProjectJvmAssignment`.
      *
-     * Establishes that any existing unresolved project SDK name resolves to a Java SDK created from
-     * the admitted physical home before startup waits. The project SDK name itself is never changed,
-     * so the repository project model remains unmodified. [InstalledProjectJvmFailure] is the
-     * closed expected platform failure. Raw SDK names and home paths leave only at the process-local
-     * IntelliJ SDK-table boundary.
+     * Establishes a project SDK backed by a Java SDK created from the admitted physical home before
+     * startup waits. An existing nonblank SDK name is preserved; an unnamed project receives the
+     * private sidecar identity. [InstalledProjectJvmFailure] is the closed expected platform
+     * failure. Raw SDK names and home paths leave only at the process-local IntelliJ SDK-table and
+     * project-model boundary.
      */
     fun assign(project: Project): InstalledProjectJvmAssignment = try {
         val assignment = Runnable {
             WriteAction.run<RuntimeException> {
-                when (
-                    val reference = ProjectJvmReference.from(
-                        ProjectRootManager.getInstance(project).projectSdkName,
-                    )
-                ) {
-                    ProjectJvmReference.Unspecified -> Unit
-                    is ProjectJvmReference.Named -> {
-                        val table = ProjectJdkTable.getInstance()
-                        val existing = table.findJdk(reference.value)
-                        if (existing?.homePath != home.toString()) {
-                            val replacement = JavaSdk.getInstance()
-                                .createJdk(reference.value, home.toString(), false)
-                            if (existing != null) table.removeJdk(existing)
-                            try {
-                                table.addJdk(replacement)
-                            } catch (failure: RuntimeException) {
-                                if (existing != null) runCatching { table.addJdk(existing) }
-                                throw failure
-                            }
-                        }
+                val roots = ProjectRootManager.getInstance(project)
+                val reference = ProjectJvmReference.from(roots.projectSdkName)
+                val tableName = reference.tableName()
+                val table = ProjectJdkTable.getInstance()
+                val existing = table.findJdk(tableName.value)
+                val javaSdk = JavaSdk.getInstance()
+                val admitted = existing?.takeIf { sdk ->
+                    sdk.sdkType == javaSdk && sdk.homePath == home.toString()
+                } ?: javaSdk.createJdk(tableName.value, home.toString(), false)
+                if (admitted !== existing) {
+                    if (existing != null) table.removeJdk(existing)
+                    try {
+                        table.addJdk(admitted)
+                    } catch (failure: RuntimeException) {
+                        if (existing != null) runCatching { table.addJdk(existing) }
+                        throw failure
                     }
+                }
+                try {
+                    if (roots.projectSdk !== admitted) roots.projectSdk = admitted
+                } catch (failure: RuntimeException) {
+                    if (admitted !== existing) {
+                        runCatching { table.removeJdk(admitted) }
+                        if (existing != null) runCatching { table.addJdk(existing) }
+                    }
+                    throw failure
                 }
             }
         }
@@ -109,6 +116,19 @@ class AssignedInstalledProjectJvm internal constructor(
         } else {
             InstalledProjectJvmAssignment.Rejected(InstalledProjectJvmFailure.PLATFORM_REJECTED)
         }
+
+    /**
+     * Proof transition: `(AssignedInstalledProjectJvm, Module) -> Boolean`.
+     *
+     * `true` establishes that the exact live module resolves the admitted Java SDK home. This raw
+     * platform observation is internal to the installed IntelliJ adapter and must run under a read
+     * action.
+     */
+    internal fun admits(module: Module): Boolean {
+        if (module.isDisposed || module.project !== project) return false
+        val sdk = ModuleRootManager.getInstance(module).sdk ?: return false
+        return sdk.sdkType == JavaSdk.getInstance() && sdk.homePath == projectJvm.home.toString()
+    }
 }
 
 internal enum class InstalledProjectOpenPreparationFailure {
@@ -208,7 +228,7 @@ internal sealed interface InstalledGradleLinkPresence {
 }
 
 internal sealed interface InstalledGradleImportOperation {
-    data object AwaitLinked : InstalledGradleImportOperation
+    data object RefreshLinked : InstalledGradleImportOperation
     data object LinkUnlinked : InstalledGradleImportOperation
 }
 
@@ -284,7 +304,7 @@ internal fun InstalledGradleLinkPresence.applyImportJvm(
             return InstalledGradleImportApplication.Rejected
         }
         InstalledGradleImportApplication.Applied(
-            InstalledGradleImportOperation.AwaitLinked,
+            InstalledGradleImportOperation.RefreshLinked,
         ) {
             try {
                 settings.gradleJvm = previous
@@ -304,6 +324,11 @@ private sealed interface ProjectJvmReference {
 
     data class Named(val value: String) : ProjectJvmReference
 
+    fun tableName(): ProjectJvmTableName = when (this) {
+        Unspecified -> ProjectJvmTableName.privateSidecar()
+        is Named -> ProjectJvmTableName.fromProvenName(value)
+    }
+
     companion object {
         /**
          * Proof transition: `String? -> ProjectJvmReference`.
@@ -317,3 +342,17 @@ private sealed interface ProjectJvmReference {
             raw?.takeIf(String::isNotBlank)?.let(::Named) ?: Unspecified
     }
 }
+
+@JvmInline
+private value class ProjectJvmTableName private constructor(
+    val value: String,
+) {
+    companion object {
+        fun privateSidecar(): ProjectJvmTableName = ProjectJvmTableName(PRIVATE_SIDECAR_JVM_NAME)
+
+        fun fromProvenName(value: String): ProjectJvmTableName =
+            ProjectJvmTableName(value.also { name -> require(name.isNotBlank()) })
+    }
+}
+
+private const val PRIVATE_SIDECAR_JVM_NAME = "Kast private Java 25"

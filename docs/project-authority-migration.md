@@ -207,12 +207,10 @@ manufacturing partial readiness.
 
 ### Test-runtime/platform bytecode mismatch
 
-`workspace:intellij-read` compiles against IDEA 262 platform classes built for Java 25, while its
-Gradle tests currently execute on Java 21. A JUnit test class that mentions `ProjectFileIndex`
-fails discovery with `UnsupportedClassVersionError` before an assertion runs. The current proof
-therefore tests host-neutral detachment separately and uses compilation plus IntelliJ semantic
-index evidence for the live adapter. Aligning the module test launcher with the pinned IDE runtime
-would allow a true live `ProjectFileIndex` contract test.
+`workspace:intellij-read` and the rest of the build now compile and test on Java 25, matching the
+IDEA 262 platform bytecode baseline. JUnit can therefore discover contracts that mention live
+platform types without an `UnsupportedClassVersionError`; host-neutral detachment tests remain
+separate from live-adapter tests because they prove different boundaries.
 
 ### Kast app-server semantic tools were unavailable during this slice
 

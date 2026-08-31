@@ -28,12 +28,12 @@ declaration the alias names and which overload receives `order`.
 
 ## Start from the repository root
 
-Kast supports macOS on Apple silicon, Java 21 or newer, IntelliJ IDEA build
-262.9437.185 with Kotlin plugin build 262.9437.185-IJ, and a Kotlin Gradle
-repository already open in that IDE. It reuses the IDE's existing Project,
-VFS, indexes, PSI, and Kotlin semantic APIs.
+Kast supports macOS on Apple silicon, Java 25 or newer, IntelliJ IDEA build
+262.9437.185 with Kotlin plugin build 262.9437.185-IJ, and an on-disk Kotlin
+Gradle repository. It launches that exact local IDEA installation and its JBR
+as a headless sidecar with private config, system, plugin, and log directories.
 
-Install the latest stable control command and its matched IDE plugin:
+Install the latest stable control command and its matched private sidecar:
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
@@ -42,7 +42,8 @@ curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh | bash
 Read the [installer source](install.sh) before running the command if your
 environment requires script review.
 
-Open the repository in the supported IDE, then inspect its hosted endpoint:
+Inspect the installed runtime contract, then start the sidecar for the exact
+repository:
 
 ```console
 cd /path/to/kotlin-repository
@@ -51,13 +52,20 @@ kast start
 kast workspace inspect
 ```
 
-`kast product inspect` reports the installed control identity and direct local
-endpoint evidence even when compatibility admission fails. Use it to see the
-exact expected and observed identity before repairing a mismatched installation.
+`kast product inspect` reports the control, sidecar, supported IDEA/Kotlin pair,
+and any Kast-owned cache for the current root without starting a runtime.
 
-`kast start` admits only the compatible endpoint for this exact root, or returns
-a typed blocker. It never opens a Project, imports Gradle, refreshes VFS, starts
-an indexer process, or falls back to a private runtime.
+`kast start` discovers the exactly supported local IDEA home, starts one private
+headless Project, imports its on-disk Gradle model, waits for smart mode, and
+then publishes the exact-root endpoint. Use `--idea-home PATH` when discovery is
+ambiguous. Kast installs nothing into the user's IDE and ships no IDEA home.
+
+Ordinary startup never reads the user's IDEA system directory. To accelerate a
+first private import from compatible indexes, shut down IDEA cleanly and run
+`kast start --seed-from-idea`. Interactive use discloses the allowlisted cache
+categories and estimated bytes; non-interactive use must also pass
+`--accept-global-index-copy`. The copy is validated and atomically published
+inside Kast's cache, and the source IDEA cache is never mounted or modified.
 
 IntelliJ-declared local source roots remain part of that model even when an
 empty directory does not currently exist. Kast preserves the root identity
@@ -66,13 +74,13 @@ outside-workspace roots still fail closed.
 
 ## Ask a repository question
 
-The installed endpoint publishes ten IDE-hosted operations. The generated
+The installed sidecar publishes ten public semantic operations. The generated
 [CLI reference](https://kast.michne.com/reference/cli/) distinguishes those
 public routes from relation and diagnostic services that remain internal to
-hosted workflows, and `kast --schema` returns the complete contract as JSON.
+sidecar workflows, and `kast --schema` returns the complete contract as JSON.
 Its `serverProjection` is the installed executable's authority for
 server-visible tool names, descriptions, input and output JSON Schemas, loading
-policy, and field-to-CLI bindings. It advertises every public hosted operation
+policy, and field-to-CLI bindings. It advertises every public sidecar operation
 and excludes the internal-only relation and diagnostic services. A broker can
 therefore follow the selected installed path without carrying a Kast-version
 lookup table.
@@ -88,12 +96,12 @@ Discovery returns bounded candidates. Resolution refines one candidate into an
 exact, generation-bound selector. Description returns detached compiler
 evidence for that selector. A successful apply publishes the newer workspace
 generation in the same endpoint, so prior selectors become stale immediately
-and verification can continue without restarting IntelliJ. The successor also
+and verification can continue without restarting the sidecar. The successor also
 activates read routes at that exact generation, so freshly resolved selectors
 can consume the verified topology without reconstructing the endpoint.
 
-Reopening the IntelliJ Project conservatively advances the semantic generation,
-so selectors from the previous process remain stale. `kast topology build`
+Restarting the sidecar conservatively advances the semantic generation, so
+selectors from the previous process remain stale. `kast topology build`
 then verifies the current candidate set and can rebind an unchanged durable
 snapshot to that new generation without repeating semantic extraction.
 
@@ -102,16 +110,17 @@ snapshot to that new generation without repeating semantic extraction.
 ```mermaid
 flowchart LR
 	CLI["Kotlin control executable"] -->|typed JSON| RPC["Local wire RPC"]
-	RPC --> IDE["Existing exact-root IntelliJ Project"]
-	IDE --> K2["Existing indexes, PSI, and K2"]
+	RPC --> IDE["Private exact-root IntelliJ sidecar"]
+	IDE --> LOCAL["Exact installed IDEA, JBR, Kotlin, and Gradle"]
+	LOCAL --> K2["Private indexes, PSI, and K2"]
 	K2 --> RESULT["Complete, qualified, or rejected JSON"]
 ```
 
 The control executable parses the CLI command into a typed request document and
-sends one bounded frame over an exact-root Unix-domain socket. The hosted
-plugin admits the operation before IntelliJ semantic APIs can run. PSI and K2
-objects stay inside that adapter. The request and response cross the wire as
-host-neutral documents.
+sends one bounded frame over an exact-root Unix-domain socket. The private
+sidecar extension admits the operation before IntelliJ semantic APIs can run.
+PSI and K2 objects stay inside that process. The request and response cross the
+wire as host-neutral documents.
 
 [How Kast works](https://kast.michne.com/explanation/how-kast-works/) traces a
 concrete `kast symbol describe` request through the Kotlin implementation.
@@ -139,19 +148,18 @@ constrain each claim.
 
 ## Develop Kast
 
-Build the current checkout, including the standalone IDE plugin archive, with
-Gradle:
+Build the current checkout and its small private sidecar archive with Gradle:
 
 ```shell
 ./gradlew build
-./gradlew :ide-plugin:buildPlugin
+./gradlew assembleSidecarRelease
 ./gradlew installLocal
 kast --version
 ```
 
-`installLocal` installs only the control launcher from the checkout. Use the
-release installer when you need a matched, fully installed control-plus-plugin
-product.
+`installLocal` installs the control launcher and matched private sidecar from
+the checkout. Neither path writes a JetBrains plugin directory or installs an
+IDE distribution.
 
 To dogfood one locally packaged, matched product through that same verified
 installer boundary, assign an unreleased semantic version and select the local
@@ -159,14 +167,14 @@ release directory explicitly:
 
 ```shell
 release_version=0.29.1
-./gradlew -Pversion="$release_version" assembleIdeHostedRelease
+./gradlew -Pversion="$release_version" assembleSidecarRelease
 bash install.sh install --purge-existing \
   --version "$release_version" \
   --release-base-url "file://$PWD/build/release"
 ```
 
 The installer still checks both SHA-256 records, archive paths, product
-metadata, and matched plugin identity before it removes an older installation.
+metadata, and matched sidecar identity before it removes an older installation.
 An explicit version is required for a custom HTTPS mirror or absolute `file://`
 release base.
 

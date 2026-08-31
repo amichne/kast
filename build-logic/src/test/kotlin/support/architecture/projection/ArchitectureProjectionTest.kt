@@ -22,7 +22,7 @@ class ArchitectureProjectionTest {
         )
 
         assertEquals(first, second)
-        assertEquals(1, root.schemaVersion)
+        assertEquals(2, root.schemaVersion)
         assertEquals(40, root.modules.size)
         assertTrue(first.endsWith("\n"))
     }
@@ -41,5 +41,22 @@ class ArchitectureProjectionTest {
         assertEquals("BOUNDED_READ", module.cost)
         val convention = assertInstanceOf<ModuleRoleConventionDocument.Required>(module.roleConvention)
         assertEquals("kast.role.intellij-read", convention.pluginId)
+    }
+
+    @Test
+    fun `projection preserves exact scoped effect callers`() {
+        val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
+            KastArchitecturePolicy.validate(),
+        ).architecture
+        val root = architectureProjectionJson.decodeFromString(
+            ArchitectureProjectionDocument.serializer(),
+            ArchitectureProjection.render(architecture),
+        )
+        val cli = root.modules.single { item -> item.projectPath == ":cli" }
+        val filesystem = cli.allowedScopedEffects.single()
+
+        assertEquals("FILESYSTEM_WRITE", filesystem.effect)
+        assertEquals(8, filesystem.callerClasses.size)
+        assertTrue(filesystem.callerClasses.all { it.startsWith("io/github/amichne/kast/cli/") })
     }
 }

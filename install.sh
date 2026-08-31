@@ -93,19 +93,21 @@ Install or completely remove Kast-owned machine state.
 Usage:
   install.sh [install] [--purge-existing] [--version <major.minor.patch>]
              [--install-root <absolute-path>] [--bin-dir <absolute-path>]
-             [--ide-plugin-directory <absolute-path>]
+             [--runtime-store <absolute-path>]
+             [--runtime-directory <absolute-path>]
              [--repository <owner/name>]
              [--release-base-url <https-or-file-url>]
   install.sh uninstall [--install-root <absolute-path>]
              [--bin-dir <absolute-path>]
-             [--ide-plugin-directory <absolute-path>]
+             [--runtime-store <absolute-path>]
+             [--runtime-directory <absolute-path>]
 
 Defaults:
   version       latest stable GitHub release
   install-root  ${XDG_DATA_HOME:-$HOME/.local/share}/kast
   bin-dir       $HOME/.local/bin
-  IDE plugins   $HOME/Library/Application Support/JetBrains/
-                IntelliJIdea2026.2/plugins
+  runtime-store $HOME/.cache/kast/semantic-runtimes
+  runtime-dir   ${TMPDIR:-/tmp}/kast-runtime
   repository    amichne/kast
   release URL   https://github.com/<repository>/releases/download
 
@@ -113,7 +115,8 @@ Environment equivalents:
   KAST_VERSION
   KAST_INSTALL_ROOT
   KAST_BIN_DIR
-  KAST_IDE_PLUGIN_DIRECTORY
+  KAST_RUNTIME_STORE
+  KAST_RUNTIME_DIRECTORY
   KAST_REPOSITORY
   KAST_RELEASE_BASE_URL
 
@@ -125,9 +128,9 @@ Kast IDE plugins. It preserves repositories and non-Kast JetBrains state.
 --purge-existing runs that exact operation after the requested release has
 been downloaded and verified, but before any installation path is changed.
 
-The installer downloads and verifies the matched control distribution and
-standalone IDE plugin. Semantic commands connect only to the exact-root endpoint
-hosted by a supported already-running IntelliJ IDE.
+The installer downloads and verifies the control distribution and its small
+private sidecar payload. The payload contains no IDEA home and installs nothing
+into JetBrains plugin directories; Kast uses the exactly supported local IDEA.
 USAGE
 }
 
@@ -245,13 +248,13 @@ validate_cleanup_plan() {
   require_safe_cleanup_root "default install root" "$default_install_root"
   require_safe_cleanup_root "legacy install root" "$legacy_install_root"
   require_safe_cleanup_root "runtime cache root" "$runtime_cache_root"
-  require_safe_cleanup_root "legacy runtime store" "$legacy_runtime_store"
+  require_safe_cleanup_root "runtime store" "$runtime_store"
+  require_safe_cleanup_root "runtime directory" "$runtime_directory"
   require_safe_cleanup_root "default runtime directory" "$default_runtime_directory"
   require_safe_cleanup_root "configuration root" "$config_root"
   require_safe_cleanup_root "legacy configuration root" "$legacy_config_root"
   require_safe_cleanup_root "application support root" "$application_support_root"
   require_absolute_path "binary directory" "$bin_dir"
-  require_absolute_path "IDE plugin directory" "$ide_plugin_directory"
 }
 
 purge_kast() {
@@ -266,15 +269,15 @@ purge_kast() {
   remove_kast_children "$HOME/Library/Application Support/JetBrains" "*/plugins/kast-indexer"
   remove_kast_children "$HOME/Library/Application Support/Google" "*/plugins/kast"
   remove_kast_children "$HOME/Library/Application Support/Google" "*/plugins/kast-indexer"
-  remove_owned_path "$ide_plugin_directory/kast-indexer"
   remove_owned_path "$bin_dir/kast"
   remove_owned_path "$HOME/.local/bin/kast"
   remove_owned_path "$HOME/.local/bin/_kastctl"
   remove_owned_path "$install_root"
   remove_owned_path "$default_install_root"
   remove_owned_path "$legacy_install_root"
-  remove_owned_path "$legacy_runtime_store"
+  remove_owned_path "$runtime_store"
   remove_owned_path "$runtime_cache_root"
+  remove_owned_path "$runtime_directory"
   remove_owned_path "$default_runtime_directory"
   remove_owned_path "$config_root"
   remove_owned_path "$legacy_config_root"
@@ -379,28 +382,118 @@ verify_archive_paths() {
   done < "$listing"
 }
 
-verify_plugin_archive_paths() {
+verify_runtime_archive_paths() {
   local archive="$1"
   local listing="$2"
   local entry
-  local has_plugin_implementation=false
+  local has_executable=false
+  local has_runtime_libraries=false
+  local has_private_plugin=false
 
   unzip -Z1 "$archive" > "$listing"
   while IFS= read -r entry || [[ -n "$entry" ]]; do
-    [[ -n "$entry" ]] || fail "IDE plugin contains an empty path"
+    [[ -n "$entry" ]] || fail "sidecar payload contains an empty path"
     case "$entry" in
       /*|../*|*/../*|*/..)
-        fail "IDE plugin contains an unsafe path: $entry"
+        fail "sidecar payload contains an unsafe path: $entry"
         ;;
-      kast-indexer/lib/kast-ide-plugin-"$version".jar)
-        has_plugin_implementation=true
+      idea-home|idea-home/*|*/product-info.json|*/plugins/Kotlin/*|*/plugins/gradle/*)
+        fail "sidecar payload contains an IDEA distribution entry: $entry"
         ;;
-      kast-indexer|kast-indexer/*) ;;
-      *) fail "IDE plugin contains an unexpected root: $entry" ;;
+      kast-indexer) has_executable=true ;;
+      runtime-libs/*) has_runtime_libraries=true ;;
+      private-plugins/kast-indexer/lib/*) has_private_plugin=true ;;
+      private-plugins|private-plugins/|private-plugins/kast-indexer|\
+        private-plugins/kast-indexer/|private-plugins/kast-indexer/lib|\
+        private-plugins/kast-indexer/lib/) ;;
+      *) fail "sidecar payload contains an unexpected root: $entry" ;;
     esac
   done < "$listing"
-  [[ "$has_plugin_implementation" == true ]] ||
-    fail "IDE plugin does not bind release $version"
+  [[ "$has_executable" == true ]] || fail "sidecar payload has no kast-indexer executable"
+  [[ "$has_runtime_libraries" == true ]] || fail "sidecar payload has no launcher runtime"
+  [[ "$has_private_plugin" == true ]] || fail "sidecar payload has no private Kast extension"
+}
+
+verify_runtime_manifest() {
+  local manifest="$1"
+  local expected_name="$2"
+  local expected_url="$3"
+  local expected_digest="$4"
+  local expected_bytes="$5"
+
+  grep -Fq "\"fileName\":\"$expected_name\"" "$manifest" ||
+    fail "control manifest identifies a different sidecar archive"
+  grep -Fq "\"url\":\"$expected_url\"" "$manifest" ||
+    fail "control manifest identifies a different sidecar URL"
+  grep -Fq "\"sha256\":\"sha256:$expected_digest\"" "$manifest" ||
+    fail "control manifest identifies a different sidecar digest"
+  grep -Fq "\"bytes\":$expected_bytes" "$manifest" ||
+    fail "control manifest identifies a different sidecar size"
+}
+
+install_runtime_archive() {
+  local root="$1"
+  local source_archive="$2"
+  local source_checksum="$3"
+  local expected_digest="$4"
+  local runtime_root="$root/share/kast/runtime"
+  local installed_archive="$runtime_root/$runtime_name"
+  local installed_checksum="$runtime_root/$runtime_name.sha256"
+
+  if [[ -e "$runtime_root" || -L "$runtime_root" ]]; then
+    [[ -d "$runtime_root" && ! -L "$runtime_root" ]] ||
+      fail "installed runtime root is invalid: $runtime_root"
+  else
+    mkdir -p "$runtime_root"
+  fi
+  if [[ -e "$installed_archive" || -L "$installed_archive" ]]; then
+    [[ -f "$installed_archive" && ! -L "$installed_archive" ]] ||
+      fail "installed sidecar archive path is invalid: $installed_archive"
+    [[ "$(shasum -a 256 "$installed_archive" | awk '{ print $1 }')" == "$expected_digest" ]] ||
+      fail "installed sidecar archive does not match the immutable release"
+  else
+    staged_runtime="$(mktemp "$runtime_root/.runtime.XXXXXX")"
+    mv -f "$source_archive" "$staged_runtime"
+    [[ "$(shasum -a 256 "$staged_runtime" | awk '{ print $1 }')" == "$expected_digest" ]] ||
+      fail "staged sidecar archive digest changed"
+    mv "$staged_runtime" "$installed_archive"
+    staged_runtime=""
+  fi
+  staged_runtime_checksum="$(mktemp "$runtime_root/.runtime-checksum.XXXXXX")"
+  cp "$source_checksum" "$staged_runtime_checksum"
+  mv -f "$staged_runtime_checksum" "$installed_checksum"
+  staged_runtime_checksum=""
+}
+
+install_complete_launcher() {
+  local root="$1"
+  local launcher="$root/bin/kast-complete"
+  staged_launcher="$(mktemp "$root/bin/.kast-complete.XXXXXX")"
+  {
+    printf '%s\n' '#!/bin/sh' 'set -eu' ''
+    printf '%s\n' 'script_path="$0"' 'link_count=0'
+    printf '%s\n' 'while [ -L "$script_path" ]; do'
+    printf '%s\n' '  link_count=$((link_count + 1))'
+    printf '%s\n' '  [ "$link_count" -le 16 ] || { echo "kast: launcher symlink cycle" >&2; exit 1; }'
+    printf '%s\n' '  link_target="$(readlink "$script_path")"'
+    printf '%s\n' '  case "$link_target" in'
+    printf '%s\n' '    /*) script_path="$link_target" ;;'
+    printf '%s\n' '    *) script_path="$(dirname -- "$script_path")/$link_target" ;;'
+    printf '%s\n' '  esac'
+    printf '%s\n' 'done'
+    printf '%s\n' 'script_dir="$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)"'
+    printf '%s\n' "runtime_archive=\"\$script_dir/../share/kast/runtime/$runtime_name\""
+    printf '%s\n' 'control_executable="$script_dir/kast"'
+    printf '%s\n' 'if [ ! -x "$control_executable" ] || [ ! -f "$runtime_archive" ]; then'
+    printf '%s\n' '  echo "kast: installed control or sidecar payload is missing" >&2'
+    printf '%s\n' '  exit 1'
+    printf '%s\n' 'fi'
+    printf '%s\n' 'export KAST_RUNTIME_ARCHIVE="$runtime_archive"'
+    printf '%s\n' 'exec "$control_executable" "$@"'
+  } > "$staged_launcher"
+  chmod 755 "$staged_launcher"
+  mv -f "$staged_launcher" "$launcher"
+  staged_launcher=""
 }
 
 verify_control_root() {
@@ -409,8 +502,8 @@ verify_control_root() {
   local version_output link
 
   [[ -x "$root/bin/kast" ]] || fail "control archive has no executable bin/kast"
-  [[ ! -e "$root/share/kast/semantic-runtime.json" ]] ||
-    fail "control archive retained a semantic-runtime manifest"
+  [[ -f "$root/share/kast/semantic-runtime.json" ]] ||
+    fail "control archive has no semantic-runtime manifest"
   [[ -f "$root/share/kast/operation-registry.json" ]] ||
     fail "control archive has no operation registry"
   [[ -f "$root/share/kast/wire-schema.json" ]] ||
@@ -421,12 +514,10 @@ verify_control_root() {
   [[ ! -e "$root/kast-indexer" && ! -e "$root/idea-home" ]] ||
     fail "control archive contains semantic runtime content"
 
-  version_output="$("$root/bin/kast" --version)"
-  case "$version_output" in
-    "kast ${expected_version} (IDE-hosted)") ;;
-    *) fail "installed metadata reports an unexpected version: $version_output" ;;
-  esac
-  "$root/bin/kast" --schema >/dev/null
+  version_output="$(KAST_RUNTIME_STORE="$runtime_store" "$root/bin/kast" --version)"
+  [[ "$version_output" == "kast ${expected_version} (IntelliJ sidecar)" ]] ||
+    fail "installed metadata reports an unexpected version: $version_output"
+  KAST_RUNTIME_STORE="$runtime_store" "$root/bin/kast" --schema >/dev/null
 }
 
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
@@ -439,7 +530,6 @@ default_runtime_directory="${TMPDIR:-/tmp}/kast-runtime"
 config_root="${config_home}/kast"
 legacy_config_root="${HOME}/.config/kast"
 application_support_root="${HOME}/Library/Application Support/Kast"
-default_ide_plugin_directory="${HOME}/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
 
 action="install"
 purge_existing=false
@@ -448,8 +538,8 @@ repository="${KAST_REPOSITORY:-$DEFAULT_REPOSITORY}"
 release_base_url="${KAST_RELEASE_BASE_URL:-}"
 install_root="${KAST_INSTALL_ROOT:-$default_install_root}"
 bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
-legacy_runtime_store="$runtime_cache_root/semantic-runtimes"
-ide_plugin_directory="${KAST_IDE_PLUGIN_DIRECTORY:-$default_ide_plugin_directory}"
+runtime_store="${KAST_RUNTIME_STORE:-$runtime_cache_root/semantic-runtimes}"
+runtime_directory="${KAST_RUNTIME_DIRECTORY:-$default_runtime_directory}"
 process_table_command="${KAST_INSTALL_PROCESS_TABLE_COMMAND:-ps}"
 process_kill_command="${KAST_INSTALL_PROCESS_KILL_COMMAND:-kill}"
 version_option_set=false
@@ -487,9 +577,14 @@ while [[ $# -gt 0 ]]; do
       bin_dir="$2"
       shift 2
       ;;
-    --ide-plugin-directory)
-      [[ $# -ge 2 ]] || fail "--ide-plugin-directory requires a value"
-      ide_plugin_directory="$2"
+    --runtime-store)
+      [[ $# -ge 2 ]] || fail "--runtime-store requires a value"
+      runtime_store="$2"
+      shift 2
+      ;;
+    --runtime-directory)
+      [[ $# -ge 2 ]] || fail "--runtime-directory requires a value"
+      runtime_directory="$2"
       shift 2
       ;;
     --repository)
@@ -561,7 +656,7 @@ else
 fi
 java_major="$(java_major_version "$java_executable")" ||
   fail "unable to identify the Java version used by the Kast launcher"
-(( java_major >= 21 )) || fail "Java 21 or newer is required; found Java $java_major"
+(( java_major >= 25 )) || fail "Java 25 or newer is required; found Java $java_major"
 
 validate_repository "$repository"
 if [[ -n "$release_base_url" ]]; then
@@ -571,7 +666,8 @@ if [[ -n "$release_base_url" ]]; then
 fi
 require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_dir"
-require_absolute_path "IDE plugin directory" "$ide_plugin_directory"
+require_absolute_path "runtime store" "$runtime_store"
+require_absolute_path "runtime directory" "$runtime_directory"
 if [[ "$purge_existing" == true ]]; then
   require_command rm
   require_command "$process_table_command"
@@ -591,7 +687,7 @@ fi
 
 release="v${version}"
 control_name="kast-control-v${version}-macos-aarch64.tar.gz"
-plugin_name="kast-ide-plugin-${version}.zip"
+runtime_name="kast-semantic-runtime-${version}-macos-aarch64.zip"
 if [[ -n "$release_base_url" ]]; then
   release_url="${release_base_url%/}/${release}"
 else
@@ -600,31 +696,33 @@ fi
 
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 staged_root=""
-staged_plugin=""
+staged_runtime=""
+staged_runtime_checksum=""
+staged_launcher=""
 cleanup() {
   rm -rf "$temporary_root"
   if [[ -n "$staged_root" && -e "$staged_root" ]]; then
     rm -rf "$staged_root"
   fi
-  if [[ -n "$staged_plugin" && -e "$staged_plugin" ]]; then
-    rm -rf "$staged_plugin"
-  fi
+  [[ -z "$staged_runtime" ]] || rm -f "$staged_runtime"
+  [[ -z "$staged_runtime_checksum" ]] || rm -f "$staged_runtime_checksum"
+  [[ -z "$staged_launcher" ]] || rm -f "$staged_launcher"
 }
 trap cleanup EXIT
 
 archive="$temporary_root/$control_name"
 checksum="$temporary_root/$control_name.sha256"
 listing="$temporary_root/control.list"
-plugin_archive="$temporary_root/$plugin_name"
-plugin_checksum="$temporary_root/$plugin_name.sha256"
-plugin_listing="$temporary_root/plugin.list"
+runtime_archive="$temporary_root/$runtime_name"
+runtime_checksum="$temporary_root/$runtime_name.sha256"
+runtime_listing="$temporary_root/runtime.list"
 
-note "downloading hosted Kast $version distribution"
+note "downloading plugin-free Kast $version distribution"
 for asset in \
   "$control_name" \
   "$control_name.sha256" \
-  "$plugin_name" \
-  "$plugin_name.sha256"; do
+  "$runtime_name" \
+  "$runtime_name.sha256"; do
   curl \
     --fail \
     --location \
@@ -637,19 +735,20 @@ for asset in \
 done
 
 control_digest="$(verify_checksum "$archive" "$checksum" "$control_name")"
-plugin_digest="$(verify_checksum "$plugin_archive" "$plugin_checksum" "$plugin_name")"
+runtime_digest="$(verify_checksum "$runtime_archive" "$runtime_checksum" "$runtime_name")"
 verify_archive_paths "$archive" "$listing"
-verify_plugin_archive_paths "$plugin_archive" "$plugin_listing"
+verify_runtime_archive_paths "$runtime_archive" "$runtime_listing"
 
 verified_root="$temporary_root/verified-control"
 mkdir -p "$verified_root"
 tar -xzf "$archive" -C "$verified_root"
 verify_control_root "$verified_root" "$version"
-verified_plugin="$temporary_root/verified-plugin"
-mkdir -p "$verified_plugin"
-unzip -q "$plugin_archive" -d "$verified_plugin"
-[[ -d "$verified_plugin/kast-indexer" && ! -L "$verified_plugin/kast-indexer" ]] ||
-  fail "IDE plugin archive has no physical kast-indexer root"
+verify_runtime_manifest \
+  "$verified_root/share/kast/semantic-runtime.json" \
+  "$runtime_name" \
+  "$release_url/$runtime_name" \
+  "$runtime_digest" \
+  "$(wc -c < "$runtime_archive" | tr -d ' ')"
 
 if [[ "$purge_existing" == true ]]; then
   purge_kast
@@ -669,18 +768,20 @@ if [[ -e "$target_root" || -L "$target_root" ]]; then
   [[ "$(< "$target_root/.kast-control-sha256")" == "$control_digest" ]] ||
     fail "existing version does not match the immutable release: $target_root"
   verify_control_root "$target_root" "$version"
-  [[ -f "$target_root/.kast-plugin-sha256" ]] ||
-    fail "existing version has no IDE plugin identity: $target_root"
-  [[ "$(< "$target_root/.kast-plugin-sha256")" == "$plugin_digest" ]] ||
-    fail "existing version plugin does not match the immutable release: $target_root"
+  [[ -f "$target_root/.kast-runtime-sha256" ]] ||
+    fail "existing version has no sidecar identity: $target_root"
+  [[ "$(< "$target_root/.kast-runtime-sha256")" == "$runtime_digest" ]] ||
+    fail "existing version sidecar does not match the immutable release: $target_root"
+  install_runtime_archive "$target_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
+  install_complete_launcher "$target_root"
 else
   staged_root="$(mktemp -d "$versions_root/.install-${version}.XXXXXX")"
   tar -xzf "$archive" -C "$staged_root"
   verify_control_root "$staged_root" "$version"
-  mkdir -p "$staged_root/share/kast/ide-plugin"
-  cp -R "$verified_plugin/kast-indexer" "$staged_root/share/kast/ide-plugin/kast-indexer"
+  install_runtime_archive "$staged_root" "$runtime_archive" "$runtime_checksum" "$runtime_digest"
+  install_complete_launcher "$staged_root"
   printf '%s\n' "$control_digest" > "$staged_root/.kast-control-sha256"
-  printf '%s\n' "$plugin_digest" > "$staged_root/.kast-plugin-sha256"
+  printf '%s\n' "$runtime_digest" > "$staged_root/.kast-runtime-sha256"
   mv "$staged_root" "$target_root"
   staged_root=""
 fi
@@ -700,7 +801,7 @@ if [[ -e "$command_link" || -L "$command_link" ]]; then
   [[ -L "$command_link" ]] || fail "command path already exists and is not managed: $command_link"
   prior_command="$(readlink "$command_link")"
   case "$prior_command" in
-    "$install_root/current/bin/kast"|"$install_root/versions/"*/bin/kast) ;;
+    "$install_root/current/bin/kast-complete"|"$install_root/versions/"*/bin/kast-complete) ;;
     *) fail "command path is owned by another installation: $command_link" ;;
   esac
 fi
@@ -708,29 +809,14 @@ fi
 # `ln -sfn` replaces only the installer-owned links checked above. It does not
 # follow a `current` symlink to the installed version directory.
 ln -sfn "versions/$version" "$current_link"
-ln -sfn "$install_root/current/bin/kast" "$command_link"
-
-plugin_link="$ide_plugin_directory/kast-indexer"
-mkdir -p "$ide_plugin_directory"
-if [[ -e "$plugin_link" && ! -L "$plugin_link" ]]; then
-  fail "IDE plugin path already exists and is not managed: $plugin_link"
-fi
-if [[ -L "$plugin_link" ]]; then
-  prior_plugin="$(readlink "$plugin_link")"
-  case "$prior_plugin" in
-    "$install_root/current/share/kast/ide-plugin/kast-indexer"|\
-    "$install_root/versions/"*/share/kast/ide-plugin/kast-indexer) ;;
-    *) fail "IDE plugin path is owned by another installation: $plugin_link" ;;
-  esac
-fi
-ln -sfn "$install_root/current/share/kast/ide-plugin/kast-indexer" "$plugin_link"
+ln -sfn "$install_root/current/bin/kast-complete" "$command_link"
 
 verify_control_root "$target_root" "$version"
 "$command_link" --version >/dev/null
 
 note "installed Kast $version"
 note "command: $command_link"
-note "IDE plugin: $plugin_link"
+note "private sidecar: $target_root/share/kast/runtime/$runtime_name"
 case ":${PATH:-}:" in
   *":$bin_dir:"*) ;;
   *) warning "add $bin_dir to PATH" ;;

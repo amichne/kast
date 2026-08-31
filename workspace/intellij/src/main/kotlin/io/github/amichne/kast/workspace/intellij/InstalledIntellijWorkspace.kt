@@ -4,7 +4,6 @@ import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
-import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -47,8 +46,8 @@ enum class InstalledIntellijWorkspaceFailure {
 class InstalledIntellijWorkspaceModel internal constructor(
     val capture: InstalledGradleModelCapture,
     private val project: Project,
-    @Suppress("unused")
     private val projectJvm: AssignedInstalledProjectJvm,
+    private val moduleRematerializer: InstalledModuleRematerializer,
 ) {
     /**
      * Proof transition: `InstalledIntellijWorkspaceModel -> Refinement<WorkspaceStateIdentity,
@@ -61,7 +60,7 @@ class InstalledIntellijWorkspaceModel internal constructor(
     fun captureCurrentSemanticIdentity(): io.github.amichne.kast.kernel.Refinement<
         io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
         InstalledGradleModelCaptureFailure,
-        > = when (awaitInstalledIndexingQuiescence(project)) {
+        > = when (awaitInstalledIndexingQuiescence(project, projectJvm, moduleRematerializer)) {
         InstalledIndexingReadiness.READY -> capture.captureCurrentSemanticIdentity()
         InstalledIndexingReadiness.INTERRUPTED,
         InstalledIndexingReadiness.TIMED_OUT,
@@ -104,22 +103,12 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        val importObserver = InstalledGradleImportObserver(workspaceRoot)
-        val notificationManager = ExternalSystemProgressNotificationManager.getInstance()
-        if (!notificationManager.addNotificationListener(importObserver)) {
-            return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
-        }
-        return try {
-            openObserved(workspaceRoot, gradleJvm, importObserver)
-        } finally {
-            notificationManager.removeNotificationListener(importObserver)
-        }
+        return openObserved(workspaceRoot, gradleJvm)
     }
 
     private fun openObserved(
         workspaceRoot: Path,
         gradleJvm: InstalledGradleJvm,
-        importObserver: InstalledGradleImportObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(workspaceRoot, gradleJvm)
         val project = try {
@@ -163,7 +152,10 @@ object InstalledIntellijWorkspace {
             .withCallback(imported)
         val importCompletion = try {
             when (prepared.importOperation) {
-                InstalledGradleImportOperation.AwaitLinked -> importObserver.completion
+                InstalledGradleImportOperation.RefreshLinked -> {
+                    ExternalSystemUtil.refreshProject(workspaceRoot.toString(), specification)
+                    closedImported
+                }
                 InstalledGradleImportOperation.LinkUnlinked -> {
                     val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
                         this.gradleJvm = gradleJvm.projectSettingsSelector()
@@ -203,7 +195,10 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
             )
         }
-        when (awaitInstalledIndexingQuiescence(project)) {
+        val moduleRematerializer = InstalledModuleRematerializer {
+            materializeImportedModules(project, workspaceRoot)
+        }
+        when (awaitInstalledIndexingQuiescence(project, assignedProjectJvm, moduleRematerializer)) {
             InstalledIndexingReadiness.READY -> Unit
             InstalledIndexingReadiness.INTERRUPTED -> return rejected(
                 InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
@@ -219,7 +214,12 @@ object InstalledIntellijWorkspace {
             )
         }
         return InstalledIntellijWorkspaceOpening.Opened(
-            InstalledIntellijWorkspaceModel(capture, project, assignedProjectJvm),
+            InstalledIntellijWorkspaceModel(
+                capture,
+                project,
+                assignedProjectJvm,
+                moduleRematerializer,
+            ),
         )
     }
 

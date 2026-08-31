@@ -18,6 +18,18 @@ private sealed interface InstalledIndexerStartupFailure {
     data class Runtime(
         val failures: Set<InstalledKastRuntimeFailure>,
     ) : InstalledIndexerStartupFailure
+
+    data class TransportExecution(
+        val failure: IndexerTransportExecutionFailure,
+    ) : InstalledIndexerStartupFailure
+
+    data object CacheState : InstalledIndexerStartupFailure
+}
+
+private enum class IndexerTransportExecutionFailure {
+    RETURNED,
+    FAILED,
+    INTERRUPTED,
 }
 
 /** IntelliJ application command that owns one admitted installed runtime until process exit. */
@@ -39,6 +51,12 @@ class KastIndexerApplicationStarter : ApplicationStarter {
             is IndexerLaunchAdmission.Rejected -> reject(
                 InstalledIndexerStartupFailure.Launch(admission.failures),
             )
+        }
+        if (
+            IndexerCacheStatePublisher.publish(IndexerCacheState.REFRESHING) !=
+            IndexerCacheStatePublication.Published
+        ) {
+            reject(InstalledIndexerStartupFailure.CacheState)
         }
         val endpoint = when (val preparation = PreparedIndexerEndpoint.prepare(options)) {
             is IndexerEndpointPreparation.Prepared -> preparation.endpoint
@@ -66,13 +84,42 @@ class KastIndexerApplicationStarter : ApplicationStarter {
                 InstalledIndexerStartupFailure.Transport(activation.failure),
             )
         }
+        if (
+            IndexerCacheStatePublisher.publish(IndexerCacheState.SMART) !=
+            IndexerCacheStatePublication.Published
+        ) {
+            reject(InstalledIndexerStartupFailure.CacheState)
+        }
         transport.use { installedTransport ->
-            installedTransport.serve()
+            when (
+                DetachedIndexerTransportExecutor.execute {
+                    installedTransport.serve()
+                }
+            ) {
+                is IndexerTransportExecution.Completed -> reject(
+                    InstalledIndexerStartupFailure.TransportExecution(
+                        IndexerTransportExecutionFailure.RETURNED,
+                    ),
+                )
+                IndexerTransportExecution.Failed -> reject(
+                    InstalledIndexerStartupFailure.TransportExecution(
+                        IndexerTransportExecutionFailure.FAILED,
+                    ),
+                )
+                IndexerTransportExecution.Interrupted -> reject(
+                    InstalledIndexerStartupFailure.TransportExecution(
+                        IndexerTransportExecutionFailure.INTERRUPTED,
+                    ),
+                )
+            }
         }
     }
 }
 
 private fun reject(failure: InstalledIndexerStartupFailure): Nothing {
+    if (failure != InstalledIndexerStartupFailure.CacheState) {
+        IndexerCacheStatePublisher.publish(IndexerCacheState.REBUILD_REQUIRED)
+    }
     System.err.println("kast-indexer: startup rejected: $failure")
     exitProcess(70)
 }

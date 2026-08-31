@@ -20,7 +20,7 @@ internal fun diagnosticCommandGroup(
     return CommandFamily(
         KastCommandGroup(
             "diagnostic",
-            "Canonical command shape; not hosted by the current IDE endpoint.",
+            "Read bounded IntelliJ diagnostics from the isolated sidecar.",
         ).subcommands(check),
         listOf(check),
     )

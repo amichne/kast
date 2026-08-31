@@ -66,11 +66,11 @@ internal object DetachedModelClassContract {
                 )
             }
             views.forEach { (resource, view) ->
-                if (view.majorVersion != JAVA_21_CLASS_VERSION) {
+                if (view.majorVersion != JAVA_25_CLASS_VERSION) {
                     add(
                         DetachedModelClassContractFailure.ClassVersionMismatch(
                             resource,
-                            JAVA_21_CLASS_VERSION,
+                            JAVA_25_CLASS_VERSION,
                             view.majorVersion,
                         ),
                     )
@@ -221,11 +221,11 @@ internal object DetachedModelClassContract {
     private const val APPLICATION = "com/intellij/openapi/application/Application"
     private const val PROJECT = "Lcom/intellij/openapi/project/Project;"
     private const val CLASS_MAGIC = 0xCAFEBABE.toInt()
-    private const val JAVA_21_CLASS_VERSION = 65
+    private const val JAVA_25_CLASS_VERSION = 69
 
     private val EXPECTED_FINGERPRINTS = linkedMapOf(
-        MAIN_RESOURCE to "98dc361e765eb478094c69cad924fadcf6b07ed811addd59416859289936d8f5",
-        MAPPINGS_RESOURCE to "2e9b61f95ae2cd3b53ed39b6f41f8dcb6153f10fb3bb9539aea27b1bb14ea415",
+        MAIN_RESOURCE to "da80aaedf03b336be3b43d17ed55ea52c98ab1c96b9c8633610ae7bef6b029ff",
+        MAPPINGS_RESOURCE to "3a5cc9841ee89c7a0b94f9a28c9266fcff93dd7feec88067494a33f5a90b567e",
     )
 
     private val EXPECTED_PUBLIC_MODEL_METHODS = listOf(

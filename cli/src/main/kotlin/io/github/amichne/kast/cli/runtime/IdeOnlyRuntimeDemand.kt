@@ -11,22 +11,35 @@ sealed interface HostedRuntimeDemand {
     data object Lifecycle : HostedRuntimeDemand
 }
 
-fun interface RootRuntimeDemander {
+interface RootRuntimeDemander {
     /**
      * Proof transition: `CanonicalRoot -> RuntimeAdmission`.
      *
      * Establishes one reachable endpoint for the exact root without requiring a caller-provided
      * endpoint. [RuntimeAdmissionFailure] is the closed expected failure.
      */
-    fun demand(root: CanonicalRoot, demand: HostedRuntimeDemand): RuntimeAdmission
+    fun demand(
+        root: CanonicalRoot,
+        demand: HostedRuntimeDemand,
+        startup: RuntimeStartupRequest,
+    ): RuntimeAdmission
 }
+
+fun RootRuntimeDemander.demand(
+    root: CanonicalRoot,
+    demand: HostedRuntimeDemand,
+): RuntimeAdmission = demand(root, demand, RuntimeStartupRequest.Default)
 
 /** Adapts the explicit legacy locator/demander pair behind one root-level admission boundary. */
 internal class LocatedRuntimeDemander(
     private val locator: RuntimeEndpointLocator,
     private val demander: RuntimeDemander,
 ) : RootRuntimeDemander {
-    override fun demand(root: CanonicalRoot, demand: HostedRuntimeDemand): RuntimeAdmission {
+    override fun demand(
+        root: CanonicalRoot,
+        demand: HostedRuntimeDemand,
+        startup: RuntimeStartupRequest,
+    ): RuntimeAdmission {
         val requested = when (val resolution = locator.locate(root)) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(
@@ -60,7 +73,11 @@ class IdeOnlyRuntimeDemander(
      * retains its exact closed [RuntimeAdmissionFailure]. Raw socket extraction is confined to the
      * endpoint-to-transport boundary.
      */
-    override fun demand(root: CanonicalRoot, demand: HostedRuntimeDemand): RuntimeAdmission {
+    override fun demand(
+        root: CanonicalRoot,
+        demand: HostedRuntimeDemand,
+        startup: RuntimeStartupRequest,
+    ): RuntimeAdmission {
         val admitted = when (val admission = endpointAdmitter.admit(root)) {
             is IdeEndpointAdmission.Complete -> admission.endpoint
             is IdeEndpointAdmission.Rejected -> return RuntimeAdmission.Rejected(

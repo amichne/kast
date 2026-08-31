@@ -44,17 +44,17 @@ OPERATION_DESCRIPTIONS = {
 }
 
 LIFECYCLE_DESCRIPTIONS = {
-    "start": "Admit the existing exact-root IDE endpoint and return workspace readiness.",
-    "stop": "Reject because the already-running IDE owns endpoint lifecycle.",
-    "status": "Report running after compatible exact-root endpoint admission.",
-    "clean": "Reject because active IDE-hosted state is not owned by the CLI.",
-    "reindex": "Reject because the CLI cannot stop or rebuild IDE-owned semantic state.",
+    "start": "Start or reuse the exact-root private sidecar and return workspace readiness.",
+    "stop": "Stop only the process proven to own the exact-root sidecar endpoint.",
+    "status": "Passively report exact-root runtime identity and private cache state.",
+    "clean": "Remove inactive exact-root endpoint artifacts while retaining the private cache.",
+    "reindex": "Quarantine only the exact Kast cache, then perform a fresh private import.",
 }
 
 LOCAL_COMMAND_DESCRIPTIONS = {
     "product inspect": (
-        "Report installed control identity plus direct root and IDE endpoint evidence without "
-        "requiring compatible runtime admission."
+        "Report installed sidecar identity plus direct root and Kast-cache evidence without "
+        "starting or admitting a runtime."
     ),
 }
 
@@ -208,7 +208,7 @@ def hosted_description(command: SemanticCommand) -> str:
     if not command.hosted_intents:
         return description
     intents = ", ".join(f"`{intent}`" for intent in command.hosted_intents)
-    return f"Hosted only for {intents}. {description}"
+    return f"Sidecar route is available only for {intents}. {description}"
 
 
 def render(
@@ -225,7 +225,7 @@ def render(
     )
     deferred_rows = "\n".join(
         f"| `{command.operation_id}` | `kast {table_cell(command.usage)}` | "
-        "Available only as an internal hosted service; no direct endpoint route. |"
+        "Available only as an internal sidecar service; no direct endpoint route. |"
         for command in semantic
         if command.hosted_exposure != "public"
     )
@@ -266,28 +266,28 @@ Run `kast --schema` when a tool needs the contract as JSON. Run a command with
 The schema's `serverProjection` is generated with the installed command graph.
 It owns server-visible tool names and descriptions, closed input and output
 JSON Schemas, deferred-loading policy, and field-to-CLI option bindings. It
-contains every operation marked `public` by the hosted registry and excludes
+contains every operation marked `public` by the operation registry and excludes
 internal-only operations. A broker must qualify and consume that projection
 from its exact configured `kast` executable; it must not infer tool shapes from
 the executable's version or from the human-readable command strings.
 
-## Hosted endpoint operations
+## Sidecar endpoint operations
 
 Run semantic commands from the repository root. Each command emits one JSON
 document on standard output. A rejected command emits one diagnostic document
-on standard error. The installed IDE plugin publishes the ten operations marked
-`public` by the generated operation registry:
+on standard error. The private IntelliJ sidecar publishes the ten operations
+marked `public` by the generated operation registry:
 
 | Operation | Command shape | Result role |
 | --- | --- | --- |
 {hosted_rows}
 
-## Canonical operations without a direct hosted route
+## Canonical operations without a direct sidecar route
 
 <Warning>
   These operations remain in the canonical registry and command graph because
-  hosted topology, traversal, planning, and verification consume them
-  internally. The installed IDE endpoint does not publish them as direct
+  sidecar topology, traversal, planning, and verification consume them
+  internally. The installed sidecar endpoint does not publish them as direct
   routes.
 </Warning>
 
@@ -297,8 +297,9 @@ on standard error. The installed IDE plugin publishes the ten operations marked
 
 ## Runtime lifecycle
 
-The IDE owns this lifecycle. Every lifecycle command first admits the
-already-running compatible endpoint for the exact current root.
+Kast owns the isolated sidecar lifecycle. `start` and semantic commands may
+launch the exact supported local IDEA build; `status`, `stop`, and `clean`
+remain passive and never manufacture an endpoint.
 
 | Command | Effect |
 | --- | --- |
@@ -306,8 +307,8 @@ already-running compatible endpoint for the exact current root.
 
 ## Process-local inspection
 
-These commands inspect installed control or endpoint evidence directly. They do
-not require successful hosted runtime admission.
+These commands inspect installed control and Kast-owned cache evidence directly.
+They do not require successful sidecar runtime admission.
 
 | Command | Result |
 | --- | --- |
@@ -315,7 +316,7 @@ not require successful hosted runtime admission.
 
 ## Process-local flags
 
-These flags do not contact the hosted IDE endpoint.
+These flags do not contact or start the IntelliJ sidecar.
 
 | Flag | Result |
 | --- | --- |

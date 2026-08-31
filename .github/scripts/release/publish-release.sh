@@ -51,12 +51,12 @@ fi
 
 assets_directory="$(cd "${assets_directory}" && pwd -P)"
 control="${assets_directory}/kast-control-v${version}-macos-aarch64.tar.gz"
-plugin="${assets_directory}/kast-ide-plugin-${version}.zip"
+sidecar="${assets_directory}/kast-semantic-runtime-${version}-macos-aarch64.zip"
 assets=(
   "${control}"
   "${control}.sha256"
-  "${plugin}"
-  "${plugin}.sha256"
+  "${sidecar}"
+  "${sidecar}.sha256"
 )
 for asset in "${assets[@]}"; do
   [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"

@@ -270,6 +270,18 @@ internal object KastCleanSlateModules {
             ModuleId.PROTOCOL_REGISTRY,
             ModuleId.PROTOCOL_WIRE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
+            scopedEffects = mapOf(
+                ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                    JvmClassName("io/github/amichne/kast/cli/ApfsCoWIndexSeedCloner"),
+                    JvmClassName("io/github/amichne/kast/cli/FilesystemRootSidecarCacheLifecycle"),
+                    JvmClassName("io/github/amichne/kast/cli/FilesystemSidecarCachePreparer"),
+                    JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemService"),
+                    JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemServiceKt"),
+                    JvmClassName("io/github/amichne/kast/cli/InstalledSidecarRuntimeDemandKt"),
+                    JvmClassName("io/github/amichne/kast/cli/SidecarCacheIdentityFile"),
+                    JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
+                ),
+            ),
         ),
         ideRead(
             ModuleId.WORKSPACE_INTELLIJ_READ,
@@ -372,12 +384,14 @@ internal object KastCleanSlateModules {
         role: ModuleRole,
         vararg dependencies: ModuleId,
         effects: Set<ForbiddenEffect> = emptySet(),
+        scopedEffects: Map<ForbiddenEffect, Set<JvmClassName>> = emptyMap(),
     ): ModulePolicy = ModulePolicy(
         id = id,
         lifecycle = ModuleLifecycle.ACTIVE,
         role = role,
         allowedProjectDependencies = dependencies.toSet(),
         allowedEffects = effects,
+        allowedScopedEffectCallers = scopedEffects,
     )
 
     private fun ideRead(

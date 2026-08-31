@@ -42,7 +42,7 @@ class InstalledGradleJvm private constructor(
          * Proof transition: `(String, String?) -> InstalledGradleJvmAdmission`.
          *
          * Establishes an absolute, normalized, physically canonical, non-symlinked Java home
-         * containing one regular executable `bin/java`, equal to the current Java 21 process home,
+         * containing one regular executable `bin/java`, equal to the current Java 25 process home,
          * plus a process `JAVA_HOME` resolving to that exact home. The returned capability retains
          * the canonical home for isolated project SDK resolution and the `#JAVA_HOME` selector for
          * IDEA's Gradle JVM resolver.
@@ -167,4 +167,4 @@ class InstalledGradleJvm private constructor(
     }
 }
 
-private const val REQUIRED_JAVA_FEATURE = 21
+private const val REQUIRED_JAVA_FEATURE = 25

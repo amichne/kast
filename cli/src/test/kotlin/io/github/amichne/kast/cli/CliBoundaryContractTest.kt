@@ -125,7 +125,9 @@ class CliBoundaryContractTest {
     }
 
     @Test
-    fun `indexer launch command retains exact root and canonical socket flag`(@TempDir temporary: Path) {
+    fun `indexer launch command rejects callers without private sidecar context`(
+        @TempDir temporary: Path,
+    ) {
         val rootPath = Files.createDirectories(temporary.resolve("repo"))
         Files.writeString(rootPath.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val executablePath = Files.writeString(temporary.resolve("kast-indexer"), "#!/bin/sh\n")
@@ -140,20 +142,11 @@ class CliBoundaryContractTest {
             is RuntimeEndpointResolution.Rejected -> error("Expected endpoint, got ${resolution.failure}")
         }
 
-        val command = when (val construction = IndexerLaunchCommand.create(executable, root, endpoint)) {
-            is IndexerLaunchCommandConstruction.Created -> construction.command
-            is IndexerLaunchCommandConstruction.Rejected ->
-                error("Expected command, got ${construction.failure}")
-        }
-
         assertEquals(
-            listOf(
-                executablePath.toRealPath().toString(),
-                "--workspace-root=${root.path}",
-                "--socket-path=${temporary.resolve("runtime.sock")}",
-                "--runtime-id=${runtimeId.value}",
+            IndexerLaunchCommandConstruction.Rejected(
+                RuntimeEndpointFailure.LAUNCH_CONTEXT_REQUIRED,
             ),
-            command.arguments,
+            IndexerLaunchCommand.create(executable, root, endpoint),
         )
     }
 
