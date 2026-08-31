@@ -190,6 +190,10 @@ class CliCommandGraphContractTest {
             is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
         },
         lifecycle = ExactRootRuntimeLifecycle(),
+        productInspector = ProductInspector {
+            boundaryTouched()
+            error("product inspection must not run")
+        },
     )
 
     private fun commandGraphFactory(): CliCommandGraphFactory = when (

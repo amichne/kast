@@ -143,6 +143,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 InstalledCompositionFailure.HostedRuntimeIdentityRejected(admission.failure),
             )
         }
+        val endpointAdmitter = IdeEndpointAdmitter(socketDirectory, endpointPolicy)
         val localMetadata = when (
             val construction = installation.localMetadata(
                 productVersion.value,
@@ -159,12 +160,17 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 commandGraphFactory,
                 FilesystemCanonicalRootDiscovery,
                 IdeOnlyRuntimeDemander(
-                    IdeEndpointAdmitter(socketDirectory, endpointPolicy),
+                    endpointAdmitter,
                     hostedRuntimeId,
                 ),
                 UnixDomainWireClient(),
                 localMetadata,
                 IdeEndpointRuntimeLifecycle,
+                InstalledProductInspector(
+                    endpointPolicy.supportedCompatibility,
+                    FilesystemCanonicalRootDiscovery,
+                    endpointAdmitter,
+                ),
             ),
         )
     }

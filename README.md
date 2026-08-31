@@ -46,9 +46,14 @@ Open the repository in the supported IDE, then inspect its hosted endpoint:
 
 ```console
 cd /path/to/kotlin-repository
+kast product inspect
 kast start
 kast workspace inspect
 ```
+
+`kast product inspect` reports the installed control identity and direct local
+endpoint evidence even when compatibility admission fails. Use it to see the
+exact expected and observed identity before repairing a mismatched installation.
 
 `kast start` admits only the compatible endpoint for this exact root, or returns
 a typed blocker. It never opens a Project, imports Gradle, refreshes VFS, starts

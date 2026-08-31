@@ -21,15 +21,6 @@ enum class IdeHostCompatibilityField {
     CAPABILITIES,
 }
 
-enum class IdeHostCompatibilityIdentityField {
-    IDE_BUILD,
-    KOTLIN_PLUGIN_BUILD,
-    KAST_PLUGIN_VERSION,
-    RUNTIME_PROTOCOL_IDENTITY,
-    OPERATION_REGISTRY_DIGEST,
-    WIRE_SCHEMA_DIGEST,
-}
-
 enum class IdeHostCompatibilitySyntaxFailure {
     BLANK,
     TOO_LONG,
@@ -43,7 +34,7 @@ sealed interface IdeHostCompatibilityFailure {
     ) : IdeHostCompatibilityFailure
 
     data class Mismatch(
-        val field: IdeHostCompatibilityIdentityField,
+        val mismatch: IdeHostCompatibilityMismatch,
     ) : IdeHostCompatibilityFailure
 
     data class UnknownCapability(
@@ -57,8 +48,65 @@ sealed interface IdeHostCompatibilityFailure {
     data class DuplicateCapability(
         val capability: IdeHostCapability,
     ) : IdeHostCompatibilityFailure
+}
 
-    data object CapabilitySetMismatch : IdeHostCompatibilityFailure
+/** Exact refined values on both sides of one compatibility mismatch. */
+sealed interface IdeHostCompatibilityMismatch {
+    val field: IdeHostCompatibilityField
+
+    data class IdeBuild internal constructor(
+        val expected: IdeBuildIdentity,
+        val observed: IdeBuildIdentity,
+    ) : IdeHostCompatibilityMismatch {
+        override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.IDE_BUILD
+    }
+
+    data class KotlinPluginBuild internal constructor(
+        val expected: KotlinPluginBuildIdentity,
+        val observed: KotlinPluginBuildIdentity,
+    ) : IdeHostCompatibilityMismatch {
+        override val field: IdeHostCompatibilityField =
+            IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD
+    }
+
+    data class KastPluginVersion internal constructor(
+        val expected: io.github.amichne.kast.protocol.contract.KastPluginVersion,
+        val observed: io.github.amichne.kast.protocol.contract.KastPluginVersion,
+    ) : IdeHostCompatibilityMismatch {
+        override val field: IdeHostCompatibilityField =
+            IdeHostCompatibilityField.KAST_PLUGIN_VERSION
+    }
+
+    data class RuntimeProtocol internal constructor(
+        val expected: RuntimeProtocolIdentity,
+        val observed: RuntimeProtocolIdentity,
+    ) : IdeHostCompatibilityMismatch {
+        override val field: IdeHostCompatibilityField =
+            IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY
+    }
+
+    data class OperationRegistry internal constructor(
+        val expected: OperationRegistryDigest,
+        val observed: OperationRegistryDigest,
+    ) : IdeHostCompatibilityMismatch {
+        override val field: IdeHostCompatibilityField =
+            IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST
+    }
+
+    data class WireSchema internal constructor(
+        val expected: WireSchemaDigest,
+        val observed: WireSchemaDigest,
+    ) : IdeHostCompatibilityMismatch {
+        override val field: IdeHostCompatibilityField =
+            IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST
+    }
+
+    data class Capabilities internal constructor(
+        val expected: IdeHostCapabilitySet,
+        val observed: IdeHostCapabilitySet,
+    ) : IdeHostCompatibilityMismatch {
+        override val field: IdeHostCompatibilityField = IdeHostCompatibilityField.CAPABILITIES
+    }
 }
 
 @JvmInline
@@ -193,25 +241,50 @@ class AdmittedIdeHostCompatibility private constructor(
      * Proof transition: `AdmittedIdeHostCompatibility + AdmittedIdeHostCompatibility ->
      * IdeHostCompatibilityComparison`.
      *
-     * Establishes exact identity equality or the first finite identity mismatch. Both inputs
-     * already carry the exact capability invariant, so capability mismatch is unrepresentable.
-     * Raw values may be extracted only at endpoint or generated-report boundaries.
+     * Establishes exact tuple equality or the first finite mismatch with both refined values.
+     * Each capability set is already valid; differing membership or order remains an exact typed
+     * mismatch. Raw values may be extracted only at endpoint or generated-report boundaries.
      */
-    internal fun compareWith(other: AdmittedIdeHostCompatibility): IdeHostCompatibilityComparison =
+    internal fun compareAgainst(
+        expected: AdmittedIdeHostCompatibility,
+    ): IdeHostCompatibilityComparison =
         when {
-            ideBuild != other.ideBuild -> mismatch(IdeHostCompatibilityIdentityField.IDE_BUILD)
-            kotlinPluginBuild != other.kotlinPluginBuild ->
-                mismatch(IdeHostCompatibilityIdentityField.KOTLIN_PLUGIN_BUILD)
-            kastPluginVersion != other.kastPluginVersion ->
-                mismatch(IdeHostCompatibilityIdentityField.KAST_PLUGIN_VERSION)
-            runtimeProtocolIdentity != other.runtimeProtocolIdentity ->
-                mismatch(IdeHostCompatibilityIdentityField.RUNTIME_PROTOCOL_IDENTITY)
-            operationRegistryDigest != other.operationRegistryDigest ->
-                mismatch(IdeHostCompatibilityIdentityField.OPERATION_REGISTRY_DIGEST)
-            wireSchemaDigest != other.wireSchemaDigest ->
-                mismatch(IdeHostCompatibilityIdentityField.WIRE_SCHEMA_DIGEST)
-            capabilities.capabilities != other.capabilities.capabilities ->
-                IdeHostCompatibilityComparison.CapabilitySetMismatch
+            ideBuild != expected.ideBuild -> mismatch(
+                IdeHostCompatibilityMismatch.IdeBuild(expected.ideBuild, ideBuild),
+            )
+            kotlinPluginBuild != expected.kotlinPluginBuild -> mismatch(
+                IdeHostCompatibilityMismatch.KotlinPluginBuild(
+                    expected.kotlinPluginBuild,
+                    kotlinPluginBuild,
+                ),
+            )
+            kastPluginVersion != expected.kastPluginVersion -> mismatch(
+                IdeHostCompatibilityMismatch.KastPluginVersion(
+                    expected.kastPluginVersion,
+                    kastPluginVersion,
+                ),
+            )
+            runtimeProtocolIdentity != expected.runtimeProtocolIdentity -> mismatch(
+                IdeHostCompatibilityMismatch.RuntimeProtocol(
+                    expected.runtimeProtocolIdentity,
+                    runtimeProtocolIdentity,
+                ),
+            )
+            operationRegistryDigest != expected.operationRegistryDigest -> mismatch(
+                IdeHostCompatibilityMismatch.OperationRegistry(
+                    expected.operationRegistryDigest,
+                    operationRegistryDigest,
+                ),
+            )
+            wireSchemaDigest != expected.wireSchemaDigest -> mismatch(
+                IdeHostCompatibilityMismatch.WireSchema(
+                    expected.wireSchemaDigest,
+                    wireSchemaDigest,
+                ),
+            )
+            capabilities != expected.capabilities -> mismatch(
+                IdeHostCompatibilityMismatch.Capabilities(expected.capabilities, capabilities),
+            )
             else -> IdeHostCompatibilityComparison.Exact
         }
 
@@ -269,7 +342,7 @@ sealed interface IdeHostCompatibilityAdmission {
 }
 
 class IdeHostCompatibilityPolicy private constructor(
-    private val supported: AdmittedIdeHostCompatibility,
+    val supportedCompatibility: AdmittedIdeHostCompatibility,
 ) {
     companion object {
         /**
@@ -299,16 +372,14 @@ class IdeHostCompatibilityPolicy private constructor(
     fun admit(candidate: IdeHostCompatibilityCandidate): IdeHostCompatibilityAdmission =
         when (val parsed = AdmittedIdeHostCompatibility.parse(candidate)) {
             is Refinement.Rejected -> IdeHostCompatibilityAdmission.Rejected(parsed.failure)
-            is Refinement.Refined -> when (val comparison = parsed.value.compareWith(supported)) {
+            is Refinement.Refined -> when (
+                val comparison = parsed.value.compareAgainst(supportedCompatibility)
+            ) {
                 IdeHostCompatibilityComparison.Exact ->
                     IdeHostCompatibilityAdmission.Admitted(parsed.value)
                 is IdeHostCompatibilityComparison.Mismatch ->
                     IdeHostCompatibilityAdmission.Rejected(
-                        IdeHostCompatibilityFailure.Mismatch(comparison.field),
-                    )
-                IdeHostCompatibilityComparison.CapabilitySetMismatch ->
-                    IdeHostCompatibilityAdmission.Rejected(
-                        IdeHostCompatibilityFailure.CapabilitySetMismatch,
+                        IdeHostCompatibilityFailure.Mismatch(comparison.mismatch),
                     )
             }
         }
@@ -317,16 +388,14 @@ class IdeHostCompatibilityPolicy private constructor(
 internal sealed interface IdeHostCompatibilityComparison {
     data object Exact : IdeHostCompatibilityComparison
 
-    data object CapabilitySetMismatch : IdeHostCompatibilityComparison
-
     data class Mismatch(
-        val field: IdeHostCompatibilityIdentityField,
+        val mismatch: IdeHostCompatibilityMismatch,
     ) : IdeHostCompatibilityComparison
 }
 
 private fun mismatch(
-    field: IdeHostCompatibilityIdentityField,
-): IdeHostCompatibilityComparison = IdeHostCompatibilityComparison.Mismatch(field)
+    mismatch: IdeHostCompatibilityMismatch,
+): IdeHostCompatibilityComparison = IdeHostCompatibilityComparison.Mismatch(mismatch)
 
 private fun malformed(
     field: IdeHostCompatibilityField,

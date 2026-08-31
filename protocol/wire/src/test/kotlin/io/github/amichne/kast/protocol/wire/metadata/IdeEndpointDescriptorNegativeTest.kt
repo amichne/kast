@@ -3,7 +3,8 @@ package io.github.amichne.kast.protocol.wire.metadata
 import io.github.amichne.kast.kernel.OperationId
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
-import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityIdentityField
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityField
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityMismatch
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
@@ -109,25 +110,40 @@ class IdeEndpointDescriptorNegativeTest {
     @Test
     fun `compatibility identity mismatches retain the exact rejected field`() {
         listOf(
-            candidate.copy(ideBuild = "262.9437.186") to
-                IdeHostCompatibilityIdentityField.IDE_BUILD,
-            candidate.copy(kotlinPluginBuild = "262.9437.186-IJ") to
-                IdeHostCompatibilityIdentityField.KOTLIN_PLUGIN_BUILD,
-            candidate.copy(kastPluginVersion = "0.28.2") to
-                IdeHostCompatibilityIdentityField.KAST_PLUGIN_VERSION,
-            candidate.copy(runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2") to
-                IdeHostCompatibilityIdentityField.RUNTIME_PROTOCOL_IDENTITY,
-            candidate.copy(operationRegistryDigest = digest('c')) to
-                IdeHostCompatibilityIdentityField.OPERATION_REGISTRY_DIGEST,
-            candidate.copy(wireSchemaDigest = digest('d')) to
-                IdeHostCompatibilityIdentityField.WIRE_SCHEMA_DIGEST,
-        ).forEach { (invalid, field) ->
-            assertRejected(
-                invalid,
-                IdeEndpointDescriptorFailure.CompatibilityRejected(
-                    IdeHostCompatibilityFailure.Mismatch(field),
-                ),
-            )
+            Triple(
+                candidate.copy(ideBuild = "262.9437.186"),
+                IdeHostCompatibilityField.IDE_BUILD,
+                candidate.ideBuild to "262.9437.186",
+            ),
+            Triple(
+                candidate.copy(kotlinPluginBuild = "262.9437.186-IJ"),
+                IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD,
+                candidate.kotlinPluginBuild to "262.9437.186-IJ",
+            ),
+            Triple(
+                candidate.copy(kastPluginVersion = "0.28.2"),
+                IdeHostCompatibilityField.KAST_PLUGIN_VERSION,
+                candidate.kastPluginVersion to "0.28.2",
+            ),
+            Triple(
+                candidate.copy(runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2"),
+                IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY,
+                candidate.runtimeProtocolIdentity to "kast.ide-hosted.runtime.v2",
+            ),
+            Triple(
+                candidate.copy(operationRegistryDigest = digest('c')),
+                IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST,
+                candidate.operationRegistryDigest to digest('c'),
+            ),
+            Triple(
+                candidate.copy(wireSchemaDigest = digest('d')),
+                IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST,
+                candidate.wireSchemaDigest to digest('d'),
+            ),
+        ).forEach { (invalid, field, values) ->
+            val mismatch = rejectedCompatibilityMismatch(invalid)
+            assertEquals(field, mismatch.field)
+            assertEquals(values, mismatch.identityValues())
         }
     }
 
@@ -219,6 +235,34 @@ class IdeEndpointDescriptorNegativeTest {
     private fun compatibilityFailure(
         failure: IdeHostCompatibilityFailure,
     ) = IdeEndpointDescriptorFailure.CompatibilityRejected(failure)
+
+    private fun rejectedCompatibilityMismatch(
+        invalid: IdeEndpointDescriptorCandidate,
+    ): IdeHostCompatibilityMismatch {
+        val descriptorFailure = when (val admission = IdeEndpointDescriptorV2.create(invalid, policy)) {
+            is IdeEndpointDescriptorAdmission.Admitted ->
+                fail<Nothing>("endpoint unexpectedly admitted")
+            is IdeEndpointDescriptorAdmission.Rejected -> admission.failure
+        }
+        val compatibilityFailure = when (descriptorFailure) {
+            is IdeEndpointDescriptorFailure.CompatibilityRejected -> descriptorFailure.failure
+            else -> fail<Nothing>("expected compatibility rejection, got $descriptorFailure")
+        }
+        return when (compatibilityFailure) {
+            is IdeHostCompatibilityFailure.Mismatch -> compatibilityFailure.mismatch
+            else -> fail("expected compatibility mismatch, got $compatibilityFailure")
+        }
+    }
+
+    private fun IdeHostCompatibilityMismatch.identityValues(): Pair<String, String> = when (this) {
+        is IdeHostCompatibilityMismatch.IdeBuild -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.KotlinPluginBuild -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.KastPluginVersion -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.RuntimeProtocol -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.OperationRegistry -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.WireSchema -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.Capabilities -> fail("expected an identity mismatch")
+    }
 
     private fun hostedCapabilityFailure(
         failure: HostedCapabilitySetFailure,

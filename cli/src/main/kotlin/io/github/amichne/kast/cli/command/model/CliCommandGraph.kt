@@ -15,6 +15,7 @@ import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
+import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.relation.relationCommandGroup
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
 import io.github.amichne.kast.cli.command.traversal.traversalCommandGroup
@@ -64,6 +65,7 @@ internal class CliSemanticCommandSurface internal constructor(
 
 internal class CliCommandSurface internal constructor(
     val localFlags: List<String>,
+    val localCommands: List<CliProductCommand>,
     val lifecycleCommands: List<CliLifecycleCommand>,
     val semanticCommands: List<CliSemanticCommandSurface>,
 )
@@ -71,6 +73,8 @@ internal class CliCommandSurface internal constructor(
 internal sealed interface CliCommandGraphFailure {
     data class MissingOperation(val operation: CanonicalOperation) : CliCommandGraphFailure
     data class DuplicateOperation(val operation: CanonicalOperation) : CliCommandGraphFailure
+    data class MissingLocal(val command: CliProductCommand) : CliCommandGraphFailure
+    data class DuplicateLocal(val command: CliProductCommand) : CliCommandGraphFailure
     data class MissingLifecycle(val command: CliLifecycleCommand) : CliCommandGraphFailure
     data class DuplicateLifecycle(val command: CliLifecycleCommand) : CliCommandGraphFailure
 }
@@ -114,8 +118,8 @@ class CliCommandGraphFactory private constructor(
          * Proof transition: `CanonicalCliRequestPreparers -> CliCommandGraphConstruction`.
          *
          * Establishes exactly one semantic leaf for every canonical operation and exactly one leaf
-         * for every lifecycle command. [CliCommandGraphFailure] closes missing and duplicate graph
-         * identities. Clikt nodes remain private to this CLI composition boundary.
+         * for every product-local and lifecycle command. [CliCommandGraphFailure] closes missing
+         * and duplicate graph identities. Clikt nodes remain private to this composition boundary.
          */
         internal fun create(preparers: CanonicalCliRequestPreparers): CliCommandGraphConstruction {
             val graph = canonicalGraph(preparers)
@@ -175,6 +179,7 @@ private fun CliArgvFailure.commandFailure(): CliCommandFailure = when (this) {
 private class CliCommandGraph(
     val root: KastCommand,
     private val semantic: List<SemanticKastCommand<*>>,
+    private val local: List<LocalKastCommand>,
     private val lifecycle: List<LifecycleKastCommand>,
 ) {
     /**
@@ -213,7 +218,7 @@ private class CliCommandGraph(
                 }
             }
         } catch (local: CliLocalCommandMessage) {
-            return CliCommandParsing.Parsed(CliAction.Local(local.command))
+            return CliCommandParsing.Parsed(CliAction.Local.Metadata(local.command))
         } catch (help: PrintHelpMessage) {
             val document = root.formatted(help)
             return if (help.error) {
@@ -254,6 +259,14 @@ private class CliCommandGraph(
                 else -> add(CliCommandGraphFailure.DuplicateOperation(operation))
             }
         }
+        val localCounts = local.groupingBy(LocalKastCommand::command).eachCount()
+        CliProductCommand.entries.forEach { command ->
+            when (localCounts[command] ?: 0) {
+                0 -> add(CliCommandGraphFailure.MissingLocal(command))
+                1 -> Unit
+                else -> add(CliCommandGraphFailure.DuplicateLocal(command))
+            }
+        }
         val lifecycleCounts = lifecycle.groupingBy(LifecycleKastCommand::command).eachCount()
         CliLifecycleCommand.entries.forEach { command ->
             when (lifecycleCounts[command] ?: 0) {
@@ -266,6 +279,7 @@ private class CliCommandGraph(
 
     fun surface(): CliCommandSurface = CliCommandSurface(
         localFlags = listOf("--help", "--version", "--schema"),
+        localCommands = local.map(LocalKastCommand::command),
         lifecycleCommands = lifecycle.map(LifecycleKastCommand::command),
         semanticCommands = semantic.map { command ->
             CliSemanticCommandSurface(command.operation, command.schemaUsage)
@@ -292,10 +306,10 @@ private class KastRootCommand : KastCommand("kast") {
             }
         }
         eagerOption("--version", help = "Show the installed IDE-hosted product version") {
-            throw CliLocalCommandMessage(CliLocalCommand.VERSION)
+            throw CliLocalCommandMessage(CliLocalMetadataCommand.VERSION)
         }
         eagerOption("--schema", help = "Print the installed machine-readable schema") {
-            throw CliLocalCommandMessage(CliLocalCommand.SCHEMA)
+            throw CliLocalCommandMessage(CliLocalMetadataCommand.SCHEMA)
         }
     }
 
@@ -309,7 +323,7 @@ private class KastRootCommand : KastCommand("kast") {
 }
 
 private class CliLocalCommandMessage(
-    val command: CliLocalCommand,
+    val command: CliLocalMetadataCommand,
 ) : PrintMessage(command.name.lowercase())
 
 private sealed interface CliCommandSelection {
@@ -323,6 +337,7 @@ private sealed interface CliCommandSelection {
 }
 
 private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandGraph {
+    val product = productCommandGroup()
     val workspace = workspaceCommandGroup(preparers)
     val topology = topologyCommandGroup(preparers)
     val symbol = symbolCommandGroup(preparers)
@@ -335,6 +350,7 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
         .flatMap(CommandFamily::semanticCommands)
     val root = KastRootCommand().subcommands(
         listOf(
+            product.root,
             workspace.root,
             topology.root,
             symbol.root,
@@ -344,7 +360,7 @@ private fun canonicalGraph(preparers: CanonicalCliRequestPreparers): CliCommandG
             change.root,
         ) + lifecycle
     )
-    return CliCommandGraph(root, semantic, lifecycle)
+    return CliCommandGraph(root, semantic, product.commands, lifecycle)
 }
 
 internal class CommandFamily(

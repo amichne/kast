@@ -39,6 +39,10 @@ class InstalledSchemaSerializationTest {
         assertEquals(Json.parseToJsonElement(wireSchema), document.wireSchema)
         assertEquals(surface.localFlags, document.cliProjection.localFlags)
         assertEquals(
+            surface.localCommands.map { it.usage },
+            document.cliProjection.localCommands,
+        )
+        assertEquals(
             surface.lifecycleCommands.map { it.command },
             document.cliProjection.lifecycleCommands,
         )
@@ -100,6 +104,7 @@ private data class InstalledSchemaFixture(
 @Serializable
 private data class InstalledCliProjectionFixture(
     val localFlags: List<String>,
+    val localCommands: List<String>,
     val lifecycleCommands: List<String>,
     val commands: List<String>,
 )

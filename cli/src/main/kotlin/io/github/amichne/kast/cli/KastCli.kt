@@ -7,6 +7,7 @@ import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
+import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
@@ -17,6 +18,7 @@ class KastCli(
     private val wireClient: WireClient,
     private val localMetadata: CliLocalMetadata,
     private val lifecycle: RuntimeLifecycleController,
+    private val productInspector: ProductInspector,
 ) {
     constructor(
         commandGraphFactory: CliCommandGraphFactory,
@@ -26,6 +28,7 @@ class KastCli(
         wireClient: WireClient,
         localMetadata: CliLocalMetadata,
         lifecycle: RuntimeLifecycleController,
+        productInspector: ProductInspector,
     ) : this(
         commandGraphFactory,
         rootDiscovery,
@@ -33,6 +36,7 @@ class KastCli(
         wireClient,
         localMetadata,
         lifecycle,
+        productInspector,
     )
 
     /**
@@ -55,7 +59,10 @@ class KastCli(
     }
 
     private fun executeAction(action: CliAction, start: Path): CliExit = when (action) {
-        is CliAction.Local -> CliExit.Complete(localMetadata.output(action.command))
+        is CliAction.Local.Metadata -> CliExit.Complete(localMetadata.output(action.command))
+        CliAction.Local.ProductInspect -> CliExit.Complete(
+            ProductInspectionDocuments.complete(productInspector.inspect(start)),
+        )
         is CliAction.Semantic -> executeSemantic(action.request, start)
         is CliAction.Lifecycle -> executeLifecycle(action, start)
     }
@@ -130,10 +137,7 @@ class KastCli(
         val endpoint = when (val admission = runtimeDemander.demand(root, demand)) {
             is RuntimeAdmission.Ready -> admission.endpoint
             is RuntimeAdmission.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
-                boundaryExit(
-                    CliBoundaryExitStatus.RUNTIME,
-                    admission.failure.name.lowercase().replace('_', '-'),
-                ),
+                runtimeBoundaryExit(admission.failure),
             )
         }
         if (endpoint.root != root) {
@@ -299,6 +303,13 @@ internal fun boundaryExit(
         status,
         CliBoundaryDocuments.boundaryRejected(status, reason),
     )
+
+private fun runtimeBoundaryExit(
+    failure: RuntimeAdmissionFailure,
+): CliExit.BoundaryRejected = CliExit.BoundaryRejected(
+    CliBoundaryExitStatus.RUNTIME,
+    CliBoundaryDocuments.runtimeRejected(failure),
+)
 
 private fun usageExit(
     failure: CliCommandFailure,

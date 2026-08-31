@@ -111,6 +111,8 @@ PAGES = {
         "Hosted endpoint operations",
         "Canonical operations without a direct hosted route",
         "The IDE owns this lifecycle",
+        "Process-local inspection",
+        "product inspect",
         "workspace.inspect",
         "change.recover",
     ],

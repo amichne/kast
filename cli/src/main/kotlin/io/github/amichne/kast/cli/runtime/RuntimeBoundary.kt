@@ -5,6 +5,7 @@ import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
 import io.github.amichne.kast.distribution.managed.RuntimeStoreFailure
 import io.github.amichne.kast.distribution.managed.SemanticRuntimeResolution
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorFailure
 import java.io.IOException
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
@@ -235,31 +236,61 @@ sealed interface RuntimeAdmission {
     ) : RuntimeAdmission
 }
 
-enum class RuntimeAdmissionFailure {
-    MANIFEST_INVALID,
-    SOURCE_INVALID,
-    ARTIFACT_UNAVAILABLE,
-    DIGEST_MISMATCH,
-    ARCHIVE_REJECTED,
-    LAYOUT_INVALID,
-    RUNTIME_INCOMPATIBLE,
-    PROCESS_START_FAILED,
-    SESSION_ENDED_BEFORE_READY,
-    PROCESS_OBSERVATION_FAILED,
-    ENDPOINT_UNAVAILABLE,
-    RUNTIME_IDENTITY_MISMATCH,
-    IDE_ROOT_INVALID,
-    IDE_LOCATION_REJECTED,
-    IDE_DESCRIPTOR_READ_REJECTED,
-    IDE_DESCRIPTOR_REJECTED,
-    IDE_ROOT_MISMATCH,
-    IDE_SOCKET_MISMATCH,
-    IDE_PROCESS_UNAVAILABLE,
-    IDE_PROCESS_OBSERVATION_REJECTED,
-    IDE_ENDPOINT_UNREACHABLE,
-    IDE_CAPABILITY_UNAVAILABLE,
-    IDE_VARIANT_UNAVAILABLE,
-    INTERRUPTED,
+sealed interface RuntimeAdmissionFailure {
+    data object ManifestInvalid : RuntimeAdmissionFailure
+    data object SourceInvalid : RuntimeAdmissionFailure
+    data object ArtifactUnavailable : RuntimeAdmissionFailure
+    data object DigestMismatch : RuntimeAdmissionFailure
+    data object ArchiveRejected : RuntimeAdmissionFailure
+    data object LayoutInvalid : RuntimeAdmissionFailure
+    data object RuntimeIncompatible : RuntimeAdmissionFailure
+    data object ProcessStartFailed : RuntimeAdmissionFailure
+    data object SessionEndedBeforeReady : RuntimeAdmissionFailure
+    data object ProcessObservationFailed : RuntimeAdmissionFailure
+    data object EndpointUnavailable : RuntimeAdmissionFailure
+    data object RuntimeIdentityMismatch : RuntimeAdmissionFailure
+    data object IdeRootInvalid : RuntimeAdmissionFailure
+    data object IdeLocationRejected : RuntimeAdmissionFailure
+    data object IdeDescriptorReadRejected : RuntimeAdmissionFailure
+    data class IdeDescriptorRejected(
+        val failure: IdeEndpointDescriptorFailure,
+    ) : RuntimeAdmissionFailure
+    data object IdeRootMismatch : RuntimeAdmissionFailure
+    data object IdeSocketMismatch : RuntimeAdmissionFailure
+    data object IdeProcessUnavailable : RuntimeAdmissionFailure
+    data object IdeProcessObservationRejected : RuntimeAdmissionFailure
+    data object IdeEndpointUnreachable : RuntimeAdmissionFailure
+    data object IdeCapabilityUnavailable : RuntimeAdmissionFailure
+    data object IdeVariantUnavailable : RuntimeAdmissionFailure
+    data object Interrupted : RuntimeAdmissionFailure
+}
+
+internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
+    RuntimeAdmissionFailure.ManifestInvalid -> "manifest-invalid"
+    RuntimeAdmissionFailure.SourceInvalid -> "source-invalid"
+    RuntimeAdmissionFailure.ArtifactUnavailable -> "artifact-unavailable"
+    RuntimeAdmissionFailure.DigestMismatch -> "digest-mismatch"
+    RuntimeAdmissionFailure.ArchiveRejected -> "archive-rejected"
+    RuntimeAdmissionFailure.LayoutInvalid -> "layout-invalid"
+    RuntimeAdmissionFailure.RuntimeIncompatible -> "runtime-incompatible"
+    RuntimeAdmissionFailure.ProcessStartFailed -> "process-start-failed"
+    RuntimeAdmissionFailure.SessionEndedBeforeReady -> "session-ended-before-ready"
+    RuntimeAdmissionFailure.ProcessObservationFailed -> "process-observation-failed"
+    RuntimeAdmissionFailure.EndpointUnavailable -> "endpoint-unavailable"
+    RuntimeAdmissionFailure.RuntimeIdentityMismatch -> "runtime-identity-mismatch"
+    RuntimeAdmissionFailure.IdeRootInvalid -> "ide-root-invalid"
+    RuntimeAdmissionFailure.IdeLocationRejected -> "ide-location-rejected"
+    RuntimeAdmissionFailure.IdeDescriptorReadRejected -> "ide-descriptor-read-rejected"
+    is RuntimeAdmissionFailure.IdeDescriptorRejected -> "ide-descriptor-rejected"
+    RuntimeAdmissionFailure.IdeRootMismatch -> "ide-root-mismatch"
+    RuntimeAdmissionFailure.IdeSocketMismatch -> "ide-socket-mismatch"
+    RuntimeAdmissionFailure.IdeProcessUnavailable -> "ide-process-unavailable"
+    RuntimeAdmissionFailure.IdeProcessObservationRejected ->
+        "ide-process-observation-rejected"
+    RuntimeAdmissionFailure.IdeEndpointUnreachable -> "ide-endpoint-unreachable"
+    RuntimeAdmissionFailure.IdeCapabilityUnavailable -> "ide-capability-unavailable"
+    RuntimeAdmissionFailure.IdeVariantUnavailable -> "ide-variant-unavailable"
+    RuntimeAdmissionFailure.Interrupted -> "interrupted"
 }
 
 fun interface RuntimeDemander {
@@ -294,7 +325,7 @@ internal class ExactRootProcessRuntimeDemander(
         endpoint: RuntimeEndpoint,
     ): RuntimeAdmission {
         if (endpoint.root != root) {
-            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE)
+            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
         }
         if (endpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable) {
             return RuntimeAdmission.Ready(endpoint)
@@ -305,16 +336,16 @@ internal class ExactRootProcessRuntimeDemander(
             is IndexerLaunchCommandConstruction.Created -> construction.command
             is IndexerLaunchCommandConstruction.Rejected ->
                 return RuntimeAdmission.Rejected(
-                    RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE,
+                    RuntimeAdmissionFailure.EndpointUnavailable,
                 )
         }
         val session = when (val start = processStarter.start(command)) {
             is RuntimeProcessStart.Accepted -> start.session
             RuntimeProcessStart.Interrupted -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.INTERRUPTED,
+                RuntimeAdmissionFailure.Interrupted,
             )
             RuntimeProcessStart.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.PROCESS_START_FAILED,
+                RuntimeAdmissionFailure.ProcessStartFailed,
             )
         }
         repeat(RuntimeStartupBound.ENTERPRISE_ACCEPTED.probeAttempts) {
@@ -324,23 +355,23 @@ internal class ExactRootProcessRuntimeDemander(
             when (session.observe()) {
                 LaunchdServiceObservation.Present -> Unit
                 LaunchdServiceObservation.Absent -> return RuntimeAdmission.Rejected(
-                    RuntimeAdmissionFailure.SESSION_ENDED_BEFORE_READY,
+                    RuntimeAdmissionFailure.SessionEndedBeforeReady,
                 )
                 LaunchdServiceObservation.Rejected -> return RuntimeAdmission.Rejected(
-                    RuntimeAdmissionFailure.PROCESS_OBSERVATION_FAILED,
+                    RuntimeAdmissionFailure.ProcessObservationFailed,
                 )
                 LaunchdServiceObservation.Interrupted -> return RuntimeAdmission.Rejected(
-                    RuntimeAdmissionFailure.INTERRUPTED,
+                    RuntimeAdmissionFailure.Interrupted,
                 )
             }
             try {
                 Thread.sleep(RUNTIME_PROBE_INTERVAL_MILLIS)
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
-                return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.INTERRUPTED)
+                return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.Interrupted)
             }
         }
-        return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE)
+        return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
     }
 }
 
@@ -366,7 +397,7 @@ class ManagedExactRootRuntimeDemander(
     ): RuntimeAdmission {
         if (endpoint.runtimeId != manifest.runtimeId) {
             return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.RUNTIME_IDENTITY_MISMATCH,
+                RuntimeAdmissionFailure.RuntimeIdentityMismatch,
             )
         }
         val installed = when (val resolution = resolver.resolve(manifest)) {
@@ -378,7 +409,7 @@ class ManagedExactRootRuntimeDemander(
         val executable = when (val admitted = IndexerExecutable.admit(installed.executable)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.LAYOUT_INVALID,
+                RuntimeAdmissionFailure.LayoutInvalid,
             )
         }
         return ExactRootProcessRuntimeDemander(executable).demand(root, endpoint)
@@ -386,11 +417,11 @@ class ManagedExactRootRuntimeDemander(
 }
 
 private fun RuntimeStoreFailure.toAdmissionFailure(): RuntimeAdmissionFailure = when (this) {
-    RuntimeStoreFailure.STORE_INVALID -> RuntimeAdmissionFailure.SOURCE_INVALID
-    RuntimeStoreFailure.ARTIFACT_UNAVAILABLE -> RuntimeAdmissionFailure.ARTIFACT_UNAVAILABLE
-    RuntimeStoreFailure.DIGEST_MISMATCH -> RuntimeAdmissionFailure.DIGEST_MISMATCH
-    RuntimeStoreFailure.ARCHIVE_REJECTED -> RuntimeAdmissionFailure.ARCHIVE_REJECTED
-    RuntimeStoreFailure.LAYOUT_INVALID -> RuntimeAdmissionFailure.LAYOUT_INVALID
-    RuntimeStoreFailure.RUNTIME_INCOMPATIBLE -> RuntimeAdmissionFailure.RUNTIME_INCOMPATIBLE
-    RuntimeStoreFailure.INTERRUPTED -> RuntimeAdmissionFailure.INTERRUPTED
+    RuntimeStoreFailure.STORE_INVALID -> RuntimeAdmissionFailure.SourceInvalid
+    RuntimeStoreFailure.ARTIFACT_UNAVAILABLE -> RuntimeAdmissionFailure.ArtifactUnavailable
+    RuntimeStoreFailure.DIGEST_MISMATCH -> RuntimeAdmissionFailure.DigestMismatch
+    RuntimeStoreFailure.ARCHIVE_REJECTED -> RuntimeAdmissionFailure.ArchiveRejected
+    RuntimeStoreFailure.LAYOUT_INVALID -> RuntimeAdmissionFailure.LayoutInvalid
+    RuntimeStoreFailure.RUNTIME_INCOMPATIBLE -> RuntimeAdmissionFailure.RuntimeIncompatible
+    RuntimeStoreFailure.INTERRUPTED -> RuntimeAdmissionFailure.Interrupted
 }

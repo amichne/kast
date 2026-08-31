@@ -65,7 +65,7 @@ class RuntimeProcessSessionTest {
         )
 
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SESSION_ENDED_BEFORE_READY),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SessionEndedBeforeReady),
             demander.demand(endpoint.root, endpoint),
         )
         assertEquals(2, probes, "terminal session loss must not exhaust the startup bound")
@@ -91,11 +91,11 @@ class RuntimeProcessSessionTest {
             ).demand(endpoint.root, endpoint)
 
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.PROCESS_OBSERVATION_FAILED),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ProcessObservationFailed),
             demand(LaunchdServiceObservation.Rejected),
         )
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.INTERRUPTED),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.Interrupted),
             demand(LaunchdServiceObservation.Interrupted),
         )
     }

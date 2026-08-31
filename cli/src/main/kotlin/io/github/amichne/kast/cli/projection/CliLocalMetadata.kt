@@ -6,7 +6,7 @@ import io.github.amichne.kast.cli.CliOpenJsonObjectAdmission
 import io.github.amichne.kast.cli.CliProcessOutput
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
-import io.github.amichne.kast.cli.command.CliLocalCommand
+import io.github.amichne.kast.cli.command.CliLocalMetadataCommand
 
 enum class CliLocalMetadataFailure {
     PRODUCT_VERSION_INVALID,
@@ -24,9 +24,9 @@ class CliLocalMetadata private constructor(
     private val version: CliTextDocument,
     private val schema: CliJsonDocument,
 ) {
-    fun output(command: CliLocalCommand): CliProcessOutput = when (command) {
-        CliLocalCommand.VERSION -> version
-        CliLocalCommand.SCHEMA -> schema
+    fun output(command: CliLocalMetadataCommand): CliProcessOutput = when (command) {
+        CliLocalMetadataCommand.VERSION -> version
+        CliLocalMetadataCommand.SCHEMA -> schema
     }
 
     companion object {

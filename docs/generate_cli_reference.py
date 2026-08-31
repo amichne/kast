@@ -51,6 +51,13 @@ LIFECYCLE_DESCRIPTIONS = {
     "reindex": "Reject because the CLI cannot stop or rebuild IDE-owned semantic state.",
 }
 
+LOCAL_COMMAND_DESCRIPTIONS = {
+    "product inspect": (
+        "Report installed control identity plus direct root and IDE endpoint evidence without "
+        "requiring compatible runtime admission."
+    ),
+}
+
 
 def parse_operations(registry_path: Path) -> list[OperationMetadata]:
     if not registry_path.is_file():
@@ -158,14 +165,38 @@ def parse_local_flags(root: Path) -> list[str]:
     source = root / (
         "cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandModel.kt"
     )
-    match = re.search(r"enum class CliLocalCommand\s*\{([^}]+)\}", source.read_text())
+    match = re.search(
+        r"enum class CliLocalMetadataCommand\s*\{([^}]+)\}",
+        source.read_text(),
+    )
     if match is None:
-        raise ValueError("CliLocalCommand could not be read")
+        raise ValueError("CliLocalMetadataCommand could not be read")
     names = [name.strip() for name in match.group(1).split(",") if name.strip()]
     flags = ["--help"] + [f"--{name.lower()}" for name in names]
     if flags != ["--help", "--version", "--schema"]:
         raise ValueError(f"local flag set changed: {flags}")
     return flags
+
+
+def parse_local_commands(root: Path) -> list[str]:
+    source = root / (
+        "cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandModel.kt"
+    )
+    match = re.search(
+        r"enum class CliProductCommand\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        source.read_text(),
+        re.DOTALL,
+    )
+    if match is None:
+        raise ValueError("CliProductCommand could not be read")
+    commands = re.findall(
+        r'^[ ]*[A-Z_]+\("([a-z ]+)"\),$',
+        match.group("body"),
+        re.MULTILINE,
+    )
+    if set(commands) != set(LOCAL_COMMAND_DESCRIPTIONS):
+        raise ValueError(f"local command set changed: {commands}")
+    return commands
 
 
 def table_cell(value: str) -> str:
@@ -183,6 +214,7 @@ def hosted_description(command: SemanticCommand) -> str:
 def render(
     semantic: list[SemanticCommand],
     lifecycle: list[str],
+    local_commands: list[str],
     local_flags: list[str],
 ) -> str:
     hosted_rows = "\n".join(
@@ -208,6 +240,10 @@ def render(
             "--schema": "| `kast --schema` | Emit the machine-readable public contract. |",
         }[flag]
         for flag in local_flags
+    )
+    local_command_rows = "\n".join(
+        f"| `kast {command}` | {LOCAL_COMMAND_DESCRIPTIONS[command]} |"
+        for command in local_commands
     )
     return f"""---
 title: "CLI reference"
@@ -268,6 +304,15 @@ already-running compatible endpoint for the exact current root.
 | --- | --- |
 {lifecycle_rows}
 
+## Process-local inspection
+
+These commands inspect installed control or endpoint evidence directly. They do
+not require successful hosted runtime admission.
+
+| Command | Result |
+| --- | --- |
+{local_command_rows}
+
 ## Process-local flags
 
 These flags do not contact the hosted IDE endpoint.
@@ -297,8 +342,9 @@ def main() -> int:
     operations = parse_operations(registry)
     semantic = parse_semantic_commands(root, operations)
     lifecycle = parse_lifecycle_commands(root)
+    local_commands = parse_local_commands(root)
     local_flags = parse_local_flags(root)
-    rendered = render(semantic, lifecycle, local_flags)
+    rendered = render(semantic, lifecycle, local_commands, local_flags)
 
     if args.check:
         if not target.is_file() or target.read_text() != rendered:
