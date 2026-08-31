@@ -202,5 +202,7 @@ private fun TopologyCoverageProjectionRejection.wireName(): String = when (this)
     TopologyCoverageProjectionRejection.UNREPRESENTABLE_RANGE -> "unrepresentable-range"
     TopologyCoverageProjectionRejection.UNREPRESENTABLE_CONTENT_HASH ->
         "unrepresentable-content-hash"
+    TopologyCoverageProjectionRejection.UNREPRESENTABLE_COMPILER_EVIDENCE ->
+        "unrepresentable-compiler-evidence"
     TopologyCoverageProjectionRejection.EMPTY_FAILURE -> "empty-failure"
 }

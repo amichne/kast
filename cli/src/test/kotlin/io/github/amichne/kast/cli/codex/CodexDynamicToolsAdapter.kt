@@ -229,7 +229,7 @@ internal class CodexDynamicToolsAdapter(
         val result = when (val outcome = relation.outcome) {
             is OperationOutcome.Complete -> outcome.evidence.payload
             is OperationOutcome.Qualified -> {
-                relationQualificationNames = listOf(outcome.qualification.name)
+                relationQualificationNames = outcome.qualification.limitations.map { it.name }
                 return rejected(CodexDynamicToolFailure.KAST_OPERATION_REJECTED)
             }
             is OperationOutcome.Rejected -> {
@@ -238,7 +238,7 @@ internal class CodexDynamicToolsAdapter(
             }
         }
         selectorState = SelectorState.Reused(produced.selector)
-        relationTargetNames = result.targets.values.map { it.name.value }
+        relationTargetNames = result.relations.values.map { it.target.name.value }
         return CodexDynamicToolCallResult.Succeeded(relation.canonicalJson)
     }
 

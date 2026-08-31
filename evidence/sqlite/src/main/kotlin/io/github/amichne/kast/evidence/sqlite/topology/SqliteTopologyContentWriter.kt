@@ -31,7 +31,7 @@ internal fun Connection.insertTopologyContent(
 
 private fun Connection.insertFile(snapshotId: SqliteTopologySnapshotId, file: TopologySourceFile) {
     prepareStatement(
-        """INSERT INTO topology_file_v2(
+        """INSERT INTO topology_file_v3(
                snapshot_id, path, content_hash, module_name, build_root, project_path,
                source_set, source_root, provenance
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -54,19 +54,20 @@ private fun Connection.insertSymbol(
     symbol: TopologySymbol,
 ): SqliteTopologySymbolId {
     prepareStatement(
-        """INSERT INTO topology_symbol_v2(
-               snapshot_id, compiler_identity, file_path, start_offset, end_offset,
+        """INSERT INTO topology_symbol_v3(
+               snapshot_id, compiler_identity, compiler_signature, file_path, start_offset, end_offset,
                symbol_name, qualified_identity, symbol_kind
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
     ).use { statement ->
         statement.setLong(1, snapshotId.value)
         statement.setString(2, symbol.evidence.compilerIdentity.value)
-        statement.setString(3, symbol.file.path.value)
-        statement.setInt(4, symbol.evidence.range.startInclusive)
-        statement.setInt(5, symbol.evidence.range.endExclusive)
-        statement.setString(6, symbol.evidence.name.value)
-        statement.setString(7, symbol.evidence.qualifiedIdentity.sqliteValue())
-        statement.setString(8, symbol.evidence.kind.name)
+        statement.setString(3, symbol.evidence.signature.canonicalEncoding().value)
+        statement.setString(4, symbol.file.path.value)
+        statement.setInt(5, symbol.evidence.range.startInclusive)
+        statement.setInt(6, symbol.evidence.range.endExclusive)
+        statement.setString(7, symbol.evidence.name.value)
+        statement.setString(8, symbol.evidence.qualifiedIdentity.sqliteValue())
+        statement.setString(9, symbol.evidence.kind.name)
         if (statement.executeUpdate() != 1) corrupt("topology symbol insert changed no row")
     }
     return createStatement().use { statement ->
@@ -84,7 +85,7 @@ private fun Connection.insertEdge(
     targetId: SqliteTopologySymbolId,
 ) {
     prepareStatement(
-        """INSERT INTO topology_edge_v2(
+        """INSERT INTO topology_edge_v3(
                snapshot_id, edge_kind, source_symbol_id, target_symbol_id,
                occurrence_file_path, start_offset, end_offset
            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",

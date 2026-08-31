@@ -3,6 +3,9 @@ package io.github.amichne.kast.cli.projection
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeQualification
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRejection
@@ -201,7 +204,55 @@ internal data class SymbolCliDocument(
     val qualifiedIdentity: String?,
     val file: String,
     val range: SourceRangeCliDocument,
+    val compilerEvidence: CompilerSymbolEvidenceCliDocument,
 )
+
+@Serializable
+internal data class CompilerSymbolEvidenceCliDocument(
+    val identity: String,
+    val signature: CompilerSignatureCliDocument,
+)
+
+@Serializable
+internal sealed interface CompilerSignatureCliDocument {
+    @Serializable
+    @SerialName("function")
+    data class Function(
+        val qualifiedIdentity: String,
+        val receiver: CompilerReceiverCliDocument,
+        val contextReceivers: List<String>,
+        val valueParameters: List<String>,
+        val typeParameterCount: Int,
+    ) : CompilerSignatureCliDocument
+
+    @Serializable
+    @SerialName("property")
+    data class Property(
+        val qualifiedIdentity: String,
+        val receiver: CompilerReceiverCliDocument,
+        val contextReceivers: List<String>,
+        val returnType: String,
+    ) : CompilerSignatureCliDocument
+
+    @Serializable
+    @SerialName("type-alias")
+    data class TypeAlias(val qualifiedIdentity: String) : CompilerSignatureCliDocument
+
+    @Serializable
+    @SerialName("class-like")
+    data class ClassLike(val qualifiedIdentity: String) : CompilerSignatureCliDocument
+}
+
+@Serializable
+internal sealed interface CompilerReceiverCliDocument {
+    @Serializable
+    @SerialName("absent")
+    data object Absent : CompilerReceiverCliDocument
+
+    @Serializable
+    @SerialName("present")
+    data class Present(val compilerType: String) : CompilerReceiverCliDocument
+}
 
 @Serializable
 internal data class SourceRangeCliDocument(
@@ -219,7 +270,36 @@ internal fun SymbolDocument.toCliDocument(): SymbolCliDocument = SymbolCliDocume
     },
     file = file.value,
     range = range.toCliDocument(),
+    compilerEvidence = compilerEvidence.toCliDocument(),
 )
+
+internal fun CompilerSymbolEvidenceDocument.toCliDocument(): CompilerSymbolEvidenceCliDocument =
+    CompilerSymbolEvidenceCliDocument(identity.value, signature.toCliDocument())
+
+private fun CompilerSignatureDocument.toCliDocument(): CompilerSignatureCliDocument = when (this) {
+    is CompilerSignatureDocument.Function -> CompilerSignatureCliDocument.Function(
+        qualifiedIdentity.value,
+        receiver.toCliDocument(),
+        contextReceivers.values.map { it.value },
+        valueParameters.values.map { it.value },
+        typeParameterCount.value,
+    )
+    is CompilerSignatureDocument.Property -> CompilerSignatureCliDocument.Property(
+        qualifiedIdentity.value,
+        receiver.toCliDocument(),
+        contextReceivers.values.map { it.value },
+        returnType.value,
+    )
+    is CompilerSignatureDocument.TypeAlias ->
+        CompilerSignatureCliDocument.TypeAlias(qualifiedIdentity.value)
+    is CompilerSignatureDocument.ClassLike ->
+        CompilerSignatureCliDocument.ClassLike(qualifiedIdentity.value)
+}
+
+private fun CompilerReceiverDocument.toCliDocument(): CompilerReceiverCliDocument = when (this) {
+    CompilerReceiverDocument.Absent -> CompilerReceiverCliDocument.Absent
+    is CompilerReceiverDocument.Present -> CompilerReceiverCliDocument.Present(compilerType.value)
+}
 
 private fun SymbolDiscoveryDocument.toCliDocument(): SymbolDiscoveryCliDocument = when (this) {
     is SymbolDiscoveryDocument.File -> SymbolDiscoveryCliDocument.File(

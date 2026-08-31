@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.contract
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
@@ -43,6 +44,7 @@ sealed interface RelationEndpoint {
     val name: SymbolDiscoveryCandidateName
     val qualifiedIdentity: ExactDeclarationQualifiedIdentity
     val kind: CompilerSymbolKind
+    val signature: CanonicalCompilerSignature
     val compilerIdentity: CompilerSymbolIdentity
     val fingerprint: RelationEndpointFingerprint
 
@@ -57,6 +59,7 @@ sealed interface RelationEndpoint {
         override val name: SymbolDiscoveryCandidateName = selector.name
         override val qualifiedIdentity: ExactDeclarationQualifiedIdentity = selector.qualifiedIdentity
         override val kind: CompilerSymbolKind = selector.kind
+        override val signature: CanonicalCompilerSignature = selector.signature
         override val compilerIdentity: CompilerSymbolIdentity =
             SymbolDescription.from(selector).compilerIdentity
         override val fingerprint: RelationEndpointFingerprint =
@@ -75,6 +78,7 @@ sealed interface RelationEndpoint {
         override val name: SymbolDiscoveryCandidateName = evidence.name
         override val qualifiedIdentity: ExactDeclarationQualifiedIdentity = evidence.qualifiedIdentity
         override val kind: CompilerSymbolKind = evidence.kind
+        override val signature: CanonicalCompilerSignature = evidence.signature
         override val compilerIdentity: CompilerSymbolIdentity = evidence.compilerIdentity
 
         companion object {
@@ -155,6 +159,7 @@ class RevalidatedRelationEndpoint private constructor(
                 endpoint.name == evidence.name &&
                 endpoint.qualifiedIdentity == evidence.qualifiedIdentity &&
                 endpoint.kind == evidence.kind &&
+                endpoint.signature == evidence.signature &&
                 endpoint.compilerIdentity == evidence.compilerIdentity
             ) {
                 Refinement.Refined(RevalidatedRelationEndpoint(endpoint))

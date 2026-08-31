@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.runtime.server.toProtocolCoverage
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
@@ -99,9 +100,11 @@ class TopologyCoverageProjectionTest {
             0,
             name.length,
             name,
-            "sample.$name",
+            "sample.shared",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.shared|-|||0").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.shared", null, emptyList(), emptyList(), 0,
+            ).refined(),
         ).refined()
         return TopologySymbol.admit(file, evidence).refined()
     }

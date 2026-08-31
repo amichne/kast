@@ -15,6 +15,7 @@ class CanonicalOperationDefinitionsTest {
         assertEquals(12, definitions.map { it.qualificationType }.toSet().size)
         assertEquals(12, definitions.map { it.rejectionType }.toSet().size)
         assertEquals(12, definitions.map { it.schema }.toSet().size)
+        assertEquals(true, definitions.all { it.schema.value.endsWith(".v2") })
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)
         assertEquals(OperationLane.REGISTERED_LONG_WORK, CanonicalOperationDefinitions.topologyBuild.lane)
         assertEquals(

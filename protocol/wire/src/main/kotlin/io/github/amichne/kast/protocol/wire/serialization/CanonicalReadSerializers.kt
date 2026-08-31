@@ -108,7 +108,7 @@ internal object CanonicalReadSerializers {
     val relationReadQualification = factory.create(
         RelationReadQualificationWireDocument.serializer(),
         RelationReadQualification::toWireDocument,
-        { document -> WireDocumentConversion.Converted(document.toContract()) },
+        RelationReadQualificationWireDocument::toContract,
     )
     val relationReadRejection = factory.create(
         RelationReadRejectionWireDocument.serializer(),
@@ -125,7 +125,7 @@ internal object CanonicalReadSerializers {
     val traversalRunQualification = factory.create(
         TraversalRunQualificationWireDocument.serializer(),
         TraversalRunQualification::toWireDocument,
-        { document -> WireDocumentConversion.Converted(document.toContract()) },
+        TraversalRunQualificationWireDocument::toContract,
     )
     val traversalRunRejection = factory.create(
         TraversalRunRejectionWireDocument.serializer(),
@@ -146,7 +146,7 @@ internal object CanonicalReadSerializers {
     val diagnosticCheckQualification = factory.create(
         DiagnosticCheckQualificationWireDocument.serializer(),
         DiagnosticCheckQualification::toWireDocument,
-        { document -> WireDocumentConversion.Converted(document.toContract()) },
+        DiagnosticCheckQualificationWireDocument::toContract,
     )
     val diagnosticCheckRejection = factory.create(
         DiagnosticCheckRejectionWireDocument.serializer(),

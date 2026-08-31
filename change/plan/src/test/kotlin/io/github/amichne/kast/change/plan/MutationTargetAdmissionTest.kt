@@ -7,6 +7,7 @@ import io.github.amichne.kast.change.contract.ObservedMutationTargetState
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -210,7 +211,9 @@ class MutationTargetAdmissionTest {
             "service",
             "sample.Service.service",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.Service.service").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.Service.service", null, emptyList(), emptyList(), 0,
+            ).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

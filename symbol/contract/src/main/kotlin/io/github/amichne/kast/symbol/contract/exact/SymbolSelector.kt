@@ -56,6 +56,9 @@ enum class CompilerGroundedSymbolEvidenceFailure {
     INVALID_RANGE,
     INVALID_NAME,
     INVALID_QUALIFIED_IDENTITY,
+    QUALIFIED_IDENTITY_MISMATCH,
+    SIGNATURE_KIND_MISMATCH,
+    COMPILER_IDENTITY_MISMATCH,
 }
 
 /** Detached evidence created only after one native declaration resolves to a compiler symbol. */
@@ -66,16 +69,18 @@ data class CompilerGroundedSymbolEvidence private constructor(
     val name: SymbolDiscoveryCandidateName,
     val qualifiedIdentity: ExactDeclarationQualifiedIdentity,
     val kind: CompilerSymbolKind,
+    val signature: CanonicalCompilerSignature,
     val compilerIdentity: CompilerSymbolIdentity,
 ) {
     companion object {
         /**
          * Proof transition: `(SymbolDiscoveryFileIdentity, Int, Int, String, String?,
-         * CompilerSymbolKind, CompilerSymbolIdentity) -> Refinement<
+         * CompilerSymbolKind, CanonicalCompilerSignature) -> Refinement<
          * CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure>`.
          *
          * Establishes a detached exact file, non-empty range, bounded name, explicit qualified
-         * identity state, closed compiler kind, and already-refined compiler identity.
+         * identity state, closed compiler kind, structured compiler signature, and its derived
+         * compiler identity.
          * [CompilerGroundedSymbolEvidenceFailure] is the closed expected failure. Raw PSI and
          * compiler values may be extracted only at the request-local native compiler boundary.
          */
@@ -86,7 +91,7 @@ data class CompilerGroundedSymbolEvidence private constructor(
             rawName: String,
             rawQualifiedIdentity: String?,
             kind: CompilerSymbolKind,
-            compilerIdentity: CompilerSymbolIdentity,
+            signature: CanonicalCompilerSignature,
         ): Refinement<CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure> {
             val range = when (
                 val parsed = ExactDeclarationTextRange.parse(
@@ -113,6 +118,19 @@ data class CompilerGroundedSymbolEvidence private constructor(
                     CompilerGroundedSymbolEvidenceFailure.INVALID_QUALIFIED_IDENTITY,
                 )
             }
+            if (!signature.supports(kind)) {
+                return Refinement.Rejected(
+                    CompilerGroundedSymbolEvidenceFailure.SIGNATURE_KIND_MISMATCH,
+                )
+            }
+            if (
+                qualifiedIdentity !is ExactDeclarationQualifiedIdentity.Available ||
+                qualifiedIdentity.value != signature.qualifiedIdentity.value
+            ) {
+                return Refinement.Rejected(
+                    CompilerGroundedSymbolEvidenceFailure.QUALIFIED_IDENTITY_MISMATCH,
+                )
+            }
             return Refinement.Refined(
                 CompilerGroundedSymbolEvidence(
                     file = file,
@@ -120,10 +138,48 @@ data class CompilerGroundedSymbolEvidence private constructor(
                     name = name,
                     qualifiedIdentity = qualifiedIdentity,
                     kind = kind,
-                    compilerIdentity = compilerIdentity,
+                    signature = signature,
+                    compilerIdentity = CompilerSymbolIdentity.fromCanonicalSignature(signature),
                 ),
             )
         }
+
+        /**
+         * Restores persisted compiler evidence only when the stored identity is the exact
+         * projection of the retained canonical signature.
+         */
+        fun restoreBoundary(
+            file: SymbolDiscoveryFileIdentity,
+            rawStartInclusive: Int,
+            rawEndExclusive: Int,
+            rawName: String,
+            rawQualifiedIdentity: String?,
+            kind: CompilerSymbolKind,
+            signature: CanonicalCompilerSignature,
+            compilerIdentity: CompilerSymbolIdentity,
+        ): Refinement<CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure> =
+            when (
+                val evidence = fromBoundary(
+                    file = file,
+                    rawStartInclusive = rawStartInclusive,
+                    rawEndExclusive = rawEndExclusive,
+                    rawName = rawName,
+                    rawQualifiedIdentity = rawQualifiedIdentity,
+                    kind = kind,
+                    signature = signature,
+                )
+            ) {
+                is Refinement.Rejected -> evidence
+                is Refinement.Refined -> if (
+                    evidence.value.compilerIdentity == compilerIdentity
+                ) {
+                    evidence
+                } else {
+                    Refinement.Rejected(
+                        CompilerGroundedSymbolEvidenceFailure.COMPILER_IDENTITY_MISMATCH,
+                    )
+                }
+            }
     }
 }
 
@@ -174,6 +230,7 @@ class SymbolSelector private constructor(
     val name: SymbolDiscoveryCandidateName,
     val qualifiedIdentity: ExactDeclarationQualifiedIdentity,
     val kind: CompilerSymbolKind,
+    val signature: CanonicalCompilerSignature,
     val compilerIdentity: CompilerSymbolIdentity,
     val fingerprint: SymbolSelectorFingerprint,
 ) {
@@ -224,6 +281,7 @@ class SymbolSelector private constructor(
             name = evidence.name,
             qualifiedIdentity = evidence.qualifiedIdentity,
             kind = evidence.kind,
+            signature = evidence.signature,
             compilerIdentity = evidence.compilerIdentity,
             fingerprint = symbolSelectorFingerprint(lease, scope, evidence),
         )
@@ -297,6 +355,7 @@ data class SymbolDescription private constructor(
     val name: SymbolDiscoveryCandidateName,
     val qualifiedIdentity: ExactDeclarationQualifiedIdentity,
     val kind: CompilerSymbolKind,
+    val signature: CanonicalCompilerSignature,
     val compilerIdentity: CompilerSymbolIdentity,
 ) {
     companion object {
@@ -313,9 +372,18 @@ data class SymbolDescription private constructor(
             name = selector.name,
             qualifiedIdentity = selector.qualifiedIdentity,
             kind = selector.kind,
+            signature = selector.signature,
             compilerIdentity = selector.compilerIdentity,
         )
     }
+}
+
+private fun CanonicalCompilerSignature.supports(kind: CompilerSymbolKind): Boolean = when (this) {
+    is CanonicalCompilerSignature.Function ->
+        kind == CompilerSymbolKind.FUNCTION || kind == CompilerSymbolKind.CONSTRUCTOR
+    is CanonicalCompilerSignature.Property -> kind == CompilerSymbolKind.PROPERTY
+    is CanonicalCompilerSignature.TypeAlias -> kind == CompilerSymbolKind.TYPE_ALIAS
+    is CanonicalCompilerSignature.ClassLike -> kind == CompilerSymbolKind.CLASSLIKE
 }
 
 private fun symbolSelectorFingerprint(

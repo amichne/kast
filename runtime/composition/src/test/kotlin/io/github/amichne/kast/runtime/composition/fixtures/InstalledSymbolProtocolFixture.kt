@@ -10,6 +10,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationCompilation
@@ -153,7 +154,6 @@ internal class InstalledSymbolProtocolFixture private constructor(
             val selected = request.selection
             val location = selected.candidate.location as
                 io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation.Declaration
-            val compilerIdentity = CompilerSymbolIdentity.parse("sample#function").refinedFixture()
             val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
                 location.file,
                 location.offset.value,
@@ -161,7 +161,9 @@ internal class InstalledSymbolProtocolFixture private constructor(
                 selected.candidate.name.value,
                 "sample.Sample.sample",
                 CompilerSymbolKind.FUNCTION,
-                compilerIdentity,
+                CanonicalCompilerSignature.function(
+                    "sample.Sample.sample", null, emptyList(), emptyList(), 0,
+                ).refinedFixture(),
             ).refinedFixture()
             return SymbolSelector.issue(selected, evidence).refinedFixture()
         }
@@ -202,9 +204,6 @@ internal class InstalledSymbolProtocolFixture private constructor(
 
         private fun relatedEndpoint(request: RelationRequest): RelationEndpoint.Resolved {
             val start = request.subject.range.endExclusive + 1
-            val compilerIdentity = CompilerSymbolIdentity.parse(
-                request.subject.compilerIdentity.value + ":related",
-            ).refinedFixture()
             val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
                 request.subject.file,
                 start,
@@ -212,7 +211,13 @@ internal class InstalledSymbolProtocolFixture private constructor(
                 request.subject.name.value + "Related",
                 request.subject.name.value + ".Related",
                 CompilerSymbolKind.FUNCTION,
-                compilerIdentity,
+                CanonicalCompilerSignature.function(
+                    request.subject.name.value + ".Related",
+                    null,
+                    emptyList(),
+                    listOf(request.subject.compilerIdentity.value),
+                    0,
+                ).refinedFixture(),
             ).refinedFixture()
             return RelationEndpoint.resolve(
                 request.subject.lease,

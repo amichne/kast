@@ -32,7 +32,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
@@ -203,6 +203,14 @@ class InstalledKastRuntimeTest {
             (described.evidence.payload.symbol.qualifiedIdentity as
                 SymbolQualifiedIdentityDocument.Available).value.value,
         )
+        val compilerEvidence = described.evidence.payload.symbol.compilerEvidence
+        val signature = compilerEvidence.signature as
+            io.github.amichne.kast.protocol.contract.CompilerSignatureDocument.Function
+        assertEquals("sample.Sample.sample", signature.qualifiedIdentity.value)
+        assertEquals(
+            true,
+            compilerEvidence.identity.value.startsWith("canonical-signature-sha256-v1|"),
+        )
     }
 
     @Test
@@ -250,9 +258,22 @@ class InstalledKastRuntimeTest {
             )
         } as OperationOutcome.Qualified
 
-        assertEquals(1, related.evidence.payload.targets.values.size)
-        assertEquals(1, traversed.evidence.payload.reached.values.size)
-        assertEquals(TraversalRunQualification.DEPTH_LIMIT, traversed.qualification)
+        val relationFact = related.evidence.payload.relations.values.single()
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+            relationFact.provenance,
+        )
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
+            relationFact.coverage,
+        )
+        assertEquals(1, traversed.evidence.payload.records.values.single().depth.value)
+        assertEquals(relationFact, traversed.evidence.payload.records.values.single().relation)
+        assertEquals(
+            listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
+            traversed.qualification.limitations,
+        )
+        assertEquals(emptyList<Any>(), traversed.qualification.relationLimitations)
     }
 
     @Test
@@ -271,10 +292,13 @@ class InstalledKastRuntimeTest {
         } as OperationOutcome.Complete
 
         assertEquals(11, outcome.evidence.generation.value)
+        val diagnostic = outcome.evidence.payload.diagnostics.values.single()
+        assertEquals("KAST001", diagnostic.code.value)
         assertEquals(
-            true,
-            outcome.evidence.payload.diagnostics.values.single().value.contains("KAST001"),
+            io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument.ERROR,
+            diagnostic.severity,
         )
+        assertEquals(0, diagnostic.location.range.startInclusive.value)
     }
 
     @Test

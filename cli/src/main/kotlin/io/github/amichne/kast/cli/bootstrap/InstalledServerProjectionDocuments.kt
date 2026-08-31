@@ -14,8 +14,8 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 1
-private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 16_384
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 2
+private const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 private const val MAXIMUM_PROTOCOL_COUNT = 1_000
 
@@ -244,7 +244,7 @@ private enum class InstalledServerTool(
         deferLoading = true,
         cliUsage = cliUsage,
         inputSchema = inputSchema,
-        outputSchema = kastProcessOutputSchema,
+        outputSchema = installedServerOutputSchema(operation),
         invocation = InstalledServerCliInvocationDocument(
             type = InstalledServerInvocationType.CLI,
             command = command,
@@ -318,15 +318,602 @@ private fun symbolDiscoverInputSchema(): JsonObject = unionSchema(
     ),
 )
 
-private val kastProcessOutputSchema: JsonObject = unionSchema(
+internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject = unionSchema(
     objectSchema(
         ServerSchemaProperty("status", constantSchema("completed", "Process outcome.")),
-        ServerSchemaProperty("document", buildJsonObject {}),
+        ServerSchemaProperty("document", operationDocumentSchema(operation)),
     ),
     objectSchema(
         ServerSchemaProperty("status", constantSchema("rejected", "Process outcome.")),
-        ServerSchemaProperty("diagnostic", buildJsonObject {}),
+        ServerSchemaProperty("diagnostic", processDiagnosticSchema()),
     ),
+)
+
+private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject = when (operation) {
+    CanonicalOperation.WORKSPACE_INSPECT -> outcomeSchema(
+        operation,
+        ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
+        ServerSchemaProperty(
+            "state",
+            enumSchema(
+                listOf("absent", "starting", "reconciling", "ready", "blocked", "stopping"),
+                "Workspace runtime state.",
+            ),
+        ),
+    )
+    CanonicalOperation.TOPOLOGY_BUILD -> topologyBuildDocumentSchema(operation)
+    CanonicalOperation.SYMBOL_DISCOVER -> outcomeSchema(
+        operation,
+        ServerSchemaProperty("items", arraySchema(symbolDiscoverySchema())),
+    )
+    CanonicalOperation.SYMBOL_RESOLVE -> outcomeSchema(
+        operation,
+        ServerSchemaProperty("exactSelector", textSchema("Exact compiler-grounded selector.")),
+    )
+    CanonicalOperation.SYMBOL_DESCRIBE -> outcomeSchema(
+        operation,
+        ServerSchemaProperty("symbol", symbolSchema()),
+    )
+    CanonicalOperation.RELATION_READ -> proofQualifiedOutcomeSchema(
+        operation,
+        relationQualificationSchema(),
+        ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
+    )
+    CanonicalOperation.TRAVERSAL_RUN -> proofQualifiedOutcomeSchema(
+        operation,
+        traversalQualificationSchema(),
+        ServerSchemaProperty("records", arraySchema(traversalRecordSchema())),
+    )
+    CanonicalOperation.DIAGNOSTIC_CHECK -> proofQualifiedOutcomeSchema(
+        operation,
+        diagnosticQualificationSchema(),
+        ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
+    )
+    CanonicalOperation.CHANGE_PLAN -> outcomeSchema(
+        operation,
+        ServerSchemaProperty("planIdentity", textSchema("Durable change plan identity.")),
+    )
+    CanonicalOperation.CHANGE_APPLY -> outcomeSchema(
+        operation,
+        ServerSchemaProperty(
+            "applicationIdentity",
+            textSchema("Durable change application identity."),
+        ),
+    )
+    CanonicalOperation.CHANGE_VERIFY -> outcomeSchema(
+        operation,
+        ServerSchemaProperty("receiptIdentity", textSchema("Verification receipt identity.")),
+    )
+    CanonicalOperation.CHANGE_RECOVER -> outcomeSchema(
+        operation,
+        ServerSchemaProperty("state", textSchema("Recovered workspace state.")),
+    )
+}
+
+private fun outcomeSchema(
+    operation: CanonicalOperation,
+    vararg payload: ServerSchemaProperty,
+): JsonObject = proofQualifiedOutcomeSchema(
+    operation,
+    textSchema("Closed qualification reason."),
+    *payload,
+)
+
+private fun proofQualifiedOutcomeSchema(
+    operation: CanonicalOperation,
+    qualificationSchema: JsonObject,
+    vararg payload: ServerSchemaProperty,
+): JsonObject = unionSchema(
+    operationOutcomeVariant(operation, "complete", *payload),
+    operationOutcomeVariant(
+        operation,
+        "qualified",
+        *payload,
+        ServerSchemaProperty("qualification", qualificationSchema),
+    ),
+    operationOutcomeVariant(
+        operation,
+        "rejected",
+        ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
+    ),
+)
+
+private fun relationQualificationSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "knownMinimum",
+        integerSchema(0, description = "Known minimum relation count."),
+    ),
+    ServerSchemaProperty(
+        "limitations",
+        relationLimitationsSchema(),
+    ),
+    ServerSchemaProperty("continuation", sha256Schema("Opaque relation continuation proof.")),
+)
+
+private fun traversalQualificationSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "limitations",
+        arraySchema(
+            enumSchema(
+                listOf(
+                    "record-limit-reached",
+                    "byte-limit-reached",
+                    "work-limit-reached",
+                    "time-limit-reached",
+                    "depth-limit-reached",
+                    "frontier-limit-reached",
+                    "one-hop-incomplete",
+                ),
+                "Every traversal limitation.",
+            ),
+        ),
+    ),
+    ServerSchemaProperty(
+        "relationLimitations",
+        relationLimitationsSchema(),
+    ),
+    ServerSchemaProperty("continuation", sha256Schema("Opaque traversal continuation proof.")),
+)
+
+private fun relationLimitationsSchema(): JsonObject = arraySchema(
+    enumSchema(
+        listOf(
+            "result-limit-reached",
+            "byte-limit-reached",
+            "work-limit-reached",
+            "time-limit-reached",
+            "dumb-mode-transition",
+            "unresolved-target",
+            "unsupported-item",
+            "provider-failure",
+            "provider-incomplete",
+        ),
+        "Every relation coverage limitation.",
+    ),
+)
+
+private fun diagnosticQualificationSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "knownDiagnosticCount",
+        integerSchema(0, description = "Known diagnostic count before result truncation."),
+    ),
+    ServerSchemaProperty(
+        "resultLimitReached",
+        buildJsonObject {
+            put("type", "boolean")
+            put("description", "Whether returned diagnostics were truncated by the request limit.")
+        },
+    ),
+    ServerSchemaProperty(
+        "analyzedFiles",
+        arraySchema(textSchema("Exact analyzed diagnostic source file.")),
+    ),
+    ServerSchemaProperty(
+        "limitations",
+        arraySchema(
+            objectSchema(
+                ServerSchemaProperty("file", textSchema("Limited diagnostic source file.")),
+                ServerSchemaProperty(
+                    "reason",
+                    enumSchema(
+                        listOf(
+                            "file-unavailable",
+                            "outside-source-content",
+                            "indexing",
+                            "psi-unavailable",
+                            "unsupported-file-kind",
+                            "unsupported-diagnostic",
+                            "analysis-unavailable",
+                        ),
+                        "Exact per-file diagnostic limitation.",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+
+private fun operationOutcomeVariant(
+    operation: CanonicalOperation,
+    status: String,
+    vararg payload: ServerSchemaProperty,
+): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "operation",
+        constantSchema(operation.id.value, "Canonical operation identity."),
+    ),
+    ServerSchemaProperty("status", constantSchema(status, "Canonical operation outcome.")),
+    *payload,
+)
+
+private fun topologyBuildDocumentSchema(operation: CanonicalOperation): JsonObject {
+    val result = arrayOf(
+        ServerSchemaProperty("snapshotStatus", textSchema("Topology snapshot status.")),
+        ServerSchemaProperty("generation", integerSchema(0, description = "Evidence generation.")),
+        ServerSchemaProperty("digest", textSchema("Topology snapshot digest.")),
+    )
+    return unionSchema(
+        operationOutcomeVariant(operation, "complete", *result),
+        operationOutcomeVariant(
+            operation,
+            "qualified",
+            *result,
+            ServerSchemaProperty("qualification", textSchema("Closed qualification reason.")),
+        ),
+        operationOutcomeVariant(
+            operation,
+            "rejected",
+            ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
+        ),
+        operationOutcomeVariant(
+            operation,
+            "rejected",
+            ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
+            ServerSchemaProperty("failure", textSchema("Topology failure detail.")),
+        ),
+        operationOutcomeVariant(
+            operation,
+            "rejected",
+            ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
+            ServerSchemaProperty("file", textSchema("Rejected topology source file.")),
+            ServerSchemaProperty("failure", textSchema("Topology extraction failure.")),
+        ),
+        topologyCoverageRejectedSchema(operation),
+    )
+}
+
+private fun topologyCoverageRejectedSchema(operation: CanonicalOperation): JsonObject =
+    operationOutcomeVariant(
+        operation,
+        "rejected",
+        ServerSchemaProperty("reason", constantSchema("coverage-incomplete", "Rejection reason.")),
+        ServerSchemaProperty("missing", finiteArraySchema(textSchema("Missing source path."))),
+        ServerSchemaProperty("unexpected", finiteArraySchema(textSchema("Unexpected source path."))),
+        ServerSchemaProperty(
+            "duplicateCandidates",
+            finiteArraySchema(textSchema("Duplicate candidate source path.")),
+        ),
+        ServerSchemaProperty(
+            "duplicateCompletions",
+            finiteArraySchema(textSchema("Duplicate completion source path.")),
+        ),
+        ServerSchemaProperty(
+            "workspaceMismatches",
+            finiteArraySchema(textSchema("Workspace-mismatched source path.")),
+        ),
+        ServerSchemaProperty(
+            "candidateEvidenceMismatches",
+            finiteArraySchema(topologyCoverageCandidateEvidenceMismatchSchema()),
+        ),
+        ServerSchemaProperty(
+            "duplicateSymbols",
+            finiteArraySchema(topologyCoverageNodeSchema()),
+        ),
+        ServerSchemaProperty(
+            "missingEdgeTargets",
+            finiteArraySchema(topologyCoverageNodeSchema()),
+        ),
+        ServerSchemaProperty(
+            "mismatchedEdgeEndpoints",
+            finiteArraySchema(topologyCoverageSymbolSchema()),
+        ),
+    )
+
+private fun topologyCoverageCandidateEvidenceMismatchSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("candidate", topologyCoverageFileEvidenceSchema()),
+    ServerSchemaProperty("completed", topologyCoverageFileEvidenceSchema()),
+)
+
+private fun topologyCoverageNodeSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("compilerIdentity", compilerIdentitySchema()),
+    ServerSchemaProperty("file", textSchema("Exact topology source file.")),
+    ServerSchemaProperty("range", sourceRangeSchema()),
+)
+
+private fun topologyCoverageSymbolSchema(): JsonObject = unionSchema(
+    topologyCoverageSymbolVariantSchema("classlike", classLikeCompilerSignatureSchema()),
+    topologyCoverageSymbolVariantSchema("constructor", functionCompilerSignatureSchema()),
+    topologyCoverageSymbolVariantSchema("function", functionCompilerSignatureSchema()),
+    topologyCoverageSymbolVariantSchema("property", propertyCompilerSignatureSchema()),
+    topologyCoverageSymbolVariantSchema("type-alias", typeAliasCompilerSignatureSchema()),
+)
+
+private fun topologyCoverageSymbolVariantSchema(
+    kind: String,
+    signature: JsonObject,
+): JsonObject = objectSchema(
+    ServerSchemaProperty("node", topologyCoverageNodeSchema()),
+    ServerSchemaProperty("fileEvidence", topologyCoverageFileEvidenceSchema()),
+    ServerSchemaProperty("name", textSchema("Topology symbol name.")),
+    ServerSchemaProperty("qualifiedIdentity", topologyCoverageQualifiedIdentitySchema()),
+    ServerSchemaProperty("kind", constantSchema(kind, "Compiler symbol kind.")),
+    ServerSchemaProperty("compilerEvidence", compilerEvidenceSchema(signature)),
+)
+
+private fun topologyCoverageQualifiedIdentitySchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("state", constantSchema("available", "Identity state.")),
+    ServerSchemaProperty("value", textSchema("Compiler qualified identity.")),
+)
+
+private fun topologyCoverageFileEvidenceSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "workspace",
+        objectSchema(
+            ServerSchemaProperty("root", textSchema("Canonical workspace root.")),
+            ServerSchemaProperty(
+                "generation",
+                integerSchema(0, description = "Evidence generation."),
+            ),
+            ServerSchemaProperty("sourceState", textSchema("Workspace source-state identity.")),
+        ),
+    ),
+    ServerSchemaProperty(
+        "sourceRoot",
+        objectSchema(
+            ServerSchemaProperty("module", textSchema("IDE module identity.")),
+            ServerSchemaProperty("buildRoot", textSchema("Workspace-relative build root.")),
+            ServerSchemaProperty("projectPath", textSchema("Gradle project path.")),
+            ServerSchemaProperty("sourceSet", textSchema("Gradle source-set name.")),
+            ServerSchemaProperty("location", textSchema("Workspace-relative source root.")),
+            ServerSchemaProperty(
+                "provenance",
+                enumSchema(
+                    listOf("authored", "generated", "unknown-excluded-from-source-model"),
+                    "Source-root provenance.",
+                ),
+            ),
+        ),
+    ),
+    ServerSchemaProperty("path", textSchema("Workspace-relative source path.")),
+    ServerSchemaProperty("contentHash", sha256Schema("Exact source content hash.")),
+)
+
+private fun symbolSchema(): JsonObject = unionSchema(
+    symbolVariantSchema("classlike", classLikeCompilerSignatureSchema()),
+    symbolVariantSchema("constructor", functionCompilerSignatureSchema()),
+    symbolVariantSchema("function", functionCompilerSignatureSchema()),
+    symbolVariantSchema("property", propertyCompilerSignatureSchema()),
+    symbolVariantSchema("type-alias", typeAliasCompilerSignatureSchema()),
+)
+
+private fun symbolVariantSchema(kind: String, signature: JsonObject): JsonObject = objectSchema(
+    ServerSchemaProperty("selector", textSchema("Exact generation-bound selector.")),
+    ServerSchemaProperty("kind", constantSchema(kind, "Compiler symbol kind.")),
+    ServerSchemaProperty("name", textSchema("Source declaration name.")),
+    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+    ServerSchemaProperty("file", textSchema("Exact source file.")),
+    ServerSchemaProperty("range", sourceRangeSchema()),
+    ServerSchemaProperty("compilerEvidence", compilerEvidenceSchema(signature)),
+)
+
+private fun compilerEvidenceSchema(signature: JsonObject): JsonObject = objectSchema(
+    ServerSchemaProperty("identity", compilerIdentitySchema()),
+    ServerSchemaProperty("signature", signature),
+)
+
+private fun functionCompilerSignatureSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema("function", "Signature variant.")),
+    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+    ServerSchemaProperty("receiver", compilerReceiverSchema()),
+    ServerSchemaProperty("contextReceivers", arraySchema(textSchema("Compiler type."))),
+    ServerSchemaProperty("valueParameters", arraySchema(textSchema("Compiler type."))),
+    ServerSchemaProperty(
+        "typeParameterCount",
+        integerSchema(0, description = "Exact type parameter count."),
+    ),
+)
+
+private fun propertyCompilerSignatureSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema("property", "Signature variant.")),
+    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+    ServerSchemaProperty("receiver", compilerReceiverSchema()),
+    ServerSchemaProperty("contextReceivers", arraySchema(textSchema("Compiler type."))),
+    ServerSchemaProperty("returnType", textSchema("Canonical compiler return type.")),
+)
+
+private fun typeAliasCompilerSignatureSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema("type-alias", "Signature variant.")),
+    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+)
+
+private fun classLikeCompilerSignatureSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema("class-like", "Signature variant.")),
+    ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
+)
+
+private fun compilerIdentitySchema(): JsonObject = buildJsonObject {
+    put("type", "string")
+    put("pattern", "^canonical-signature-sha256-v1\\|[0-9a-f]{64}$")
+    put("description", "Identity derived from the exact canonical compiler signature.")
+}
+
+private fun compilerReceiverSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("absent", "Receiver state.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("present", "Receiver state.")),
+        ServerSchemaProperty("compilerType", textSchema("Canonical compiler receiver type.")),
+    ),
+)
+
+private fun relationFactSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("meaning", relationSchema()),
+    ServerSchemaProperty("source", symbolSchema()),
+    ServerSchemaProperty("target", symbolSchema()),
+    ServerSchemaProperty(
+        "occurrence",
+        objectSchema(
+            ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
+            ServerSchemaProperty("range", sourceRangeSchema()),
+        ),
+    ),
+    ServerSchemaProperty(
+        "provenance",
+        enumSchema(
+            listOf("k2-authored-source", "k2-generated-source", "k2-project-library"),
+            "Compiler and source-root provenance.",
+        ),
+    ),
+    ServerSchemaProperty(
+        "coverage",
+        constantSchema("exact-compiler-confirmed", "Per-edge compiler coverage proof."),
+    ),
+)
+
+private fun traversalRecordSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("depth", integerSchema(0, description = "Breadth-first hop depth.")),
+    ServerSchemaProperty("relation", relationFactSchema()),
+)
+
+private fun diagnosticSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty(
+        "severity",
+        enumSchema(listOf("error", "warning", "info"), "Compiler diagnostic severity."),
+    ),
+    ServerSchemaProperty("code", textSchema("Compiler diagnostic code.")),
+    ServerSchemaProperty("message", textSchema("Compiler diagnostic message.")),
+    ServerSchemaProperty(
+        "location",
+        objectSchema(
+            ServerSchemaProperty("file", textSchema("Diagnostic source file.")),
+            ServerSchemaProperty("range", diagnosticRangeSchema()),
+        ),
+    ),
+)
+
+private fun symbolDiscoverySchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("file", "Discovery evidence variant.")),
+        ServerSchemaProperty("name", textSchema("File name.")),
+        ServerSchemaProperty("file", textSchema("Discovered file.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema("declaration", "Discovery evidence variant."),
+        ),
+        ServerSchemaProperty("candidateSelector", textSchema("Candidate selector.")),
+        ServerSchemaProperty("kind", enumSchema(listOf("file", "class", "symbol"), "Kind.")),
+        ServerSchemaProperty("name", textSchema("Declaration name.")),
+        ServerSchemaProperty("file", textSchema("Declaration file.")),
+        ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("text-match", "Discovery evidence variant.")),
+        ServerSchemaProperty("query", textSchema("Matched query.")),
+        ServerSchemaProperty("file", textSchema("Matched file.")),
+        ServerSchemaProperty("range", sourceRangeSchema()),
+    ),
+)
+
+private fun sourceRangeSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("startInclusive", integerSchema(0, description = "Start offset.")),
+    ServerSchemaProperty("endExclusive", integerSchema(1, description = "Exclusive end offset.")),
+)
+
+private fun diagnosticRangeSchema(): JsonObject = objectSchema(
+    ServerSchemaProperty("startInclusive", integerSchema(0, description = "Start offset.")),
+    ServerSchemaProperty("endExclusive", integerSchema(0, description = "Exclusive end offset.")),
+)
+
+private fun processDiagnosticSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+        ServerSchemaProperty("boundary", textSchema("Rejected process boundary.")),
+        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+        ServerSchemaProperty("boundary", textSchema("Rejected process boundary.")),
+        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
+        ServerSchemaProperty("diagnostic", textSchema("Usage diagnostic.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("status", constantSchema("rejected", "Boundary outcome.")),
+        ServerSchemaProperty("boundary", constantSchema("runtime", "Rejected process boundary.")),
+        ServerSchemaProperty("reason", textSchema("Closed boundary rejection reason.")),
+        ServerSchemaProperty("details", ideDescriptorFailureSchema()),
+    ),
+)
+
+private fun ideDescriptorFailureSchema(): JsonObject = unionSchema(
+    *listOf(
+        "malformed-document",
+        "non-canonical-document",
+        "unsupported-schema",
+        "unsupported-host-kind",
+        "unsupported-framing",
+    ).map(::typeOnlyFailureSchema).toTypedArray(),
+    typedFailureSchema("invalid-canonical-root", "failure"),
+    typedFailureSchema("invalid-socket-path", "failure"),
+    typedFailureSchema("invalid-process-id", "failure"),
+    typedFailureSchema("invalid-runtime-epoch", "failure"),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema("compatibility-rejected", "Descriptor failure variant."),
+        ),
+        ServerSchemaProperty("failure", compatibilityFailureSchema()),
+    ),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema("hosted-capabilities-rejected", "Descriptor failure variant."),
+        ),
+        ServerSchemaProperty("failure", hostedCapabilitiesFailureSchema()),
+    ),
+)
+
+private fun compatibilityFailureSchema(): JsonObject = unionSchema(
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("malformed", "Compatibility failure.")),
+        ServerSchemaProperty("field", textSchema("Rejected compatibility field.")),
+        ServerSchemaProperty("syntax", textSchema("Closed syntax failure.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("mismatch", "Compatibility failure.")),
+        ServerSchemaProperty("field", textSchema("Mismatched compatibility field.")),
+        ServerSchemaProperty("expected", textSchema("Expected identity.")),
+        ServerSchemaProperty("observed", textSchema("Observed identity.")),
+    ),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema("capability-set-mismatch", "Compatibility failure."),
+        ),
+        ServerSchemaProperty("field", textSchema("Mismatched capability field.")),
+        ServerSchemaProperty("expected", finiteArraySchema(textSchema("Expected operation."))),
+        ServerSchemaProperty("observed", finiteArraySchema(textSchema("Observed operation."))),
+    ),
+    typedFailureSchema("unknown-capability", "operationId"),
+    typedFailureSchema("unsupported-capability", "operationId"),
+    typedFailureSchema("duplicate-capability", "operationId"),
+)
+
+private fun hostedCapabilitiesFailureSchema(): JsonObject = unionSchema(
+    typedFailureSchema("malformed-operation-id", "failure"),
+    typedFailureSchema("unknown-operation", "operationId"),
+    typedFailureSchema("unsupported-intent", "operationId"),
+    typedFailureSchema("duplicate-operation", "operationId"),
+    objectSchema(
+        ServerSchemaProperty(
+            "type",
+            constantSchema("duplicate-intent", "Hosted-capability failure."),
+        ),
+        ServerSchemaProperty("operationId", textSchema("Canonical operation identity.")),
+        ServerSchemaProperty("intent", textSchema("Duplicate hosted intent.")),
+    ),
+    typeOnlyFailureSchema("canonical-projection-mismatch"),
+)
+
+private fun typeOnlyFailureSchema(type: String): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema(type, "Closed failure variant.")),
+)
+
+private fun typedFailureSchema(type: String, field: String): JsonObject = objectSchema(
+    ServerSchemaProperty("type", constantSchema(type, "Closed failure variant.")),
+    ServerSchemaProperty(field, textSchema("Finite failure evidence.")),
 )
 
 private fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = buildJsonObject {
@@ -346,6 +933,17 @@ private fun unionSchema(vararg variants: JsonObject): JsonObject = buildJsonObje
     }
 }
 
+private fun arraySchema(item: JsonObject): JsonObject = buildJsonObject {
+    put("type", "array")
+    put("items", item)
+    put("maxItems", MAXIMUM_PROTOCOL_COUNT)
+}
+
+private fun finiteArraySchema(item: JsonObject): JsonObject = buildJsonObject {
+    put("type", "array")
+    put("items", item)
+}
+
 private fun textSchema(description: String): JsonObject = buildJsonObject {
     put("type", "string")
     put("minLength", 1)
@@ -358,6 +956,12 @@ private fun workspaceFileSchema(): JsonObject = buildJsonObject {
     put("minLength", 1)
     put("maxLength", MAXIMUM_WORKSPACE_FILE_LENGTH)
     put("description", "Workspace-relative file path.")
+}
+
+private fun sha256Schema(description: String): JsonObject = buildJsonObject {
+    put("type", "string")
+    put("pattern", "^[0-9a-f]{64}$")
+    put("description", description)
 }
 
 private fun countSchema(description: String): JsonObject = integerSchema(

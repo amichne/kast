@@ -252,6 +252,27 @@ run_cli_rejected() {
   fi
 }
 
+assert_compiler_evidence() {
+  local output=$1
+  if ! jq -e '
+    .status == "complete" and
+    (.symbol.compilerEvidence.identity |
+      type == "string" and startswith("canonical-signature-sha256-v1|")) and
+    (.symbol.compilerEvidence.signature |
+      .type == "function" and
+      (.qualifiedIdentity | type == "string" and length > 0) and
+      (.receiver.type == "absent" or
+        (.receiver.type == "present" and
+          (.receiver.compilerType | type == "string" and length > 0))) and
+      (.contextReceivers | type == "array") and
+      (.valueParameters | type == "array") and
+      (.typeParameterCount | type == "number"))
+  ' "${output}" >/dev/null 2>&1; then
+    cat "${output}" >&2
+    fail "symbol description did not expose structured compiler-grounded evidence"
+  fi
+}
+
 run_cli_with_save_fault() {
   local root=$1
   local output=$2
@@ -341,14 +362,33 @@ target_file() {
 resolve_target() {
   local root=$1
   local prefix=$2
-  for _ in {1..20}; do
-    run_cli "${root}" "${prefix}.discover.json" \
-      symbol discover --mode name --query enterpriseRootOperation --kind symbol --match exact-name --limit 10
+  for _ in {1..120}; do
+    if ! (cd "${root}" && "${cli}" symbol discover --mode name \
+      --query enterpriseRootOperation --kind symbol --match exact-name --limit 10) \
+      >"${prefix}.discover.json"; then
+      if jq -e '.status == "rejected" and .reason == "workspace-not-ready"' \
+        "${prefix}.discover.json" >/dev/null 2>&1; then
+        sleep 0.25
+        continue
+      fi
+      cat "${prefix}.discover.json" >&2
+      fail "symbol discovery failed before refinement for ${root}"
+    fi
     local candidate_selector
     candidate_selector=$(jq -r '.items[0].candidateSelector // empty' "${prefix}.discover.json")
     if test -n "${candidate_selector}"; then
-      (cd "${root}" && "${cli}" symbol resolve --candidate "${candidate_selector}") \
-        >"${prefix}.resolve.json"
+      if ! (cd "${root}" && "${cli}" symbol resolve --candidate "${candidate_selector}") \
+        >"${prefix}.resolve.json"; then
+        if jq -e '
+          .status == "rejected" and
+          (.reason == "workspace-not-ready" or .reason == "candidate-stale")
+        ' "${prefix}.resolve.json" >/dev/null 2>&1; then
+          sleep 0.25
+          continue
+        fi
+        cat "${prefix}.resolve.json" >&2
+        fail "symbol refinement failed for ${root}"
+      fi
       if jq -e '.status == "complete" and (.exactSelector | type == "string")' \
         "${prefix}.resolve.json" >/dev/null; then
         jq -er '.exactSelector' "${prefix}.resolve.json"
@@ -368,6 +408,13 @@ record_observation "${positive_jsonl}" workspace.inspect COMPLETE "${run_directo
 
 positive_selector=$(resolve_target "${positive_root}" "${run_directory}/observations/positive")
 record_observation "${positive_jsonl}" symbol.resolve COMPLETE "${run_directory}/observations/positive.resolve.json"
+run_cli "${positive_root}" "${run_directory}/observations/positive-description.json" \
+  symbol describe --selector "${positive_selector}"
+assert_compiler_evidence "${run_directory}/observations/positive-description.json"
+positive_compiler_evidence=$(jq -cS '.symbol.compilerEvidence' \
+  "${run_directory}/observations/positive-description.json")
+record_observation "${positive_jsonl}" symbol.describe.compiler-evidence COMPLETE \
+  "${run_directory}/observations/positive-description.json"
 run_cli "${positive_root}" "${run_directory}/observations/positive-topology.json" topology build
 record_observation "${positive_jsonl}" topology.build COMPLETE "${run_directory}/observations/positive-topology.json"
 run_cli "${positive_root}" "${run_directory}/observations/positive-traversal.json" \
@@ -422,6 +469,18 @@ positive_restart_generation=${positive_restart_remainder%%:*}
 if test "${positive_restart_generation}" -le "${positive_pre_restart_generation}"; then
   fail "cold project restart did not conservatively advance semantic generation"
 fi
+run_cli "${positive_root}" "${run_directory}/observations/positive-restart-description.json" \
+  symbol describe --selector "${positive_restart_selector}"
+assert_compiler_evidence "${run_directory}/observations/positive-restart-description.json"
+positive_restart_compiler_evidence=$(jq -cS '.symbol.compilerEvidence' \
+  "${run_directory}/observations/positive-restart-description.json")
+if test "${positive_restart_compiler_evidence}" != "${positive_compiler_evidence}"; then
+  cat "${run_directory}/observations/positive-description.json" >&2
+  cat "${run_directory}/observations/positive-restart-description.json" >&2
+  fail "compiler-grounded evidence changed across an unchanged symbol restart"
+fi
+record_observation "${positive_jsonl}" symbol.describe.compiler-evidence.after-restart COMPLETE \
+  "${run_directory}/observations/positive-restart-description.json"
 run_cli "${positive_root}" "${run_directory}/observations/positive-restart-topology.json" \
   topology build
 if ! jq -e '.snapshotStatus == "reused"' \

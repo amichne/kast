@@ -48,6 +48,7 @@ internal data class TopologyCoverageSymbolDocument(
     val name: String,
     val qualifiedIdentity: TopologyCoverageQualifiedIdentityDocument,
     val kind: TopologyCoverageSymbolKindDocument,
+    val compilerEvidence: CompilerSymbolEvidenceWireDocument,
 )
 
 @Serializable
@@ -179,6 +180,7 @@ private fun TopologyCoverageSymbol.toSerializableDocument() = TopologyCoverageSy
         TopologyCoverageSymbolKind.PROPERTY -> TopologyCoverageSymbolKindDocument.PROPERTY
         TopologyCoverageSymbolKind.TYPE_ALIAS -> TopologyCoverageSymbolKindDocument.TYPE_ALIAS
     },
+    compilerEvidence.toWireDocument(),
 )
 
 /**
@@ -224,9 +226,33 @@ private fun TopologyCoverageSymbolDocument.toContract():
     fileEvidence.toContract(),
     name.protocolText(),
     qualifiedIdentity.toContract(),
-) { node, fileEvidence, name, qualifiedIdentity ->
-    TopologyCoverageSymbol(node, fileEvidence, name, qualifiedIdentity, kind.toContract())
+    compilerEvidence.toContract(),
+) { node, fileEvidence, name, qualifiedIdentity, compilerEvidence ->
+    TopologyCoverageSymbolFields(
+        node,
+        fileEvidence,
+        name,
+        qualifiedIdentity,
+        compilerEvidence,
+    )
+}.flatMapConverted { fields ->
+    TopologyCoverageSymbol.create(
+        fields.node,
+        fields.fileEvidence,
+        fields.name,
+        fields.qualifiedIdentity,
+        kind.toContract(),
+        fields.compilerEvidence,
+    ).toWireDocumentConversion()
 }
+
+private data class TopologyCoverageSymbolFields(
+    val node: TopologyCoverageNode,
+    val fileEvidence: io.github.amichne.kast.protocol.contract.TopologyCoverageFileEvidence,
+    val name: ProtocolText,
+    val qualifiedIdentity: TopologyCoverageQualifiedIdentity,
+    val compilerEvidence: io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument,
+)
 
 /**
  * Proof transition: `TopologyCoverageQualifiedIdentityDocument ->
@@ -327,6 +353,7 @@ private val topologyCoverageSymbolDocumentComparator =
                 { it.qualifiedIdentity.sortRank() },
                 { it.qualifiedIdentity.sortValue() },
                 { it.kind.sortRank() },
+                { it.compilerEvidence.identity },
             )
         }
     }

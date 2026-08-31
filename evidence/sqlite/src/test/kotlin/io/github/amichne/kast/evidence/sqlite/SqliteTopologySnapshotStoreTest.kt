@@ -2,8 +2,8 @@ package io.github.amichne.kast.evidence.sqlite
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
@@ -66,9 +66,27 @@ class SqliteTopologySnapshotStoreTest {
             content.symbols.map(TopologySymbol::canonicalProjection),
         )
         assertEquals(
+            generation.symbols.map { it.evidence.signature },
+            content.symbols.map { it.evidence.signature },
+        )
+        assertEquals(
             generation.edges.map(TopologyEdge::canonicalProjection),
             content.edges.map(TopologyEdge::canonicalProjection),
         )
+    }
+
+    @Test
+    fun `legacy topology v2 tables are ignored instead of restoring proofless symbols`() {
+        val identity = TopologyWorkspaceIdentity.from(workspace("legacy-state", 7))
+        val path = databasePath("legacy-v2")
+        DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE TABLE topology_snapshot_v2 (workspace_root TEXT)")
+                statement.execute("INSERT INTO topology_snapshot_v2 VALUES ('/workspace')")
+            }
+        }
+
+        assertEquals(TopologySnapshotEligibility.Unavailable, store(path).eligible(identity))
     }
 
     @Test
@@ -183,7 +201,7 @@ class SqliteTopologySnapshotStoreTest {
         )
         DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
             connection.createStatement().use { statement ->
-                statement.executeUpdate("UPDATE topology_symbol_v2 SET symbol_name = 'tampered'")
+                statement.executeUpdate("UPDATE topology_symbol_v3 SET symbol_name = 'tampered'")
             }
         }
 
@@ -203,7 +221,7 @@ class SqliteTopologySnapshotStoreTest {
             TopologyPublicationResult.Published::class.java,
             store(path).publish(generation),
         ).snapshot
-        mutate(path, "UPDATE topology_symbol_v2 SET symbol_name = ''")
+        mutate(path, "UPDATE topology_symbol_v3 SET symbol_name = ''")
 
         val reconstruction = DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
             connection.readTopologyContent(published)
@@ -221,7 +239,7 @@ class SqliteTopologySnapshotStoreTest {
         val path = databasePath("corrupt-stale")
         val store = store(path)
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
-        mutate(path, "DELETE FROM topology_edge_v2")
+        mutate(path, "DELETE FROM topology_edge_v3")
 
         assertCorrupt(store.eligible(TopologyWorkspaceIdentity.from(workspace("state-b", 8))))
     }
@@ -232,7 +250,7 @@ class SqliteTopologySnapshotStoreTest {
         val path = databasePath("missing-edge")
         val store = store(path)
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
-        mutate(path, "DELETE FROM topology_edge_v2")
+        mutate(path, "DELETE FROM topology_edge_v3")
 
         assertCorrupt(store.eligible(generation.identity))
     }
@@ -243,7 +261,7 @@ class SqliteTopologySnapshotStoreTest {
         val path = databasePath("dangling-edge")
         val store = store(path)
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
-        mutate(path, "UPDATE topology_edge_v2 SET target_symbol_id = 9223372036854775807")
+        mutate(path, "UPDATE topology_edge_v3 SET target_symbol_id = 9223372036854775807")
 
         assertCorrupt(store.eligible(generation.identity))
     }
@@ -256,7 +274,7 @@ class SqliteTopologySnapshotStoreTest {
         assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation))
         mutate(
             path,
-            "UPDATE topology_edge_v2 SET occurrence_file_path = 'src/main/kotlin/Target.kt'",
+            "UPDATE topology_edge_v3 SET occurrence_file_path = 'src/main/kotlin/Target.kt'",
         )
 
         assertCorrupt(store.eligible(generation.identity))
@@ -316,7 +334,7 @@ class SqliteTopologySnapshotStoreTest {
             name,
             identity,
             CompilerSymbolKind.CLASSLIKE,
-            CompilerSymbolIdentity.parse("class|$identity").refined(),
+            CanonicalCompilerSignature.classLike(identity).refined(),
         ).refined()
         return TopologySymbol.admit(file, evidence).refined()
     }

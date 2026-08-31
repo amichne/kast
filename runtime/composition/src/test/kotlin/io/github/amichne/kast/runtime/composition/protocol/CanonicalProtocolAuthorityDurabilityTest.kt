@@ -8,8 +8,8 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
@@ -62,6 +62,8 @@ class CanonicalProtocolAuthorityDurabilityTest {
         ).selector
         assertEquals(fixture.selector.lease, restoredExact.lease)
         assertEquals(fixture.selector.fingerprint, restoredExact.fingerprint)
+        assertEquals(fixture.selector.signature, restoredExact.signature)
+        assertEquals(true, exactDocument.value.startsWith("exact:v2:"))
     }
 
     @Test
@@ -153,7 +155,13 @@ class CanonicalProtocolAuthorityDurabilityTest {
         rawName = name,
         rawQualifiedIdentity = qualified,
         kind = CompilerSymbolKind.FUNCTION,
-        compilerIdentity = CompilerSymbolIdentity.parse(compiler).refined(),
+        signature = CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = qualified,
+            rawReceiverType = null,
+            rawContextReceiverTypes = emptyList(),
+            rawValueParameterTypes = listOf(compiler),
+            rawTypeParameterCount = 0,
+        ).refined(),
     ).refined()
 
     private data class Fixture(

@@ -3,7 +3,7 @@ package io.github.amichne.kast.topology.build
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
@@ -220,9 +220,15 @@ class TopologyGenerationReuseTest {
             start,
             start + name.length,
             name,
-            "sample.$name",
+            "sample.shared",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.shared|-|||0").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.shared",
+                null,
+                emptyList(),
+                emptyList(),
+                0,
+            ).refined(),
         ).refined()
         return TopologySymbol.admit(file, evidence).refined()
     }

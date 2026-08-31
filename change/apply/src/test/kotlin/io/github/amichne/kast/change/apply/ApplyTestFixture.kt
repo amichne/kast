@@ -53,7 +53,7 @@ import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
@@ -310,9 +310,17 @@ internal class ApplyTestFixture(
             "service",
             "sample.service",
             if (classLike) CompilerSymbolKind.CLASSLIKE else CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse(
-                if (classLike) "class|sample.service" else "function|sample.service",
-            ).refined(),
+            if (classLike) {
+                CanonicalCompilerSignature.classLike("sample.service").refined()
+            } else {
+                CanonicalCompilerSignature.function(
+                    "sample.service",
+                    null,
+                    emptyList(),
+                    emptyList(),
+                    0,
+                ).refined()
+            },
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

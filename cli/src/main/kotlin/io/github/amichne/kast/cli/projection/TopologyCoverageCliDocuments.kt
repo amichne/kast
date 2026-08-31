@@ -53,6 +53,7 @@ private data class TopologyCoverageSymbolCliDocument(
     val name: String,
     val qualifiedIdentity: TopologyCoverageQualifiedIdentityCliDocument,
     val kind: TopologyCoverageSymbolKindCliDocument,
+    val compilerEvidence: CompilerSymbolEvidenceCliDocument,
 )
 
 @Serializable
@@ -163,6 +164,7 @@ private fun TopologyCoverageSymbol.toCliDocument(): TopologyCoverageSymbolCliDoc
                 TopologyCoverageQualifiedIdentityCliDocument.Unavailable
         },
         kind = kind.toCliDocument(),
+        compilerEvidence = compilerEvidence.toCliDocument(),
     )
 
 private fun TopologyCoverageCandidateEvidenceMismatch.toCliDocument() =
@@ -235,6 +237,7 @@ private val topologyCoverageSymbolCliDocumentComparator =
                 { it.qualifiedIdentity.sortRank() },
                 { it.qualifiedIdentity.sortValue() },
                 { it.kind.sortRank() },
+                { it.compilerEvidence.identity },
             )
         }
     }

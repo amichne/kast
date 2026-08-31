@@ -7,7 +7,7 @@ internal fun initializeTopologySchema(connection: Connection) {
         statement.execute("PRAGMA journal_mode = WAL")
         statement.execute("PRAGMA foreign_keys = ON")
         statement.execute(
-            """CREATE TABLE IF NOT EXISTS topology_snapshot_v2 (
+            """CREATE TABLE IF NOT EXISTS topology_snapshot_v3 (
                 snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 workspace_root TEXT NOT NULL CHECK(length(workspace_root) > 0),
                 generation INTEGER NOT NULL CHECK(generation >= 0),
@@ -20,8 +20,8 @@ internal fun initializeTopologySchema(connection: Connection) {
             )""",
         )
         statement.execute(
-            """CREATE TABLE IF NOT EXISTS topology_file_v2 (
-                snapshot_id INTEGER NOT NULL REFERENCES topology_snapshot_v2(snapshot_id)
+            """CREATE TABLE IF NOT EXISTS topology_file_v3 (
+                snapshot_id INTEGER NOT NULL REFERENCES topology_snapshot_v3(snapshot_id)
                     ON DELETE CASCADE,
                 path TEXT NOT NULL,
                 content_hash TEXT NOT NULL CHECK(length(content_hash) = 64),
@@ -37,11 +37,12 @@ internal fun initializeTopologySchema(connection: Connection) {
             )""",
         )
         statement.execute(
-            """CREATE TABLE IF NOT EXISTS topology_symbol_v2 (
+            """CREATE TABLE IF NOT EXISTS topology_symbol_v3 (
                 symbol_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                snapshot_id INTEGER NOT NULL REFERENCES topology_snapshot_v2(snapshot_id)
+                snapshot_id INTEGER NOT NULL REFERENCES topology_snapshot_v3(snapshot_id)
                     ON DELETE CASCADE,
                 compiler_identity TEXT NOT NULL,
+                compiler_signature TEXT NOT NULL,
                 file_path TEXT NOT NULL,
                 start_offset INTEGER NOT NULL CHECK(start_offset >= 0),
                 end_offset INTEGER NOT NULL CHECK(end_offset > start_offset),
@@ -50,13 +51,13 @@ internal fun initializeTopologySchema(connection: Connection) {
                 symbol_kind TEXT NOT NULL,
                 UNIQUE(snapshot_id, compiler_identity, file_path, start_offset, end_offset),
                 FOREIGN KEY(snapshot_id, file_path)
-                    REFERENCES topology_file_v2(snapshot_id, path),
+                    REFERENCES topology_file_v3(snapshot_id, path),
                 UNIQUE(snapshot_id, symbol_id)
             )""",
         )
         statement.execute(
-            """CREATE TABLE IF NOT EXISTS topology_edge_v2 (
-                snapshot_id INTEGER NOT NULL REFERENCES topology_snapshot_v2(snapshot_id)
+            """CREATE TABLE IF NOT EXISTS topology_edge_v3 (
+                snapshot_id INTEGER NOT NULL REFERENCES topology_snapshot_v3(snapshot_id)
                     ON DELETE CASCADE,
                 edge_kind TEXT NOT NULL,
                 source_symbol_id INTEGER NOT NULL,
@@ -69,24 +70,24 @@ internal fun initializeTopologySchema(connection: Connection) {
                     occurrence_file_path, start_offset, end_offset
                 ),
                 FOREIGN KEY(snapshot_id, source_symbol_id)
-                    REFERENCES topology_symbol_v2(snapshot_id, symbol_id),
+                    REFERENCES topology_symbol_v3(snapshot_id, symbol_id),
                 FOREIGN KEY(snapshot_id, target_symbol_id)
-                    REFERENCES topology_symbol_v2(snapshot_id, symbol_id),
+                    REFERENCES topology_symbol_v3(snapshot_id, symbol_id),
                 FOREIGN KEY(snapshot_id, occurrence_file_path)
-                    REFERENCES topology_file_v2(snapshot_id, path)
+                    REFERENCES topology_file_v3(snapshot_id, path)
             )""",
         )
         statement.execute(
-            "CREATE INDEX IF NOT EXISTS topology_snapshot_v2_root_order " +
-                "ON topology_snapshot_v2(workspace_root, snapshot_id DESC)",
+            "CREATE INDEX IF NOT EXISTS topology_snapshot_v3_root_order " +
+                "ON topology_snapshot_v3(workspace_root, snapshot_id DESC)",
         )
         statement.execute(
-            "CREATE INDEX IF NOT EXISTS topology_edge_v2_source " +
-                "ON topology_edge_v2(snapshot_id, source_symbol_id, edge_kind)",
+            "CREATE INDEX IF NOT EXISTS topology_edge_v3_source " +
+                "ON topology_edge_v3(snapshot_id, source_symbol_id, edge_kind)",
         )
         statement.execute(
-            "CREATE INDEX IF NOT EXISTS topology_edge_v2_target " +
-                "ON topology_edge_v2(snapshot_id, target_symbol_id, edge_kind)",
+            "CREATE INDEX IF NOT EXISTS topology_edge_v3_target " +
+                "ON topology_edge_v3(snapshot_id, target_symbol_id, edge_kind)",
         )
     }
 }

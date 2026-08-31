@@ -5,6 +5,10 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -17,6 +21,11 @@ import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
+import io.github.amichne.kast.protocol.contract.RelationFactDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
@@ -97,7 +106,18 @@ class SymbolPublicSurfaceWireTest {
 
     @Test
     fun `describe and relation share one structured symbol document`() {
-        val symbol = SymbolDocument(
+        val signature = CompilerSignatureDocument.Function(
+            qualifiedIdentity = text("sample.Controller.handle"),
+            receiver = CompilerReceiverDocument.Absent,
+            contextReceivers = BoundedProtocolList.create(
+                emptyList<ProtocolText>(),
+            ).refined(),
+            valueParameters = BoundedProtocolList.create(
+                emptyList<ProtocolText>(),
+            ).refined(),
+            typeParameterCount = CompilerTypeParameterCountDocument.parse(0).refined(),
+        )
+        val symbol = SymbolDocument.create(
             selector = text("exact:v1:payload"),
             kind = SymbolKindDocument.FUNCTION,
             name = text("handle"),
@@ -106,10 +126,22 @@ class SymbolPublicSurfaceWireTest {
             ),
             file = text("src/Controller.kt"),
             range = range(27, 61),
-        )
+            compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined(),
+        ).refined()
         val describe = SymbolDescribeResult(symbol)
         val relation = RelationReadResult(
-            BoundedProtocolList.create(listOf(symbol)).refined(),
+            BoundedProtocolList.create(
+                listOf(
+                    RelationFactDocument(
+                        meaning = RelationKindDocument.REFERENCES,
+                        source = symbol,
+                        target = symbol,
+                        occurrence = RelationOccurrenceDocument(symbol.file, symbol.range),
+                        provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+                        coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
+                    ),
+                ),
+            ).refined(),
         )
 
         val generation = EvidenceGeneration.parse(3).refined()

@@ -5,4 +5,5 @@ plugins {
 
 dependencies {
     api(project(":kernel"))
+    implementation(project(":symbol:contract"))
 }

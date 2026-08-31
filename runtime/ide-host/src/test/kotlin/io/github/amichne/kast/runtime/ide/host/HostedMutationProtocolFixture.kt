@@ -31,7 +31,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RelationWorkOffset
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
@@ -232,7 +232,13 @@ internal class HostedMutationProtocolFixture {
             "service",
             "sample.Service.service",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("FUNCTION|sample.Service.service").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.Service.service",
+                null,
+                emptyList(),
+                emptyList(),
+                0,
+            ).refined(),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }

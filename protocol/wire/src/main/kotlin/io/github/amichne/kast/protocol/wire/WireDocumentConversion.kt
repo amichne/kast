@@ -29,6 +29,9 @@ internal inline fun <Value, Result> WireDocumentConversion<Value>.flatMapConvert
     is WireDocumentConversion.Rejected -> this
 }
 
+internal fun <Value> WireDocumentConversion<WireDocumentConversion<Value>>.flattenConverted():
+    WireDocumentConversion<Value> = flatMapConverted { it }
+
 internal inline fun <First, Second, Result> combineConverted(
     first: WireDocumentConversion<First>,
     second: WireDocumentConversion<Second>,

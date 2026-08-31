@@ -17,6 +17,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -287,10 +288,24 @@ internal class AddDeclarationPlanFixture(
             "service",
             if (symbolKind == CompilerSymbolKind.CLASSLIKE) "sample.Service" else "sample.Service.service",
             symbolKind,
-            CompilerSymbolIdentity.parse("${symbolKind.name}|sample.Service.service").refined(),
+            signature(symbolKind),
         ).refined()
         return SymbolSelector.issue(selection, evidence).refined()
     }
+
+    private fun signature(kind: CompilerSymbolKind) = when (kind) {
+        CompilerSymbolKind.CLASSLIKE -> CanonicalCompilerSignature.classLike("sample.Service")
+        CompilerSymbolKind.CONSTRUCTOR -> CanonicalCompilerSignature.function(
+            "sample.Service.<init>", null, emptyList(), emptyList(), 0,
+        )
+        CompilerSymbolKind.FUNCTION -> CanonicalCompilerSignature.function(
+            "sample.Service.service", null, emptyList(), emptyList(), 0,
+        )
+        CompilerSymbolKind.PROPERTY -> CanonicalCompilerSignature.property(
+            "sample.Service.service", null, emptyList(), "kotlin.Unit",
+        )
+        CompilerSymbolKind.TYPE_ALIAS -> CanonicalCompilerSignature.typeAlias("sample.Service")
+    }.refined()
 
     private fun <T> List<T>.ordered(reverse: Boolean): List<T> =
         if (reverse) reversed() else this

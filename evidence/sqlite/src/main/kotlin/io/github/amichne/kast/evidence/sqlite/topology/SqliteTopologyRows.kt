@@ -2,6 +2,7 @@ package io.github.amichne.kast.evidence.sqlite
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -95,7 +96,7 @@ internal fun Connection.findExactTopologySnapshot(
 ): SqliteTopologySnapshotLookup = prepareStatement(
     """SELECT snapshot_id, workspace_root, generation, source_state, digest,
               file_count, symbol_count, edge_count
-       FROM topology_snapshot_v2
+       FROM topology_snapshot_v3
        WHERE workspace_root = ? AND generation = ? AND source_state = ?""",
 ).use { statement ->
     statement.setString(1, identity.lease.workspaceRoot.value)
@@ -109,7 +110,7 @@ internal fun Connection.findLatestTopologySnapshot(
 ): SqliteTopologySnapshotLookup = prepareStatement(
     """SELECT snapshot_id, workspace_root, generation, source_state, digest,
               file_count, symbol_count, edge_count
-       FROM topology_snapshot_v2 WHERE workspace_root = ?
+       FROM topology_snapshot_v3 WHERE workspace_root = ?
        ORDER BY snapshot_id DESC LIMIT 1""",
 ).use { statement ->
     statement.setString(1, root.value)
@@ -121,7 +122,7 @@ internal fun Connection.insertTopologySnapshot(
 ): SqliteTopologySnapshotRecord {
     val manifest = TopologySnapshotManifest.from(generation)
     prepareStatement(
-        """INSERT INTO topology_snapshot_v2(
+        """INSERT INTO topology_snapshot_v3(
                workspace_root, generation, source_state, digest,
                file_count, symbol_count, edge_count
            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -194,7 +195,7 @@ private fun Connection.readFiles(
 ): Map<WorkspaceSourcePath, TopologySourceFile> = prepareStatement(
     """SELECT path, content_hash, module_name, build_root, project_path,
               source_set, source_root, provenance
-       FROM topology_file_v2 WHERE snapshot_id = ? ORDER BY path""",
+       FROM topology_file_v3 WHERE snapshot_id = ? ORDER BY path""",
 ).use { statement ->
     statement.setLong(1, record.snapshotId.value)
     statement.executeQuery().use { rows ->
@@ -232,9 +233,9 @@ private fun Connection.readSymbols(
     record: SqliteTopologySnapshotRecord,
     files: Map<WorkspaceSourcePath, TopologySourceFile>,
 ): Map<SqliteTopologySymbolId, TopologySymbol> = prepareStatement(
-    """SELECT symbol_id, compiler_identity, file_path, start_offset, end_offset, symbol_name,
+    """SELECT symbol_id, compiler_identity, compiler_signature, file_path, start_offset, end_offset, symbol_name,
               qualified_identity, symbol_kind
-       FROM topology_symbol_v2 WHERE snapshot_id = ?
+       FROM topology_symbol_v3 WHERE snapshot_id = ?
        ORDER BY compiler_identity, file_path, start_offset, end_offset""",
 ).use { statement ->
     statement.setLong(1, record.snapshotId.value)
@@ -254,13 +255,17 @@ private fun Connection.readSymbols(
                 val compilerIdentity = CompilerSymbolIdentity.parse(
                     rows.getString("compiler_identity"),
                 ).refined("compiler identity")
-                val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
+                val compilerSignature = CanonicalCompilerSignature.restoreCanonicalEncoding(
+                    rows.getString("compiler_signature"),
+                ).refined("compiler signature")
+                val evidence = CompilerGroundedSymbolEvidence.restoreBoundary(
                     fileIdentity,
                     rows.getInt("start_offset"),
                     rows.getInt("end_offset"),
                     rows.getString("symbol_name"),
                     rows.getString("qualified_identity"),
                     enumValue<CompilerSymbolKind>(rows.getString("symbol_kind")),
+                    compilerSignature,
                     compilerIdentity,
                 ).refined("compiler evidence")
                 put(
@@ -280,7 +285,7 @@ private fun Connection.readEdges(
 ): List<TopologyEdge> = prepareStatement(
     """SELECT edge_kind, source_symbol_id, target_symbol_id, occurrence_file_path,
               start_offset, end_offset
-       FROM topology_edge_v2 WHERE snapshot_id = ?
+       FROM topology_edge_v3 WHERE snapshot_id = ?
        ORDER BY edge_kind, source_symbol_id, target_symbol_id, occurrence_file_path,
                 start_offset, end_offset""",
 ).use { statement ->

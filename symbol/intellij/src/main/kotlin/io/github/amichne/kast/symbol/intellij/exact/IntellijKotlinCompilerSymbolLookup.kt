@@ -9,9 +9,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
@@ -90,7 +88,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
                 rawName = declaration.name.orEmpty(),
                 rawQualifiedIdentity = projection.qualifiedIdentity,
                 kind = projection.kind,
-                compilerIdentity = projection.identity,
+                signature = projection.signature,
             )
         ) {
             is Refinement.Refined -> IntellijCompilerSymbolLookupResult.Found(evidence.value)
@@ -104,7 +102,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
 private data class IntellijCompilerSymbolProjection(
     val kind: CompilerSymbolKind,
     val qualifiedIdentity: String,
-    val identity: CompilerSymbolIdentity,
+    val signature: CanonicalCompilerSignature,
 )
 
 private sealed interface IntellijCompilerSymbolProjectionResult {
@@ -151,7 +149,12 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
             projected(
                 CompilerSymbolKind.PROPERTY,
                 callable,
-                CanonicalCompilerSignature.property(callable, returnType.toString()),
+                CanonicalCompilerSignature.property(
+                    rawQualifiedIdentity = callable,
+                    rawReceiverType = receiverParameter?.returnType?.toString(),
+                    rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+                    rawReturnType = returnType.toString(),
+                ),
             )
         }
         is KaTypeAliasSymbol -> {
@@ -196,7 +199,7 @@ private fun projected(
         IntellijCompilerSymbolProjection(
             kind,
             qualifiedIdentity,
-            CompilerSymbolIdentity.fromCanonicalSignature(signature.value),
+            signature.value,
         ),
     )
     is Refinement.Rejected -> compilerProjectionRejected()

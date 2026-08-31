@@ -83,7 +83,7 @@ class IdeHostCapabilitySet private constructor(
                 }
                 admitted += capability
             }
-            return Refinement.Refined(IdeHostCapabilitySet(admitted))
+            return Refinement.Refined(IdeHostCapabilitySet(java.util.List.copyOf(admitted)))
         }
     }
 }

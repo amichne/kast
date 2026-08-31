@@ -1,6 +1,11 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
@@ -10,6 +15,10 @@ import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
+import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDescription
@@ -52,6 +61,8 @@ internal fun SymbolDescription.protocolDocument(
     file.stableValue,
     range.startInclusive,
     range.endExclusive,
+    signature,
+    compilerIdentity,
 )
 
 internal fun RelationEndpoint.protocolDocument(
@@ -64,6 +75,8 @@ internal fun RelationEndpoint.protocolDocument(
     file.stableValue,
     range.startInclusive,
     range.endExclusive,
+    signature,
+    compilerIdentity,
 )
 
 private fun symbolDocument(
@@ -74,19 +87,70 @@ private fun symbolDocument(
     rawFile: String,
     rawStart: Int,
     rawEnd: Int,
-): SymbolDocument? = SymbolDocument(
-    selector,
-    kind.protocolKind(),
-    text(rawName) ?: return null,
-    when (qualified) {
+    signature: CanonicalCompilerSignature,
+    compilerIdentity: CompilerSymbolIdentity,
+): SymbolDocument? {
+    val qualifiedDocument = when (qualified) {
         is ExactDeclarationQualifiedIdentity.Available ->
             SymbolQualifiedIdentityDocument.Available(text(qualified.value) ?: return null)
         ExactDeclarationQualifiedIdentity.Unavailable ->
             SymbolQualifiedIdentityDocument.Unavailable
-    },
-    text(rawFile) ?: return null,
-    range(rawStart, rawEnd) ?: return null,
-)
+    }
+    val signatureDocument = signature.protocolDocument() ?: return null
+    val compilerEvidence = CompilerSymbolEvidenceDocument.restore(
+        identity = text(compilerIdentity.value) ?: return null,
+        signature = signatureDocument,
+    ).refinedOrNull() ?: return null
+    return SymbolDocument.create(
+        selector = selector,
+        kind = kind.protocolKind(),
+        name = text(rawName) ?: return null,
+        qualifiedIdentity = qualifiedDocument,
+        file = text(rawFile) ?: return null,
+        range = range(rawStart, rawEnd) ?: return null,
+        compilerEvidence = compilerEvidence,
+    ).refinedOrNull()
+}
+
+private fun CanonicalCompilerSignature.protocolDocument(): CompilerSignatureDocument? {
+    return when (this) {
+    is CanonicalCompilerSignature.Function -> CompilerSignatureDocument.Function(
+        qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
+        receiver = when (val compilerReceiver = receiver) {
+            CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+            is CanonicalCompilerReceiver.Present -> CompilerReceiverDocument.Present(
+                text(compilerReceiver.type.value) ?: return null,
+            )
+        },
+        contextReceivers = contextReceivers.protocolTypes() ?: return null,
+        valueParameters = valueParameters.protocolTypes() ?: return null,
+        typeParameterCount = CompilerTypeParameterCountDocument.parse(typeParameterCount.value)
+            .refinedOrNull() ?: return null,
+    )
+    is CanonicalCompilerSignature.Property -> CompilerSignatureDocument.Property(
+        qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
+        receiver = when (val compilerReceiver = receiver) {
+            CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+            is CanonicalCompilerReceiver.Present -> CompilerReceiverDocument.Present(
+                text(compilerReceiver.type.value) ?: return null,
+            )
+        },
+        contextReceivers = contextReceivers.protocolTypes() ?: return null,
+        returnType = text(returnType.value) ?: return null,
+    )
+    is CanonicalCompilerSignature.TypeAlias -> CompilerSignatureDocument.TypeAlias(
+        qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
+    )
+    is CanonicalCompilerSignature.ClassLike -> CompilerSignatureDocument.ClassLike(
+        qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
+    )
+    }
+}
+
+private fun List<CanonicalCompilerType>.protocolTypes(): BoundedProtocolList<ProtocolText>? {
+    val projected = map { compilerType -> text(compilerType.value) ?: return null }
+    return BoundedProtocolList.create(projected).refinedOrNull()
+}
 
 private fun SymbolDiscoveryKind.protocolDiscoveryKind(): SymbolDiscoveryKindDocument? = when (this) {
     SymbolDiscoveryKind.FILE -> SymbolDiscoveryKindDocument.FILE

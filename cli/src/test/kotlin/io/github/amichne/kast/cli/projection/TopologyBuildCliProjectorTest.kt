@@ -6,6 +6,8 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyCoverageCandidateEvidenceMismatch
@@ -68,21 +70,25 @@ class TopologyBuildCliProjectorTest {
 
     @Test
     fun `coverage rejection retains all exact mismatch evidence`() {
+        val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(
+            CompilerSignatureDocument.ClassLike(text("qualified")),
+        ).refined()
         val node = TopologyCoverageNode(
-            compilerIdentity = text("compiler"),
+            compilerIdentity = compilerEvidence.identity,
             file = text("File.kt"),
             range = SourceRangeDocument.create(
                 ProtocolOffset.parse(1).refined(),
                 ProtocolOffset.parse(2).refined(),
             ).refined(),
         )
-        val symbol = TopologyCoverageSymbol(
+        val symbol = TopologyCoverageSymbol.create(
             node = node,
             fileEvidence = fileEvidence("File.kt", 'b'),
             name = text("name"),
             qualifiedIdentity = TopologyCoverageQualifiedIdentity.Available(text("qualified")),
-            kind = TopologyCoverageSymbolKind.FUNCTION,
-        )
+            kind = TopologyCoverageSymbolKind.CLASSLIKE,
+            compilerEvidence = compilerEvidence,
+        ).refined()
         val failure = TopologyCoverageFailure.admit(
             missing = setOf(text("missing")),
             unexpected = setOf(text("unexpected")),
@@ -104,7 +110,8 @@ class TopologyBuildCliProjectorTest {
             OperationOutcome.Rejected(TopologyBuildRejection.CoverageIncomplete(failure)),
         ) as ProjectedCliOutcome.Rejected
 
-        val nodeJson = "{\"compilerIdentity\":\"compiler\",\"file\":\"File.kt\"," +
+        val nodeJson = "{\"compilerIdentity\":\"${compilerEvidence.identity.value}\"," +
+            "\"file\":\"File.kt\"," +
             "\"range\":{\"startInclusive\":1,\"endExclusive\":2}}"
         val workspaceJson = "{\"root\":\"/workspace\",\"generation\":17," +
             "\"sourceState\":\"published\"}"
@@ -126,7 +133,9 @@ class TopologyBuildCliProjectorTest {
                 "\"mismatchedEdgeEndpoints\":[{\"node\":$nodeJson," +
                 "\"fileEvidence\":${fileEvidenceJson('b')},\"name\":\"name\"," +
                 "\"qualifiedIdentity\":{\"state\":\"available\",\"value\":\"qualified\"}," +
-                "\"kind\":\"function\"}]}",
+                "\"kind\":\"classlike\",\"compilerEvidence\":{\"identity\":" +
+                "\"${compilerEvidence.identity.value}\",\"signature\":{\"type\":\"class-like\"," +
+                "\"qualifiedIdentity\":\"qualified\"}}}]}",
             projected.document.value,
         )
     }

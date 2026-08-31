@@ -44,6 +44,7 @@ internal data class ExactSelectorDocument(
     val name: String,
     val qualifiedIdentity: String?,
     val kind: String,
+    val compilerSignature: String,
     val compilerIdentity: String,
     val fingerprint: String,
 ) : SelectorScopeDocumentFields

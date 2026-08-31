@@ -4,6 +4,9 @@ import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SymbolDescribeRequest
 import io.github.amichne.kast.protocol.contract.SymbolDescribeResult
 import io.github.amichne.kast.protocol.contract.SymbolDocument
@@ -14,6 +17,8 @@ import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.runtime.ide.read.dispatch.IdeReadRuntimeDispatchResult
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
@@ -214,7 +219,48 @@ private fun SymbolDocument.matches(symbol: TopologySymbol): Boolean =
         range.endExclusive.value == symbol.evidence.range.endExclusive &&
         name.value == symbol.evidence.name.value &&
         kind.matches(symbol.evidence.kind) &&
-        qualifiedIdentity.matches(symbol.evidence)
+        qualifiedIdentity.matches(symbol.evidence) &&
+        compilerEvidence.matches(symbol.evidence)
+
+private fun CompilerSymbolEvidenceDocument.matches(
+    evidence: CompilerGroundedSymbolEvidence,
+): Boolean = identity.value == evidence.compilerIdentity.value && signature.matches(evidence.signature)
+
+private fun CompilerSignatureDocument.matches(signature: CanonicalCompilerSignature): Boolean =
+    when {
+        this is CompilerSignatureDocument.Function &&
+            signature is CanonicalCompilerSignature.Function ->
+            qualifiedIdentity.value == signature.qualifiedIdentity.value &&
+                receiver.matches(signature.receiver) &&
+                contextReceivers.values.map { it.value } ==
+                signature.contextReceivers.map { it.value } &&
+                valueParameters.values.map { it.value } ==
+                signature.valueParameters.map { it.value } &&
+                typeParameterCount.value == signature.typeParameterCount.value
+        this is CompilerSignatureDocument.Property &&
+            signature is CanonicalCompilerSignature.Property ->
+            qualifiedIdentity.value == signature.qualifiedIdentity.value &&
+                receiver.matches(signature.receiver) &&
+                contextReceivers.values.map { it.value } ==
+                signature.contextReceivers.map { it.value } &&
+                returnType.value == signature.returnType.value
+        this is CompilerSignatureDocument.TypeAlias &&
+            signature is CanonicalCompilerSignature.TypeAlias ->
+            qualifiedIdentity.value == signature.qualifiedIdentity.value
+        this is CompilerSignatureDocument.ClassLike &&
+            signature is CanonicalCompilerSignature.ClassLike ->
+            qualifiedIdentity.value == signature.qualifiedIdentity.value
+        else -> false
+    }
+
+private fun CompilerReceiverDocument.matches(receiver: CanonicalCompilerReceiver): Boolean =
+    when {
+        this is CompilerReceiverDocument.Absent && receiver is CanonicalCompilerReceiver.Absent ->
+            true
+        this is CompilerReceiverDocument.Present && receiver is CanonicalCompilerReceiver.Present ->
+            compilerType.value == receiver.type.value
+        else -> false
+    }
 
 private fun SymbolKindDocument.matches(kind: CompilerSymbolKind): Boolean = when (this) {
     SymbolKindDocument.CLASSLIKE -> kind == CompilerSymbolKind.CLASSLIKE

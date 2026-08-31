@@ -6,6 +6,8 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
@@ -108,18 +110,22 @@ class CanonicalTopologyRejectionWireTest {
 
     @Test
     fun `generated coverage rejection preserves every exact mismatch`() {
+        val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(
+            CompilerSignatureDocument.ClassLike(text("sample.alpha")),
+        ).refinedValue()
         val node = TopologyCoverageNode(
-            compilerIdentity = text("function|sample.alpha|-|||0"),
+            compilerIdentity = compilerEvidence.identity,
             file = text("src/main/kotlin/Alpha.kt"),
             range = range(10, 15),
         )
-        val symbol = TopologyCoverageSymbol(
+        val symbol = TopologyCoverageSymbol.create(
             node = node,
             fileEvidence = fileEvidence("src/main/kotlin/Alpha.kt", 'b'),
             name = text("alpha"),
             qualifiedIdentity = TopologyCoverageQualifiedIdentity.Available(text("sample.alpha")),
-            kind = TopologyCoverageSymbolKind.FUNCTION,
-        )
+            kind = TopologyCoverageSymbolKind.CLASSLIKE,
+            compilerEvidence = compilerEvidence,
+        ).refinedValue()
         val failure = TopologyCoverageFailure.admit(
             missing = setOf(text("src/main/kotlin/Missing.kt")),
             unexpected = setOf(text("src/main/kotlin/Unexpected.kt")),
@@ -148,10 +154,16 @@ class CanonicalTopologyRejectionWireTest {
         assertTrue(encoded.contains("\"candidateEvidenceMismatches\":[{\"candidate\":{\"workspace\":"), encoded)
         assertTrue(encoded.contains("\"sourceRoot\":{\"module\":\"fixture\""), encoded)
         assertTrue(encoded.contains("\"contentHash\":\"${"a".repeat(64)}\""), encoded)
+        assertTrue(encoded.contains("\"compilerEvidence\":{\"identity\":\"${compilerEvidence.identity.value}\""), encoded)
+        assertTrue(encoded.contains("\"type\":\"class-like\",\"qualifiedIdentity\":\"sample.alpha\""), encoded)
         val malformed = listOf(
             encoded.replace("\"startInclusive\":10", "\"startInclusive\":-1"),
             encoded.replace("src/main/kotlin/Missing.kt", ""),
             encoded.replace("\"contentHash\":\"${"a".repeat(64)}\"", "\"contentHash\":\"bad\""),
+            encoded.replace(
+                compilerEvidence.identity.value,
+                "compiler-symbol-v1:${"f".repeat(64)}",
+            ),
         )
         malformed.forEach { document ->
             assertEquals(

@@ -3,12 +3,28 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
+import io.github.amichne.kast.protocol.contract.DiagnosticDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLocationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
+import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
+import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -73,6 +89,65 @@ class CanonicalReadGeneratedSerializationTest {
     }
 
     @Test
+    fun `proof carrying qualifications round trip and malformed claims fail closed`() {
+        val relation = RelationReadQualification.create(
+            RelationKnownMinimumDocument.parse(2).refinedValue(),
+            listOf(
+                RelationLimitationDocument.RESULT_LIMIT_REACHED,
+                RelationLimitationDocument.PROVIDER_INCOMPLETE,
+            ),
+            RelationContinuationDocument.parse("a".repeat(64)).refinedValue(),
+        ).refinedValue()
+        assertQualification(
+            CanonicalReadSerializers.relationReadQualification,
+            relation,
+            """{"knownMinimum":2,"limitations":["result_limit_reached","provider_incomplete"],"continuation":"${"a".repeat(64)}"}""",
+            listOf(
+                """{"knownMinimum":2,"limitations":["provider_incomplete","result_limit_reached"],"continuation":"${"a".repeat(64)}"}""",
+                """{"knownMinimum":2,"limitations":["provider_incomplete"],"continuation":"bad"}""",
+            ),
+        )
+
+        val traversal = TraversalRunQualification.create(
+            listOf(
+                TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
+                TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
+            ),
+            listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
+            TraversalContinuationDocument.parse("b".repeat(64)).refinedValue(),
+        ).refinedValue()
+        assertQualification(
+            CanonicalReadSerializers.traversalRunQualification,
+            traversal,
+            """{"limitations":["depth_limit_reached","one_hop_incomplete"],"relationLimitations":["provider_incomplete"],"continuation":"${"b".repeat(64)}"}""",
+            listOf(
+                """{"limitations":["one_hop_incomplete"],"relationLimitations":[],"continuation":"${"b".repeat(64)}"}""",
+            ),
+        )
+
+        val diagnostic = DiagnosticCheckQualification.create(
+            DiagnosticKnownCountDocument.parse(3).refinedValue(),
+            resultLimitReached = true,
+            analyzedFiles = listOf(text("src/A.kt")),
+            limitations = listOf(
+                DiagnosticLimitationDocument(
+                    text("src/B.kt"),
+                    DiagnosticLimitationReasonDocument.INDEXING,
+                ),
+            ),
+        ).refinedValue()
+        assertQualification(
+            CanonicalReadSerializers.diagnosticCheckQualification,
+            diagnostic,
+            """{"knownDiagnosticCount":3,"resultLimitReached":true,"analyzedFiles":["src/A.kt"],"limitations":[{"file":"src/B.kt","reason":"indexing"}]}""",
+            listOf(
+                """{"knownDiagnosticCount":0,"resultLimitReached":false,"analyzedFiles":[],"limitations":[]}""",
+                """{"knownDiagnosticCount":3,"resultLimitReached":true,"analyzedFiles":["src/A.kt"],"limitations":[{"file":"src/A.kt","reason":"indexing"}]}""",
+            ),
+        )
+    }
+
+    @Test
     fun `generated empty and list documents reject unknown missing and invalid content`() {
         val requestCodec = CanonicalReadSerializers.workspaceInspectRequest
         assertEquals(
@@ -85,14 +160,30 @@ class CanonicalReadGeneratedSerializationTest {
         )
 
         val resultCodec = CanonicalReadSerializers.diagnosticCheckResult
-        val result = DiagnosticCheckResult(texts("warning:unused"))
-        val document = json("""{"diagnostics":["warning:unused"]}""")
+        val result = DiagnosticCheckResult(
+            BoundedProtocolList.create(
+                listOf(
+                    DiagnosticDocument(
+                        DiagnosticSeverityDocument.WARNING,
+                        text("UNUSED"),
+                        text("unused"),
+                        DiagnosticLocationDocument(
+                            text("src/A.kt"),
+                            DiagnosticRangeDocument.create(offset(7), offset(7)).refinedValue(),
+                        ),
+                    ),
+                ),
+            ).refinedValue(),
+        )
+        val document = json(
+            """{"diagnostics":[{"severity":"warning","code":"UNUSED","message":"unused","location":{"file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}""",
+        )
         assertEquals(WireValueEncoding.Encoded(document), resultCodec.encode(result, WireValueRole.RESULT))
         assertEquals(WireDecoding.Decoded(result), resultCodec.decode(document, WireValueRole.RESULT))
         listOf(
             """{}""",
-            """{"diagnostics":[""]}""",
-            """{"diagnostics":["warning:unused"],"extra":true}""",
+            """{"diagnostics":[{"severity":"unknown","code":"UNUSED","message":"unused","location":{"file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}""",
+            """{"diagnostics":[],"extra":true}""",
         ).forEach { malformed ->
             assertEquals(
                 WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)),
@@ -103,12 +194,34 @@ class CanonicalReadGeneratedSerializationTest {
 
     private fun json(document: String): JsonElement = wireJson.parseToJsonElement(document)
 
+    private fun <Qualification> assertQualification(
+        codec: WireValueCodec<Qualification>,
+        qualification: Qualification,
+        encoded: String,
+        malformed: List<String>,
+    ) {
+        val document = json(encoded)
+        assertEquals(
+            WireValueEncoding.Encoded(document),
+            codec.encode(qualification, WireValueRole.QUALIFICATION),
+        )
+        assertEquals(
+            WireDecoding.Decoded(qualification),
+            codec.decode(document, WireValueRole.QUALIFICATION),
+        )
+        malformed.forEach { raw ->
+            assertEquals(
+                WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.QUALIFICATION)),
+                codec.decode(json(raw), WireValueRole.QUALIFICATION),
+            )
+        }
+    }
+
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
 
-    private fun texts(vararg raw: String): BoundedProtocolList<ProtocolText> =
-        BoundedProtocolList.create(raw.map(::text)).refinedValue()
+    private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
         is Refinement.Refined -> value

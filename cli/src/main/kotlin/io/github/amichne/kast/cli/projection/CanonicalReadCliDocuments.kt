@@ -6,12 +6,16 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectQualification
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectResult
@@ -71,7 +75,7 @@ internal object CanonicalReadCliDocuments {
                 RelationCompleteCliDocument(
                     operation = CanonicalOperation.RELATION_READ.id.value,
                     status = "complete",
-                    targets = result.targets.values.map { it.toCliDocument() },
+                    relations = result.relations.values.map { it.toCliDocument() },
                 ),
             )
         },
@@ -80,8 +84,8 @@ internal object CanonicalReadCliDocuments {
                 RelationQualifiedCliDocument(
                     operation = CanonicalOperation.RELATION_READ.id.value,
                     status = "qualified",
-                    targets = result.targets.values.map { it.toCliDocument() },
-                    qualification = qualification.cliName(),
+                    relations = result.relations.values.map { it.toCliDocument() },
+                    qualification = qualification.toCliDocument(),
                 ),
             )
         },
@@ -103,7 +107,7 @@ internal object CanonicalReadCliDocuments {
                 TraversalCompleteCliDocument(
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     status = "complete",
-                    reached = result.reached.values.map { it.toCliDocument() },
+                    records = result.records.values.map { it.toCliDocument() },
                 ),
             )
         },
@@ -112,8 +116,8 @@ internal object CanonicalReadCliDocuments {
                 TraversalQualifiedCliDocument(
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     status = "qualified",
-                    reached = result.reached.values.map { it.toCliDocument() },
-                    qualification = qualification.cliName(),
+                    records = result.records.values.map { it.toCliDocument() },
+                    qualification = qualification.toCliDocument(),
                 ),
             )
         },
@@ -135,7 +139,7 @@ internal object CanonicalReadCliDocuments {
                 DiagnosticCompleteCliDocument(
                     operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
                     status = "complete",
-                    diagnostics = result.diagnostics.values.map { it.value },
+                    diagnostics = result.diagnostics.values.map { it.toCliDocument() },
                 ),
             )
         },
@@ -144,8 +148,8 @@ internal object CanonicalReadCliDocuments {
                 DiagnosticQualifiedCliDocument(
                     operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
                     status = "qualified",
-                    diagnostics = result.diagnostics.values.map { it.value },
-                    qualification = qualification.cliName(),
+                    diagnostics = result.diagnostics.values.map { it.toCliDocument() },
+                    qualification = qualification.toCliDocument(),
                 ),
             )
         },
@@ -176,46 +180,163 @@ private data class WorkspaceQualifiedCliDocument(
 private data class RelationCompleteCliDocument(
     val operation: String,
     val status: String,
-    val targets: List<SymbolCliDocument>,
+    val relations: List<RelationFactCliDocument>,
 )
 
 @Serializable
 private data class RelationQualifiedCliDocument(
     val operation: String,
     val status: String,
-    val targets: List<SymbolCliDocument>,
-    val qualification: String,
+    val relations: List<RelationFactCliDocument>,
+    val qualification: RelationQualificationCliDocument,
+)
+
+@Serializable
+private data class RelationQualificationCliDocument(
+    val knownMinimum: Int,
+    val limitations: List<String>,
+    val continuation: String,
 )
 
 @Serializable
 private data class TraversalCompleteCliDocument(
     val operation: String,
     val status: String,
-    val reached: List<SymbolCliDocument>,
+    val records: List<TraversalRecordCliDocument>,
 )
 
 @Serializable
 private data class TraversalQualifiedCliDocument(
     val operation: String,
     val status: String,
-    val reached: List<SymbolCliDocument>,
-    val qualification: String,
+    val records: List<TraversalRecordCliDocument>,
+    val qualification: TraversalQualificationCliDocument,
+)
+
+@Serializable
+private data class TraversalQualificationCliDocument(
+    val limitations: List<String>,
+    val relationLimitations: List<String>,
+    val continuation: String,
 )
 
 @Serializable
 private data class DiagnosticCompleteCliDocument(
     val operation: String,
     val status: String,
-    val diagnostics: List<String>,
+    val diagnostics: List<DiagnosticCliDocument>,
 )
 
 @Serializable
 private data class DiagnosticQualifiedCliDocument(
     val operation: String,
     val status: String,
-    val diagnostics: List<String>,
-    val qualification: String,
+    val diagnostics: List<DiagnosticCliDocument>,
+    val qualification: DiagnosticQualificationCliDocument,
 )
+
+@Serializable
+private data class DiagnosticQualificationCliDocument(
+    val knownDiagnosticCount: Int,
+    val resultLimitReached: Boolean,
+    val analyzedFiles: List<String>,
+    val limitations: List<DiagnosticLimitationCliDocument>,
+)
+
+@Serializable
+private data class DiagnosticLimitationCliDocument(
+    val file: String,
+    val reason: String,
+)
+
+@Serializable
+private data class RelationFactCliDocument(
+    val meaning: String,
+    val source: SymbolCliDocument,
+    val target: SymbolCliDocument,
+    val occurrence: RelationOccurrenceCliDocument,
+    val provenance: String,
+    val coverage: String,
+)
+
+@Serializable
+private data class RelationOccurrenceCliDocument(
+    val file: String,
+    val range: SourceRangeCliDocument,
+)
+
+@Serializable
+private data class TraversalRecordCliDocument(
+    val depth: Int,
+    val relation: RelationFactCliDocument,
+)
+
+@Serializable
+private data class DiagnosticCliDocument(
+    val severity: String,
+    val code: String,
+    val message: String,
+    val location: DiagnosticLocationCliDocument,
+)
+
+@Serializable
+private data class DiagnosticLocationCliDocument(
+    val file: String,
+    val range: SourceRangeCliDocument,
+)
+
+private fun RelationFactDocument.toCliDocument(): RelationFactCliDocument =
+    RelationFactCliDocument(
+        meaning.cliName(),
+        source.toCliDocument(),
+        target.toCliDocument(),
+        RelationOccurrenceCliDocument(occurrence.file.value, occurrence.range.toReadCliDocument()),
+        provenance.cliName(),
+        coverage.cliName(),
+    )
+
+private fun TraversalRecordDocument.toCliDocument(): TraversalRecordCliDocument =
+    TraversalRecordCliDocument(depth.value, relation.toCliDocument())
+
+private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument = DiagnosticCliDocument(
+    severity.cliName(),
+    code.value,
+    message.value,
+    DiagnosticLocationCliDocument(
+        location.file.value,
+        SourceRangeCliDocument(
+            location.range.startInclusive.value,
+            location.range.endExclusive.value,
+        ),
+    ),
+)
+
+private fun RelationReadQualification.toCliDocument() = RelationQualificationCliDocument(
+    knownMinimum = knownMinimum.value,
+    limitations = limitations.map { it.cliName() },
+    continuation = continuation.value,
+)
+
+private fun TraversalRunQualification.toCliDocument() = TraversalQualificationCliDocument(
+    limitations = limitations.map { it.cliName() },
+    relationLimitations = relationLimitations.map { it.cliName() },
+    continuation = continuation.value,
+)
+
+private fun DiagnosticCheckQualification.toCliDocument() = DiagnosticQualificationCliDocument(
+    knownDiagnosticCount = knownDiagnosticCount.value,
+    resultLimitReached = resultLimitReached,
+    analyzedFiles = analyzedFiles.map { it.value },
+    limitations = limitations.map(DiagnosticLimitationDocument::toCliDocument),
+)
+
+private fun DiagnosticLimitationDocument.toCliDocument() = DiagnosticLimitationCliDocument(
+    file.value,
+    reason.cliName(),
+)
+
+private fun io.github.amichne.kast.protocol.contract.SourceRangeDocument.toReadCliDocument() =
+    SourceRangeCliDocument(startInclusive.value, endExclusive.value)
 
 private val workspaceCompleteFactory =
     CliJsonDocument.generated(WorkspaceCompleteCliDocument.serializer())

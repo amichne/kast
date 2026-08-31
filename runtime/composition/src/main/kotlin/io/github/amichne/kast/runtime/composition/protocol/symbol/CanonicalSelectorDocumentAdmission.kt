@@ -3,6 +3,7 @@ package io.github.amichne.kast.runtime.composition.protocol
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -155,14 +156,21 @@ internal fun ExactSelectorDocument.admitExactSelector():
         is Refinement.Refined -> refined.value
         is Refinement.Rejected -> return SelectorDocumentAdmission.Rejected
     }
+    val signature = when (
+        val refined = CanonicalCompilerSignature.restoreCanonicalEncoding(compilerSignature)
+    ) {
+        is Refinement.Refined -> refined.value
+        is Refinement.Rejected -> return SelectorDocumentAdmission.Rejected
+    }
     val evidence = when (
-        val refined = CompilerGroundedSymbolEvidence.fromBoundary(
+        val refined = CompilerGroundedSymbolEvidence.restoreBoundary(
             fileIdentity,
             start,
             end,
             name,
             qualifiedIdentity,
             symbolKind,
+            signature,
             compiler,
         )
     ) {

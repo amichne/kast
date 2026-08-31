@@ -4,6 +4,11 @@ import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
@@ -12,7 +17,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
@@ -55,7 +60,7 @@ class HostedSelectorAuthorityTest {
                     EvidenceEnvelope(
                         CanonicalOperation.SYMBOL_DESCRIBE.id,
                         fixture.workspace.readLease.generation,
-                        SymbolDescribeResult(fixture.document.copy(selector = token)),
+                        SymbolDescribeResult(fixture.document.withSelector(token)),
                     ),
                 )
             },
@@ -85,7 +90,7 @@ class HostedSelectorAuthorityTest {
                     EvidenceEnvelope(
                         CanonicalOperation.SYMBOL_DESCRIBE.id,
                         fixture.workspace.readLease.generation,
-                        SymbolDescribeResult(fixture.document.copy(selector = token)),
+                        SymbolDescribeResult(fixture.document.withSelector(token)),
                     ),
                 )
             },
@@ -95,6 +100,43 @@ class HostedSelectorAuthorityTest {
         )
 
         assertEquals(HostedExactLookup.TopologyUnavailable, authority.exact(fixture.token))
+    }
+
+    @Test
+    fun `read token cannot replace topology compiler evidence with another coherent proof`() = runTest {
+        val fixture = fixture()
+        val alternateSignature = CompilerSignatureDocument.Function(
+            qualifiedIdentity = ProtocolText.parse("sample.target").refined(),
+            receiver = CompilerReceiverDocument.Absent,
+            contextReceivers = BoundedProtocolList.create(emptyList<ProtocolText>()).refined(),
+            valueParameters = BoundedProtocolList.create(
+                listOf(ProtocolText.parse("kotlin.String").refined()),
+            ).refined(),
+            typeParameterCount = CompilerTypeParameterCountDocument.parse(0).refined(),
+        )
+        val alternateEvidence = CompilerSymbolEvidenceDocument.fromSignature(alternateSignature)
+            .refined()
+        val authority = HostedSelectorAuthority(
+            descriptions = HostedSymbolDescriptionOperations { token ->
+                HostedSymbolDescription.Described(
+                    EvidenceEnvelope(
+                        CanonicalOperation.SYMBOL_DESCRIBE.id,
+                        fixture.workspace.readLease.generation,
+                        SymbolDescribeResult(
+                            fixture.document.withEvidence(
+                                selector = token,
+                                compilerEvidence = alternateEvidence,
+                            ),
+                        ),
+                    ),
+                )
+            },
+            workspace = HostedWorkspaceOperations(fixture.workspace),
+            snapshotReader = fixture.store,
+            contentReader = fixture.store,
+        )
+
+        assertEquals(HostedExactLookup.Missing, authority.exact(fixture.token))
     }
 
     private fun fixture(): Fixture {
@@ -136,7 +178,13 @@ class HostedSelectorAuthorityTest {
             "target",
             "sample.target",
             CompilerSymbolKind.FUNCTION,
-            CompilerSymbolIdentity.parse("function|sample.target|-|||0").refined(),
+            CanonicalCompilerSignature.function(
+                "sample.target",
+                null,
+                emptyList(),
+                emptyList(),
+                0,
+            ).refined(),
         ).refined()
         val symbol = TopologySymbol.admit(source, evidence).refined()
         val complete = CompleteTopologyFile.admit(source, listOf(symbol), emptyList()).refined()
@@ -162,19 +210,31 @@ class HostedSelectorAuthorityTest {
                 TopologyPublicationResult.Rejected(TopologyPublicationFailure.SNAPSHOT_CONFLICT)
         }
         val token = ProtocolText.parse("exact:v1:1:1").refined()
-        val document = SymbolDocument(
-            token,
-            SymbolKindDocument.FUNCTION,
-            ProtocolText.parse("target").refined(),
-            SymbolQualifiedIdentityDocument.Available(
+        val signatureDocument = CompilerSignatureDocument.Function(
+            ProtocolText.parse("sample.target").refined(),
+            CompilerReceiverDocument.Absent,
+            BoundedProtocolList.create(emptyList<ProtocolText>()).refined(),
+            BoundedProtocolList.create(emptyList<ProtocolText>()).refined(),
+            CompilerTypeParameterCountDocument.parse(0).refined(),
+        )
+        val compilerEvidence = CompilerSymbolEvidenceDocument.restore(
+            ProtocolText.parse(evidence.compilerIdentity.value).refined(),
+            signatureDocument,
+        ).refined()
+        val document = SymbolDocument.create(
+            selector = token,
+            kind = SymbolKindDocument.FUNCTION,
+            name = ProtocolText.parse("target").refined(),
+            qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(
                 ProtocolText.parse("sample.target").refined(),
             ),
-            ProtocolText.parse(absolute.toString()).refined(),
-            SourceRangeDocument.create(
+            file = ProtocolText.parse(absolute.toString()).refined(),
+            range = SourceRangeDocument.create(
                 ProtocolOffset.parse(10).refined(),
                 ProtocolOffset.parse(20).refined(),
             ).refined(),
-        )
+            compilerEvidence = compilerEvidence,
+        ).refined()
         return Fixture(workspace, symbol, store, token, document)
     }
 
@@ -195,6 +255,22 @@ class HostedSelectorAuthorityTest {
         val token: ProtocolText,
         val document: SymbolDocument,
     )
+
+    private fun SymbolDocument.withSelector(selector: ProtocolText): SymbolDocument =
+        withEvidence(selector, compilerEvidence)
+
+    private fun SymbolDocument.withEvidence(
+        selector: ProtocolText,
+        compilerEvidence: CompilerSymbolEvidenceDocument,
+    ): SymbolDocument = SymbolDocument.create(
+        selector = selector,
+        kind = kind,
+        name = name,
+        qualifiedIdentity = qualifiedIdentity,
+        file = file,
+        range = range,
+        compilerEvidence = compilerEvidence,
+    ).refined()
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
         is Refinement.Refined -> value

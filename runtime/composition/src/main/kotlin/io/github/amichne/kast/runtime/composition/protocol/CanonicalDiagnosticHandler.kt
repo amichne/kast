@@ -1,6 +1,9 @@
 package io.github.amichne.kast.runtime.composition.protocol
 
 import io.github.amichne.kast.diagnostic.contract.DiagnosticFact
+import io.github.amichne.kast.diagnostic.contract.DiagnosticIncompleteCoverage
+import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitation
+import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitationReason
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticReadRejection
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
@@ -13,6 +16,14 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLocationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.workspace.contract.PublishedWorkspace
@@ -52,13 +63,13 @@ internal class CanonicalDiagnosticCheckHandler(
                 result.batch.facts,
                 scope,
                 request.limit.value,
-                DiagnosticProjection.Complete,
+                DiagnosticProjection.Complete(result.coverage.analyzedFiles),
             )
             is DomainDiagnosticResult.Qualified -> project(
                 result.batch.facts,
                 scope,
                 request.limit.value,
-                DiagnosticProjection.CoverageIncomplete,
+                DiagnosticProjection.Incomplete(result.coverage),
             )
         }
     }
@@ -73,13 +84,10 @@ internal class CanonicalDiagnosticCheckHandler(
         DiagnosticCheckQualification,
         DiagnosticCheckRejection,
         > {
-        val documents = mutableListOf<ProtocolText>()
+        val documents = mutableListOf<DiagnosticDocument>()
         facts.take(limit).forEach { fact ->
-            when (val document = ProtocolText.parse(fact.protocolProjection())) {
-                is Refinement.Refined -> documents += document.value
-                is Refinement.Rejected ->
-                    return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
-            }
+            documents += fact.protocolDocument()
+                ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
         }
         val bounded = when (val admitted = BoundedProtocolList.create(documents)) {
             is Refinement.Refined -> admitted.value
@@ -91,23 +99,50 @@ internal class CanonicalDiagnosticCheckHandler(
             scope.lease.generation,
             DiagnosticCheckResult(bounded),
         )
-        return when {
-            facts.size > limit -> OperationOutcome.Qualified(
-                envelope,
-                DiagnosticCheckQualification.RESULT_LIMIT,
-            )
-            projection == DiagnosticProjection.CoverageIncomplete -> OperationOutcome.Qualified(
-                envelope,
-                DiagnosticCheckQualification.COVERAGE_INCOMPLETE,
-            )
-            else -> OperationOutcome.Complete(envelope)
+        val resultLimitReached = facts.size > limit
+        if (!resultLimitReached && projection is DiagnosticProjection.Complete) {
+            return OperationOutcome.Complete(envelope)
         }
+        val knownCount = DiagnosticKnownCountDocument.parse(facts.size).refinedOrNull()
+            ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
+        val analyzedFiles = projection.analyzedFiles.map { file ->
+            ProtocolText.parse(file.value).refinedOrNull()
+                ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
+        }
+        val limitations = when (projection) {
+            is DiagnosticProjection.Complete -> emptyList()
+            is DiagnosticProjection.Incomplete -> projection.coverage.limitations
+                .sortedWith(compareBy({ it.file.value }, { it.reason.ordinal }))
+                .map { limitation ->
+                    limitation.protocolDocument()
+                        ?: return OperationOutcome.Rejected(
+                            DiagnosticCheckRejection.SCOPE_REJECTED,
+                        )
+                }
+        }
+        val qualification = DiagnosticCheckQualification.create(
+            knownCount,
+            resultLimitReached,
+            analyzedFiles,
+            limitations,
+        ).refinedOrNull()
+            ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
+        return OperationOutcome.Qualified(envelope, qualification)
     }
 }
 
-private enum class DiagnosticProjection {
-    Complete,
-    CoverageIncomplete,
+private sealed interface DiagnosticProjection {
+    val analyzedFiles: List<io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile>
+
+    data class Complete(
+        override val analyzedFiles: List<io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile>,
+    ) : DiagnosticProjection
+
+    data class Incomplete(
+        val coverage: DiagnosticIncompleteCoverage,
+    ) : DiagnosticProjection {
+        override val analyzedFiles = coverage.analyzedFiles
+    }
 }
 
 private sealed interface DiagnosticScopeAdmission {
@@ -142,18 +177,51 @@ private fun admitDiagnosticScope(
     }
 }
 
-private fun DiagnosticFact.protocolProjection(): String = buildString {
-    append(severity.name.lowercase())
-    append(' ')
-    append(code.value)
-    append(" @ ")
-    append(location.file.value)
-    append(':')
-    append(location.range.start.value)
-    append('-')
-    append(location.range.endExclusive.value)
-    append(' ')
-    append(message.value)
+private fun DiagnosticFact.protocolDocument(): DiagnosticDocument? {
+    val start = ProtocolOffset.parse(location.range.start.value).refinedOrNull() ?: return null
+    val end = ProtocolOffset.parse(location.range.endExclusive.value).refinedOrNull() ?: return null
+    val range = DiagnosticRangeDocument.create(start, end).refinedOrNull() ?: return null
+    return DiagnosticDocument(
+        severity = when (severity) {
+            io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity.ERROR ->
+                DiagnosticSeverityDocument.ERROR
+            io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity.WARNING ->
+                DiagnosticSeverityDocument.WARNING
+            io.github.amichne.kast.diagnostic.contract.DiagnosticSeverity.INFO ->
+                DiagnosticSeverityDocument.INFO
+        },
+        code = ProtocolText.parse(code.value).refinedOrNull() ?: return null,
+        message = ProtocolText.parse(message.value).refinedOrNull() ?: return null,
+        location = DiagnosticLocationDocument(
+            ProtocolText.parse(location.file.value).refinedOrNull() ?: return null,
+            range,
+        ),
+    )
+}
+
+private fun DiagnosticLimitation.protocolDocument(): DiagnosticLimitationDocument? =
+    DiagnosticLimitationDocument(
+        file = ProtocolText.parse(file.value).refinedOrNull() ?: return null,
+        reason = when (reason) {
+            DiagnosticLimitationReason.FILE_UNAVAILABLE ->
+                DiagnosticLimitationReasonDocument.FILE_UNAVAILABLE
+            DiagnosticLimitationReason.OUTSIDE_SOURCE_CONTENT ->
+                DiagnosticLimitationReasonDocument.OUTSIDE_SOURCE_CONTENT
+            DiagnosticLimitationReason.INDEXING -> DiagnosticLimitationReasonDocument.INDEXING
+            DiagnosticLimitationReason.PSI_UNAVAILABLE ->
+                DiagnosticLimitationReasonDocument.PSI_UNAVAILABLE
+            DiagnosticLimitationReason.UNSUPPORTED_FILE_KIND ->
+                DiagnosticLimitationReasonDocument.UNSUPPORTED_FILE_KIND
+            DiagnosticLimitationReason.UNSUPPORTED_DIAGNOSTIC ->
+                DiagnosticLimitationReasonDocument.UNSUPPORTED_DIAGNOSTIC
+            DiagnosticLimitationReason.ANALYSIS_UNAVAILABLE ->
+                DiagnosticLimitationReasonDocument.ANALYSIS_UNAVAILABLE
+        },
+    )
+
+private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? = when (this) {
+    is Refinement.Refined -> value
+    is Refinement.Rejected -> null
 }
 
 private fun DiagnosticReadRejection.protocol(): DiagnosticCheckRejection = when (this) {
