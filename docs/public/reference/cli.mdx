@@ -71,6 +71,15 @@ already-running compatible endpoint for the exact current root.
 | `kast clean` | Reject because active IDE-hosted state is not owned by the CLI. |
 | `kast reindex` | Reject because the CLI cannot stop or rebuild IDE-owned semantic state. |
 
+## Process-local inspection
+
+These commands inspect installed control or endpoint evidence directly. They do
+not require successful hosted runtime admission.
+
+| Command | Result |
+| --- | --- |
+| `kast product inspect` | Report installed control identity plus direct root and IDE endpoint evidence without requiring compatible runtime admission. |
+
 ## Process-local flags
 
 These flags do not contact the hosted IDE endpoint.

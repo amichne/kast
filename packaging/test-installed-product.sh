@@ -37,6 +37,7 @@ registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert "semanticRuntime" not in document, document
 assert document["cliProjection"]["commands"], document
+assert document["cliProjection"]["localCommands"] == ["product inspect"], document
 PY
 
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-hosted-missing-endpoint.XXXXXX")"
@@ -45,6 +46,20 @@ cleanup() {
 }
 trap cleanup EXIT
 git -C "${fixture}" init -q
+inspection="$(cd "${fixture}" && "${kast}" product inspect)"
+python3 - "${inspection}" <<'PY'
+import json
+import sys
+
+document = json.loads(sys.argv[1])
+assert document["operation"] == "product.inspect", document
+assert document["status"] == "complete", document
+assert document["control"]["kastPluginVersion"], document
+assert document["workspace"] == {
+    "type": "root-rejected",
+    "failure": "root-marker-not-found",
+}, document
+PY
 before_indexers="$(pgrep -f 'io\.github\.amichne\.kast\.indexer\.KastIndexerMainKt' || true)"
 if (cd "${fixture}" && "${kast}" workspace inspect) >"${fixture}/missing.json" \
   2>"${fixture}/missing.err"; then
@@ -66,6 +81,7 @@ document = {
     "outcome": "COMPLETE",
     "product": sys.argv[2],
     "semanticRuntimeManifest": "ABSENT",
+    "productInspection": "COMPLETE",
     "missingEndpoint": "REJECTED",
     "isolatedIndexerProcessDelta": 0,
 }

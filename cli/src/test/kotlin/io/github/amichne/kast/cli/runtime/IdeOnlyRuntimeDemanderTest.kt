@@ -35,12 +35,12 @@ class IdeOnlyRuntimeDemanderTest {
         ).demand(fixture.root, workspaceDemand)
 
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_DESCRIPTOR_READ_REJECTED),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IdeDescriptorReadRejected),
             missing,
         )
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_DESCRIPTOR_REJECTED),
-            incompatible,
+            RuntimeAdmissionFailure.IdeDescriptorRejected::class,
+            (incompatible as RuntimeAdmission.Rejected).failure::class,
         )
     }
 
@@ -70,14 +70,14 @@ class IdeOnlyRuntimeDemanderTest {
         )
 
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_CAPABILITY_UNAVAILABLE),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IdeCapabilityUnavailable),
             demander.demand(
                 fixture.root,
                 HostedRuntimeDemand.Operation(CanonicalOperation.RELATION_READ),
             ),
         )
         assertEquals(
-            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IDE_VARIANT_UNAVAILABLE),
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.IdeVariantUnavailable),
             demander.demand(
                 fixture.root,
                 HostedRuntimeDemand.ChangePlan(

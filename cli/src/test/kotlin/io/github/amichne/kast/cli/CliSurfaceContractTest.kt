@@ -5,6 +5,7 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
+import io.github.amichne.kast.cli.command.CliProductCommand
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -31,6 +32,7 @@ class CliSurfaceContractTest {
                 .toSet(),
         )
         assertEquals(CliLifecycleCommand.entries, surface.lifecycleCommands)
+        assertEquals(CliProductCommand.entries, surface.localCommands)
     }
 
     @Test
@@ -64,6 +66,10 @@ class CliSurfaceContractTest {
                 is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
             },
             lifecycle = ExactRootRuntimeLifecycle(),
+            productInspector = ProductInspector {
+                boundaryTouched = true
+                error("product inspection must not run")
+            },
         )
 
         val help = cli.execute(listOf("--help"), Path.of("/missing")) as CliExit.Complete
@@ -78,6 +84,7 @@ class CliSurfaceContractTest {
             ),
         )
         assertTrue(helpText.contains("Show the installed IDE-hosted product version"))
+        assertTrue(helpText.contains("product"))
         assertEquals(
             2,
             "Canonical command shape; not hosted by the current IDE endpoint."

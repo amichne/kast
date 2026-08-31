@@ -55,7 +55,7 @@ class CliNativeTransportTest {
                 RuntimeEndpointResolution.Resolved(endpoint)
             },
             runtimeDemander = RuntimeDemander { _, _ ->
-                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SESSION_ENDED_BEFORE_READY)
+                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SessionEndedBeforeReady)
             },
             wireClient = WireClient { _, _ ->
                 wireInvoked = true
@@ -63,6 +63,7 @@ class CliNativeTransportTest {
             },
             localMetadata = testLocalMetadata(),
             lifecycle = ExactRootRuntimeLifecycle(),
+            productInspector = ProductInspector { error("product inspection must not run") },
         )
 
         val exit = cli.execute(listOf("workspace", "inspect"), root)
@@ -133,12 +134,13 @@ class CliNativeTransportTest {
                     if (discovered == canonicalRoot && requestedEndpoint == endpoint) {
                         RuntimeAdmission.Ready(endpoint)
                     } else {
-                        RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE)
+                        RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
                     }
                 },
                 wireClient = UnixDomainWireClient(),
                 localMetadata = testLocalMetadata(),
                 lifecycle = ExactRootRuntimeLifecycle(),
+                productInspector = ProductInspector { error("product inspection must not run") },
             )
 
             val exit = cli.execute(listOf("workspace", "inspect"), nested)

@@ -1,9 +1,9 @@
 package io.github.amichne.kast.workspace.intellij.read
 
 import com.intellij.openapi.progress.ProcessCanceledException
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityField
-import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityIdentityField
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilitySyntaxFailure
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
@@ -254,9 +254,7 @@ class ExistingProjectAdmissionNegativeTest {
         RejectionCase(
             name = "incompatible host",
             failure = ExistingProjectAdmissionFailure.HostIncompatible(
-                IdeHostCompatibilityFailure.Mismatch(
-                    IdeHostCompatibilityIdentityField.IDE_BUILD,
-                ),
+                fixtureCompatibilityMismatch("262.9437.186"),
             ),
             observedStageCount = ExistingProjectObservationStage.entries.size,
             configure = {
@@ -264,6 +262,16 @@ class ExistingProjectAdmissionNegativeTest {
             },
         ),
     )
+
+    private fun fixtureCompatibilityMismatch(ideBuild: String): IdeHostCompatibilityFailure =
+        when (
+            val admission = FIXTURE_COMPATIBILITY_POLICY.admit(
+                FIXTURE_COMPATIBILITY.copy(ideBuild = ideBuild),
+            )
+        ) {
+            is IdeHostCompatibilityAdmission.Admitted -> error("fixture unexpectedly admitted")
+            is IdeHostCompatibilityAdmission.Rejected -> admission.failure
+        }
 
     private fun rejection(
         name: String,

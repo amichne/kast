@@ -8,7 +8,13 @@ import io.github.amichne.kast.cli.PreparedCliRequest
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.OperationRequest
 
-enum class CliLocalCommand { VERSION, SCHEMA }
+enum class CliLocalMetadataCommand { VERSION, SCHEMA }
+
+enum class CliProductCommand(
+    val usage: String,
+) {
+    INSPECT("product inspect"),
+}
 
 /** Process-local operator actions that do not extend the semantic wire protocol. */
 enum class CliLifecycleCommand(
@@ -23,9 +29,13 @@ enum class CliLifecycleCommand(
 
 /** One fully refined action selected by the public command graph. */
 sealed interface CliAction {
-    data class Local(
-        val command: CliLocalCommand,
-    ) : CliAction
+    sealed interface Local : CliAction {
+        data class Metadata(
+            val command: CliLocalMetadataCommand,
+        ) : Local
+
+        data object ProductInspect : Local
+    }
 
     data class Semantic(
         val request: PreparedCliRequest,
@@ -151,3 +161,13 @@ internal abstract class SemanticKastCommand<Request : OperationRequest>(
         )
     }
 }
+
+internal abstract class LocalKastCommand(
+    name: String,
+    val command: CliProductCommand,
+) : KastCommand(name)
+
+internal class LocalCommandFamily(
+    val root: KastCommand,
+    val commands: List<LocalKastCommand>,
+)

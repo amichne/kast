@@ -50,6 +50,7 @@ internal fun installedSchema(
                 wireSchema = wireSchemaObject,
                 cliProjection = InstalledCliProjectionDocument(
                     localFlags = commandSurface.localFlags,
+                    localCommands = commandSurface.localCommands.map { it.usage },
                     lifecycleCommands = commandSurface.lifecycleCommands.map { it.command },
                     commands = commandSurface.semanticCommands.map { it.usage },
                 ),
@@ -71,6 +72,7 @@ private data class InstalledSchemaDocument(
 @Serializable
 private data class InstalledCliProjectionDocument(
     val localFlags: List<String>,
+    val localCommands: List<String>,
     val lifecycleCommands: List<String>,
     val commands: List<String>,
 )

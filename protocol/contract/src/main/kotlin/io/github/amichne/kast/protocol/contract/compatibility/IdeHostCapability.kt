@@ -46,6 +46,10 @@ data class IdeHostCapability private constructor(val operation: CanonicalOperati
 class IdeHostCapabilitySet private constructor(
     val capabilities: List<IdeHostCapability>,
 ) {
+    override fun equals(other: Any?): Boolean =
+        other is IdeHostCapabilitySet && capabilities == other.capabilities
+
+    override fun hashCode(): Int = capabilities.hashCode()
 
     companion object {
         /**

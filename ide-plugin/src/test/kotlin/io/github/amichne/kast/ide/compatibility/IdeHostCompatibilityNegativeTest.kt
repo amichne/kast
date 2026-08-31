@@ -7,7 +7,7 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityCandidate
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityField
-import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityIdentityField
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityMismatch
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilitySyntaxFailure
 import kotlinx.serialization.encodeToString
@@ -51,20 +51,40 @@ class IdeHostCompatibilityNegativeTest {
     @Test
     fun `each independently substituted identity is rejected as a mismatch`() {
         listOf(
-            expected.copy(ideBuild = "262.9437.186") to
-                IdeHostCompatibilityIdentityField.IDE_BUILD,
-            expected.copy(kotlinPluginBuild = "262.9437.186-IJ") to
-                IdeHostCompatibilityIdentityField.KOTLIN_PLUGIN_BUILD,
-            expected.copy(kastPluginVersion = "0.28.2") to
-                IdeHostCompatibilityIdentityField.KAST_PLUGIN_VERSION,
-            expected.copy(runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2") to
-                IdeHostCompatibilityIdentityField.RUNTIME_PROTOCOL_IDENTITY,
-            expected.copy(operationRegistryDigest = digest('b')) to
-                IdeHostCompatibilityIdentityField.OPERATION_REGISTRY_DIGEST,
-            expected.copy(wireSchemaDigest = digest('c')) to
-                IdeHostCompatibilityIdentityField.WIRE_SCHEMA_DIGEST,
-        ).forEach { (candidate, field) ->
-            assertRejected(candidate, IdeHostCompatibilityFailure.Mismatch(field))
+            Triple(
+                expected.copy(ideBuild = "262.9437.186"),
+                IdeHostCompatibilityField.IDE_BUILD,
+                expected.ideBuild to "262.9437.186",
+            ),
+            Triple(
+                expected.copy(kotlinPluginBuild = "262.9437.186-IJ"),
+                IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD,
+                expected.kotlinPluginBuild to "262.9437.186-IJ",
+            ),
+            Triple(
+                expected.copy(kastPluginVersion = "0.28.2"),
+                IdeHostCompatibilityField.KAST_PLUGIN_VERSION,
+                expected.kastPluginVersion to "0.28.2",
+            ),
+            Triple(
+                expected.copy(runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2"),
+                IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY,
+                expected.runtimeProtocolIdentity to "kast.ide-hosted.runtime.v2",
+            ),
+            Triple(
+                expected.copy(operationRegistryDigest = digest('b')),
+                IdeHostCompatibilityField.OPERATION_REGISTRY_DIGEST,
+                expected.operationRegistryDigest to digest('b'),
+            ),
+            Triple(
+                expected.copy(wireSchemaDigest = digest('c')),
+                IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST,
+                expected.wireSchemaDigest to digest('c'),
+            ),
+        ).forEach { (candidate, field, values) ->
+            val mismatch = rejectedMismatch(candidate)
+            assertEquals(field, mismatch.field)
+            assertEquals(values, mismatch.identityValues())
         }
     }
 
@@ -72,7 +92,7 @@ class IdeHostCompatibilityNegativeTest {
     fun `unknown duplicate missing extra and reordered capabilities fail closed`() {
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES + "diagnostic.check"),
-            IdeHostCompatibilityFailure.CapabilitySetMismatch,
+            rejectedCapabilityMismatch(HOSTED_CAPABILITIES + "diagnostic.check"),
         )
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES + "other.read"),
@@ -93,11 +113,11 @@ class IdeHostCompatibilityNegativeTest {
         )
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES.dropLast(1)),
-            IdeHostCompatibilityFailure.CapabilitySetMismatch,
+            rejectedCapabilityMismatch(HOSTED_CAPABILITIES.dropLast(1)),
         )
         assertRejected(
             expected.copy(capabilities = HOSTED_CAPABILITIES.reversed()),
-            IdeHostCompatibilityFailure.CapabilitySetMismatch,
+            rejectedCapabilityMismatch(HOSTED_CAPABILITIES.reversed()),
         )
     }
 
@@ -162,6 +182,34 @@ class IdeHostCompatibilityNegativeTest {
         syntax: IdeHostCompatibilitySyntaxFailure =
             IdeHostCompatibilitySyntaxFailure.INVALID_FORMAT,
     ) = IdeHostCompatibilityFailure.Malformed(field, syntax)
+
+    private fun rejectedMismatch(
+        candidate: IdeHostCompatibilityCandidate,
+    ): IdeHostCompatibilityMismatch = when (val result = policy.admit(candidate)) {
+        is IdeHostCompatibilityAdmission.Admitted -> fail("candidate unexpectedly admitted")
+        is IdeHostCompatibilityAdmission.Rejected -> when (val failure = result.failure) {
+            is IdeHostCompatibilityFailure.Mismatch -> failure.mismatch
+            else -> fail("expected mismatch, got $failure")
+        }
+    }
+
+    private fun rejectedCapabilityMismatch(raw: List<String>): IdeHostCompatibilityFailure {
+        val mismatch = rejectedMismatch(expected.copy(capabilities = raw))
+            as IdeHostCompatibilityMismatch.Capabilities
+        assertEquals(policy.supportedCompatibility.capabilities, mismatch.expected)
+        assertEquals(raw, mismatch.observed.capabilities.map { it.operation.id.value })
+        return IdeHostCompatibilityFailure.Mismatch(mismatch)
+    }
+
+    private fun IdeHostCompatibilityMismatch.identityValues(): Pair<String, String> = when (this) {
+        is IdeHostCompatibilityMismatch.IdeBuild -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.KotlinPluginBuild -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.KastPluginVersion -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.RuntimeProtocol -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.OperationRegistry -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.WireSchema -> expected.value to observed.value
+        is IdeHostCompatibilityMismatch.Capabilities -> fail("expected an identity mismatch")
+    }
 
     private fun digest(character: Char): String = "sha256:" + character.toString().repeat(64)
 

@@ -30,17 +30,17 @@ internal class LocatedRuntimeDemander(
         val requested = when (val resolution = locator.locate(root)) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE,
+                RuntimeAdmissionFailure.EndpointUnavailable,
             )
         }
         if (requested.root != root) {
-            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE)
+            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
         }
         return when (val admission = demander.demand(root, requested)) {
             is RuntimeAdmission.Ready -> if (admission.endpoint == requested) {
                 admission
             } else {
-                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ENDPOINT_UNAVAILABLE)
+                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
             }
             is RuntimeAdmission.Rejected -> admission
         }
@@ -71,17 +71,17 @@ class IdeOnlyRuntimeDemander(
             return RuntimeAdmission.Rejected(
                 when (demand) {
                     is HostedRuntimeDemand.ChangePlan ->
-                        RuntimeAdmissionFailure.IDE_VARIANT_UNAVAILABLE
+                        RuntimeAdmissionFailure.IdeVariantUnavailable
                     HostedRuntimeDemand.Lifecycle,
                     is HostedRuntimeDemand.Operation,
-                        -> RuntimeAdmissionFailure.IDE_CAPABILITY_UNAVAILABLE
+                        -> RuntimeAdmissionFailure.IdeCapabilityUnavailable
                 },
             )
         }
         return when (val endpoint = RuntimeEndpoint.at(root, runtimeId, admitted.socketPath)) {
             is RuntimeEndpointResolution.Resolved -> RuntimeAdmission.Ready(endpoint.endpoint)
             is RuntimeEndpointResolution.Rejected -> RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.IDE_SOCKET_MISMATCH,
+                RuntimeAdmissionFailure.IdeSocketMismatch,
             )
         }
     }
@@ -106,24 +106,24 @@ private fun AdmittedIdeEndpoint.supports(demand: HostedRuntimeDemand): Boolean =
  * Proof transition: `IdeEndpointAdmissionFailure -> RuntimeAdmissionFailure`.
  *
  * Preserves the exact rejected admission stage while refining the IDE adapter's failure into the
- * CLI runtime boundary's closed failure protocol. Nested evidence remains owned by the endpoint
- * admitter; only the finite stage leaves that adapter.
+ * CLI runtime boundary's closed failure protocol. A descriptor rejection carries its nested
+ * descriptor and compatibility evidence through the runtime boundary.
  */
 private fun IdeEndpointAdmissionFailure.toRuntimeAdmissionFailure(): RuntimeAdmissionFailure =
     when (this) {
-        is IdeEndpointAdmissionFailure.InvalidRoot -> RuntimeAdmissionFailure.IDE_ROOT_INVALID
+        is IdeEndpointAdmissionFailure.InvalidRoot -> RuntimeAdmissionFailure.IdeRootInvalid
         is IdeEndpointAdmissionFailure.LocationRejected ->
-            RuntimeAdmissionFailure.IDE_LOCATION_REJECTED
+            RuntimeAdmissionFailure.IdeLocationRejected
         is IdeEndpointAdmissionFailure.DescriptorReadRejected ->
-            RuntimeAdmissionFailure.IDE_DESCRIPTOR_READ_REJECTED
+            RuntimeAdmissionFailure.IdeDescriptorReadRejected
         is IdeEndpointAdmissionFailure.DescriptorRejected ->
-            RuntimeAdmissionFailure.IDE_DESCRIPTOR_REJECTED
-        IdeEndpointAdmissionFailure.RootMismatch -> RuntimeAdmissionFailure.IDE_ROOT_MISMATCH
-        IdeEndpointAdmissionFailure.SocketMismatch -> RuntimeAdmissionFailure.IDE_SOCKET_MISMATCH
+            RuntimeAdmissionFailure.IdeDescriptorRejected(failure)
+        IdeEndpointAdmissionFailure.RootMismatch -> RuntimeAdmissionFailure.IdeRootMismatch
+        IdeEndpointAdmissionFailure.SocketMismatch -> RuntimeAdmissionFailure.IdeSocketMismatch
         IdeEndpointAdmissionFailure.ProcessUnavailable ->
-            RuntimeAdmissionFailure.IDE_PROCESS_UNAVAILABLE
+            RuntimeAdmissionFailure.IdeProcessUnavailable
         IdeEndpointAdmissionFailure.ProcessObservationRejected ->
-            RuntimeAdmissionFailure.IDE_PROCESS_OBSERVATION_REJECTED
+            RuntimeAdmissionFailure.IdeProcessObservationRejected
         IdeEndpointAdmissionFailure.EndpointUnreachable ->
-            RuntimeAdmissionFailure.IDE_ENDPOINT_UNREACHABLE
+            RuntimeAdmissionFailure.IdeEndpointUnreachable
     }
