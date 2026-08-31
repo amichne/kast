@@ -235,7 +235,10 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.INTELLIJ_READ,
             inwardRoles,
             safeReadCosts,
-            allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
+            allowedEffects = setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION,
+            ),
         )
         ModuleRole.INTELLIJ_WRITE_ADAPTER -> boundary(
             role,

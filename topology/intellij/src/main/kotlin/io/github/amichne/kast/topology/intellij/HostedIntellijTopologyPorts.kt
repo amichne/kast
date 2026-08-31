@@ -55,17 +55,23 @@ fun admitHostedIntellijTopologyPorts(
     val adapter = IntellijTopologyFileExtractor()
     val extractor = TopologyFileExtractor { request ->
         if (project.isDisposed) {
-            return@TopologyFileExtractor topologyUnavailable()
+            return@TopologyFileExtractor topologyUnavailable(request.file)
         }
         val current = (workspaces.inspect() as? WorkspaceRuntimeState.Ready)?.workspace
-            ?: return@TopologyFileExtractor topologyUnavailable()
+            ?: return@TopologyFileExtractor topologyUnavailable(request.file)
         adapter.extract(project, current, request)
     }
     return HostedTopologyAdmission.Admitted(
-        HostedTopologyPorts.retained(AdmittedSourceRootEnumerator(), extractor),
+        HostedTopologyPorts.retained(
+            intellijSynchronizedTopologyCandidateEnumerator(),
+            extractor,
+        ),
     )
 }
 
-private fun topologyUnavailable(): TopologyFileExtraction = TopologyFileExtraction.Failed(
+private fun topologyUnavailable(
+    file: io.github.amichne.kast.topology.contract.TopologySourceFile,
+): TopologyFileExtraction = TopologyFileExtraction.Failed(
+    file,
     TopologyExtractionFailure.PROJECT_UNAVAILABLE,
 )

@@ -269,7 +269,7 @@ class CanonicalOperationWireBindingsTest {
             TopologyBuildQualification.PROGRESS_UNAVAILABLE,
             TopologyBuildRejection.ExtractionFailed(
                 text("topology/intellij/src/main/kotlin/TopologyK2Projection.kt"),
-                TopologyExtractionRejection.SOURCE_CONTENT_MOVED,
+                TopologyExtractionRejection.VFS_CONTENT_MISMATCH,
             ),
         )
         assertRoundTrips(

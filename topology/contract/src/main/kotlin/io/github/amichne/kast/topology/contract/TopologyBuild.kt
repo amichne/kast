@@ -105,7 +105,10 @@ fun interface TopologyCandidateEnumerator {
 enum class TopologyExtractionFailure {
     PROJECT_UNAVAILABLE,
     FILE_UNAVAILABLE,
-    SOURCE_CONTENT_MOVED,
+    DOCUMENT_DIRTY,
+    PSI_DOCUMENT_UNCOMMITTED,
+    VFS_CONTENT_MISMATCH,
+    SOURCE_CONTENT_CHANGED_DURING_BUILD,
     NOT_KOTLIN_PSI,
     COMPILER_UNAVAILABLE,
     FACT_REJECTED,
@@ -117,6 +120,7 @@ sealed interface TopologyFileExtraction {
     ) : TopologyFileExtraction
 
     data class Failed(
+        val file: TopologySourceFile,
         val failure: TopologyExtractionFailure,
     ) : TopologyFileExtraction
 }

@@ -60,28 +60,50 @@ class CanonicalTopologyRejectionWireTest {
     }
 
     @Test
-    fun `generated topology rejection preserves detail and rejects malformed variants`() {
-        val rejection = TopologyBuildRejection.ExtractionFailed(
-            text("topology/intellij/src/main/kotlin/TopologyK2Projection.kt"),
-            TopologyExtractionRejection.SOURCE_CONTENT_MOVED,
-        )
+    fun `generated topology rejection preserves every specific extraction failure and path`() {
+        val file = "topology/intellij/src/main/kotlin/TopologyK2Projection.kt"
         val binding = CanonicalOperationWireBindings.topologyBuild
-        val encoded = binding.encodeOutcome(OperationOutcome.Rejected(rejection)).encodedDocument()
-
-        assertEquals(
-            WireDecoding.Decoded(OperationOutcome.Rejected(rejection)),
-            binding.decodeOutcome(encoded),
+        val failures = linkedMapOf(
+            TopologyExtractionRejection.DOCUMENT_DIRTY to "document-dirty",
+            TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED to
+                "psi-document-uncommitted",
+            TopologyExtractionRejection.VFS_CONTENT_MISMATCH to "vfs-content-mismatch",
+            TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD to
+                "source-content-changed-during-build",
         )
+
+        failures.forEach { (failure, wireName) ->
+            val rejection = TopologyBuildRejection.ExtractionFailed(text(file), failure)
+            val encoded = binding.encodeOutcome(
+                OperationOutcome.Rejected(rejection),
+            ).encodedDocument()
+
+            assertEquals(
+                WireDecoding.Decoded(OperationOutcome.Rejected(rejection)),
+                binding.decodeOutcome(encoded),
+            )
+            assertTrue(encoded.contains("\"file\":\"$file\""), encoded)
+            assertTrue(encoded.contains("\"failure\":\"$wireName\""), encoded)
+        }
+
+        val encoded = binding.encodeOutcome(
+            OperationOutcome.Rejected(
+                TopologyBuildRejection.ExtractionFailed(
+                    text(file),
+                    TopologyExtractionRejection.VFS_CONTENT_MISMATCH,
+                ),
+            ),
+        ).encodedDocument()
         val malformed = listOf(
             encoded.replace(
-                "\"file\":\"topology/intellij/src/main/kotlin/TopologyK2Projection.kt\",",
+                "\"file\":\"$file\",",
                 "",
             ),
-            encoded.replace("source-content-moved", "unknown-failure"),
+            encoded.replace("vfs-content-mismatch", "unknown-failure"),
             encoded.replace("extraction-failed", "unknown-rejection"),
             encoded.replace(
-                "\"failure\":\"source-content-moved\"",
-                "\"failure\":\"source-content-moved\",\"unexpected\":true",
+                "\"failure\":\"vfs-content-mismatch\"",
+                "\"failure\":\"vfs-content-mismatch\",\"unexpected\":true",
             ),
         )
         malformed.forEach { document ->

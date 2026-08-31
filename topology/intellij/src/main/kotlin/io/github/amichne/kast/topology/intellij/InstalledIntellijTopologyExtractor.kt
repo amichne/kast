@@ -28,6 +28,7 @@ fun installedIntellijTopologyExtractor(
         val project = when (val lookup = exactProject(root)) {
             is ExactTopologyProjectResolution.Found -> lookup.project
             is ExactTopologyProjectResolution.Rejected -> return@TopologyFileExtractor failed(
+                request.file,
                 lookup.failure,
             )
         }
@@ -38,7 +39,7 @@ fun installedIntellijTopologyExtractor(
             WorkspaceRuntimeState.Reconciling,
             WorkspaceRuntimeState.Starting,
             WorkspaceRuntimeState.Stopping,
-                -> return@TopologyFileExtractor unavailable()
+                -> return@TopologyFileExtractor unavailable(request.file)
         }
         adapter.extract(project, current, request)
     }
@@ -97,9 +98,14 @@ internal fun resolveExactTopologyProject(
 private fun projectUnavailable(): ExactTopologyProjectResolution.Rejected =
     ExactTopologyProjectResolution.Rejected(TopologyExtractionFailure.PROJECT_UNAVAILABLE)
 
-private fun unavailable(): TopologyFileExtraction = TopologyFileExtraction.Failed(
+private fun unavailable(
+    file: io.github.amichne.kast.topology.contract.TopologySourceFile,
+): TopologyFileExtraction = TopologyFileExtraction.Failed(
+    file,
     TopologyExtractionFailure.PROJECT_UNAVAILABLE,
 )
 
-private fun failed(failure: TopologyExtractionFailure): TopologyFileExtraction =
-    TopologyFileExtraction.Failed(failure)
+private fun failed(
+    file: io.github.amichne.kast.topology.contract.TopologySourceFile,
+    failure: TopologyExtractionFailure,
+): TopologyFileExtraction = TopologyFileExtraction.Failed(file, failure)
