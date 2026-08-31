@@ -5,6 +5,17 @@ internal object EffectRules {
         "io/github/amichne/kast/ide/endpoint/JdkIdeEndpointPublisher"
     private const val PROJECT_READ_EPOCH_SESSION_OWNER =
         "io/github/amichne/kast/workspace/intellij/read/AdmittedIdeProjectSession"
+    private val topologySourceRootVfsSynchronizer = JvmMember.of(
+        "io/github/amichne/kast/topology/intellij/InstalledTopologySourceRootVfsSynchronizer",
+        "synchronize",
+        "(Lio/github/amichne/kast/workspace/contract/PublishedWorkspace;Ljava/util/List;)" +
+            "Lio/github/amichne/kast/topology/intellij/TopologySourceRootVfsSynchronization;",
+    )
+    private val topologySourceRootVfsRefresh = JvmMember.of(
+        "com/intellij/openapi/vfs/VfsUtil",
+        "markDirtyAndRefresh",
+        "(ZZZ[Ljava/io/File;)V",
+    )
     private val endpointFilesystemOwners = setOf(
         ENDPOINT_PUBLISHER_OWNER,
         "io/github/amichne/kast/ide/endpoint/OwnedEndpointDirectory",
@@ -101,7 +112,18 @@ internal object EffectRules {
         if (moduleRole != ModuleRole.LEGACY_HOST && owner.startsWith("org/gradle/")) {
             add(ForbiddenEffect.GRADLE_PLATFORM)
         }
-        val hostedReadEffects = HostedReadForbiddenAuthority.classify(moduleRole, target)
+        val hostedReadEffects = HostedReadForbiddenAuthority.classify(moduleRole, target).let { effects ->
+            if (
+                ForbiddenEffect.RECURSIVE_VFS_REFRESH in effects &&
+                caller == topologySourceRootVfsSynchronizer &&
+                target == topologySourceRootVfsRefresh
+            ) {
+                effects - ForbiddenEffect.RECURSIVE_VFS_REFRESH +
+                    ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION
+            } else {
+                effects
+            }
+        }
         if (isEndpointDescriptorReadBack(caller, target)) {
             add(ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE)
             addAll(hostedReadEffects - ForbiddenEffect.PHYSICAL_SOURCE_READ)

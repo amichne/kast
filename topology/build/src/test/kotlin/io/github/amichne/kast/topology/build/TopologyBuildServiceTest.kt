@@ -150,7 +150,10 @@ class TopologyBuildServiceTest {
             },
             TopologyFileExtractor {
                 extractionCalls.incrementAndGet()
-                TopologyFileExtraction.Failed(TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+                TopologyFileExtraction.Failed(
+                    currentFile,
+                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                )
             },
             snapshots,
         )
@@ -207,7 +210,10 @@ class TopologyBuildServiceTest {
                 if (request.file == fixture.complete.file) {
                     TopologyFileExtraction.Complete(fixture.complete)
                 } else {
-                    TopologyFileExtraction.Failed(TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+                    TopologyFileExtraction.Failed(
+                        request.file,
+                        TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                    )
                 }
             },
             FixedSnapshots(
@@ -222,6 +228,82 @@ class TopologyBuildServiceTest {
         assertInstanceOf(TopologyBuildResult.Rejected::class.java, result)
         assertEquals(2, extractionCalls.get())
         assertEquals(0, publicationCalls.get())
+    }
+
+    @Test
+    fun `registry failure externalizes the actual admitted candidate path`() = runTest {
+        val fixture = fixture()
+        val registryFailure = TopologySourceFile.admit(
+            fixture.workspace,
+            fixture.complete.file.sourceRoot,
+            WorkspaceSourcePath.parse("alpha/src/main/kotlin/Beta.kt").refined(),
+            WorkspaceSourceContentHash.parse("b".repeat(64)).refined(),
+        ).refined()
+        val candidates = TopologyCandidateSet.admit(
+            fixture.workspace,
+            listOf(fixture.complete.file, registryFailure),
+        ).refined()
+        val extractionCalls = AtomicInteger()
+        val service = TopologyBuildService.create(
+            ready(fixture.workspace),
+            CurrentGuard(fixture.workspace.readLease),
+            TopologyCandidateEnumerator { TopologyCandidateEnumeration.Complete(candidates) },
+            TopologyFileExtractor {
+                extractionCalls.incrementAndGet()
+                TopologyFileExtraction.Failed(
+                    registryFailure,
+                    TopologyExtractionFailure.DOCUMENT_DIRTY,
+                )
+            },
+            FixedSnapshots(
+                TopologySnapshotEligibility.Unavailable,
+                AtomicInteger(),
+                fixture.snapshot(),
+            ),
+        )
+
+        assertEquals(
+            TopologyBuildResult.Rejected(
+                TopologyBuildFailure.Extraction(
+                    registryFailure.path,
+                    TopologyExtractionFailure.DOCUMENT_DIRTY,
+                ),
+            ),
+            service.build(),
+        )
+        assertEquals(1, extractionCalls.get())
+    }
+
+    @Test
+    fun `foreign failing candidate is an extraction contract violation`() = runTest {
+        val fixture = fixture()
+        val foreign = TopologySourceFile.admit(
+            fixture.workspace,
+            fixture.complete.file.sourceRoot,
+            WorkspaceSourcePath.parse("alpha/src/main/kotlin/Foreign.kt").refined(),
+            WorkspaceSourceContentHash.parse("c".repeat(64)).refined(),
+        ).refined()
+        val service = TopologyBuildService.create(
+            ready(fixture.workspace),
+            CurrentGuard(fixture.workspace.readLease),
+            TopologyCandidateEnumerator { fixture.enumeration },
+            TopologyFileExtractor {
+                TopologyFileExtraction.Failed(
+                    foreign,
+                    TopologyExtractionFailure.VFS_CONTENT_MISMATCH,
+                )
+            },
+            FixedSnapshots(
+                TopologySnapshotEligibility.Unavailable,
+                AtomicInteger(),
+                fixture.snapshot(),
+            ),
+        )
+
+        assertEquals(
+            TopologyBuildResult.Rejected(TopologyBuildFailure.ExtractionContractViolation),
+            service.build(),
+        )
     }
 
     @Test
@@ -330,7 +412,7 @@ class TopologyBuildServiceTest {
             TopologyBuildResult.Rejected(
                 TopologyBuildFailure.Extraction(
                     fixture.complete.file.path,
-                    TopologyExtractionFailure.SOURCE_CONTENT_MOVED,
+                    TopologyExtractionFailure.SOURCE_CONTENT_CHANGED_DURING_BUILD,
                 ),
             ),
             result,

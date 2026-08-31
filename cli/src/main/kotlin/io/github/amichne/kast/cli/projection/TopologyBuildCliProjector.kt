@@ -184,7 +184,11 @@ private fun TopologyEnumerationRejection.wireName(): String = when (this) {
 private fun TopologyExtractionRejection.wireName(): String = when (this) {
     TopologyExtractionRejection.PROJECT_UNAVAILABLE -> "project-unavailable"
     TopologyExtractionRejection.FILE_UNAVAILABLE -> "file-unavailable"
-    TopologyExtractionRejection.SOURCE_CONTENT_MOVED -> "source-content-moved"
+    TopologyExtractionRejection.DOCUMENT_DIRTY -> "document-dirty"
+    TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED -> "psi-document-uncommitted"
+    TopologyExtractionRejection.VFS_CONTENT_MISMATCH -> "vfs-content-mismatch"
+    TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD ->
+        "source-content-changed-during-build"
     TopologyExtractionRejection.NOT_KOTLIN_PSI -> "not-kotlin-psi"
     TopologyExtractionRejection.COMPILER_UNAVAILABLE -> "compiler-unavailable"
     TopologyExtractionRejection.FACT_REJECTED -> "fact-rejected"

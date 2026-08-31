@@ -161,7 +161,10 @@ internal object KastCleanSlateModules {
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_INTELLIJ_READ,
             ModuleId.SYMBOL_CONTRACT,
-            effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
+            effects = setOf(
+                ForbiddenEffect.INTELLIJ_PLATFORM,
+                ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION,
+            ),
         ),
         target(
             ModuleId.DIAGNOSTIC_SERVICE,

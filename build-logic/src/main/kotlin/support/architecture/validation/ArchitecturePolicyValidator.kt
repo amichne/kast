@@ -105,6 +105,8 @@ object ArchitecturePolicyValidator {
         ForbiddenEffect.UDS_BIND to setOf(ModuleId.IDE_PLUGIN),
         ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.IDE_PLUGIN),
         ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to setOf(ModuleId.TOPOLOGY_BUILD),
+        ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION to
+            setOf(ModuleId.TOPOLOGY_INTELLIJ),
         ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_SQLITE),
     )
 

@@ -29,25 +29,34 @@ import org.junit.jupiter.api.Test
 
 class TopologyBuildCliProjectorTest {
     @Test
-    fun `extraction rejection retains stable file and finite failure fields`() {
-        val projected = topologyBuildCliProjector.project(
-            OperationOutcome.Rejected(
-                TopologyBuildRejection.ExtractionFailed(
-                    ProtocolText.parse(
-                        "topology/intellij/src/main/kotlin/TopologyK2Projection.kt",
-                    ).refined(),
-                    TopologyExtractionRejection.SOURCE_CONTENT_MOVED,
-                ),
-            ),
-        ) as ProjectedCliOutcome.Rejected
-
-        assertEquals(
-            "{\"operation\":\"topology.build\",\"status\":\"rejected\"," +
-                "\"reason\":\"extraction-failed\"," +
-                "\"file\":\"topology/intellij/src/main/kotlin/TopologyK2Projection.kt\"," +
-                "\"failure\":\"source-content-moved\"}",
-            projected.document.value,
+    fun `extraction rejection retains stable file and every finite failure field`() {
+        val file = "topology/intellij/src/main/kotlin/TopologyK2Projection.kt"
+        val failures = linkedMapOf(
+            TopologyExtractionRejection.DOCUMENT_DIRTY to "document-dirty",
+            TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED to
+                "psi-document-uncommitted",
+            TopologyExtractionRejection.VFS_CONTENT_MISMATCH to "vfs-content-mismatch",
+            TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD to
+                "source-content-changed-during-build",
         )
+
+        failures.forEach { (failure, wireName) ->
+            val projected = topologyBuildCliProjector.project(
+                OperationOutcome.Rejected(
+                    TopologyBuildRejection.ExtractionFailed(
+                        ProtocolText.parse(file).refined(),
+                        failure,
+                    ),
+                ),
+            ) as ProjectedCliOutcome.Rejected
+
+            assertEquals(
+                "{\"operation\":\"topology.build\",\"status\":\"rejected\"," +
+                    "\"reason\":\"extraction-failed\",\"file\":\"$file\"," +
+                    "\"failure\":\"$wireName\"}",
+                projected.document.value,
+            )
+        }
     }
 
     @Test

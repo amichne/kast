@@ -67,9 +67,12 @@ class InstalledRuntimeAssemblyTest {
             InstalledRuntimeAssemblyInputs(
                 workspaceModel = { read },
                 semantic = unusedSemanticPorts(),
-                topologyExtractor = { TopologyFileExtraction.Failed(
-                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
-                ) },
+                topologyExtractor = { request ->
+                    TopologyFileExtraction.Failed(
+                        request.file,
+                        TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                    )
+                },
                 change = unusedChangePhysicalPorts(),
             ),
         )
@@ -101,9 +104,12 @@ class InstalledRuntimeAssemblyTest {
             InstalledRuntimeAssemblyInputs(
                 workspaceModel = { changedRead },
                 semantic = unusedSemanticPorts(),
-                topologyExtractor = { TopologyFileExtraction.Failed(
-                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
-                ) },
+                topologyExtractor = { request ->
+                    TopologyFileExtraction.Failed(
+                        request.file,
+                        TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                    )
+                },
                 change = unusedChangePhysicalPorts(),
             ),
         )

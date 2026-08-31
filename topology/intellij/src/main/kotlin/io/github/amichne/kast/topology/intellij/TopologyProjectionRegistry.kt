@@ -136,6 +136,7 @@ internal sealed interface TopologyProjectionRegistryResolution {
     ) : TopologyProjectionRegistryResolution
 
     data class Rejected(
+        val file: TopologySourceFile,
         val failure: TopologyExtractionFailure,
     ) : TopologyProjectionRegistryResolution
 }
@@ -149,8 +150,8 @@ internal class TopologyProjectionRegistryCache {
      * TopologyProjectionRegistryResolution`.
      *
      * Ready establishes that one exact candidate generation shares one detached registry.
-     * Rejected preserves the builder's closed [TopologyExtractionFailure]. A changed key cannot
-     * consume prior evidence, and no live Project, PSI, or K2 value is retained.
+     * Rejected preserves the exact failing candidate and closed [TopologyExtractionFailure]. A
+     * changed key cannot consume prior evidence, and no live Project, PSI, or K2 value is retained.
      */
     @Synchronized
     fun resolve(

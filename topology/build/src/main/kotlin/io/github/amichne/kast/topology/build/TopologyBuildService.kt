@@ -204,9 +204,17 @@ class TopologyBuildService private constructor(
             }
             when (val extraction = extractor.extract(request)) {
                 is TopologyFileExtraction.Complete -> completed += extraction.file
-                is TopologyFileExtraction.Failed -> return rejected(
-                    TopologyBuildFailure.Extraction(file.path, extraction.failure),
-                )
+                is TopologyFileExtraction.Failed -> {
+                    if (extraction.file !in candidateSet.files) {
+                        return rejected(TopologyBuildFailure.ExtractionContractViolation)
+                    }
+                    return rejected(
+                        TopologyBuildFailure.Extraction(
+                            extraction.file.path,
+                            extraction.failure,
+                        ),
+                    )
+                }
             }
         }
         val generation = when (
@@ -252,7 +260,7 @@ class TopologyBuildService private constructor(
                 is TopologyGenerationRevalidationFailure.SourceEvidenceMoved -> rejected(
                     TopologyBuildFailure.Extraction(
                         failure.path,
-                        TopologyExtractionFailure.SOURCE_CONTENT_MOVED,
+                        TopologyExtractionFailure.SOURCE_CONTENT_CHANGED_DURING_BUILD,
                     ),
                 )
                 TopologyGenerationRevalidationFailure.WorkspaceMismatch,

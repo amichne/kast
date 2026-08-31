@@ -32,7 +32,13 @@ import org.jetbrains.kotlin.psi.KtTypeReference
 import java.nio.file.Path
 
 /** Public native K2 boundary for one exact topology candidate. */
-class IntellijTopologyFileExtractor {
+class IntellijTopologyFileExtractor internal constructor(
+    private val mismatchRetrier: TopologyVfsMismatchRetrier,
+) {
+    constructor() : this(
+        TopologyVfsMismatchRetrier(InstalledTopologySourceRootVfsSynchronizer),
+    )
+
     private val registries = TopologyProjectionRegistryCache()
 
     /**
@@ -49,28 +55,40 @@ class IntellijTopologyFileExtractor {
         project: Project,
         current: PublishedWorkspace,
         request: TopologyExtractionRequest,
+    ): TopologyFileExtraction = try {
+        mismatchRetrier.extract(current, request) {
+            extractOnce(project, current, request)
+        }
+    } catch (cancelled: ProcessCanceledException) {
+        throw cancelled
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: RuntimeException) {
+        failed(request.file, TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+    } catch (_: LinkageError) {
+        failed(request.file, TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+    }
+
+    /** One short read-action attempt; a retry always enters a fresh read action. */
+    private suspend fun extractOnce(
+        project: Project,
+        current: PublishedWorkspace,
+        request: TopologyExtractionRequest,
     ): TopologyFileExtraction {
         if (
             project.isDisposed || current.readLease != request.candidates.workspace.lease ||
             current.sourceState != request.candidates.workspace.sourceState
         ) {
-            return failed(TopologyExtractionFailure.PROJECT_UNAVAILABLE)
+            return failed(request.file, TopologyExtractionFailure.PROJECT_UNAVAILABLE)
         }
-        return try {
-            readAction {
-                if (DumbService.isDumb(project)) {
-                    return@readAction failed(TopologyExtractionFailure.COMPILER_UNAVAILABLE)
-                }
-                extractInReadAction(project, request)
+        return readAction {
+            if (DumbService.isDumb(project)) {
+                return@readAction failed(
+                    request.file,
+                    TopologyExtractionFailure.COMPILER_UNAVAILABLE,
+                )
             }
-        } catch (cancelled: ProcessCanceledException) {
-            throw cancelled
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: RuntimeException) {
-            failed(TopologyExtractionFailure.COMPILER_UNAVAILABLE)
-        } catch (_: LinkageError) {
-            failed(TopologyExtractionFailure.COMPILER_UNAVAILABLE)
+            extractInReadAction(project, request)
         }
     }
 
@@ -85,14 +103,26 @@ class IntellijTopologyFileExtractor {
             }
         ) {
             is TopologyProjectionRegistryResolution.Ready -> resolution.registry
-            is TopologyProjectionRegistryResolution.Rejected -> return failed(resolution.failure)
+            is TopologyProjectionRegistryResolution.Rejected -> return failed(
+                resolution.file,
+                resolution.failure,
+            )
         }
         val requested = when (val lookup = load(project, request.file)) {
             is TopologyFileLoad.Loaded -> lookup.file
             TopologyFileLoad.Unavailable ->
-                return failed(TopologyExtractionFailure.FILE_UNAVAILABLE)
-            TopologyFileLoad.ContentMoved ->
-                return failed(TopologyExtractionFailure.SOURCE_CONTENT_MOVED)
+                return failed(request.file, TopologyExtractionFailure.FILE_UNAVAILABLE)
+            TopologyFileLoad.DocumentDirty ->
+                return failed(request.file, TopologyExtractionFailure.DOCUMENT_DIRTY)
+            TopologyFileLoad.PsiDocumentUncommitted ->
+                return failed(
+                    request.file,
+                    TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+                )
+            TopologyFileLoad.VfsContentMismatch ->
+                return failed(request.file, TopologyExtractionFailure.VFS_CONTENT_MISMATCH)
+            TopologyFileLoad.NotKotlinPsi ->
+                return failed(request.file, TopologyExtractionFailure.NOT_KOTLIN_PSI)
         }
         val symbolByDeclaration = buildMap {
             requested.declarations.forEach { declaration ->
@@ -106,7 +136,7 @@ class IntellijTopologyFileExtractor {
                     is TopologyRegistrySymbolLookup.Found -> put(declaration, lookup.symbol)
                     TopologyRegistrySymbolLookup.Unavailable -> Unit
                     TopologyRegistrySymbolLookup.Rejected ->
-                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                        return failed(request.file, TopologyExtractionFailure.FACT_REJECTED)
                 }
             }
         }
@@ -125,13 +155,13 @@ class IntellijTopologyFileExtractor {
                     is TopologyReferenceTarget.Found -> resolved.symbol
                     TopologyReferenceTarget.Unresolved -> return@forEach
                     TopologyReferenceTarget.Rejected ->
-                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                        return failed(request.file, TopologyExtractionFailure.FACT_REJECTED)
                 }
                 val kind = reference.edgeKind()
                 val occurrence = when (val refined = reference.topologyOccurrence()) {
                     is TopologyReferenceOccurrence.Admitted -> refined.range
                     TopologyReferenceOccurrence.Rejected ->
-                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                        return failed(request.file, TopologyExtractionFailure.FACT_REJECTED)
                 }
                 val edge = TopologyEdge.fromBoundary(
                     kind,
@@ -143,7 +173,7 @@ class IntellijTopologyFileExtractor {
                 when (edge) {
                     is Refinement.Refined -> edges += edge.value
                     is Refinement.Rejected ->
-                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                        return failed(request.file, TopologyExtractionFailure.FACT_REJECTED)
                 }
             }
         requested.declarations.forEach { declaration ->
@@ -153,7 +183,7 @@ class IntellijTopologyFileExtractor {
             ) {
                 is TopologyOverrideProjection.Projected -> projectedOverrides.symbols
                 TopologyOverrideProjection.Rejected ->
-                    return failed(TopologyExtractionFailure.FACT_REJECTED)
+                    return failed(request.file, TopologyExtractionFailure.FACT_REJECTED)
             }
             overrides.forEach { target ->
                 val range = declaration.nameIdentifier?.textRange ?: declaration.textRange
@@ -166,7 +196,7 @@ class IntellijTopologyFileExtractor {
                 )) {
                     is Refinement.Refined -> edges += edge.value
                     is Refinement.Rejected ->
-                        return failed(TopologyExtractionFailure.FACT_REJECTED)
+                        return failed(request.file, TopologyExtractionFailure.FACT_REJECTED)
                 }
             }
         }
@@ -178,7 +208,10 @@ class IntellijTopologyFileExtractor {
             )
         ) {
             is Refinement.Refined -> TopologyFileExtraction.Complete(complete.value)
-            is Refinement.Rejected -> failed(TopologyExtractionFailure.FACT_REJECTED)
+            is Refinement.Rejected -> failed(
+                request.file,
+                TopologyExtractionFailure.FACT_REJECTED,
+            )
         }
     }
 
@@ -201,11 +234,29 @@ class IntellijTopologyFileExtractor {
             val loaded = when (val lookup = load(project, file)) {
                 is TopologyFileLoad.Loaded -> lookup.file
                 TopologyFileLoad.Unavailable -> return TopologyProjectionRegistryResolution.Rejected(
+                    file,
                     TopologyExtractionFailure.FILE_UNAVAILABLE,
                 )
-                TopologyFileLoad.ContentMoved -> return TopologyProjectionRegistryResolution.Rejected(
-                    TopologyExtractionFailure.SOURCE_CONTENT_MOVED,
-                )
+                TopologyFileLoad.DocumentDirty ->
+                    return TopologyProjectionRegistryResolution.Rejected(
+                        file,
+                        TopologyExtractionFailure.DOCUMENT_DIRTY,
+                    )
+                TopologyFileLoad.PsiDocumentUncommitted ->
+                    return TopologyProjectionRegistryResolution.Rejected(
+                        file,
+                        TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+                    )
+                TopologyFileLoad.VfsContentMismatch ->
+                    return TopologyProjectionRegistryResolution.Rejected(
+                        file,
+                        TopologyExtractionFailure.VFS_CONTENT_MISMATCH,
+                    )
+                TopologyFileLoad.NotKotlinPsi ->
+                    return TopologyProjectionRegistryResolution.Rejected(
+                        file,
+                        TopologyExtractionFailure.NOT_KOTLIN_PSI,
+                    )
             }
             loaded.declarations.forEach { declaration ->
                 when (val projection = projectTopologySymbol(loaded.file, declaration)) {
@@ -213,6 +264,7 @@ class IntellijTopologyFileExtractor {
                     TopologySymbolProjection.Unsupported -> Unit
                     TopologySymbolProjection.Rejected ->
                         return TopologyProjectionRegistryResolution.Rejected(
+                            file,
                             TopologyExtractionFailure.FACT_REJECTED,
                         )
                 }
@@ -221,6 +273,7 @@ class IntellijTopologyFileExtractor {
         return when (val registry = TopologyProjectionRegistry.from(key, symbols)) {
             is Refinement.Refined -> TopologyProjectionRegistryResolution.Ready(registry.value)
             is Refinement.Rejected -> TopologyProjectionRegistryResolution.Rejected(
+                request.file,
                 TopologyExtractionFailure.FACT_REJECTED,
             )
         }
@@ -230,8 +283,9 @@ class IntellijTopologyFileExtractor {
      * Proof transition: `(Project, TopologySourceFile) -> TopologyFileLoad`.
      *
      * Loaded establishes valid VFS and Kotlin PSI evidence whose live bytes retain the exact
-     * admitted source-content identity. Unavailable and ContentMoved are the closed expected
-     * failures. Raw VFS bytes, documents, and PSI extraction stay in this K2 adapter.
+     * admitted source-content identity. Unavailable, dirty document, uncommitted PSI document,
+     * VFS mismatch, and non-Kotlin PSI are distinct closed failures. Raw VFS bytes, documents,
+     * and PSI extraction stay in this K2 adapter.
      */
     private fun load(project: Project, file: TopologySourceFile): TopologyFileLoad {
         val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
@@ -239,14 +293,17 @@ class IntellijTopologyFileExtractor {
                           ?: return TopologyFileLoad.Unavailable
         if (!virtualFile.isValid || virtualFile.isDirectory) return TopologyFileLoad.Unavailable
         val document = FileDocumentManager.getInstance().getCachedDocument(virtualFile)
-        if (
-            document != null &&
-            (
-                FileDocumentManager.getInstance().isFileModified(virtualFile) ||
-                    !PsiDocumentManager.getInstance(project).isCommitted(document)
-                )
-        ) {
-            return TopologyFileLoad.ContentMoved
+        if (document != null) {
+            when (TopologyDocumentReadiness.observe(
+                FileDocumentManager.getInstance().isFileModified(virtualFile),
+                PsiDocumentManager.getInstance(project).isCommitted(document),
+            )) {
+                TopologyDocumentReadiness.READY -> Unit
+                TopologyDocumentReadiness.DOCUMENT_DIRTY ->
+                    return TopologyFileLoad.DocumentDirty
+                TopologyDocumentReadiness.PSI_DOCUMENT_UNCOMMITTED ->
+                    return TopologyFileLoad.PsiDocumentUncommitted
+            }
         }
         val content = try {
             virtualFile.contentsToByteArray(false)
@@ -255,10 +312,10 @@ class IntellijTopologyFileExtractor {
         }
         val identified = when (val validation = LiveTopologySourceContent.validate(file, content)) {
             is Refinement.Refined -> validation.value
-            is Refinement.Rejected -> return TopologyFileLoad.ContentMoved
+            is Refinement.Rejected -> return TopologyFileLoad.VfsContentMismatch
         }
         val psi = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
-                  ?: return TopologyFileLoad.Unavailable
+                  ?: return TopologyFileLoad.NotKotlinPsi
         val declarations = PsiTreeUtil.collectElementsOfType(psi, KtNamedDeclaration::class.java)
             .filter(::isRepositoryDeclaration)
             .sortedBy { it.textRange.startOffset }
@@ -269,7 +326,10 @@ class IntellijTopologyFileExtractor {
 private sealed interface TopologyFileLoad {
     data class Loaded(val file: LoadedTopologyFile) : TopologyFileLoad
     data object Unavailable : TopologyFileLoad
-    data object ContentMoved : TopologyFileLoad
+    data object DocumentDirty : TopologyFileLoad
+    data object PsiDocumentUncommitted : TopologyFileLoad
+    data object VfsContentMismatch : TopologyFileLoad
+    data object NotKotlinPsi : TopologyFileLoad
 }
 
 private sealed interface TopologyReferenceTarget {
@@ -370,5 +430,7 @@ private fun KtReferenceExpression.topologyOccurrence(): TopologyReferenceOccurre
     return TopologyReferenceOccurrence.refine(textRange, enclosingRange)
 }
 
-private fun failed(failure: TopologyExtractionFailure): TopologyFileExtraction.Failed =
-    TopologyFileExtraction.Failed(failure)
+private fun failed(
+    file: TopologySourceFile,
+    failure: TopologyExtractionFailure,
+): TopologyFileExtraction.Failed = TopologyFileExtraction.Failed(file, failure)

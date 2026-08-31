@@ -254,8 +254,14 @@ private fun TopologyBuildFailure.protocol(): TopologyBuildRejection = when (this
                     TopologyExtractionRejection.PROJECT_UNAVAILABLE
                 TopologyExtractionFailure.FILE_UNAVAILABLE ->
                     TopologyExtractionRejection.FILE_UNAVAILABLE
-                TopologyExtractionFailure.SOURCE_CONTENT_MOVED ->
-                    TopologyExtractionRejection.SOURCE_CONTENT_MOVED
+                TopologyExtractionFailure.DOCUMENT_DIRTY ->
+                    TopologyExtractionRejection.DOCUMENT_DIRTY
+                TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED ->
+                    TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED
+                TopologyExtractionFailure.VFS_CONTENT_MISMATCH ->
+                    TopologyExtractionRejection.VFS_CONTENT_MISMATCH
+                TopologyExtractionFailure.SOURCE_CONTENT_CHANGED_DURING_BUILD ->
+                    TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD
                 TopologyExtractionFailure.NOT_KOTLIN_PSI ->
                     TopologyExtractionRejection.NOT_KOTLIN_PSI
                 TopologyExtractionFailure.COMPILER_UNAVAILABLE ->

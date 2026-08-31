@@ -179,8 +179,17 @@ internal enum class TopologyExtractionFailureDocument {
     @SerialName("file-unavailable")
     FILE_UNAVAILABLE,
 
-    @SerialName("source-content-moved")
-    SOURCE_CONTENT_MOVED,
+    @SerialName("document-dirty")
+    DOCUMENT_DIRTY,
+
+    @SerialName("psi-document-uncommitted")
+    PSI_DOCUMENT_UNCOMMITTED,
+
+    @SerialName("vfs-content-mismatch")
+    VFS_CONTENT_MISMATCH,
+
+    @SerialName("source-content-changed-during-build")
+    SOURCE_CONTENT_CHANGED_DURING_BUILD,
 
     @SerialName("not-kotlin-psi")
     NOT_KOTLIN_PSI,
@@ -329,8 +338,14 @@ private fun TopologyExtractionRejection.toDocument(): TopologyExtractionFailureD
             TopologyExtractionFailureDocument.PROJECT_UNAVAILABLE
         TopologyExtractionRejection.FILE_UNAVAILABLE ->
             TopologyExtractionFailureDocument.FILE_UNAVAILABLE
-        TopologyExtractionRejection.SOURCE_CONTENT_MOVED ->
-            TopologyExtractionFailureDocument.SOURCE_CONTENT_MOVED
+        TopologyExtractionRejection.DOCUMENT_DIRTY ->
+            TopologyExtractionFailureDocument.DOCUMENT_DIRTY
+        TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED ->
+            TopologyExtractionFailureDocument.PSI_DOCUMENT_UNCOMMITTED
+        TopologyExtractionRejection.VFS_CONTENT_MISMATCH ->
+            TopologyExtractionFailureDocument.VFS_CONTENT_MISMATCH
+        TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD ->
+            TopologyExtractionFailureDocument.SOURCE_CONTENT_CHANGED_DURING_BUILD
         TopologyExtractionRejection.NOT_KOTLIN_PSI ->
             TopologyExtractionFailureDocument.NOT_KOTLIN_PSI
         TopologyExtractionRejection.COMPILER_UNAVAILABLE ->
@@ -345,8 +360,14 @@ private fun TopologyExtractionFailureDocument.toContract(): TopologyExtractionRe
             TopologyExtractionRejection.PROJECT_UNAVAILABLE
         TopologyExtractionFailureDocument.FILE_UNAVAILABLE ->
             TopologyExtractionRejection.FILE_UNAVAILABLE
-        TopologyExtractionFailureDocument.SOURCE_CONTENT_MOVED ->
-            TopologyExtractionRejection.SOURCE_CONTENT_MOVED
+        TopologyExtractionFailureDocument.DOCUMENT_DIRTY ->
+            TopologyExtractionRejection.DOCUMENT_DIRTY
+        TopologyExtractionFailureDocument.PSI_DOCUMENT_UNCOMMITTED ->
+            TopologyExtractionRejection.PSI_DOCUMENT_UNCOMMITTED
+        TopologyExtractionFailureDocument.VFS_CONTENT_MISMATCH ->
+            TopologyExtractionRejection.VFS_CONTENT_MISMATCH
+        TopologyExtractionFailureDocument.SOURCE_CONTENT_CHANGED_DURING_BUILD ->
+            TopologyExtractionRejection.SOURCE_CONTENT_CHANGED_DURING_BUILD
         TopologyExtractionFailureDocument.NOT_KOTLIN_PSI ->
             TopologyExtractionRejection.NOT_KOTLIN_PSI
         TopologyExtractionFailureDocument.COMPILER_UNAVAILABLE ->

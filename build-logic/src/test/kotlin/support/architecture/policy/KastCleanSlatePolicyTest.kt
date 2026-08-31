@@ -119,6 +119,8 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.GRADLE_PLATFORM to setOf(ModuleId.WORKSPACE_INTELLIJ),
                 ForbiddenEffect.GRADLE_IMPORT to setOf(ModuleId.WORKSPACE_INTELLIJ),
                 ForbiddenEffect.RECURSIVE_VFS_REFRESH to emptySet(),
+                ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION to
+                    setOf(ModuleId.TOPOLOGY_INTELLIJ),
                 ForbiddenEffect.INDEXING_CYCLE to emptySet(),
                 ForbiddenEffect.REPOSITORY_TRAVERSAL to emptySet(),
                 ForbiddenEffect.PHYSICAL_SOURCE_READ to emptySet(),

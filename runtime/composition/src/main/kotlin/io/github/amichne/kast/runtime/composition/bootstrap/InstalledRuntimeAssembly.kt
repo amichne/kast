@@ -31,7 +31,7 @@ import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFail
 import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliationPort
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
-import io.github.amichne.kast.topology.intellij.AdmittedSourceRootEnumerator
+import io.github.amichne.kast.topology.intellij.intellijSynchronizedTopologyCandidateEnumerator
 import io.github.amichne.kast.topology.intellij.installedIntellijTopologyExtractor
 
 /** Closed construction inputs whose live platform values remain behind narrow adapter ports. */
@@ -215,7 +215,7 @@ private fun assembleInstalledRuntime(
         workspace,
         platform.semantic,
         TopologyRuntimePorts(
-            AdmittedSourceRootEnumerator(),
+            intellijSynchronizedTopologyCandidateEnumerator(),
             platform.topologyExtractor,
             topologySnapshots,
         ),
