@@ -72,6 +72,11 @@ class KastCleanSlatePolicyTest {
                 .getValue(ModuleId.RUNTIME_IDE_READ)
                 .allowedProjectDependencies,
         )
+        assertTrue(
+            ModuleId.SYMBOL_CONTRACT in architecture.modules
+                .getValue(ModuleId.PROTOCOL_CONTRACT)
+                .allowedProjectDependencies,
+        )
     }
 
     @Test

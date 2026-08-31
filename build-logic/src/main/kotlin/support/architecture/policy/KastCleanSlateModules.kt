@@ -10,7 +10,12 @@ internal object KastCleanSlateModules {
             ModuleId.DISTRIBUTION_CONTRACT,
             effects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
         ),
-        target(ModuleId.PROTOCOL_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        target(
+            ModuleId.PROTOCOL_CONTRACT,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            ModuleId.SYMBOL_CONTRACT,
+        ),
         target(ModuleId.WORKSPACE_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         target(
             ModuleId.SYMBOL_CONTRACT,
