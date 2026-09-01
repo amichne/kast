@@ -256,6 +256,11 @@ class RuntimeProcessSessionTest {
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
+            assertNotEquals(
+                processGroup(ProcessHandle.current().pid()),
+                processGroup(process.pid()),
+                "direct runtime must leave the initiating caller's process group",
+            )
             signalHangup(process.pid())
             Thread.sleep(250)
             assertTrue(process.isAlive, "direct runtime must outlive the initiating terminal")
