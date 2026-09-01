@@ -228,6 +228,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
             val admission = SidecarCacheReleaseIdentity.admit(
                 support,
                 manifest.kastPluginDigest.value,
+                manifest.runtimeId,
             )
         ) {
             is SidecarCacheReleaseIdentityAdmission.Admitted -> admission.identity
@@ -239,6 +240,9 @@ internal class InstalledKastCliComposition : KastCliComposition {
         val cacheLifecycle = FilesystemRootSidecarCacheLifecycle(
             cacheRoot,
             cacheReleaseIdentity,
+            SidecarIdeRuntimeResolver { supported, digest, selection ->
+                InstalledIdeRuntimeDiscovery.discover(supported, digest, selection)
+            },
         )
         return KastCliCompositionConstruction.Created(
             KastCli(
@@ -266,6 +270,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                             )
                         },
                     ),
+                    legacyProcessAuthority = processCapabilities.authority,
                 ),
                 UnixDomainWireClient(),
                 localMetadata,

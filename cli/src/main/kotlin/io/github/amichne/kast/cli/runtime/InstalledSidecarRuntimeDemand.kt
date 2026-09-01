@@ -219,6 +219,8 @@ class InstalledSidecarRootRuntimeDemander(
     private val ideRuntimeResolver: SidecarIdeRuntimeResolver,
     private val cachePreparer: SidecarCachePreparer,
     private val processDemander: SidecarProcessDemander = ExactSidecarProcessDemander(),
+    private val legacyEndpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
+    private val legacyProcessAuthority: RuntimeProcessAuthority = JdkRuntimeProcessAuthority,
 ) : RootRuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
@@ -253,7 +255,7 @@ class InstalledSidecarRootRuntimeDemander(
             )
         }
         val cacheIdentity = when (
-            val derivation = KastCacheIdentity.derive(root.path, runtime.identity)
+            val derivation = KastCacheIdentity.derive(root.path, runtime, endpoint.runtimeId)
         ) {
             is KastCacheIdentityDerivation.Derived -> derivation.identity
             is KastCacheIdentityDerivation.Rejected -> return RuntimeAdmission.Rejected(
@@ -261,6 +263,30 @@ class InstalledSidecarRootRuntimeDemander(
                     SidecarCacheFailure.FilesystemRejected,
                 ),
             )
+        }
+        val exactEndpoint = when (
+            val resolution = endpoint.forSidecarCache(
+                cacheIdentity.key,
+                cacheIdentity.semanticRuntimeId,
+            )
+        ) {
+            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
+            is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.EndpointUnavailable,
+            )
+        }
+        val legacyProcessPresent = when (legacyProcessAuthority.observe(endpoint)) {
+            RuntimeProcessObservation.Absent -> false
+            RuntimeProcessObservation.Ambiguous,
+            is RuntimeProcessObservation.Owned,
+                -> true
+        }
+        if (endpoint != exactEndpoint && (
+                legacyProcessPresent ||
+                    legacyEndpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable
+                )
+        ) {
+            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LegacySidecarActive)
         }
         val cache = when (
             val preparation = cachePreparer.prepare(
@@ -293,7 +319,7 @@ class InstalledSidecarRootRuntimeDemander(
             payload.executable,
             PreparedSidecarLaunch(cache, context),
             root,
-            endpoint,
+            exactEndpoint,
         )
     }
 }

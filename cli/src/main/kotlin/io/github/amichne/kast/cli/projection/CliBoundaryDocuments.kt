@@ -57,7 +57,7 @@ internal object CliBoundaryDocuments {
     fun statusComplete(
         endpoint: RuntimeEndpoint,
         state: RuntimeLifecycleState,
-        cache: RootSidecarCacheObservation.Observed,
+        cache: RootSidecarCacheObservation.Identified,
     ): CliJsonDocument = statusWithCacheFactory.create(
         CliStatusWithCacheDocument(
             command = CliLifecycleCommand.STATUS.command,

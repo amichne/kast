@@ -3,11 +3,15 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.Base64
 
 class InstalledSidecarRuntimeDemanderTest {
     @Test
@@ -27,6 +31,89 @@ class InstalledSidecarRuntimeDemanderTest {
         assertEquals(listOf(StartupCacheIntent.ReuseOrFresh), fixture.observedIntents)
         assertEquals(fixture.ideaRuntime, fixture.observedLaunch.single().runtime)
         assertTrue(fixture.observedLaunch.single().systemDirectory.startsWith(fixture.cacheRoot))
+    }
+
+    @Test
+    fun `default demand binds its endpoint to the exact IDEA JBR cache identity`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = demanderFixture(temporary)
+
+        fixture.demander.demand(
+            fixture.root,
+            HostedRuntimeDemand.Lifecycle,
+            RuntimeStartupRequest.Default,
+        )
+
+        val launch = fixture.observedLaunch.single()
+        val endpoint = fixture.observedEndpoint.single()
+        val expectedToken = Base64.getUrlEncoder().withoutPadding().encodeToString(
+            MessageDigest.getInstance("SHA-256").digest(
+                "${launch.cache.identity.key}\n${fixture.endpoint.runtimeId.value}"
+                    .toByteArray(StandardCharsets.UTF_8),
+            ),
+        )
+        val expectedName = "kast-$expectedToken.sock"
+        assertEquals(fixture.root, endpoint.root)
+        assertEquals(fixture.endpoint.runtimeId, endpoint.runtimeId)
+        assertEquals(expectedName, endpoint.socketPath.fileName.toString())
+        assertNotEquals(fixture.endpoint.socketPath, endpoint.socketPath)
+    }
+
+    @Test
+    fun `exact cache endpoint retains semantic runtime identity`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = demanderFixture(temporary)
+        val otherRuntimeId = when (
+            val parsed = SemanticRuntimeId.parse("sha256:${"f".repeat(64)}")
+        ) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> error(parsed.failure)
+        }
+        val otherBaseEndpoint = when (
+            val resolution = RuntimeEndpoint.at(
+                fixture.root,
+                otherRuntimeId,
+                fixture.endpoint.socketPath,
+            )
+        ) {
+            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
+            is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
+        }
+        val cacheIdentity = "sha256:${"c".repeat(64)}"
+        val exact = fixture.endpoint.forSidecarCache(cacheIdentity, fixture.endpoint.runtimeId)
+        val otherExact = otherBaseEndpoint.forSidecarCache(cacheIdentity, otherRuntimeId)
+
+        assertTrue(exact is RuntimeEndpointResolution.Resolved)
+        assertTrue(otherExact is RuntimeEndpointResolution.Resolved)
+        assertNotEquals(
+            (exact as RuntimeEndpointResolution.Resolved).endpoint.socketPath,
+            (otherExact as RuntimeEndpointResolution.Resolved).endpoint.socketPath,
+        )
+    }
+
+    @Test
+    fun `reachable legacy endpoint blocks a second sidecar before cache preparation`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = demanderFixture(
+            temporary,
+            RuntimeEndpointProbe { RuntimeEndpointReachability.Reachable },
+        )
+
+        val admission = fixture.demander.demand(
+            fixture.root,
+            HostedRuntimeDemand.Lifecycle,
+            RuntimeStartupRequest.Default,
+        )
+
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LegacySidecarActive),
+            admission,
+        )
+        assertTrue(fixture.observedIntents.isEmpty())
+        assertTrue(fixture.observedLaunch.isEmpty())
     }
 
     @Test
@@ -94,7 +181,12 @@ class InstalledSidecarRuntimeDemanderTest {
         )
     }
 
-    private fun demanderFixture(temporary: Path): DemanderFixture {
+    private fun demanderFixture(
+        temporary: Path,
+        legacyEndpointProbe: RuntimeEndpointProbe = RuntimeEndpointProbe {
+            RuntimeEndpointReachability.Unreachable
+        },
+    ): DemanderFixture {
         val project = Files.createDirectory(temporary.resolve("project")).toRealPath()
         Files.writeString(project.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val root = FilesystemCanonicalRootDiscovery.discover(project).let {
@@ -131,6 +223,7 @@ class InstalledSidecarRuntimeDemanderTest {
         val selections = mutableListOf<IdeHomeSelection>()
         val intents = mutableListOf<StartupCacheIntent>()
         val launches = mutableListOf<PreparedSidecarLaunch>()
+        val endpoints = mutableListOf<RuntimeEndpoint>()
 
         val demander = InstalledSidecarRootRuntimeDemander(
             endpointLocator = endpointLocator,
@@ -166,8 +259,10 @@ class InstalledSidecarRuntimeDemanderTest {
                 assertEquals(payload.executable, admittedExecutable)
                 assertEquals(root, exactRoot)
                 launches += context
+                endpoints += endpoint
                 RuntimeAdmission.Ready(endpoint)
             },
+            legacyEndpointProbe = legacyEndpointProbe,
         )
         return DemanderFixture(
             demander,
@@ -179,6 +274,7 @@ class InstalledSidecarRuntimeDemanderTest {
             selections,
             intents,
             launches,
+            endpoints,
         )
     }
 
@@ -209,4 +305,5 @@ private data class DemanderFixture(
     val observedSelection: List<IdeHomeSelection>,
     val observedIntents: List<StartupCacheIntent>,
     val observedLaunch: List<PreparedSidecarLaunch>,
+    val observedEndpoint: List<RuntimeEndpoint>,
 )

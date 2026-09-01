@@ -48,6 +48,11 @@ class ProductInspectionCommandTest {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
         }
+        val cacheIdentity = "sha256:${"c".repeat(64)}"
+        val exactEndpoint = (
+            endpoint.forSidecarCache(cacheIdentity, identity.runtimeId) as
+                RuntimeEndpointResolution.Resolved
+        ).endpoint
         val inspector = SidecarProductInspector(
             identity,
             FilesystemCanonicalRootDiscovery,
@@ -55,7 +60,8 @@ class ProductInspectionCommandTest {
                 override fun observe(root: Path): RootSidecarCacheObservation =
                     RootSidecarCacheObservation.Observed(
                         RootSidecarCacheStatus(
-                            "cache-key",
+                            cacheIdentity,
+                            identity.runtimeId,
                             KastCacheState.SMART,
                             temporary.resolve("IntelliJ IDEA.app"),
                             support.ideaBuild,
@@ -90,7 +96,7 @@ class ProductInspectionCommandTest {
         )
         val workspace = output.getValue("workspace").jsonObject
         assertEquals(
-            "cache-key",
+            cacheIdentity,
             workspace.getValue("cache").jsonObject.getValue("identity").jsonPrimitive.content,
         )
         assertEquals(
@@ -101,11 +107,11 @@ class ProductInspectionCommandTest {
         assertEquals("enabled", telemetry.getValue("state").jsonPrimitive.content)
         assertEquals("otlp-json-lines-v1", telemetry.getValue("format").jsonPrimitive.content)
         assertEquals(
-            "${endpoint.socketPath}.state/otel",
+            "${exactEndpoint.socketPath}.state/otel",
             telemetry.getValue("directoryPath").jsonPrimitive.content,
         )
         assertEquals(
-            "${endpoint.socketPath}.state/otel/traces.jsonl",
+            "${exactEndpoint.socketPath}.state/otel/traces.jsonl",
             telemetry.getValue("traceFilePath").jsonPrimitive.content,
         )
     }

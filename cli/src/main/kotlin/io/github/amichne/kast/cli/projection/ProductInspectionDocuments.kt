@@ -110,7 +110,7 @@ private fun ProductWorkspaceObservation.outputDocument(): ProductWorkspaceDocume
 
 private fun RootSidecarCacheObservation.outputDocument(): ProductCacheDocument = when (this) {
     RootSidecarCacheObservation.Absent -> ProductCacheDocument.Absent()
-    is RootSidecarCacheObservation.Observed -> ProductCacheDocument.Observed(
+    is RootSidecarCacheObservation.Identified -> ProductCacheDocument.Observed(
         state = status.state.wireName,
         identity = status.cacheIdentity,
         ideaHome = status.ideaHome.toString(),
@@ -134,6 +134,9 @@ private fun ProductTelemetryObservation.outputDocument(): ProductTelemetryDocume
         failure = failure.outputName(),
     )
     is ProductTelemetryObservation.OutputRejected -> ProductTelemetryDocument.Rejected(
+        failure = failure.outputName(),
+    )
+    is ProductTelemetryObservation.CacheRejected -> ProductTelemetryDocument.Rejected(
         failure = failure.outputName(),
     )
 }

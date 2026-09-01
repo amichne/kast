@@ -47,6 +47,10 @@ sealed interface ProductTelemetryObservation {
     data class OutputRejected(
         val failure: SidecarTelemetryOutputFailure,
     ) : ProductTelemetryObservation
+
+    data class CacheRejected(
+        val failure: SidecarCacheLifecycleFailure,
+    ) : ProductTelemetryObservation
 }
 
 fun interface ProductInspector {
@@ -69,28 +73,47 @@ class SidecarProductInspector(
         val workspace = when (val discovery = rootDiscovery.discover(start)) {
             is CanonicalRootDiscovery.Rejected ->
                 ProductWorkspaceObservation.RootRejected(discovery.failure)
-            is CanonicalRootDiscovery.Discovered -> ProductWorkspaceObservation.Observed(
-                discovery.root,
-                cacheLifecycle.observe(discovery.root.path),
-                endpointLocator.telemetryObservation(discovery.root),
-            )
+            is CanonicalRootDiscovery.Discovered -> {
+                val cache = cacheLifecycle.observe(discovery.root.path)
+                ProductWorkspaceObservation.Observed(
+                    discovery.root,
+                    cache,
+                    endpointLocator.telemetryObservation(discovery.root, cache),
+                )
+            }
         }
         return ProductInspection(control, workspace)
     }
 
     private fun RuntimeEndpointLocator.telemetryObservation(
         root: CanonicalRoot,
+        cache: RootSidecarCacheObservation,
     ): ProductTelemetryObservation = when (val resolution = locate(root)) {
         is RuntimeEndpointResolution.Rejected -> ProductTelemetryObservation.EndpointRejected(
             resolution.failure,
         )
-        is RuntimeEndpointResolution.Resolved -> when (
-            val output = SidecarTelemetryOutput.fromSocketPath(
-                resolution.endpoint.socketPath.toString(),
-            )
-        ) {
-            is Refinement.Refined -> ProductTelemetryObservation.Enabled(output.value)
-            is Refinement.Rejected -> ProductTelemetryObservation.OutputRejected(output.failure)
+        is RuntimeEndpointResolution.Resolved -> {
+            val exact = when (cache) {
+                is RootSidecarCacheObservation.Identified -> when (
+                    val refined = resolution.endpoint.forSidecarCache(
+                        cache.status.cacheIdentity,
+                        cache.status.semanticRuntimeId,
+                    )
+                ) {
+                    is RuntimeEndpointResolution.Resolved -> refined.endpoint
+                    is RuntimeEndpointResolution.Rejected -> return ProductTelemetryObservation
+                        .EndpointRejected(refined.failure)
+                }
+                RootSidecarCacheObservation.Absent -> resolution.endpoint
+                is RootSidecarCacheObservation.Rejected -> return ProductTelemetryObservation
+                    .CacheRejected(cache.failure)
+            }
+            when (
+                val output = SidecarTelemetryOutput.fromSocketPath(exact.socketPath.toString())
+            ) {
+                is Refinement.Refined -> ProductTelemetryObservation.Enabled(output.value)
+                is Refinement.Rejected -> ProductTelemetryObservation.OutputRejected(output.failure)
+            }
         }
     }
 }

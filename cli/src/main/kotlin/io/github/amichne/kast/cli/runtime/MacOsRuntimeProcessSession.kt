@@ -17,8 +17,17 @@ internal sealed interface RuntimeProcessStart {
         val origin: RuntimeProcessStartOrigin,
     ) : RuntimeProcessStart
 
-    data object Rejected : RuntimeProcessStart
+    data class Rejected(val failure: RuntimeProcessStartFailure) : RuntimeProcessStart
     data object Interrupted : RuntimeProcessStart
+}
+
+sealed interface RuntimeProcessStartFailure {
+    data object IdeaJbrUnavailable : RuntimeProcessStartFailure
+    data object UserHomeUnavailable : RuntimeProcessStartFailure
+    data object SessionObservationRejected : RuntimeProcessStartFailure
+    data object SessionSubmissionRejected : RuntimeProcessStartFailure
+    data object ProcessCreationRejected : RuntimeProcessStartFailure
+    data object ChildStartRejected : RuntimeProcessStartFailure
 }
 
 internal enum class RuntimeProcessStartOrigin {
@@ -53,12 +62,16 @@ internal class MacOsRuntimeProcessSession private constructor(
                 RuntimeProcessStartOrigin.EXISTING_SESSION,
             )
             RuntimeSessionObservation.Interrupted -> return RuntimeProcessStart.Interrupted
-            RuntimeSessionObservation.Rejected -> return RuntimeProcessStart.Rejected
+            RuntimeSessionObservation.Rejected -> return RuntimeProcessStart.Rejected(
+                RuntimeProcessStartFailure.SessionObservationRejected,
+            )
             RuntimeSessionObservation.Absent -> Unit
         }
         val submission = when (val construction = launchctlSubmission(command)) {
             is MacOsLaunchctlSubmission.Ready -> construction.arguments
-            is MacOsLaunchctlSubmission.Rejected -> return RuntimeProcessStart.Rejected
+            is MacOsLaunchctlSubmission.Rejected -> return RuntimeProcessStart.Rejected(
+                construction.failure.toProcessStartFailure(),
+            )
         }
         return when (
             launchctl.invoke(submission, LaunchctlExitContract.CompletionOnly)
@@ -68,7 +81,9 @@ internal class MacOsRuntimeProcessSession private constructor(
                 RuntimeProcessStartOrigin.STARTED,
             )
             LaunchctlInvocation.Interrupted -> RuntimeProcessStart.Interrupted
-            LaunchctlInvocation.Absent -> RuntimeProcessStart.Rejected
+            LaunchctlInvocation.Absent -> RuntimeProcessStart.Rejected(
+                RuntimeProcessStartFailure.SessionSubmissionRejected,
+            )
             LaunchctlInvocation.Rejected -> startAfterRejectedSubmission(
                 LaunchctlInvocation.Rejected,
             )
@@ -93,7 +108,9 @@ internal class MacOsRuntimeProcessSession private constructor(
             )
             RuntimeSessionObservation.Absent,
             RuntimeSessionObservation.Rejected,
-                -> RuntimeProcessStart.Rejected
+                -> RuntimeProcessStart.Rejected(
+                    RuntimeProcessStartFailure.SessionSubmissionRejected,
+                )
             RuntimeSessionObservation.Interrupted -> RuntimeProcessStart.Interrupted
         }
     }
@@ -102,13 +119,15 @@ internal class MacOsRuntimeProcessSession private constructor(
      * Proof transition: `IndexerLaunchCommand -> MacOsLaunchctlSubmission`.
      *
      * Establishes the exact launchd submission plus its minimal admitted non-secret environment.
-     * The submitted wrapper retires its own exact service after the indexer's finite startup
-     * rejection status, while unexpected process failure retains launchd's crash-restart
-     * authority. [MacOsRuntimeProcessEnvironmentFailure] is the closed expected failure. Raw
-     * launch arguments leave only at [invokeLaunchctl].
+     * The submitted wrapper retires its own exact service after every child exit, so startup
+     * failure is bounded and observable instead of acquiring crash-restart authority.
+     * [MacOsRuntimeProcessEnvironmentFailure] is the closed expected failure. Raw launch
+     * arguments leave only at [invokeLaunchctl].
      */
     private fun launchctlSubmission(command: IndexerLaunchCommand): MacOsLaunchctlSubmission {
-        val environment = when (val resolution = MacOsRuntimeProcessEnvironment.resolve()) {
+        val environment = when (
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime)
+        ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->
                 return MacOsLaunchctlSubmission.Rejected(resolution.failure)
@@ -122,13 +141,14 @@ internal class MacOsRuntimeProcessSession private constructor(
                 "-o",
                 NULL_DEVICE,
                 "-e",
-                NULL_DEVICE,
+                command.startupLog.toString(),
                 "--",
                 SHELL_EXECUTABLE,
                 "-c",
                 TERMINAL_STARTUP_WRAPPER,
                 SESSION_WRAPPER_NAME,
                 ENV_EXECUTABLE,
+                "-i",
             ) + environment.assignments + command.arguments,
         )
     }
@@ -214,6 +234,14 @@ internal class MacOsRuntimeProcessSession private constructor(
         }
     }
 }
+
+private fun MacOsRuntimeProcessEnvironmentFailure.toProcessStartFailure(): RuntimeProcessStartFailure =
+    when (this) {
+        MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE ->
+            RuntimeProcessStartFailure.IdeaJbrUnavailable
+        MacOsRuntimeProcessEnvironmentFailure.USER_HOME_UNAVAILABLE ->
+            RuntimeProcessStartFailure.UserHomeUnavailable
+    }
 
 private sealed interface MacOsLaunchctlSubmission {
     data class Ready(
@@ -314,9 +342,8 @@ private const val NULL_DEVICE = "/dev/null"
 private const val SESSION_WRAPPER_NAME = "kast-indexer-session"
 private const val TERMINAL_STARTUP_WRAPPER =
     "\"${'$'}@\"; status=${'$'}?; " +
-        "if [ \"${'$'}status\" -eq 70 ]; then " +
         "/bin/launchctl remove \"${'$'}XPC_SERVICE_NAME\" >/dev/null 2>&1 || true; " +
-        "fi; exit \"${'$'}status\""
+        "exit \"${'$'}status\""
 private const val MAC_OS_NAME = "Mac OS X"
 private const val LAUNCHCTL_SERVICE_NOT_FOUND = 113
 private const val SERVICE_DIGEST_BYTES = 12

@@ -98,7 +98,9 @@ class KastCli(
             }
             return executeRequest(action.request, boundary)
         }
-        val boundary = when (val resolution = resolvePassiveRuntimeBoundary(start)) {
+        val boundary = when (
+            val resolution = resolvePassiveRuntimeBoundary(start, action.command)
+        ) {
             is CliRuntimeBoundaryResolution.Resolved -> resolution
             is CliRuntimeBoundaryResolution.Rejected -> return resolution.exit
         }
@@ -106,7 +108,7 @@ class KastCli(
             CliAction.Lifecycle.Status -> statusExit(
                 boundary.endpoint,
                 lifecycle.status(boundary.endpoint),
-                cacheLifecycle.observe(boundary.root.path),
+                boundary.cache,
             )
             CliAction.Lifecycle.Stop -> stopExit(
                 action.command,
@@ -180,7 +182,10 @@ class KastCli(
         return CliRuntimeBoundaryResolution.Resolved(root, endpoint)
     }
 
-    private fun resolvePassiveRuntimeBoundary(start: Path): CliRuntimeBoundaryResolution {
+    private fun resolvePassiveRuntimeBoundary(
+        start: Path,
+        command: CliLifecycleCommand,
+    ): CliRuntimeBoundaryResolution {
         val root = when (val discovery = rootDiscovery.discover(start)) {
             is CanonicalRootDiscovery.Discovered -> discovery.root
             is CanonicalRootDiscovery.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
@@ -193,12 +198,31 @@ class KastCli(
                 boundaryExit(CliBoundaryExitStatus.RUNTIME, "endpoint-unavailable"),
             )
         }
-        if (endpoint.root != root) {
+        val cache = cacheLifecycle.observe(root.path)
+        val exactEndpoint = when (cache) {
+            is RootSidecarCacheObservation.Identified -> when (
+                val resolution = endpoint.forSidecarCache(
+                    cache.status.cacheIdentity,
+                    cache.status.semanticRuntimeId,
+                )
+            ) {
+                is RuntimeEndpointResolution.Resolved -> resolution.endpoint
+                is RuntimeEndpointResolution.Rejected -> return CliRuntimeBoundaryResolution
+                    .Rejected(
+                        boundaryExit(CliBoundaryExitStatus.RUNTIME, "endpoint-unavailable"),
+                    )
+            }
+            RootSidecarCacheObservation.Absent -> endpoint
+            is RootSidecarCacheObservation.Rejected -> return CliRuntimeBoundaryResolution.Rejected(
+                cacheLifecycleExit(command, cache.failure),
+            )
+        }
+        if (exactEndpoint.root != root) {
             return CliRuntimeBoundaryResolution.Rejected(
                 boundaryExit(CliBoundaryExitStatus.RUNTIME, "root-mismatch"),
             )
         }
-        return CliRuntimeBoundaryResolution.Resolved(root, endpoint)
+        return CliRuntimeBoundaryResolution.Resolved(root, exactEndpoint, cache)
     }
 
     private fun executeRequest(
@@ -233,7 +257,7 @@ class KastCli(
             RootSidecarCacheObservation.Absent -> CliExit.Complete(
                 CliBoundaryDocuments.statusCompleteWithoutCache(endpoint, result.state),
             )
-            is RootSidecarCacheObservation.Observed -> CliExit.Complete(
+            is RootSidecarCacheObservation.Identified -> CliExit.Complete(
                 CliBoundaryDocuments.statusComplete(endpoint, result.state, cache),
             )
             is RootSidecarCacheObservation.Rejected -> cacheLifecycleExit(
@@ -316,6 +340,7 @@ private sealed interface CliRuntimeBoundaryResolution {
     data class Resolved(
         val root: CanonicalRoot,
         val endpoint: RuntimeEndpoint,
+        val cache: RootSidecarCacheObservation = RootSidecarCacheObservation.Absent,
     ) : CliRuntimeBoundaryResolution
 
     data class Rejected(

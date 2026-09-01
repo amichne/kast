@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -190,12 +192,22 @@ class IndexSeedFilesystemServiceTest {
         write(source, "log/idea.log", "log")
 
         val runtimeIdentity = supportedRuntime()
-        val cacheIdentity = KastCacheIdentity.derive(project, runtimeIdentity).derivedForSeed()
         val runtime = InstalledIdeRuntime(
             ideaHome,
             Files.createFile(ideaHome.resolve("java")),
             runtimeIdentity,
         )
+        val semanticRuntimeId = when (
+            val refinement = SemanticRuntimeId.parse("sha256:${"9".repeat(64)}")
+        ) {
+            is Refinement.Refined -> refinement.value
+            is Refinement.Rejected -> error(refinement.failure)
+        }
+        val cacheIdentity = KastCacheIdentity.derive(
+            project,
+            runtime,
+            semanticRuntimeId,
+        ).derivedForSeed()
         return SeedFixture(source, cacheRoot, runtime, cacheIdentity)
     }
 

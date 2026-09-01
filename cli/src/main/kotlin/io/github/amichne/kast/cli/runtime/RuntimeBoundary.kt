@@ -15,6 +15,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.util.Base64
 import java.util.HexFormat
 
 /** An exact-root UDS endpoint. */
@@ -70,6 +71,7 @@ enum class RuntimeEndpointFailure {
     ROOT_MISMATCH,
     INVALID_SOCKET_PATH,
     LAUNCH_CONTEXT_REQUIRED,
+    STARTUP_LOG_INVALID,
 }
 
 fun interface RuntimeEndpointLocator {
@@ -101,7 +103,7 @@ internal class RuntimeSocketDirectory private constructor(
             val namespace = sha256Prefix(logicalDirectory.path.toString(), DIGEST_BYTES)
             val physical = PHYSICAL_SOCKET_ROOT.resolve("kast-runtime-$namespace")
             val maximumEndpoint = physical.resolve(
-                "kast-${"0".repeat(DIGEST_HEX_CHARACTERS)}.sock",
+                "kast-${"0".repeat(ENDPOINT_TOKEN_CHARACTERS)}.sock",
             )
             check(
                 maximumEndpoint.toString().toByteArray(StandardCharsets.UTF_8).size <=
@@ -112,7 +114,7 @@ internal class RuntimeSocketDirectory private constructor(
 
         private val PHYSICAL_SOCKET_ROOT = Path.of("/tmp")
         private const val DIGEST_BYTES = 12
-        private const val DIGEST_HEX_CHARACTERS = DIGEST_BYTES * 2
+        private const val ENDPOINT_TOKEN_CHARACTERS = 43
     }
 }
 
@@ -136,6 +138,30 @@ internal class Sha256RuntimeEndpointLocator(
     private companion object {
         const val ENDPOINT_DIGEST_BYTES = 12
     }
+}
+
+/** Refines a semantic endpoint to one exact installed-IDE, JBR, and payload cache identity. */
+internal fun RuntimeEndpoint.forSidecarCache(
+    cacheIdentity: String,
+    semanticRuntimeId: SemanticRuntimeId,
+): RuntimeEndpointResolution {
+    if (!Regex("sha256:[0-9a-f]{64}").matches(cacheIdentity)) {
+        return RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
+    }
+    val socketDirectory = socketPath.parent
+        ?: return RuntimeEndpointResolution.Rejected(RuntimeEndpointFailure.INVALID_SOCKET_PATH)
+    val exactToken = Base64.getUrlEncoder().withoutPadding().encodeToString(
+        MessageDigest.getInstance("SHA-256").digest(
+            "$cacheIdentity\n${semanticRuntimeId.value}".toByteArray(StandardCharsets.UTF_8),
+        ),
+    )
+    return RuntimeEndpoint.at(
+        root,
+        semanticRuntimeId,
+        socketDirectory.resolve(
+            "kast-$exactToken.sock",
+        ),
+    )
 }
 
 private fun sha256Prefix(value: String, bytes: Int): String = HexFormat.of().formatHex(
@@ -190,6 +216,8 @@ class IndexerExecutable private constructor(
 /** Exact process command derived only from admitted executable, root, and endpoint values. */
 class IndexerLaunchCommand private constructor(
     internal val arguments: List<String>,
+    internal val runtime: InstalledIdeRuntime,
+    internal val startupLog: Path,
     internal val processSession: MacOsRuntimeProcessSession,
 ) {
     companion object {
@@ -206,7 +234,10 @@ class IndexerLaunchCommand private constructor(
             root: CanonicalRoot,
             endpoint: RuntimeEndpoint,
             context: SidecarLaunchContext,
-        ): IndexerLaunchCommandConstruction = if (endpoint.root == root) {
+        ): IndexerLaunchCommandConstruction = if (
+            endpoint.root == root &&
+            !Files.isSymbolicLink(context.logDirectory.resolve("startup.log"))
+        ) {
             IndexerLaunchCommandConstruction.Created(
                 IndexerLaunchCommand(
                     arguments = listOf(
@@ -222,11 +253,19 @@ class IndexerLaunchCommand private constructor(
                         "--private-plugins-path=${context.privatePluginsDirectory}",
                         "--cache-state-path=${context.cacheRoot.resolve("cache-state")}",
                     ),
+                    runtime = context.runtime,
+                    startupLog = context.logDirectory.resolve("startup.log"),
                     processSession = MacOsRuntimeProcessSession.from(endpoint),
                 ),
             )
         } else {
-            IndexerLaunchCommandConstruction.Rejected(RuntimeEndpointFailure.ROOT_MISMATCH)
+            IndexerLaunchCommandConstruction.Rejected(
+                if (endpoint.root != root) {
+                    RuntimeEndpointFailure.ROOT_MISMATCH
+                } else {
+                    RuntimeEndpointFailure.STARTUP_LOG_INVALID
+                },
+            )
         }
 
         /** Legacy callers cannot manufacture a launch without the new sidecar authority. */
@@ -302,11 +341,14 @@ sealed interface RuntimeAdmissionFailure {
     data object ArchiveRejected : RuntimeAdmissionFailure
     data object LayoutInvalid : RuntimeAdmissionFailure
     data object RuntimeIncompatible : RuntimeAdmissionFailure
-    data object ProcessStartFailed : RuntimeAdmissionFailure
+    data class ProcessStartFailed(
+        val failure: RuntimeProcessStartFailure,
+    ) : RuntimeAdmissionFailure
     data object SessionEndedBeforeReady : RuntimeAdmissionFailure
     data object ProcessObservationFailed : RuntimeAdmissionFailure
     data object EndpointUnavailable : RuntimeAdmissionFailure
     data object RuntimeIdentityMismatch : RuntimeAdmissionFailure
+    data object LegacySidecarActive : RuntimeAdmissionFailure
     data object IdeRootInvalid : RuntimeAdmissionFailure
     data object IdeLocationRejected : RuntimeAdmissionFailure
     data object IdeDescriptorReadRejected : RuntimeAdmissionFailure
@@ -333,11 +375,20 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     RuntimeAdmissionFailure.ArchiveRejected -> "archive-rejected"
     RuntimeAdmissionFailure.LayoutInvalid -> "layout-invalid"
     RuntimeAdmissionFailure.RuntimeIncompatible -> "runtime-incompatible"
-    RuntimeAdmissionFailure.ProcessStartFailed -> "process-start-failed"
+    is RuntimeAdmissionFailure.ProcessStartFailed -> when (failure) {
+        RuntimeProcessStartFailure.IdeaJbrUnavailable -> "idea-jbr-unavailable"
+        RuntimeProcessStartFailure.UserHomeUnavailable -> "user-home-unavailable"
+        RuntimeProcessStartFailure.SessionObservationRejected,
+        RuntimeProcessStartFailure.SessionSubmissionRejected,
+        RuntimeProcessStartFailure.ProcessCreationRejected,
+        RuntimeProcessStartFailure.ChildStartRejected,
+            -> "process-start-failed"
+    }
     RuntimeAdmissionFailure.SessionEndedBeforeReady -> "session-ended-before-ready"
     RuntimeAdmissionFailure.ProcessObservationFailed -> "process-observation-failed"
     RuntimeAdmissionFailure.EndpointUnavailable -> "endpoint-unavailable"
     RuntimeAdmissionFailure.RuntimeIdentityMismatch -> "runtime-identity-mismatch"
+    RuntimeAdmissionFailure.LegacySidecarActive -> "legacy-sidecar-active"
     RuntimeAdmissionFailure.IdeRootInvalid -> "ide-root-invalid"
     RuntimeAdmissionFailure.IdeLocationRejected -> "ide-location-rejected"
     RuntimeAdmissionFailure.IdeDescriptorReadRejected -> "ide-descriptor-read-rejected"
@@ -428,8 +479,8 @@ internal class ExactRootProcessRuntimeDemander(
             RuntimeProcessStart.Interrupted -> return RuntimeAdmission.Rejected(
                 RuntimeAdmissionFailure.Interrupted,
             )
-            RuntimeProcessStart.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.ProcessStartFailed,
+            is RuntimeProcessStart.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeAdmissionFailure.ProcessStartFailed(start.failure),
             )
         }
         repeat(RuntimeStartupBound.ENTERPRISE_ACCEPTED.probeAttempts) {

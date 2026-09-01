@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -11,6 +12,8 @@ import java.util.HexFormat
 private val INDEX_SEED_COMPATIBILITY_TOKEN = Regex("[A-Za-z0-9][A-Za-z0-9._+-]{0,127}")
 private val INDEX_SEED_DIGEST = Regex("sha256:[0-9a-f]{64}")
 private val INDEX_SEED_ENTRY = Regex("[A-Za-z0-9._/-]+")
+private val IDEA_RUNTIME_BUILD = Regex("([0-9]{3})\\.[0-9]+(?:\\.[0-9]+)*")
+private val KOTLIN_RUNTIME_BUILD = Regex("([0-9]{3})\\.[0-9]+(?:\\.[0-9]+)*-IJ")
 
 /** Every expected failure admitted by installed-runtime discovery and index seeding. */
 sealed interface IndexSeedFailure {
@@ -30,38 +33,73 @@ sealed interface IndexSeedFailure {
     data object ValidationFailure : IndexSeedFailure
 }
 
-/** The sole IDEA and Kotlin build pair supported by one Kast release. */
+@JvmInline
+private value class JetBrainsPlatformReleaseLine(val value: String)
+
+private data class JetBrainsRuntimeBuild(
+    val value: String,
+    val releaseLine: JetBrainsPlatformReleaseLine,
+)
+
+internal sealed interface IdeRuntimePairCompatibility {
+    data class Compatible(val observed: SupportedIdeRuntimePair) : IdeRuntimePairCompatibility
+    data object Incompatible : IdeRuntimePairCompatibility
+}
+
+/** An exact IDEA and Kotlin build pair with independently refined platform release lines. */
 class SupportedIdeRuntimePair private constructor(
-    val ideaBuild: String,
-    val kotlinPluginBuild: String,
+    private val idea: JetBrainsRuntimeBuild,
+    private val kotlinPlugin: JetBrainsRuntimeBuild,
 ) {
+    val ideaBuild: String get() = idea.value
+    val kotlinPluginBuild: String get() = kotlinPlugin.value
+
     override fun equals(other: Any?): Boolean =
         other is SupportedIdeRuntimePair &&
             ideaBuild == other.ideaBuild && kotlinPluginBuild == other.kotlinPluginBuild
 
     override fun hashCode(): Int = 31 * ideaBuild.hashCode() + kotlinPluginBuild.hashCode()
 
+    /** Preserves the observed exact pair only when both release lines remain supported. */
+    internal fun compatibilityWith(
+        observed: SupportedIdeRuntimePair,
+    ): IdeRuntimePairCompatibility = if (
+        idea.releaseLine == observed.idea.releaseLine &&
+        kotlinPlugin.releaseLine == observed.kotlinPlugin.releaseLine
+    ) {
+        IdeRuntimePairCompatibility.Compatible(observed)
+    } else {
+        IdeRuntimePairCompatibility.Incompatible
+    }
+
     companion object {
         /**
          * Proof transition: `String + String -> SupportedIdeRuntimePairAdmission`.
          *
-         * Establishes two bounded compatibility tokens owned by release metadata. Malformed
-         * metadata is closed [IndexSeedFailure.ValidationFailure]. Raw text may leave only when
-         * comparing an installed IDEA boundary.
+         * Establishes two exact, bounded build identities with explicit JetBrains platform
+         * release lines. Malformed metadata is closed [IndexSeedFailure.ValidationFailure]. Raw
+         * text may leave only at installed-runtime, cache-receipt, and product-report boundaries.
          */
         fun admit(
             ideaBuild: String,
             kotlinPluginBuild: String,
-        ): SupportedIdeRuntimePairAdmission = if (
-            INDEX_SEED_COMPATIBILITY_TOKEN.matches(ideaBuild) &&
-            INDEX_SEED_COMPATIBILITY_TOKEN.matches(kotlinPluginBuild)
-        ) {
-            SupportedIdeRuntimePairAdmission.Admitted(
-                SupportedIdeRuntimePair(ideaBuild, kotlinPluginBuild),
+        ): SupportedIdeRuntimePairAdmission {
+            val idea = IDEA_RUNTIME_BUILD.matchEntire(ideaBuild)?.runtimeBuild(ideaBuild)
+                ?: return SupportedIdeRuntimePairAdmission.Rejected(
+                    IndexSeedFailure.ValidationFailure,
+                )
+            val kotlin = KOTLIN_RUNTIME_BUILD.matchEntire(kotlinPluginBuild)
+                ?.runtimeBuild(kotlinPluginBuild)
+                ?: return SupportedIdeRuntimePairAdmission.Rejected(
+                    IndexSeedFailure.ValidationFailure,
+                )
+            return SupportedIdeRuntimePairAdmission.Admitted(
+                SupportedIdeRuntimePair(idea, kotlin),
             )
-        } else {
-            SupportedIdeRuntimePairAdmission.Rejected(IndexSeedFailure.ValidationFailure)
         }
+
+        private fun MatchResult.runtimeBuild(raw: String): JetBrainsRuntimeBuild =
+            JetBrainsRuntimeBuild(raw, JetBrainsPlatformReleaseLine(groupValues[1]))
     }
 }
 
@@ -74,15 +112,28 @@ sealed interface SupportedIdeRuntimePairAdmission {
 class SidecarCacheReleaseIdentity private constructor(
     private val supportedPair: SupportedIdeRuntimePair,
     private val kastPayloadDigest: String,
+    private val semanticRuntimeId: SemanticRuntimeId,
 ) {
     /** Retains only identities compatible with the exact current Kast release. */
-    fun admits(identity: IdeRuntimeIdentity): Boolean =
-        identity.supportedPair == supportedPair &&
-            identity.kastPayloadDigest == kastPayloadDigest
+    fun admits(identity: KastCacheIdentity): Boolean =
+        supportedPair.compatibilityWith(identity.runtimeIdentity.supportedPair) is
+            IdeRuntimePairCompatibility.Compatible &&
+            identity.runtimeIdentity.kastPayloadDigest == kastPayloadDigest &&
+            identity.semanticRuntimeId == semanticRuntimeId
+
+    /** Re-observes one receipt's IDEA home under this release's compatibility authority. */
+    internal fun discoverCurrentRuntime(
+        ideaHome: Path,
+        resolver: SidecarIdeRuntimeResolver,
+    ): InstalledIdeRuntimeDiscoveryResult = resolver.resolve(
+        supportedPair,
+        kastPayloadDigest,
+        IdeHomeSelection.Explicit(ideaHome),
+    )
 
     companion object {
         /**
-         * Proof transition: `SupportedIdeRuntimePair + String ->
+         * Proof transition: `SupportedIdeRuntimePair + String + SemanticRuntimeId ->
          * SidecarCacheReleaseIdentityAdmission`.
          *
          * The raw digest is accepted only at the release-manifest boundary. Once admitted, cache
@@ -93,11 +144,16 @@ class SidecarCacheReleaseIdentity private constructor(
         fun admit(
             supportedPair: SupportedIdeRuntimePair,
             kastPayloadDigest: String,
+            semanticRuntimeId: SemanticRuntimeId,
         ): SidecarCacheReleaseIdentityAdmission = if (
             INDEX_SEED_DIGEST.matches(kastPayloadDigest)
         ) {
             SidecarCacheReleaseIdentityAdmission.Admitted(
-                SidecarCacheReleaseIdentity(supportedPair, kastPayloadDigest),
+                SidecarCacheReleaseIdentity(
+                    supportedPair,
+                    kastPayloadDigest,
+                    semanticRuntimeId,
+                ),
             )
         } else {
             SidecarCacheReleaseIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
@@ -122,6 +178,7 @@ data class IdeRuntimeIdentityCandidate(
 
 /** Exact installed platform, JBR, Kotlin plugin, and private Kast payload identity. */
 class IdeRuntimeIdentity private constructor(
+    /** The exact observed pair after release-line compatibility was proven. */
     val supportedPair: SupportedIdeRuntimePair,
     val jbrIdentity: String,
     val kastPayloadDigest: String,
@@ -148,8 +205,9 @@ class IdeRuntimeIdentity private constructor(
          * Proof transition: `SupportedIdeRuntimePair + IdeRuntimeIdentityCandidate ->
          * IdeRuntimeIdentityAdmission`.
          *
-         * Establishes exact release compatibility plus bounded JBR and SHA-256 private-payload
-         * identities. [IndexSeedFailure.Incompatibility] retains an unsupported pair;
+         * Establishes release-line compatibility while preserving the observed exact build pair,
+         * plus bounded JBR and SHA-256 private-payload identities.
+         * [IndexSeedFailure.Incompatibility] retains an unsupported pair;
          * malformed remaining fields fail closed as [IndexSeedFailure.ValidationFailure]. Raw
          * identity fields may leave only at installation discovery and process launch boundaries.
          */
@@ -157,17 +215,28 @@ class IdeRuntimeIdentity private constructor(
             supported: SupportedIdeRuntimePair,
             candidate: IdeRuntimeIdentityCandidate,
         ): IdeRuntimeIdentityAdmission {
-            if (
-                candidate.ideaBuild != supported.ideaBuild ||
-                candidate.kotlinPluginBuild != supported.kotlinPluginBuild
-            ) {
-                return IdeRuntimeIdentityAdmission.Rejected(
-                    IndexSeedFailure.Incompatibility(
-                        supported,
-                        candidate.ideaBuild,
-                        candidate.kotlinPluginBuild,
-                    ),
+            val observed = when (
+                val admission = SupportedIdeRuntimePair.admit(
+                    candidate.ideaBuild,
+                    candidate.kotlinPluginBuild,
                 )
+            ) {
+                is SupportedIdeRuntimePairAdmission.Admitted -> admission.pair
+                is SupportedIdeRuntimePairAdmission.Rejected ->
+                    return IdeRuntimeIdentityAdmission.Rejected(admission.failure)
+            }
+            val compatible = when (
+                val compatibility = supported.compatibilityWith(observed)
+            ) {
+                is IdeRuntimePairCompatibility.Compatible -> compatibility.observed
+                IdeRuntimePairCompatibility.Incompatible ->
+                    return IdeRuntimeIdentityAdmission.Rejected(
+                        IndexSeedFailure.Incompatibility(
+                            supported,
+                            candidate.ideaBuild,
+                            candidate.kotlinPluginBuild,
+                        ),
+                    )
             }
             if (
                 !INDEX_SEED_COMPATIBILITY_TOKEN.matches(candidate.jbrIdentity) ||
@@ -177,7 +246,7 @@ class IdeRuntimeIdentity private constructor(
             }
             return IdeRuntimeIdentityAdmission.Admitted(
                 IdeRuntimeIdentity(
-                    supported,
+                    compatible,
                     candidate.jbrIdentity,
                     candidate.kastPayloadDigest,
                 ),
@@ -194,38 +263,72 @@ sealed interface IdeRuntimeIdentityAdmission {
 /** Stable key for one canonical project and one exact sidecar runtime identity. */
 class KastCacheIdentity private constructor(
     val canonicalProjectRoot: Path,
+    val ideaHome: Path,
+    val javaExecutable: Path,
+    val semanticRuntimeId: SemanticRuntimeId,
     val runtimeIdentity: IdeRuntimeIdentity,
     val key: String,
 ) {
     override fun equals(other: Any?): Boolean =
         other is KastCacheIdentity &&
             canonicalProjectRoot == other.canonicalProjectRoot &&
+            ideaHome == other.ideaHome && javaExecutable == other.javaExecutable &&
+            semanticRuntimeId == other.semanticRuntimeId &&
             runtimeIdentity == other.runtimeIdentity && key == other.key
 
-    override fun hashCode(): Int =
-        31 * (31 * canonicalProjectRoot.hashCode() + runtimeIdentity.hashCode()) + key.hashCode()
+    override fun hashCode(): Int = listOf(
+        canonicalProjectRoot,
+        ideaHome,
+        javaExecutable,
+        semanticRuntimeId,
+        runtimeIdentity,
+        key,
+    ).hashCode()
 
     companion object {
         /**
-         * Proof transition: `Path + IdeRuntimeIdentity -> KastCacheIdentityDerivation`.
+         * Proof transition: `Path + InstalledIdeRuntime + SemanticRuntimeId ->
+         * KastCacheIdentityDerivation`.
          *
          * Establishes an existing physical canonical project root and deterministic SHA-256 key
-         * over that root plus every runtime identity field. Invalid roots remain closed
-         * [IndexSeedFailure.ValidationFailure]. The path and key may leave only at the private
-         * cache-directory boundary.
+         * over that root, physical IDEA/JBR launch authority, and every runtime identity field.
+         * Invalid paths remain closed [IndexSeedFailure.ValidationFailure]. The paths and key may
+         * leave only at private cache and process boundaries.
          */
         fun derive(
             projectRoot: Path,
-            runtimeIdentity: IdeRuntimeIdentity,
+            runtime: InstalledIdeRuntime,
+            semanticRuntimeId: SemanticRuntimeId,
         ): KastCacheIdentityDerivation {
-            val canonical = canonicalDirectory(projectRoot)
+            val canonicalProject = canonicalDirectory(projectRoot)
                 ?: return KastCacheIdentityDerivation.Rejected(
                     IndexSeedFailure.ValidationFailure,
                 )
-            val material = "${canonical}\n${runtimeIdentity.identityMaterial()}"
+            val canonicalIdeaHome = canonicalDirectory(runtime.home)
+                ?: return KastCacheIdentityDerivation.Rejected(
+                    IndexSeedFailure.ValidationFailure,
+                )
+            val canonicalJava = canonicalRegularFile(runtime.javaExecutable)
+                ?: return KastCacheIdentityDerivation.Rejected(
+                    IndexSeedFailure.ValidationFailure,
+                )
+            val material = listOf(
+                canonicalProject.toString(),
+                canonicalIdeaHome.toString(),
+                canonicalJava.toString(),
+                semanticRuntimeId.value,
+                runtime.identity.identityMaterial(),
+            ).joinToString("\n")
             val key = sha256(material.toByteArray(StandardCharsets.UTF_8))
             return KastCacheIdentityDerivation.Derived(
-                KastCacheIdentity(canonical, runtimeIdentity, key),
+                KastCacheIdentity(
+                    canonicalProject,
+                    canonicalIdeaHome,
+                    canonicalJava,
+                    semanticRuntimeId,
+                    runtime.identity,
+                    key,
+                ),
             )
         }
     }
@@ -478,6 +581,19 @@ private fun canonicalDirectory(path: Path): Path? {
     return try {
         path.toRealPath().takeIf { canonical ->
             canonical == path && Files.isDirectory(canonical, LinkOption.NOFOLLOW_LINKS)
+        }
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
+}
+
+private fun canonicalRegularFile(path: Path): Path? {
+    if (!path.isAbsolute || path.normalize() != path) return null
+    return try {
+        path.toRealPath().takeIf { canonical ->
+            canonical == path && Files.isRegularFile(canonical, LinkOption.NOFOLLOW_LINKS)
         }
     } catch (_: IOException) {
         null

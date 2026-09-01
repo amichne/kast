@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -13,18 +15,37 @@ class IndexSeedProtocolTest {
     fun `runtime and cache identities retain every proven compatibility input`(
         @TempDir temporary: Path,
     ) {
-        val runtime = supportedRuntime()
+        val runtimeIdentity = supportedRuntime()
+        val runtime = installedRuntime(temporary.resolve("idea"), runtimeIdentity)
         val firstRoot = Files.createDirectory(temporary.resolve("first")).toRealPath()
         val secondRoot = Files.createDirectory(temporary.resolve("second")).toRealPath()
 
-        val first = KastCacheIdentity.derive(firstRoot, runtime).derived()
-        val same = KastCacheIdentity.derive(firstRoot, runtime).derived()
-        val second = KastCacheIdentity.derive(secondRoot, runtime).derived()
+        val semanticRuntimeId = semanticRuntimeId()
+        val first = KastCacheIdentity.derive(firstRoot, runtime, semanticRuntimeId).derived()
+        val same = KastCacheIdentity.derive(firstRoot, runtime, semanticRuntimeId).derived()
+        val second = KastCacheIdentity.derive(secondRoot, runtime, semanticRuntimeId).derived()
 
         assertEquals(first, same)
         assertNotEquals(first, second)
         assertEquals(firstRoot, first.canonicalProjectRoot)
-        assertEquals(runtime, first.runtimeIdentity)
+        assertEquals(semanticRuntimeId, first.semanticRuntimeId)
+        assertEquals(runtimeIdentity, first.runtimeIdentity)
+    }
+
+    @Test
+    fun `physical IDEA and JBR launch authority participates in cache identity`(
+        @TempDir temporary: Path,
+    ) {
+        val root = Files.createDirectory(temporary.resolve("project")).toRealPath()
+        val identity = supportedRuntime()
+        val first = installedRuntime(temporary.resolve("first-idea"), identity)
+        val second = installedRuntime(temporary.resolve("second-idea"), identity)
+
+        val firstCache = KastCacheIdentity.derive(root, first, semanticRuntimeId()).derived()
+        val secondCache = KastCacheIdentity.derive(root, second, semanticRuntimeId()).derived()
+
+        assertNotEquals(firstCache, secondCache)
+        assertNotEquals(firstCache.key, secondCache.key)
     }
 
     @Test
@@ -88,7 +109,8 @@ class IndexSeedProtocolTest {
         val root = Files.createDirectory(temporary.resolve("project")).toRealPath()
         val sourcePath = Files.createDirectory(temporary.resolve("system")).toRealPath()
         val runtime = supportedRuntime()
-        val cache = KastCacheIdentity.derive(root, runtime).derived()
+        val installed = installedRuntime(temporary.resolve("idea"), runtime)
+        val cache = KastCacheIdentity.derive(root, installed, semanticRuntimeId()).derived()
         val source = quiescent(sourcePath, runtime)
 
         assertEquals(
@@ -127,7 +149,8 @@ class IndexSeedProtocolTest {
         val root = Files.createDirectory(temporary.resolve("project")).toRealPath()
         val sourcePath = Files.createDirectory(temporary.resolve("system")).toRealPath()
         val runtime = supportedRuntime()
-        val cache = KastCacheIdentity.derive(root, runtime).derived()
+        val installed = installedRuntime(temporary.resolve("idea"), runtime)
+        val cache = KastCacheIdentity.derive(root, installed, semanticRuntimeId()).derived()
         val before = IndexContentManifest.from(
             mapOf("index/foo" to digest('e'), "caches/bar" to digest('f')),
         ).admitted()
@@ -168,6 +191,18 @@ class IndexSeedProtocolTest {
         kotlinPluginBuild = "262.9437.185-IJ",
     ).admitted()
 
+    private fun installedRuntime(
+        path: Path,
+        identity: IdeRuntimeIdentity,
+    ): InstalledIdeRuntime {
+        val home = Files.createDirectories(path).toRealPath()
+        val java = Files.createDirectories(home.resolve("jbr/Contents/Home/bin"))
+            .resolve("java")
+        Files.writeString(java, "#!/bin/sh\nexit 0\n")
+        java.toFile().setExecutable(true)
+        return InstalledIdeRuntime(home, java.toRealPath(), identity)
+    }
+
     private fun supportedRuntime(payload: String = digest('a')): IdeRuntimeIdentity =
         IdeRuntimeIdentity.admit(
             supportedPair(),
@@ -189,6 +224,13 @@ class IndexSeedProtocolTest {
         ).admitted()
 
     private fun digest(character: Char): String = "sha256:${character.toString().repeat(64)}"
+
+    private fun semanticRuntimeId(): SemanticRuntimeId = when (
+        val refinement = SemanticRuntimeId.parse(digest('9'))
+    ) {
+        is Refinement.Refined -> refinement.value
+        is Refinement.Rejected -> error(refinement.failure)
+    }
 }
 
 private fun IdeRuntimeIdentityAdmission.admitted(): IdeRuntimeIdentity =

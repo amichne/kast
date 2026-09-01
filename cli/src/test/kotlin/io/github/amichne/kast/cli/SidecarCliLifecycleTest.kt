@@ -16,11 +16,58 @@ import java.nio.file.Path
 
 class SidecarCliLifecycleTest {
     @Test
-    fun `status observes endpoint and cache without demanding a runtime`(
+    fun `passive command fails closed before lifecycle effects when cache identity is rejected`(
+        @TempDir temporary: Path,
+    ) {
+        val fixture = fixture(temporary)
+        var lifecycleCalls = 0
+        val cli = fixture.cli(
+            runtimeDemander = object : RootRuntimeDemander {
+                override fun demand(
+                    root: CanonicalRoot,
+                    demand: HostedRuntimeDemand,
+                    startup: RuntimeStartupRequest,
+                ): RuntimeAdmission = error("status must not demand a runtime")
+            },
+            lifecycle = object : RuntimeLifecycleController {
+                override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult {
+                    lifecycleCalls += 1
+                    return RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED)
+                }
+
+                override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
+                    error("stop was not requested")
+
+                override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
+                    error("clean was not requested")
+            },
+            cacheLifecycle = object : RootSidecarCacheLifecycle {
+                override fun observe(root: Path): RootSidecarCacheObservation =
+                    RootSidecarCacheObservation.Rejected(
+                        SidecarCacheLifecycleFailure.INVALID_IDENTITY,
+                    )
+
+                override fun quarantine(root: Path): RootSidecarCacheQuarantine =
+                    error("status must not quarantine a cache")
+            },
+        )
+
+        val exit = cli.execute(listOf("status"), fixture.root.path)
+
+        assertEquals(0, lifecycleCalls)
+        assertTrue(exit is CliExit.BoundaryRejected)
+        assertTrue(exit.document.value.contains("status-cache-invalid-identity"))
+    }
+
+    @Test
+    fun `status targets exact stale cache endpoint without demanding a runtime`(
         @TempDir temporary: Path,
     ) {
         val fixture = fixture(temporary)
         var runtimeDemands = 0
+        val cacheIdentity = "sha256:${"c".repeat(64)}"
+        val staleRuntimeId = semanticRuntimeId('7')
+        var observedEndpoint: RuntimeEndpoint? = null
         val cli = fixture.cli(
             runtimeDemander = object : RootRuntimeDemander {
                 override fun demand(
@@ -32,12 +79,24 @@ class SidecarCliLifecycleTest {
                     error("status must not demand a runtime")
                 }
             },
-            lifecycle = observedLifecycle(RuntimeLifecycleState.STOPPED),
+            lifecycle = object : RuntimeLifecycleController {
+                override fun status(endpoint: RuntimeEndpoint): RuntimeStatusResult {
+                    observedEndpoint = endpoint
+                    return RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED)
+                }
+
+                override fun stop(endpoint: RuntimeEndpoint): RuntimeStopResult =
+                    error("stop was not requested")
+
+                override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
+                    error("clean was not requested")
+            },
             cacheLifecycle = object : RootSidecarCacheLifecycle {
                 override fun observe(root: Path): RootSidecarCacheObservation =
-                    RootSidecarCacheObservation.Observed(
+                    RootSidecarCacheObservation.Stale(
                         RootSidecarCacheStatus(
-                            cacheIdentity = "cache-key",
+                            cacheIdentity = cacheIdentity,
+                            semanticRuntimeId = staleRuntimeId,
                             state = KastCacheState.SMART,
                             ideaHome = temporary.resolve("IntelliJ IDEA.app"),
                             ideaBuild = "262.9437.185",
@@ -55,12 +114,20 @@ class SidecarCliLifecycleTest {
         val exit = cli.execute(listOf("status"), fixture.root.path)
 
         assertEquals(0, runtimeDemands)
+        assertEquals(
+            (
+                fixture.endpoint.forSidecarCache(cacheIdentity, staleRuntimeId) as
+                    RuntimeEndpointResolution.Resolved
+                )
+                .endpoint,
+            observedEndpoint,
+        )
         assertTrue(exit is CliExit.Complete)
         assertEquals(
             "{\"command\":\"status\",\"status\":\"complete\",\"runtime\":\"stopped\"," +
-                "\"root\":\"${fixture.root.path}\",\"runtimeId\":\"${fixture.runtimeId.value}\"," +
+                "\"root\":\"${fixture.root.path}\",\"runtimeId\":\"${staleRuntimeId.value}\"," +
                 "\"removed\":[],\"cache\":{\"state\":\"smart\"," +
-                "\"identity\":\"cache-key\",\"ideaHome\":\"${temporary.resolve("IntelliJ IDEA.app")}\"," +
+                "\"identity\":\"$cacheIdentity\",\"ideaHome\":\"${temporary.resolve("IntelliJ IDEA.app")}\"," +
                 "\"ideaBuild\":\"262.9437.185\",\"kotlinPluginBuild\":\"262.9437.185-IJ\"," +
                 "\"jbrIdentity\":\"25.0.3+9-b508.16-aarch64\"," +
                 "\"kastPayloadDigest\":\"sha256:${"a".repeat(64)}\"}}",
@@ -74,6 +141,7 @@ class SidecarCliLifecycleTest {
     ) {
         val fixture = fixture(temporary)
         val events = mutableListOf<String>()
+        val cacheIdentity = "sha256:${"d".repeat(64)}"
         val restart = RuntimeStartupRequest.Requested(
             StartupIdeHome.Explicit(temporary.resolve("IntelliJ IDEA.app")),
             StartupCacheIntent.ReuseOrFresh,
@@ -105,8 +173,10 @@ class SidecarCliLifecycleTest {
                 }
             },
             cacheLifecycle = object : RootSidecarCacheLifecycle {
-                override fun observe(root: Path): RootSidecarCacheObservation =
-                    error("reindex must not use status observation")
+                override fun observe(root: Path): RootSidecarCacheObservation {
+                    events += "observe"
+                    return observedCache(temporary, cacheIdentity)
+                }
 
                 override fun quarantine(root: Path): RootSidecarCacheQuarantine {
                     events += "quarantine"
@@ -120,7 +190,7 @@ class SidecarCliLifecycleTest {
 
         val exit = cli.execute(listOf("reindex"), fixture.root.path)
 
-        assertEquals(listOf("stop", "quarantine", "demand"), events)
+        assertEquals(listOf("observe", "stop", "quarantine", "demand"), events)
         assertTrue(exit is CliExit.BoundaryRejected)
         val rejected = exit as CliExit.BoundaryRejected
         assertEquals(CliBoundaryExitStatus.RUNTIME, rejected.status)
@@ -138,6 +208,31 @@ class SidecarCliLifecycleTest {
             override fun clean(endpoint: RuntimeEndpoint): RuntimeCleanResult =
                 error("clean was not requested")
         }
+
+    private fun observedCache(
+        temporary: Path,
+        cacheIdentity: String,
+    ): RootSidecarCacheObservation = RootSidecarCacheObservation.Observed(
+        RootSidecarCacheStatus(
+            cacheIdentity = cacheIdentity,
+            semanticRuntimeId = semanticRuntimeId(),
+            state = KastCacheState.SMART,
+            ideaHome = temporary.resolve("IntelliJ IDEA.app"),
+            ideaBuild = "262.9437.185",
+            kotlinPluginBuild = "262.9437.185-IJ",
+            jbrIdentity = "25.0.3+9-b508.16-aarch64",
+            kastPayloadDigest = "sha256:${"a".repeat(64)}",
+        ),
+    )
+
+    private fun semanticRuntimeId(character: Char = 'b'): SemanticRuntimeId = when (
+        val refinement = SemanticRuntimeId.parse(
+            "sha256:${character.toString().repeat(64)}",
+        )
+    ) {
+        is Refinement.Refined -> refinement.value
+        is Refinement.Rejected -> error(refinement.failure)
+    }
 
     private data class Fixture(
         val root: CanonicalRoot,

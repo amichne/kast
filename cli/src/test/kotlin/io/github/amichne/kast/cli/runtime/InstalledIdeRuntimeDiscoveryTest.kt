@@ -33,6 +33,31 @@ class InstalledIdeRuntimeDiscoveryTest {
     }
 
     @Test
+    fun `compatible patch builds retain their exact installed runtime identity`(
+        @TempDir temporary: Path,
+    ) {
+        val home = ideaHome(
+            temporary.resolve("patched-idea"),
+            ideaBuild = "262.9999.41",
+            kotlinBuild = "262.8888.17-IJ",
+        )
+
+        val discovered = InstalledIdeRuntimeDiscovery.discover(
+            support = supportedPair(),
+            kastPayloadDigest = digest('b'),
+            selection = IdeHomeSelection.Explicit(home),
+        ).discovered()
+
+        assertEquals("262.9999.41", discovered.identity.supportedPair.ideaBuild)
+        assertEquals(
+            "262.8888.17-IJ",
+            discovered.identity.supportedPair.kotlinPluginBuild,
+        )
+        assertEquals("jbr-25.0.3+9-b508.16-aarch64", discovered.identity.jbrIdentity)
+        assertEquals(digest('b'), discovered.identity.kastPayloadDigest)
+    }
+
+    @Test
     fun `automatic discovery fails closed for missing and ambiguous matches`(
         @TempDir temporary: Path,
     ) {

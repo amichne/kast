@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
+import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -19,6 +21,7 @@ class SidecarCacheLifecycleTest {
         val lifecycle = FilesystemRootSidecarCacheLifecycle(
             cacheRoot,
             releaseIdentity(runtimeIdentity()),
+            missingRuntimeResolver,
         )
 
         assertEquals(RootSidecarCacheObservation.Absent, lifecycle.observe(project))
@@ -36,9 +39,10 @@ class SidecarCacheLifecycleTest {
         val alias = temporary.resolve("cache-parent-alias")
         Files.createSymbolicLink(alias, physicalParent)
         val identity = runtimeIdentity()
+        val runtime = InstalledIdeRuntime(ideaHome, java, identity)
         val cacheIdentity = assertInstanceOf(
             KastCacheIdentityDerivation.Derived::class.java,
-            KastCacheIdentity.derive(project, identity),
+            KastCacheIdentity.derive(project, runtime, semanticRuntimeId()),
         ).identity
         val preparer = FilesystemSidecarCachePreparer(
             alias.resolve("caches"),
@@ -58,7 +62,7 @@ class SidecarCacheLifecycleTest {
         val prepared = assertInstanceOf(
             SidecarCachePreparation.Prepared::class.java,
             preparer.prepare(
-                InstalledIdeRuntime(ideaHome, java, identity),
+                runtime,
                 cacheIdentity,
                 StartupCacheIntent.ReuseOrFresh,
             ),
@@ -69,6 +73,16 @@ class SidecarCacheLifecycleTest {
             prepared.root,
         )
         assertTrue(!Files.isSymbolicLink(prepared.root))
+        val lifecycle = FilesystemRootSidecarCacheLifecycle(
+            alias.resolve("caches"),
+            releaseIdentity(identity),
+            cacheRuntimeResolver(runtime),
+        )
+        val observed = assertInstanceOf(
+            RootSidecarCacheObservation.Observed::class.java,
+            lifecycle.observe(project),
+        )
+        assertEquals(cacheIdentity.key, observed.status.cacheIdentity)
     }
 
     @Test
@@ -80,11 +94,11 @@ class SidecarCacheLifecycleTest {
         val sourceMarker = Files.writeString(sourceIdea.resolve("must-not-change"), "source")
         val cacheRoot = Files.createDirectory(temporary.resolve("caches")).toRealPath()
         val identity = runtimeIdentity()
+        val runtime = InstalledIdeRuntime(ideaHome, java, identity)
         val cacheIdentity = assertInstanceOf(
             KastCacheIdentityDerivation.Derived::class.java,
-            KastCacheIdentity.derive(project, identity),
+            KastCacheIdentity.derive(project, runtime, semanticRuntimeId()),
         ).identity
-        val runtime = InstalledIdeRuntime(ideaHome, java, identity)
         val preparer = FilesystemSidecarCachePreparer(
             cacheRoot,
             sourceIdea,
@@ -114,7 +128,11 @@ class SidecarCacheLifecycleTest {
             prepared.root,
             KastCacheState.SMART,
         ))
-        val lifecycle = FilesystemRootSidecarCacheLifecycle(cacheRoot, releaseIdentity(identity))
+        val lifecycle = FilesystemRootSidecarCacheLifecycle(
+            cacheRoot,
+            releaseIdentity(identity),
+            cacheRuntimeResolver(runtime),
+        )
         val smart = assertInstanceOf(
             RootSidecarCacheObservation.Observed::class.java,
             lifecycle.observe(project),
@@ -144,6 +162,7 @@ class SidecarCacheLifecycleTest {
         val lifecycle = FilesystemRootSidecarCacheLifecycle(
             cacheRoot,
             releaseIdentity(runtimeIdentity()),
+            missingRuntimeResolver,
         )
         repeat(2) { index ->
             val root = Files.createDirectory(cacheRoot.resolve("invalid-$index"))
@@ -169,10 +188,22 @@ class SidecarCacheLifecycleTest {
         val ideaHome = Files.createDirectory(temporary.resolve("versioned-idea")).toRealPath()
         val java = Files.createFile(ideaHome.resolve("java")).toRealPath()
         val cacheRoot = Files.createDirectory(temporary.resolve("versioned-caches")).toRealPath()
-        val staleRuntimeIdentity = runtimeIdentity('a')
+        val staleRuntimeIdentity = runtimeIdentity('b')
         val currentRuntimeIdentity = runtimeIdentity('b')
-        val staleCacheIdentity = cacheIdentity(project, staleRuntimeIdentity)
-        val currentCacheIdentity = cacheIdentity(project, currentRuntimeIdentity)
+        val staleRuntime = InstalledIdeRuntime(ideaHome, java, staleRuntimeIdentity)
+        val currentRuntime = InstalledIdeRuntime(ideaHome, java, currentRuntimeIdentity)
+        val staleSemanticRuntimeId = semanticRuntimeId('8')
+        val currentSemanticRuntimeId = semanticRuntimeId()
+        val staleCacheIdentity = cacheIdentity(
+            project,
+            staleRuntime,
+            staleSemanticRuntimeId,
+        )
+        val currentCacheIdentity = cacheIdentity(
+            project,
+            currentRuntime,
+            currentSemanticRuntimeId,
+        )
         val staleRoot = Files.createDirectory(cacheRoot.resolve(staleCacheIdentity.key)).toRealPath()
         val currentRoot = Files.createDirectory(cacheRoot.resolve(currentCacheIdentity.key)).toRealPath()
 
@@ -180,7 +211,7 @@ class SidecarCacheLifecycleTest {
             CacheIdentityTransition.Recorded,
             SidecarCacheIdentityFile.record(
                 staleRoot,
-                InstalledIdeRuntime(ideaHome, java, staleRuntimeIdentity),
+                staleRuntime,
                 staleCacheIdentity,
             ),
         )
@@ -188,7 +219,7 @@ class SidecarCacheLifecycleTest {
             CacheIdentityTransition.Recorded,
             SidecarCacheIdentityFile.record(
                 currentRoot,
-                InstalledIdeRuntime(ideaHome, java, currentRuntimeIdentity),
+                currentRuntime,
                 currentCacheIdentity,
             ),
         )
@@ -197,7 +228,10 @@ class SidecarCacheLifecycleTest {
 
         val lifecycle = FilesystemRootSidecarCacheLifecycle(
             cacheRoot,
-            releaseIdentity(currentRuntimeIdentity),
+            releaseIdentity(currentRuntimeIdentity, currentSemanticRuntimeId),
+            cacheRuntimeResolver(
+                currentRuntime,
+            ),
         )
         val observation = assertInstanceOf(
             RootSidecarCacheObservation.Observed::class.java,
@@ -213,30 +247,105 @@ class SidecarCacheLifecycleTest {
         assertTrue(Files.isDirectory(staleRoot))
         assertTrue(Files.notExists(currentRoot))
         assertTrue(Files.isDirectory(quarantine.quarantinedRoot))
-        assertEquals(RootSidecarCacheObservation.Absent, lifecycle.observe(project))
+        val stale = assertInstanceOf(
+            RootSidecarCacheObservation.Stale::class.java,
+            lifecycle.observe(project),
+        )
+        assertEquals(staleCacheIdentity.key, stale.status.cacheIdentity)
+        assertEquals(staleSemanticRuntimeId, stale.status.semanticRuntimeId)
+    }
+
+    @Test
+    fun `compatible patch caches select the exact runtime currently installed at IDEA home`() {
+        val project = Files.createDirectory(temporary.resolve("patched-project")).toRealPath()
+        val ideaHome = Files.createDirectory(temporary.resolve("patched-idea")).toRealPath()
+        val java = Files.createFile(ideaHome.resolve("java")).toRealPath()
+        val cacheRoot = Files.createDirectory(temporary.resolve("patched-caches")).toRealPath()
+        val staleIdentity = runtimeIdentity(
+            ideaBuild = "262.9437.185",
+            kotlinBuild = "262.9437.185-IJ",
+            jbrIdentity = "jbr-25.0.3-aarch64",
+        )
+        val currentIdentity = runtimeIdentity(
+            ideaBuild = "262.9999.41",
+            kotlinBuild = "262.8888.17-IJ",
+            jbrIdentity = "jbr-25.0.4-aarch64",
+        )
+        val staleRuntime = InstalledIdeRuntime(ideaHome, java, staleIdentity)
+        val currentRuntime = InstalledIdeRuntime(ideaHome, java, currentIdentity)
+        val staleCache = cacheIdentity(project, staleRuntime)
+        val currentCache = cacheIdentity(project, currentRuntime)
+        val staleRoot = Files.createDirectory(cacheRoot.resolve(staleCache.key)).toRealPath()
+        val currentRoot = Files.createDirectory(cacheRoot.resolve(currentCache.key)).toRealPath()
+        SidecarCacheIdentityFile.record(
+            staleRoot,
+            staleRuntime,
+            staleCache,
+        )
+        SidecarCacheIdentityFile.record(
+            currentRoot,
+            currentRuntime,
+            currentCache,
+        )
+        SidecarCacheStateFile.record(staleRoot, KastCacheState.SMART)
+        SidecarCacheStateFile.record(currentRoot, KastCacheState.FRESH)
+        val lifecycle = FilesystemRootSidecarCacheLifecycle(
+            cacheRoot,
+            releaseIdentity(currentIdentity),
+            cacheRuntimeResolver(
+                currentRuntime,
+            ),
+        )
+
+        val observation = assertInstanceOf(
+            RootSidecarCacheObservation.Observed::class.java,
+            lifecycle.observe(project),
+        )
+
+        assertEquals(currentCache.key, observation.status.cacheIdentity)
+        assertEquals(KastCacheState.FRESH, observation.status.state)
     }
 
     private fun cacheIdentity(
         project: Path,
-        runtimeIdentity: IdeRuntimeIdentity,
+        runtime: InstalledIdeRuntime,
+        semanticRuntimeId: SemanticRuntimeId = semanticRuntimeId(),
     ): KastCacheIdentity = assertInstanceOf(
         KastCacheIdentityDerivation.Derived::class.java,
-        KastCacheIdentity.derive(project, runtimeIdentity),
+        KastCacheIdentity.derive(project, runtime, semanticRuntimeId),
     ).identity
 
-    private fun releaseIdentity(runtimeIdentity: IdeRuntimeIdentity): SidecarCacheReleaseIdentity =
+    private fun semanticRuntimeId(character: Char = '9'): SemanticRuntimeId = when (
+        val refinement = SemanticRuntimeId.parse(
+            "sha256:${character.toString().repeat(64)}",
+        )
+    ) {
+        is Refinement.Refined -> refinement.value
+        is Refinement.Rejected -> error(refinement.failure)
+    }
+
+    private fun releaseIdentity(
+        runtimeIdentity: IdeRuntimeIdentity,
+        semanticRuntimeId: SemanticRuntimeId = semanticRuntimeId(),
+    ): SidecarCacheReleaseIdentity =
         assertInstanceOf(
             SidecarCacheReleaseIdentityAdmission.Admitted::class.java,
             SidecarCacheReleaseIdentity.admit(
                 runtimeIdentity.supportedPair,
                 runtimeIdentity.kastPayloadDigest,
+                semanticRuntimeId,
             ),
         ).identity
 
-    private fun runtimeIdentity(payloadCharacter: Char = 'a'): IdeRuntimeIdentity {
+    private fun runtimeIdentity(
+        payloadCharacter: Char = 'a',
+        ideaBuild: String = "262.9437.185",
+        kotlinBuild: String = "262.9437.185-IJ",
+        jbrIdentity: String = "jbr-25.0.3-aarch64",
+    ): IdeRuntimeIdentity {
         val pair = assertInstanceOf(
             SupportedIdeRuntimePairAdmission.Admitted::class.java,
-            SupportedIdeRuntimePair.admit("262.9437.185", "262.9437.185-IJ"),
+            SupportedIdeRuntimePair.admit(ideaBuild, kotlinBuild),
         ).pair
         return assertInstanceOf(
             IdeRuntimeIdentityAdmission.Admitted::class.java,
@@ -245,10 +354,24 @@ class SidecarCacheLifecycleTest {
                 IdeRuntimeIdentityCandidate(
                     pair.ideaBuild,
                     pair.kotlinPluginBuild,
-                    "jbr-25.0.3-aarch64",
+                    jbrIdentity,
                     "sha256:${payloadCharacter.toString().repeat(64)}",
                 ),
             ),
         ).identity
+    }
+
+    private fun cacheRuntimeResolver(
+        runtime: InstalledIdeRuntime,
+    ): SidecarIdeRuntimeResolver = SidecarIdeRuntimeResolver { _, _, selection ->
+        if (selection == IdeHomeSelection.Explicit(runtime.home)) {
+            InstalledIdeRuntimeDiscoveryResult.Discovered(runtime)
+        } else {
+            InstalledIdeRuntimeDiscoveryResult.Rejected(IndexSeedFailure.MissingInstallation)
+        }
+    }
+
+    private val missingRuntimeResolver = SidecarIdeRuntimeResolver { _, _, _ ->
+        InstalledIdeRuntimeDiscoveryResult.Rejected(IndexSeedFailure.MissingInstallation)
     }
 }

@@ -128,6 +128,61 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
+    fun `launchd starts from an empty environment before applying the JBR allowlist`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        var submission: List<String>? = null
+        val command = command(temporary, endpoint)
+        val session = MacOsRuntimeProcessSession.from(
+            endpoint,
+            LaunchctlInvoker { arguments, _ ->
+                when (arguments[1]) {
+                    "list" -> LaunchctlInvocation.Absent
+                    "submit" -> {
+                        submission = arguments
+                        LaunchctlInvocation.Completed
+                    }
+                    else -> error("unexpected launchctl operation")
+                }
+            },
+        )
+
+        assertInstanceOf(RuntimeProcessStart.Accepted::class.java, session.start(command))
+        val environmentIndex = submission.orEmpty().indexOf("/usr/bin/env")
+        val standardErrorIndex = submission.orEmpty().indexOf("-e")
+        assertTrue(environmentIndex >= 0)
+        assertEquals("-i", submission.orEmpty()[environmentIndex + 1])
+        assertTrue(submission.orEmpty()[environmentIndex + 2].startsWith("JAVA_HOME="))
+        assertEquals(command.startupLog.toString(), submission.orEmpty()[standardErrorIndex + 1])
+    }
+
+    @Test
+    fun `JBR environment rejection survives to the runtime admission boundary`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val failure = RuntimeProcessStartFailure.IdeaJbrUnavailable
+        val demander = ExactRootProcessRuntimeDemander(
+            executable = executable(temporary),
+            launchContext = launchContext(temporary),
+            processStarter = RuntimeProcessStarter { RuntimeProcessStart.Rejected(failure) },
+            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+        )
+
+        val admission = demander.demand(endpoint.root, endpoint)
+
+        assertEquals(
+            RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ProcessStartFailed(failure)),
+            admission,
+        )
+        assertEquals(
+            "idea-jbr-unavailable",
+            (admission as RuntimeAdmission.Rejected).failure.outputReason(),
+        )
+    }
+
+    @Test
     fun `session that wins a rejected submission race is accepted`(
         @TempDir temporary: Path,
     ) {
@@ -176,12 +231,12 @@ class RuntimeProcessSessionTest {
             LaunchctlInvoker { _, _ -> LaunchctlInvocation.Interrupted },
         )
 
-        assertEquals(RuntimeProcessStart.Rejected, rejected.start(command))
+        assertTrue(rejected.start(command) is RuntimeProcessStart.Rejected)
         assertEquals(RuntimeProcessStart.Interrupted, interrupted.start(command))
     }
 
     @Test
-    fun `launchd label remains owned while its process is between restart attempts`(
+    fun `launchd label remains owned until its exact session is retired`(
         @TempDir temporary: Path,
     ) {
         val endpoint = endpoint(temporary)
@@ -292,7 +347,7 @@ class RuntimeProcessSessionTest {
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
-            assertEquals(NO_LAUNCHD_SERVICE, Files.readString(serviceFile).trim())
+            assertEquals("", Files.readString(serviceFile).trim())
             assertNotEquals(
                 processGroup(ProcessHandle.current().pid()),
                 processGroup(process.pid()),
@@ -310,13 +365,14 @@ class RuntimeProcessSessionTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `failed child retires its launchd session instead of becoming restartable`(
+    fun `non terminal status from failed child still retires its launchd session`(
         @TempDir temporary: Path,
     ) {
         val endpoint = endpoint(temporary)
         val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.failed-service")
         val session = MacOsRuntimeProcessSession.from(endpoint)
-        val start = session.start(failingCommand(temporary, endpoint, serviceFile))
+        val command = failingCommand(temporary, endpoint, serviceFile)
+        val start = session.start(command)
         check(
             start is RuntimeProcessStart.Accepted &&
                 start.origin == RuntimeProcessStartOrigin.STARTED
@@ -338,6 +394,7 @@ class RuntimeProcessSessionTest {
                 observation,
                 "A failed child must not leave launchd with permission to restart it",
             )
+            assertTrue(Files.readString(command.startupLog).contains("fixture-startup-rejected"))
         } finally {
             if (session.observe() == RuntimeSessionObservation.Present) {
                 session.retire(RuntimeSessionObservation.Present)
@@ -418,7 +475,8 @@ class RuntimeProcessSessionTest {
             """#!/bin/bash
                 |set -euo pipefail
                 |printf '%s\n' "${'$'}{XPC_SERVICE_NAME:-}" > '${serviceFile}'
-                |exit 70
+                |printf '%s\n' 'fixture-startup-rejected' >&2
+                |exit 64
                 |
             """.trimMargin(),
         )
@@ -440,7 +498,9 @@ class RuntimeProcessSessionTest {
 
     private fun launchContext(temporary: Path): SidecarLaunchContext {
         val ideaHome = Files.createDirectories(temporary.resolve("idea-home")).toRealPath()
-        val java = ideaHome.resolve("java")
+        val java = Files.createDirectories(
+            ideaHome.resolve("jbr/Contents/Home/bin"),
+        ).resolve("java")
         if (Files.notExists(java)) Files.createFile(java)
         java.toFile().setExecutable(true)
         val pair = SupportedIdeRuntimePair.admit(
@@ -498,7 +558,7 @@ class RuntimeProcessSessionTest {
 
     private fun retireDirectProcess(process: ProcessHandle, serviceFile: Path) {
         val service = if (Files.exists(serviceFile)) Files.readString(serviceFile).trim() else ""
-        check(service.isEmpty() || service == NO_LAUNCHD_SERVICE) {
+        check(service.isEmpty()) {
             "direct process unexpectedly published launchd service: $service"
         }
         if (process.isAlive) {
@@ -509,4 +569,3 @@ class RuntimeProcessSessionTest {
 }
 
 private const val INDEXER_FIXTURE_NAME = "io.github.amichne.kast.indexer.KastIndexerMainKt"
-private const val NO_LAUNCHD_SERVICE = "0"

@@ -95,6 +95,7 @@ run_launcher() {
   local cache="$2"
   local capture="$3"
   CAPTURE_FILE="${capture}" \
+  JAVA_OPTS="-Dkast.untrusted.java-opts=true" \
     "${installed}/kast-indexer" \
       --workspace-root="${workspace}" \
       --socket-path="${socket}" \
@@ -176,6 +177,12 @@ for capture, cache, socket in zip(captures, caches, sockets, strict=True):
         f"-Dkast.cache.state.path={cache}/cache-state",
         "io.github.amichne.kast.indexer.KastIndexerMainKt",
     )
+    if "-Dkast.untrusted.java-opts=true" in decoded:
+        print(
+            "indexer-launcher-isolation-test: inherited JAVA_OPTS reached the JBR",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     for argument in required:
         if argument not in decoded:
             print(
@@ -241,8 +248,8 @@ for omitted in "${launcher_owned[@]}"; do
   )"
   missing_status=$?
   set -e
-  [[ ${missing_status} -ne 0 ]] || {
-    echo "indexer-launcher-isolation-test: missing ${omitted} was accepted" >&2
+  [[ ${missing_status} -eq 70 ]] || {
+    echo "indexer-launcher-isolation-test: missing ${omitted} was not a terminal startup rejection" >&2
     exit 1
   }
   [[ ! -e "${missing_capture}" ]] || {
@@ -254,5 +261,45 @@ for omitted in "${launcher_owned[@]}"; do
     exit 1
   }
 done
+
+alternate_java="${fixture}/alternate-jbr/bin/java"
+alternate_capture="${fixture}/alternate-java-capture"
+mkdir -p -- "$(dirname -- "${alternate_java}")"
+cat >"${alternate_java}" <<'ALTERNATE_JAVA'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\0' "$@" >"${ALTERNATE_CAPTURE:?ALTERNATE_CAPTURE is required}"
+ALTERNATE_JAVA
+chmod 755 "${alternate_java}"
+
+set +e
+alternate_output="$(
+  ALTERNATE_CAPTURE="${alternate_capture}" \
+    "${installed}/kast-indexer" \
+      --workspace-root="${workspace}" \
+      --socket-path="${socket_a}" \
+      --runtime-id="${runtime_id}" \
+      --idea-home="${idea_home}" \
+      --java-executable="${alternate_java}" \
+      --idea-system-path="${cache_a}/system" \
+      --idea-config-path="${cache_a}/config" \
+      --idea-log-path="${cache_a}/log" \
+      --private-plugins-path="${private_plugins}" \
+      --cache-state-path="${cache_a}/cache-state" 2>&1
+)"
+alternate_status=$?
+set -e
+[[ ${alternate_status} -eq 70 ]] || {
+  echo "indexer-launcher-isolation-test: alternate Java rejection was not terminal" >&2
+  exit 1
+}
+[[ ! -e "${alternate_capture}" ]] || {
+  echo "indexer-launcher-isolation-test: alternate Java started before ownership rejection" >&2
+  exit 1
+}
+[[ "${alternate_output}" == *"java-executable does not belong to idea-home"* ]] || {
+  echo "indexer-launcher-isolation-test: alternate Java rejection was not explicit" >&2
+  exit 1
+}
 
 echo "indexer-launcher-isolation-test: PASS"

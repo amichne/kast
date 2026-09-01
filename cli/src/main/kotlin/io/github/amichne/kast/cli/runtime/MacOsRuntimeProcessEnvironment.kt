@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
+import java.nio.file.LinkOption
 import java.nio.file.Path
 
 internal enum class MacOsRuntimeProcessEnvironmentFailure {
@@ -28,30 +29,26 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
 
     companion object {
         /**
-         * Proof transition: `JVM system properties ->
+         * Proof transition: `InstalledIdeRuntime + user.home ->
          * MacOsRuntimeProcessEnvironmentResolution`.
          *
-         * Establishes canonical physical Java and user homes plus a deterministic executable path
-         * for one detached process. [MacOsRuntimeProcessEnvironmentFailure] closes unavailable or
-         * malformed host properties. Raw values leave only at the direct [ProcessBuilder] or
-         * `/usr/bin/env` launchd boundary; arbitrary caller environment and secrets are not
-         * propagated.
+         * Establishes the canonical physical Java home from the already-admitted IDEA JBR, plus
+         * a canonical user home and deterministic executable path for one detached process.
+         * [MacOsRuntimeProcessEnvironmentFailure] closes unavailable or malformed paths. Raw
+         * values leave only at the direct [ProcessBuilder] or `/usr/bin/env` launchd boundary;
+         * the initiating CLI JVM, arbitrary caller environment, and secrets are not propagated.
          */
-        fun resolve(): MacOsRuntimeProcessEnvironmentResolution {
-            val javaHome = when (val admission = canonicalDirectory(
-                System.getProperty("java.home") ?: return MacOsRuntimeProcessEnvironmentResolution
-                    .Rejected(MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE),
-            )) {
+        fun resolve(
+            runtime: InstalledIdeRuntime,
+        ): MacOsRuntimeProcessEnvironmentResolution {
+            val javaHome = when (
+                val admission = canonicalJavaHome(runtime)
+            ) {
                 is CanonicalEnvironmentDirectory.Admitted -> admission.path
                 CanonicalEnvironmentDirectory.Rejected ->
                     return MacOsRuntimeProcessEnvironmentResolution.Rejected(
                         MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE,
                     )
-            }
-            if (!Files.isExecutable(javaHome.resolve("bin/java"))) {
-                return MacOsRuntimeProcessEnvironmentResolution.Rejected(
-                    MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE,
-                )
             }
             val userHome = when (val admission = canonicalDirectory(
                 System.getProperty("user.home") ?: return MacOsRuntimeProcessEnvironmentResolution
@@ -73,6 +70,54 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
                 ),
             )
         }
+    }
+}
+
+/** Refines an installed IDEA runtime to the exact bundled JBR home that owns its `bin/java`. */
+private fun canonicalJavaHome(runtime: InstalledIdeRuntime): CanonicalEnvironmentDirectory {
+    val ideaHome = when (val admission = canonicalDirectory(runtime.home.toString())) {
+        is CanonicalEnvironmentDirectory.Admitted -> admission.path
+        CanonicalEnvironmentDirectory.Rejected -> return CanonicalEnvironmentDirectory.Rejected
+    }
+    val javaExecutable = runtime.javaExecutable
+    val expectedJava = try {
+        ideaHome.resolve("jbr/Contents/Home/bin/java").toRealPath()
+    } catch (_: IOException) {
+        return CanonicalEnvironmentDirectory.Rejected
+    } catch (_: SecurityException) {
+        return CanonicalEnvironmentDirectory.Rejected
+    }
+    if (javaExecutable != expectedJava) {
+        return CanonicalEnvironmentDirectory.Rejected
+    }
+    if (
+        !javaExecutable.isAbsolute || javaExecutable.normalize() != javaExecutable ||
+        Files.isSymbolicLink(javaExecutable) ||
+        !Files.isRegularFile(javaExecutable, LinkOption.NOFOLLOW_LINKS) ||
+        !Files.isExecutable(javaExecutable) || javaExecutable.fileName.toString() != "java" ||
+        javaExecutable.parent?.fileName?.toString() != "bin"
+    ) {
+        return CanonicalEnvironmentDirectory.Rejected
+    }
+    val canonicalJava = try {
+        javaExecutable.toRealPath()
+    } catch (_: IOException) {
+        return CanonicalEnvironmentDirectory.Rejected
+    } catch (_: SecurityException) {
+        return CanonicalEnvironmentDirectory.Rejected
+    }
+    if (canonicalJava != javaExecutable) return CanonicalEnvironmentDirectory.Rejected
+    val rawHome = javaExecutable.parent?.parent
+        ?: return CanonicalEnvironmentDirectory.Rejected
+    return when (val home = canonicalDirectory(rawHome.toString())) {
+        is CanonicalEnvironmentDirectory.Admitted -> if (
+            home.path.resolve("bin/java") == canonicalJava
+        ) {
+            home
+        } else {
+            CanonicalEnvironmentDirectory.Rejected
+        }
+        CanonicalEnvironmentDirectory.Rejected -> CanonicalEnvironmentDirectory.Rejected
     }
 }
 

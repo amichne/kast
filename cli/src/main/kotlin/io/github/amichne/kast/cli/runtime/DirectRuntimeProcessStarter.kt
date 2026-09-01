@@ -13,10 +13,19 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
      * startup, while process and environment failures remain finite [RuntimeProcessStart] data.
      */
     override fun start(command: IndexerLaunchCommand): RuntimeProcessStart {
-        val environment = when (val resolution = MacOsRuntimeProcessEnvironment.resolve()) {
+        val environment = when (
+            val resolution = MacOsRuntimeProcessEnvironment.resolve(command.runtime)
+        ) {
             is MacOsRuntimeProcessEnvironmentResolution.Resolved -> resolution.environment
             is MacOsRuntimeProcessEnvironmentResolution.Rejected ->
-                return RuntimeProcessStart.Rejected
+                return RuntimeProcessStart.Rejected(
+                    when (resolution.failure) {
+                        MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE ->
+                            RuntimeProcessStartFailure.IdeaJbrUnavailable
+                        MacOsRuntimeProcessEnvironmentFailure.USER_HOME_UNAVAILABLE ->
+                            RuntimeProcessStartFailure.UserHomeUnavailable
+                    },
+                )
         }
         val launcher = try {
             ProcessBuilder(command.detachedArguments())
@@ -24,12 +33,16 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
                     environment().clear()
                     environment().putAll(environment.variables)
                 }
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.appendTo(command.startupLog.toFile()))
                 .start()
         } catch (_: IOException) {
-            return RuntimeProcessStart.Rejected
+            return RuntimeProcessStart.Rejected(
+                RuntimeProcessStartFailure.ProcessCreationRejected,
+            )
         } catch (_: SecurityException) {
-            return RuntimeProcessStart.Rejected
+            return RuntimeProcessStart.Rejected(
+                RuntimeProcessStartFailure.ProcessCreationRejected,
+            )
         }
         return when (val detachment = launcher.awaitDetachedChild()) {
             is DirectRuntimeChildStart.Started -> RuntimeProcessStart.Accepted(
@@ -37,7 +50,9 @@ internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
                 RuntimeProcessStartOrigin.STARTED,
             )
             DirectRuntimeChildStart.Interrupted -> RuntimeProcessStart.Interrupted
-            DirectRuntimeChildStart.Rejected -> RuntimeProcessStart.Rejected
+            DirectRuntimeChildStart.Rejected -> RuntimeProcessStart.Rejected(
+                RuntimeProcessStartFailure.ChildStartRejected,
+            )
         }
     }
 }
@@ -56,6 +71,7 @@ private fun IndexerLaunchCommand.detachedArguments(): List<String> =
         "-c",
         DETACHED_LAUNCH_SCRIPT,
         SHELL_COMMAND_NAME,
+        startupLog.toString(),
     ) + arguments
 
 private sealed interface DirectRuntimeChildStart {
@@ -179,6 +195,8 @@ private const val SHELL_EXECUTABLE = "/bin/sh"
 private const val SHELL_COMMAND_NAME = "kast-direct-sidecar"
 private const val DIRECT_LAUNCH_TIMEOUT_SECONDS = 5L
 private const val DETACHED_LAUNCH_SCRIPT =
-    "set -m\n" +
-        "/usr/bin/nohup \"\$@\" </dev/null >/dev/null 2>&1 &\n" +
+    "startup_log=\"\$1\"\n" +
+        "shift\n" +
+        "set -m\n" +
+        "/usr/bin/nohup \"\$@\" </dev/null >/dev/null 2>>\"\$startup_log\" &\n" +
         "printf '%s\\n' \"\$!\""
