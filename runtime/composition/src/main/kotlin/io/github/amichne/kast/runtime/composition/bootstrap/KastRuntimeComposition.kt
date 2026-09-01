@@ -123,9 +123,13 @@ class KastRuntimeComposition private constructor(
             changePorts: ChangeRuntimePorts,
             observability: KastObservability,
         ): DirectKastRuntimeGraph {
-            val symbolDiscovery = SymbolDiscoveryService(workspace, semanticPorts.symbolDiscovery)
+            val symbolDiscovery = SymbolDiscoveryService(
+                workspace,
+                semanticPorts.symbolDiscovery,
+                observability,
+            )
             val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
-            val relation = RelationService(workspace, semanticPorts.relation)
+            val relation = RelationService(workspace, semanticPorts.relation, observability)
             val topology = TopologyBuildService.create(
                 workspace,
                 workspace,

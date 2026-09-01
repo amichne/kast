@@ -4,6 +4,8 @@ package io.github.amichne.kast.kernel
 enum class KastSpanName(
     val wireName: String,
 ) {
+    RELATION_READ("kast.relation.read"),
+    SYMBOL_DISCOVERY("kast.symbol.discovery"),
     TOPOLOGY_BUILD("kast.topology.build"),
     TOPOLOGY_SNAPSHOT_ELIGIBILITY("kast.topology.snapshot.eligibility"),
     TOPOLOGY_CANDIDATE_ENUMERATION("kast.topology.candidates.enumeration"),
@@ -19,6 +21,12 @@ enum class KastSpanName(
 }
 /** Low-cardinality terminal failure families; request values can never enter this type. */
 enum class KastSpanFailure {
+    RELATION_WORKSPACE_NOT_READY,
+    RELATION_WORKSPACE_MOVED,
+    RELATION_QUERY_REJECTED,
+    SYMBOL_WORKSPACE_NOT_READY,
+    SYMBOL_STALE_GENERATION,
+    SYMBOL_QUERY_REJECTED,
     TOPOLOGY_WORKSPACE_NOT_READY,
     TOPOLOGY_WORKSPACE_MOVED,
     TOPOLOGY_SNAPSHOT,
@@ -58,6 +66,7 @@ value class KastSpanCount private constructor(
 sealed interface KastSpanMeasurement {
     data class FileCount(val count: KastSpanCount) : KastSpanMeasurement
     data class RecordCount(val count: KastSpanCount) : KastSpanMeasurement
+    data class WorkUnitCount(val count: KastSpanCount) : KastSpanMeasurement
 }
 
 /** Expected terminal classification. Rejection remains ordinary span data, not an exception. */

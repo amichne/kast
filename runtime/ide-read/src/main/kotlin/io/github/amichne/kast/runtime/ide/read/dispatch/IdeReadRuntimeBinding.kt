@@ -1,6 +1,9 @@
 package io.github.amichne.kast.runtime.ide.read.dispatch
 
 import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.kernel.KastSpanName
+import io.github.amichne.kast.kernel.KastSpanObservation
 import io.github.amichne.kast.protocol.contract.IdeHostCapability
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
@@ -37,6 +40,25 @@ internal class IdeReadRuntimeBinding<
             IdeReadRuntimeDispatchFailure.RequestDecodingFailed(capability, decoding.failure),
         )
         is WireDecoding.Decoded -> encode(execute(decoding.value))
+    }
+
+    /** Emits only after decoding has refined raw wire data into this binding's request type. */
+    suspend fun dispatchObserved(
+        request: AdmittedWireRequest,
+        observability: KastObservability,
+        spanName: KastSpanName,
+        observationOf: (
+            OperationOutcome<Result, Qualification, Rejection>,
+        ) -> KastSpanObservation,
+    ): IdeReadRuntimeDispatchResult = when (val decoding = wireBinding.decodeRequest(request)) {
+        is WireDecoding.Rejected -> IdeReadRuntimeDispatchResult.Rejected(
+            IdeReadRuntimeDispatchFailure.RequestDecodingFailed(capability, decoding.failure),
+        )
+        is WireDecoding.Decoded -> observability.inSpan(spanName) { span ->
+            val outcome = execute(decoding.value)
+            span.observe(observationOf(outcome))
+            encode(outcome)
+        }
     }
 
     /**

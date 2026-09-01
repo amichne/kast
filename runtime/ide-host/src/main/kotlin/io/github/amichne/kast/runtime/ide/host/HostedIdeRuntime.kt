@@ -9,6 +9,7 @@ import io.github.amichne.kast.runtime.server.ServerDispatch
 import io.github.amichne.kast.change.verify.DurableChangeAuthority
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
@@ -40,12 +41,13 @@ sealed interface HostedIdeRuntimeDispatch {
 class HostedIdeRuntime private constructor(
     private val reads: HostedReadRuntimeOperations,
     private val effects: RuntimeServer,
+    private val observability: KastObservability,
 ) {
     val canonicalRoot get() = reads.canonicalRoot
     val compatibility get() = reads.compatibility
 
     suspend fun dispatch(document: String): HostedIdeRuntimeDispatch = when (
-        val read = reads.dispatch(document)
+        val read = reads.dispatch(document, observability)
     ) {
         is IdeReadRuntimeDispatchResult.Responded ->
             HostedIdeRuntimeDispatch.Responded(read.document)
@@ -76,6 +78,7 @@ class HostedIdeRuntime private constructor(
             mutation: HostedMutationState,
             mutationAdmission: HostedMutationAdmissionOperations,
             authority: DurableChangeAuthority,
+            observability: KastObservability = KastObservability.Disabled,
         ): HostedIdeRuntimeConstruction = when (val server = RuntimeServer.createHostedEffects(
                 HostedTopologyProtocol.bindings(topology, selectors, relations) +
                 HostedDiagnosticProtocol.bindings(workspace, diagnostics) +
@@ -83,7 +86,7 @@ class HostedIdeRuntime private constructor(
                 HostedMutationProtocol.bindings(mutation, mutationAdmission, selectors, authority),
         )) {
             is RuntimeServerConstruction.Created -> HostedIdeRuntimeConstruction.Created(
-                HostedIdeRuntime(reads, server.server),
+                HostedIdeRuntime(reads, server.server, observability),
             )
             is RuntimeServerConstruction.Rejected -> HostedIdeRuntimeConstruction.Rejected(server)
         }
@@ -134,6 +137,7 @@ class HostedIdeRuntime private constructor(
             is RuntimeServerConstruction.Created -> HostedIdeRuntime(
                 StaticHostedReadRuntimeOperations(reads),
                 server.server,
+                KastObservability.Disabled,
             )
             is RuntimeServerConstruction.Rejected -> error("test effect table is complete")
         }
