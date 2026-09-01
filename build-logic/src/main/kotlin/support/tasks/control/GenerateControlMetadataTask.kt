@@ -14,7 +14,10 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
 
@@ -55,12 +58,9 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         output.resolve("licenses").mkdirs()
         val archive = runtimeArchive.get().asFile
         val archiveDigest = sha256(archive.readBytes())
-        val pluginJar = runtimeDirectory.get().asFile
-                            .resolve("idea-home/plugins/kast-indexer/lib")
-                            .listFiles()
-                            ?.singleOrNull { it.name.startsWith("indexer-") && it.name.endsWith("-plugin.jar") }
-                        ?: error("semantic runtime has no exact private Kast plugin jar")
-        val pluginDigest = sha256(pluginJar.readBytes())
+        val pluginDigest = privateExtensionSha256(
+            runtimeDirectory.get().asFile.toPath().resolve("private-plugins/kast-indexer"),
+        )
         val wireSchemaId = CanonicalWireSchema.identity
         val identityMaterial = listOf(
             "macos",
@@ -94,8 +94,7 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
                 requiredEntries = listOf(
                     "kast-indexer",
                     "runtime-libs/",
-                    "idea-home/product-info.json",
-                    "idea-home/plugins/kast-indexer/",
+                    "private-plugins/kast-indexer/",
                 ),
                 executableEntries = listOf("kast-indexer"),
             ),
@@ -111,6 +110,42 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
     private fun sha256(bytes: ByteArray): String = "sha256:" + HexFormat.of().formatHex(
         MessageDigest.getInstance("SHA-256").digest(bytes),
     )
+
+    private fun privateExtensionSha256(extensionRoot: Path): String {
+        check(Files.isDirectory(extensionRoot)) {
+            "semantic runtime has no private Kast extension directory"
+        }
+        val payloadFiles = Files.walk(extensionRoot).use { paths ->
+            paths.iterator().asSequence()
+                .filter(Files::isRegularFile)
+                .map { path ->
+                    extensionRoot.relativize(path)
+                        .map(Path::toString)
+                        .joinToString("/") to path
+                }
+                .sortedBy(Pair<String, Path>::first)
+                .toList()
+        }
+        check(payloadFiles.isNotEmpty()) {
+            "semantic runtime has no private Kast extension files"
+        }
+        val digest = MessageDigest.getInstance("SHA-256")
+        payloadFiles.forEach { (relativePath, payloadFile) ->
+            val relativePathBytes = relativePath.toByteArray(StandardCharsets.UTF_8)
+            digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(relativePathBytes.size).array())
+            digest.update(relativePathBytes)
+            digest.update(ByteBuffer.allocate(Long.SIZE_BYTES).putLong(Files.size(payloadFile)).array())
+            Files.newInputStream(payloadFile).use { input ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+        }
+        return "sha256:" + HexFormat.of().formatHex(digest.digest())
+    }
 }
 
 @Serializable

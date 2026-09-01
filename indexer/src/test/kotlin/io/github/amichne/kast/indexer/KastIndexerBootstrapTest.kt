@@ -16,6 +16,12 @@ class KastIndexerBootstrapTest {
             KastIndexerBootstrap.ideaMainArgs(
                 arrayOf(
                     "--idea-home=/installed/idea-home",
+                    "--java-executable=/installed/idea-home/jbr/Contents/Home/bin/java",
+                    "--idea-system-path=/private/cache/system",
+                    "--idea-config-path=/private/cache/config",
+                    "--idea-log-path=/private/cache/log",
+                    "--private-plugins-path=/installed/private-plugins",
+                    "--cache-state-path=/private/cache/cache-state",
                     "--workspace-root=/workspace",
                     "--socket-path=/runtime/kast.sock",
                     "--runtime-id=sha256:${"a".repeat(64)}",

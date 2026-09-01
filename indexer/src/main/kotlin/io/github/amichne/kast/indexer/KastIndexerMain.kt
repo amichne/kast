@@ -39,6 +39,15 @@ sealed interface IndexerBootstrapConfiguration {
 
 internal object KastIndexerBootstrap {
     private const val IDEA_HOME_PREFIX = "--idea-home="
+    private val LAUNCHER_OWNED_PREFIXES = listOf(
+        IDEA_HOME_PREFIX,
+        "--java-executable=",
+        "--idea-system-path=",
+        "--idea-config-path=",
+        "--idea-log-path=",
+        "--private-plugins-path=",
+        "--cache-state-path=",
+    )
 
     /**
      * Proof transition: `Array<String> -> IndexerBootstrapConfiguration`.
@@ -63,13 +72,16 @@ internal object KastIndexerBootstrap {
     /**
      * Boundary projection: `Array<String> -> List<String>`.
      *
-     * Removes only the launcher-owned IDEA home option and prepends the registered application
-     * command. Raw arguments remain inside the launcher-to-IDEA boundary.
+     * Removes every launcher-owned installed-runtime and private-path option, then prepends the
+     * registered application command. Raw application arguments remain inside the
+     * launcher-to-IDEA boundary.
      */
     fun ideaMainArgs(args: Array<String>): List<String> =
         listOf(
             KAST_INDEXER_COMMAND_NAME,
-            *args.filterNot { it.startsWith(IDEA_HOME_PREFIX) }.toTypedArray(),
+            *args.filterNot { argument ->
+                LAUNCHER_OWNED_PREFIXES.any(argument::startsWith)
+            }.toTypedArray(),
         )
 
     /**

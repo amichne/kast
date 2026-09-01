@@ -9,6 +9,7 @@ import io.github.amichne.kast.cli.RuntimeEndpointMarker
 import io.github.amichne.kast.cli.RuntimeLifecycleState
 import io.github.amichne.kast.cli.RuntimePersistentState
 import io.github.amichne.kast.cli.RuntimeAdmissionFailure
+import io.github.amichne.kast.cli.RootSidecarCacheObservation
 import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.command.outputReason
@@ -35,6 +36,45 @@ internal object CliBoundaryDocuments {
             root = endpoint.root.path.toString(),
             runtimeId = endpoint.runtimeId.value,
             removed = removed.map(RuntimeEndpointArtifact::lifecycleOutputName).sorted(),
+        ),
+    )
+
+    fun statusCompleteWithoutCache(
+        endpoint: RuntimeEndpoint,
+        state: RuntimeLifecycleState,
+    ): CliJsonDocument = statusWithoutCacheFactory.create(
+        CliStatusWithoutCacheDocument(
+            command = CliLifecycleCommand.STATUS.command,
+            status = "complete",
+            runtime = state.name.lowercase(),
+            root = endpoint.root.path.toString(),
+            runtimeId = endpoint.runtimeId.value,
+            removed = emptyList(),
+            cache = CliAbsentCacheDocument("absent"),
+        ),
+    )
+
+    fun statusComplete(
+        endpoint: RuntimeEndpoint,
+        state: RuntimeLifecycleState,
+        cache: RootSidecarCacheObservation.Observed,
+    ): CliJsonDocument = statusWithCacheFactory.create(
+        CliStatusWithCacheDocument(
+            command = CliLifecycleCommand.STATUS.command,
+            status = "complete",
+            runtime = state.name.lowercase(),
+            root = endpoint.root.path.toString(),
+            runtimeId = endpoint.runtimeId.value,
+            removed = emptyList(),
+            cache = CliObservedCacheDocument(
+                state = cache.status.state.wireName,
+                identity = cache.status.cacheIdentity,
+                ideaHome = cache.status.ideaHome.toString(),
+                ideaBuild = cache.status.ideaBuild,
+                kotlinPluginBuild = cache.status.kotlinPluginBuild,
+                jbrIdentity = cache.status.jbrIdentity,
+                kastPayloadDigest = cache.status.kastPayloadDigest,
+            ),
         ),
     )
 
@@ -82,6 +122,44 @@ private data class CliLifecycleCompleteDocument(
     val root: String,
     val runtimeId: String,
     val removed: List<String>,
+)
+
+@Serializable
+private data class CliStatusWithoutCacheDocument(
+    val command: String,
+    val status: String,
+    val runtime: String,
+    val root: String,
+    val runtimeId: String,
+    val removed: List<String>,
+    val cache: CliAbsentCacheDocument,
+)
+
+@Serializable
+private data class CliStatusWithCacheDocument(
+    val command: String,
+    val status: String,
+    val runtime: String,
+    val root: String,
+    val runtimeId: String,
+    val removed: List<String>,
+    val cache: CliObservedCacheDocument,
+)
+
+@Serializable
+private data class CliAbsentCacheDocument(
+    val state: String,
+)
+
+@Serializable
+private data class CliObservedCacheDocument(
+    val state: String,
+    val identity: String,
+    val ideaHome: String,
+    val ideaBuild: String,
+    val kotlinPluginBuild: String,
+    val jbrIdentity: String,
+    val kastPayloadDigest: String,
 )
 
 @Serializable
@@ -233,6 +311,10 @@ private fun RuntimeEndpointArtifact.lifecycleOutputName(): String = when (this) 
 
 private val lifecycleFactory =
     CliJsonDocument.generated(CliLifecycleCompleteDocument.serializer())
+private val statusWithoutCacheFactory =
+    CliJsonDocument.generated(CliStatusWithoutCacheDocument.serializer())
+private val statusWithCacheFactory =
+    CliJsonDocument.generated(CliStatusWithCacheDocument.serializer())
 private val boundaryFactory =
     CliJsonDocument.generated(CliBoundaryRejectedDocument.serializer())
 private val runtimeBoundaryFactory =

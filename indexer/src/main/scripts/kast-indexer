@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 main_class="io.github.amichne.kast.indexer.KastIndexerMainKt"
 runtime_libs_dir="${script_dir}/runtime-libs"
-idea_home="${script_dir}/idea-home"
 
 if [[ ! -d "${runtime_libs_dir}" ]]; then
   echo "kast-indexer: runtime-libs directory not found: ${runtime_libs_dir}" >&2
   exit 1
 fi
-if [[ ! -f "${idea_home}/product-info.json" ]]; then
-  echo "kast-indexer: packaged IDEA home not found: ${idea_home}" >&2
-  exit 1
-fi
-
 classpath_file="${runtime_libs_dir}/classpath.txt"
 if [[ ! -f "${classpath_file}" ]]; then
   echo "kast-indexer: classpath.txt not found in ${runtime_libs_dir}" >&2
@@ -24,74 +18,171 @@ fi
 classpath=""
 while IFS= read -r jar; do
   [[ -z "${jar}" ]] && continue
+  if [[ "${jar}" == */* || ! -f "${runtime_libs_dir}/${jar}" ]]; then
+    echo "kast-indexer: invalid runtime classpath entry: ${jar}" >&2
+    exit 1
+  fi
   if [[ -z "${classpath}" ]]; then
     classpath="${runtime_libs_dir}/${jar}"
   else
     classpath="${classpath}:${runtime_libs_dir}/${jar}"
   fi
 done < "${classpath_file}"
-
 if [[ -z "${classpath}" ]]; then
   echo "kast-indexer: classpath.txt is empty in ${runtime_libs_dir}" >&2
   exit 1
 fi
 
-socket_path=""
+idea_home=""
+java_executable=""
+idea_system_path=""
+idea_config_path=""
+idea_log_path=""
+private_plugins_path=""
+cache_state_path=""
 for argument in "$@"; do
   case "${argument}" in
-    --socket-path=*)
-      if [[ -n "${socket_path}" ]]; then
-        echo "kast-indexer: socket-path argument must occur exactly once" >&2
+    --idea-home=*)
+      [[ -z "${idea_home}" ]] || {
+        echo "kast-indexer: idea-home argument must occur exactly once" >&2
         exit 1
-      fi
-      socket_path="${argument#--socket-path=}"
+      }
+      idea_home="${argument#--idea-home=}"
+      ;;
+    --java-executable=*)
+      [[ -z "${java_executable}" ]] || {
+        echo "kast-indexer: java-executable argument must occur exactly once" >&2
+        exit 1
+      }
+      java_executable="${argument#--java-executable=}"
+      ;;
+    --idea-system-path=*)
+      [[ -z "${idea_system_path}" ]] || {
+        echo "kast-indexer: idea-system-path argument must occur exactly once" >&2
+        exit 1
+      }
+      idea_system_path="${argument#--idea-system-path=}"
+      ;;
+    --idea-config-path=*)
+      [[ -z "${idea_config_path}" ]] || {
+        echo "kast-indexer: idea-config-path argument must occur exactly once" >&2
+        exit 1
+      }
+      idea_config_path="${argument#--idea-config-path=}"
+      ;;
+    --idea-log-path=*)
+      [[ -z "${idea_log_path}" ]] || {
+        echo "kast-indexer: idea-log-path argument must occur exactly once" >&2
+        exit 1
+      }
+      idea_log_path="${argument#--idea-log-path=}"
+      ;;
+    --private-plugins-path=*)
+      [[ -z "${private_plugins_path}" ]] || {
+        echo "kast-indexer: private-plugins-path argument must occur exactly once" >&2
+        exit 1
+      }
+      private_plugins_path="${argument#--private-plugins-path=}"
+      ;;
+    --cache-state-path=*)
+      [[ -z "${cache_state_path}" ]] || {
+        echo "kast-indexer: cache-state-path argument must occur exactly once" >&2
+        exit 1
+      }
+      cache_state_path="${argument#--cache-state-path=}"
       ;;
   esac
 done
-if [[ -z "${socket_path}" ]]; then
-  echo "kast-indexer: socket-path argument is required" >&2
-  exit 1
-fi
-idea_state_root="${socket_path}.state"
-if [[ -L "${idea_state_root}" || \
-  ( -e "${idea_state_root}" && ! -d "${idea_state_root}" ) ]]; then
-  echo "kast-indexer: endpoint state root is not a directory: ${idea_state_root}" >&2
-  exit 1
-fi
-if ! mkdir -p "${idea_state_root}"; then
-  echo "kast-indexer: endpoint state root is unavailable: ${idea_state_root}" >&2
-  exit 1
-fi
-if ! idea_instance_root="$(mktemp -d "${idea_state_root}/idea.XXXXXX")"; then
-  echo "kast-indexer: process-local IDEA state is unavailable" >&2
+
+require_argument() {
+  local name="$1"
+  local value="$2"
+  if [[ -z "${value}" ]]; then
+    echo "kast-indexer: ${name} argument is required" >&2
+    exit 1
+  fi
+}
+
+require_canonical_directory() {
+  local name="$1"
+  local path="$2"
+  if [[ "${path}" != /* || -L "${path}" || ! -d "${path}" ]]; then
+    echo "kast-indexer: ${name} is not a canonical directory: ${path}" >&2
+    exit 1
+  fi
+  local physical
+  physical="$(cd -P -- "${path}" >/dev/null 2>&1 && pwd -P)" || {
+    echo "kast-indexer: ${name} is unavailable: ${path}" >&2
+    exit 1
+  }
+  if [[ "${physical}" != "${path}" ]]; then
+    echo "kast-indexer: ${name} is not physical: ${path}" >&2
+    exit 1
+  fi
+}
+
+require_argument "idea-home" "${idea_home}"
+require_argument "java-executable" "${java_executable}"
+require_argument "idea-system-path" "${idea_system_path}"
+require_argument "idea-config-path" "${idea_config_path}"
+require_argument "idea-log-path" "${idea_log_path}"
+require_argument "private-plugins-path" "${private_plugins_path}"
+require_argument "cache-state-path" "${cache_state_path}"
+
+require_canonical_directory "idea-home" "${idea_home}"
+require_canonical_directory "idea-system-path" "${idea_system_path}"
+require_canonical_directory "idea-config-path" "${idea_config_path}"
+require_canonical_directory "idea-log-path" "${idea_log_path}"
+require_canonical_directory "private-plugins-path" "${private_plugins_path}"
+if [[ "${cache_state_path}" != /* || "$(dirname -- "${cache_state_path}")" != \
+  "$(dirname -- "${idea_system_path}")" || -L "${cache_state_path}" ]]; then
+  echo "kast-indexer: cache-state-path is not owned by the cache: ${cache_state_path}" >&2
   exit 1
 fi
 
-java_exec="${JAVA_HOME:+${JAVA_HOME}/bin/java}"
-java_exec="${java_exec:-java}"
-physical_java_home="$(
-  "${java_exec}" -XshowSettings:properties -version 2>&1 |
-    sed -n 's/^[[:space:]]*java.home = //p' |
-    head -n 1
-)"
-if [[ -z "${physical_java_home}" || ! -x "${physical_java_home}/bin/java" ]]; then
-  echo "kast-indexer: physical Java home is unavailable" >&2
+if [[ ! -f "${idea_home}/Resources/product-info.json" || \
+  ! -f "${idea_home}/lib/nio-fs.jar" || \
+  ! -f "${idea_home}/modules/module-descriptors.dat" ]]; then
+  echo "kast-indexer: installed IDEA layout is incomplete: ${idea_home}" >&2
   exit 1
 fi
-export JAVA_HOME="${physical_java_home}"
+if [[ "${java_executable}" != /* || -L "${java_executable}" || \
+  ! -f "${java_executable}" || ! -x "${java_executable}" ]]; then
+  echo "kast-indexer: java-executable is not a physical executable: ${java_executable}" >&2
+  exit 1
+fi
+java_directory="$(cd -P -- "$(dirname -- "${java_executable}")" >/dev/null 2>&1 && pwd -P)" || {
+  echo "kast-indexer: java-executable directory is unavailable" >&2
+  exit 1
+}
+if [[ "${java_directory}/$(basename -- "${java_executable}")" != "${java_executable}" || \
+  "${java_executable}" != */bin/java ]]; then
+  echo "kast-indexer: java-executable is not canonical: ${java_executable}" >&2
+  exit 1
+fi
+if [[ ! -d "${private_plugins_path}/kast-indexer/lib" ]]; then
+  echo "kast-indexer: private Kast plugin is unavailable: ${private_plugins_path}" >&2
+  exit 1
+fi
+
+export JAVA_HOME="${java_executable%/bin/java}"
 jna_arch="amd64"
 case "$(uname -m)" in
   arm64|aarch64) jna_arch="aarch64" ;;
 esac
 
 idea_jvm_args=(
+  "-Xms256m"
+  "-Xmx1536m"
   "-Xbootclasspath/a:${idea_home}/lib/nio-fs.jar"
   "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader"
   "-Didea.vendor.name=JetBrains"
-  "-Didea.config.path=${idea_instance_root}/config"
-  "-Didea.system.path=${idea_instance_root}/system"
-  "-Didea.plugins.path=${idea_instance_root}/plugins"
-  "-Didea.log.path=${idea_instance_root}/log"
+  "-Didea.home.path=${idea_home}"
+  "-Didea.config.path=${idea_config_path}"
+  "-Didea.system.path=${idea_system_path}"
+  "-Didea.plugins.path=${private_plugins_path}"
+  "-Didea.log.path=${idea_log_path}"
+  "-Dkast.cache.state.path=${cache_state_path}"
   "-Djna.boot.library.path=${idea_home}/lib/jna/${jna_arch}"
   "-Djna.nosys=true"
   "-Djna.noclasspath=true"
@@ -149,5 +240,5 @@ idea_jvm_args=(
   "--add-opens=jdk.jdi/com.sun.tools.jdi=ALL-UNNAMED"
 )
 
-exec "${java_exec}" "${idea_jvm_args[@]}" ${JAVA_OPTS:-} \
-  -cp "${classpath}" "${main_class}" "--idea-home=${idea_home}" "$@"
+exec "${java_executable}" "${idea_jvm_args[@]}" ${JAVA_OPTS:-} \
+  -cp "${classpath}:${idea_home}/lib/*" "${main_class}" "$@"

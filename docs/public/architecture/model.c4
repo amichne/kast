@@ -4,9 +4,9 @@ model {
     description "Asks one bounded repository question and consumes its typed outcome."
   }
 
-  jetbrains = platform "Supported JetBrains installation" {
+  jetbrains = platform "Exactly supported local IDEA installation" {
     #external
-    description "Owns the already-open exact Project, VFS, indexes, PSI, and Kotlin semantic APIs."
+    description "Supplies the JBR, platform classes, Kotlin plugin, Gradle integration, PSI, and indexing implementation."
   }
 
   compiler = platform "IntelliJ PSI and Kotlin K2" {
@@ -25,16 +25,16 @@ model {
 
     rpc = boundary "Local wire RPC" {
       #identity
-      description "Exchanges one bounded JSON request and response frame with the hosted endpoint."
+      description "Exchanges one bounded JSON request and response frame with the private sidecar endpoint."
     }
 
-    acquisition = service "Endpoint admission" {
-      description "Admits one compatible live endpoint for the exact canonical root."
+    acquisition = service "Sidecar discovery and admission" {
+      description "Discovers the exact installed runtime and starts or admits one exact-root endpoint."
     }
 
-    indexer = runtime "Hosted IDE plugin" {
+    indexer = runtime "Private IntelliJ sidecar" {
       #identity
-      description "Serves bounded operations from the existing Project without hidden import or refresh."
+      description "Owns private config, system, plugins, logs, indexes, and the exact on-disk Project."
     }
 
     composition = authority "Runtime composition" {
@@ -141,7 +141,7 @@ model {
       }
     }
     indexer = module "indexer" {
-      description "Explicit non-default compatibility fixture host."
+      description "Released installed-IDE sidecar host and private extension launcher."
       style {
         color secondary
       }
@@ -149,11 +149,11 @@ model {
   }
 
   caller -[request]-> kast.cli "runs one command"
-  kast.cli -[request]-> kast.acquisition "admits the exact-root endpoint"
-  kast.acquisition -[request]-> kast.indexer "selects the hosted plugin"
+  kast.cli -[request]-> kast.acquisition "discovers or admits the exact-root sidecar"
+  kast.acquisition -[request]-> kast.indexer "starts or selects the private process"
   kast.cli -[request]-> kast.rpc "sends a generated request document"
   kast.rpc -[request]-> kast.indexer "delivers one bounded frame"
-  jetbrains -[supply]-> kast.indexer "owns the existing Project and indexes"
+  jetbrains -[supply]-> kast.indexer "supplies exact runtime code and JBR"
   kast.indexer -[admit]-> kast.composition "constructs the implementation graph"
   kast.composition -[admit]-> kast.operations "admits one canonical operation"
   kast.operations -[inspect]-> kast.adapters "requests bounded semantic work"
@@ -165,7 +165,7 @@ model {
 
   source.cli -[depend]-> source.distribution "uses installed product identity"
   source.cli -[depend]-> source.protocol "uses operation and wire contracts"
-  source.indexer -[depend]-> source.runtime "hosts the explicit compatibility fixture"
+  source.indexer -[depend]-> source.runtime "hosts one complete sidecar runtime composition"
   source.runtime -[depend]-> source.protocol "dispatches canonical operations"
   source.runtime -[depend]-> source.workspace "binds workspace services"
   source.runtime -[depend]-> source.symbol "binds symbol services"

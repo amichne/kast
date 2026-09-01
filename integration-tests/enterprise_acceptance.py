@@ -9,7 +9,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import signal
 import subprocess
 import tempfile
 import time
@@ -89,6 +88,7 @@ class Acceptance:
                 "KAST_RUNTIME_DIRECTORY": str(self.runtime / "endpoints"),
                 "KAST_RUNTIME_STORE": str(self.runtime / "store"),
                 "KAST_RUNTIME_ARCHIVE": str(self.runtime_archive),
+                "KAST_CACHE_ROOT": str(self.runtime / "intellij-caches"),
             },
             text=True,
             stdout=subprocess.PIPE,
@@ -145,28 +145,40 @@ class Acceptance:
                 f"{minimum_modules} and at most {discovery_limit}"
             )
 
-        overloads = self.resolve_symbols("enterpriseRouteOverload", discovery_limit)
-        route_overloads = {
+        initial_overloads = self.resolve_symbols(
+            "enterpriseRouteOverload", discovery_limit
+        )
+        initial_route_overloads = {
             selector: symbol
-            for selector, symbol in overloads.items()
+            for selector, symbol in initial_overloads.items()
             if symbol.get("name") == "enterpriseRouteOverload"
         }
         overload_locations = {
             (symbol.get("file"), json.dumps(symbol.get("range"), sort_keys=True))
-            for symbol in route_overloads.values()
+            for symbol in initial_route_overloads.values()
         }
-        if len(route_overloads) != 2 or len(overload_locations) != 2:
-            fail(f"exact overload identity collapsed: {route_overloads}")
+        if len(initial_route_overloads) != 2 or len(overload_locations) != 2:
+            fail(f"exact overload identity collapsed: {initial_route_overloads}")
 
-        roots = self.resolve_symbols("enterpriseRootOperation", discovery_limit)
-        exact_roots = [
+        initial_roots = self.resolve_symbols("enterpriseRootOperation", discovery_limit)
+        initial_exact_roots = [
             selector
-            for selector, symbol in roots.items()
+            for selector, symbol in initial_roots.items()
             if symbol.get("name") == "enterpriseRootOperation"
         ]
-        if len(exact_roots) != 1:
-            fail(f"expected one exact enterprise traversal root: {roots}")
-        root_selector = exact_roots[0]
+        if len(initial_exact_roots) != 1:
+            fail(f"expected one exact enterprise traversal root: {initial_roots}")
+
+        initial_routers = self.resolve_symbols("EnterpriseRouter", discovery_limit)
+        initial_exact_routers = [
+            selector
+            for selector, symbol in initial_routers.items()
+            if symbol.get("kind") == "classlike"
+            and symbol.get("qualifiedIdentity")
+            == "enterprise.alpha.one.EnterpriseRouter"
+        ]
+        if len(initial_exact_routers) != 1:
+            fail(f"expected one exact enterprise mutation target: {initial_routers}")
 
         topology = self.command(
             "topology", "build", timeout=self.maximum_startup_seconds
@@ -178,7 +190,40 @@ class Acceptance:
             or not isinstance(topology.get("digest"), str)
         ):
             fail(f"installed K2 topology build did not publish: {topology}")
-        self.prove_topology_snapshot_restart(topology["digest"])
+        self.prove_topology_snapshot_restart(topology)
+
+        overloads = self.resolve_symbols("enterpriseRouteOverload", discovery_limit)
+        roots = self.resolve_symbols("enterpriseRootOperation", discovery_limit)
+        routers = self.resolve_symbols("EnterpriseRouter", discovery_limit)
+        self.prove_restart_semantic_equivalence(
+            "enterpriseRouteOverload", initial_overloads, overloads
+        )
+        self.prove_restart_semantic_equivalence(
+            "enterpriseRootOperation", initial_roots, roots
+        )
+        self.prove_restart_semantic_equivalence(
+            "EnterpriseRouter", initial_routers, routers
+        )
+        route_overloads = {
+            selector: symbol
+            for selector, symbol in overloads.items()
+            if symbol.get("name") == "enterpriseRouteOverload"
+        }
+        exact_roots = [
+            selector
+            for selector, symbol in roots.items()
+            if symbol.get("name") == "enterpriseRootOperation"
+        ]
+        exact_routers = [
+            selector
+            for selector, symbol in routers.items()
+            if symbol.get("kind") == "classlike"
+            and symbol.get("qualifiedIdentity")
+            == "enterprise.alpha.one.EnterpriseRouter"
+        ]
+        if len(route_overloads) != 2 or len(exact_roots) != 1 or len(exact_routers) != 1:
+            fail("restart changed exact enterprise selector cardinality")
+        root_selector = exact_roots[0]
 
         relation_limit = positive_integer(bounds, "relationResultLimit")
         relation = self.command(
@@ -192,10 +237,11 @@ class Acceptance:
             str(relation_limit),
         )
         self.prove_bounded_result(
-            relation, "relation.read", "targets", relation_limit
+            relation, "relation.read", "relations", relation_limit
         )
 
         traversal_limit = positive_integer(bounds, "traversalResultLimit")
+        traversal_depth = positive_integer(bounds, "traversalMaximumDepth")
         traversal = self.command(
             "traversal",
             "run",
@@ -204,27 +250,19 @@ class Acceptance:
             "--relation",
             "callees",
             "--maximum-depth",
-            str(positive_integer(bounds, "traversalMaximumDepth")),
+            str(traversal_depth),
             "--maximum-results",
             str(traversal_limit),
         )
-        self.prove_bounded_result(
-            traversal, "traversal.run", "reached", traversal_limit
+        self.prove_normalized_traversal_graph(
+            traversal,
+            traversal_limit,
+            traversal_depth,
         )
 
-        routers = self.resolve_symbols("EnterpriseRouter", discovery_limit)
-        exact_routers = [
-            selector
-            for selector, symbol in routers.items()
-            if symbol.get("kind") == "classlike"
-            and symbol.get("qualifiedIdentity")
-            == "enterprise.alpha.one.EnterpriseRouter"
-        ]
-        if len(exact_routers) != 1:
-            fail(f"expected one exact enterprise mutation target: {routers}")
         self.prove_generation_transition(exact_routers[0], next(iter(route_overloads)))
 
-    def prove_topology_snapshot_restart(self, published_digest: str) -> None:
+    def prove_topology_snapshot_restart(self, published: dict[str, Any]) -> None:
         stopped = self.command("stop")
         if (
             stopped.get("command") != "stop"
@@ -239,12 +277,37 @@ class Acceptance:
             reused.get("operation") != "topology.build"
             or reused.get("status") != "complete"
             or reused.get("snapshotStatus") != "reused"
-            or reused.get("digest") != published_digest
+            or not isinstance(reused.get("digest"), str)
+            or not isinstance(reused.get("generation"), int)
         ):
             fail(
-                "restarted runtime did not reuse the exact published SQLite "
+                "restarted runtime did not rebind the exact published SQLite "
                 f"topology facts: {reused}"
             )
+        if (
+            reused.get("generation") == published.get("generation")
+            and reused.get("digest") != published.get("digest")
+        ):
+            fail(f"same-generation topology digest changed across restart: {reused}")
+
+    @staticmethod
+    def prove_restart_semantic_equivalence(
+        query: str,
+        before: dict[str, dict[str, Any]],
+        after: dict[str, dict[str, Any]],
+    ) -> None:
+        def normalized(symbols: dict[str, dict[str, Any]]) -> list[str]:
+            return sorted(
+                json.dumps(
+                    {key: value for key, value in symbol.items() if key != "selector"},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                for symbol in symbols.values()
+            )
+
+        if normalized(before) != normalized(after):
+            fail(f"semantic evidence changed across restart for {query}")
 
     def prove_generation_transition(self, target: str, stale_selector: str) -> None:
         plan = self.command(
@@ -278,6 +341,31 @@ class Acceptance:
         )
         if stale.get("status") != "rejected" or stale.get("reason") != "selector-stale":
             fail(f"prior-generation selector was not rejected: {stale}")
+
+    def prove_workspace_write_scope(self) -> None:
+        tracked = git(self.workspace, "diff", "--name-only").splitlines()
+        untracked = git(
+            self.workspace, "ls-files", "--others", "--exclude-standard"
+        ).splitlines()
+        expected = [
+            "domains/alpha/one/src/main/kotlin/enterprise/alpha/one/Enterprise.kt"
+        ]
+        gradle_bootstrap_files = {
+            "gradle/wrapper/gradle-wrapper.jar",
+            "gradle/wrapper/gradle-wrapper.properties",
+            "gradlew",
+            "gradlew.bat",
+        }
+        unexpected_untracked = [
+            path
+            for path in untracked
+            if not path.startswith(".gradle/") and path not in gradle_bootstrap_files
+        ]
+        if tracked != expected or unexpected_untracked:
+            fail(
+                "sidecar wrote outside the explicit mutation target: "
+                f"tracked={tracked}, unexpectedUntracked={unexpected_untracked}"
+            )
 
     def resolve_symbols(self, query: str, limit: int) -> dict[str, dict[str, Any]]:
         discovery = self.command(
@@ -315,6 +403,114 @@ class Acceptance:
         if len(values) > limit:
             fail(f"{operation} returned {len(values)} results for limit {limit}")
 
+    def prove_normalized_traversal_graph(
+        self,
+        document: dict[str, Any],
+        result_limit: int,
+        maximum_depth: int,
+    ) -> None:
+        if document.get("operation") != "traversal.run" or document.get("status") not in {
+            "complete",
+            "qualified",
+        }:
+            fail(f"traversal.run returned no semantic evidence: {document}")
+        if "records" in document:
+            fail(f"traversal.run retained the denormalized records projection: {document}")
+
+        graph = document.get("graph")
+        if not isinstance(graph, dict):
+            fail(f"traversal.run omitted its normalized graph: {document}")
+        snapshot = graph.get("snapshot")
+        nodes = graph.get("nodes")
+        edges = graph.get("edges")
+        proofs = graph.get("proofs")
+        if not isinstance(snapshot, dict):
+            fail(f"traversal.run omitted its snapshot identity: {graph}")
+        if snapshot.get("canonicalRoot") != str(self.workspace.resolve()):
+            fail(f"traversal.run returned a foreign snapshot root: {snapshot}")
+        generation = snapshot.get("generation")
+        if not isinstance(generation, int) or isinstance(generation, bool) or generation < 1:
+            fail(f"traversal.run returned an invalid snapshot generation: {snapshot}")
+        if not isinstance(nodes, list) or not nodes:
+            fail(f"traversal.run returned no normalized nodes: {graph}")
+        if not isinstance(edges, list) or not edges:
+            fail(f"traversal.run returned no normalized edges: {graph}")
+        if len(edges) > result_limit:
+            fail(
+                f"traversal.run returned {len(edges)} edges for limit {result_limit}"
+            )
+        if not isinstance(proofs, list) or not proofs:
+            fail(f"traversal.run returned no normalized proofs: {graph}")
+
+        node_ids: set[int] = set()
+        node_proof_ids: set[int] = set()
+        selectors: set[str] = set()
+        for node in nodes:
+            if not isinstance(node, dict):
+                fail(f"traversal.run returned a non-object node: {node}")
+            node_id = node.get("id")
+            proof_id = node.get("proof")
+            selector = node.get("selector")
+            if not isinstance(node_id, int) or isinstance(node_id, bool):
+                fail(f"traversal.run returned an invalid node identity: {node}")
+            if not isinstance(proof_id, int) or isinstance(proof_id, bool):
+                fail(f"traversal.run returned an invalid node proof reference: {node}")
+            if not isinstance(selector, str) or not selector:
+                fail(f"traversal.run returned a node without an exact selector: {node}")
+            if node_id in node_ids or selector in selectors:
+                fail(f"traversal.run returned a duplicate normalized node: {node}")
+            node_ids.add(node_id)
+            node_proof_ids.add(proof_id)
+            selectors.add(selector)
+        if node_ids != set(range(len(nodes))):
+            fail(f"traversal.run node identities are not dense: {sorted(node_ids)}")
+
+        proof_ids: set[int] = set()
+        proof_identities: set[str] = set()
+        for proof in proofs:
+            if not isinstance(proof, dict):
+                fail(f"traversal.run returned a non-object proof: {proof}")
+            proof_id = proof.get("id")
+            identity = proof.get("identity")
+            if not isinstance(proof_id, int) or isinstance(proof_id, bool):
+                fail(f"traversal.run returned an invalid proof identity: {proof}")
+            if not isinstance(identity, str) or not identity:
+                fail(f"traversal.run returned an empty compiler proof: {proof}")
+            if proof_id in proof_ids or identity in proof_identities:
+                fail(f"traversal.run returned a duplicate normalized proof: {proof}")
+            proof_ids.add(proof_id)
+            proof_identities.add(identity)
+        if proof_ids != set(range(len(proofs))):
+            fail(f"traversal.run proof identities are not dense: {sorted(proof_ids)}")
+        if node_proof_ids != proof_ids:
+            fail(
+                "traversal.run node proof references do not match the proof table: "
+                f"nodes={sorted(node_proof_ids)}, proofs={sorted(proof_ids)}"
+            )
+
+        referenced_node_ids: set[int] = set()
+        for edge in edges:
+            if not isinstance(edge, dict):
+                fail(f"traversal.run returned a non-object edge: {edge}")
+            source = edge.get("source")
+            target = edge.get("target")
+            depth = edge.get("depth")
+            if source not in node_ids or target not in node_ids:
+                fail(f"traversal.run returned a dangling edge: {edge}")
+            if (
+                not isinstance(depth, int)
+                or isinstance(depth, bool)
+                or depth < 1
+                or depth > maximum_depth
+            ):
+                fail(f"traversal.run returned an out-of-bounds edge depth: {edge}")
+            referenced_node_ids.update((source, target))
+        if referenced_node_ids != node_ids:
+            fail(
+                "traversal.run returned unreferenced normalized nodes: "
+                f"nodes={sorted(node_ids)}, referenced={sorted(referenced_node_ids)}"
+            )
+
 
 def git(workspace: Path, *arguments: str) -> str:
     result = subprocess.run(
@@ -338,41 +534,14 @@ def prepare_workspace_fixture(workspace: Path) -> None:
     git(workspace, "commit", "--quiet", "-m", "baseline")
 
 
-def stop_indexer(workspace: Path) -> None:
-    marker = f"--workspace-root={workspace.resolve()}"
-    processes = subprocess.run(
-        ["ps", "-ax", "-o", "pid=,command="],
-        text=True,
-        stdout=subprocess.PIPE,
-        check=False,
-    ).stdout.splitlines()
-    pids: list[int] = []
-    for process in processes:
-        fields = process.strip().split(maxsplit=1)
-        if len(fields) == 2 and "KastIndexerMainKt" in fields[1] and marker in fields[1]:
-            pids.append(int(fields[0]))
-    for pid in pids:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-    deadline = time.monotonic() + 5
-    while pids and time.monotonic() < deadline:
-        live: list[int] = []
-        for pid in pids:
-            try:
-                os.kill(pid, 0)
-                live.append(pid)
-            except ProcessLookupError:
-                pass
-        pids = live
-        if pids:
-            time.sleep(0.1)
-    for pid in pids:
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+def stop_indexer(acceptance: Acceptance) -> None:
+    stopped = acceptance.command("stop")
+    if (
+        stopped.get("command") != "stop"
+        or stopped.get("status") != "complete"
+        or stopped.get("runtime") != "stopped"
+    ):
+        fail(f"acceptance cleanup did not retire the public runtime: {stopped}")
 
 
 def main() -> None:
@@ -419,7 +588,8 @@ def main() -> None:
             try:
                 acceptance.prove_installed_surface(bounds)
             finally:
-                stop_indexer(workspace)
+                stop_indexer(acceptance)
+            acceptance.prove_workspace_write_scope()
     elapsed = time.monotonic() - started_at
     if elapsed > maximum_acceptance_seconds:
         fail(

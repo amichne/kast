@@ -69,6 +69,7 @@ sealed interface RuntimeEndpointResolution {
 enum class RuntimeEndpointFailure {
     ROOT_MISMATCH,
     INVALID_SOCKET_PATH,
+    LAUNCH_CONTEXT_REQUIRED,
 }
 
 fun interface RuntimeEndpointLocator {
@@ -81,27 +82,67 @@ fun interface RuntimeEndpointLocator {
     fun locate(root: CanonicalRoot): RuntimeEndpointResolution
 }
 
+/** A deterministic physical directory that leaves enough bytes for every derived UDS name. */
+internal class RuntimeSocketDirectory private constructor(
+    internal val path: Path,
+) {
+    companion object {
+        internal const val MAXIMUM_ENDPOINT_PATH_BYTES = 103
+
+        /**
+         * Proof transition: `InstalledRuntimeDirectory -> RuntimeSocketDirectory`.
+         *
+         * Maps an admitted logical runtime namespace into one fixed-length physical namespace.
+         * The complete endpoint shape is checked against macOS's Unix-domain address bound before
+         * this proof-carrying directory can reach a locator. Raw paths leave only at endpoint
+         * derivation and filesystem boundaries.
+         */
+        internal fun from(logicalDirectory: InstalledRuntimeDirectory): RuntimeSocketDirectory {
+            val namespace = sha256Prefix(logicalDirectory.path.toString(), DIGEST_BYTES)
+            val physical = PHYSICAL_SOCKET_ROOT.resolve("kast-runtime-$namespace")
+            val maximumEndpoint = physical.resolve(
+                "kast-${"0".repeat(DIGEST_HEX_CHARACTERS)}.sock",
+            )
+            check(
+                maximumEndpoint.toString().toByteArray(StandardCharsets.UTF_8).size <=
+                    MAXIMUM_ENDPOINT_PATH_BYTES,
+            )
+            return RuntimeSocketDirectory(physical)
+        }
+
+        private val PHYSICAL_SOCKET_ROOT = Path.of("/tmp")
+        private const val DIGEST_BYTES = 12
+        private const val DIGEST_HEX_CHARACTERS = DIGEST_BYTES * 2
+    }
+}
+
 /** Deterministically derives a bounded UDS name from the canonical root. */
-class Sha256RuntimeEndpointLocator(
-    private val socketDirectory: Path,
+internal class Sha256RuntimeEndpointLocator(
+    private val socketDirectory: RuntimeSocketDirectory,
     private val runtimeId: SemanticRuntimeId,
 ) : RuntimeEndpointLocator {
     override fun locate(root: CanonicalRoot): RuntimeEndpointResolution {
-        val digest = HexFormat.of().formatHex(
-            MessageDigest.getInstance("SHA-256")
-                .digest(
-                    "${root.path}\n${runtimeId.value}".toByteArray(StandardCharsets.UTF_8),
-                ),
-            0,
-            12,
+        val digest = sha256Prefix(
+            "${root.path}\n${runtimeId.value}",
+            ENDPOINT_DIGEST_BYTES,
         )
         return RuntimeEndpoint.at(
             root,
             runtimeId,
-            socketDirectory.resolve("kast-$digest.sock"),
+            socketDirectory.path.resolve("kast-$digest.sock"),
         )
     }
+
+    private companion object {
+        const val ENDPOINT_DIGEST_BYTES = 12
+    }
 }
+
+private fun sha256Prefix(value: String, bytes: Int): String = HexFormat.of().formatHex(
+    MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8)),
+    0,
+    bytes,
+)
 
 enum class IndexerExecutableFailure {
     NOT_ABSOLUTE,
@@ -158,12 +199,13 @@ class IndexerLaunchCommand private constructor(
          *
          * Establishes the installed indexer's exact root and UDS launch arguments. Construction
          * fails closed if the endpoint belongs to another root. Raw arguments may be extracted
-         * only by [MacOsRuntimeProcessSession].
+         * only by an admitted [RuntimeProcessStarter].
          */
         fun create(
             executable: IndexerExecutable,
             root: CanonicalRoot,
             endpoint: RuntimeEndpoint,
+            context: SidecarLaunchContext,
         ): IndexerLaunchCommandConstruction = if (endpoint.root == root) {
             IndexerLaunchCommandConstruction.Created(
                 IndexerLaunchCommand(
@@ -172,6 +214,13 @@ class IndexerLaunchCommand private constructor(
                         "--workspace-root=${root.path}",
                         "--socket-path=${endpoint.socketPath}",
                         "--runtime-id=${endpoint.runtimeId.value}",
+                        "--idea-home=${context.runtime.home}",
+                        "--java-executable=${context.runtime.javaExecutable}",
+                        "--idea-system-path=${context.systemDirectory}",
+                        "--idea-config-path=${context.configDirectory}",
+                        "--idea-log-path=${context.logDirectory}",
+                        "--private-plugins-path=${context.privatePluginsDirectory}",
+                        "--cache-state-path=${context.cacheRoot.resolve("cache-state")}",
                     ),
                     processSession = MacOsRuntimeProcessSession.from(endpoint),
                 ),
@@ -179,6 +228,15 @@ class IndexerLaunchCommand private constructor(
         } else {
             IndexerLaunchCommandConstruction.Rejected(RuntimeEndpointFailure.ROOT_MISMATCH)
         }
+
+        /** Legacy callers cannot manufacture a launch without the new sidecar authority. */
+        fun create(
+            executable: IndexerExecutable,
+            root: CanonicalRoot,
+            endpoint: RuntimeEndpoint,
+        ): IndexerLaunchCommandConstruction = IndexerLaunchCommandConstruction.Rejected(
+            RuntimeEndpointFailure.LAUNCH_CONTEXT_REQUIRED,
+        )
     }
 }
 
@@ -263,6 +321,8 @@ sealed interface RuntimeAdmissionFailure {
     data object IdeCapabilityUnavailable : RuntimeAdmissionFailure
     data object IdeVariantUnavailable : RuntimeAdmissionFailure
     data object Interrupted : RuntimeAdmissionFailure
+    data class InstalledIdeRejected(val failure: IndexSeedFailure) : RuntimeAdmissionFailure
+    data class SidecarCacheRejected(val failure: SidecarCacheFailure) : RuntimeAdmissionFailure
 }
 
 internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
@@ -291,6 +351,24 @@ internal fun RuntimeAdmissionFailure.outputReason(): String = when (this) {
     RuntimeAdmissionFailure.IdeCapabilityUnavailable -> "ide-capability-unavailable"
     RuntimeAdmissionFailure.IdeVariantUnavailable -> "ide-variant-unavailable"
     RuntimeAdmissionFailure.Interrupted -> "interrupted"
+    is RuntimeAdmissionFailure.InstalledIdeRejected -> when (failure) {
+        IndexSeedFailure.Ambiguity -> "idea-installation-ambiguous"
+        IndexSeedFailure.MissingInstallation -> "idea-installation-missing"
+        is IndexSeedFailure.Incompatibility -> "idea-installation-incompatible"
+        else -> "idea-installation-rejected"
+    }
+    is RuntimeAdmissionFailure.SidecarCacheRejected -> when (failure) {
+        SidecarCacheFailure.FilesystemRejected -> "sidecar-cache-rejected"
+        SidecarCacheFailure.RebuildRequired -> "sidecar-cache-rebuild-required"
+        is SidecarCacheFailure.SeedRejected -> when (failure.failure) {
+            IndexSeedFailure.RunningSourceIde -> "index-seed-source-running"
+            IndexSeedFailure.ConsentAbsent -> "index-seed-consent-absent"
+            IndexSeedFailure.UnsupportedFilesystem -> "index-seed-filesystem-unsupported"
+            IndexSeedFailure.SourceMutation -> "index-seed-source-mutated"
+            IndexSeedFailure.CopyFailure -> "index-seed-copy-failed"
+            else -> "index-seed-rejected"
+        }
+    }
 }
 
 fun interface RuntimeDemander {
@@ -317,6 +395,7 @@ private const val RUNTIME_PROBE_INTERVAL_MILLIS = 100L
 /** Starts only the admitted indexer artifact with explicit exact-root and socket arguments. */
 internal class ExactRootProcessRuntimeDemander(
     private val executable: IndexerExecutable,
+    private val launchContext: SidecarLaunchContext,
     private val processStarter: RuntimeProcessStarter = JdkRuntimeProcessStarter,
     private val endpointProbe: RuntimeEndpointProbe = JdkUnixDomainEndpointProbe,
 ) : RuntimeDemander {
@@ -331,7 +410,12 @@ internal class ExactRootProcessRuntimeDemander(
             return RuntimeAdmission.Ready(endpoint)
         }
         val command = when (
-            val construction = IndexerLaunchCommand.create(executable, root, endpoint)
+            val construction = IndexerLaunchCommand.create(
+                executable,
+                root,
+                endpoint,
+                launchContext,
+            )
         ) {
             is IndexerLaunchCommandConstruction.Created -> construction.command
             is IndexerLaunchCommandConstruction.Rejected ->
@@ -353,14 +437,14 @@ internal class ExactRootProcessRuntimeDemander(
                 return RuntimeAdmission.Ready(endpoint)
             }
             when (session.observe()) {
-                LaunchdServiceObservation.Present -> Unit
-                LaunchdServiceObservation.Absent -> return RuntimeAdmission.Rejected(
+                RuntimeSessionObservation.Present -> Unit
+                RuntimeSessionObservation.Absent -> return RuntimeAdmission.Rejected(
                     RuntimeAdmissionFailure.SessionEndedBeforeReady,
                 )
-                LaunchdServiceObservation.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeSessionObservation.Rejected -> return RuntimeAdmission.Rejected(
                     RuntimeAdmissionFailure.ProcessObservationFailed,
                 )
-                LaunchdServiceObservation.Interrupted -> return RuntimeAdmission.Rejected(
+                RuntimeSessionObservation.Interrupted -> return RuntimeAdmission.Rejected(
                     RuntimeAdmissionFailure.Interrupted,
                 )
             }
@@ -390,6 +474,7 @@ fun interface InstalledSemanticRuntimeResolver {
 class ManagedExactRootRuntimeDemander(
     private val manifest: SemanticRuntimeManifest,
     private val resolver: InstalledSemanticRuntimeResolver,
+    private val launchContext: SidecarLaunchContext? = null,
 ) : RuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
@@ -412,7 +497,10 @@ class ManagedExactRootRuntimeDemander(
                 RuntimeAdmissionFailure.LayoutInvalid,
             )
         }
-        return ExactRootProcessRuntimeDemander(executable).demand(root, endpoint)
+        val context = launchContext ?: return RuntimeAdmission.Rejected(
+            RuntimeAdmissionFailure.LayoutInvalid,
+        )
+        return ExactRootProcessRuntimeDemander(executable, context).demand(root, endpoint)
     }
 }
 

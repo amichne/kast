@@ -21,8 +21,8 @@ import kotlinx.serialization.json.Json
 /**
  * Compile-only contract for the exact public IDEA 262 signal APIs characterized by epoch-signal policy.
  *
- * This type must never be classloaded by the Java-21 characterization task. The positive test
- * instead reads its class resource and verifies the exact constant-pool owners and members.
+ * The bytecode characterization task does not invoke this adapter. It reads the class resource and
+ * verifies the exact constant-pool owners and members without manufacturing a live IDE project.
  */
 @Suppress("unused")
 internal object EpochSignalApiContract {

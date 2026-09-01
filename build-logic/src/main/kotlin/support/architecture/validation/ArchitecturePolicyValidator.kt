@@ -75,7 +75,9 @@ object ArchitecturePolicyValidator {
             }
         }
         val exclusiveEffectFailures = EXCLUSIVE_EFFECT_OWNERS.mapNotNull { (effect, expected) ->
-            val observed = definition.modules.filter { effect in it.allowedEffects }
+            val observed = definition.modules.filter { module ->
+                effect in module.allowedEffects || effect in module.allowedScopedEffectCallers
+            }
                 .mapTo(linkedSetOf(), ModulePolicy::id)
             if (observed == expected) null else ArchitecturePolicyFailure.InvalidExclusiveEffectOwners(
                 effect,

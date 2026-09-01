@@ -2,7 +2,10 @@ package io.github.amichne.kast.cli.codex
 
 import io.github.amichne.kast.cli.CanonicalRootDiscovery
 import io.github.amichne.kast.cli.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.cli.InstalledRuntimeDirectory
+import io.github.amichne.kast.cli.InstalledRuntimeDirectoryAdmission
 import io.github.amichne.kast.cli.RuntimeEndpointResolution
+import io.github.amichne.kast.cli.RuntimeSocketDirectory
 import io.github.amichne.kast.cli.Sha256RuntimeEndpointLocator
 import io.github.amichne.kast.cli.UnixDomainWireClient
 import io.github.amichne.kast.cli.WireSession
@@ -158,9 +161,15 @@ internal object ExistingKastRuntimeConnection {
                 KastSpikeBoundaryFailure.INSTALLED_MANIFEST_REJECTED,
             )
         }
+        val runtimeDirectory = when (val admission = InstalledRuntimeDirectory.admit()) {
+            is InstalledRuntimeDirectoryAdmission.Admitted -> admission.directory
+            is InstalledRuntimeDirectoryAdmission.Rejected -> return KastSpikeSessionOpening.Rejected(
+                KastSpikeBoundaryFailure.ENDPOINT_REJECTED,
+            )
+        }
         val endpoint = when (
             val resolution = Sha256RuntimeEndpointLocator(
-                Path.of(System.getProperty("java.io.tmpdir")).resolve("kast-runtime"),
+                RuntimeSocketDirectory.from(runtimeDirectory),
                 manifest.runtimeId,
             ).locate(root)
         ) {

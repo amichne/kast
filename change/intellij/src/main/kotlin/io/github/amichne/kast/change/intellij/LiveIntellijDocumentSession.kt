@@ -1,6 +1,7 @@
 package io.github.amichne.kast.change.intellij
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -11,6 +12,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import io.github.amichne.kast.change.apply.SourceWriteFailure
 import org.jetbrains.kotlin.psi.KtFile
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
@@ -64,7 +66,14 @@ internal class LiveIntellijDocumentSession(
     }
 
     override fun save(): IntellijSessionStepResult = try {
-        onEdt { FileDocumentManager.getInstance().saveDocument(prepared.document) }
+        onEdt {
+            WriteAction.run<RuntimeException> {
+                prepared.file.setBinaryContent(
+                    input.postimageText.toByteArray(StandardCharsets.UTF_8),
+                )
+                FileDocumentManager.getInstance().saveDocumentAsIs(prepared.document)
+            }
+        }
         IntellijSessionStepResult.Completed
     } catch (cancellation: ProcessCanceledException) {
         throw cancellation

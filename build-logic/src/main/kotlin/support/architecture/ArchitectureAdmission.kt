@@ -197,7 +197,9 @@ sealed interface ArchitectureAdmission {
                 .map(ArchitectureViolation::UnapprovedProjectDependency)
             val forbiddenEffects = observation.effects
                 .filterNot { effect ->
-                    effect.effect in policy.modules.getValue(effect.module).allowedEffects
+                    val module = policy.modules.getValue(effect.module)
+                    effect.effect in module.allowedEffects ||
+                        effect.caller.owner in module.allowedScopedEffectCallers[effect.effect].orEmpty()
                 }
                 .map(ArchitectureViolation::ForbiddenEffectUse)
             val forbiddenExports = observation.exportedProjectDependencies.mapNotNull { edge ->

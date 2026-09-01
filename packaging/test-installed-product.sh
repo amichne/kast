@@ -2,32 +2,74 @@
 set -euo pipefail
 
 fail() {
-  echo "installed-product: $*" >&2
+  printf 'installed-product: %s\n' "$*" >&2
   exit 1
 }
 
 product_root="${KAST_INSTALLED_PRODUCT:?KAST_INSTALLED_PRODUCT must name the staged product}"
 control_archive="${KAST_CONTROL_ARCHIVE:?KAST_CONTROL_ARCHIVE must name the control archive}"
+runtime_archive="${KAST_SEMANTIC_RUNTIME_ARCHIVE:?sidecar archive is required}"
 report_directory="${KAST_INSTALLED_REPORT_DIRECTORY:?report directory is required}"
 kast="${product_root}/bin/kast"
 
-[[ -x "${kast}" ]] || fail "staged public command is missing"
-[[ -f "${control_archive}" ]] || fail "hosted control archive is missing"
-[[ -f "${product_root}/share/kast/operation-registry.json" ]] ||
-  fail "operation registry is missing"
-[[ -f "${product_root}/share/kast/wire-schema.json" ]] || fail "wire schema is missing"
-[[ ! -e "${product_root}/share/kast/semantic-runtime.json" ]] ||
-  fail "hosted product retained a semantic-runtime manifest"
-if find "${product_root}" \( -name 'kast-indexer' -o -name 'idea-home' \
-  -o -name 'semantic-runtime.json' \) -print -quit | grep -q .; then
-  fail "hosted product retained isolated-runtime payload"
-fi
+[[ -x "$kast" ]] || fail "staged public command is missing"
+[[ -f "$control_archive" ]] || fail "control archive is missing"
+[[ -f "$runtime_archive" ]] || fail "private sidecar archive is missing"
+for resource in operation-registry.json wire-schema.json semantic-runtime.json; do
+  [[ -f "$product_root/share/kast/$resource" ]] || fail "control resource is missing: $resource"
+done
+python3 - "$product_root/share/kast/semantic-runtime.json" <<'PY'
+import json
+from pathlib import Path
+import sys
 
-version="$(${kast} --version)"
-[[ "${version}" == "kast "*" (IDE-hosted)" ]] ||
-  fail "version does not identify the hosted product: ${version}"
-schema="$(${kast} --schema)"
-python3 - "${schema}" "${product_root}/share/kast/operation-registry.json" <<'PY'
+document = json.loads(Path(sys.argv[1]).read_text())
+assert document["ideaBuild"] == "262.9437.185", document
+assert document["kotlinPluginBuild"] == "262.9437.185-IJ", document
+assert document["kastPluginSha256"].startswith("sha256:"), document
+PY
+if find "$product_root" \( -name 'kast-indexer' -o -name 'idea-home' \
+  -o -name 'product-info.json' -o -name 'kast-ide-plugin*' \) -print -quit | grep -q .; then
+  fail "control product contains sidecar, public plugin, or IDEA distribution content"
+fi
+if grep -Eq '(^|/)idea-home/|product-info\.json|kast-ide-plugin' \
+  < <(unzip -Z1 "$runtime_archive"); then
+  fail "private sidecar contains an IDEA distribution or public plugin"
+fi
+grep -Fxq 'kast-indexer' < <(unzip -Z1 "$runtime_archive") ||
+  fail "private sidecar executable is missing"
+grep -Eq '^private-plugins/kast-indexer/lib/.+' < <(unzip -Z1 "$runtime_archive") ||
+  fail "private sidecar extension is missing"
+
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-sidecar-product.XXXXXX")"
+runtime_directory="$fixture/runtime"
+runtime_socket_directory="/tmp/kast-runtime-$(
+  printf '%s' "$runtime_directory" \
+    | sed -E 's:/+:/:g' \
+    | shasum -a 256 \
+    | awk '{ print substr($1, 1, 24) }'
+)"
+cleanup() {
+  rm -rf -- "$fixture"
+  rm -rf -- "$runtime_socket_directory"
+}
+trap cleanup EXIT
+mkdir -p "$fixture/home" "$fixture/runtime" "$fixture/repo"
+printf 'rootProject.name = "installed-product"\n' >"$fixture/repo/settings.gradle.kts"
+command_environment=(
+  "HOME=$fixture/home"
+  "JAVA_OPTS=-Duser.home=$fixture/home"
+  "KAST_RUNTIME_ARCHIVE=$runtime_archive"
+  "KAST_RUNTIME_STORE=$fixture/store"
+  "KAST_RUNTIME_DIRECTORY=$runtime_directory"
+  "KAST_CACHE_ROOT=$fixture/cache"
+)
+
+version="$(env "${command_environment[@]}" "$kast" --version)"
+[[ "$version" == "kast "*" (IntelliJ sidecar)" ]] ||
+  fail "version does not identify the sidecar product: $version"
+schema="$(env "${command_environment[@]}" "$kast" --schema)"
+python3 - "$schema" "$product_root/share/kast/operation-registry.json" <<'PY'
 import json
 from pathlib import Path
 import sys
@@ -35,42 +77,55 @@ import sys
 document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
-assert "semanticRuntime" not in document, document
 assert document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == ["product inspect"], document
 PY
 
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-hosted-missing-endpoint.XXXXXX")"
-cleanup() {
-  rm -rf -- "${fixture}"
-}
-trap cleanup EXIT
-git -C "${fixture}" init -q
-inspection="$(cd "${fixture}" && "${kast}" product inspect)"
-python3 - "${inspection}" <<'PY'
+inspection="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast" product inspect)"
+python3 - "$inspection" <<'PY'
 import json
 import sys
 
 document = json.loads(sys.argv[1])
 assert document["operation"] == "product.inspect", document
 assert document["status"] == "complete", document
-assert document["control"]["kastPluginVersion"], document
-assert document["workspace"] == {
-    "type": "root-rejected",
-    "failure": "root-marker-not-found",
-}, document
+assert document["control"]["execution"] == "isolated-intellij-sidecar", document
+assert document["control"]["runtimeId"].startswith("sha256:"), document
+assert document["workspace"]["type"] == "observed", document
+assert document["workspace"]["cache"]["type"] == "absent", document
 PY
-before_indexers="$(pgrep -f 'io\.github\.amichne\.kast\.indexer\.KastIndexerMainKt' || true)"
-if (cd "${fixture}" && "${kast}" workspace inspect) >"${fixture}/missing.json" \
-  2>"${fixture}/missing.err"; then
-  fail "semantic demand succeeded without an exact-root hosted endpoint"
-fi
-after_indexers="$(pgrep -f 'io\.github\.amichne\.kast\.indexer\.KastIndexerMainKt' || true)"
-[[ "${before_indexers}" == "${after_indexers}" ]] ||
-  fail "missing hosted endpoint started an isolated indexer"
 
-mkdir -p "${report_directory}"
-python3 - "${report_directory}/topology-installed-product.json" "${version}" <<'PY'
+passive_state_manifest() {
+  for path in "$runtime_directory" "$runtime_socket_directory" \
+    "$fixture/store" "$fixture/cache"; do
+    [[ ! -e "$path" ]] || find "$path" -print
+  done | LC_ALL=C sort
+}
+before_status_state="$(passive_state_manifest)"
+status="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast" status)"
+after_status_state="$(passive_state_manifest)"
+[[ "$before_status_state" == "$after_status_state" ]] ||
+  fail "status mutated isolated runtime or cache state"
+if ps -axo command= \
+  | grep -F 'io.github.amichne.kast.indexer.KastIndexerMainKt' \
+  | grep -F -- "$runtime_socket_directory" \
+  | grep -q .; then
+  fail "status started its isolated sidecar"
+fi
+python3 - "$status" <<'PY'
+import json
+import sys
+
+document = json.loads(sys.argv[1])
+assert document["command"] == "status", document
+assert document["runtime"] == "stopped", document
+assert document["cache"] == {"state": "absent"}, document
+PY
+[[ ! -e "$fixture/home/Library/Application Support/JetBrains" ]] ||
+  fail "metadata or status wrote a JetBrains plugin path"
+
+mkdir -p "$report_directory"
+python3 - "$report_directory/topology-installed-product.json" "$version" <<'PY'
 import json
 from pathlib import Path
 import sys
@@ -80,9 +135,9 @@ document = {
     "taskId": "INSTALLED-PRODUCT",
     "outcome": "COMPLETE",
     "product": sys.argv[2],
-    "semanticRuntimeManifest": "ABSENT",
-    "productInspection": "COMPLETE",
-    "missingEndpoint": "REJECTED",
+    "semanticRuntimeManifest": "PRESENT",
+    "productInspection": "SIDECAR",
+    "passiveStatus": "STOPPED",
     "isolatedIndexerProcessDelta": 0,
 }
 path = Path(sys.argv[1])
@@ -91,4 +146,4 @@ temporary.write_text(json.dumps(document, separators=(",", ":")) + "\n")
 temporary.replace(path)
 PY
 
-echo "installed-product: hosted metadata and fail-closed demand passed"
+printf 'installed-product: sidecar metadata and passive lifecycle passed\n'

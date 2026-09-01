@@ -1,0 +1,54 @@
+name: Dependency Submission
+
+on:
+  pull_request:
+    paths:
+      - "**/*.gradle"
+      - "**/*.gradle.kts"
+      - "gradle/**"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
+  push:
+    branches:
+      - main
+    paths:
+      - "**/*.gradle"
+      - "**/*.gradle.kts"
+      - "gradle/**"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: dependency-submission-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  submit-gradle:
+    name: Submit Gradle dependency graph
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Generate and submit Gradle dependency graph
+        uses: gradle/actions/dependency-submission@v6

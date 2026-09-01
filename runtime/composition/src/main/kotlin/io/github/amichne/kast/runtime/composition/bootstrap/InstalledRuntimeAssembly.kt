@@ -29,8 +29,6 @@ import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceBoots
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceBootstrapPhase
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceModel
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceOpening
-import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCapture
-import io.github.amichne.kast.workspace.intellij.InstalledGradleModelCaptureFailure
 import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliationPort
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
@@ -273,6 +271,7 @@ private fun assembleInstalledRuntime(
                 platform.change.sourceObserver,
             ),
         ),
+        request.observability,
     )
     val handlers = when (val created = CanonicalKastOperationHandlerFactory.create(
         request.workspaceRoot,

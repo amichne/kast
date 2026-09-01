@@ -85,7 +85,9 @@ class KastCleanSlatePolicyTest {
         val architecture = canonicalArchitecture()
         val owners = ForbiddenEffect.entries.associateWith { effect ->
             architecture.modules.values
-                .filter { effect in it.allowedEffects }
+                .filter { module ->
+                    effect in module.allowedEffects || effect in module.allowedScopedEffectCallers
+                }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id)
         }
 
@@ -113,6 +115,7 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     ModuleId.DISTRIBUTION_MANAGED,
                     ModuleId.EVIDENCE_SQLITE,
+                    ModuleId.CLI,
                     ModuleId.RUNTIME_TELEMETRY,
                     ModuleId.INDEXER,
                 ),

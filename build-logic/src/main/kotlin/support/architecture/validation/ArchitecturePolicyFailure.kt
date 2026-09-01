@@ -25,6 +25,16 @@ sealed interface ArchitecturePolicyFailure {
         val effect: ForbiddenEffect,
     ) : ArchitecturePolicyFailure
 
+    data class EmptyScopedEffectCallerSet(
+        val module: ModuleId,
+        val effect: ForbiddenEffect,
+    ) : ArchitecturePolicyFailure
+
+    data class RedundantScopedEffectAllowance(
+        val module: ModuleId,
+        val effect: ForbiddenEffect,
+    ) : ArchitecturePolicyFailure
+
     data class FeatureContractDependsOnRegistry(val featureContract: ModuleId) : ArchitecturePolicyFailure
 
     data object MissingRuntimeComposition : ArchitecturePolicyFailure

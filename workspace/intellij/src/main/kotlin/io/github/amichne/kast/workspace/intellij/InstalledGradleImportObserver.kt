@@ -21,9 +21,7 @@ internal class InstalledGradleImportObserver(
         if (id.workspaceResolution(projectPath) == GradleTaskIdentity.EXACT_WORKSPACE) {
             synchronized(cohortLock) {
                 cohort = when (val current = cohort) {
-                    is GradleImportCohort.Collecting -> current.copy(
-                        admitted = current.admitted + id,
-                    )
+                    is GradleImportCohort.Collecting -> current.admit(id)
                     is GradleImportCohort.Published -> current
                 }
             }
@@ -72,6 +70,22 @@ internal class InstalledGradleImportObserver(
         observeTerminal(id, GradleImportTerminal.CANCELLED, GradleTerminalAuthority.ADMITTED_ID)
     }
 
+    /**
+     * Closes project-open task admission after IntelliJ startup scheduling has passed.
+     *
+     * A terminal observation may publish immediately only after this transition and only when no
+     * exact task remains active. Before closure, an empty cancelled generation remains provisional
+     * so a later exact replacement can refine it.
+     */
+    internal fun closeProjectOpenAdmission() {
+        val transition = synchronized(cohortLock) {
+            cohort.closeAdmission().also { observed ->
+                cohort = observed.cohort
+            }
+        }
+        publish(transition)
+    }
+
     private fun observeTerminal(
         id: ExternalSystemTaskId,
         terminal: GradleImportTerminal,
@@ -82,6 +96,10 @@ internal class InstalledGradleImportObserver(
                 cohort = observed.cohort
             }
         }
+        publish(transition)
+    }
+
+    private fun publish(transition: GradleImportCohortTransition) {
         when (transition) {
             is GradleImportCohortTransition.Retained -> Unit
             is GradleImportCohortTransition.Published -> completion.complete(transition.outcome)
@@ -163,7 +181,8 @@ private enum class GradleTaskKind { PROJECT_RESOLUTION, OTHER }
 private sealed interface GradleImportCohort {
     data class Collecting(
         val admitted: Set<ExternalSystemTaskId> = emptySet(),
-        val remembered: GradleImportCohortMemory = GradleImportCohortMemory.NO_BLOCKER,
+        val remembered: GradleImportCohortMemory = GradleImportCohortMemory.NoTerminal,
+        val admission: GradleImportAdmission = GradleImportAdmission.OPEN,
     ) : GradleImportCohort
 
     data class Published(val outcome: InstalledGradleImportOutcome) : GradleImportCohort
@@ -187,45 +206,79 @@ private enum class GradleImportTerminal {
     COMPLETED,
     CANCELLED,
     FAILED,
-    ;
+}
 
-    fun outcome(): InstalledGradleImportOutcome = when (this) {
-        COMPLETED -> InstalledGradleImportOutcome.Completed
-        CANCELLED -> InstalledGradleImportOutcome.Cancelled
-        FAILED -> InstalledGradleImportOutcome.Failed
+private sealed interface GradleImportCohortMemory {
+    data object NoTerminal : GradleImportCohortMemory
+
+    sealed interface Terminal : GradleImportCohortMemory {
+        val outcome: InstalledGradleImportOutcome
+    }
+
+    data object Completed : Terminal {
+        override val outcome: InstalledGradleImportOutcome = InstalledGradleImportOutcome.Completed
+    }
+
+    data object Cancelled : Terminal {
+        override val outcome: InstalledGradleImportOutcome = InstalledGradleImportOutcome.Cancelled
+    }
+
+    data object Failed : Terminal {
+        override val outcome: InstalledGradleImportOutcome = InstalledGradleImportOutcome.Failed
+    }
+
+    fun remember(terminal: GradleImportTerminal): Terminal = when {
+        this is Failed || terminal == GradleImportTerminal.FAILED -> Failed
+        this is Cancelled || terminal == GradleImportTerminal.CANCELLED -> Cancelled
+        else -> Completed
+    }
+
+    fun beginReplacement(): GradleImportCohortMemory = when (this) {
+        Failed -> Failed
+        NoTerminal,
+        Completed,
+        Cancelled,
+            -> NoTerminal
     }
 }
 
-private enum class GradleImportCohortMemory {
-    NO_BLOCKER,
-    CANCELLED,
-    FAILED,
-    ;
-
-    fun remember(terminal: GradleImportTerminal): GradleImportCohortMemory = when {
-        this == FAILED || terminal == GradleImportTerminal.FAILED -> FAILED
-        this == CANCELLED || terminal == GradleImportTerminal.CANCELLED -> CANCELLED
-        else -> NO_BLOCKER
-    }
-
-    fun outcome(): InstalledGradleImportOutcome = when (this) {
-        NO_BLOCKER -> InstalledGradleImportOutcome.Completed
-        CANCELLED -> InstalledGradleImportOutcome.Cancelled
-        FAILED -> InstalledGradleImportOutcome.Failed
-    }
-}
-
+private enum class GradleImportAdmission { OPEN, CLOSED }
 private enum class GradleTerminalAuthority { EXACT_PATH, ADMITTED_ID }
+
+private fun GradleImportCohort.Collecting.admit(
+    id: ExternalSystemTaskId,
+): GradleImportCohort.Collecting = when {
+    id in admitted -> this
+    admitted.isEmpty() && admission == GradleImportAdmission.OPEN -> copy(
+        admitted = setOf(id),
+        remembered = remembered.beginReplacement(),
+    )
+    else -> copy(admitted = admitted + id)
+}
+
+private fun GradleImportCohort.closeAdmission(): GradleImportCohortTransition = when (this) {
+    is GradleImportCohort.Published -> GradleImportCohortTransition.Retained(this)
+    is GradleImportCohort.Collecting -> {
+        val closed = copy(admission = GradleImportAdmission.CLOSED)
+        val terminal = closed.remembered as? GradleImportCohortMemory.Terminal
+        if (closed.admitted.isEmpty() && terminal != null) {
+            terminal.publish()
+        } else {
+            GradleImportCohortTransition.Retained(closed)
+        }
+    }
+}
 
 /**
  * Proof transition: `GradleImportCohort + ExternalSystemTaskId + GradleImportTerminal +
  * GradleTerminalAuthority -> GradleImportCohortTransition`.
  *
- * Retained establishes that every exact admitted task remains in one cohort until its own
- * terminal callback. Published establishes that the admitted set is empty and preserves any
- * observed failure or cancellation. An exact path-aware terminal without a start may publish only
- * from an empty cohort; an unadmitted ID-only terminal remains no evidence. Raw IntelliJ callback
- * identity is permitted only at [InstalledGradleImportObserver].
+ * Retained establishes that exact project-open task admission is still open or at least one exact
+ * task remains active. Published establishes closed admission, an empty admitted set, and one
+ * terminal outcome. A new exact generation admitted after a provisional empty generation replaces
+ * completion or cancellation memory before closure while retaining any proven failure. An
+ * unadmitted ID-only terminal remains no evidence. Raw IntelliJ callback identity is permitted
+ * only at [InstalledGradleImportObserver].
  */
 private fun GradleImportCohort.transition(
     id: ExternalSystemTaskId,
@@ -237,7 +290,7 @@ private fun GradleImportCohort.transition(
         id in admitted -> {
             val remaining = admitted - id
             val terminalEvidence = remembered.remember(terminal)
-            if (remaining.isEmpty()) {
+            if (remaining.isEmpty() && admission == GradleImportAdmission.CLOSED) {
                 terminalEvidence.publish()
             } else {
                 GradleImportCohortTransition.Retained(copy(
@@ -246,19 +299,18 @@ private fun GradleImportCohort.transition(
                 ))
             }
         }
-        authority == GradleTerminalAuthority.EXACT_PATH && admitted.isEmpty() -> terminal.publish()
+        authority == GradleTerminalAuthority.EXACT_PATH && admitted.isEmpty() -> {
+            val terminalEvidence = remembered.remember(terminal)
+            if (admission == GradleImportAdmission.CLOSED) {
+                terminalEvidence.publish()
+            } else {
+                GradleImportCohortTransition.Retained(copy(remembered = terminalEvidence))
+            }
+        }
         else -> GradleImportCohortTransition.Retained(this)
     }
 }
 
-private fun GradleImportTerminal.publish(): GradleImportCohortTransition.Published {
-    val outcome = outcome()
-    return GradleImportCohortTransition.Published(
-        GradleImportCohort.Published(outcome),
-    )
-}
-
-private fun GradleImportCohortMemory.publish(): GradleImportCohortTransition.Published {
-    val outcome = outcome()
+private fun GradleImportCohortMemory.Terminal.publish(): GradleImportCohortTransition.Published {
     return GradleImportCohortTransition.Published(GradleImportCohort.Published(outcome))
 }

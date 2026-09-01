@@ -1,7 +1,7 @@
 package io.github.amichne.kast.runtime.telemetry
 
 import io.github.amichne.kast.kernel.KastObservability
-import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointTelemetryOutput
+import io.github.amichne.kast.protocol.wire.metadata.KastTelemetryFileOutput
 import io.opentelemetry.exporter.logging.otlp.internal.traces.OtlpStdoutSpanExporter
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import io.opentelemetry.sdk.common.CompletableResultCode
@@ -34,28 +34,28 @@ sealed interface OpenTelemetryFileForwardingOpening {
 
 /** One admitted per-socket OTLP JSON-lines destination and its non-blocking trace adapter. */
 class OpenTelemetryFileForwarding private constructor(
-    val output: IdeEndpointTelemetryOutput,
+    val output: KastTelemetryFileOutput,
     val observability: KastObservability,
     private val provider: SdkTracerProvider,
 ) {
     companion object {
         /**
-         * Proof transition: `IdeEndpointTelemetryOutput -> OpenTelemetryFileForwardingOpening`.
+         * Proof transition: `KastTelemetryFileOutput -> OpenTelemetryFileForwardingOpening`.
          *
          * Establishes a private, non-symlinked destination before constructing an SDK whose
          * batch processor exports immutable completed spans off the operation thread. Directory
          * and file failures remain finite data; SDK and filesystem values stay inside this adapter
          * boundary.
          */
-        fun open(output: IdeEndpointTelemetryOutput): OpenTelemetryFileForwardingOpening {
-            val directory = Path.of(output.directoryPath.value)
+        fun open(output: KastTelemetryFileOutput): OpenTelemetryFileForwardingOpening {
+            val directory = Path.of(output.directoryPathText)
             when (admitDirectory(directory)) {
                 FileDestinationAdmission.Admitted -> Unit
                 FileDestinationAdmission.Rejected -> return rejected(
                     OpenTelemetryFileForwardingFailure.DIRECTORY_UNAVAILABLE,
                 )
             }
-            val traceFile = Path.of(output.traceFilePath.value)
+            val traceFile = Path.of(output.traceFilePathText)
             when (admitTraceFile(traceFile)) {
                 FileDestinationAdmission.Admitted -> Unit
                 FileDestinationAdmission.Rejected -> return rejected(

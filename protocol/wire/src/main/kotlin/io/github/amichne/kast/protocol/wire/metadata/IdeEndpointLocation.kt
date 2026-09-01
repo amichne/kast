@@ -98,8 +98,10 @@ enum class IdeEndpointTelemetryFormat(val identity: String) {
 data class IdeEndpointTelemetryOutput internal constructor(
     val directoryPath: IdeEndpointTelemetryDirectoryPath,
     val traceFilePath: IdeEndpointTraceFilePath,
-) {
+) : KastTelemetryFileOutput {
     val format: IdeEndpointTelemetryFormat = IdeEndpointTelemetryFormat.OTLP_JSON_LINES_V1
+    override val directoryPathText: String get() = directoryPath.value
+    override val traceFilePathText: String get() = traceFilePath.value
 }
 
 /** One root-exclusive state directory containing its stable UDS and suffix descriptor. */

@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
@@ -37,6 +38,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
 /** Sole clean-slate IntelliJ observer, normal writer, and authority-bound recovery adapter. */
@@ -125,15 +127,33 @@ class IntellijChangeSourceAdapter(
                     AppliedSourceWrite.observe(authority, result.bytes, result.changedPaths)
                 ) {
                     is Refinement.Refined -> SourceWriteResult.Applied(observed.value)
-                    is Refinement.Rejected ->
+                    is Refinement.Rejected -> {
+                        CHANGE_LOG.info(
+                            "Kast applied-source observation rejected: " +
+                                "failure=${observed.failure}, " +
+                                "changedPaths=${result.changedPaths}, " +
+                                "expectedPath=${authority.source.path.value}, " +
+                                postimageObservationDetails(authority, result.bytes),
+                        )
                         SourceWriteResult.RecoveryRequired(SourceWriteFailure.OBSERVATION_FAILED)
+                    }
                 }
-                is IntellijWriteProtocolResult.RejectedBeforeMutation ->
+                is IntellijWriteProtocolResult.RejectedBeforeMutation -> {
+                    CHANGE_LOG.info(
+                        "Kast source write rejected before mutation: ${result.failure}",
+                    )
                     SourceWriteResult.RejectedBeforeMutation(result.failure)
-                is IntellijWriteProtocolResult.RejectedAfterRollback ->
+                }
+                is IntellijWriteProtocolResult.RejectedAfterRollback -> {
+                    CHANGE_LOG.info(
+                        "Kast source write rejected after local rollback: ${result.failure}",
+                    )
                     SourceWriteResult.RejectedAfterRollback(result.failure)
-                is IntellijWriteProtocolResult.RecoveryRequired ->
+                }
+                is IntellijWriteProtocolResult.RecoveryRequired -> {
+                    CHANGE_LOG.info("Kast source write requires recovery: ${result.failure}")
                     SourceWriteResult.RecoveryRequired(result.failure)
+                }
             }
         } catch (cancellation: ProcessCanceledException) {
             throw cancellation
@@ -343,9 +363,29 @@ class IntellijChangeSourceAdapter(
         return IntellijSourcePreparation.Ready(file, target, document)
     }
 
+    private fun postimageObservationDetails(
+        authority: MutationAuthority,
+        actual: ByteArray,
+    ): String {
+        val expected = authority.postimageBytesAtIntellijBoundary()
+        val sharedLength = minOf(expected.size, actual.size)
+        val firstMismatch = (0 until sharedLength).firstOrNull { index ->
+            expected[index] != actual[index]
+        } ?: if (expected.size == actual.size) -1 else sharedLength
+        return "expectedBytes=${expected.size}, actualBytes=${actual.size}, " +
+            "firstMismatch=$firstMismatch, expectedDigest=${expected.sha256()}, " +
+            "actualDigest=${actual.sha256()}"
+    }
+
     private fun rejectedObservation(failure: SourceObservationFailure) =
         SourceObservationResult.Rejected(failure)
 
     private fun rejectedRollback(failure: AddDeclarationRollbackFailure) =
         AddDeclarationRollbackResult.Rejected(failure)
 }
+
+private fun ByteArray.sha256(): String = MessageDigest.getInstance("SHA-256")
+    .digest(this)
+    .joinToString("") { byte -> "%02x".format(byte) }
+
+private val CHANGE_LOG = Logger.getInstance("io.github.amichne.kast.semanticChange")

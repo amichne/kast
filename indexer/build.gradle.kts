@@ -15,11 +15,6 @@ val indexerIdeaDistribution: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
-val indexerLauncherRuntime: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
-
 val indexerPluginRuntime: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -57,26 +52,6 @@ val ideaCompileLibs = ideaLibs.filter { library ->
         library.name != "intellij.libraries.ktor.utils.jar"
 }
 
-val packagedIdeaHomeEntries = listOf(
-    "build.txt",
-    "product-info.json",
-    "lib/nio-fs.jar",
-    "lib/jna/**",
-    "lib/pty4j/**",
-    "modules/module-descriptors.dat",
-    "plugins/gradle*/**",
-    "plugins/java/**",
-    "plugins/Kotlin/**",
-    "plugins/java-ide-customization/**",
-    "plugins/json/**",
-    "plugins/maven/**",
-    "plugins/properties/**",
-    "plugins/repository-search/**",
-    "plugins/toml/**",
-    "plugins/yaml/**",
-    "plugins/Groovy/**",
-)
-
 application {
     applicationName = "kast-indexer"
     mainClass = "io.github.amichne.kast.indexer.KastIndexerMainKt"
@@ -89,7 +64,6 @@ dependencies {
         isTransitive = false
     }
     compileOnly(ideaCompileLibs)
-    indexerLauncherRuntime(ideaLibs)
     indexerPluginRuntime(project(":runtime:composition"))
     testImplementation(ideaCompileLibs)
     testRuntimeOnly(ideaLibs)
@@ -152,14 +126,12 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 val indexerRuntimeRequiredClassEntries = listOf(
     "io/github/amichne/kast/indexer/KastIndexerMainKt.class",
     "io/github/amichne/kast/indexer/KastIndexerBootstrap.class",
-    "com/intellij/idea/Main.class",
-    "com/intellij/openapi/application/ApplicationStarter.class",
 )
 
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     dependsOn(indexerLauncherJar)
     appJar.set(indexerLauncherJar.flatMap(Jar::getArchiveFile))
-    runtimeJars.setFrom(indexerLauncherRuntime)
+    runtimeJars.setFrom()
     requiredClassEntries.addAll(indexerRuntimeRequiredClassEntries)
 }
 
@@ -188,17 +160,13 @@ tasks.named<Sync>("syncPortableDist") {
     from(layout.buildDirectory.dir("runtime-libs")) {
         into("runtime-libs")
     }
-    from(extractedIdeaDistributionDirectory) {
-        include(packagedIdeaHomeEntries)
-        into("idea-home")
-    }
     from(indexerPluginJar) {
-        into("idea-home/plugins/kast-indexer/lib")
+        into("private-plugins/kast-indexer/lib")
     }
     from(indexerPluginRuntime) {
-        into("idea-home/plugins/kast-indexer/lib")
+        into("private-plugins/kast-indexer/lib")
     }
-    dependsOn("syncRuntimeLibs", extractIdeaDistribution, indexerPluginJar)
+    dependsOn("syncRuntimeLibs", indexerPluginJar)
 }
 
 val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::class) {
@@ -208,8 +176,10 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
 
     val portableDist = layout.buildDirectory.dir("portable-dist/${project.name}")
     val runtimeLibs = portableDist.map { it.dir("runtime-libs") }
-    val pluginLibs = portableDist.map { it.dir("idea-home/plugins/kast-indexer/lib") }
-    val platformKotlinLibs = portableDist.map { it.dir("idea-home/plugins/Kotlin/lib") }
+    val pluginLibs = portableDist.map { it.dir("private-plugins/kast-indexer/lib") }
+    val platformKotlinLibs = extractedIdeaDistributionDirectory.map {
+        it.dir("plugins/Kotlin/lib")
+    }
     portableDistDirectory.set(portableDist)
     runtimeLibsDirectory.set(runtimeLibs)
     runtimeClasspathFile.set(runtimeLibs.map { it.file("classpath.txt") })
@@ -223,18 +193,21 @@ val verifyPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::cla
     requiredPluginClassEntries.set(indexerPluginRequiredClassEntries)
     requiredPlatformPluginClassEntries.set(platformKotlinPluginOwnedClassEntries)
     allowedPluginDescriptorJarPrefixes.set(listOf("indexer-"))
+    dependsOn(extractIdeaDistribution)
 }
 
 val testIndexerLauncherIsolation by tasks.registering(Exec::class) {
     group = "verification"
     description = "Proves that each exact endpoint owns isolated IntelliJ process paths."
     val launcher = layout.projectDirectory.file("src/main/scripts/kast-indexer")
+    val pythonVersionFile = rootProject.layout.projectDirectory.file(".python-version")
     val testScript = layout.projectDirectory.file(
         "src/test/scripts/test-kast-indexer-isolation.sh",
     )
     inputs.file(launcher)
+    inputs.file(pythonVersionFile)
     inputs.file(testScript)
-    commandLine("bash", testScript, launcher)
+    commandLine("bash", testScript, launcher, pythonVersionFile.asFile.absolutePath)
 }
 
 tasks.named("check") {

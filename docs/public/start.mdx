@@ -1,18 +1,18 @@
 ---
 title: "Set up and start Kast"
 sidebarTitle: "Quickstart"
-description: "Install Kast, admit the exact open Kotlin repository, and inspect the first compiler-backed result."
+description: "Install Kast, start an isolated exact-root IntelliJ sidecar, and inspect the first compiler-backed result."
 icon: "rocket"
 keywords: ["install", "quickstart", "IntelliJ"]
 ---
 
-The first successful run admits the already-open IntelliJ Project for one exact
-repository root and uses its compiler-backed evidence.
+The first successful run opens one exact on-disk repository in a private
+headless IntelliJ sidecar and publishes its compiler-backed evidence.
 
 <Info>
   The installer verifies both release payloads: the `kast` command and its
-  exact standalone IDE plugin. No private IDE installation or second project
-  model is installed.
+  small private sidecar extension. It installs no IDEA distribution and writes
+  nothing into a JetBrains plugin directory.
 </Info>
 
 <Steps>
@@ -20,13 +20,14 @@ repository root and uses its compiler-backed evidence.
     Kast currently requires:
 
     - macOS on Apple silicon
-    - Java 21 or newer
+    - Java 25 or newer
     - IntelliJ IDEA build 262.9437.185
     - Kotlin plugin build 262.9437.185-IJ
-    - an open, indexed Kotlin Gradle repository
+    - an on-disk Kotlin Gradle repository
 
-    The supported IDE supplies the existing Project, VFS, indexes, PSI, and
-    Kotlin semantic APIs.
+    Kast uses the installed IDE's JBR, Kotlin plugin, Gradle integration, PSI,
+    and indexing implementation. Its Project and mutable IDE state remain in
+    Kast-owned directories.
   </Step>
 
   <Step title="Install Kast">
@@ -37,7 +38,7 @@ repository root and uses its compiler-backed evidence.
     ```
 
     The installer validates the host and Java version, then downloads the
-    latest stable control command and matched IDE plugin with their SHA-256
+    latest stable control command and matched private sidecar with their SHA-256
     records. It rejects unsafe archive paths or unexpected contents and
     smoke-tests local metadata before moving either payload into place.
   </Step>
@@ -57,19 +58,17 @@ repository root and uses its compiler-backed evidence.
     schema, and the installed `serverProjection`. That projection owns the
     server-visible tool names, descriptions, input and output JSON Schemas,
     deferred-loading policy, explicit approval policy, and exact field-to-CLI
-    bindings for every public hosted operation. Read workflows appear as
+    bindings for every public sidecar operation. Read workflows appear as
     `workspace_ensure_ready`, `symbol_lookup`, `symbol_inspect`,
     `semantic_query`, `impact_analyze`, and `diagnostic_check`; every
-    `change_*` tool requires explicit approval. The current hosted endpoint
+    `change_*` tool requires explicit approval. The current sidecar endpoint
     publishes thirteen operations: workspace inspection, index synchronization,
     topology build, three symbol operations, relation reads, traversal,
     diagnostics, and four AddDeclaration lifecycle operations.
   </Step>
 
   <Step title="Start the exact repository">
-    If IntelliJ was open during installation, restart it so it loads the
-    plugin. Open the repository, wait for indexing, then run Kast from its
-    canonical root:
+    Run Kast from the repository's canonical root:
 
     ```console
     cd /path/to/kotlin-repository
@@ -77,10 +76,18 @@ repository root and uses its compiler-backed evidence.
     kast start
     ```
 
-    Kast admits the compatible exact-root endpoint published by that Project.
-    Startup never opens a Project, imports Gradle, refreshes VFS, or starts an
-    isolated indexing process. Use the explicit `kast index sync` operation
-    when files changed outside IntelliJ and its view is stale.
+    Kast discovers the exactly supported standard IDEA installation and starts
+    its JBR with private config, system, plugin, and log paths. It opens the
+    Project, imports the on-disk Gradle model, refreshes its private VFS, waits
+    for smart mode, and only then publishes semantic readiness. If no unique
+    standard installation matches, pass `--idea-home /absolute/IDEA/home`.
+
+    Sidecar processes launch directly by default. Set
+    `KAST_ENABLE_LAUNCHD=1` to opt into launchd-backed process ownership; leave
+    it unset or set it to `0` for direct launch. Every other value is rejected.
+
+    Use `kast index sync` when files changed outside the sidecar and its VFS or
+    semantic evidence may be stale.
   </Step>
 
   <Step title="Inspect the first answer">
@@ -92,46 +99,62 @@ repository root and uses its compiler-backed evidence.
     kast symbol discover --mode name --query PricePolicy --limit 25
     ```
 
-    The first semantic command tells you what is ready. Discovery then returns
-    bounded candidates, not an exact declaration claim.
+    `status` reports runtime identity and a cache state such as `fresh`,
+    `seeded`, `refreshing`, `smart`, or `rebuild-required`. The semantic command
+    tells you what is ready. Discovery then returns bounded candidates, not an
+    exact declaration claim.
   </Step>
 </Steps>
 
 <AccordionGroup>
   <Accordion title="Where the installer writes files" icon="folder-tree">
-    The versioned control product and matched plugin live under
+    The versioned control product and matched private sidecar live under
     `${XDG_DATA_HOME:-$HOME/.local/share}/kast`. The command is linked at
-    `$HOME/.local/bin/kast`, and the plugin is linked into
-    `$HOME/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins`.
+    `$HOME/.local/bin/kast`. Persistent private IDEA state lives under
+    `$HOME/.cache/kast`; no JetBrains path is written.
   </Accordion>
 
-  <Accordion title="Use a different plugin directory" icon="folder-cog">
-    Set `KAST_IDE_PLUGIN_DIRECTORY` or pass `--ide-plugin-directory` when the
-    supported IntelliJ installation uses a non-default plugin directory.
+  <Accordion title="Seed from a stopped IDEA cache" icon="copy-check">
+    Ordinary startup never reads the user's IDEA cache. For an explicit
+    one-time acceleration, close IDEA cleanly and request an APFS copy-on-write
+    clone of the version-specific allowlist:
 
     ```shell
-    installer_file="$(mktemp)"
-    curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh --output "$installer_file"
-    bash "$installer_file" --ide-plugin-directory "/absolute/path/to/plugins"
-    rm "$installer_file"
+    kast start --seed-from-idea
     ```
+
+    Interactive use first discloses copied categories, estimated size, and the
+    fact that required global VFS/index files can contain entries for other
+    projects. Supply `--source-idea-system /absolute/path` when the source is
+    non-standard. Non-interactive use must also pass
+    `--accept-global-index-copy`.
+
+    Kast rejects a running, changed, incompatible, wrong-project, non-APFS, or
+    unconsented source. It validates manifests before atomically publishing the
+    clone and never mounts or modifies the source directory.
+  </Accordion>
+
+  <Accordion title="Rebuild only Kast state" icon="rotate-ccw">
+    `kast reindex` stops the exact sidecar, atomically quarantines only its
+    private cache, and starts a fresh import with the recorded IDEA runtime.
+    `kast clean` removes inactive endpoint artifacts but retains the cache.
   </Accordion>
 
   <Accordion title="Install a local matched release" icon="package-check">
-    Build the control archive, IDE plugin, and SHA-256 records together, then
+    Build the control archive, private sidecar, and SHA-256 records together, then
     point the reviewed installer at that local release root. A custom release
     base requires an explicit semantic version.
 
     ```shell
     release_version="${KAST_RELEASE_VERSION:?set KAST_RELEASE_VERSION to an unreleased semantic version}"
-    ./gradlew -Pversion="$release_version" assembleIdeHostedRelease
+    ./gradlew -Pversion="$release_version" assembleSidecarRelease
     bash install.sh install --purge-existing \
       --version "$release_version" \
       --release-base-url "file://$PWD/build/release"
     ```
 
     `--release-base-url` also accepts an HTTPS mirror. It does not bypass
-    checksums, archive validation, product smoke checks, or plugin matching.
+    checksums, archive validation, product smoke checks, or sidecar matching.
   </Accordion>
 
   <Accordion title="Find the default OpenTelemetry traces" icon="activity">
@@ -143,13 +166,13 @@ repository root and uses its compiler-backed evidence.
     kast product inspect
     ```
 
-    The ready endpoint document reports forwarding state,
-    `otlp-json-lines-v1`, `directoryPath`, and an epoch-specific
-    `traceFilePath`. The directory uses mode `0700`, trace files use mode
+    The product document reports enabled state, `otlp-json-lines-v1`,
+    `directoryPath`, and `traceFilePath` without starting the sidecar. The
+    directory uses mode `0700`, trace files use mode
     `0600`, and the exported allowlist excludes repository paths, selectors,
-    source text, exception messages, and stack traces. Kast leaves the sibling
-    trace folder in place when socket state retires so operators can inspect it;
-    apply the host's retention policy after the endpoint stops.
+    source text, exception messages, and stack traces. The trace folder persists
+    across ordinary restarts inside the exact socket's state directory; apply
+    the host's retention policy as needed.
   </Accordion>
 
   <Accordion title="Uninstall Kast" icon="trash-2">

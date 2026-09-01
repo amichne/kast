@@ -3,8 +3,8 @@ package io.github.amichne.kast.workspace.intellij
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
-import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
+import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -62,8 +62,8 @@ fun interface InstalledIntellijWorkspaceBootstrapObserver {
 class InstalledIntellijWorkspaceModel internal constructor(
     val capture: InstalledGradleModelCapture,
     private val project: Project,
-    @Suppress("unused")
     private val projectJvm: AssignedInstalledProjectJvm,
+    private val moduleRematerializer: InstalledModuleRematerializer,
 ) {
     /**
      * Proof transition: `InstalledIntellijWorkspaceModel -> Refinement<WorkspaceStateIdentity,
@@ -76,7 +76,7 @@ class InstalledIntellijWorkspaceModel internal constructor(
     fun captureCurrentSemanticIdentity(): io.github.amichne.kast.kernel.Refinement<
         io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity,
         InstalledGradleModelCaptureFailure,
-        > = when (awaitInstalledIndexingQuiescence(project)) {
+        > = when (awaitInstalledIndexingQuiescence(project, projectJvm, moduleRematerializer)) {
         InstalledIndexingReadiness.READY -> capture.captureCurrentSemanticIdentity()
         InstalledIndexingReadiness.INTERRUPTED,
         InstalledIndexingReadiness.TIMED_OUT,
@@ -92,7 +92,9 @@ class InstalledIntellijWorkspaceModel internal constructor(
     ): WorkspaceIndexRefreshOperations = WorkspaceIndexRefreshOperations { workspace ->
         when (val physical = refresh.refresh(workspace)) {
             is WorkspaceIndexRefresh.Rejected -> physical
-            WorkspaceIndexRefresh.Refreshed -> when (awaitInstalledIndexingQuiescence(project)) {
+            WorkspaceIndexRefresh.Refreshed -> when (
+                awaitInstalledIndexingQuiescence(project, projectJvm, moduleRematerializer)
+            ) {
                 InstalledIndexingReadiness.READY -> WorkspaceIndexRefresh.Refreshed
                 InstalledIndexingReadiness.INTERRUPTED -> WorkspaceIndexRefresh.Rejected(
                     WorkspaceIndexRefreshFailure.INDEXING_INTERRUPTED,
@@ -124,9 +126,10 @@ object InstalledIntellijWorkspace {
      * Proof transition: `Path -> InstalledIntellijWorkspaceOpening`.
      *
      * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened the exact path,
-     * completed one Gradle link or refresh, reached smart mode, and detached one complete Gradle
-     * model. [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live
-     * project and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
+     * completed one observed project-open import or explicit Gradle link, reached smart mode, and
+     * detached one complete Gradle model. [InstalledIntellijWorkspaceFailure] closes every expected
+     * bootstrap failure. The live project and Gradle objects remain inside this adapter and the
+     * IntelliJ project lifecycle.
      */
     fun open(
         workspaceRoot: Path,
@@ -198,6 +201,9 @@ object InstalledIntellijWorkspace {
             FutureCompletion.FAILED,
                 -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
         }
+        if (prepared.importOperation is InstalledGradleImportOperation.AwaitLinked) {
+            importObserver.closeProjectOpenAdmission()
+        }
 
         val imported = CompletableFuture<Void>()
         val closedImported = imported.closedImportOutcome()
@@ -245,8 +251,11 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
             )
         }
+        val moduleRematerializer = InstalledModuleRematerializer {
+            materializeImportedModules(project, workspaceRoot)
+        }
         observer.observe(InstalledIntellijWorkspaceBootstrapPhase.INDEXING)
-        when (awaitInstalledIndexingQuiescence(project)) {
+        when (awaitInstalledIndexingQuiescence(project, assignedProjectJvm, moduleRematerializer)) {
             InstalledIndexingReadiness.READY -> Unit
             InstalledIndexingReadiness.INTERRUPTED -> return rejected(
                 InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
@@ -263,7 +272,12 @@ object InstalledIntellijWorkspace {
             )
         }
         return InstalledIntellijWorkspaceOpening.Opened(
-            InstalledIntellijWorkspaceModel(capture, project, assignedProjectJvm),
+            InstalledIntellijWorkspaceModel(
+                capture,
+                project,
+                assignedProjectJvm,
+                moduleRematerializer,
+            ),
         )
     }
 

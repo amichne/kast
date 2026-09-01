@@ -1,12 +1,11 @@
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
-import io.github.amichne.kast.cli.IdeEndpointAdmissionFailure
-import io.github.amichne.kast.cli.ProductEndpointObservation
 import io.github.amichne.kast.cli.ProductInspection
+import io.github.amichne.kast.cli.ProductTelemetryObservation
 import io.github.amichne.kast.cli.ProductWorkspaceObservation
-import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
-import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointTelemetryOutput
+import io.github.amichne.kast.cli.RootSidecarCacheObservation
+import io.github.amichne.kast.cli.SidecarProductIdentity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -25,19 +24,18 @@ internal object ProductInspectionDocuments {
 private data class ProductInspectionDocument(
     val operation: String,
     val status: String,
-    val control: ProductCompatibilityDocument,
+    val control: SidecarProductDocument,
     val workspace: ProductWorkspaceDocument,
 )
 
 @Serializable
-private data class ProductCompatibilityDocument(
-    val ideBuild: String,
+private data class SidecarProductDocument(
+    val execution: String,
+    val productVersion: String,
+    val runtimeId: String,
+    val ideaBuild: String,
     val kotlinPluginBuild: String,
-    val kastPluginVersion: String,
-    val runtimeProtocolIdentity: String,
-    val operationRegistryDigest: String,
-    val wireSchemaDigest: String,
-    val capabilities: List<String>,
+    val payloadDigest: String,
 )
 
 @Serializable
@@ -52,76 +50,51 @@ private sealed interface ProductWorkspaceDocument {
     @SerialName("observed")
     data class Observed(
         val canonicalRoot: String,
-        val endpoint: ProductEndpointDocument,
+        val cache: ProductCacheDocument,
+        val telemetry: ProductTelemetryDocument,
     ) : ProductWorkspaceDocument
 }
 
 @Serializable
-private sealed interface ProductEndpointDocument {
+private sealed interface ProductCacheDocument {
     @Serializable
-    @SerialName("ready")
-    data class Ready(
-        val processId: Long,
-        val runtimeEpoch: Long,
-        val socketPath: String,
-        val telemetry: ProductTelemetryDocument,
-        val compatibility: ProductCompatibilityDocument,
-    ) : ProductEndpointDocument
+    @SerialName("absent")
+    data class Absent(val state: String = "absent") : ProductCacheDocument
+
+    @Serializable
+    @SerialName("observed")
+    data class Observed(
+        val state: String,
+        val identity: String,
+        val ideaHome: String,
+        val ideaBuild: String,
+        val kotlinPluginBuild: String,
+        val jbrIdentity: String,
+        val payloadDigest: String,
+    ) : ProductCacheDocument
+
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected(val failure: String) : ProductCacheDocument
+}
+
+@Serializable
+private sealed interface ProductTelemetryDocument {
+    @Serializable
+    @SerialName("enabled")
+    data class Enabled(
+        val state: String = "enabled",
+        val format: String,
+        val directoryPath: String,
+        val traceFilePath: String,
+    ) : ProductTelemetryDocument
 
     @Serializable
     @SerialName("rejected")
     data class Rejected(
-        val failure: ProductEndpointFailureDocument,
-    ) : ProductEndpointDocument
-}
-
-@Serializable
-private data class ProductTelemetryDocument(
-    val state: String,
-    val format: String,
-    val directoryPath: String,
-    val traceFilePath: String,
-)
-
-@Serializable
-private sealed interface ProductEndpointFailureDocument {
-    @Serializable
-    @SerialName("invalid-root")
-    data class InvalidRoot(val failure: String) : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("location-rejected")
-    data class LocationRejected(val failure: String) : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("descriptor-read-rejected")
-    data class DescriptorReadRejected(val failure: String) : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("descriptor-rejected")
-    data class DescriptorRejected(
-        val failure: CliIdeDescriptorFailureDocument,
-    ) : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("root-mismatch")
-    data object RootMismatch : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("socket-mismatch")
-    data object SocketMismatch : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("process-unavailable")
-    data object ProcessUnavailable : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("process-observation-rejected")
-    data object ProcessObservationRejected : ProductEndpointFailureDocument
-
-    @Serializable
-    @SerialName("endpoint-unreachable")
-    data object EndpointUnreachable : ProductEndpointFailureDocument
+        val state: String = "rejected",
+        val failure: String,
+    ) : ProductTelemetryDocument
 }
 
 private fun ProductWorkspaceObservation.outputDocument(): ProductWorkspaceDocument = when (this) {
@@ -130,60 +103,49 @@ private fun ProductWorkspaceObservation.outputDocument(): ProductWorkspaceDocume
     )
     is ProductWorkspaceObservation.Observed -> ProductWorkspaceDocument.Observed(
         root.path.toString(),
-        endpoint.outputDocument(),
+        cache.outputDocument(),
+        telemetry.outputDocument(),
     )
 }
 
-private fun ProductEndpointObservation.outputDocument(): ProductEndpointDocument = when (this) {
-    is ProductEndpointObservation.Ready -> ProductEndpointDocument.Ready(
-        processId = endpoint.descriptor.processId.value,
-        runtimeEpoch = endpoint.descriptor.runtimeEpoch.value,
-        socketPath = endpoint.descriptor.socketPath.value,
-        telemetry = endpoint.telemetry.outputDocument(),
-        compatibility = endpoint.descriptor.compatibility.outputDocument(),
+private fun RootSidecarCacheObservation.outputDocument(): ProductCacheDocument = when (this) {
+    RootSidecarCacheObservation.Absent -> ProductCacheDocument.Absent()
+    is RootSidecarCacheObservation.Observed -> ProductCacheDocument.Observed(
+        state = status.state.wireName,
+        identity = status.cacheIdentity,
+        ideaHome = status.ideaHome.toString(),
+        ideaBuild = status.ideaBuild,
+        kotlinPluginBuild = status.kotlinPluginBuild,
+        jbrIdentity = status.jbrIdentity,
+        payloadDigest = status.kastPayloadDigest,
     )
-    is ProductEndpointObservation.Rejected -> ProductEndpointDocument.Rejected(
-        failure.outputDocument(),
+    is RootSidecarCacheObservation.Rejected -> ProductCacheDocument.Rejected(
+        failure.outputName(),
     )
 }
 
-private fun IdeEndpointTelemetryOutput.outputDocument(): ProductTelemetryDocument =
-    ProductTelemetryDocument(
-        state = "forwarding",
-        format = format.identity,
-        directoryPath = directoryPath.value,
-        traceFilePath = traceFilePath.value,
+private fun ProductTelemetryObservation.outputDocument(): ProductTelemetryDocument = when (this) {
+    is ProductTelemetryObservation.Enabled -> ProductTelemetryDocument.Enabled(
+        format = output.format.identity,
+        directoryPath = output.directoryPath.value,
+        traceFilePath = output.traceFilePath.value,
     )
+    is ProductTelemetryObservation.EndpointRejected -> ProductTelemetryDocument.Rejected(
+        failure = failure.outputName(),
+    )
+    is ProductTelemetryObservation.OutputRejected -> ProductTelemetryDocument.Rejected(
+        failure = failure.outputName(),
+    )
+}
 
-private fun IdeEndpointAdmissionFailure.outputDocument(): ProductEndpointFailureDocument =
-    when (this) {
-        is IdeEndpointAdmissionFailure.InvalidRoot ->
-            ProductEndpointFailureDocument.InvalidRoot(failure.outputName())
-        is IdeEndpointAdmissionFailure.LocationRejected ->
-            ProductEndpointFailureDocument.LocationRejected(failure.outputName())
-        is IdeEndpointAdmissionFailure.DescriptorReadRejected ->
-            ProductEndpointFailureDocument.DescriptorReadRejected(failure.outputName())
-        is IdeEndpointAdmissionFailure.DescriptorRejected ->
-            ProductEndpointFailureDocument.DescriptorRejected(failure.outputDetails())
-        IdeEndpointAdmissionFailure.RootMismatch -> ProductEndpointFailureDocument.RootMismatch
-        IdeEndpointAdmissionFailure.SocketMismatch -> ProductEndpointFailureDocument.SocketMismatch
-        IdeEndpointAdmissionFailure.ProcessUnavailable ->
-            ProductEndpointFailureDocument.ProcessUnavailable
-        IdeEndpointAdmissionFailure.ProcessObservationRejected ->
-            ProductEndpointFailureDocument.ProcessObservationRejected
-        IdeEndpointAdmissionFailure.EndpointUnreachable ->
-            ProductEndpointFailureDocument.EndpointUnreachable
-    }
-
-private fun AdmittedIdeHostCompatibility.outputDocument(): ProductCompatibilityDocument =
-    ProductCompatibilityDocument(
-        ideBuild = ideBuild.value,
-        kotlinPluginBuild = kotlinPluginBuild.value,
-        kastPluginVersion = kastPluginVersion.value,
-        runtimeProtocolIdentity = runtimeProtocolIdentity.value,
-        operationRegistryDigest = operationRegistryDigest.value,
-        wireSchemaDigest = wireSchemaDigest.value,
-        capabilities = capabilities.capabilities.map { it.operation.id.value },
+private fun SidecarProductIdentity.outputDocument(): SidecarProductDocument =
+    SidecarProductDocument(
+        execution = "isolated-intellij-sidecar",
+        productVersion = productVersion.value,
+        runtimeId = runtimeId.value,
+        ideaBuild = supportedRuntime.ideaBuild,
+        kotlinPluginBuild = supportedRuntime.kotlinPluginBuild,
+        payloadDigest = payloadDigest.value,
     )
 
 private fun Enum<*>.outputName(): String = name.lowercase().replace('_', '-')

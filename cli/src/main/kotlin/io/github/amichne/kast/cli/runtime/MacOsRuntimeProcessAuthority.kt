@@ -4,17 +4,17 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-/** Accepted exact-session capability retained until runtime readiness or terminal startup. */
+/** Accepted exact process/session capability retained until readiness or terminal startup. */
 internal fun interface AcceptedRuntimeStartupSession {
-    /** Observes whether the operating-system session authority still owns the identity. */
-    fun observe(): LaunchdServiceObservation
+    /** Observes whether the selected process authority still owns the identity. */
+    fun observe(): RuntimeSessionObservation
 }
 
 /** One already-derived process-session identity and its closed lifecycle effects. */
 internal interface RuntimeProcessSession : AcceptedRuntimeStartupSession {
 
     /** Retires a session whose presence was already proven. */
-    fun retire(present: LaunchdServiceObservation.Present): LaunchdServiceRetirement
+    fun retire(present: RuntimeSessionObservation.Present): RuntimeSessionRetirement
 }
 
 internal fun interface RuntimeProcessSessionResolver {
@@ -50,8 +50,24 @@ internal fun interface RuntimeProcessSearch {
 
 internal object JdkRuntimeProcessAuthority : RuntimeProcessAuthority by ExactRuntimeProcessAuthority(
     processSearch = JdkRuntimeProcessSearch,
+    processSessions = RuntimeProcessSessionResolver { DirectRuntimeProcessSession },
+)
+
+internal object LaunchdRuntimeProcessAuthority : RuntimeProcessAuthority by ExactRuntimeProcessAuthority(
+    processSearch = JdkRuntimeProcessSearch,
     processSessions = RuntimeProcessSessionResolver(MacOsRuntimeProcessSession::from),
 )
+
+/** Direct mode has no authority between process attempts; exact process evidence remains primary. */
+private data object DirectRuntimeProcessSession : RuntimeProcessSession {
+    override fun observe(): RuntimeSessionObservation = RuntimeSessionObservation.Absent
+
+    override fun retire(
+        present: RuntimeSessionObservation.Present,
+    ): RuntimeSessionRetirement = when (present) {
+        RuntimeSessionObservation.Present -> RuntimeSessionRetirement.Rejected
+    }
+}
 
 /** Resolves process ownership from both live process evidence and OS-session authority. */
 internal class ExactRuntimeProcessAuthority(
@@ -62,15 +78,15 @@ internal class ExactRuntimeProcessAuthority(
         val processSession = processSessions.resolve(endpoint)
         return when (val search = processSearch.find(endpoint)) {
             RuntimeProcessSearchResult.None -> when (processSession.observe()) {
-                LaunchdServiceObservation.Present -> RuntimeProcessObservation.Owned(
+                RuntimeSessionObservation.Present -> RuntimeProcessObservation.Owned(
                     SessionRuntimeOwnedProcess(
                         RuntimeProcessPresence.BetweenSessionAttempts,
                         processSession,
                     ),
                 )
-                LaunchdServiceObservation.Absent -> RuntimeProcessObservation.Absent
-                LaunchdServiceObservation.Interrupted,
-                LaunchdServiceObservation.Rejected,
+                RuntimeSessionObservation.Absent -> RuntimeProcessObservation.Absent
+                RuntimeSessionObservation.Interrupted,
+                RuntimeSessionObservation.Rejected,
                     -> RuntimeProcessObservation.Ambiguous
             }
             is RuntimeProcessSearchResult.Exact -> RuntimeProcessObservation.Owned(
@@ -131,7 +147,7 @@ private sealed interface RuntimeProcessPresence {
         val process: ProcessHandle,
     ) : RuntimeProcessPresence
 
-    /** launchd owns the exact label while no child is visible between restart attempts. */
+    /** An external session owns the exact identity while no child is visible between attempts. */
     data object BetweenSessionAttempts : RuntimeProcessPresence
 }
 
@@ -140,19 +156,19 @@ private class SessionRuntimeOwnedProcess(
     private val processSession: RuntimeProcessSession,
 ) : RuntimeOwnedProcess {
     override fun terminate(): RuntimeProcessTermination = when (processSession.observe()) {
-        LaunchdServiceObservation.Present -> when (
-            processSession.retire(LaunchdServiceObservation.Present)
+        RuntimeSessionObservation.Present -> when (
+            processSession.retire(RuntimeSessionObservation.Present)
         ) {
-            LaunchdServiceRetirement.Retired -> afterSessionRetirement()
-            LaunchdServiceRetirement.Interrupted -> RuntimeProcessTermination.Interrupted
-            LaunchdServiceRetirement.Rejected -> RuntimeProcessTermination.Rejected
+            RuntimeSessionRetirement.Retired -> afterSessionRetirement()
+            RuntimeSessionRetirement.Interrupted -> RuntimeProcessTermination.Interrupted
+            RuntimeSessionRetirement.Rejected -> RuntimeProcessTermination.Rejected
         }
-        LaunchdServiceObservation.Absent -> when (val observed = presence) {
+        RuntimeSessionObservation.Absent -> when (val observed = presence) {
             RuntimeProcessPresence.BetweenSessionAttempts -> RuntimeProcessTermination.Terminated
             is RuntimeProcessPresence.Live -> terminateDirectProcess(observed.process)
         }
-        LaunchdServiceObservation.Interrupted -> RuntimeProcessTermination.Interrupted
-        LaunchdServiceObservation.Rejected -> RuntimeProcessTermination.Rejected
+        RuntimeSessionObservation.Interrupted -> RuntimeProcessTermination.Interrupted
+        RuntimeSessionObservation.Rejected -> RuntimeProcessTermination.Rejected
     }
 
     private fun afterSessionRetirement(): RuntimeProcessTermination = when (val observed = presence) {

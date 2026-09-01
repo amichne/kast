@@ -11,6 +11,7 @@ import io.github.amichne.kast.change.verify.ResultingGenerationPublisher
 import io.github.amichne.kast.change.verify.VerifiedMutationService
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.runtime.composition.protocol.graph.TopologyBackedTraversalOperations
 import io.github.amichne.kast.runtime.server.RuntimeServer
@@ -105,8 +106,23 @@ class KastRuntimeComposition private constructor(
             topologyPorts: TopologyRuntimePorts,
             indexPorts: IndexRuntimePorts,
             changePorts: ChangeRuntimePorts,
+        ): DirectKastRuntimeGraph = constructGraph(
+            workspace,
+            semanticPorts,
+            topologyPorts,
+            indexPorts,
+            changePorts,
+            OpenTelemetryKastObservability.global(),
+        )
+
+        internal fun constructGraph(
+            workspace: WorkspacePublicationCoordinator,
+            semanticPorts: SemanticRuntimePorts,
+            topologyPorts: TopologyRuntimePorts,
+            indexPorts: IndexRuntimePorts,
+            changePorts: ChangeRuntimePorts,
+            observability: KastObservability,
         ): DirectKastRuntimeGraph {
-            val observability = OpenTelemetryKastObservability.global()
             val symbolDiscovery = SymbolDiscoveryService(workspace, semanticPorts.symbolDiscovery)
             val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
             val relation = RelationService(workspace, semanticPorts.relation)

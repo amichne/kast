@@ -34,7 +34,7 @@ internal fun changeCommandGroup(
     return CommandFamily(
         KastCommandGroup(
             "change",
-            "Plan, apply, verify, and recover hosted AddDeclaration changes.",
+            "Plan, apply, verify, and recover typed sidecar-backed changes.",
         )
             .subcommands(commands),
         commands,

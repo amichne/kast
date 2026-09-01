@@ -81,7 +81,7 @@ class CliLocalMetadata private constructor(
         /**
          * Proof transition: `String -> CliLocalVersionAdmission`.
          *
-         * Establishes a non-blank product version and the IDE-hosted execution identity in one
+         * Establishes a non-blank product version and the isolated sidecar identity in one
          * admitted text document. [CliLocalMetadataFailure] is the closed expected failure. Raw
          * version text is retained only in the returned process document.
          */
@@ -93,7 +93,7 @@ class CliLocalMetadata private constructor(
             )
             else -> when (
                 val admission = CliTextDocument.admit(
-                    "kast $productVersion (IDE-hosted)",
+                    "kast $productVersion (IntelliJ sidecar)",
                 )
             ) {
                 is CliTextDocumentAdmission.Admitted ->

@@ -18,16 +18,51 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.time.Duration
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class TopologyVfsSynchronizationTest {
     @TempDir
     lateinit var tempDir: Path
+
+    @Test
+    fun `asynchronous VFS refresh is awaited without a cancellable platform wait`() {
+        val started = CountDownLatch(1)
+        lateinit var finish: Runnable
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val result = executor.submit<TopologyVfsRefresh> {
+                AwaitedTopologyVfsRefresh.execute(
+                    starter = TopologyVfsRefreshStarter { completion ->
+                        finish = completion
+                        started.countDown()
+                        TopologyVfsRefreshStart.STARTED
+                    },
+                    timeout = Duration.ofSeconds(5),
+                )
+            }
+
+            assertTrue(started.await(5, TimeUnit.SECONDS))
+            assertFalse(result.isDone)
+            finish.run()
+            assertEquals(
+                TopologyVfsRefresh.REFRESHED,
+                result.get(5, TimeUnit.SECONDS),
+            )
+        } finally {
+            executor.shutdownNow()
+        }
+    }
 
     @Test
     fun `all admitted roots synchronize before authored and generated candidates are hashed`() {

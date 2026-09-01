@@ -1,7 +1,7 @@
 ---
 title: "What is Kast ready to inspect?"
 sidebarTitle: "Inspect readiness"
-description: "Read exact-root workspace readiness before relying on hosted symbol evidence."
+description: "Read exact-root workspace readiness before relying on sidecar symbol evidence."
 icon: "gauge"
 keywords: ["workspace", "readiness", "generation", "exact root"]
 ---
@@ -18,9 +18,10 @@ kast workspace inspect
 ## The answer belongs to one exact root
 
 Kast canonicalizes the working directory and associates the request with the
-endpoint published by the already-open Project for that exact root. Two
-checkouts of the same Git repository are two workspace identities. The
-foreground IntelliJ window does not select the workspace.
+private sidecar Project for that exact root. Two checkouts of the same Git
+repository are two workspace identities. A user's foreground IntelliJ window
+does not select the workspace, and unsaved editor buffers are outside Kast's
+on-disk authority.
 
 This prevents an answer from silently borrowing indexes, Gradle ownership, or
 source state from another checkout.
@@ -53,9 +54,10 @@ produced its payload.
 </Columns>
 
 <Note>
-  `kast status` answers whether a compatible hosted endpoint is available for
-  this root. `kast workspace inspect` answers whether semantic workspace
-  evidence is available. Keep those questions separate.
+  `kast status` passively reports whether the exact sidecar is running and
+  whether its private cache is fresh, seeded, refreshing, smart, or requires a
+  rebuild. `kast workspace inspect` may start the sidecar and answers whether
+  semantic workspace evidence is available. Keep those questions separate.
 </Note>
 
 ## Carry the generation forward
@@ -64,10 +66,10 @@ Candidates and exact selectors are issued against a semantic generation. If
 the workspace moves, Kast rejects stale proof instead of treating an old
 identity as current.
 
-Reopening the IntelliJ Project also advances the generation conservatively.
-Kast cannot prove source content stayed unchanged while the Project was closed
-from the bounded workspace model alone. Rebuild topology to verify and, when
-the exact candidates match, rebind the durable snapshot to the new generation.
+Restarting the sidecar also advances the generation conservatively. Kast cannot
+prove source content stayed unchanged while the Project was closed from the
+bounded workspace model alone. Rebuild topology to verify and, when the exact
+candidates match, rebind the durable snapshot to the new generation.
 
 Once readiness is sufficient, [establish the exact declaration](/questions/declaration-identity)
 needed by the next question.

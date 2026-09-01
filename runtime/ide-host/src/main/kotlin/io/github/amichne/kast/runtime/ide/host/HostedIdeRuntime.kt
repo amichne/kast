@@ -77,7 +77,7 @@ class HostedIdeRuntime private constructor(
             mutationAdmission: HostedMutationAdmissionOperations,
             authority: DurableChangeAuthority,
         ): HostedIdeRuntimeConstruction = when (val server = RuntimeServer.createHostedEffects(
-            HostedTopologyProtocol.bindings(topology, selectors, relations) +
+                HostedTopologyProtocol.bindings(topology, selectors, relations) +
                 HostedDiagnosticProtocol.bindings(workspace, diagnostics) +
                 HostedIndexSyncProtocol.bindings(indexSync) +
                 HostedMutationProtocol.bindings(mutation, mutationAdmission, selectors, authority),

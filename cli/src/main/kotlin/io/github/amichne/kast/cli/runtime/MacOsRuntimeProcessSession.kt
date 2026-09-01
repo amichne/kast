@@ -11,7 +11,7 @@ internal fun interface RuntimeProcessStarter {
 }
 
 internal sealed interface RuntimeProcessStart {
-    /** launchd accepted or already owned the exact session and preserves its observation proof. */
+    /** The selected mode accepted or already owned the exact session and retained observation. */
     data class Accepted(
         val session: AcceptedRuntimeStartupSession,
         val origin: RuntimeProcessStartOrigin,
@@ -26,8 +26,8 @@ internal enum class RuntimeProcessStartOrigin {
     EXISTING_SESSION,
 }
 
-/** Sole process-effect adapter for an admitted indexer launch command. */
-internal object JdkRuntimeProcessStarter : RuntimeProcessStarter {
+/** launchd process-effect adapter retained behind the explicit installed opt-in. */
+internal object LaunchdRuntimeProcessStarter : RuntimeProcessStarter {
     override fun start(command: IndexerLaunchCommand): RuntimeProcessStart =
         command.processSession.start(command)
 }
@@ -48,13 +48,13 @@ internal class MacOsRuntimeProcessSession private constructor(
      */
     fun start(command: IndexerLaunchCommand): RuntimeProcessStart {
         when (observe()) {
-            LaunchdServiceObservation.Present -> return RuntimeProcessStart.Accepted(
+            RuntimeSessionObservation.Present -> return RuntimeProcessStart.Accepted(
                 this,
                 RuntimeProcessStartOrigin.EXISTING_SESSION,
             )
-            LaunchdServiceObservation.Interrupted -> return RuntimeProcessStart.Interrupted
-            LaunchdServiceObservation.Rejected -> return RuntimeProcessStart.Rejected
-            LaunchdServiceObservation.Absent -> Unit
+            RuntimeSessionObservation.Interrupted -> return RuntimeProcessStart.Interrupted
+            RuntimeSessionObservation.Rejected -> return RuntimeProcessStart.Rejected
+            RuntimeSessionObservation.Absent -> Unit
         }
         val submission = when (val construction = launchctlSubmission(command)) {
             is MacOsLaunchctlSubmission.Ready -> construction.arguments
@@ -87,14 +87,14 @@ internal class MacOsRuntimeProcessSession private constructor(
         rejected: LaunchctlInvocation.Rejected,
     ): RuntimeProcessStart = when (rejected) {
         LaunchctlInvocation.Rejected -> when (observe()) {
-            LaunchdServiceObservation.Present -> RuntimeProcessStart.Accepted(
+            RuntimeSessionObservation.Present -> RuntimeProcessStart.Accepted(
                 this,
                 RuntimeProcessStartOrigin.EXISTING_SESSION,
             )
-            LaunchdServiceObservation.Absent,
-            LaunchdServiceObservation.Rejected,
+            RuntimeSessionObservation.Absent,
+            RuntimeSessionObservation.Rejected,
                 -> RuntimeProcessStart.Rejected
-            LaunchdServiceObservation.Interrupted -> RuntimeProcessStart.Interrupted
+            RuntimeSessionObservation.Interrupted -> RuntimeProcessStart.Interrupted
         }
     }
 
@@ -134,45 +134,45 @@ internal class MacOsRuntimeProcessSession private constructor(
     }
 
     /**
-     * Proof transition: `MacOsRuntimeProcessSession -> LaunchdServiceObservation`.
+     * Proof transition: `MacOsRuntimeProcessSession -> RuntimeSessionObservation`.
      *
      * Establishes whether launchd currently owns the endpoint-derived service label.
-     * [LaunchdServiceObservation.Rejected] closes inaccessible service state. The raw label leaves
+     * [RuntimeSessionObservation.Rejected] closes inaccessible service state. The raw label leaves
      * only at the launchctl boundary.
      */
-    override fun observe(): LaunchdServiceObservation = when (
+    override fun observe(): RuntimeSessionObservation = when (
         val invocation = launchctl.invoke(
             listOf(LAUNCHCTL_EXECUTABLE, "list", serviceLabel),
             LaunchctlExitContract.CompletionOrAbsent(LAUNCHCTL_SERVICE_NOT_FOUND),
         )
     ) {
-        LaunchctlInvocation.Completed -> LaunchdServiceObservation.Present
-        LaunchctlInvocation.Absent -> LaunchdServiceObservation.Absent
-        LaunchctlInvocation.Interrupted -> LaunchdServiceObservation.Interrupted
-        LaunchctlInvocation.Rejected -> LaunchdServiceObservation.Rejected
+        LaunchctlInvocation.Completed -> RuntimeSessionObservation.Present
+        LaunchctlInvocation.Absent -> RuntimeSessionObservation.Absent
+        LaunchctlInvocation.Interrupted -> RuntimeSessionObservation.Interrupted
+        LaunchctlInvocation.Rejected -> RuntimeSessionObservation.Rejected
     }
 
     /**
-     * Proof transition: `LaunchdServiceObservation.Present -> LaunchdServiceRetirement`.
+     * Proof transition: `RuntimeSessionObservation.Present -> RuntimeSessionRetirement`.
      *
      * Establishes that launchd accepted removal of the exact endpoint-derived service.
-     * [LaunchdServiceRetirement] closes process rejection and interruption. The raw label leaves
+     * [RuntimeSessionRetirement] closes process rejection and interruption. The raw label leaves
      * only at the launchctl boundary.
      */
     override fun retire(
-        present: LaunchdServiceObservation.Present,
-    ): LaunchdServiceRetirement = when (present) {
-        LaunchdServiceObservation.Present -> when (
+        present: RuntimeSessionObservation.Present,
+    ): RuntimeSessionRetirement = when (present) {
+        RuntimeSessionObservation.Present -> when (
             launchctl.invoke(
                 listOf(LAUNCHCTL_EXECUTABLE, "remove", serviceLabel),
                 LaunchctlExitContract.CompletionOnly,
             )
         ) {
-            LaunchctlInvocation.Completed -> LaunchdServiceRetirement.Retired
-            LaunchctlInvocation.Interrupted -> LaunchdServiceRetirement.Interrupted
+            LaunchctlInvocation.Completed -> RuntimeSessionRetirement.Retired
+            LaunchctlInvocation.Interrupted -> RuntimeSessionRetirement.Interrupted
             LaunchctlInvocation.Absent,
             LaunchctlInvocation.Rejected,
-                -> LaunchdServiceRetirement.Rejected
+                -> RuntimeSessionRetirement.Rejected
         }
     }
 
@@ -225,17 +225,17 @@ private sealed interface MacOsLaunchctlSubmission {
     ) : MacOsLaunchctlSubmission
 }
 
-internal sealed interface LaunchdServiceObservation {
-    data object Present : LaunchdServiceObservation
-    data object Absent : LaunchdServiceObservation
-    data object Rejected : LaunchdServiceObservation
-    data object Interrupted : LaunchdServiceObservation
+internal sealed interface RuntimeSessionObservation {
+    data object Present : RuntimeSessionObservation
+    data object Absent : RuntimeSessionObservation
+    data object Rejected : RuntimeSessionObservation
+    data object Interrupted : RuntimeSessionObservation
 }
 
-internal sealed interface LaunchdServiceRetirement {
-    data object Retired : LaunchdServiceRetirement
-    data object Rejected : LaunchdServiceRetirement
-    data object Interrupted : LaunchdServiceRetirement
+internal sealed interface RuntimeSessionRetirement {
+    data object Retired : RuntimeSessionRetirement
+    data object Rejected : RuntimeSessionRetirement
+    data object Interrupted : RuntimeSessionRetirement
 }
 
 internal sealed interface LaunchctlInvocation {

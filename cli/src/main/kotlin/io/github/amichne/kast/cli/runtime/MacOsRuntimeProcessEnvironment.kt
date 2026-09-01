@@ -22,17 +22,20 @@ internal sealed interface MacOsRuntimeProcessEnvironmentResolution {
 
 /** Minimal non-secret environment required by the detached installed indexer. */
 internal class MacOsRuntimeProcessEnvironment private constructor(
-    val assignments: List<String>,
+    val variables: Map<String, String>,
 ) {
+    val assignments: List<String> = variables.map { (name, value) -> "$name=$value" }
+
     companion object {
         /**
          * Proof transition: `JVM system properties ->
          * MacOsRuntimeProcessEnvironmentResolution`.
          *
          * Establishes canonical physical Java and user homes plus a deterministic executable path
-         * for one launchd service. [MacOsRuntimeProcessEnvironmentFailure] closes unavailable or
-         * malformed host properties. Raw assignments leave only at `/usr/bin/env` in the launchd
-         * submission command; arbitrary caller environment and secrets are not propagated.
+         * for one detached process. [MacOsRuntimeProcessEnvironmentFailure] closes unavailable or
+         * malformed host properties. Raw values leave only at the direct [ProcessBuilder] or
+         * `/usr/bin/env` launchd boundary; arbitrary caller environment and secrets are not
+         * propagated.
          */
         fun resolve(): MacOsRuntimeProcessEnvironmentResolution {
             val javaHome = when (val admission = canonicalDirectory(
@@ -62,10 +65,10 @@ internal class MacOsRuntimeProcessEnvironment private constructor(
             }
             return MacOsRuntimeProcessEnvironmentResolution.Resolved(
                 MacOsRuntimeProcessEnvironment(
-                    listOf(
-                        "JAVA_HOME=$javaHome",
-                        "HOME=$userHome",
-                        "PATH=${javaHome.resolve("bin")}:$SYSTEM_EXECUTABLE_PATH",
+                    linkedMapOf(
+                        "JAVA_HOME" to javaHome.toString(),
+                        "HOME" to userHome.toString(),
+                        "PATH" to "${javaHome.resolve("bin")}:$SYSTEM_EXECUTABLE_PATH",
                     ),
                 ),
             )
