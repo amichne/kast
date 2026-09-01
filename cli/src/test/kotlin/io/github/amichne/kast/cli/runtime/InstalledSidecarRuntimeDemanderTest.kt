@@ -103,7 +103,14 @@ class InstalledSidecarRuntimeDemanderTest {
         val runtimeId = SemanticRuntimeId.parse("sha256:${"b".repeat(64)}").let {
             (it as Refinement.Refined).value
         }
-        val endpointLocator = Sha256RuntimeEndpointLocator(temporary, runtimeId)
+        val runtimeDirectory = InstalledRuntimeDirectory.admit(
+            configured = temporary.toString(),
+            temporaryDirectory = null,
+        ).let { (it as InstalledRuntimeDirectoryAdmission.Admitted).directory }
+        val endpointLocator = Sha256RuntimeEndpointLocator(
+            RuntimeSocketDirectory.from(runtimeDirectory),
+            runtimeId,
+        )
         val endpoint = (endpointLocator.locate(root) as RuntimeEndpointResolution.Resolved).endpoint
         val executable = Files.writeString(temporary.resolve("kast-indexer"), "#!/bin/sh\n")
         executable.toFile().setExecutable(true)

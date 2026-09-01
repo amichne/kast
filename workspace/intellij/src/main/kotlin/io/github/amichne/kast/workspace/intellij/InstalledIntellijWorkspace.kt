@@ -3,6 +3,7 @@ package io.github.amichne.kast.workspace.intellij
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
+import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleManager
@@ -87,9 +88,10 @@ object InstalledIntellijWorkspace {
      * Proof transition: `Path -> InstalledIntellijWorkspaceOpening`.
      *
      * [InstalledIntellijWorkspaceOpening.Opened] establishes that IntelliJ opened the exact path,
-     * completed one Gradle link or refresh, reached smart mode, and detached one complete Gradle
-     * model. [InstalledIntellijWorkspaceFailure] closes every expected bootstrap failure. The live
-     * project and Gradle objects remain inside this adapter and the IntelliJ project lifecycle.
+     * completed one observed project-open import or explicit Gradle link, reached smart mode, and
+     * detached one complete Gradle model. [InstalledIntellijWorkspaceFailure] closes every expected
+     * bootstrap failure. The live project and Gradle objects remain inside this adapter and the
+     * IntelliJ project lifecycle.
      */
     fun open(workspaceRoot: Path): InstalledIntellijWorkspaceOpening {
         GradleSystemSettings.getInstance().isDownloadSources = false
@@ -103,12 +105,22 @@ object InstalledIntellijWorkspace {
                 InstalledIntellijWorkspaceFailure.GRADLE_JVM_UNAVAILABLE,
             )
         }
-        return openObserved(workspaceRoot, gradleJvm)
+        val importObserver = InstalledGradleImportObserver(workspaceRoot)
+        val notificationManager = ExternalSystemProgressNotificationManager.getInstance()
+        if (!notificationManager.addNotificationListener(importObserver)) {
+            return rejected(InstalledIntellijWorkspaceFailure.GRADLE_IMPORT_FAILED)
+        }
+        return try {
+            openObserved(workspaceRoot, gradleJvm, importObserver)
+        } finally {
+            notificationManager.removeNotificationListener(importObserver)
+        }
     }
 
     private fun openObserved(
         workspaceRoot: Path,
         gradleJvm: InstalledGradleJvm,
+        importObserver: InstalledGradleImportObserver,
     ): InstalledIntellijWorkspaceOpening {
         val preparation = InstalledProjectOpenPreparation(workspaceRoot, gradleJvm)
         val project = try {
@@ -145,6 +157,9 @@ object InstalledIntellijWorkspace {
             FutureCompletion.FAILED,
                 -> return rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED)
         }
+        if (prepared.importOperation is InstalledGradleImportOperation.AwaitLinked) {
+            importObserver.closeProjectOpenAdmission()
+        }
 
         val imported = CompletableFuture<Void>()
         val closedImported = imported.closedImportOutcome()
@@ -152,10 +167,7 @@ object InstalledIntellijWorkspace {
             .withCallback(imported)
         val importCompletion = try {
             when (prepared.importOperation) {
-                InstalledGradleImportOperation.RefreshLinked -> {
-                    ExternalSystemUtil.refreshProject(workspaceRoot.toString(), specification)
-                    closedImported
-                }
+                InstalledGradleImportOperation.AwaitLinked -> importObserver.completion
                 InstalledGradleImportOperation.LinkUnlinked -> {
                     val settings = GradleProjectSettings(workspaceRoot.toString()).apply {
                         this.gradleJvm = gradleJvm.projectSettingsSelector()

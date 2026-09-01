@@ -64,6 +64,10 @@ Kast owns the isolated sidecar lifecycle. `start` and semantic commands may
 launch the exact supported local IDEA build; `status`, `stop`, and `clean`
 remain passive and never manufacture an endpoint.
 
+Sidecar processes launch directly by default. `KAST_ENABLE_LAUNCHD=1` opts into
+launchd-backed process ownership; an absent value or `0` selects direct launch.
+Every other value is rejected.
+
 | Command | Effect |
 | --- | --- |
 | `kast start` | Start or reuse the exact-root private sidecar and return workspace readiness. |

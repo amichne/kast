@@ -42,8 +42,16 @@ grep -Eq '^private-plugins/kast-indexer/lib/.+' < <(unzip -Z1 "$runtime_archive"
   fail "private sidecar extension is missing"
 
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-sidecar-product.XXXXXX")"
+runtime_directory="$fixture/runtime"
+runtime_socket_directory="/tmp/kast-runtime-$(
+  printf '%s' "$runtime_directory" \
+    | sed -E 's:/+:/:g' \
+    | shasum -a 256 \
+    | awk '{ print substr($1, 1, 24) }'
+)"
 cleanup() {
   rm -rf -- "$fixture"
+  rm -rf -- "$runtime_socket_directory"
 }
 trap cleanup EXIT
 mkdir -p "$fixture/home" "$fixture/runtime" "$fixture/repo"
@@ -53,7 +61,7 @@ command_environment=(
   "JAVA_OPTS=-Duser.home=$fixture/home"
   "KAST_RUNTIME_ARCHIVE=$runtime_archive"
   "KAST_RUNTIME_STORE=$fixture/store"
-  "KAST_RUNTIME_DIRECTORY=$fixture/runtime"
+  "KAST_RUNTIME_DIRECTORY=$runtime_directory"
   "KAST_CACHE_ROOT=$fixture/cache"
 )
 
@@ -88,7 +96,8 @@ assert document["workspace"]["cache"]["type"] == "absent", document
 PY
 
 passive_state_manifest() {
-  for path in "$fixture/runtime" "$fixture/store" "$fixture/cache"; do
+  for path in "$runtime_directory" "$runtime_socket_directory" \
+    "$fixture/store" "$fixture/cache"; do
     [[ ! -e "$path" ]] || find "$path" -print
   done | LC_ALL=C sort
 }
@@ -99,7 +108,7 @@ after_status_state="$(passive_state_manifest)"
   fail "status mutated isolated runtime or cache state"
 if ps -axo command= \
   | grep -F 'io.github.amichne.kast.indexer.KastIndexerMainKt' \
-  | grep -F -- "$fixture/runtime" \
+  | grep -F -- "$runtime_socket_directory" \
   | grep -q .; then
   fail "status started its isolated sidecar"
 fi

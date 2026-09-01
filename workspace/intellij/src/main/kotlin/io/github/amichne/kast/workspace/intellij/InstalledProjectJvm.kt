@@ -228,7 +228,7 @@ internal sealed interface InstalledGradleLinkPresence {
 }
 
 internal sealed interface InstalledGradleImportOperation {
-    data object RefreshLinked : InstalledGradleImportOperation
+    data object AwaitLinked : InstalledGradleImportOperation
     data object LinkUnlinked : InstalledGradleImportOperation
 }
 
@@ -304,7 +304,7 @@ internal fun InstalledGradleLinkPresence.applyImportJvm(
             return InstalledGradleImportApplication.Rejected
         }
         InstalledGradleImportApplication.Applied(
-            InstalledGradleImportOperation.RefreshLinked,
+            InstalledGradleImportOperation.AwaitLinked,
         ) {
             try {
                 settings.gradleJvm = previous

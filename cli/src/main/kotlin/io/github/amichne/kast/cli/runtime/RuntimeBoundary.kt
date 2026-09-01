@@ -82,27 +82,67 @@ fun interface RuntimeEndpointLocator {
     fun locate(root: CanonicalRoot): RuntimeEndpointResolution
 }
 
+/** A deterministic physical directory that leaves enough bytes for every derived UDS name. */
+internal class RuntimeSocketDirectory private constructor(
+    internal val path: Path,
+) {
+    companion object {
+        internal const val MAXIMUM_ENDPOINT_PATH_BYTES = 103
+
+        /**
+         * Proof transition: `InstalledRuntimeDirectory -> RuntimeSocketDirectory`.
+         *
+         * Maps an admitted logical runtime namespace into one fixed-length physical namespace.
+         * The complete endpoint shape is checked against macOS's Unix-domain address bound before
+         * this proof-carrying directory can reach a locator. Raw paths leave only at endpoint
+         * derivation and filesystem boundaries.
+         */
+        internal fun from(logicalDirectory: InstalledRuntimeDirectory): RuntimeSocketDirectory {
+            val namespace = sha256Prefix(logicalDirectory.path.toString(), DIGEST_BYTES)
+            val physical = PHYSICAL_SOCKET_ROOT.resolve("kast-runtime-$namespace")
+            val maximumEndpoint = physical.resolve(
+                "kast-${"0".repeat(DIGEST_HEX_CHARACTERS)}.sock",
+            )
+            check(
+                maximumEndpoint.toString().toByteArray(StandardCharsets.UTF_8).size <=
+                    MAXIMUM_ENDPOINT_PATH_BYTES,
+            )
+            return RuntimeSocketDirectory(physical)
+        }
+
+        private val PHYSICAL_SOCKET_ROOT = Path.of("/tmp")
+        private const val DIGEST_BYTES = 12
+        private const val DIGEST_HEX_CHARACTERS = DIGEST_BYTES * 2
+    }
+}
+
 /** Deterministically derives a bounded UDS name from the canonical root. */
-class Sha256RuntimeEndpointLocator(
-    private val socketDirectory: Path,
+internal class Sha256RuntimeEndpointLocator(
+    private val socketDirectory: RuntimeSocketDirectory,
     private val runtimeId: SemanticRuntimeId,
 ) : RuntimeEndpointLocator {
     override fun locate(root: CanonicalRoot): RuntimeEndpointResolution {
-        val digest = HexFormat.of().formatHex(
-            MessageDigest.getInstance("SHA-256")
-                .digest(
-                    "${root.path}\n${runtimeId.value}".toByteArray(StandardCharsets.UTF_8),
-                ),
-            0,
-            12,
+        val digest = sha256Prefix(
+            "${root.path}\n${runtimeId.value}",
+            ENDPOINT_DIGEST_BYTES,
         )
         return RuntimeEndpoint.at(
             root,
             runtimeId,
-            socketDirectory.resolve("kast-$digest.sock"),
+            socketDirectory.path.resolve("kast-$digest.sock"),
         )
     }
+
+    private companion object {
+        const val ENDPOINT_DIGEST_BYTES = 12
+    }
 }
+
+private fun sha256Prefix(value: String, bytes: Int): String = HexFormat.of().formatHex(
+    MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8)),
+    0,
+    bytes,
+)
 
 enum class IndexerExecutableFailure {
     NOT_ABSOLUTE,
@@ -159,7 +199,7 @@ class IndexerLaunchCommand private constructor(
          *
          * Establishes the installed indexer's exact root and UDS launch arguments. Construction
          * fails closed if the endpoint belongs to another root. Raw arguments may be extracted
-         * only by [MacOsRuntimeProcessSession].
+         * only by an admitted [RuntimeProcessStarter].
          */
         fun create(
             executable: IndexerExecutable,
@@ -397,14 +437,14 @@ internal class ExactRootProcessRuntimeDemander(
                 return RuntimeAdmission.Ready(endpoint)
             }
             when (session.observe()) {
-                LaunchdServiceObservation.Present -> Unit
-                LaunchdServiceObservation.Absent -> return RuntimeAdmission.Rejected(
+                RuntimeSessionObservation.Present -> Unit
+                RuntimeSessionObservation.Absent -> return RuntimeAdmission.Rejected(
                     RuntimeAdmissionFailure.SessionEndedBeforeReady,
                 )
-                LaunchdServiceObservation.Rejected -> return RuntimeAdmission.Rejected(
+                RuntimeSessionObservation.Rejected -> return RuntimeAdmission.Rejected(
                     RuntimeAdmissionFailure.ProcessObservationFailed,
                 )
-                LaunchdServiceObservation.Interrupted -> return RuntimeAdmission.Rejected(
+                RuntimeSessionObservation.Interrupted -> return RuntimeAdmission.Rejected(
                     RuntimeAdmissionFailure.Interrupted,
                 )
             }

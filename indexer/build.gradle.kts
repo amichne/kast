@@ -200,12 +200,14 @@ val testIndexerLauncherIsolation by tasks.registering(Exec::class) {
     group = "verification"
     description = "Proves that each exact endpoint owns isolated IntelliJ process paths."
     val launcher = layout.projectDirectory.file("src/main/scripts/kast-indexer")
+    val pythonVersionFile = rootProject.layout.projectDirectory.file(".python-version")
     val testScript = layout.projectDirectory.file(
         "src/test/scripts/test-kast-indexer-isolation.sh",
     )
     inputs.file(launcher)
+    inputs.file(pythonVersionFile)
     inputs.file(testScript)
-    commandLine("bash", testScript, launcher)
+    commandLine("bash", testScript, launcher, pythonVersionFile.asFile.absolutePath)
 }
 
 tasks.named("check") {

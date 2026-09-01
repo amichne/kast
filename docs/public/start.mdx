@@ -78,6 +78,10 @@ headless IntelliJ sidecar and publishes its compiler-backed evidence.
     Project, imports the on-disk Gradle model, refreshes its private VFS, waits
     for smart mode, and only then publishes semantic readiness. If no unique
     standard installation matches, pass `--idea-home /absolute/IDEA/home`.
+
+    Sidecar processes launch directly by default. Set
+    `KAST_ENABLE_LAUNCHD=1` to opt into launchd-backed process ownership; leave
+    it unset or set it to `0` for direct launch. Every other value is rejected.
   </Step>
 
   <Step title="Inspect the first answer">

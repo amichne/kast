@@ -1,11 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-launcher="${1:?usage: test-kast-indexer-isolation.sh LAUNCHER}"
+launcher="${1:?usage: test-kast-indexer-isolation.sh LAUNCHER PYTHON_VERSION_FILE}"
+python_version_file="${2:?usage: test-kast-indexer-isolation.sh LAUNCHER PYTHON_VERSION_FILE}"
 [[ -f "${launcher}" ]] || {
   echo "indexer-launcher-isolation-test: launcher is missing: ${launcher}" >&2
   exit 1
 }
+[[ -f "${python_version_file}" ]] || {
+  echo "indexer-launcher-isolation-test: Python version declaration is missing: ${python_version_file}" >&2
+  exit 1
+}
+required_python_version="$(tr -d '[:space:]' <"${python_version_file}")"
+[[ "${required_python_version}" =~ ^[0-9]+\.[0-9]+$ ]] || {
+  echo "indexer-launcher-isolation-test: invalid Python version declaration: ${required_python_version}" >&2
+  exit 1
+}
+python3 - "${required_python_version}" <<'PY'
+import sys
+
+required_text = sys.argv[1]
+required = tuple(int(component) for component in required_text.split("."))
+observed = sys.version_info[:2]
+if observed < required:
+    print(
+        "indexer-launcher-isolation-test: "
+        f"requires Python {required_text} or newer; "
+        f"observed {observed[0]}.{observed[1]}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+PY
 
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-indexer-isolation.XXXXXX")"
 fixture="$(cd -P -- "${fixture}" && pwd -P)"

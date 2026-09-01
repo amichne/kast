@@ -23,7 +23,10 @@ internal sealed interface KastCliCompositionConstruction {
     ) : KastCliCompositionConstruction
 }
 
-internal sealed interface KastCliCompositionFailure
+internal sealed interface KastCliCompositionFailure {
+    /** Stable public bootstrap reason; implementations may preserve a more specific failure. */
+    val outputReason: String get() = "composition_invalid"
+}
 
 private sealed interface CliBootstrap {
     data class Ready(
@@ -94,7 +97,6 @@ private fun loadComposition(): CliBootstrap {
 private fun CliBootstrapFailure.outputReason(): String = when (this) {
     CliBootstrapFailure.CompositionMissing -> "composition_missing"
     CliBootstrapFailure.CompositionAmbiguous -> "composition_ambiguous"
-    CliBootstrapFailure.CompositionInvalid,
-    is CliBootstrapFailure.CompositionRejected,
-        -> "composition_invalid"
+    CliBootstrapFailure.CompositionInvalid -> "composition_invalid"
+    is CliBootstrapFailure.CompositionRejected -> failure.outputReason
 }

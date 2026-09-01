@@ -174,82 +174,33 @@ val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
             .map { userHome -> file(userHome).resolve(".local") },
     )
 
-val installLocalControl by tasks.registering(Sync::class) {
-    group = "distribution"
-    description = "Installs the current Kast control product into the local prefix."
-    dependsOn(stageKastControlProduct)
-    from(controlProductDirectory)
-    into(localInstallPrefix.map { it.resolve("share/kast/control") })
-}
-
-val installLocalSemanticRuntime by tasks.registering(Sync::class) {
-    group = "distribution"
-    description = "Installs the small private sidecar payload into the local prefix."
-    dependsOn(semanticRuntimeArchive)
-    from(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    into(localInstallPrefix.map { it.resolve("share/kast/runtime") })
-}
-
-val localLauncherContent = $$"""
-        |#!/bin/sh
-        |set -eu
-        |
-        |script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
-        |install_prefix="$(CDPATH= cd -- "${script_dir}/.." && pwd -P)"
-        |control_executable="${install_prefix}/share/kast/control/bin/kast"
-        |runtime_archive="${install_prefix}/share/kast/runtime/$$semanticRuntimeArchiveName"
-        |
-        |if [ ! -x "${control_executable}" ]; then
-        |  echo "kast: installed control executable is missing: ${control_executable}" >&2
-        |  exit 1
-        |fi
-        |if [ ! -f "${runtime_archive}" ]; then
-        |  echo "kast: installed sidecar payload is missing: ${runtime_archive}" >&2
-        |  exit 1
-        |fi
-        |
-        |export KAST_RUNTIME_ARCHIVE="${runtime_archive}"
-        |exec "${control_executable}" "$@"
-        """.trimMargin()
-
+val localProductDirectory = localInstallPrefix.map { it.resolve("share/kast/local") }
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
-val installLocalLauncher = tasks.register<Exec>("installLocalLauncher") {
-    group = "distribution"
-    description = "Installs the relocatable local Kast launcher."
-    dependsOn(installLocalControl, installLocalSemanticRuntime)
-    inputs.property("launcherContent", localLauncherContent)
-    outputs.file(localLauncherFile)
-    outputs.upToDateWhen { false }
-    commandLine(
-        "bash",
-        "-c",
-        $$"""
-        |set -eu
-        |launcher="$1"
-        |launcher_content="$2"
-        |launcher_directory="$(dirname -- "${launcher}")"
-        |mkdir -p -- "${launcher_directory}"
-        |temporary_launcher="$(mktemp "${launcher_directory}/.kast.XXXXXX")"
-        |cleanup() {
-        |  rm -f -- "${temporary_launcher}"
-        |}
-        |trap cleanup EXIT
-        |printf '%s' "${launcher_content}" >"${temporary_launcher}"
-        |chmod 755 "${temporary_launcher}"
-        |mv -f -- "${temporary_launcher}" "${launcher}"
-        |trap - EXIT
-        """.trimMargin(),
-        "install-local-launcher",
-        localLauncherFile.get().absolutePath,
-        localLauncherContent,
-    )
-}
-
-tasks.register("installLocal") {
+tasks.register<Exec>("installLocal") {
     group = "distribution"
     description =
-        "Installs Kast under ~/.local, or the prefix selected by -PkastLocalPrefix."
-    dependsOn(installLocalLauncher)
+        "Installs one coherent Kast product under ~/.local, or -PkastLocalPrefix."
+    dependsOn(stageKastControlProduct, semanticRuntimeArchive)
+    inputs.dir(controlProductDirectory)
+    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
+    inputs.file(layout.projectDirectory.file("packaging/install-local.sh"))
+    inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
+    outputs.dir(localProductDirectory)
+    outputs.file(localLauncherFile)
+    outputs.upToDateWhen { false }
+    environment(
+        "KAST_LOCAL_PREFIX",
+        localInstallPrefix.get().absolutePath,
+    )
+    environment(
+        "KAST_LOCAL_CONTROL_PRODUCT",
+        controlProductDirectory.get().asFile.absolutePath,
+    )
+    environment(
+        "KAST_LOCAL_RUNTIME_ARCHIVE",
+        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
+    )
+    commandLine("bash", layout.projectDirectory.file("packaging/install-local.sh"))
 }
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {

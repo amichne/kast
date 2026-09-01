@@ -164,6 +164,21 @@ require_safe_cleanup_root() {
   esac
 }
 
+runtime_socket_directory_for() {
+  local logical_directory normalized_directory namespace
+  logical_directory="$1"
+  require_absolute_path "logical runtime directory" "$logical_directory"
+  normalized_directory="$(printf '%s' "$logical_directory" | sed -E 's:/+:/:g')"
+  namespace="$(
+    printf '%s' "$normalized_directory" |
+      shasum -a 256 |
+      awk '{ print substr($1, 1, 24) }'
+  )"
+  [[ "$namespace" =~ ^[0-9a-f]{24}$ ]] ||
+    fail "unable to derive the physical runtime socket namespace"
+  printf '/tmp/kast-runtime-%s\n' "$namespace"
+}
+
 remove_owned_path() {
   local path="$1"
   if [[ -e "$path" || -L "$path" ]]; then
@@ -251,6 +266,9 @@ validate_cleanup_plan() {
   require_safe_cleanup_root "runtime store" "$runtime_store"
   require_safe_cleanup_root "runtime directory" "$runtime_directory"
   require_safe_cleanup_root "default runtime directory" "$default_runtime_directory"
+  require_safe_cleanup_root "runtime socket directory" "$runtime_socket_directory"
+  require_safe_cleanup_root \
+    "default runtime socket directory" "$default_runtime_socket_directory"
   require_safe_cleanup_root "configuration root" "$config_root"
   require_safe_cleanup_root "legacy configuration root" "$legacy_config_root"
   require_safe_cleanup_root "application support root" "$application_support_root"
@@ -279,6 +297,8 @@ purge_kast() {
   remove_owned_path "$runtime_cache_root"
   remove_owned_path "$runtime_directory"
   remove_owned_path "$default_runtime_directory"
+  remove_owned_path "$runtime_socket_directory"
+  remove_owned_path "$default_runtime_socket_directory"
   remove_owned_path "$config_root"
   remove_owned_path "$legacy_config_root"
   remove_owned_path "$application_support_root"
@@ -540,6 +560,8 @@ install_root="${KAST_INSTALL_ROOT:-$default_install_root}"
 bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
 runtime_store="${KAST_RUNTIME_STORE:-$runtime_cache_root/semantic-runtimes}"
 runtime_directory="${KAST_RUNTIME_DIRECTORY:-$default_runtime_directory}"
+runtime_socket_directory=""
+default_runtime_socket_directory=""
 process_table_command="${KAST_INSTALL_PROCESS_TABLE_COMMAND:-ps}"
 process_kill_command="${KAST_INSTALL_PROCESS_KILL_COMMAND:-kill}"
 version_option_set=false
@@ -615,9 +637,16 @@ if [[ "$action" == "uninstall" ]]; then
     fail "--version, --repository, and --release-base-url are valid only with install"
   require_command rm
   require_command find
+  require_command shasum
+  require_command awk
+  require_command sed
   require_command "$process_table_command"
   require_command "$process_kill_command"
   require_command sleep
+  runtime_socket_directory="$(runtime_socket_directory_for "$runtime_directory")"
+  default_runtime_socket_directory="$(
+    runtime_socket_directory_for "$default_runtime_directory"
+  )"
   purge_kast
   note "uninstalled Kast"
   exit 0
@@ -668,6 +697,10 @@ require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_dir"
 require_absolute_path "runtime store" "$runtime_store"
 require_absolute_path "runtime directory" "$runtime_directory"
+runtime_socket_directory="$(runtime_socket_directory_for "$runtime_directory")"
+default_runtime_socket_directory="$(
+  runtime_socket_directory_for "$default_runtime_directory"
+)"
 if [[ "$purge_existing" == true ]]; then
   require_command rm
   require_command "$process_table_command"

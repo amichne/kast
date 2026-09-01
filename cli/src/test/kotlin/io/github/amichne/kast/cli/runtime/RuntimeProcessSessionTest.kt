@@ -27,7 +27,7 @@ class RuntimeProcessSessionTest {
             launchContext = launchContext(temporary),
             processStarter = RuntimeProcessStarter {
                 RuntimeProcessStart.Accepted(
-                    AcceptedRuntimeStartupSession { LaunchdServiceObservation.Present },
+                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
                     RuntimeProcessStartOrigin.EXISTING_SESSION,
                 )
             },
@@ -56,7 +56,7 @@ class RuntimeProcessSessionTest {
             launchContext = launchContext(temporary),
             processStarter = RuntimeProcessStarter {
                 RuntimeProcessStart.Accepted(
-                    AcceptedRuntimeStartupSession { LaunchdServiceObservation.Absent },
+                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
                     RuntimeProcessStartOrigin.STARTED,
                 )
             },
@@ -78,7 +78,7 @@ class RuntimeProcessSessionTest {
         @TempDir temporary: Path,
     ) {
         val endpoint = endpoint(temporary)
-        fun demand(observation: LaunchdServiceObservation): RuntimeAdmission =
+        fun demand(observation: RuntimeSessionObservation): RuntimeAdmission =
             ExactRootProcessRuntimeDemander(
                 executable = executable(temporary),
                 launchContext = launchContext(temporary),
@@ -95,11 +95,11 @@ class RuntimeProcessSessionTest {
 
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ProcessObservationFailed),
-            demand(LaunchdServiceObservation.Rejected),
+            demand(RuntimeSessionObservation.Rejected),
         )
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.Interrupted),
-            demand(LaunchdServiceObservation.Interrupted),
+            demand(RuntimeSessionObservation.Interrupted),
         )
     }
 
@@ -187,15 +187,15 @@ class RuntimeProcessSessionTest {
         val endpoint = endpoint(temporary)
         var retired = false
         val processSession = object : RuntimeProcessSession {
-            override fun observe(): LaunchdServiceObservation =
-                LaunchdServiceObservation.Present
+            override fun observe(): RuntimeSessionObservation =
+                RuntimeSessionObservation.Present
 
             override fun retire(
-                present: LaunchdServiceObservation.Present,
-            ): LaunchdServiceRetirement = when (present) {
-                LaunchdServiceObservation.Present -> {
+                present: RuntimeSessionObservation.Present,
+            ): RuntimeSessionRetirement = when (present) {
+                RuntimeSessionObservation.Present -> {
                     retired = true
-                    LaunchdServiceRetirement.Retired
+                    RuntimeSessionRetirement.Retired
                 }
             }
         }
@@ -215,30 +215,63 @@ class RuntimeProcessSessionTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `ordinary caller can exit without owning the indexer process group`(
+    fun `direct launch starts an observable child without a launchd service`(
+        @TempDir temporary: Path,
+    ) {
+        val endpoint = endpoint(temporary)
+        val pidFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.pid")
+        val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.service")
+
+        val start = JdkRuntimeProcessStarter.start(command(temporary, endpoint))
+        val accepted = assertInstanceOf(RuntimeProcessStart.Accepted::class.java, start)
+        assertEquals(RuntimeProcessStartOrigin.STARTED, accepted.origin)
+        awaitFile(pidFile)
+        awaitFile(serviceFile)
+        val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
+
+        try {
+            assertEquals("", Files.readString(serviceFile).trim())
+            assertEquals(RuntimeSessionObservation.Present, accepted.session.observe())
+        } finally {
+            retireDirectProcess(process, serviceFile)
+        }
+        assertEquals(RuntimeSessionObservation.Absent, accepted.session.observe())
+    }
+
+    @Test
+    @EnabledOnOs(OS.MAC)
+    fun `launchd opt-in leaves the initiating caller process group`(
         @TempDir temporary: Path,
     ) {
         val endpoint = endpoint(temporary)
         val pidFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.pid")
         val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.service")
         val command = command(temporary, endpoint)
+        val session = command.processSession
 
-        val start = JdkRuntimeProcessStarter.start(command)
+        val start = LaunchdRuntimeProcessStarter.start(command)
         check(
             start is RuntimeProcessStart.Accepted &&
                 start.origin == RuntimeProcessStartOrigin.STARTED
         ) { "runtime process did not start: $start" }
         awaitFile(pidFile)
+        awaitFile(serviceFile)
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
+            assertEquals(NO_LAUNCHD_SERVICE, Files.readString(serviceFile).trim())
             assertNotEquals(
                 processGroup(ProcessHandle.current().pid()),
                 processGroup(process.pid()),
                 "runtime process must leave the initiating caller's process group",
             )
         } finally {
-            retire(process, serviceFile)
+            assertEquals(RuntimeSessionObservation.Present, session.observe())
+            assertEquals(
+                RuntimeSessionRetirement.Retired,
+                session.retire(RuntimeSessionObservation.Present),
+            )
+            process.onExit().get(10, java.util.concurrent.TimeUnit.SECONDS)
         }
     }
 
@@ -261,20 +294,20 @@ class RuntimeProcessSessionTest {
             val deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos()
             var observation = session.observe()
             while (
-                observation == LaunchdServiceObservation.Present &&
+                observation == RuntimeSessionObservation.Present &&
                 System.nanoTime() < deadline
             ) {
                 Thread.sleep(25)
                 observation = session.observe()
             }
             assertEquals(
-                LaunchdServiceObservation.Absent,
+                RuntimeSessionObservation.Absent,
                 observation,
                 "A failed child must not leave launchd with permission to restart it",
             )
         } finally {
-            if (session.observe() == LaunchdServiceObservation.Present) {
-                session.retire(LaunchdServiceObservation.Present)
+            if (session.observe() == RuntimeSessionObservation.Present) {
+                session.retire(RuntimeSessionObservation.Present)
             }
         }
     }
@@ -422,11 +455,12 @@ class RuntimeProcessSessionTest {
         return output.toLong()
     }
 
-    private fun retire(process: ProcessHandle, serviceFile: Path) {
+    private fun retireDirectProcess(process: ProcessHandle, serviceFile: Path) {
         val service = if (Files.exists(serviceFile)) Files.readString(serviceFile).trim() else ""
-        if (service.isNotEmpty() && service != NO_LAUNCHD_SERVICE) {
-            ProcessBuilder("/bin/launchctl", "remove", service).start().waitFor()
-        } else if (process.isAlive) {
+        check(service.isEmpty() || service == NO_LAUNCHD_SERVICE) {
+            "direct process unexpectedly published launchd service: $service"
+        }
+        if (process.isAlive) {
             process.destroyForcibly()
         }
         process.onExit().get(10, java.util.concurrent.TimeUnit.SECONDS)

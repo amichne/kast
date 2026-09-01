@@ -66,6 +66,12 @@ internal sealed interface InstalledCompositionFailure : KastCliCompositionFailur
         val failure: InstalledRuntimeDirectoryFailure,
     ) : InstalledCompositionFailure
 
+    data class RuntimeProcessModeRejected(
+        val failure: RuntimeProcessModeFailure,
+    ) : InstalledCompositionFailure {
+        override val outputReason: String = "invalid-launchd-flag"
+    }
+
     data class CommandGraphRejected(
         val failures: Set<CliCommandGraphFailure>,
     ) : InstalledCompositionFailure
@@ -90,6 +96,18 @@ internal class InstalledKastCliComposition : KastCliComposition {
      * extraction remain in this installed composition boundary.
      */
     override fun create(): KastCliCompositionConstruction {
+        val processMode = when (
+            val admission = RuntimeProcessModeEnvironment.admit(
+                System.getenv(RUNTIME_PROCESS_MODE_ENVIRONMENT),
+            )
+        ) {
+            is RuntimeProcessModeAdmission.Admitted -> admission.mode
+            is RuntimeProcessModeAdmission.Rejected ->
+                return KastCliCompositionConstruction.Rejected(
+                    InstalledCompositionFailure.RuntimeProcessModeRejected(admission.failure),
+                )
+        }
+        val processCapabilities = processMode.capabilities()
         val installation = when (val admission = InstalledKastControlProduct.discover()) {
             is InstalledKastControlProductAdmission.Admitted -> admission.product
             is InstalledKastControlProductAdmission.Rejected ->
@@ -190,7 +208,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 )
         }
         val endpointLocator = Sha256RuntimeEndpointLocator(
-            runtimeDirectory.path,
+            RuntimeSocketDirectory.from(runtimeDirectory),
             manifest.runtimeId,
         )
         val defaultSourceSystem = userHome.resolve(
@@ -239,10 +257,22 @@ internal class InstalledKastCliComposition : KastCliComposition {
                         InstalledIdeRuntimeDiscovery.discover(supported, digest, selection)
                     },
                     cachePreparer,
+                    ExactSidecarProcessDemander(
+                        runtimeDemanderFactory = { executable, context ->
+                            ExactRootProcessRuntimeDemander(
+                                executable,
+                                context,
+                                processCapabilities.starter,
+                            )
+                        },
+                    ),
                 ),
                 UnixDomainWireClient(),
                 localMetadata,
-                ExactRootRuntimeLifecycle(),
+                ExactRootRuntimeLifecycle(
+                    JdkUnixDomainEndpointProbe,
+                    processCapabilities.authority,
+                ),
                 SidecarProductInspector(
                     SidecarProductIdentity(
                         productVersion,
@@ -526,21 +556,30 @@ internal sealed interface InstalledRuntimeDirectoryAdmission {
         InstalledRuntimeDirectoryAdmission
 }
 
-/** An absolute normalized endpoint directory admitted before exact-root socket derivation. */
+/** An absolute normalized logical runtime namespace admitted before physical socket mapping. */
 internal class InstalledRuntimeDirectory private constructor(val path: Path) {
     companion object {
         /**
          * Proof transition: `KAST_RUNTIME_DIRECTORY | java.io.tmpdir ->
          * InstalledRuntimeDirectoryAdmission`.
          *
-         * Establishes a normalized absolute endpoint directory without performing a write.
+         * Establishes a normalized absolute logical namespace without performing a write. Socket
+         * paths are subsequently refined into [RuntimeSocketDirectory].
          */
-        fun admit(): InstalledRuntimeDirectoryAdmission {
-            val configured = try {
-                System.getenv(RUNTIME_DIRECTORY_ENVIRONMENT)
+        fun admit(): InstalledRuntimeDirectoryAdmission = admit(
+            configured = System.getenv(RUNTIME_DIRECTORY_ENVIRONMENT),
+            temporaryDirectory = System.getProperty("java.io.tmpdir"),
+        )
+
+        internal fun admit(
+            configured: String?,
+            temporaryDirectory: String?,
+        ): InstalledRuntimeDirectoryAdmission {
+            val logicalPath = try {
+                configured
                     ?.takeIf(String::isNotBlank)
                     ?.let(Path::of)
-                    ?: System.getProperty("java.io.tmpdir")
+                    ?: temporaryDirectory
                         ?.takeIf(String::isNotBlank)
                         ?.let(Path::of)
                         ?.resolve("kast-runtime")
@@ -553,7 +592,7 @@ internal class InstalledRuntimeDirectory private constructor(val path: Path) {
                 )
             }
             return InstalledRuntimeDirectoryAdmission.Admitted(
-                InstalledRuntimeDirectory(configured.toAbsolutePath().normalize()),
+                InstalledRuntimeDirectory(logicalPath.toAbsolutePath().normalize()),
             )
         }
     }

@@ -60,6 +60,10 @@ headless Project, imports its on-disk Gradle model, waits for smart mode, and
 then publishes the exact-root endpoint. Use `--idea-home PATH` when discovery is
 ambiguous. Kast installs nothing into the user's IDE and ships no IDEA home.
 
+Sidecar processes launch directly by default. Set `KAST_ENABLE_LAUNCHD=1` to
+opt into launchd-backed process ownership; leave it unset or set it to `0` for
+direct launch. Any other value is rejected instead of being guessed.
+
 Ordinary startup never reads the user's IDEA system directory. To accelerate a
 first private import from compatible indexes, shut down IDEA cleanly and run
 `kast start --seed-from-idea`. Interactive use discloses the allowlisted cache
@@ -148,6 +152,10 @@ constrain each claim.
 
 ## Develop Kast
 
+Development requires Java 25 or newer and Python 3.12 or newer. The checked-in
+`.python-version` is the Python version authority used by local version managers
+and every Python-consuming GitHub workflow.
+
 Build the current checkout and its small private sidecar archive with Gradle:
 
 ```shell
@@ -157,9 +165,13 @@ Build the current checkout and its small private sidecar archive with Gradle:
 kast --version
 ```
 
-`installLocal` installs the control launcher and matched private sidecar from
-the checkout. Neither path writes a JetBrains plugin directory or installs an
-IDE distribution.
+The sole local-install task is `installLocal`; it
+installs the control launcher and matched private sidecar as one coherent
+product under
+`~/.local/share/kast/local` and publishes one relocatable command at
+`~/.local/bin/kast`; the two payloads cannot be installed independently.
+Neither path writes a JetBrains plugin directory or installs an IDE
+distribution.
 
 To dogfood one locally packaged, matched product through that same verified
 installer boundary, assign an unreleased semantic version and select the local

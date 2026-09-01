@@ -1,13 +1,13 @@
 package io.github.amichne.kast.workspace.intellij
 
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class InstalledGradleImportPlanTest {
     @Test
-    fun `linked exact workspace requests one callback-backed refresh`() {
+    fun `linked exact workspace awaits project-open sync without another refresh`() {
         val linkedSettings = GradleProjectSettings("/workspace").apply {
             gradleJvm = "prior-jvm"
         }
@@ -19,7 +19,7 @@ class InstalledGradleImportPlanTest {
         )
 
         assertInstanceOf(
-            InstalledGradleImportOperation.RefreshLinked::class.java,
+            InstalledGradleImportOperation.AwaitLinked::class.java,
             application.operation,
         )
         assertEquals(gradleJvm.projectSettingsSelector(), linkedSettings.gradleJvm)

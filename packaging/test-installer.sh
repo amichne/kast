@@ -4,9 +4,11 @@ set -euo pipefail
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-installer-test.XXXXXX")"
+runtime_socket_directory=""
 
 cleanup() {
   rm -rf -- "$fixture_root"
+  [[ -z "$runtime_socket_directory" ]] || rm -rf -- "$runtime_socket_directory"
 }
 trap cleanup EXIT
 
@@ -124,11 +126,18 @@ application_support="$home/Library/Application Support/Kast"
 legacy_plugin="$home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-indexer"
 plugin_sibling="$home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/keep"
 runtime_directory="$fixture_root/tmp/kast-runtime"
+runtime_socket_directory="/tmp/kast-runtime-$(
+  printf '%s' "$runtime_directory" \
+    | sed -E 's:/+:/:g' \
+    | shasum -a 256 \
+    | awk '{ print substr($1, 1, 24) }'
+)"
 
 seed_prior_installations() {
   mkdir -p "$default_data" "$legacy_data" "$custom_install" "$custom_bin" \
     "$default_cache" "$xdg_config" "$legacy_config" "$application_support" \
-    "$legacy_plugin" "$plugin_sibling" "$runtime_directory" "$home/.local/bin"
+    "$legacy_plugin" "$plugin_sibling" "$runtime_directory" \
+    "$runtime_socket_directory" "$home/.local/bin"
   printf 'old launcher\n' >"$custom_bin/kast"
   printf 'old launcher\n' >"$home/.local/bin/kast"
   printf 'old control launcher\n' >"$home/.local/bin/_kastctl"
@@ -168,7 +177,8 @@ env "${installer_environment[@]}" bash "$repository_root/install.sh" uninstall \
 
 for removed in "$default_data" "$legacy_data" "$custom_install" "$custom_bin/kast" \
   "$default_cache" "$xdg_config" "$legacy_config" "$application_support" \
-  "$legacy_plugin" "$runtime_directory" "$home/.local/bin/kast" \
+  "$legacy_plugin" "$runtime_directory" "$runtime_socket_directory" \
+  "$home/.local/bin/kast" \
   "$home/.local/bin/_kastctl"; do
   assert_absent "$removed"
 done
@@ -236,6 +246,7 @@ if env "${installer_environment[@]}" KAST_TEST_ASSET_DIR="$incomplete_assets" \
 fi
 assert_present "$custom_install/old-marker"
 assert_present "$custom_bin/kast"
+assert_present "$runtime_socket_directory"
 grep -Fq 'purging prior Kast installations' "$fixture_root/unavailable.out" &&
   fail "purge removed the prior installation before artifact verification"
 
@@ -255,6 +266,7 @@ version_root="$custom_install/versions/9.8.7"
 [[ -L "$custom_install/current" && -L "$custom_bin/kast" ]] ||
   fail "managed command links are absent"
 [[ ! -e "$custom_install/old-marker" ]] || fail "prior install survived purge"
+assert_absent "$runtime_socket_directory"
 assert_absent "$legacy_plugin"
 assert_present "$plugin_sibling/marker"
 if find "$version_root" \( -name 'idea-home' -o -name 'product-info.json' \

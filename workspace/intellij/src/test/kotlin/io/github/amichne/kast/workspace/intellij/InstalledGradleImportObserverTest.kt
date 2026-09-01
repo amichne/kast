@@ -12,10 +12,58 @@ import java.util.concurrent.TimeUnit
 
 class InstalledGradleImportObserverTest {
     @Test
+    fun `pre-closure cancellation is retained for an exact replacement`(
+        @TempDir workspace: Path,
+    ) {
+        val root = workspace.toRealPath()
+        val observer = InstalledGradleImportObserver(root)
+        val cancelled = task("cancelled")
+        val replacement = task("replacement")
+
+        observer.onStart(root.toString(), cancelled)
+        observer.onCancel(root.toString(), cancelled)
+        assertFalse(observer.completion.isDone)
+
+        observer.onStart(root.toString(), replacement)
+        observer.closeProjectOpenAdmission()
+        assertFalse(observer.completion.isDone)
+
+        observer.onSuccess(root.toString(), replacement)
+        assertEquals(
+            InstalledGradleImportOutcome.Completed,
+            observer.completion.get(1, TimeUnit.SECONDS),
+        )
+    }
+
+    @Test
+    fun `pre-closure failure remains terminal for an exact replacement`(
+        @TempDir workspace: Path,
+    ) {
+        val root = workspace.toRealPath()
+        val observer = InstalledGradleImportObserver(root)
+        val failed = task("failed")
+        val replacement = task("replacement")
+
+        observer.onStart(root.toString(), failed)
+        observer.onFailure(root.toString(), failed, IllegalStateException("failed"))
+        assertFalse(observer.completion.isDone)
+
+        observer.onStart(root.toString(), replacement)
+        observer.closeProjectOpenAdmission()
+        observer.onSuccess(root.toString(), replacement)
+
+        assertEquals(
+            InstalledGradleImportOutcome.Failed,
+            observer.completion.get(1, TimeUnit.SECONDS),
+        )
+    }
+
+    @Test
     fun `path-aware callbacks publish closed terminal outcomes`(@TempDir workspace: Path) {
         val root = workspace.toRealPath()
         val success = InstalledGradleImportObserver(root)
         success.onSuccess(root.toString(), task("success"))
+        success.closeProjectOpenAdmission()
         assertEquals(
             InstalledGradleImportOutcome.Completed,
             success.completion.get(1, TimeUnit.SECONDS),
@@ -23,6 +71,7 @@ class InstalledGradleImportObserverTest {
 
         val failure = InstalledGradleImportObserver(root)
         failure.onFailure(root.toString(), task("failure"), IllegalStateException("failed"))
+        failure.closeProjectOpenAdmission()
         assertEquals(
             InstalledGradleImportOutcome.Failed,
             failure.completion.get(1, TimeUnit.SECONDS),
@@ -30,6 +79,7 @@ class InstalledGradleImportObserverTest {
 
         val cancellation = InstalledGradleImportObserver(root)
         cancellation.onCancel(root.toString(), task("cancelled"))
+        cancellation.closeProjectOpenAdmission()
         assertEquals(
             InstalledGradleImportOutcome.Cancelled,
             cancellation.completion.get(1, TimeUnit.SECONDS),
@@ -42,6 +92,7 @@ class InstalledGradleImportObserverTest {
         val admitted = InstalledGradleImportObserver(root)
         val admittedTask = task("admitted")
         admitted.onStart(root.toString(), admittedTask)
+        admitted.closeProjectOpenAdmission()
         admitted.onSuccess(admittedTask)
         assertEquals(
             InstalledGradleImportOutcome.Completed,
@@ -50,6 +101,7 @@ class InstalledGradleImportObserverTest {
 
         val uncorrelated = InstalledGradleImportObserver(root)
         uncorrelated.onFailure(task("uncorrelated"), IllegalStateException("failed"))
+        uncorrelated.closeProjectOpenAdmission()
         assertFalse(uncorrelated.completion.isDone)
     }
 
@@ -62,6 +114,7 @@ class InstalledGradleImportObserverTest {
 
         observer.onStart(root.toString(), firstTask)
         observer.onStart(root.toString(), secondTask)
+        observer.closeProjectOpenAdmission()
         observer.onSuccess(root.toString(), firstTask)
 
         assertFalse(observer.completion.isDone)
@@ -82,6 +135,7 @@ class InstalledGradleImportObserverTest {
 
         observer.onStart(root.toString(), firstTask)
         observer.onStart(root.toString(), secondTask)
+        observer.closeProjectOpenAdmission()
         observer.onSuccess(root.toString(), task("untracked"))
 
         assertFalse(observer.completion.isDone)
@@ -105,6 +159,7 @@ class InstalledGradleImportObserverTest {
 
         observer.onStart(root.toString(), failedTask)
         observer.onStart(root.toString(), successfulTask)
+        observer.closeProjectOpenAdmission()
         observer.onFailure(root.toString(), failedTask, IllegalStateException("failed"))
 
         assertFalse(observer.completion.isDone)
@@ -125,6 +180,7 @@ class InstalledGradleImportObserverTest {
 
         observer.onStart(root.toString(), cancelledTask)
         observer.onStart(root.toString(), successfulTask)
+        observer.closeProjectOpenAdmission()
         observer.onCancel(root.toString(), cancelledTask)
 
         assertFalse(observer.completion.isDone)
