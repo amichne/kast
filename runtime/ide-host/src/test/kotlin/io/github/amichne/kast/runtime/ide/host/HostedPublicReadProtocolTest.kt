@@ -76,7 +76,11 @@ class HostedPublicReadProtocolTest {
                 HostedDiagnosticProtocol.bindings(
                     HostedWorkspaceOperations(fixture.workspace),
                     diagnostics,
-                ) + rejectingMutationBindings(),
+                ) + HostedIndexSyncProtocol.bindings {
+                    io.github.amichne.kast.workspace.contract.IndexSynchronizationResult.Rejected(
+                        io.github.amichne.kast.workspace.contract.IndexSynchronizationFailure.WorkspaceNotReady,
+                    )
+                } + rejectingMutationBindings(),
         ).created()
 
         val relation = server.dispatch(

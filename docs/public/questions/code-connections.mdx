@@ -82,5 +82,14 @@ before the restart remain stale.
   stale or unavailable topology rejects.
 </Info>
 
+## Locate slow phases
+
+Ready endpoints forward `kast.topology.build` and `kast.traversal.run` span
+trees asynchronously to the private OTLP JSON Lines file reported by
+`kast product inspect`. Child spans distinguish snapshot eligibility and reads,
+candidate enumeration, extraction, revalidation, publication, snapshot open,
+and traversal expansion. Only closed outcome classes and non-negative file or
+record counts are exported; repository paths and symbol selectors are excluded.
+
 [Add a declaration safely](/questions/safe-change) or
 [review the evidence boundary](/concepts/evidence-boundaries).

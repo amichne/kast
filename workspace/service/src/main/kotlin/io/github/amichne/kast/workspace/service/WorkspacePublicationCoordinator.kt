@@ -151,6 +151,17 @@ class WorkspacePublicationCoordinator(
         }
     }
 
+    /**
+     * Starts one source-observation cycle from the exact current publication after a physical
+     * index refresh. Unlike mutation verification, an unchanged semantic publication is valid.
+     */
+    fun reconcileAfterIndexRefresh(
+        prior: io.github.amichne.kast.workspace.contract.PublishedWorkspace,
+    ): WorkspacePublicationRun = when (beginResultingCycle(prior.readLease)) {
+        ResultingCycleBeginning.Started -> reconcile()
+        is ResultingCycleBeginning.Rejected -> WorkspacePublicationRun.Invalidated
+    }
+
     private fun resultingPublication(
         prior: SemanticReadLease,
         workspace: io.github.amichne.kast.workspace.contract.PublishedWorkspace,

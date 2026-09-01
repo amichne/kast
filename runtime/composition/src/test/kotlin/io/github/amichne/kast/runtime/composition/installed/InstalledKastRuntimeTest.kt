@@ -9,6 +9,7 @@ import io.github.amichne.kast.change.plan.PureRenameSymbolPlanningService
 import io.github.amichne.kast.change.plan.PureReplaceDeclarationPlanningService
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -64,6 +65,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -121,6 +123,32 @@ class InstalledKastRuntimeTest {
 
         assertSame(dispatch, (construction as InstalledKastRuntimeConstruction.Created).dispatch)
         assertEquals(InstalledRuntimeBootstrapPhase.entries, observed)
+    }
+
+    @Test
+    fun `sidecar socket opens default telemetry before assembly`(@TempDir temporary: Path) {
+        val root = Files.createDirectories(temporary.resolve("repo"))
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val socket = temporary.resolve("kast-root.sock")
+        val state = Files.createDirectories(temporary.resolve("kast-root.sock.state"))
+        var observabilityEnabled = false
+        val dispatch = KastRuntimeDispatchOperations { KastRuntimeDispatch.Responded(it) }
+
+        val construction = InstalledKastRuntime.create(
+            root,
+            state,
+            InstalledRuntimeAssembler { request ->
+                observabilityEnabled = request.observability !== KastObservability.Disabled
+                InstalledRuntimeAssembly.Assembled(dispatch)
+            },
+            InstalledRuntimeBootstrapObserver {},
+            InstalledRuntimeObservabilityRequest.Sidecar(socket),
+        )
+
+        assertSame(dispatch, (construction as InstalledKastRuntimeConstruction.Created).dispatch)
+        assertTrue(observabilityEnabled)
+        assertTrue(Files.isDirectory(state.resolve("otel")))
+        assertTrue(Files.isRegularFile(state.resolve("otel/traces.jsonl")))
     }
 
     @Test

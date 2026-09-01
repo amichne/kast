@@ -18,8 +18,17 @@ class IdeEndpointLocationTest {
         assertEquals(first.stateDirectoryPath, repeated.stateDirectoryPath)
         assertEquals(first.socketPath, repeated.socketPath)
         assertEquals(first.descriptorPath, repeated.descriptorPath)
+        assertEquals(first.telemetryOutput(epoch(7)), repeated.telemetryOutput(epoch(7)))
         assertTrue(first.socketPath.value.startsWith(first.stateDirectoryPath.value))
         assertEquals("${first.socketPath.value}.endpoint.json", first.descriptorPath.value)
+        assertEquals(
+            "${first.stateDirectoryPath.value}.otel",
+            first.telemetryOutput(epoch(7)).directoryPath.value,
+        )
+        assertEquals(
+            "${first.stateDirectoryPath.value}.otel/traces-7.jsonl",
+            first.telemetryOutput(epoch(7)).traceFilePath.value,
+        )
         assertTrue(first.socketPath.value.toByteArray().size <= 103)
     }
 
@@ -33,6 +42,7 @@ class IdeEndpointLocationTest {
         assertNotEquals(first.stateDirectoryPath, second.stateDirectoryPath)
         assertNotEquals(first.socketPath, second.socketPath)
         assertNotEquals(first.descriptorPath, second.descriptorPath)
+        assertNotEquals(first.telemetryOutput(epoch(7)), second.telemetryOutput(epoch(7)))
     }
 
     @Test
@@ -78,5 +88,10 @@ class IdeEndpointLocationTest {
     ): IdeEndpointLocation = when (val located = IdeEndpointLocation.locate(directory, root)) {
         is Refinement.Refined -> located.value
         is Refinement.Rejected -> error("location rejected: ${located.failure}")
+    }
+
+    private fun epoch(raw: Long): IdeRuntimeEpoch = when (val parsed = IdeRuntimeEpoch.parse(raw)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("epoch rejected: ${parsed.failure}")
     }
 }

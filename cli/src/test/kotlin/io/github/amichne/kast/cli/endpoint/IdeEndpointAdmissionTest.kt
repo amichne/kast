@@ -45,6 +45,7 @@ class IdeEndpointAdmissionTest {
         assertSame(fixture.root, endpoint.root)
         assertEquals(fixture.document, endpoint.descriptor.encode().document)
         assertEquals(fixture.location.socketPath.value, endpoint.socketPath.toString())
+        assertEquals(fixture.location.telemetryOutput(fixture.runtimeEpoch()), endpoint.telemetry)
     }
 }
 
@@ -120,3 +121,6 @@ internal const val FIXTURE_REGISTRY_DIGEST =
 internal const val FIXTURE_WIRE_DIGEST =
     "sha256:2222222222222222222222222222222222222222222222222222222222222222"
 internal val FIXTURE_CAPABILITIES = CanonicalHostedCapabilities.candidates
+
+internal fun IdeEndpointFixture.runtimeEpoch(): io.github.amichne.kast.protocol.wire.metadata.IdeRuntimeEpoch =
+    io.github.amichne.kast.protocol.wire.metadata.IdeRuntimeEpoch.parse(7).refined()

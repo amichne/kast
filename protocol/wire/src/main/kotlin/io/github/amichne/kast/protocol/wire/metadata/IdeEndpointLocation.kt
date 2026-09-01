@@ -67,12 +67,59 @@ value class IdeEndpointStateDirectoryPath private constructor(val value: String)
     }
 }
 
+@JvmInline
+value class IdeEndpointTelemetryDirectoryPath private constructor(val value: String) {
+    companion object {
+        internal fun from(
+            stateDirectory: IdeEndpointStateDirectoryPath,
+        ): IdeEndpointTelemetryDirectoryPath = IdeEndpointTelemetryDirectoryPath(
+            "${stateDirectory.value}.otel",
+        )
+    }
+}
+
+@JvmInline
+value class IdeEndpointTraceFilePath private constructor(val value: String) {
+    companion object {
+        internal fun from(
+            directory: IdeEndpointTelemetryDirectoryPath,
+            epoch: IdeRuntimeEpoch,
+        ): IdeEndpointTraceFilePath = IdeEndpointTraceFilePath(
+            "${directory.value}/traces-${epoch.value}.jsonl",
+        )
+    }
+}
+
+enum class IdeEndpointTelemetryFormat(val identity: String) {
+    OTLP_JSON_LINES_V1("otlp-json-lines-v1"),
+}
+
+/** Exact private file destination derived from one admitted socket namespace and runtime epoch. */
+data class IdeEndpointTelemetryOutput internal constructor(
+    val directoryPath: IdeEndpointTelemetryDirectoryPath,
+    val traceFilePath: IdeEndpointTraceFilePath,
+) : KastTelemetryFileOutput {
+    val format: IdeEndpointTelemetryFormat = IdeEndpointTelemetryFormat.OTLP_JSON_LINES_V1
+    override val directoryPathText: String get() = directoryPath.value
+    override val traceFilePathText: String get() = traceFilePath.value
+}
+
 /** One root-exclusive state directory containing its stable UDS and suffix descriptor. */
 class IdeEndpointLocation private constructor(
+    val canonicalRoot: IdeEndpointCanonicalRoot,
     val stateDirectoryPath: IdeEndpointStateDirectoryPath,
     val socketPath: IdeUnixSocketPath,
     val descriptorPath: IdeEndpointDescriptorPath,
 ) {
+    /** Derives a persistent sibling folder so endpoint retirement can still remove its namespace. */
+    fun telemetryOutput(epoch: IdeRuntimeEpoch): IdeEndpointTelemetryOutput {
+        val directory = IdeEndpointTelemetryDirectoryPath.from(stateDirectoryPath)
+        return IdeEndpointTelemetryOutput(
+            directory,
+            IdeEndpointTraceFilePath.from(directory, epoch),
+        )
+    }
+
     companion object {
         /**
          * Proof transition: `(IdeEndpointSocketDirectory, IdeEndpointCanonicalRoot) ->
@@ -97,6 +144,7 @@ class IdeEndpointLocation private constructor(
             return when (val parsed = IdeUnixSocketPath.parse(rawSocket)) {
                 is Refinement.Refined -> Refinement.Refined(
                     IdeEndpointLocation(
+                        root,
                         stateDirectory,
                         parsed.value,
                         IdeEndpointDescriptorPath.from(parsed.value),

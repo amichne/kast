@@ -21,6 +21,8 @@ import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.runtime.server.TypedOperationBinding
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.IndexSyncRejection
+import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
 
 sealed interface HostedIdeRuntimeConstruction {
     data class Created(val runtime: HostedIdeRuntime) : HostedIdeRuntimeConstruction
@@ -70,12 +72,14 @@ class HostedIdeRuntime private constructor(
             selectors: HostedExactSelectorOperations,
             relations: RelationOperations,
             diagnostics: DiagnosticOperations,
+            indexSync: IndexSynchronizationOperations,
             mutation: HostedMutationState,
             mutationAdmission: HostedMutationAdmissionOperations,
             authority: DurableChangeAuthority,
         ): HostedIdeRuntimeConstruction = when (val server = RuntimeServer.createHostedEffects(
-            HostedTopologyProtocol.bindings(topology, selectors, relations) +
+                HostedTopologyProtocol.bindings(topology, selectors, relations) +
                 HostedDiagnosticProtocol.bindings(workspace, diagnostics) +
+                HostedIndexSyncProtocol.bindings(indexSync) +
                 HostedMutationProtocol.bindings(mutation, mutationAdmission, selectors, authority),
         )) {
             is RuntimeServerConstruction.Created -> HostedIdeRuntimeConstruction.Created(
@@ -88,6 +92,10 @@ class HostedIdeRuntime private constructor(
         internal fun testing(reads: HostedIdeReadRuntime): HostedIdeRuntime = when (
             val server = RuntimeServer.createHostedEffects(
                 listOf(
+                    TypedOperationBinding(
+                        CanonicalOperationWireBindings.indexSync,
+                        OperationHandler { OperationOutcome.Rejected(IndexSyncRejection.WORKSPACE_NOT_READY) },
+                    ),
                     TypedOperationBinding(
                         CanonicalOperationWireBindings.topologyBuild,
                         OperationHandler { OperationOutcome.Rejected(TopologyBuildRejection.WorkspaceNotReady) },

@@ -37,7 +37,9 @@ workspace generation. Then keep the same endpoint open through the mutation:
     A complete apply means the physical write and its application identity are
     durable and the same hosted workspace owner has published a proven newer
     generation. The read routes advance with that publication, and selectors
-    from the prior generation are stale immediately.
+    from the prior generation are stale immediately. That
+    `AppliedUnverified` success also schedules index synchronization
+    asynchronously. Rejected and recovery-required outcomes never schedule it.
   </Step>
 
   <Step title="Verify without restarting">

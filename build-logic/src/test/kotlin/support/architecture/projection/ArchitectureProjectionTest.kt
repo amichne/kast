@@ -23,7 +23,7 @@ class ArchitectureProjectionTest {
 
         assertEquals(first, second)
         assertEquals(2, root.schemaVersion)
-        assertEquals(40, root.modules.size)
+        assertEquals(41, root.modules.size)
         assertTrue(first.endsWith("\n"))
     }
 

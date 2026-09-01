@@ -1,8 +1,14 @@
 package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.KastObservability
+import io.github.amichne.kast.protocol.wire.metadata.SidecarTelemetryOutput
+import io.github.amichne.kast.protocol.wire.metadata.SidecarTelemetryOutputFailure
 import io.github.amichne.kast.runtime.composition.platform.InstalledGradleModelFailure
 import io.github.amichne.kast.runtime.composition.protocol.WorkspaceInspectHandlerConstructionFailure
+import io.github.amichne.kast.runtime.telemetry.OpenTelemetryFileForwardingFailure
+import io.github.amichne.kast.runtime.telemetry.OpenTelemetryFileForwardingOpening
+import io.github.amichne.kast.runtime.telemetry.OpenTelemetryFileForwarding
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SourceRoot
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceFailure
@@ -137,7 +143,28 @@ class InstalledKastRuntimeRequest internal constructor(
     internal val workspaceRoot: InstalledWorkspaceRoot,
     internal val stateDirectory: InstalledRuntimeStateDirectory,
     internal val bootstrapObserver: InstalledRuntimeBootstrapObserver,
+    internal val observability: KastObservability,
 )
+
+/** Closed observability intent admitted only after workspace and state paths are proven. */
+internal sealed interface InstalledRuntimeObservabilityRequest {
+    data object Disabled : InstalledRuntimeObservabilityRequest
+
+    data class Sidecar(
+        val socketPath: Path,
+    ) : InstalledRuntimeObservabilityRequest
+}
+
+/** Finite default telemetry construction failures visible to the sidecar process owner. */
+sealed interface InstalledRuntimeTelemetryFailure {
+    data class Output(
+        val failure: SidecarTelemetryOutputFailure,
+    ) : InstalledRuntimeTelemetryFailure
+
+    data class Forwarding(
+        val failure: OpenTelemetryFileForwardingFailure,
+    ) : InstalledRuntimeTelemetryFailure
+}
 
 /** Ordered production runtime bootstrap boundaries visible to the installed process owner. */
 enum class InstalledRuntimeBootstrapPhase {
@@ -175,6 +202,10 @@ sealed interface InstalledKastRuntimeFailure {
 
     data class StateDirectory(
         val failure: InstalledRuntimeStateDirectoryFailure,
+    ) : InstalledKastRuntimeFailure
+
+    data class Telemetry(
+        val failure: InstalledRuntimeTelemetryFailure,
     ) : InstalledKastRuntimeFailure
 
     data class Assembly(
@@ -287,6 +318,28 @@ object InstalledKastRuntime {
         stateDirectory,
         productionInstalledRuntimeAssembler(),
         bootstrapObserver,
+        InstalledRuntimeObservabilityRequest.Disabled,
+    )
+
+    /**
+     * Proof transition: `(Path, Path, Path, InstalledRuntimeBootstrapObserver) ->
+     * InstalledKastRuntimeConstruction`.
+     *
+     * Preserves exact-root construction while deriving and opening the default telemetry
+     * destination from the already-admitted exact sidecar socket. Telemetry failures remain
+     * closed construction data and the process owner receives no telemetry implementation type.
+     */
+    fun create(
+        workspaceRoot: Path,
+        stateDirectory: Path,
+        socketPath: Path,
+        bootstrapObserver: InstalledRuntimeBootstrapObserver,
+    ): InstalledKastRuntimeConstruction = create(
+        workspaceRoot,
+        stateDirectory,
+        productionInstalledRuntimeAssembler(),
+        bootstrapObserver,
+        InstalledRuntimeObservabilityRequest.Sidecar(socketPath),
     )
 
     /**
@@ -305,7 +358,8 @@ object InstalledKastRuntime {
         workspaceRoot,
         stateDirectory,
         assembler,
-        {},
+        InstalledRuntimeBootstrapObserver {},
+        InstalledRuntimeObservabilityRequest.Disabled,
     )
 
     internal fun create(
@@ -313,6 +367,20 @@ object InstalledKastRuntime {
         stateDirectory: Path,
         assembler: InstalledRuntimeAssembler,
         bootstrapObserver: InstalledRuntimeBootstrapObserver,
+    ): InstalledKastRuntimeConstruction = create(
+        workspaceRoot,
+        stateDirectory,
+        assembler,
+        bootstrapObserver,
+        InstalledRuntimeObservabilityRequest.Disabled,
+    )
+
+    internal fun create(
+        workspaceRoot: Path,
+        stateDirectory: Path,
+        assembler: InstalledRuntimeAssembler,
+        bootstrapObserver: InstalledRuntimeBootstrapObserver,
+        observabilityRequest: InstalledRuntimeObservabilityRequest,
     ): InstalledKastRuntimeConstruction {
         val failures = linkedSetOf<InstalledKastRuntimeFailure>()
         val root = when (val admitted = InstalledWorkspaceRoot.admit(workspaceRoot)) {
@@ -330,10 +398,41 @@ object InstalledKastRuntime {
             }
         }
         if (failures.isNotEmpty()) return InstalledKastRuntimeConstruction.Rejected(failures)
+        val observability = when (observabilityRequest) {
+            InstalledRuntimeObservabilityRequest.Disabled -> KastObservability.Disabled
+            is InstalledRuntimeObservabilityRequest.Sidecar -> when (
+                val output = SidecarTelemetryOutput.fromSocketPath(
+                    observabilityRequest.socketPath.toString(),
+                )
+            ) {
+                is Refinement.Rejected -> return InstalledKastRuntimeConstruction.Rejected(
+                    setOf(
+                        InstalledKastRuntimeFailure.Telemetry(
+                            InstalledRuntimeTelemetryFailure.Output(output.failure),
+                        ),
+                    ),
+                )
+                is Refinement.Refined -> when (
+                    val opened = OpenTelemetryFileForwarding.open(output.value)
+                ) {
+                    is OpenTelemetryFileForwardingOpening.Opened ->
+                        opened.forwarding.observability
+                    is OpenTelemetryFileForwardingOpening.Rejected ->
+                        return InstalledKastRuntimeConstruction.Rejected(
+                            setOf(
+                                InstalledKastRuntimeFailure.Telemetry(
+                                    InstalledRuntimeTelemetryFailure.Forwarding(opened.failure),
+                                ),
+                            ),
+                        )
+                }
+            }
+        }
         val request = InstalledKastRuntimeRequest(
             checkNotNull(root),
             checkNotNull(state),
             bootstrapObserver,
+            observability,
         )
         return when (val assembly = assembler.assemble(request)) {
             is InstalledRuntimeAssembly.Assembled ->

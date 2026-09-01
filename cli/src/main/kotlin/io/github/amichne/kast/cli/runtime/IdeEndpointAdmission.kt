@@ -27,9 +27,11 @@ import java.nio.file.StandardOpenOption
 /** Exact-root IDE endpoint capability produced only by complete descriptor admission. */
 class AdmittedIdeEndpoint internal constructor(
     val root: CanonicalRoot,
+    val location: IdeEndpointLocation,
     val descriptor: IdeEndpointDescriptorV2,
 ) {
     internal val socketPath: Path = Path.of(descriptor.socketPath.value)
+    val telemetry = location.telemetryOutput(descriptor.runtimeEpoch)
 }
 
 sealed interface IdeEndpointAdmission {
@@ -175,7 +177,7 @@ class IdeEndpointAdmitter(
         if (reachabilityProbe.probe(descriptor.socketPath) != IdeEndpointReachability.Reachable) {
             return rejected(IdeEndpointAdmissionFailure.EndpointUnreachable)
         }
-        return IdeEndpointAdmission.Complete(AdmittedIdeEndpoint(root, descriptor))
+        return IdeEndpointAdmission.Complete(AdmittedIdeEndpoint(root, location, descriptor))
     }
 
     private fun rejected(failure: IdeEndpointAdmissionFailure) =

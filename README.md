@@ -53,7 +53,9 @@ kast workspace inspect
 ```
 
 `kast product inspect` reports the control, sidecar, supported IDEA/Kotlin pair,
-and any Kast-owned cache for the current root without starting a runtime.
+any Kast-owned cache, and the enabled per-socket telemetry destination for the
+current root without starting a runtime. Use it to find the exact trace folder
+and file before collecting performance evidence.
 
 `kast start` discovers the exactly supported local IDEA home, starts one private
 headless Project, imports its on-disk Gradle model, waits for smart mode, and
@@ -78,7 +80,7 @@ outside-workspace roots still fail closed.
 
 ## Ask a repository question
 
-The installed sidecar publishes twelve public semantic operations. The generated
+The installed sidecar publishes thirteen public semantic operations. The generated
 [CLI reference](https://kast.michne.com/reference/cli/) describes those public
 routes, and `kast --schema` returns the complete contract as JSON.
 Its `serverProjection` is the installed executable's authority for
@@ -95,6 +97,7 @@ carrying a Kast-version lookup table.
 | Question | Command path |
 | --- | --- |
 | What is Kast ready to inspect? | `kast workspace inspect` |
+| How do I refresh stale files and semantic evidence? | `kast index sync` |
 | What declaration is this? | `kast symbol discover ...`, then `kast symbol resolve ...` and `kast symbol describe ...` |
 | How is this code connected? | `kast relation read ...` for one hop, or `kast topology build` then `kast traversal run ...` for bounded depth |
 | What diagnostics exist in this scope? | `kast diagnostic check ...` |
@@ -111,8 +114,15 @@ and verification can continue without restarting the sidecar. The successor also
 activates read routes at that exact generation, so freshly resolved selectors
 can consume the verified topology without reconstructing the endpoint.
 
-Restarting the sidecar conservatively advances the semantic generation, so
-selectors from the previous process remain stale. `kast topology build`
+`kast index sync` is the explicit repair path for source files changed outside
+IntelliJ. It refreshes only the admitted local source roots, waits for IntelliJ
+indexing, and publishes current semantic evidence. A sidecar change schedules
+the same synchronization asynchronously only after an `AppliedUnverified`
+success. Rejected or recovery-required applies do not schedule it, and a
+scheduling failure cannot rewrite the already-proven apply outcome.
+
+Restarting the sidecar conservatively advances the semantic generation,
+so selectors from the previous process remain stale. `kast topology build`
 then verifies the current candidate set and can rebind an unchanged durable
 snapshot to that new generation without repeating semantic extraction.
 
@@ -135,6 +145,24 @@ wire as host-neutral documents.
 
 [How Kast works](https://kast.michne.com/explanation/how-kast-works/) traces a
 concrete `kast symbol describe` request through the Kotlin implementation.
+
+## Inspect topology and traversal latency
+
+Each ready socket namespace forwards OpenTelemetry traces asynchronously by
+default. The private directory is `<socket-path>.state/otel` with mode `0700`,
+and the sidecar appends OTLP JSON Lines to `traces.jsonl` with mode `0600`. Run
+`kast product inspect` to
+read the exact `directoryPath`, `traceFilePath`, format, and enabled state
+instead of reconstructing those paths. The reported `enabled` state describes
+the default configuration without starting the sidecar.
+
+The first spans cover `kast.topology.build`, `kast.traversal.run`, and their
+meaningful workspace, snapshot, extraction, publication, and expansion phases.
+Attributes are allowlisted to closed outcome and failure classes plus
+non-negative file or record counts. Repository paths, selectors, source text,
+exception messages, and stack traces are not exported. Trace files persist
+across ordinary sidecar restarts and are removed by the explicit destructive
+cache-clean lifecycle; apply the host's retention policy as needed.
 
 ## Know what the result proves
 
@@ -185,7 +213,7 @@ installer boundary, assign an unreleased semantic version and select the local
 release directory explicitly:
 
 ```shell
-release_version=0.29.1
+release_version="${KAST_RELEASE_VERSION:?set KAST_RELEASE_VERSION to an unreleased semantic version}"
 ./gradlew -Pversion="$release_version" assembleSidecarRelease
 bash install.sh install --purge-existing \
   --version "$release_version" \

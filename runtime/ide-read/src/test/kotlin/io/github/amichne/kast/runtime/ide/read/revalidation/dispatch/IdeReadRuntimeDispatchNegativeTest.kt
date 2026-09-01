@@ -102,7 +102,7 @@ class IdeReadRuntimeDispatchNegativeTest {
     }
 
     @Test
-    fun `all eight known unsupported operations reject before every port`() = runSuspend {
+    fun `all nine known unsupported operations reject before every port`() = runSuspend {
         val fixture = RecordingIdeReadPorts(
             workspaceOutcome = OperationOutcome.Rejected(WorkspaceInspectRejection.ROOT_UNAVAILABLE),
         )
@@ -126,6 +126,6 @@ class IdeReadRuntimeDispatchNegativeTest {
             )
             assertEquals(IdeReadPortCalls(), fixture.calls)
         }
-        assertEquals(8, unsupported.size)
+        assertEquals(9, unsupported.size)
     }
 }

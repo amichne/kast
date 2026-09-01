@@ -105,6 +105,7 @@ class IdeHostModuleBoundaryTest {
         val HOSTED_COMPOSITION_DEPENDENCIES = setOf(
             ModuleId.RUNTIME_IDE_READ,
             ModuleId.RUNTIME_SERVER,
+            ModuleId.RUNTIME_TELEMETRY,
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_SERVICE,
             ModuleId.TOPOLOGY_CONTRACT,

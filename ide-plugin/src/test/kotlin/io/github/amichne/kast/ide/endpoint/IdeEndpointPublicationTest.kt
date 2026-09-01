@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointCanonicalRoot
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorAdmission
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointDescriptorV2
+import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointLocation
 import io.github.amichne.kast.protocol.wire.metadata.IdeEndpointSocketDirectory
 import io.github.amichne.kast.protocol.wire.metadata.IdeProcessId
 import io.github.amichne.kast.protocol.wire.metadata.IdeRuntimeEpoch
@@ -86,11 +87,13 @@ class IdeEndpointPublicationTest {
         )
         val prepared = IdeEndpointPreparation.prepare(
             IdeEndpointPreparationCandidate(
-                descriptorRoot = root,
                 runtime = runtime,
                 compatibilityPolicy = policy,
-                socketDirectory = positiveRefined(
-                    IdeEndpointSocketDirectory.parse(directory.toString()),
+                location = positiveRefined(
+                    IdeEndpointLocation.locate(
+                        positiveRefined(IdeEndpointSocketDirectory.parse(directory.toString())),
+                        root,
+                    ),
                 ),
                 processId = positiveRefined(IdeProcessId.parse(ProcessHandle.current().pid())),
                 runtimeEpoch = positiveRefined(IdeRuntimeEpoch.parse(7)),

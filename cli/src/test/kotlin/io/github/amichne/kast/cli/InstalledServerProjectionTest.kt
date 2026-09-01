@@ -28,6 +28,7 @@ class InstalledServerProjectionTest {
         assertEquals(
             listOf(
                 "workspace_ensure_ready",
+                "index_sync",
                 "topology_build",
                 "symbol_lookup",
                 "symbol_resolve",
@@ -69,6 +70,7 @@ class InstalledServerProjectionTest {
         assertEquals(
             listOf(
                 "workspace.inspect",
+                "index.sync",
                 "topology.build",
                 "symbol.discover",
                 "symbol.resolve",
@@ -125,6 +127,7 @@ class InstalledServerProjectionTest {
         assertEquals(
             listOf(
                 "workspace_ensure_ready",
+                "index_sync",
                 "topology_build",
                 "symbol_lookup",
                 "symbol_resolve",
@@ -170,6 +173,7 @@ class InstalledServerProjectionTest {
         assertEquals(
             linkedMapOf(
                 "workspace.inspect" to listOf("start"),
+                "index.sync" to listOf("index", "sync"),
                 "topology.build" to listOf("topology", "build"),
                 "symbol.discover" to listOf("symbol", "discover"),
                 "symbol.resolve" to listOf("symbol", "resolve"),
@@ -189,6 +193,7 @@ class InstalledServerProjectionTest {
         assertEquals(
             linkedMapOf(
                 "workspace.inspect" to emptyList(),
+                "index.sync" to emptyList(),
                 "topology.build" to emptyList(),
                 "symbol.discover" to
                     listOf("mode", "query", "kind", "match", "file", "offset", "scope", "limit"),

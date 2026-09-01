@@ -282,6 +282,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                     ),
                     FilesystemCanonicalRootDiscovery,
                     cacheLifecycle,
+                    endpointLocator,
                 ),
                 cacheLifecycle,
             ),

@@ -73,6 +73,7 @@ class KastIndexerApplicationStarter : ApplicationStarter {
         val dispatch = when (val runtime = InstalledKastRuntime.create(
             options.workspaceRoot,
             endpoint.stateDirectory,
+            options.socketPath,
             object : InstalledRuntimeBootstrapObserver {
                 override fun observe(phase: InstalledRuntimeBootstrapPhase) {
                     bootstrap.observe(phase)

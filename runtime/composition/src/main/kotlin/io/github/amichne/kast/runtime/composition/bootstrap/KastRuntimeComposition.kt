@@ -1,6 +1,9 @@
 package io.github.amichne.kast.runtime.composition
 
 import io.github.amichne.kast.change.apply.AddDeclarationApplyService
+import io.github.amichne.kast.change.apply.AppliedIndexSynchronizationTask
+import io.github.amichne.kast.change.apply.CoalescingAppliedIndexSynchronizationScheduler
+import io.github.amichne.kast.change.apply.SuccessfulApplyIndexSynchronization
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryService
 import io.github.amichne.kast.change.verify.ResultingGenerationPublication
 import io.github.amichne.kast.change.verify.ResultingGenerationPublicationRejection
@@ -8,9 +11,11 @@ import io.github.amichne.kast.change.verify.ResultingGenerationPublisher
 import io.github.amichne.kast.change.verify.VerifiedMutationService
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.runtime.composition.protocol.graph.TopologyBackedTraversalOperations
 import io.github.amichne.kast.runtime.server.RuntimeServer
+import io.github.amichne.kast.runtime.telemetry.OpenTelemetryKastObservability
 import io.github.amichne.kast.runtime.server.RuntimeServerConstruction
 import io.github.amichne.kast.runtime.server.RuntimeServerConstructionFailure
 import io.github.amichne.kast.runtime.server.ServerDispatch
@@ -22,6 +27,8 @@ import io.github.amichne.kast.topology.build.TopologyBuildService
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationFailure
 import io.github.amichne.kast.workspace.service.ResultingWorkspacePublicationResult
 import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
+import io.github.amichne.kast.workspace.service.WorkspaceIndexPublicationOperations
+import io.github.amichne.kast.workspace.service.WorkspaceIndexSynchronizationService
 
 /** Runnable target-only runtime containing the directly constructed operation graph and server. */
 class KastRuntimeComposition private constructor(
@@ -68,10 +75,11 @@ class KastRuntimeComposition private constructor(
             workspacePorts: WorkspaceRuntimePorts,
             semanticPorts: SemanticRuntimePorts,
             topologyPorts: TopologyRuntimePorts,
+            indexPorts: IndexRuntimePorts,
             changePorts: ChangeRuntimePorts,
             handlers: KastOperationHandlerFactory,
         ): KastRuntimeCompositionConstruction = bind(
-            constructGraph(workspacePorts, semanticPorts, topologyPorts, changePorts).operations,
+            constructGraph(workspacePorts, semanticPorts, topologyPorts, indexPorts, changePorts).operations,
             handlers,
         )
 
@@ -79,6 +87,7 @@ class KastRuntimeComposition private constructor(
             workspacePorts: WorkspaceRuntimePorts,
             semanticPorts: SemanticRuntimePorts,
             topologyPorts: TopologyRuntimePorts,
+            indexPorts: IndexRuntimePorts,
             changePorts: ChangeRuntimePorts,
         ): DirectKastRuntimeGraph = constructGraph(
             WorkspacePublicationCoordinator(
@@ -87,6 +96,7 @@ class KastRuntimeComposition private constructor(
             ),
             semanticPorts,
             topologyPorts,
+            indexPorts,
             changePorts,
         )
 
@@ -94,7 +104,24 @@ class KastRuntimeComposition private constructor(
             workspace: WorkspacePublicationCoordinator,
             semanticPorts: SemanticRuntimePorts,
             topologyPorts: TopologyRuntimePorts,
+            indexPorts: IndexRuntimePorts,
             changePorts: ChangeRuntimePorts,
+        ): DirectKastRuntimeGraph = constructGraph(
+            workspace,
+            semanticPorts,
+            topologyPorts,
+            indexPorts,
+            changePorts,
+            OpenTelemetryKastObservability.global(),
+        )
+
+        internal fun constructGraph(
+            workspace: WorkspacePublicationCoordinator,
+            semanticPorts: SemanticRuntimePorts,
+            topologyPorts: TopologyRuntimePorts,
+            indexPorts: IndexRuntimePorts,
+            changePorts: ChangeRuntimePorts,
+            observability: KastObservability,
         ): DirectKastRuntimeGraph {
             val symbolDiscovery = SymbolDiscoveryService(workspace, semanticPorts.symbolDiscovery)
             val symbolExact = SymbolExactService(workspace, semanticPorts.symbolExact)
@@ -105,19 +132,33 @@ class KastRuntimeComposition private constructor(
                 topologyPorts.candidates,
                 topologyPorts.extractor,
                 topologyPorts.snapshots,
+                observability,
             )
             val traversal = TopologyBackedTraversalOperations(
                 workspace,
                 topologyPorts.snapshots,
                 topologyPorts.snapshots,
+                observability,
             )
             val diagnostic = DiagnosticService(workspace, semanticPorts.diagnostic)
             val recovery = AddDeclarationRecoveryService(changePorts.recoveryEvidence)
-            val changeApply = AddDeclarationApplyService(
-                recovery,
-                changePorts.sourceObserver,
-                changePorts.sourceWriter,
-                changePorts.sourceRollback,
+            val indexSync = WorkspaceIndexSynchronizationService(
+                workspace,
+                indexPorts.refresh,
+                WorkspaceIndexPublicationOperations(workspace::reconcileAfterIndexRefresh),
+            )
+            val indexScheduler = CoalescingAppliedIndexSynchronizationScheduler(
+                indexPorts.asynchronousExecutor,
+                AppliedIndexSynchronizationTask { indexSync.synchronize() },
+            )
+            val changeApply = SuccessfulApplyIndexSynchronization(
+                AddDeclarationApplyService(
+                    recovery,
+                    changePorts.sourceObserver,
+                    changePorts.sourceWriter,
+                    changePorts.sourceRollback,
+                ),
+                indexScheduler,
             )
             val changeVerify = VerifiedMutationService(
                 workspace.resultingGenerationPublisher(),
@@ -125,6 +166,7 @@ class KastRuntimeComposition private constructor(
             )
             val operations = DirectKastOperations.assemble(
                 workspace,
+                indexSync,
                 topology,
                 symbolDiscovery,
                 symbolExact,
@@ -147,6 +189,10 @@ class KastRuntimeComposition private constructor(
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.workspaceInspect,
                     handlers.workspaceInspect(operations.workspaceInspect),
+                ),
+                TypedOperationBinding(
+                    CanonicalOperationWireBindings.indexSync,
+                    handlers.indexSync(operations.indexSync),
                 ),
                 TypedOperationBinding(
                     CanonicalOperationWireBindings.topologyBuild,

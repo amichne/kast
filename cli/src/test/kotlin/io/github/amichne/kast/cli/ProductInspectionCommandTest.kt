@@ -23,7 +23,7 @@ import java.nio.file.Path
 
 class ProductInspectionCommandTest {
     @Test
-    fun `product inspection reports sidecar and private cache without runtime admission`(
+    fun `product inspection reports sidecar cache and per-socket telemetry without runtime demand`(
         @TempDir temporary: Path,
     ) {
         val rootPath = Files.createDirectory(temporary.resolve("repo"))
@@ -40,6 +40,14 @@ class ProductInspectionCommandTest {
             supportedRuntime = support,
             payloadDigest = RuntimeDigest.parse("sha256:${"b".repeat(64)}").refined(),
         )
+        val endpoint = when (val resolution = RuntimeEndpoint.at(
+            root,
+            identity.runtimeId,
+            temporary.resolve("kast-root.sock"),
+        )) {
+            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
+            is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
+        }
         val inspector = SidecarProductInspector(
             identity,
             FilesystemCanonicalRootDiscovery,
@@ -60,29 +68,12 @@ class ProductInspectionCommandTest {
                 override fun quarantine(root: Path): RootSidecarCacheQuarantine =
                     error("product inspection must not quarantine")
             },
+            RuntimeEndpointLocator { RuntimeEndpointResolution.Resolved(endpoint) },
         )
         var semanticBoundaryTouched = false
-        val cli = KastCli(
-            commandGraphFactory = commandGraphFactory(),
-            rootDiscovery = CanonicalRootDiscoverer {
-                semanticBoundaryTouched = true
-                error("semantic root discovery must not run")
-            },
-            endpointLocator = RuntimeEndpointLocator {
-                semanticBoundaryTouched = true
-                error("runtime endpoint lookup must not run")
-            },
-            runtimeDemander = RuntimeDemander { _, _ ->
-                semanticBoundaryTouched = true
-                error("runtime demand must not run")
-            },
-            wireClient = WireClient { _, _ ->
-                semanticBoundaryTouched = true
-                error("wire exchange must not run")
-            },
-            localMetadata = localMetadata(),
-            lifecycle = ExactRootRuntimeLifecycle(),
-            productInspector = inspector,
+        val cli = cli(
+            inspector,
+            semanticBoundaryTouched = { semanticBoundaryTouched = true },
         )
 
         val parsed = commandGraphFactory().parse(listOf("product", "inspect"))
@@ -97,17 +88,53 @@ class ProductInspectionCommandTest {
             output.getValue("control").jsonObject
                 .getValue("execution").jsonPrimitive.content,
         )
+        val workspace = output.getValue("workspace").jsonObject
         assertEquals(
             "cache-key",
-            output.getValue("workspace").jsonObject
-                .getValue("cache").jsonObject.getValue("identity").jsonPrimitive.content,
+            workspace.getValue("cache").jsonObject.getValue("identity").jsonPrimitive.content,
         )
         assertEquals(
             "smart",
-            output.getValue("workspace").jsonObject
-                .getValue("cache").jsonObject.getValue("state").jsonPrimitive.content,
+            workspace.getValue("cache").jsonObject.getValue("state").jsonPrimitive.content,
+        )
+        val telemetry = workspace.getValue("telemetry").jsonObject
+        assertEquals("enabled", telemetry.getValue("state").jsonPrimitive.content)
+        assertEquals("otlp-json-lines-v1", telemetry.getValue("format").jsonPrimitive.content)
+        assertEquals(
+            "${endpoint.socketPath}.state/otel",
+            telemetry.getValue("directoryPath").jsonPrimitive.content,
+        )
+        assertEquals(
+            "${endpoint.socketPath}.state/otel/traces.jsonl",
+            telemetry.getValue("traceFilePath").jsonPrimitive.content,
         )
     }
+
+    private fun cli(
+        inspector: ProductInspector,
+        semanticBoundaryTouched: () -> Unit = {},
+    ) = KastCli(
+        commandGraphFactory = commandGraphFactory(),
+        rootDiscovery = CanonicalRootDiscoverer {
+            semanticBoundaryTouched()
+            error("semantic root discovery must not run")
+        },
+        endpointLocator = RuntimeEndpointLocator {
+            semanticBoundaryTouched()
+            error("runtime endpoint lookup must not run")
+        },
+        runtimeDemander = RuntimeDemander { _, _ ->
+            semanticBoundaryTouched()
+            error("runtime demand must not run")
+        },
+        wireClient = WireClient { _, _ ->
+            semanticBoundaryTouched()
+            error("wire exchange must not run")
+        },
+        localMetadata = localMetadata(),
+        lifecycle = ExactRootRuntimeLifecycle(),
+        productInspector = inspector,
+    )
 
     private fun commandGraphFactory(): CliCommandGraphFactory = when (
         val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())

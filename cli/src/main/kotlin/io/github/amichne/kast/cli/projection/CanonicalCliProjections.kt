@@ -14,11 +14,13 @@ import io.github.amichne.kast.protocol.contract.SymbolResolveRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
+import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 /** The exact generated request preparations consumed by the canonical command graph. */
 internal class CanonicalCliRequestPreparers(
     val workspaceInspect: CliRequestPreparer<WorkspaceInspectRequest>,
+    val indexSync: CliRequestPreparer<IndexSyncRequest>,
     val topologyBuild: CliRequestPreparer<TopologyBuildRequest>,
     val symbolDiscover: CliRequestPreparer<SymbolDiscoverRequest>,
     val symbolResolve: CliRequestPreparer<SymbolResolveRequest>,
@@ -38,6 +40,10 @@ internal fun canonicalCliRequestPreparers(): CanonicalCliRequestPreparers =
         workspaceInspect = TypedCliProjection(
             CanonicalOperationWireBindings.workspaceInspect,
             workspaceInspectCliProjector,
+        ),
+        indexSync = TypedCliProjection(
+            CanonicalOperationWireBindings.indexSync,
+            indexSyncCliProjector,
         ),
         topologyBuild = TypedCliProjection(
             CanonicalOperationWireBindings.topologyBuild,

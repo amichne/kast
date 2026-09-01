@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.ProductInspection
+import io.github.amichne.kast.cli.ProductTelemetryObservation
 import io.github.amichne.kast.cli.ProductWorkspaceObservation
 import io.github.amichne.kast.cli.RootSidecarCacheObservation
 import io.github.amichne.kast.cli.SidecarProductIdentity
@@ -50,6 +51,7 @@ private sealed interface ProductWorkspaceDocument {
     data class Observed(
         val canonicalRoot: String,
         val cache: ProductCacheDocument,
+        val telemetry: ProductTelemetryDocument,
     ) : ProductWorkspaceDocument
 }
 
@@ -76,6 +78,25 @@ private sealed interface ProductCacheDocument {
     data class Rejected(val failure: String) : ProductCacheDocument
 }
 
+@Serializable
+private sealed interface ProductTelemetryDocument {
+    @Serializable
+    @SerialName("enabled")
+    data class Enabled(
+        val state: String = "enabled",
+        val format: String,
+        val directoryPath: String,
+        val traceFilePath: String,
+    ) : ProductTelemetryDocument
+
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected(
+        val state: String = "rejected",
+        val failure: String,
+    ) : ProductTelemetryDocument
+}
+
 private fun ProductWorkspaceObservation.outputDocument(): ProductWorkspaceDocument = when (this) {
     is ProductWorkspaceObservation.RootRejected -> ProductWorkspaceDocument.RootRejected(
         failure.outputName(),
@@ -83,6 +104,7 @@ private fun ProductWorkspaceObservation.outputDocument(): ProductWorkspaceDocume
     is ProductWorkspaceObservation.Observed -> ProductWorkspaceDocument.Observed(
         root.path.toString(),
         cache.outputDocument(),
+        telemetry.outputDocument(),
     )
 }
 
@@ -99,6 +121,20 @@ private fun RootSidecarCacheObservation.outputDocument(): ProductCacheDocument =
     )
     is RootSidecarCacheObservation.Rejected -> ProductCacheDocument.Rejected(
         failure.outputName(),
+    )
+}
+
+private fun ProductTelemetryObservation.outputDocument(): ProductTelemetryDocument = when (this) {
+    is ProductTelemetryObservation.Enabled -> ProductTelemetryDocument.Enabled(
+        format = output.format.identity,
+        directoryPath = output.directoryPath.value,
+        traceFilePath = output.traceFilePath.value,
+    )
+    is ProductTelemetryObservation.EndpointRejected -> ProductTelemetryDocument.Rejected(
+        failure = failure.outputName(),
+    )
+    is ProductTelemetryObservation.OutputRejected -> ProductTelemetryDocument.Rejected(
+        failure = failure.outputName(),
     )
 }
 

@@ -32,7 +32,7 @@ PAGES = {
     "index.mdx": [
         "The compiler sees more than text",
         "Start from the repository root",
-        "Twelve sidecar operations",
+        "Thirteen sidecar operations",
         "What is Kast ready to inspect?",
         "What declaration is this?",
         "How is this code connected?",
@@ -47,7 +47,9 @@ PAGES = {
         "does not edit your shell profile",
         "kast start --seed-from-idea",
         "kast --schema",
-        "twelve operations",
+        "thirteen operations",
+        "kast index sync",
+        "OpenTelemetry traces",
         "relation reads",
         "diagnostics",
         "kast start",
@@ -90,11 +92,11 @@ PAGES = {
         "Qualified",
         "Rejected",
         "generation",
-        "twelve sidecar operations",
+        "thirteen sidecar operations",
         "<Columns cols={3}>",
     ],
     "explanation/how-kast-works.mdx": [
-        "exact twelve-operation public capability set",
+        "exact thirteen-operation public capability set",
         "Kotlin control executable",
         "SymbolDescribeRequestDocument",
         "UnixDomainWireClient",
@@ -120,6 +122,8 @@ PAGES = {
         "diagnostic.check",
         "Process-local inspection",
         "product inspect",
+        "Default local traces",
+        "index.sync",
         "workspace.inspect",
         "change.recover",
     ],
@@ -308,7 +312,7 @@ def check_readme() -> None:
         "https://raw.githubusercontent.com/amichne/kast/main/install.sh",
         "Kast supports macOS on Apple silicon, Java 25 or newer",
         "matched private sidecar",
-        "twelve public semantic operations",
+        "thirteen public semantic operations",
         "kast start",
         "kast workspace inspect",
         "kast --schema",
@@ -378,6 +382,7 @@ def check_installed_capability_contract() -> None:
         hosted
         == [
             "workspace.inspect",
+            "index.sync",
             "topology.build",
             "symbol.discover",
             "symbol.resolve",
@@ -404,7 +409,7 @@ def check_installed_capability_contract() -> None:
 
     canonical_source = CANONICAL_OPERATION_AUTHORITY.read_text()
     canonical = re.findall(r'canonicalOperationId\("([a-z.]+)"\)', canonical_source)
-    require(len(canonical) == 12, f"canonical operation surface changed: {canonical}")
+    require(len(canonical) == 13, f"canonical operation surface changed: {canonical}")
     reference = (PUBLIC / "reference/cli.mdx").read_text()
     for operation in hosted:
         require(

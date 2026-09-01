@@ -54,9 +54,9 @@ authorize reading the user's IDEA cache. Kast ships no IDEA distribution and
 has no user-IDE plugin fallback.
 
 Before the sidecar publishes readiness, its composition constructs the
-exact twelve-operation public capability set: workspace inspection, topology
-build, three symbol operations, relation reads, traversal, diagnostics, and the
-four AddDeclaration lifecycle operations.
+exact thirteen-operation public capability set: workspace inspection, index
+synchronization, topology build, three symbol operations, relation reads,
+traversal, diagnostics, and the four AddDeclaration lifecycle operations.
 
 Source-root identity comes from IntelliJ's canonical local source-folder URL,
 not from an existence-dependent `VirtualFile`. A declared source directory may
@@ -112,7 +112,7 @@ one bounded frame to the admitted socket.
 
 The private `InstalledIndexerTransport` reads the frame and passes it through
 `KastIndexerHost` to `InstalledKastRuntime`. `CanonicalKastOperationHandlerFactory`
-binds the complete twelve-operation protocol to the exact workspace graph.
+binds the complete thirteen-operation protocol to the exact workspace graph.
 This request reaches the symbol service created by `InstalledIntellijSymbolPorts`.
 Its request-local IntelliJ adapters resolve the selector with Project, PSI,
 index, and K2 authority, then detach a host-neutral symbol description.
@@ -140,7 +140,7 @@ diagnostic to standard error for a boundary rejection.
     - [`InstalledKastRuntime`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt)
       admits the exact workspace and state directory before composition.
     - [`InstalledRuntimeAssembly`](https://github.com/amichne/kast/blob/main/runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledRuntimeAssembly.kt)
-      constructs the workspace graph, persistence, and all twelve canonical
+      constructs the workspace graph, persistence, and all thirteen canonical
       operation handlers.
     - [`InstalledIntellijWorkspace`](https://github.com/amichne/kast/blob/main/workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledIntellijWorkspace.kt)
       owns project open, Gradle import, indexing, and detached model capture.
@@ -157,7 +157,7 @@ diagnostic to standard error for a boundary rejection.
         CLI --> WIRE[Typed wire documents]
         ADMIT --> SIDECAR[Private installed-IDE sidecar]
         WIRE --> TRANSPORT[Private sidecar transport]
-        TRANSPORT --> DISPATCH[Exact twelve-route semantic dispatch]
+        TRANSPORT --> DISPATCH[Exact thirteen-route semantic dispatch]
         DISPATCH --> ROUTES[Read and change routes]
         ROUTES --> K2[Request-local IntelliJ adapters]
         K2 --> EVIDENCE[Host-neutral evidence]
@@ -172,50 +172,25 @@ diagnostic to standard error for a boundary rejection.
 
 ## How the live generation moves
 
-Endpoint startup hashes only the admitted workspace root, source-root model,
-source provenance, and one project-service cold-start identity into a bounded
-lineage basis. It does not walk the repository or read every source file. Full
-source reads occur only for an explicit topology build or a targeted mutation
-boundary.
+Sidecar startup imports the exact Gradle project, waits for smart mode and
+indexing quiescence, captures the admitted source-root model and current source
+identity, and publishes that evidence as one durable semantic generation. It
+does not perform a full repository topology build during startup. An explicit
+`topology.build` enumerates admitted candidates; when paths, roots, and content
+hashes exactly match a durable snapshot, Kast can rebind that snapshot to the
+current generation instead of repeating K2 extraction.
 
-A newly opened Project conservatively advances the durable semantic generation.
-IntelliJ does not expose a persistent, source-root-bounded subtree epoch that
-could prove files were unchanged while the Project was closed, so Kast does
-not reuse the old generation on layout evidence alone. Deferred startup
-attempts in the same project service reuse one listener and event counter. If
-cached project-model evidence is not ready, the endpoint coordinator retries
-after 250 milliseconds, 1 second, and then at a capped 3-second interval. A
-real IntelliJ readiness signal takes precedence, and its older scheduled retry
-becomes stale rather than starting duplicate work.
-One project-service session retains the admitted project-read epoch authority
-across those attempts. Validation-only hosted adapters cannot install another
-epoch source, so retries do not multiply workspace-model or VFS listeners.
-The sidecar mutation database is also initialized once for generation resumption
-and once for the aggregate mutation authority. That aggregate retains its
-recovery journal, avoiding two additional recovery-schema initialization passes
-during normal startup.
-After a cold start, an explicit `topology.build` enumerates the current
-canonical candidates; if their paths, source roots, and content hashes exactly
-match the durable snapshot, Kast rebinds that snapshot to the new lease as
-`reused` instead of repeating K2 extraction.
+`index.sync` is the explicit stale-file repair boundary. It refreshes the
+admitted local source roots, waits for the same strengthened indexing
+quiescence proof used at startup, captures current source identity, and
+reconciles the workspace publication. Missing, outside-root, refresh-failed,
+or indexing-failed state returns a typed rejection.
 
-The endpoint retains a source-root-filtered IntelliJ VFS transition counter.
-A matching descendant or source-root-ancestor structural event advances the
-source lineage; a targeted mutation proof also advances it when the physical
-transition is known before a VFS event is available. Source invalidation and
-lease-guarded effects share one serialization boundary. Unrelated VFS traffic
-cannot move the workspace. The workspace owner durably issues the newer
-generation, reconciles the same admitted model, stages an exact-generation
-read runtime, and publishes only a proven same-root successor. A complete
-`change.apply` therefore makes prior selectors stale in the same endpoint
-before `change.verify` observes and proves the resulting state.
-
-If a physical write cannot be followed by durable application authority, the
-workspace still publishes its source transition and the mutation state becomes
-recovery-required immediately. A successful rollback publishes another
-successor generation before it re-audits durable state and installs fresh
-writer capabilities without reconstructing the endpoint; unresolved recovery
-never regains them.
+Only an `AppliedUnverified` physical apply schedules that same synchronization
+asynchronously. Rejected and recovery-required apply outcomes enqueue nothing;
+failure to schedule cannot rewrite the already-proven apply result. Verification
+still requires a resulting same-root generation derived from the exact prior
+lease. Unresolved recovery never regains write authority.
 
 ## Compiler objects stay inside the adapter
 
@@ -231,9 +206,9 @@ serialized or reused after their workspace generation changes.
 
 <Columns cols={3}>
   <Card title="Sidecar routes" icon="circle-check">
-    Workspace inspection, topology, symbol reads, relation reads, traversal,
-    diagnostics, and the AddDeclaration lifecycle are the twelve public
-    installed capabilities.
+    Workspace inspection, index synchronization, topology, symbol reads,
+    relation reads, traversal, diagnostics, and the AddDeclaration lifecycle
+    are the thirteen public installed capabilities.
   </Card>
   <Card title="Compiler-grounded reads" icon="circle-dashed">
     Relation and diagnostic routes use the same typed compiler services as
@@ -244,6 +219,21 @@ serialized or reused after their workspace generation changes.
     `clean` retains the private cache, and `reindex` quarantines only that cache.
   </Card>
 </Columns>
+
+## Performance traces stay local by default
+
+Before runtime construction, the sidecar proves a private trace destination
+inside the exact socket's durable state directory. Completed topology and
+traversal spans are forwarded asynchronously as OTLP JSON Lines. `kast product inspect`
+exposes the enabled directory, trace file, and format without starting the
+runtime.
+
+The span tree separates workspace admission, snapshot eligibility and reads,
+candidate enumeration, extraction, revalidation, publication, snapshot open,
+and traversal expansion. Its custom attributes are limited to closed outcome
+and failure variants plus non-negative file or record counts. Paths, selectors,
+source text, exception messages, and stack traces never enter this telemetry
+contract.
 
 ## Exact endpoint identity is part of the result
 

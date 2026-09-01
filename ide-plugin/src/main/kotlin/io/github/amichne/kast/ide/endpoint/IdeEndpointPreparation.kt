@@ -40,6 +40,7 @@ import io.github.amichne.kast.runtime.ide.host.HostedReadRuntimeStaging
 import io.github.amichne.kast.runtime.ide.host.HostedSemanticGenerationIssuance
 import io.github.amichne.kast.runtime.ide.host.HostedSemanticGenerationResumption
 import io.github.amichne.kast.runtime.ide.host.HostedTopologyAdapterPorts
+import io.github.amichne.kast.runtime.ide.host.HostedObservabilityRuntimePorts
 import io.github.amichne.kast.runtime.ide.host.HostedWorkspaceOperations
 import io.github.amichne.kast.runtime.ide.host.HostedWorkspaceTransition
 import io.github.amichne.kast.runtime.ide.host.HostedWorkspaceTransitionCause
@@ -65,10 +66,9 @@ import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFa
 import java.nio.file.Path
 
 data class IdeEndpointPreparationCandidate(
-    val descriptorRoot: IdeEndpointCanonicalRoot,
     val runtime: HostedIdeRuntime,
     val compatibilityPolicy: IdeHostCompatibilityPolicy,
-    val socketDirectory: IdeEndpointSocketDirectory,
+    val location: IdeEndpointLocation,
     val processId: IdeProcessId,
     val runtimeEpoch: IdeRuntimeEpoch,
 )
@@ -86,33 +86,23 @@ sealed interface IdeEndpointPreparation {
         /**
          * Proof transition: `IdeEndpointPreparationCandidate -> IdeEndpointPreparation`.
          *
-         * Establishes exact equality with the admitted Project root, complete four-operation
-         * runtime construction, deterministic UDS location, and a canonically admitted descriptor
+         * Establishes exact equality with the admitted Project root, complete hosted runtime
+         * construction, deterministic UDS location, and a canonically admitted descriptor
          * v2 before returning [PreparedIdeEndpoint]. Expected wrong-root or partial-runtime state
          * is finite [IdeEndpointPublicationFailure]. Raw descriptor fields are extracted only here,
          * at the hosted endpoint publication boundary.
          */
         fun prepare(candidate: IdeEndpointPreparationCandidate): IdeEndpointPreparation {
             val runtime = candidate.runtime
-            if (runtime.canonicalRoot != candidate.descriptorRoot) {
+            if (runtime.canonicalRoot != candidate.location.canonicalRoot) {
                 return Rejected(IdeEndpointPublicationFailure.WRONG_ROOT)
             }
-            val location = when (
-                val located = IdeEndpointLocation.locate(
-                    candidate.socketDirectory,
-                    candidate.descriptorRoot,
-                )
-            ) {
-                is Refinement.Refined -> located.value
-                is Refinement.Rejected -> return Rejected(
-                    IdeEndpointPublicationFailure.SOCKET_BIND_FAILED,
-                )
-            }
+            val location = candidate.location
             val compatibility = runtime.compatibility
             val descriptor = when (val admission = IdeEndpointDescriptorV2.create(
                     IdeEndpointDescriptorCandidate(
                         schema = IdeEndpointSchema.V2.identity,
-                        canonicalRoot = candidate.descriptorRoot.value,
+                        canonicalRoot = location.canonicalRoot.value,
                         hostKind = IdeEndpointHostKind.IDE_PROJECT.identity,
                         processId = candidate.processId.value,
                         ideBuild = compatibility.ideBuild.value,
@@ -339,6 +329,15 @@ internal object LiveIdeEndpointStartup {
                 IdeEndpointStartupFailure.EndpointGenerationExhausted,
             )
         }
+        val endpointLocation = when (val located = IdeEndpointLocation.locate(
+            socketDirectory,
+            canonicalRoot,
+        )) {
+            is Refinement.Refined -> located.value
+            is Refinement.Rejected -> return rejected(
+                IdeEndpointStartupFailure.HostConfigurationUnavailable,
+            )
+        }
         val workspaceModel = when (val admission = admitHostedWorkspaceModel(model)) {
             is HostedWorkspaceModelAdmissionResult.Admitted -> admission.admission
             is HostedWorkspaceModelAdmissionResult.Rejected -> return rejected(
@@ -537,6 +536,13 @@ internal object LiveIdeEndpointStartup {
             hostedWorkspace,
             stateLocation,
             HostedTopologyAdapterPorts(topologyPorts.candidates, topologyPorts.fileExtractor),
+            io.github.amichne.kast.runtime.ide.host.HostedIndexRuntimePorts(
+                hostedIndexRefresh(
+                    project,
+                    io.github.amichne.kast.topology.intellij.intellijSourceRootIndexRefresh(),
+                ),
+                java.util.concurrent.ForkJoinPool.commonPool(),
+            ),
             HostedChangeRuntimePorts(
                 relationPorts.compiler,
                 diagnosticPorts.compiler,
@@ -546,6 +552,9 @@ internal object LiveIdeEndpointStartup {
                 changePorts.intentCompiler,
                 changePorts.semanticObserver,
             ),
+            HostedObservabilityRuntimePorts(
+                endpointLocation.telemetryOutput(runtimeEpoch),
+            ),
         )) {
             is HostedIdeRuntimeCompositionResult.Created -> created.runtime
             is HostedIdeRuntimeCompositionResult.Rejected -> return rejected(
@@ -554,10 +563,9 @@ internal object LiveIdeEndpointStartup {
         }
         return when (val prepared = IdeEndpointPreparation.prepare(
             IdeEndpointPreparationCandidate(
-                descriptorRoot = canonicalRoot,
                 runtime = runtime,
                 compatibilityPolicy = metadata.compatibilityPolicy,
-                socketDirectory = socketDirectory,
+                location = endpointLocation,
                 processId = processId,
                 runtimeEpoch = runtimeEpoch,
             ),
